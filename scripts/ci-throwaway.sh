@@ -591,6 +591,10 @@ services:
       # actions class drives both callers over HTTP and reads the audit rows each leaves; and the gate class signs in as probe principals
       # each missing a pair or WRITE on the facts database, with a cube none of them may see.
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
+      # The term list editor classes (Story 24.2) turn analytics on in USER and write marker-named term lists there: the edit class drives the port's six
+      # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
+      # probe principals each missing the editor's pair or WRITE on the term list database.
+      # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

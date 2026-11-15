@@ -266,6 +266,12 @@ XData Coverage
 <screen name="AnalyticsCubeManager" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheCubeManagerDeclaration"/>
 <tool name="analytics.cubemanager.build" class="OcuPilot.Test.AnalyticsCubeActions" method="TestTheAgentsBuildIsADestructiveCardNamingItsDependentsBeforeItConfirms"/>
 <tool name="analytics.cubemanager.synchronize" class="OcuPilot.Test.AnalyticsCubeActions" method="TestASynchronizeAppliesExactlyTheChangesForBothCallers"/>
+<tool name="analytics.termlists.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestACreateMakesTheListAndEveryPropertyReadsBack"/>
+<tool name="analytics.termlists.update" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAChangeMovesOnlyTheHeader"/>
+<tool name="analytics.termlists.delete" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
+<tool name="analytics.termlistentries.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
+<tool name="analytics.termlistentries.set" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
+<tool name="analytics.termlistentries.remove" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
 <screen name="AnalyticsCubeDimensionsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsCubeRelationshipsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>

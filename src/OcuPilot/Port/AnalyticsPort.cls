@@ -59,8 +59,16 @@
 /// and <method>VendorSynchronize</method>, each run switched to the namespace inside an output capture, and their answers are mapped by
 /// <method>VendorOutcome</method>. The write runs in the request that asks for it, on the vendor's own build agents, and never in a
 /// job of this product's (AD-7).</p>
+/// <p><b>The term list editor (Story 24.2, AD-65, AD-53).</b> The <code>TermLists</code> and <code>TermListEntries</code> endpoints also serve the
+/// single-object reads <code>TERMLIST</code> and <code>TERMLISTENTRY</code> and six writes (<code>ADD</code>, <code>UPDATE</code>, <code>DELETE</code>,
+/// <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code>). A write is gated by <parameter>TERMLISTPAIRS</parameter> and, beyond the read gate, by
+/// <method>AdmitTermList</method>: WRITE on the database <code>^DeepSee.TermList</code> maps to, mounted read-write, and journaled. Its shape rules
+/// (<method>TermListViolations</method>) and the instance's own state (<method>TermListRefusal</method>, <method>TermListStateViolations</method>) are judged before any
+/// vendor call, which the <code>VendorTermList*</code> seams then make, a write of several inside one transaction (<method>PerformTermList</method>). The vendor
+/// audits none of them, so each records OcuPilot's own <code>ConfigChange</code> row.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
-/// <method>LogFault</method>, <method>VendorBuild</method> and <method>VendorSynchronize</method>. Production overrides none.</p>
+/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
+/// <method>DestinationJournaled</method>, <method>ReadTermListData</method> and the <code>VendorTermList*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -121,6 +129,57 @@ Parameter TYPESTATE = "STATE";
 Parameter TYPEBUILD = "BUILD";
 
 Parameter TYPESYNCHRONIZE = "SYNCHRONIZE";
+
+/// <p>The term list editor (Story 24.2): the single-object reads of a term list and of one entry, and the six writes. Each read also takes
+/// <parameter>ACTIONKEY</parameter>, which composes it for the write it precedes.</p>
+Parameter TYPETERMLIST = "TERMLIST";
+
+Parameter TYPETERMLISTENTRY = "TERMLISTENTRY";
+
+Parameter TYPEADD = "ADD";
+
+Parameter TYPEUPDATE = "UPDATE";
+
+Parameter TYPEDELETE = "DELETE";
+
+Parameter TYPEENTRYADD = "ENTRYADD";
+
+Parameter TYPEENTRYSET = "ENTRYSET";
+
+Parameter TYPEENTRYREMOVE = "ENTRYREMOVE";
+
+/// <p>The global the term lists live in: the destination <method>AdmitTermList</method> judges.</p>
+Parameter TERMLISTGLOBAL = "^DeepSee.TermList";
+
+/// <p>The audit entity types and the verbs, the tools' own names, of the term list writes (AD-15).</p>
+Parameter ENTITYTERMLIST = "term-list";
+
+Parameter ENTITYTERMLISTENTRY = "term-list-entry";
+
+Parameter VERBTERMLISTADD = "analytics.termlists.add";
+
+Parameter VERBTERMLISTUPDATE = "analytics.termlists.update";
+
+Parameter VERBTERMLISTDELETE = "analytics.termlists.delete";
+
+Parameter VERBENTRYADD = "analytics.termlistentries.add";
+
+Parameter VERBENTRYSET = "analytics.termlistentries.set";
+
+Parameter VERBENTRYREMOVE = "analytics.termlistentries.remove";
+
+/// <p>The most characters of a term list name or an entry key, of a caption, pattern or subject area, and of a description or value, and the
+/// most fields one list holds: the vendor's own limits (measured) and the editor's bound.</p>
+Parameter NAMEMAX As INTEGER = 255;
+
+Parameter SHORTTEXTMAX As INTEGER = 255;
+
+Parameter LONGTEXTMAX As INTEGER = 32000;
+
+Parameter FIELDSMAX As INTEGER = 50;
+
+/// <p>The field the vendor keeps an entry's own value under.</p>
+Parameter VALUEFIELD = "VALUE";
 
 /// <p>The query key naming the cube a <code>STATE</code> or a write is about, kept exactly (AD-13).</p>
 Parameter IDKEY = "id";
@@ -284,12 +343,26 @@ ClassMethod Pairs(pEndpoint As %String) As %List
 }
 
 /// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint; and, on the
-/// cube manager, <code>STATE</code>, <code>BUILD</code> and <code>SYNCHRONIZE</code>.</p>
+/// cube manager, <code>STATE</code>, <code>BUILD</code> and <code>SYNCHRONIZE</code>, and on the two term list endpoints their single-object read and three writes each.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
+    If pEndpoint = ..#ENDPOINTTERMLISTS Quit (pType = ..#TYPETERMLIST) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE)
+    If pEndpoint = ..#ENDPOINTTERMLISTENTRIES Quit (pType = ..#TYPETERMLISTENTRY) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
+}
+
+/// <p>Whether <var>pType</var> is one of the term list editor's six writes (Story 24.2).</p>
+ClassMethod IsTermListWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+}
+
+/// <p>Whether <var>pType</var> is one of the term list editor's two single-object reads or its six writes.</p>
+ClassMethod IsTermListType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPETERMLIST) || (pType = ..#TYPETERMLISTENTRY) || ..IsTermListWrite(pType)
 }
 
 /// <p>Whether <var>pType</var> is one of this port's two writes, the cube manager's build and synchronize (Story 20.34).</p>
@@ -337,6 +410,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pResult = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set tLevel = $TLevel
     Try {
         If '..Serves(pEndpoint, pType) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
@@ -345,9 +419,13 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tWrite = ..IsWrite(pType) || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
+        Set tWrite = ..IsWrite(pType) || ..IsTermListWrite(pType) || (((pType = ..#TYPESTATE) || (pType = ..#TYPETERMLIST) || (pType = ..#TYPETERMLISTENTRY)) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+        If ..IsTermListType(pType) {
+            Set tSC = ..InvokeTermList(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If pType '= ..#TYPELIST {
             Set tSC = ..InvokeCubeManager(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
@@ -390,6 +468,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set pResult = ..Rows(pEndpoint, .tData)
         Set pHttpStatus = 200
     } Catch ex {
+        While $TLevel > tLevel {
+            TROLLBACK 1
+        }
         Set pResult = ""
         Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
@@ -410,6 +491,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     Set tSC = ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) || 'pWrite Quit tSC
+    If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
 
@@ -1951,13 +2033,14 @@ ClassMethod SyncLines(ByRef pFacts, ByRef pNames, pLines As %DynamicArray, pCube
 /// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
 /// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
 /// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>
-ClassMethod AuditWrite(pVerb As %String, pId As %String, pEffects As %DynamicObject) [ Private ]
+ClassMethod AuditWrite(pVerb As %String, pId As %String, pEffects As %DynamicObject, pEntity As %String = "") [ Private ]
 {
+    Set tEntity = $Select(pEntity '= "": pEntity, 1: ..#ENTITYCUBE)
     Try {
-        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYCUBE, pId, {}, 0, pEffects)
-        If $$$ISERR(tSC) Do ..LogFault("the cube write could not be audited", tSC)
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, tEntity, pId, {}, 0, pEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the " _ tEntity _ " write could not be audited", tSC)
     } Catch ex {
-        Do ..LogFault("the cube write could not be audited", ex.AsStatus())
+        Do ..LogFault("the " _ tEntity _ " write could not be audited", ex.AsStatus())
     }
 }
 
@@ -1969,14 +2052,16 @@ ClassMethod Absent(Output pHttpStatus As %Integer, Output pFault As %DynamicObje
     Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
 }
 
-/// <p><code>objectscript</code> for the cube manager's two writes; <code>""</code> for every read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for the cube manager's two writes and the term list editor's six; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ..IsWrite(pType) Quit "objectscript"
+    If ((pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES)) && ..IsTermListWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
 
-/// <p>The write as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names: <code>%BuildCube</code> of the cube
+/// <p>The write as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names; a term list write is
+/// <method>TermListSnippet</method>'s. A cube manager write is <code>%BuildCube</code> of the cube
 /// <parameter>IDKEY</parameter> names, asynchronous, or <code>%SynchronizeCube</code> of it. The cube is a string literal, so nothing the
 /// query carries runs as code. Whoever runs the script is checked by the vendor's own resources, which do not include
 /// <code>%DeepSee_Admin</code>.</p>
@@ -1984,7 +2069,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    If pType = ..#TYPEBUILD {
+    If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
+        Set tText = tText _ ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pType = ..#TYPEBUILD {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils).%BuildCube(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 1, 0, 0, 0, 0, .tStats)"
     } Else {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 0, .tFacts)"
@@ -1995,6 +2082,49 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Quit [(tStep)]
 }
 
+/// <p>The lines <method>Snippet</method> adds for the term list write <var>pType</var> of the list or entry the id <var>pId</var> names
+/// (Story 24.2), the vendor calls <method>PerformTermList</method> makes: a create, a header write, a delete, a value write per entry
+/// value and field value, an entry removal as the vendor's documented layout has it. A write that makes several calls is one transaction,
+/// rolled back when one fails. The body <var>pBody</var> is the body the confirm sends. Names and values are string literals.</p>
+ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tEntry = (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    Set tParts = $Select(tEntry: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId), 1: $ListBuild(pId))
+    Set tName = ..Literal($ListGet(tParts, 1))
+    Set tKey = ..Literal($ListGet(tParts, 2))
+    Set tList = "##class(%DeepSee.TermList)"
+    Set tStamp = "$ZDateTime($Horolog, 3)"
+    If pType = ..#TYPEADD Quit tNL _ " Set tSC = " _ tList _ ".%CreateTermList(" _ tName _ ", " _ ..Literal(..Text(pBody, "Caption")) _ ", " _ ..Literal(..FieldListOf(pBody, "")) _ ", " _ ..Literal(..Text(pBody, "Pattern")) _ ", " _ ..Literal(..Text(pBody, "Description")) _ ", " _ ..Literal(..Text(pBody, "SubjectArea")) _ ", " _ ..Hidden(pBody, 0) _ ")"
+    If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = " _ tList _ ".%DeleteTermList(" _ tName _ ")"
+    If pType = ..#TYPEENTRYREMOVE Quit tNL _ " Set tId = $ZConvert(" _ tName _ ", ""U"")" _ tNL _ " Kill ^DeepSee.TermList(tId, ""data"", " _ tKey _ ")" _ tNL _ " Set ^DeepSee.TermList(tId, ""modDate"") = " _ tStamp _ tNL _ " Set tSC = 1"
+    Set tText = tNL _ " TSTART"
+    If pType = ..#TYPEUPDATE {
+        Set tText = tText _ tNL _ " Set tObject = ##class(%DeepSee.UserLibrary.TermList).%New()"
+        Set tText = tText _ tNL _ " Set tObject.name = " _ tName
+        Set tText = tText _ tNL _ " Set tObject.caption = " _ ..Literal(..Text(pBody, "Caption"))
+        Set tText = tText _ tNL _ " Set tObject.fieldListString = " _ ..Literal(..FieldListOf(pBody, ""))
+        Set tText = tText _ tNL _ " Set tObject.pattern = " _ ..Literal(..Text(pBody, "Pattern"))
+        Set tText = tText _ tNL _ " Set tObject.description = " _ ..Literal(..Text(pBody, "Description"))
+        Set tText = tText _ tNL _ " Set tObject.subjectArea = " _ ..Literal(..Text(pBody, "SubjectArea"))
+        Set tText = tText _ tNL _ " Set tObject.modDate = " _ tStamp
+        Set tText = tText _ tNL _ " Set tSC = " _ tList _ ".%FromObj(tObject)"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { " _ $Select(..Hidden(pBody, 0): "Set ^DeepSee.TermList($ZConvert(" _ tName _ ", ""U""), ""hideValue"") = 1", 1: "Kill ^DeepSee.TermList($ZConvert(" _ tName _ ", ""U""), ""hideValue"")") _ " }"
+    } Else {
+        Set tText = tText _ tNL _ " Set tSC = 1"
+        If pBody.%GetTypeOf("Value") = "string" Set tText = tText _ tNL _ " Set tSC = " _ tList _ ".%SetValue(" _ tName _ ", " _ tKey _ ", " _ ..Literal(pBody.%Get("Value")) _ ", """")"
+        If pBody.%GetTypeOf("FieldValues") = "array" {
+            Set tIterator = pBody.FieldValues.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tPair) {
+                If '$IsObject(tPair) || (tPair.%GetTypeOf("Field") '= "string") || (tPair.%GetTypeOf("Value") '= "string") Continue
+                Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%SetValue(" _ tName _ ", " _ tKey _ ", " _ ..Literal(tPair.%Get("Value")) _ ", " _ ..Literal(tPair.%Get("Field")) _ ")"
+            }
+        }
+    }
+    Quit tText _ tNL _ " If $System.Status.IsOK(tSC) { TCOMMIT } Else { TROLLBACK 1 }"
+}
+
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a <code>$Char</code>.</p>
 ClassMethod Literal(pValue As %String) As %String [ Private ]
 {
@@ -2003,6 +2133,674 @@ ClassMethod Literal(pValue As %String) As %String [ Private ]
         If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
     }
     Quit tText
+}
+
+/// <p>The term list editor's destination gate (AD-29, AD-65, Story 24.2), after the namespace gate: WRITE on the database
+/// <parameter>TERMLISTGLOBAL</parameter> maps to, which must be mounted read-write (409
+/// <parameter>OcuPilot.Api.AnalyticsError.TERMLISTREADONLY</parameter>), and that database journaled (409
+/// <parameter>OcuPilot.Api.AnalyticsError.TERMLISTNOTJOURNALED</parameter>), so that a write that makes several vendor calls is all or
+/// nothing and none is left half done. A database whose journal state the instance cannot read is 400 <code>PORT.VALIDATION</code>.
+/// Names no vendor class.</p>
+ClassMethod AdmitTermList(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = ..AdmitDestination(pNamespace, ..#TERMLISTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTREADONLY, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tJournaled = 0
+    If '..DestinationJournaled(pNamespace, ..#TERMLISTGLOBAL, .tJournaled) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If 'tJournaled Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#TERMLISTNOTJOURNALED, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>Whether the database <var>pGlobal</var> maps to in <var>pNamespace</var> is journaled (<var>pJournaled</var>); the answer is 0 when
+/// the instance cannot say, which a caller refuses rather than admits. A <code>$ZUTIL(49)</code> read of the database's directory, whose
+/// seventeenth piece carries the no-journal flag 4096 (measured against <code>SYS.Database.GlobalJournalState</code>); no namespace is
+/// switched. Overridable so a fixture can name a database with journaling off; production never overrides it.</p>
+ClassMethod DestinationJournaled(pNamespace As %String, pGlobal As %String, Output pJournaled As %Boolean) As %Boolean
+{
+    Set pJournaled = 0
+    Set tKnown = 0
+    Try {
+        Set tDest = ##class(%SYS.Namespace).GetGlobalDest($ZConvert(pNamespace, "U"), pGlobal)
+        If (tDest '= "") && ($Piece(tDest, "^", 1) = "") && ($Piece(tDest, "^", 2) '= "") Set tKnown = ..JournaledFrom($ZUtil(49, $Piece(tDest, "^", 2)), .pJournaled)
+    } Catch {
+        Set pJournaled = 0
+        Set tKnown = 0
+    }
+    Quit tKnown
+}
+
+/// <p>Whether <var>pInfo</var>, a database's <code>$ZUTIL(49)</code> answer, says it is journaled (<var>pJournaled</var>): the no-journal
+/// flag 4096 of its seventeenth piece is clear. 0 when the answer is not that record. Pure.</p>
+ClassMethod JournaledFrom(pInfo As %String, Output pJournaled As %Boolean) As %Boolean
+{
+    Set pJournaled = 0
+    If $Length(pInfo, ",") < 17 Quit 0
+    Set tFlags = $Piece(pInfo, ",", 17)
+    If tFlags '? 1.N Quit 0
+    Set pJournaled = ((tFlags \ 4096) # 2 = 0)
+    Quit 1
+}
+
+/// <p>Whether <var>pText</var> is a name or key the editor admits: 1 to <parameter>NAMEMAX</parameter> characters with no control
+/// character, and, when <var>pNoCaret</var>, no <code>^</code>. Pure.</p>
+ClassMethod NameShaped(pText As %String, pNoCaret As %Boolean = 0) As %Boolean
+{
+    If (pText = "") || ($Length(pText) > ..#NAMEMAX) || ($ZStrip(pText, "*C") '= pText) Quit 0
+    Quit 'pNoCaret || (pText '[ "^")
+}
+
+/// <p>Whether the instance can address the term list <var>pName</var>'s node and, when they are not empty, the entry <var>pKey</var>'s node
+/// of the field <var>pField</var> (the vendor stores the list and the field in upper case). A reference past the instance's limit raises
+/// <code>&lt;SUBSCRIPT&gt;</code>, and the limit counts the global's name and every subscript together, so names within their own bound can
+/// pass it together (measured: a 255-character name takes a key of at most 226 characters beside a five-character field). The test reads a
+/// process-private global whose name is as long as the vendor's, which nothing writes. Pure.</p>
+ClassMethod TermListFits(pName As %String, pKey As %String = "", pField As %String = "VALUE") As %Boolean
+{
+    Set tFits = 1
+    Try {
+        Set tList = $ZConvert(pName, "U")
+        If pKey = "" {
+            Set tProbe = $Data(^||DeepSee.TermList(tList))
+        } Else {
+            Set tProbe = $Data(^||DeepSee.TermList(tList, "data", pKey, $ZConvert(pField, "U")))
+        }
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>The shape violations of a term list write that need nothing from the instance, in <var>pViolations</var>
+/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>): <var>pType</var> is the write,
+/// <var>pName</var> the term list, <var>pKey</var> the entry's key (entry writes), <var>pBody</var> what the caller sends. A caption,
+/// pattern or subject area is at most <parameter>SHORTTEXTMAX</parameter> characters, a description or value at most
+/// <parameter>LONGTEXTMAX</parameter>; a name and a key are <method>NameShaped</method> and <method>TermListFits</method>; a field name is
+/// <method>NameShaped</method> without <code>^</code>, is never <code>Value</code>, is not repeated without regard to case, and a list has
+/// at most <parameter>FIELDSMAX</parameter>; a member of the wrong type is <code>PORT.FIELD.SHAPE</code>. Pure.</p>
+ClassMethod TermListViolations(pType As %String, pName As %String, pKey As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    Set tNameOk = ..NameShaped(pName) && ..TermListFits(pName)
+    If (pType = ..#TYPEADD) && 'tNameOk Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTNAME)
+    If (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) {
+        For tMember = "Caption", "Pattern", "SubjectArea", "Description" {
+            Set tMemberType = pBody.%GetTypeOf(tMember)
+            If tMemberType = "unassigned" Continue
+            If tMemberType '= "string" {
+                Set pViolations($Increment(pViolations)) = $ListBuild(tMember, tShape)
+            } ElseIf $Length(pBody.%Get(tMember)) > $Select(tMember = "Description": ..#LONGTEXTMAX, 1: ..#SHORTTEXTMAX) {
+                Set pViolations($Increment(pViolations)) = $ListBuild(tMember, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTVALUE)
+            }
+        }
+        Set tHideType = pBody.%GetTypeOf("HideValue")
+        If (tHideType '= "unassigned") && (tHideType '= "boolean") && (tHideType '= "number") Set pViolations($Increment(pViolations)) = $ListBuild("HideValue", tShape)
+        Set tFieldsType = pBody.%GetTypeOf("Fields")
+        If tFieldsType = "unassigned" Quit $$$OK
+        If tFieldsType '= "array" {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Fields", tShape)
+            Quit $$$OK
+        }
+        Set tSeen = ""
+        Set tCount = 0
+        Set tIterator = pBody.Fields.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            Set tCount = tCount + 1
+            If pBody.Fields.%GetTypeOf(tIndex) '= "string" {
+                Set pViolations($Increment(pViolations)) = $ListBuild("Fields", tShape)
+                Continue
+            }
+            Set tUpper = $ZConvert(tField, "U")
+            If '..NameShaped(tField, 1) || (tUpper = ..#VALUEFIELD) || $ListFind(tSeen, tUpper) || (tNameOk && '..TermListFits(pName, "k", tField)) Set pViolations($Increment(pViolations)) = $ListBuild("Fields", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTFIELD)
+            Set tSeen = tSeen _ $ListBuild(tUpper)
+        }
+        If tCount > ..#FIELDSMAX Set pViolations($Increment(pViolations)) = $ListBuild("Fields", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTFIELD)
+        Quit $$$OK
+    }
+    If (pType '= ..#TYPEENTRYADD) && (pType '= ..#TYPEENTRYSET) Quit $$$OK
+    If (pType = ..#TYPEENTRYADD) && (('..NameShaped(pKey, 1)) || ('..TermListFits(pName, pKey))) Set pViolations($Increment(pViolations)) = $ListBuild("Key", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTKEY)
+    Set tValueType = pBody.%GetTypeOf("Value")
+    If tValueType '= "unassigned" {
+        If tValueType '= "string" {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Value", tShape)
+        } ElseIf $Length(pBody.%Get("Value")) > ..#LONGTEXTMAX {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTVALUE)
+        }
+    }
+    Set tPairsType = pBody.%GetTypeOf("FieldValues")
+    If tPairsType = "unassigned" Quit $$$OK
+    If tPairsType '= "array" {
+        Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", tShape)
+        Quit $$$OK
+    }
+    Set tIterator = pBody.FieldValues.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPair) {
+        If (pBody.FieldValues.%GetTypeOf(tIndex) '= "object") || (tPair.%GetTypeOf("Field") '= "string") || (tPair.%GetTypeOf("Value") '= "string") {
+            Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", tShape)
+        } ElseIf $Length(tPair.%Get("Value")) > ..#LONGTEXTMAX {
+            Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTVALUE)
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>The violations that need the instance's own state, in <var>pViolations</var> as <method>TermListViolations</method> answers them, for
+/// the term list read into <var>pData</var> (<method>TermListHere</method>): an entry value naming a field the list does not hold
+/// (<code>NOFIELD</code>), and, on an update, a field that leaves the list while an entry holds a value for it (<code>FIELDINUSE</code>).
+/// Pure.</p>
+ClassMethod TermListStateViolations(pType As %String, ByRef pData, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If '+$Get(pData("exists")) Quit $$$OK
+    Set tHeld = ""
+    For tAt = 1:1:$Length($Get(pData("fieldList")), "^") {
+        Set tField = $Piece(pData("fieldList"), "^", tAt)
+        If tField '= "" Set tHeld = tHeld _ $ListBuild($ZConvert(tField, "U"))
+    }
+    If (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) {
+        If pBody.%GetTypeOf("FieldValues") '= "array" Quit $$$OK
+        Set tIterator = pBody.FieldValues.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPair) {
+            If '$ListFind(tHeld, $ZConvert(tPair.%Get("Field"), "U")) Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTNOFIELD)
+        }
+        Quit $$$OK
+    }
+    If (pType '= ..#TYPEUPDATE) || (pBody.%GetTypeOf("Fields") '= "array") Quit $$$OK
+    Set tKept = ""
+    Set tIterator = pBody.Fields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tKept = tKept _ $ListBuild($ZConvert(tField, "U"))
+    }
+    For tAt = 1:1:$ListLength(tHeld) {
+        If $ListFind(tKept, $List(tHeld, tAt)) Continue
+        For tEntry = 1:1:+$Get(pData("keys")) {
+            If $Get(pData("val", tEntry, tAt)) '= "" {
+                Set pViolations($Increment(pViolations)) = $ListBuild("Fields", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTFIELDINUSE)
+                Quit
+            }
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>The 422 refusal <var>pViolations</var> earn (AD-39): the first violation's code and sentence, every one in
+/// <code>detail.violations</code>.</p>
+ClassMethod ViolationRefusal(ByRef pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {"violations": []}
+    For tI = 1:1:pViolations {
+        Set tCode = $List(pViolations(tI), 2)
+        Do tDetail.%Get("violations").%Push({"field": ($List(pViolations(tI), 1)), "code": (tCode), "reason": (##class(OcuPilot.Api.Error).ReasonForViolation(tCode))})
+    }
+    Set tFirst = $List(pViolations(1), 2)
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, tFirst, ##class(OcuPilot.Api.Error).ReasonForViolation(tFirst), .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The sentence of the first rule the call <var>pBody</var> of the write <var>pType</var> on the term list <var>pName</var> breaks against
+/// the instance's own state, <code>""</code> when none: a list that is not there, a field the list does not hold, a field in use. The mint
+/// and a screen's save ask it so that the agent and the person are refused what the write would refuse. It reads through the namespace
+/// <var>pNamespace</var> and writes nothing; the caller has passed this port's gate.</p>
+ClassMethod StateProblem(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Kill tData
+        Set tVendorSC = $$$OK
+        Set tCaught = ""
+        Do ..ReadTermListData(pNamespace, pName, .tData, .tVendorSC, .tCaught)
+        If $IsObject(tCaught) || $$$ISERR(tVendorSC) Quit
+        If '+$Get(tData("exists")) {
+            Set tProblem = ##class(OcuPilot.Api.AnalyticsError).ReasonFor(##class(OcuPilot.Api.AnalyticsError).#TERMLISTABSENT)
+            Quit
+        }
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit
+        Kill tViolations
+        Set tSC = ..TermListStateViolations(pType, .tData, pBody, .tViolations)
+        If $$$ISERR(tSC) || ('tViolations) Quit
+        Set tProblem = "'" _ $List(tViolations(1), 1) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(1), 2))
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p>Read the term list <var>pName</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData("exists")</code>; its
+/// header under <code>name</code>, <code>caption</code>, <code>description</code>, <code>pattern</code>, <code>subjectArea</code>,
+/// <code>fieldList</code> (the vendor's <code>^</code>-delimited text), <code>modDate</code> and <code>hide</code>; <code>pData("keys")</code>
+/// entries, <code>pData("key", n)</code> each key and <code>pData("val", n, f)</code> its value, <code>f</code> 0 for the entry's own value
+/// and 1 to the number of fields for each field's. A vendor error status is <var>pVendorStatus</var>; an exception is <var>pCaught</var>.
+/// Everything between the switch and the restore names only vendor classes (AD-16). A seam: overridable so a fixture can fail a read.</p>
+ClassMethod ReadTermListData(pNamespace As %String, pName As %String, Output pData, Output pVendorStatus As %Status, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pVendorStatus = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tStatus
+        Set tObject = ##class(%DeepSee.TermList).%ToObj(pName, .tStatus)
+        If $Data(tStatus) && $$$ISERR(tStatus) {
+            Set pVendorStatus = tStatus
+        } ElseIf $IsObject(tObject) {
+            Set pData("exists") = 1
+            Set pData("name") = tObject.name
+            Set pData("caption") = tObject.caption
+            Set pData("description") = tObject.description
+            Set pData("pattern") = tObject.pattern
+            Set pData("subjectArea") = tObject.subjectArea
+            Set pData("fieldList") = tObject.fieldListString
+            Set pData("modDate") = tObject.modDate
+            Set pData("hide") = ''$Get(^DeepSee.TermList($ZConvert(pName, "U"), "hideValue"))
+            Set pData("keys") = tObject.keyList.Count()
+            For tAt = 1:1:pData("keys") {
+                Set tKey = tObject.keyList.GetAt(tAt)
+                Set pData("key", tAt) = tKey
+                Set pData("val", tAt, 0) = tObject.valueList.GetAt(tKey _ "^VALUE")
+                For tField = 1:1:$Length(tObject.fieldListString, "^") {
+                    Set tFieldName = $Piece(tObject.fieldListString, "^", tField)
+                    If tFieldName '= "" Set pData("val", tAt, tField) = tObject.valueList.GetAt(tKey _ "^" _ $ZConvert(tFieldName, "U"))
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The term list read into <var>pData</var> as a row: <code>{Name, Caption, Description, Pattern, SubjectArea, Fields, HideValue, Modified,
+/// Namespace}</code>, <code>Fields</code> the list's field names in order. Pure.</p>
+ClassMethod HeaderRow(pNamespace As %String, ByRef pData) As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pData("name"), "string")
+    Do tRow.%Set("Caption", pData("caption"), "string")
+    Do tRow.%Set("Description", pData("description"), "string")
+    Do tRow.%Set("Pattern", pData("pattern"), "string")
+    Do tRow.%Set("SubjectArea", pData("subjectArea"), "string")
+    Set tFields = []
+    For tAt = 1:1:$Length(pData("fieldList"), "^") {
+        If $Piece(pData("fieldList"), "^", tAt) '= "" Do tFields.%Push($Piece(pData("fieldList"), "^", tAt), "string")
+    }
+    Do tRow.%Set("Fields", tFields)
+    Do tRow.%Set("HideValue", pData("hide"), "boolean")
+    Do tRow.%Set("Modified", pData("modDate"), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The entry at position <var>pAt</var> of the term list read into <var>pData</var> as a row: <code>{TermList, Key, Value, FieldValues,
+/// Fields, Namespace}</code>, <code>FieldValues</code> one <code>{Field, Value}</code> per field of the list and <code>Fields</code> the same
+/// joined as <code>field: value</code> with <code>; </code>, as <code>TermListEntries</code> lists it. Pure.</p>
+ClassMethod EntryRow(pNamespace As %String, ByRef pData, pAt As %Integer) As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("TermList", pData("name"), "string")
+    Do tRow.%Set("Key", pData("key", pAt), "string")
+    Do tRow.%Set("Value", pData("val", pAt, 0), "string")
+    Set tPairs = []
+    Set tJoined = ""
+    For tField = 1:1:$Length(pData("fieldList"), "^") {
+        Set tName = $Piece(pData("fieldList"), "^", tField)
+        If tName = "" Continue
+        Set tValue = $Get(pData("val", pAt, tField))
+        Do tPairs.%Push({"Field": (tName), "Value": (tValue)})
+        Set tJoined = tJoined _ $Select(tJoined = "": "", 1: "; ") _ tName _ ": " _ tValue
+    }
+    Do tRow.%Set("FieldValues", tPairs)
+    Do tRow.%Set("Fields", tJoined, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The position of the entry <var>pKey</var>, exactly, in the term list read into <var>pData</var>; 0 when it holds none. Pure.</p>
+ClassMethod EntryAt(ByRef pData, pKey As %String) As %Integer
+{
+    Set tFound = 0
+    For tAt = 1:1:+$Get(pData("keys")) {
+        If pData("key", tAt) = pKey {
+            Set tFound = tAt
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>404 <code>ANALYTICS.TERMLIST.ABSENT</code>: the term list is not there.</p>
+ClassMethod ListAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>Serve the term list editor's typed calls after <method>Invoke</method>'s gate (Story 24.2): the reads <code>TERMLIST</code> (one term
+/// list as <method>HeaderRow</method>) and <code>TERMLISTENTRY</code> (one entry, as <method>EntryRow</method>), and the six writes. The
+/// list is named under <parameter>IDKEY</parameter>, an entry by the composite <code>[TermList, Key]</code>, each part kept exactly (AD-13).
+/// A read carrying <parameter>ACTIONKEY</parameter> is composed for that write, as a create expects it: an add's read is 409 when the target is
+/// held and 404 when it is not, and the other writes' reads are 404 when the target is not there. A term list that is not there is 404
+/// <code>PORT.NOTFOUND</code> on a plain read.</p>
+ClassMethod InvokeTermList(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery(..#IDKEY))
+    Set tName = tId
+    Set tKey = ""
+    If pEndpoint = ..#ENDPOINTTERMLISTENTRIES {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
+        If $ListLength(tParts) '= 2 Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTERMLISTREQUIRED, .pHttpStatus, .pFault)
+        Set tName = $List(tParts, 1)
+        Set tKey = $List(tParts, 2)
+        If tKey = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTERMLISTREQUIRED, .pHttpStatus, .pFault)
+    }
+    If tName = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTERMLISTREQUIRED, .pHttpStatus, .pFault)
+    Set tWrite = ..IsTermListWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsTermListWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If tWrite Quit ..PerformTermList(pNamespace, pType, tName, tKey, pBody, .pResult, .pHttpStatus, .pFault)
+
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..ReadTermListData(pNamespace, tName, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the term list could not be read", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the term list could not be read", .pHttpStatus, .pFault)
+    Set tAt = $Select(tKey = "": 0, 1: ..EntryAt(.tData, tKey))
+    Set tCode = ..TermListRefusal(tAction, +tData("exists"), tAt)
+    If tCode = "ABSENT" Quit ..ListAbsent(.pHttpStatus, .pFault)
+    If tCode = "NOENTRY" Quit ..Absent(.pHttpStatus, .pFault)
+    If tCode '= "" Quit ..Conflict($Select(tCode = "TAKEN": ##class(OcuPilot.Api.AnalyticsError).#TERMLISTTAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#TERMLISTENTRYTAKEN), .pHttpStatus, .pFault)
+    If (pEndpoint = ..#ENDPOINTTERMLISTS) {
+        If tAction = ..#TYPEADD Quit ..Absent(.pHttpStatus, .pFault)
+        If 'tData("exists") Quit ..Absent(.pHttpStatus, .pFault)
+        Set pResult = ..HeaderRow(pNamespace, .tData)
+    } Else {
+        If tAction = ..#TYPEENTRYADD Quit ..Absent(.pHttpStatus, .pFault)
+        If 'tAt Quit ..Absent(.pHttpStatus, .pFault)
+        Set pResult = ..EntryRow(pNamespace, .tData, tAt)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The decision a term list write <var>pAction</var> is refused with, as <code>TAKEN</code> (an add of a held list), <code>ENTRYTAKEN</code>
+/// (an entry add of a held key), <code>ABSENT</code> (any write on a list that is not there, an add excepted),
+/// <code>NOENTRY</code> (a set or remove of a key not held), else <code>""</code>. <var>pExists</var> is whether the list is held,
+/// <var>pAt</var> the entry's position, 0 when it is not held. <var>pAction</var> <code>""</code> is a plain read, which refuses nothing. Pure.</p>
+ClassMethod TermListRefusal(pAction As %String, pExists As %Boolean, pAt As %Integer) As %String
+{
+    If pAction = "" Quit ""
+    If pAction = ..#TYPEADD Quit $Select(pExists: "TAKEN", 1: "")
+    If 'pExists Quit "ABSENT"
+    If pAction = ..#TYPEENTRYADD Quit $Select(pAt: "ENTRYTAKEN", 1: "")
+    If (pAction = ..#TYPEENTRYSET) || (pAction = ..#TYPEENTRYREMOVE) Quit $Select(pAt: "", 1: "NOENTRY")
+    Quit ""
+}
+
+/// <p>Make the term list write <var>pType</var> on the list <var>pName</var> (and, for an entry write, the entry <var>pKey</var>) in
+/// <var>pNamespace</var> (Story 24.2). In order, and each refusal before any vendor write: the shape rules
+/// (<method>TermListViolations</method>, 422); the list read (<method>ReadTermListData</method>); the state's own refusal
+/// (<method>TermListRefusal</method>: 409 held, 404 absent); the rules that need the state (<method>TermListStateViolations</method>, 422);
+/// then the vendor calls through the seams. A write that makes more than one vendor call (an update, an entry add or set) runs them inside
+/// one transaction, rolled back on any failure, so a failed write leaves the target as it was; nothing is audited, spawned or sent inside it.
+/// After the namespace is restored a successful write records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>),
+/// because the vendor audits none (measured). The answer is the written target read again: a term list or an entry row, or
+/// <code>{Name, Namespace}</code> and <code>{TermList, Key, Namespace}</code> after a delete and a remove.</p>
+ClassMethod PerformTermList(pNamespace As %String, pType As %String, pName As %String, pKey As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Kill tViolations
+    Set tSC = ..TermListViolations(pType, pName, pKey, pBody, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..ReadTermListData(pNamespace, pName, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the term list could not be read", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the term list could not be read", .pHttpStatus, .pFault)
+    Set tAt = $Select(pKey = "": 0, 1: ..EntryAt(.tData, pKey))
+    Set tCode = ..TermListRefusal(pType, +tData("exists"), tAt)
+    If tCode = "ABSENT" Quit ..ListAbsent(.pHttpStatus, .pFault)
+    If tCode = "NOENTRY" Quit ..Absent(.pHttpStatus, .pFault)
+    If tCode '= "" Quit ..Conflict($Select(tCode = "TAKEN": ##class(OcuPilot.Api.AnalyticsError).#TERMLISTTAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#TERMLISTENTRYTAKEN), .pHttpStatus, .pFault)
+    Kill tViolations
+    Set tSC = ..TermListStateViolations(pType, .tData, pBody, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+
+    ; The stored spelling of the list is the vendor's, so every vendor call names it as stored.
+    Set tStored = $Select(pType = ..#TYPEADD: pName, 1: tData("name"))
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Set tTransaction = 0
+    If pType = ..#TYPEADD {
+        Set tVendorSC = ..VendorTermListCreate(pNamespace, tStored, ..Text(pBody, "Caption"), ..FieldListOf(pBody, ""), ..Text(pBody, "Pattern"), ..Text(pBody, "Description"), ..Text(pBody, "SubjectArea"), ..Hidden(pBody, 0), .tCaught)
+    } ElseIf pType = ..#TYPEDELETE {
+        Set tVendorSC = ..VendorTermListDelete(pNamespace, tStored, .tCaught)
+    } ElseIf pType = ..#TYPEENTRYREMOVE {
+        Set tVendorSC = ..VendorTermListRemoveEntry(pNamespace, tStored, pKey, .tCaught)
+    } ElseIf pType = ..#TYPEUPDATE {
+        TSTART
+        Set tTransaction = 1
+        Set tFields = $Select(pBody.%GetTypeOf("Fields") = "array": ..FieldListOf(pBody, ""), 1: tData("fieldList"))
+        Set tHide = ..Hidden(pBody, tData("hide"))
+        Set tVendorSC = ..VendorTermListHeader(pNamespace, tStored, ..TextOr(pBody, "Caption", tData("caption")), tFields, ..TextOr(pBody, "Pattern", tData("pattern")), ..TextOr(pBody, "Description", tData("description")), ..TextOr(pBody, "SubjectArea", tData("subjectArea")), .tCaught)
+        If $$$ISOK(tVendorSC) && '$IsObject(tCaught) Set tVendorSC = ..VendorTermListHide(pNamespace, tStored, tHide, .tCaught)
+    } Else {
+        TSTART
+        Set tTransaction = 1
+        Set tValue = $Select(pBody.%GetTypeOf("Value") = "string": pBody.%Get("Value"), tAt: tData("val", tAt, 0), 1: "")
+        Set tVendorSC = ..VendorTermListSetValue(pNamespace, tStored, pKey, tValue, "", .tCaught)
+        If pBody.%GetTypeOf("FieldValues") = "array" {
+            Set tIterator = pBody.FieldValues.%GetIterator()
+            While $$$ISOK(tVendorSC) && '$IsObject(tCaught) && tIterator.%GetNext(.tIndex, .tPair) {
+                Set tVendorSC = ..VendorTermListSetValue(pNamespace, tStored, pKey, tPair.%Get("Value"), tPair.%Get("Field"), .tCaught)
+            }
+        }
+    }
+    Set tFailed = $IsObject(tCaught) || $$$ISERR(tVendorSC)
+    If tTransaction {
+        If tFailed {
+            TROLLBACK 1
+        } Else {
+            TCOMMIT
+        }
+    }
+    If tFailed {
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        Quit ..Statused(tVendorSC, "the term list write failed", .pHttpStatus, .pFault)
+    }
+
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("termList", tStored, "string")
+    If pKey '= "" Do tEffects.%Set("entry", pKey, "string")
+    Set tEntity = $Select(pKey = "": ..#ENTITYTERMLIST, 1: ..#ENTITYTERMLISTENTRY)
+    Do ..AuditWrite($Case(pType, ..#TYPEADD: ..#VERBTERMLISTADD, ..#TYPEUPDATE: ..#VERBTERMLISTUPDATE, ..#TYPEDELETE: ..#VERBTERMLISTDELETE, ..#TYPEENTRYADD: ..#VERBENTRYADD, ..#TYPEENTRYSET: ..#VERBENTRYSET, : ..#VERBENTRYREMOVE), $Select(pKey = "": tStored, 1: ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tStored, pKey))), tEffects, tEntity)
+
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If (pType = ..#TYPEDELETE) || (pType = ..#TYPEENTRYREMOVE) {
+        Do pResult.%Set($Select(pKey = "": "Name", 1: "TermList"), tStored, "string")
+        If pKey '= "" Do pResult.%Set("Key", pKey, "string")
+    } Else {
+        Kill tAfter
+        Do ..ReadTermListData(pNamespace, tStored, .tAfter, .tAfterSC, .tAfterCaught)
+        If $IsObject(tAfterCaught) || $$$ISERR(tAfterSC) || '+$Get(tAfter("exists")) {
+            Do pResult.%Set($Select(pKey = "": "Name", 1: "TermList"), tStored, "string")
+            If pKey '= "" Do pResult.%Set("Key", pKey, "string")
+        } ElseIf pKey = "" {
+            Set pResult = ..HeaderRow(pNamespace, .tAfter)
+        } Else {
+            Set tAfterAt = ..EntryAt(.tAfter, pKey)
+            If tAfterAt Set pResult = ..EntryRow(pNamespace, .tAfter, tAfterAt)
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The string member <var>pName</var> of <var>pBody</var>, <code>""</code> when it holds none. Pure.</p>
+ClassMethod Text(pBody As %DynamicObject, pName As %String) As %String [ Private ]
+{
+    Quit $Select(pBody.%GetTypeOf(pName) = "string": pBody.%Get(pName), 1: "")
+}
+
+/// <p>The string member <var>pName</var> of <var>pBody</var>, else <var>pDefault</var>. Pure.</p>
+ClassMethod TextOr(pBody As %DynamicObject, pName As %String, pDefault As %String) As %String [ Private ]
+{
+    Quit $Select(pBody.%GetTypeOf(pName) = "string": pBody.%Get(pName), 1: pDefault)
+}
+
+/// <p>The <code>HideValue</code> member of <var>pBody</var> as 0 or 1, else <var>pDefault</var>. Pure.</p>
+ClassMethod Hidden(pBody As %DynamicObject, pDefault As %Boolean) As %Boolean [ Private ]
+{
+    Set tType = pBody.%GetTypeOf("HideValue")
+    If (tType = "boolean") || (tType = "number") Quit ''pBody.%Get("HideValue")
+    Quit ''pDefault
+}
+
+/// <p>The <code>Fields</code> array of <var>pBody</var> as the vendor's <code>^</code>-delimited text, else <var>pDefault</var>. Pure.</p>
+ClassMethod FieldListOf(pBody As %DynamicObject, pDefault As %String) As %String [ Private ]
+{
+    If pBody.%GetTypeOf("Fields") '= "array" Quit pDefault
+    Set tList = ""
+    Set tIterator = pBody.Fields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tList = tList _ $Select(tList = "": "", 1: "^") _ tField
+    }
+    Quit tList
+}
+
+/// <p>The vendor's create of the term list <var>pName</var> in <var>pNamespace</var> (<code>%CreateTermList</code>), switched by explicit
+/// save and restore (AD-16); an exception is <var>pCaught</var>. The vendor's create kills a list of the same name, so the caller has
+/// found none first. A seam: a fixture overrides it to observe or fail the call.</p>
+ClassMethod VendorTermListCreate(pNamespace As %String, pName As %String, pCaption As %String, pFieldList As %String, pPattern As %String, pDescription As %String, pSubject As %String, pHide As %Boolean, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.TermList).%CreateTermList(pName, pCaption, pFieldList, pPattern, pDescription, pSubject, pHide)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's header write of the term list <var>pName</var> (<code>%FromObj</code> of a header with no values, which sets the seven
+/// header nodes and kills nothing), as <method>VendorTermListCreate</method> is called.</p>
+ClassMethod VendorTermListHeader(pNamespace As %String, pName As %String, pCaption As %String, pFieldList As %String, pPattern As %String, pDescription As %String, pSubject As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ##class(%DeepSee.UserLibrary.TermList).%New()
+        Set tObject.name = pName
+        Set tObject.caption = pCaption
+        Set tObject.fieldListString = pFieldList
+        Set tObject.pattern = pPattern
+        Set tObject.description = pDescription
+        Set tObject.subjectArea = pSubject
+        Set tObject.modDate = $ZDateTime($Horolog, 3)
+        Set tSC = ##class(%DeepSee.TermList).%FromObj(tObject)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The hide-value flag of the term list <var>pName</var>, the one header node the vendor offers no call for (its own documented layout:
+/// <code>^DeepSee.TermList(ID, "hideValue")</code>, which <code>%ToObj</code> never reads): set to 1, or killed for 0, as the vendor's
+/// create leaves it. Called as <method>VendorTermListCreate</method> is.</p>
+ClassMethod VendorTermListHide(pNamespace As %String, pName As %String, pHide As %Boolean, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tId = $ZConvert(pName, "U")
+        If pHide {
+            Set ^DeepSee.TermList(tId, "hideValue") = 1
+        } Else {
+            Kill ^DeepSee.TermList(tId, "hideValue")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's value write (<code>%SetValue</code>) of <var>pValue</var> into the entry <var>pKey</var> of <var>pName</var>, under the
+/// field <var>pField</var> or, when it is <code>""</code>, as the entry's own value. Called as <method>VendorTermListCreate</method> is.</p>
+ClassMethod VendorTermListSetValue(pNamespace As %String, pName As %String, pKey As %String, pValue As %String, pField As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.TermList).%SetValue(pName, pKey, pValue, pField)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The removal of the entry <var>pKey</var> of <var>pName</var>, which the vendor's class offers no call for: its own documented layout,
+/// <code>Kill ^DeepSee.TermList(ID, "data", key)</code>, then the modified stamp as <code>%SetValue</code> sets it. Called as
+/// <method>VendorTermListCreate</method> is.</p>
+ClassMethod VendorTermListRemoveEntry(pNamespace As %String, pName As %String, pKey As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tId = $ZConvert(pName, "U")
+        Kill ^DeepSee.TermList(tId, "data", pKey)
+        Set ^DeepSee.TermList(tId, "modDate") = $ZDateTime($Horolog, 3)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's delete of the term list <var>pName</var> (<code>%DeleteTermList</code>), as <method>VendorTermListCreate</method> is
+/// called.</p>
+ClassMethod VendorTermListDelete(pNamespace As %String, pName As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.TermList).%DeleteTermList(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
 }
 
 }

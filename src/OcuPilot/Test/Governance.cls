@@ -57,6 +57,10 @@ Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheade
 /// synchronize ships enabled.</p>
 Parameter CUBEDISABLED = "analytics.cubemanager.build";
 
+/// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
+/// other four term list writes ship enabled.</p>
+Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -183,6 +187,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPPARTNERDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"

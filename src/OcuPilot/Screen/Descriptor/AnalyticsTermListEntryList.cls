@@ -26,8 +26,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "analytics/term-lists",
   "id": {"kind": "composite", "parts": ["TermList", "Key"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["TermList", "Key", "Value", "Fields"], "secretFields": []},
   "emptyStateKey": "analyticsTermListEntriesEmpty",
   "commandAliases": [],
@@ -55,8 +55,8 @@ XData Declaration
       {"field": "Value", "labelKey": "errorLogColumnValue", "kind": "text"},
       {"field": "Fields", "labelKey": "explorerSqlTabFields", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsTermListEntriesEmptyAgent"
   },
   "toolIdentifier": "analytics.termlistentries"
 }

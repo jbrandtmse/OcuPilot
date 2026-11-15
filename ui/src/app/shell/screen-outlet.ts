@@ -250,6 +250,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropMessageTraceTab': INTEROP_MESSAGE_TRACE_PAGE,
   // Story 20.33: Analytics' MDX query, one statement run in the background and its cells drilled through.
   'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery': () => import('../areas/analytics/mdx-query.page').then((m) => m.MdxQueryPage),
+  // Story 24.2: Term lists with their New term list and Edit term list dialogs, and a term list's entries with their Add entry and Change entry dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': () => import('../areas/analytics/term-list-list.page').then((m) => m.TermListListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': () => import('../areas/analytics/term-list-entry-list.page').then((m) => m.TermListEntryListPage),
 };
 
 /**

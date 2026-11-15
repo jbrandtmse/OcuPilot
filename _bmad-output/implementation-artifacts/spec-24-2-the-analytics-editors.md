@@ -2,10 +2,10 @@
 title: 'Story 24.2: The analytics editors (first slice: the term-list editor)'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '5b95c1ab23dddec5988333db4e1afe9f5849e3bd'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized', 'multiple-goals']
@@ -14,10 +14,7 @@ deferred:
     evidence: 'Measured on ocupilot-b-ci (Task 0): namespace E24NJ over a database created with GlobalJournalState 2, TSTART, Set, Kill, Set, TROLLBACK 1 left the first value and no second node.'
     location: 'src/OcuPilot/Port/AnalyticsPort.cls'
     severity: 'medium'
-  - summary: 'The two lists'' empty-state sentences (analyticsTermListsEmptyAgent, analyticsTermListEntriesEmptyAgent) are not among the Proposed strings; the registry requires an agent empty state on a write-capable descriptor. Provisional text, published in the new EXPERIENCE.md row.'
-    evidence: 'Registry: table.emptyAgentKey is empty on a write-capable descriptor, whose empty state invites the agent.'
-    location: 'ui/src/app/core/strings.ts'
-    severity: 'low'
+    note: 'Runner ruling (Spec Change Log, 2026-11-15, second entry): the refusal stays; recovery after a process or instance failure mid-write on a database with journaling off is not measured (inference).'
 ---
 
 <intent-contract>
@@ -253,6 +250,27 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `857ef051
 
 ## Review Triage Log
 
+### 2026-11-15 -- Review pass
+
+- verdicts: 16 findings -- high 0, medium 5, low 8, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The mint's rule and state checks (`RuleProblem`, `StateProblem`) had no test -- patched: `AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse` mints six refusals and asserts each answer, its sentence, no proposal and the nodes unchanged; mutation recorded.
+  - `[medium]` `[patch]` The journaling refusal was pinned only through the seam's override, never the production `DestinationJournaled` against a database with journaling off -- patched: a leg reads the instance's own temporary database (no journaling) through the production method; mutation recorded. A full unseamed write against a created unjournaled database stays under the deferred medium.
+  - `[medium]` `[patch]` The property change's transaction (a failed hide-value write after the header) was unpinned -- patched: seam mode `failhide` and a leg in `TestAFailedSecondValueWriteRollsTheEntryBack`; mutation recorded.
+  - `[low]` `[patch]` The entry change's overlay of an omitted field was unpinned -- patched: the agent's list has two fields and its entry change names one; the read-back leg goes red when the overlay is dropped; mutation recorded.
+  - `[medium]` `[patch]` The dialogs' refusal rendering had no host -- patched: browser spec AC3 drives a taken name and a taken key and asserts the server's sentence and nothing written; mutation recorded for both dialogs.
+  - `[medium]` `[patch]` Mutations named in test comments but not recorded (pair missing, stale, `EndpointCoverage`, `SaveHoldCoverage`, `MappingDescriptor`) -- patched: each run and recorded; the pair mutation needed four layers removed together, and the Gate test's comment now says so; a `TermListForm` comment named a mutation that reddens nothing and was corrected.
+  - `[low]` `[patch]` A test comment claimed an add leg the body lacks -- patched: the comment now describes the legs.
+  - `[low]` `[reject]` Assertions guarded by `If $IsObject(...)` skip silently -- each follows an assertion of the 200 or 201 status, so a non-object body with that status is a different, loud failure; a guard-and-else on each is more than a direct correction.
+  - `[low]` `[reject]` Change entry parses the row's joined `Fields` text and mis-splits a value that holds `; <next field>: ` -- real only for that literal text; the fix is a structured read the row does not carry, so it is not worth the surface.
+  - `[low]` `[reject]` `settle()` and `Hang 1.1` are timing waits -- `settle()` is the sibling handler specs' own idiom with an awaited promise chain, and the one-second wait crosses the vendor's one-second `modDate` on purpose.
+  - `[low]` `[reject]` `TestTheDeleteAndRemoveKeysShipOffForTheAgentOnly` asserts a stored policy it did not create -- every test in the suite restores the policy it changes, and `GovernanceBaseline` asserts the same precondition.
+  - `[low]` `[reject]` AC4's "no change event" is asserted at the port as no audit row -- the change event is emitted by the caller's success branch only, so a refused write cannot emit one.
+  - `[low]` `[reject]` The read-only row comes from a seam override, not a mounted read-only database -- the matrix names the seam for its failure rows, the production `DestinationDatabase` is read by 20.34's tests, and the pair legs use real principals.
+  - `[false]` `[reject]` The unjournaled refusal goes beyond the contract's gate list -- it is the spec-gate ruling (Spec Change Log, 2026-11-15), kept as ruled.
+  - `[false]` `[reject]` Extra codes and a form read the contract does not list -- Design Notes, Decided in-stage 8 and 12 name them.
+  - `[false]` `[reject]` No matrix row is asserted at the UI -- the browser spec drives AC1, AC2 and AC3 on the two screens, and the matrix rows are port behaviours.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).**
@@ -449,6 +467,8 @@ These edits are add-only, at clean positions:
 12. **The entry code `ANALYTICS.TERMLIST.NOFIELD`** carries the Proposed string "This term list has no field of that name."; the code list in Tasks has no name for it.
 13. **The entries' agent-facing `FieldValues` merge member by member** (`OverlaidPairs`): a field a call leaves out keeps its value.
 
+14. **Each write has a script form (AD-59).** The shared draft registry's roster (`DraftRegistry`) requires every registered write tool's port to render one; `AnalyticsPort.SnippetForm` answers `objectscript` for the six writes and `TermListSnippet` renders the vendor calls the write makes, one transaction for the multi-call writes. Found by the `(once)` sweep.
+
 **Named limits.**
 
 - A term list is read whole, before the field-in-use check.
@@ -524,22 +544,53 @@ These edits are add-only, at clean positions:
 - mutation: `analytics.termlists.delete` shipped `true` in `Baseline.cls` -> `GovernanceBaseline` `TestThePurgeIsTheOneDisabledLine` went red.
 - mutation: the `analytics.termlists.update` row removed from `SurfaceCoverage` -> `SurfaceCoverage` `TestEveryWriteToolHasACoverageRowAndBack` went red, alone.
 - mutation: `AnalyticsTermListEdit.Sweep` stops deleting -> `OnAfterAllTests` ("left term lists in USER") and `TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited` went red.
-- mutation not run: the client mutations (the browser spec's `%SetValue` field leg, the handler roster and `analytics.test.mjs`' pins) and `TermListForm`'s content type; the browser spec and the Node pins were run green on the final tree.
+- mutation: `TermListForm` answers the form read as `text/plain` (`Set %response.ContentType`, a bare `Write`) -> `AnalyticsTermListGate` `TestTheRoutesAnswerJsonEnvelopesOfTheDeclaredShape` (the content-type leg) went red. Answering with no content type set reddens nothing, because the dispatch class defaults to JSON; the test's comment names the `text/plain` form.
+- mutation: the entry dialog's add sends `FieldValues: []` (client rebuilt and redeployed) -> `analytics-term-list-editor.browser-spec.mjs` went red (wait timeout on the Region leg); reverted, rebuilt and redeployed, it is green.
+- mutation: the entries' `TYPED_NAME_ROWS` entry dropped in `screen-action-handler.ts` (rebuilt and redeployed) -> the browser spec went red (the key typed for Remove entry is refused) and `screen-action-handler-termlist.spec.ts` (the key assertion) went red.
+- mutation: `'update'` removed from the Term lists' `UNDRAWN_ACTIONS` entry, and `'set'` from the entries' -> the browser spec stayed green, because the page registers after the handler; the new `screen-action-handler-termlist.spec.ts` pins each (the registration leg) and went red for each. Its list-side `TYPED_NAME_ROWS` entry is not pinned: the list's name is its id, so dropping that entry changes nothing a test or a person can see.
+- mutation: the Term lists' `DESTRUCTIVE_CONSEQUENCES` entry dropped -> `screen-action-handler-termlist.spec.ts` (the registration and the consequence legs) went red.
+- mutation: the `TSTART` of the property change removed in `PerformTermList` -> `AnalyticsTermListEdit` `TestAFailedSecondValueWriteRollsTheEntryBack` (the failed hide-value leg) went red, with two more that rely on the transaction.
+- mutation: `DestinationJournaled` always answers journaled -> `AnalyticsTermListEdit` `TestAWriteIsRefusedWhenTheDatabaseIsNotJournaled` (the temporary-database leg, a real database with journaling off) went red.
+- mutation: `AnalyticsTermListAction.RuleProblem` quits before its checks -> `AnalyticsTermListRoutes` `TestAMintRefusesWhatTheWriteWouldRefuse` went red on the update, unknown-field, key and absent-list legs.
+- mutation: `OverlaidPairs` keeps no field the call leaves out -> `AnalyticsTermListRoutes` `TestTheAgentsSixProposalsConfirmAndTheEntryReadsBack` (the read-back leg) went red.
+- mutation: `%DeepSee_PortalEdit:USE` removed from `TERMLISTPAIRS`, from both term list descriptors and from `AnalyticsAction.PrivilegePairs` together -> `AnalyticsTermListGate` `TestEachWriteIsRefusedNamingTheFailedPair` (the first principal's legs) went red. Dropping the port's pair or the tool's WRITE pair alone reddens nothing: each pair is enforced at several layers.
+- mutation: `Modified` dropped from `AnalyticsTermListDelete.FINGERPRINTSUBJECT` -> `AnalyticsTermListRoutes` `TestAConfirmAfterTheListChangedIsRefusedAsMoved` went red.
+- mutation: the `/analytics/term-lists/form` probe row removed from `EndpointCoverage` -> that test went red (207 probes, 208 routes).
+- mutation: `analytics.termlistentries.add` removed from `MappingDescriptor.CLASSICROSTER` -> `TestTheClassicPagesRosterIsTheDeclaringTools` went red.
+- mutation: the hold key of `ItemSave` made different from the mint's -> `SaveHoldCoverage` `TestACreateSaveHoldsTheKeyItsMintComputes` went red on the term list and the term list entry legs.
+- mutation: the `AnalyticsTermListEntryMint` row removed from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` went red, alone (found by the `(once)` sweep, which also found the missing script forms).
+- mutation: the field argument of the value write dropped in `AnalyticsPort.TermListSnippet` -> `AnalyticsTermListEdit` `TestEachWritesScriptFormMakesTheSameChange` (the entry add, change and property change legs) went red; the `Kill` of the entry removal dropped there -> its removal leg went red.
+- mutation: `this.reason.set(...)` blanked in `term-list-dialog.ts`, then in `term-list-entry-dialog.ts` (client rebuilt and redeployed each time) -> `analytics-term-list-editor.browser-spec.mjs` AC3 went red for each; both reverted, rebuilt and redeployed.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: two user-facing strings are outside the spec's Proposed strings and the ruled NOTJOURNALED reason. The registry requires an agent empty-state on a write-capable descriptor, and the implementation added `analyticsTermListsEmptyAgent` ("Ask the agent to create a term list here.") and `analyticsTermListEntriesEmptyAgent` ("Ask the agent to add an entry to this term list."), published in the new EXPERIENCE.md row. A ruling on those two sentences (veto item) is needed before review and finalize.
+Status: done
+Blocking condition: none
 
-Implementation state (uncommitted, in the working tree, HEAD still `5b95c1ab2`; nothing staged, nothing pushed):
+This pass applied the runner's ruling, ran the unrun mutations, reviewed the whole story, patched, ran the `(once)` sweep and finalized.
 
-- All six writes, both reads, the gate order, the NOTJOURNALED refusal as ruled, the three save routes, the six tools, the Baseline keys, the Prohibited coverage, the client pages and the rosters are in. The new and touched ObjectScript classes, `npm run test:tools`, `npm run test:components`, `npm run build`, `check-objectscript.py`, `lint-docs.sh` and the two browser specs were green on `ocupilot-b-ci` at the implement pass. Eleven Rule 19 mutations are recorded under Verification.
-- Not run: the `(once)` full ObjectScript sweep, the review layers, and the finalize commit.
+**Summary.** The term-list editor: six write tools through `AnalyticsPort` (create, change, delete of a list; add, change, remove of an entry), each reached by the person's two screens and the agent's confirmed proposals, gated, shape-checked, transactional where it makes several vendor calls, audited and governed. The ruling is applied: the two empty-state phrases are `create a term list` and `add an entry to this term list` (`strings.ts`, the EXPERIENCE.md row), rendered by the table's own wrapper; the `NOTJOURNALED` refusal stays as ruled and the medium stays in `deferred:`.
 
-Findings for the runner:
+**Files changed.**
 
-- The ruled premise is measured false on this build: a `TROLLBACK` undid a Set, a Kill and a Set in a database with journaling off, exactly as in a journaled one. The refusal is implemented as ruled; the finding is in the `deferred:` list (medium) for the owner's decision on whether the refusal stays.
-- `ANALYTICS.TERMLIST.NOFIELD` carries the Proposed sentence "This term list has no field of that name."; the spec's code list gave that sentence no code name.
-- A read route `GET /analytics/term-lists/form?name=` was added so Edit and Add entry can read one list's header; the list's own read is unchanged.
-- Seven candidate string keys duplicated existing values (`strings.test.mjs` requires unique values), so the existing keys are reused.
-- The probe on the throwaway left `^SYS("GREDIR","GINDTAB",16)` naming `/durable/e24nj-probe/`; the database list and smoke read clean. No marker lists remain in USER (`Probe.Gone()` is 1).
+- `src/OcuPilot/Port/AnalyticsPort.cls`: the term list reads and writes, `TermListViolations`, the gates, the vendor seams, and (this pass) the script form `TermListSnippet`.
+- `src/OcuPilot/Api/AnalyticsError.cls`, `Api/Router.cls`, `Area/Analytics/TermList{Save,EntrySave,Form}.cls`: the refusal codes and the three routes.
+- `src/OcuPilot/Screen/Tool/AnalyticsTermList*.cls` and `AnalyticsAction.cls`: the six tools and their bases, with the destination parameter lifted.
+- `src/OcuPilot/Screen/Descriptor/AnalyticsTermList{List,EntryList}.cls`, `Kernel/Governance/Baseline.cls`, `Kernel/Proposal/Prohibited.cls`: actions, six keys, covered types.
+- `src/OcuPilot/Test/AnalyticsTermList{Edit,Gate,Routes,Seam}.cls` and the shared rosters (`SurfaceCoverage`, `EndpointCoverage`, `SaveHoldCoverage`, `ToolEmit`, `ClassicPageGate`, `MappingDescriptor`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolDispatch`, `AnalyticsDescriptor`, and this pass `CompositeMintSweep`).
+- `ui/src/app/areas/analytics/term-list*.ts`, `ui/src/app/shell/{screen-action-handler,screen-outlet}.ts`, `ui/src/app/core/{strings,screen-actions,proposal-view,screens.generated}.ts`: the pages, dialogs, store, maps and strings; this pass `screen-action-handler-termlist.spec.ts`.
+- `ui/tools/analytics.test.mjs`, `ui/browser/analytics-term-list-editor.browser-spec.mjs` (AC3 added), `ui/browser/analytics.browser-spec.mjs`, `scripts/ci-throwaway.sh`, EXPERIENCE.md (one new row).
+
+**Review.** Two layers, 16 findings: high 0, medium 5, low 8, false 3. Patched: the mint's refusals (test), the journaling refusal against a real database with journaling off (leg), the property change's transaction (leg and seam mode), the overlay of an omitted field (leg), the dialogs' refusal rendering (browser leg), and the mutations named but not recorded (run and recorded, with a comment corrected). Rejected: seven low findings and three false, each with its reason in the Review Triage Log. Deferred: none new; the one medium from the ruling stays.
+
+**Found by the `(once)` sweep and fixed in-pass.** `DraftRegistry` requires a script form for every write tool: `AnalyticsPort.SnippetForm` and `TermListSnippet` now render the six writes, pinned by `TestEachWritesScriptFormMakesTheSameChange` (each script run in `USER` and read back). `CompositeMintSweep` requires a row for every composite-id mint: one row added.
+
+**Follow-up review recommended: true.** Five medium findings were patched on this first pass. The unverified risk: the script form (`TermListSnippet`) and the new test legs were written after the review layers read the diff and have had no second read.
+
+**Verification.** On `ocupilot-b-ci`: the three new classes, `AnalyticsPort`, `AnalyticsGate`, `AnalyticsDescriptor` and the shared-surface batches green; all 17 shards of `ci-runner.mjs --shard k/17` green on the final tree (shards 1 to 10 re-run after the last source patch; shard 11 found the script-form gap and shard 16 the mint roster, both fixed, then green); `npm run test:tools` 2283 green; `npm run test:components` 272 files, 3441 tests green; `npm run build` green with the new pages in lazy chunks; `check-objectscript.py` clean; `lint-docs.sh` clean; `analytics-term-list-editor` (2 tests) and `analytics` (5 tests) browser specs green on the redeployed final bundle. Matrix Test Audit: every matrix row has a test that ran green. Mutations: 28 recorded under Verification, each reverted and recompiled; the client ones rebuilt and redeployed. A client build that fails its lint step leaves the old bundle in place, so every client mutation was checked to have built before its result was read. `AnalyticsProbe.Gone()` is true and no marker list remains.
+
+**Residual risks.**
+
+- The refusal for a database with journaling off rests on a premise this build contradicts (a `TROLLBACK` undid a write there); it stays as ruled, in `deferred:`.
+- The Change entry dialog prefills each field from the row's joined `Fields` text, which mis-splits a value holding `; <next field>: ` (rejected as low).
+- The Term lists list-side `TYPED_NAME_ROWS` entry is not pinned, because the list's name equals its id.

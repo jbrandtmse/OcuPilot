@@ -149,6 +149,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
   // Story 20.34: the Cube manager, whose Build types the cube's name and whose Synchronize is sent at once, each reporting the lines the instance answered.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
+  // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -460,6 +463,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
+  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2).
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update'],
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
@@ -640,6 +646,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
   // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
   [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
+  // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
@@ -725,6 +734,9 @@ const TYPED_NAME_ROWS: Readonly<
   [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
   // Story 20.34: a build types the cube's logical name, which the Cube manager's name column shows.
   [ANALYTICS_CUBE_MANAGER]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.2: a delete types the term list's name and a remove the entry's key.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
 };
 
 /**

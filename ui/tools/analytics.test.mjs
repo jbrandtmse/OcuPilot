@@ -287,6 +287,84 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   // reference the Never list allows is the "SYNC" lock probe, taken and released.
   const vendorGlobal = /\^(?:\|[^|]*\||\[[^\]]*\])?DeepSee\./i;
   const referencing = (file) => codeOf(readFileSync(file, 'utf8'), false).split('\n').filter((line) => vendorGlobal.test(line)).map((line) => line.trim());
-  assert.deepEqual(referencing(PORT), ['Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1', 'Lock -^DeepSee.Build(tIndex, "")'], 'the port names a vendor global only in the lock probe');
+  assert.deepEqual(
+    referencing(PORT),
+    [
+      'Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1',
+      'Lock -^DeepSee.Build(tIndex, "")',
+      // Story 24.2 (AD-65 as amended), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
+      // read, and its two named nodes, the hide-value flag and an entry's removal with the modified stamp.
+      'Set tProbe = $Data(^||DeepSee.TermList(tList))',
+      'Set tProbe = $Data(^||DeepSee.TermList(tList, "", pKey, $ZConvert(pField, "")))',
+      'Set pData("") = \'\'$Get(^DeepSee.TermList($ZConvert(pName, ""), ""))',
+      'Set ^DeepSee.TermList(tId, "") = 1',
+      'Kill ^DeepSee.TermList(tId, "")',
+      'Kill ^DeepSee.TermList(tId, "", pKey)',
+      'Set ^DeepSee.TermList(tId, "") = $ZDateTime($Horolog, 3)',
+    ],
+    'the port names a vendor global only in the lock probe and in the term list editor\'s named nodes'
+  );
   for (const file of [BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) assert.deepEqual(referencing(file), [], `${file} names no vendor global`);
+});
+
+/** The refusals of the term list editor (Story 24.2), each pinned to its `strings.ts` key. */
+const TERM_LIST_SENTENCES = [
+  ['REASONTERMLISTTAKEN', 'analyticsRefusalTermListTaken'],
+  ['REASONTERMLISTENTRYTAKEN', 'analyticsRefusalTermListEntryTaken'],
+  ['REASONTERMLISTABSENT', 'analyticsRefusalTermListAbsent'],
+  ['REASONTERMLISTNAME', 'analyticsRefusalTermListName'],
+  ['REASONTERMLISTKEY', 'analyticsRefusalTermListKey'],
+  ['REASONTERMLISTFIELD', 'analyticsRefusalTermListField'],
+  ['REASONTERMLISTNOFIELD', 'analyticsRefusalTermListNoField'],
+  ['REASONTERMLISTFIELDINUSE', 'analyticsRefusalTermListFieldInUse'],
+  ['REASONTERMLISTVALUE', 'analyticsRefusalTermListValue'],
+  ['REASONTERMLISTREADONLY', 'analyticsRefusalTermListReadonly'],
+  ['REASONTERMLISTNOTJOURNALED', 'analyticsRefusalTermListNotJournaled'],
+];
+
+const TERM_LIST_TOOLS = ['AnalyticsTermListAdd', 'AnalyticsTermListUpdate', 'AnalyticsTermListDelete', 'AnalyticsTermListEntryAdd', 'AnalyticsTermListEntrySet', 'AnalyticsTermListEntryRemove'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+
+test('Story 24.2: each term list refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONTERMLISTFIELDINUSE in AnalyticsError.cls (or of analyticsRefusalTermListFieldInUse in strings.ts) -> this
+  // goes red naming both.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of TERM_LIST_SENTENCES) {
+    const server = serverSentence(parameter);
+    assert.equal(server, stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${server}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server.toLowerCase().includes('agent'), `${parameter} names no caller: ${server}`);
+  }
+});
+
+test("Story 24.2: the delete's and the remove's consequence codes name one published sentence each, on the tool, proposal-view.ts and Fixed strings", () => {
+  // Mutation (Rule 19): change CONSEQUENCECODE in AnalyticsTermListDelete.cls to ANALYTICS.TERMLIST.REMOVE -> this goes red naming the tool.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [file, code, constant, consequenceKey] of [
+    [TERM_LIST_TOOLS[2], 'ANALYTICS.TERMLIST.DELETE', 'CONSEQUENCE_ANALYTICSTERMLISTDELETE', 'analyticsTermListDeleteConsequence'],
+    [TERM_LIST_TOOLS[5], 'ANALYTICS.TERMLIST.REMOVE', 'CONSEQUENCE_ANALYTICSTERMLISTREMOVE', 'analyticsTermListRemoveConsequence'],
+  ]) {
+    assert.equal(classParameter(file, 'CONSEQUENCECODE'), code, `${file} names the consequence code`);
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(experience.includes(`"${stringValue(consequenceKey)}"`), `${consequenceKey} is published in EXPERIENCE.md's Fixed strings`);
+  }
+});
+
+test('Story 24.2: the six tools declare write, the analytics port and the classic Term List Manager, and the port calls only the vendor calls the story names', () => {
+  // Mutation (Rule 19): call %ImportCSV from AnalyticsPort.cls -> this goes red naming the call.
+  for (const file of TERM_LIST_TOOLS) {
+    const source = readFileSync(file, 'utf8');
+    assert.ok(source.includes('Extends OcuPilot.Screen.Tool.AnalyticsTermList'), `${file} extends the term list tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsTermListAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.TermListManager";'), 'the base declares the classic Term List Manager');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const call of ['%CreateTermList(', '%FromObj(', '%SetValue(', '%DeleteTermList(', '%ToObj(']) {
+    assert.ok(code.includes(`##class(%DeepSee.TermList).${call}`) || code.includes(`.${call}`), `the port calls ${call}`);
+  }
+  for (const never of [/%ImportCSV/, /%ExportCSV/, /%GetTermListNameFromStream/, /%DeepSee\.REST/, /%Api\.DeepSee/, /\/api\/deepsee/i]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.TermList\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%CreateTermList', '%DeleteTermList', '%FromObj', '%GetTermLists', '%SetValue', '%ToObj'], 'and only those TermList calls');
 });
