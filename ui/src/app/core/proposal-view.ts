@@ -404,6 +404,8 @@ export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
+/** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
+export const CONSEQUENCE_CONFIGSETTINGPURGE = 'CONFIG.SETTING.PURGE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -526,6 +528,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ECPSSLAUTHORIZE) return STRINGS.ecpSslAuthorizeConsequence;
   // Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart, published once.
   if (code === CONSEQUENCE_CONFIGSETTINGRESTART) return STRINGS.encryptionStartupRestart;
+  // Story 21.4: a SQL setting whose change purges the cached queries, published once.
+  if (code === CONSEQUENCE_CONFIGSETTINGPURGE) return STRINGS.configSettingPurge;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;

@@ -1,11 +1,12 @@
-/// <p>The startup, memory and compatibility settings' refusals (AD-29, AD-55, Story 21.3): which value a set may not
+/// <p>The configuration settings' refusals (AD-29, AD-55, Stories 21.3 and 21.4): which value a set may not
 /// send for the setting a row describes, as one code from <class>OcuPilot.Api.ConfigError</class>, before any vendor
 /// call. Two callers ask the same question: the set tools' mint (<method>WriteProblem</method>), which phrases it for
 /// the agent, and <class>OcuPilot.Port.ConfigPort</class>, which asks it again at the write for the confirm and for a
 /// screen's action alike (<method>Code</method>).</p>
 /// <p><b>The state is the port's own read</b> of the setting (<code>GET</code>): its row's <code>ReadOnly</code>, and the
-/// limits <method>OcuPilot.Port.ConfigPort.Limits</method> reads from the compiled property. Nothing here reads the
-/// instance beyond that, and no value is judged by a pattern the vendor does not also hold.</p>
+/// limits <method>OcuPilot.Port.ConfigPort.Limits</method> reads from the compiled property, or, for the SQL Shell, TSQL and
+/// ISQL settings, from the port's roster entry. Nothing here reads the instance beyond that, and no value is judged by a
+/// pattern the vendor does not also hold.</p>
 Class OcuPilot.Area.OsMgmt.ConfigSettingRules Extends %RegisteredObject
 {
 

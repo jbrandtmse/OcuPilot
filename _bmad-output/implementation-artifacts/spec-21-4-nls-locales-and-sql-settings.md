@@ -2,12 +2,27 @@
 title: 'Story 21.4: NLS locales and SQL settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '6108728a37aabfa0530335c247643351a32a5fbe'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A failed cached-query purge after a changed purge key is pinned only at the port, not through the screen route, the agent confirm or the dialog.
+    evidence: |-
+      PurgeFails/PurgeCachedQueries appear only in ConfigGateSeam and SqlSettingRules; a confirm or screen-action case with a failing purge would settle whether the audit marker and the person's error display hold.
+    location: >-
+      src/OcuPilot/Test/SqlSettingWrite.cls
+    severity: medium (unverified)
+  - summary: >-
+      The real SendTsql refusal prefix check (a setter answer starting Invalid) has no test; the seam's own override bypasses it.
+    evidence: |-
+      SqlSettingRules reaches the 400 through ConfigGateSeam.VendorRefuses; the rules refuse bad values first, so only a vendor-side change reaches the branch. A test that drives the real setter with a value the rules admit and the vendor refuses would settle it.
+    location: >-
+      src/OcuPilot/Port/ConfigPort.cls:725
+    severity: low
 ---
 
 <intent-contract>
@@ -92,6 +107,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-15 — Review pass
+
+- verdicts: 15 findings — high 0, medium 2, low 10, false 1, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` SqlSettingWrite's "every other node reads as before" compared against a snapshot the teardown had just restored, so it could not fail — added a per-set fingerprint of every other node (`Nodes(pSkip)`) in `RoundTrip` after the screen's and the agent's set; a sibling-node write in the ISQL branch turns `TestASetRoundTripsOverEachBackingSourceOnBothCallers` red, reverted and reloaded.
+  - `[low]` `[patch]` Page spec had no case for a Save that sends the purging key's current value, so a false purge sentence could ship — added `states no purge sentence after a Save that sends the value the purging setting already holds`; dropping `&& value !== target.current` turns it red, reverted.
+  - `[medium]` `[defer]` A failed purge is tested only at the port — deferred (maybe-false at the callers; needs a seam-backed confirm fixture).
+  - `[low]` `[patch]` Browser cancel test never changed the value, so a spurious send of the unchanged value stayed green — the dialog's value is toggled before Cancel; spec green on the redeployed bundle.
+  - `[low]` `[defer]` The real `SendTsql` refusal prefix is untested — unreachable through the rules; deferred.
+  - `[low]` `[patch]` The last purge assertion lacked a `tPrepared > 0` guard — guard added.
+  - `[low]` `[reject]` `SqlSettingRead.TsqlShown` restates `ConfigPort.TsqlValue` — the armed round trip reads independently; not worth the added structure.
+  - `[false]` `[reject]` `RosterEntry` reads past the list after the loop falls through — measured on `ocupilot-ci`: an unknown name answers `""` and a known one its entry.
+  - `[maybe-false]` `[reject]` Self-protection (inference) rests on a grep; 25 non-test classes use SQL — the settable keys concern DDL, `TO_DATE`/`GETDATE`, TSQL and the shell; a grep for those outside `Test/` finds only `ConfigPort`, `SqlPort` and one descriptor; low if true.
+  - `[maybe-false]` `[reject]` Shell rows read the system defaults, not a user's own shell list — the classic page writes the same nodes (ruled, Q2); low if true.
+  - `[low]` `[reject]` `MessagesMode` is written where the classic page writes it, though the shell reads `MessageMode` — ruled (Q2's fixed list).
+  - `[low]` `[reject]` The TSQL first-flag dialect side effect is not stated on screen — ruled kept (U-51); no new string.
+  - `[low]` `[reject]` `PURGESQL` lists `DefaultSchema`, which can never fire — as ruled; AC2 names five keys.
+  - `[low]` `[reject]` Browser spec sets no shell, TSQL or ISQL value — `SqlSettingWrite` covers both callers on every family.
+  - `[low]` `[reject]` No mutation names the browser-visible Save note — the page spec's mutation lines cover the note and the dialog sentence.
+
 ## Design Notes
 
 **Governing ADs:** AD-4 (full-set `Modify`, as Story 21.3 measured and the runner ruled; one node per shell or ISQL setting, so no omitted key), AD-6, AD-34, AD-15, AD-14, AD-10 (four covered types, no predicate), AD-16, AD-21 (`DisplayPath`, `DisplayFile` never set; the shell's `Path` is a schema search path, not a file path), AD-22 (keys `true`; a person's set is not governed), AD-29, AD-35 (every listed key rechecked by name and type: none holds a credential), AD-36, AD-39, AD-44, AD-52, AD-53, AD-56, AD-58, AD-59 (each family's snippet: `Get`/`Modify` plus the purge line for a purge key; `Set ^%SYS(...)` with literal subscripts; `$SYSTEM.TSQL.Set*`).
@@ -130,6 +165,23 @@ deferred: []
 
 **Measurements (read-only, slot A, 2026-11-15):** `Config.SQL.Get` 46 keys; the three `%SYS.Portal.Resources.NormalizePage` keys as spelled above; the TSQL getters as in the Code Map; no shell, TSQL or ISQL node stored. Nothing ran against `ocupilot-ci`.
 
+**Task 0, measured on `ocupilot-ci` (implement, 2026-11-15), every probed setting restored and confirmed:**
+
+- A `Config.SQL.Modify`, `%SYSTEM.TSQL.SetAnsiNulls` and a write to `^%SYS("sql","shell")` and to `^%SYS("xsql","informix")` by a caller holding `%Admin_Manage:USE` and `%DB_IRISSYS:READ` alone each fail `<PROTECT>`; the same caller with `%DB_IRISSYS:WRITE` succeeds in all four. So `WRITEPAIRS` is the write set for every family.
+- A full-set `Modify` (46 keys, one changed) changed exactly that key in three trials (`SaveMAC` 0, 1, 0), and `Config.CPF.PendingRestart` reported the same four earlier `errlog` reasons before and after: the unchanged keys, `Comment` included, are untouched and no reason is added. A `Modify` of `HNSWLIBMemoryLimit` -1 and a refused `TODATEDefaultFormat` "" (`MINLEN` 1) and `LockThreshold` -5 changed nothing.
+- `$SYSTEM.SQL.PurgeQueries({"allNamespace":1})` removed the cached queries of another namespace (`USER` 54 to 0, `HSCUSTOM` 153 to 1) in 0.08 s for a caller holding the read pairs only, and again (1 to 0 in `USER`, 0.002 s) for a `WRITEPAIRS` caller. It needs no pair beyond `WRITEPAIRS`.
+- With `DelimitedIds` 0, and then with `DefaultSchema` changed, `smoke.sh --container ocupilot-ci` read 50 of 50 and `ConfigSettingRead` read 9 of 9 each time. Both stay read-only by Q4.
+- `%CSP.UI.Portal.SQL.Configure.SQL`, `.TSQL` and `.ISQL` each answered as spelled from `NormalizePage`, with no custom resource. No shell, TSQL or ISQL node was stored before or after.
+- A `%SYSTEM.TSQL` flag setter rewrites `DIALECT` from its argument, so with none stored the first flag set stores `Sybase` (the Design Notes' ruling, observed in `SqlSettingWrite`).
+
+**Decided in-stage (implement):**
+
+- The shell, ISQL and TSQL rosters are parameters of `ConfigPort` (`SHELLROSTER`, `ISQLROSTER`, `TSQLROSTER`): name, kind, shown=stored choices or length, stored default, settable. A node reads `$Get(node, default)`, so a text node cleared to empty reads back empty.
+- Four seams beside `SendProperties`: `SendNode`, `SendTsql`, `StoredDialect` and `PurgeCachedQueries`; `ConfigGateSeam` records them. A choice is converted to its stored code before `SendNode`, so the live-safe class pins the code.
+- Every port row carries `Purges`; the three 21.3 descriptors declare no `Purges` field, so their list rows do not, and `ConfigSettingRead` strips it before comparing a `GET` with a list row. The four new descriptors declare it.
+- A TSQL, shell or ISQL set renders a script only for a settable roster name; `DraftRegistry`'s target-id roster names one setting for each of the three types.
+- The empty `TODATEDefaultFormat` is judged by the vendor (400 `CONFIG.SETTING.VALUE`, logged), as the plan rules the vendor's own limits.
+
 **Runner ruling at the spec gate (2026-11-15):** the strings escalated above and the TSQL dialect side effect are kept as planned (veto U-51).
 
 ## Verification
@@ -147,15 +199,22 @@ deferred: []
 - `(once)` `cd ui && npm run test:tools` -- expected: green.
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, and Rule 30's fresh check. The full browser suite is left to CI.
 
-**Mutations (Rule 19), one per AC, each applied, observed red, reverted (`git status --short` and `git diff --stat` identical) and the reverted source reloaded:**
+**Mutations (Rule 19), one per AC, each applied, observed red, reverted (byte-identical by `cmp`) and the reverted source reloaded into `ocupilot-ci`:**
 
-- AC1: the shell roster maps `Display` to 1 -> `SqlSettingWrite` red; the TSQL flag set passes `MSSQL` regardless of the stored dialect -> `SqlSettingRules` red.
-- AC2: `PURGESQL` loses `ParameterSampling` -> `SqlSettingRules` and `SqlSettingWrite` red; the page omits the purge sentence -> `config-settings.page.spec.ts` red.
-- AC3: `SETTABLESQL` gains `DefaultSchema` -> `SqlSettingRead` and `SqlSettingRules` red (never against `SqlSettingWrite`).
-- AC4: `osmgmt.sqlsettings.set` `false` in `Baseline` -> `SqlSettingRead` red.
-- AC5: one word of the purge sentence changed in `strings.ts` -> `config-settings.test.mjs` red.
+- AC1: mutation: the shell roster maps `Display` to 1 -> `SqlSettingWrite` red on the stored-code assertion (also `SqlSettingRules`, three tests); mutation: the ISQL node write also writes `TRACE` -> `SqlSettingWrite` red on the round trip's other-nodes assertion; mutation: the TSQL flag set passes `MSSQL` regardless of the stored dialect -> `SqlSettingRules` red on the stored-dialect test.
+- AC2: mutation: `PURGESQL` loses `ParameterSampling` -> `SqlSettingRules`, `SqlSettingWrite` and `SqlSettingRead` red; mutation: the page omits the purge sentence from the dialog's statement, or never sets the after-Save note -> `config-settings.page.spec.ts` red, one test each; mutation: the after-Save note drops `value !== target.current` -> the no-op Save test red.
+- AC3: mutation: `SETTABLESQL` gains `DefaultSchema` -> `SqlSettingRead` and `SqlSettingRules` red (never run against `SqlSettingWrite`).
+- AC4: mutation: `osmgmt.sqlsettings.set` `false` in `Baseline` -> `SqlSettingRead` red; `osmgmt.isqlsettings.set` `false` -> `SqlSettingWrite` red on two tests.
+- AC5: mutation: one word of the purge sentence changed in `strings.ts` -> `config-settings.test.mjs` red.
+- Also observed red: `Consequence` without the purge code -> `SqlSettingRules`; `SHELLROSTER` without `Path` -> `SqlSettingRead`; `Admit` answering OK -> `SqlSettingRead`; `IsqlSettingSet` without `CLASSICPAGES` -> `SqlSettingRead`; `NOTFOUND` answered 400 -> `SqlSettingWrite`; a descriptor dropped from the page's served lists -> `config-settings.page.spec.ts`; the purge consequence dropped from `consequenceSentence` -> `proposal-view.test.mjs`.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Review pass: 15 findings; patched 1 medium and 3 low, deferred 2 (one medium unverified, one low), rejected 9 with reasons in the Review Triage Log. Follow-up review recommended: false (one medium patched).
+
+Patches after review, verified on `ocupilot-ci`: `reload.sh` `LOADERRORS=0`; `SqlSettingWrite` green (4); the page spec green (14); `config-settings.browser-spec.mjs` green (7) on the rebuilt, redeployed bundle; `check-objectscript.py`, `lint-docs.sh` clean; `npm run test:tools` 2288 green; two mutations red and reverted byte-identical.
+
+This pass: `ConfigPort` gained the `SQL`, `SQLShell`, `TSQL` and `ISQL` endpoints, `Purges` on every row and the four seams; `ConfigError` the purge consequence; `ConfigSettingSet` the purge code and four subclasses; four descriptors, four tools' governance keys, entity types and `Prohibited` rows; the page, strings, action tables, `EXPERIENCE.md` and the arming comment. Verified on `ocupilot-ci`: the loop commands in Verification, one class per call (all green), `check-objectscript.py` and its harness, `lint-docs.sh`, `npm run build`, `npm run test:components` (3460), `config-settings.browser-spec.mjs` (7) and `npm run test:tools` (2288); the mutations above.

@@ -13,12 +13,22 @@ import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { COMPATIBILITY_SETTING_LIST, CONFIG_SET_ACTION, ConfigSettingsPage, MEMORY_SETTING_LIST, STARTUP_SETTING_LIST } from './config-settings.page';
+import {
+  COMPATIBILITY_SETTING_LIST,
+  CONFIG_SET_ACTION,
+  ConfigSettingsPage,
+  ISQL_SETTING_LIST,
+  MEMORY_SETTING_LIST,
+  SQL_SETTING_LIST,
+  SQL_SHELL_SETTING_LIST,
+  STARTUP_SETTING_LIST,
+  TSQL_SETTING_LIST,
+} from './config-settings.page';
 
 /**
- * The startup, memory and compatibility settings page (Story 21.3). The shared list page is replaced by an empty stand-in, so only this page's own
+ * The startup, memory, compatibility, SQL, SQL Shell, TSQL and ISQL settings page (Stories 21.3 and 21.4). The shared list page is replaced by an empty stand-in, so only this page's own
  * wiring runs: Set value registered on the screen the URL names, the dialog's statement over a row that needs a restart, no Set value over a row
- * that is never changed here, the one value each request carries, the restart sentence after an applied change, and the change event it publishes.
+ * that is never changed here, the one value each request carries, the restart sentence after an applied change, the purge sentence over and after a change of a setting that purges the cached queries, and the change event it publishes.
  * The handler, the stores and the bus are real; only the server's answers are stubbed.
  */
 
@@ -32,6 +42,7 @@ const row = (name: string, extra: Record<string, unknown> = {}): Record<string, 
   Accepts: 'A whole number from 0 to 9.',
   Restart: false,
   ReadOnly: false,
+  Purges: false,
   ...extra,
 });
 
@@ -40,6 +51,8 @@ const ROWS = [
   row('ErrorPurge', { Value: '30', Restart: true, Accepts: 'A whole number from 1 to 365.' }),
   row('LineRecall', { Value: '1', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
   row('DefaultPort', { Value: '1972', ReadOnly: true, Accepts: 'Shown here and never changed here.' }),
+  row('FastDistinct', { Value: '1', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Purges: true }),
+  row('SaveMAC', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
 ];
 
 const UPDATED: JsonResult<unknown> = {
@@ -128,6 +141,15 @@ describe('the settings page', () => {
     expect(actions.has(COMPATIBILITY_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
   });
 
+  // Mutation (Rule 19): drop a descriptor from `SERVED_LISTS` -> the loop's assertion for it goes red.
+  it('serves each of the four SQL settings screens, on its own screen only', () => {
+    for (const served of [SQL_SETTING_LIST, SQL_SHELL_SETTING_LIST, TSQL_SETTING_LIST, ISQL_SETTING_LIST]) {
+      const { actions } = mount([], served);
+      expect(actions.has(served, CONFIG_SET_ACTION)).toBe(true);
+      expect(actions.has(STARTUP_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    }
+  });
+
   it('opens its dialog over the selected row with the row\'s Accepts line and sends nothing', async () => {
     const { fixture, host, store, actions, calls } = mount([]);
     actions.run(STARTUP_SETTING_LIST, CONFIG_SET_ACTION);
@@ -151,6 +173,46 @@ describe('the settings page', () => {
     await settle(fixture);
     await open(fixture, store, actions, STARTUP_SETTING_LIST, 'ShutdownTimeout');
     expect(host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.encryptionStartupRestart);
+  });
+
+  // Mutation (Rule 19): drop the purge sentence from `onOpen`'s statement -> the dialog states the Accepts line alone and this goes red.
+  it('states the purge sentence in the dialog for a row whose change purges the cached queries, and for no other', async () => {
+    const { fixture, host, store, actions } = mount([], SQL_SETTING_LIST);
+    await open(fixture, store, actions, SQL_SETTING_LIST, 'FastDistinct');
+    expect(host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`0 (off) or 1 (on). ${STRINGS.configSettingPurge}`);
+    expect(STRINGS.configSettingPurge).toBe('Changing this setting purges the cached queries in every namespace.');
+    (host.querySelector('.ocu-dialog-actions button') as HTMLButtonElement).click();
+    await settle(fixture);
+    await open(fixture, store, actions, SQL_SETTING_LIST, 'SaveMAC');
+    expect(host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.configSettingPurge);
+  });
+
+  // Mutation (Rule 19): drop the `purgeNote.set` after an applied change -> the first assertion goes red.
+  it('states the purge sentence above the list after an applied change of such a setting, and after no other', async () => {
+    const { fixture, host, store, actions } = mount([UPDATED, UPDATED], SQL_SETTING_LIST);
+    await open(fixture, store, actions, SQL_SETTING_LIST, 'FastDistinct');
+    (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    confirm(host);
+    await settle(fixture);
+    expect(host.querySelector('[data-config-setting-purge]')?.textContent?.trim()).toBe(STRINGS.configSettingPurge);
+    expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
+    await open(fixture, store, actions, SQL_SETTING_LIST, 'SaveMAC');
+    expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
+    (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    confirm(host);
+    await settle(fixture);
+    expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop `&& value !== target.current` from the purge note's condition -> this goes red.
+  it('states no purge sentence after a Save that sends the value the purging setting already holds', async () => {
+    const { fixture, host, store, actions } = mount([UPDATED], SQL_SETTING_LIST);
+    await open(fixture, store, actions, SQL_SETTING_LIST, 'FastDistinct');
+    confirm(host);
+    await settle(fixture);
+    expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
   });
 
   // Mutation (Rule 19): drop the `reason` argument from the registration -> the first assertion goes red.

@@ -156,6 +156,11 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
   'OcuPilot.Screen.Descriptor.CompatibilitySettingList',
+  // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.SqlSettingList',
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList',
+  'OcuPilot.Screen.Descriptor.TsqlSettingList',
+  'OcuPilot.Screen.Descriptor.IsqlSettingList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -480,6 +485,11 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.StartupSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.MemorySettingList': ['set'],
   'OcuPilot.Screen.Descriptor.CompatibilitySettingList': ['set'],
+  // The four SQL settings screens' page registers Set value itself, whose dialog sends the value (Story 21.4).
+  'OcuPilot.Screen.Descriptor.SqlSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.TsqlSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class

@@ -12,10 +12,24 @@ import { ListPage } from '../../shell/list-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { BOOLEAN_TYPE, InteropItemSettingDialog } from '../interoperability/interop-item-setting-dialog';
 
-/** The three descriptors this one page serves (Story 21.3). */
+/** The descriptors this one page serves (Stories 21.3 and 21.4). */
 export const STARTUP_SETTING_LIST = 'OcuPilot.Screen.Descriptor.StartupSettingList';
 export const MEMORY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.MemorySettingList';
 export const COMPATIBILITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.CompatibilitySettingList';
+export const SQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SqlSettingList';
+export const SQL_SHELL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SqlShellSettingList';
+export const TSQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.TsqlSettingList';
+export const ISQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.IsqlSettingList';
+
+const SERVED_LISTS: readonly string[] = [
+  STARTUP_SETTING_LIST,
+  MEMORY_SETTING_LIST,
+  COMPATIBILITY_SETTING_LIST,
+  SQL_SETTING_LIST,
+  SQL_SHELL_SETTING_LIST,
+  TSQL_SETTING_LIST,
+  ISQL_SETTING_LIST,
+];
 
 /** The declared row action Set value, which this page's dialog sends. */
 export const CONFIG_SET_ACTION = 'set';
@@ -30,6 +44,7 @@ interface SettingTarget {
   readonly current: string;
   readonly kind: string;
   readonly restart: boolean;
+  readonly purges: boolean;
   readonly statement: string;
 }
 
@@ -39,17 +54,19 @@ function text(value: unknown): string {
 }
 
 /**
- * Startup settings, Memory settings and Compatibility settings (Story 21.3, AD-5, AD-53): the shared list page over each
+ * Startup, Memory, Compatibility, SQL, SQL Shell, TSQL and ISQL settings (Stories 21.3 and 21.4, AD-5, AD-53): the shared list page over each
  * descriptor's declared table, and over it the Set value dialog.
  *
- * **One page serves the three descriptors**, which differ only in the class they read; it resolves its screen from the URL, as the list page
+ * **One page serves the descriptors**, which differ only in the settings they read; it resolves its screen from the URL, as the list page
  * does. Set value is this page's own action, registered after injecting the shell's handler, and it opens `InteropItemSettingDialog` as it is,
- * with the row's `Accepts` line above the field and, when the row's `Restart` is true, the restart sentence after it.
+ * with the row's `Accepts` line above the field and, when the row's `Restart` is true, the restart sentence after it, or, when the row's
+ * `Purges` is true, the sentence that the cached queries of every namespace are purged.
  *
  * **A row the port reads as shown and never changed offers no Set value**: the registration's reason is the published refusal sentence, so
  * every surface draws the action unavailable with that sentence, and opening it opens nothing. The value goes through the handler's `sendFor`
  * with `Value` as its one value, an empty one allowed. A refusal stays in the dialog, on the value's field where the instance names it. After
- * an applied change on a row whose `Restart` is true, the page states the restart sentence above the list.
+ * an applied change on a row whose `Restart` is true, the page states the restart sentence above the list; after one that changed the value of a
+ * row whose `Purges` is true, it states the purge sentence there.
  */
 @Component({
   selector: 'app-config-settings-page',
@@ -66,6 +83,9 @@ function text(value: unknown): string {
   `,
   template: `@if (shownRestart; as note) {
       <p class="ocu-banner" role="status" data-config-setting-restart>{{ note }}</p>
+    }
+    @if (shownPurge; as note) {
+      <p class="ocu-banner" role="status" data-config-setting-purge>{{ note }}</p>
     }
     <app-list-page />
     @if (openTarget; as target) {
@@ -109,8 +129,15 @@ export class ConfigSettingsPage {
   /** The restart sentence stated after an applied change that needs one, or `''`. */
   protected readonly restartNote = signal('');
 
+  /** The purge sentence stated after an applied change that purged the cached queries, or `''`. */
+  protected readonly purgeNote = signal('');
+
   protected get shownRestart(): string {
     return this.restartNote();
+  }
+
+  protected get shownPurge(): string {
+    return this.purgeNote();
   }
 
   protected get openTarget(): SettingTarget | null {
@@ -132,7 +159,7 @@ export class ConfigSettingsPage {
   }
 
   private serves(descriptor: string): boolean {
-    return descriptor === STARTUP_SETTING_LIST || descriptor === MEMORY_SETTING_LIST || descriptor === COMPATIBILITY_SETTING_LIST;
+    return SERVED_LISTS.includes(descriptor);
   }
 
   /** The selected row, or `null` while none is selected. */
@@ -155,14 +182,17 @@ export class ConfigSettingsPage {
     this.refusal.set('');
     this.violation.set('');
     this.restartNote.set('');
+    this.purgeNote.set('');
     const accepts = text(row['Accepts']);
+    const purges = row['Purges'] === true;
     this.target.set({
       id: selected,
       name: text(row['Name']),
       current: text(row['Value']),
       kind: text(row['Kind']),
       restart: row['Restart'] === true,
-      statement: row['Restart'] === true ? `${accepts} ${STRINGS.encryptionStartupRestart}` : accepts,
+      purges,
+      statement: row['Restart'] === true ? `${accepts} ${STRINGS.encryptionStartupRestart}` : purges ? `${accepts} ${STRINGS.configSettingPurge}` : accepts,
     });
   }
 
@@ -189,6 +219,7 @@ export class ConfigSettingsPage {
     if (applied) {
       this.onClose();
       this.restartNote.set(target.restart ? STRINGS.encryptionStartupRestart : '');
+      this.purgeNote.set(target.purges && value !== target.current ? STRINGS.configSettingPurge : '');
       return;
     }
     const refused = this.handler.lastRefusal();

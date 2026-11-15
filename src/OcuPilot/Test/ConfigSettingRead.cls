@@ -58,7 +58,11 @@ XData Cases
   "cases": [
     {"name": "a config LIST of Startup is sound", "source": {"port": "config", "endpoint": "Startup", "type": "LIST"}, "expected": null},
     {"name": "so is Memory", "source": {"port": "config", "endpoint": "Memory", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "source": {"port": "config", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the config port's endpoints ('Startup', 'Memory', 'Compatibility') (AD-29)"},
+    {"name": "so is SQL", "source": {"port": "config", "endpoint": "SQL", "type": "LIST"}, "expected": null},
+    {"name": "so is SQLShell", "source": {"port": "config", "endpoint": "SQLShell", "type": "LIST"}, "expected": null},
+    {"name": "so is TSQL", "source": {"port": "config", "endpoint": "TSQL", "type": "LIST"}, "expected": null},
+    {"name": "so is ISQL", "source": {"port": "config", "endpoint": "ISQL", "type": "LIST"}, "expected": null},
+    {"name": "an endpoint the port does not serve", "source": {"port": "config", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the config port's endpoints ('Startup', 'Memory', 'Compatibility', 'SQL', 'SQLShell', 'TSQL', 'ISQL') (AD-29)"},
     {"name": "a type other than LIST", "source": {"port": "config", "endpoint": "Startup", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a config source, which lists the instance's startup, memory and compatibility settings (AD-36)"},
     {"name": "rowGet", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Value"], "derived": []}}, "expected": "read.source.rowGet is declared on a config source, which answers its list whole (AD-36)"},
     {"name": "forEach", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "forEach": ["Value"]}, "expected": "read.source.forEach is declared on a config source, which answers its list whole (AD-36)"},
@@ -186,9 +190,9 @@ Method TestEachReadAnswersTheClassesKeysLessTheExclusions()
         Set tOk = $$$ISOK(tSC) && (tPortRows.%Size() = tCount)
         Set tIterator = tPortRows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tPortRow) {
-            If ##class(OcuPilot.Test.LicenseKey).Keys(tPortRow) '= "Accepts,Kind,Name,ReadOnly,Restart,Value" Set tOk = 0
+            If ##class(OcuPilot.Test.LicenseKey).Keys(tPortRow) '= "Accepts,Kind,Name,Purges,ReadOnly,Restart,Value" Set tOk = 0
         }
-        Do $$$AssertEquals(tOk, 1, $Piece(tScreen, "|", 1) _ ": the port answers the same rows, each exactly its six members")
+        Do $$$AssertEquals(tOk, 1, $Piece(tScreen, "|", 1) _ ": the port answers the same rows, each exactly its seven members")
         Do ##class(OcuPilot.Test.ScreenGate).Reset()
     }
 }
@@ -283,7 +287,9 @@ Method TestAGetAnswersOneRowAndAnUnknownNameIsAbsent()
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Startup", "GET", .tQuery, "", .tRow, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "a listed setting reads")
     Do ..RowsByName(..Read("StartupSettingList"), .tStartup)
-    Do $$$AssertEquals(tRow.%ToJSON(), tStartup("ShutdownTimeout").%ToJSON(), "and is the row the list answers")
+    Do $$$AssertEquals(tRow.Purges, 0, "which does not purge the cached queries")
+    Do tRow.%Remove("Purges")
+    Do $$$AssertEquals(tRow.%ToJSON(), tStartup("ShutdownTimeout").%ToJSON(), "and is the row the list answers, which declares no Purges field")
     For tName = "shutdowntimeout", "NoSuchSetting", "", "EnableLongStrings", "PasswordHash", "history" {
         Set tQuery("name") = tName
         Set tSC = $ClassMethod(..#PORT, "Invoke", "Startup", "GET", .tQuery, "", .tAbsent, .tHttp, .tFault)

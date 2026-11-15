@@ -87,15 +87,16 @@ Method OnAfterAllTests() As %Status
     Quit ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
 }
 
-/// <p>Every key of the three vendor classes' <code>Get</code> arrays as <code>{class: {key: value}}</code>, read in <code>%SYS</code>.</p>
-ClassMethod Snapshot() As %DynamicObject
+/// <p>Every key of the vendor classes' <code>Get</code> arrays (<var>pClasses</var>, the three of this class unless given) as
+/// <code>{class: {key: value}}</code>, read in <code>%SYS</code>.</p>
+ClassMethod Snapshot(pClasses As %String = {..#CLASSES}) As %DynamicObject
 {
     Set tAll = {}
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#CLASSES, ",") {
-            Set tClass = $Piece(..#CLASSES, ",", tI)
+        For tI = 1:1:$Length(pClasses, ",") {
+            Set tClass = $Piece(pClasses, ",", tI)
             Kill tProps
             Set tSC = $ClassMethod(tClass, "Get", .tProps)
             If $$$ISERR(tSC) Continue
@@ -115,14 +116,14 @@ ClassMethod Snapshot() As %DynamicObject
 }
 
 /// <p>Put every key of <var>pPrepared</var> back where the instance reads another value, through the vendor's own <code>Modify</code> of the
-/// complete set, in <code>%SYS</code>. Each class is restored on its own, so one class that fails leaves the others restored; the first
-/// failure is answered.</p>
-ClassMethod Restore(pPrepared As %DynamicObject) As %Status
+/// complete set, in <code>%SYS</code>, for the classes <var>pClasses</var> (the three of this class unless given). Each class is restored on its
+/// own, so one class that fails leaves the others restored; the first failure is answered.</p>
+ClassMethod Restore(pPrepared As %DynamicObject, pClasses As %String = {..#CLASSES}) As %Status
 {
     Set tFirst = $$$OK
     Set tOrigNS = $NAMESPACE
-    For tI = 1:1:$Length(..#CLASSES, ",") {
-        Set tClass = $Piece(..#CLASSES, ",", tI)
+    For tI = 1:1:$Length(pClasses, ",") {
+        Set tClass = $Piece(pClasses, ",", tI)
         Set tSC = $$$OK
         Try {
             Set $NAMESPACE = "%SYS"

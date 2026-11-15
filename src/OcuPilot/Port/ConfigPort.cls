@@ -1,6 +1,7 @@
-/// <p>The configuration settings port (AD-4, AD-16, AD-29, AD-36, AD-52, AD-53, AD-58, AD-59, Story 21.3): the one
+/// <p>The configuration settings port (AD-4, AD-16, AD-29, AD-36, AD-52, AD-53, AD-58, AD-59, Stories 21.3 and 21.4): the one
 /// product class that lists the instance's startup settings (<code>Config.Startup</code>), memory settings
-/// (<code>Config.config</code>) and compatibility settings (<code>Config.Miscellaneous</code>), and that sets one
+/// (<code>Config.config</code>), compatibility settings (<code>Config.Miscellaneous</code>), SQL settings
+/// (<code>Config.SQL</code>), SQL Shell settings, TSQL settings (<code>%SYSTEM.TSQL</code>) and ISQL settings, and that sets one
 /// setting of them. It is also the one product class that names <code>SYS.Database.CheckBlockSizeAvailable</code> for
 /// these screens. It switches <code>$NAMESPACE</code> to <code>%SYS</code> by save and restore around each vendor call
 /// (AD-16).</p>
@@ -11,16 +12,23 @@
 /// <p><b>Endpoints and request types.</b> Each of <parameter>ENDPOINTS</parameter> answers <code>LIST</code> (the rows,
 /// at most <parameter>DEFAULTMAXROWS</parameter> unless the query carries <parameter>MAXROWSKEY</parameter>),
 /// <code>GET</code> (the one row the query's <code>name</code> names, the fresh read of the write tools, AD-51) and
-/// <code>SET</code> (the write). A row is <code>{Name, Value, Kind, Accepts, Restart, ReadOnly}</code>: the class's own
-/// <code>Get</code> array less <parameter>EXCLUDED</parameter> and a comment, with <code>Kind</code>,
+/// <code>SET</code> (the write). A row is <code>{Name, Value, Kind, Accepts, Restart, ReadOnly, Purges}</code>: the class's own
+/// <code>Get</code> array less <parameter>EXCLUDED</parameter> and a comment (or the roster's names), with <code>Kind</code>,
 /// <code>Accepts</code> and the limits <method>Limits</method> answers read from the compiled property at call time
 /// (<code>RuntimeType</code>, <code>MINVAL</code>, <code>MAXVAL</code>, <code>VALUELIST</code>, <code>MAXLEN</code>).</p>
 /// <p><b>A set is a merge that sends the complete property set</b> (AD-4): the class is read fresh, the one named key
 /// takes its new value and every key the read answered is sent. Before any vendor call the row is read and
 /// <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class>, the rules the tools' mint asks too, judge the value; a
 /// setting this port shows and never changes (<method>IsReadOnly</method>) is refused. No path is set (AD-21).</p>
-/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method> and
-/// <method>SendProperties</method>. Production overrides none of them.</p>
+/// <p><b>The SQL Shell and ISQL settings have no backing class</b>: each is one <code>^%SYS</code> node at a fixed roster of
+/// names (<parameter>SHELLROSTER</parameter>, <parameter>ISQLROSTER</parameter>), written as the classic page writes it, with
+/// the stored code of the choice the caller named. The TSQL settings are read and set through <code>%SYSTEM.TSQL</code>
+/// (<parameter>TSQLROSTER</parameter>). No caller value names a node or a method. A row is <code>Purges</code> when a change
+/// of it purges the cached queries of every namespace (<parameter>PURGESQL</parameter>); the port then purges them after a
+/// confirmed write that changed it (<method>PurgeCachedQueries</method>).</p>
+/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
+/// <method>SendProperties</method>, <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
+/// <method>PurgeCachedQueries</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
 /// return.</p>
 Class OcuPilot.Port.ConfigPort Extends %RegisteredObject
@@ -43,7 +51,7 @@ Parameter COMPATIBILITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -51,12 +59,53 @@ Parameter MEMORYENDPOINT = "Memory";
 
 Parameter COMPATIBILITYENDPOINT = "Compatibility";
 
+Parameter SQLENDPOINT = "SQL";
+
+Parameter SHELLENDPOINT = "SQLShell";
+
+Parameter TSQLENDPOINT = "TSQL";
+
+Parameter ISQLENDPOINT = "ISQL";
+
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
 
 Parameter MEMORYCLASS = "Config.config";
 
 Parameter COMPATIBILITYCLASS = "Config.Miscellaneous";
+
+Parameter SQLCLASS = "Config.SQL";
+
+/// <p>The <code>Config.SQL</code> settings a caller may set: the classic SQL page's offered keys less
+/// <code>DefaultSchema</code>. Every other key is listed and never changed here; a key a later build adds is read only until it
+/// is named.</p>
+Parameter SETTABLESQL = "AdaptiveMode,AutoParallel,AutoStatsForEfficientSamplingTableOnly,AutoStatsForFixedStatsTable,AutoStatsForRemoteGlobalTable,ClientMaxIdleTime,DDLNo30,DDLNo201,DDLNo307,DDLNo311,DDLNo315,DDLNo324,DDLNo333,DisableNLSCollationMismatchLogging,FastDistinct,HNSWLIBMemoryLimit,IdKey,LockThreshold,LockTimeout,ODBCVarcharMaxlen,ParameterSampling,SaveMAC,TCPKeepAlive,TimePrecision,TODATEDefaultFormat";
+
+/// <p>The <code>Config.SQL</code> settings whose change purges the cached queries of every namespace, as the classic SQL page does.</p>
+Parameter PURGESQL = "AdaptiveMode,AutoParallel,DefaultSchema,FastDistinct,ODBCVarcharMaxlen,ParameterSampling";
+
+/// <p>The rosters of the endpoints that have no backing class, entries separated by <code>;</code> and fields by
+/// <code>|</code>: name, kind (<code>boolean</code>, <code>choice</code> or <code>text</code>), the choices as
+/// <code>shown=stored</code> pairs separated by <code>,</code> (a choice with no <code>=</code> is stored as shown) or a text's
+/// longest length, the stored default read while the node is not defined, and whether the name is settable (1) or shown and
+/// never changed (0). The SQL Shell's defaults are the shell's own (<code>%SQL.Shell</code>); <code>EscapeCondition</code> is
+/// evaluated code, and <code>DisplayPath</code> and <code>DisplayFile</code> are paths (AD-21).</p>
+Parameter SHELLROSTER = "SelectMode|choice|Logical=0,ODBC=1,Display=2|0|1;Dialect|choice|IRIS,MSSQL,Sybase|IRIS|1;Path|text||SQLUser|1;ColAlign|choice|Delimiter=0,Header=1,Data=2|0|1;CommandPrefix|text|||1;DisplayMode|choice|CURRENTDEVICE=-1,XML=0,HTML=1,PDF=2,TXT=99,CSV=100|-1|1;DisplayPath|text|||0;DisplayFile|text|||0;DisplayTranslateTable|text||UTF8|1;EchoMode|choice|On=1,Off=0|1|1;ExecuteMode|choice|Immediate=1,Deferred=0|1|1;MessagesMode|choice|On=1,Off=0|1|1;EscapeCondition|text||1|0";
+
+Parameter ISQLROSTER = "DELIMIDENT|boolean||0|1;TRACE|boolean||0|1;FUNCTIONRETURNSSET|boolean||1|1;RESERVEDWORDPREFIX|text|||1";
+
+/// <p>The TSQL settings: the four the classic page offers are settable, the three it omits are shown and never changed. The stored
+/// value is the getter's answer (<code>%SYSTEM.TSQL</code>), so the default field is unused.</p>
+Parameter TSQLROSTER = "DIALECT|choice|MSSQL,Sybase||1;ANSI_NULLS|choice|OFF,ON||1;CASEINSCOMPARE|choice|OFF,ON||1;QUOTED_IDENTIFIER|choice|OFF,ON||1;EQUAL_LITERAL_REPLACEMENT|choice|OFF,ON||0;OWNER_AS_SCHEMA|choice|OFF,ON||0;TRACE|choice|OFF,ON||0";
+
+/// <p>The <code>%SYSTEM.TSQL</code> setter each settable TSQL name goes through, and the dialect a flag set passes when none is
+/// stored, as the classic page saves its shown default.</p>
+Parameter TSQLSETTERS = "DIALECT=SetDialect,ANSI_NULLS=SetAnsiNulls,CASEINSCOMPARE=SetCaseInsCompare,QUOTED_IDENTIFIER=SetQuotedIdentifier";
+
+Parameter TSQLDEFAULTDIALECT = "Sybase";
+
+/// <p>What a <code>%SYSTEM.TSQL</code> setter's answer starts with when it refused the value.</p>
+Parameter TSQLREFUSAL = "Invalid";
 
 Parameter TYPELIST = "LIST";
 
@@ -156,7 +205,15 @@ ClassMethod VendorClass(pEndpoint As %String) As %String
     If pEndpoint = ..#STARTUPENDPOINT Quit ..#STARTUPCLASS
     If pEndpoint = ..#MEMORYENDPOINT Quit ..#MEMORYCLASS
     If pEndpoint = ..#COMPATIBILITYENDPOINT Quit ..#COMPATIBILITYCLASS
+    If pEndpoint = ..#SQLENDPOINT Quit ..#SQLCLASS
     Quit ""
+}
+
+/// <p>Whether <var>pEndpoint</var> has no backing class and is listed from a fixed roster: the SQL Shell, TSQL and ISQL
+/// settings.</p>
+ClassMethod IsRoster(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT)
 }
 
 /// <p>Serve <var>pEndpoint</var> for request type <var>pType</var>, after the gate.</p>
@@ -279,6 +336,11 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
     Kill tData
     Set tOrigNS = $NAMESPACE
     Try {
+        If ..IsRoster(pEndpoint) {
+            Set $NAMESPACE = "%SYS"
+            Set tSC = ..CollectRoster(pEndpoint, pName, .tData)
+            Quit
+        }
         Set tClass = ..VendorClass(pEndpoint)
         If tClass = "" Quit
         Set $NAMESPACE = "%SYS"
@@ -293,7 +355,7 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
             If (pName '= "") && (tKey '= pName) Continue
             If $ListFind($ListFromString(..#EXCLUDED), tKey) Continue
             If 'tInterop && $ListFind($ListFromString(..#INTEROPONLY), tKey) Continue
-            Set tData(tKey) = $ListBuild(tProps(tKey), ..LimitsOf(tClass, tKey), ..IsReadOnly(tClass, tKey), ..NeedsRestart(pEndpoint, tClass, tKey))
+            Set tData(tKey) = $ListBuild(tProps(tKey), ..LimitsOf(tClass, tKey), ..IsReadOnly(pEndpoint, tClass, tKey), ..NeedsRestart(pEndpoint, tClass, tKey), ..IsPurging(pEndpoint, tKey))
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -310,7 +372,7 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
 }
 
 /// <p>The row of the setting <var>pName</var> from <var>pData</var>, <code>$ListBuild(value, limits, readOnly,
-/// restart)</code>.</p>
+/// restart, purges)</code>.</p>
 ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Private ]
 {
     Set tLimits = $List(pData, 2)
@@ -322,6 +384,7 @@ ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Priva
     Do tRow.%Set("Accepts", $Select(tReadOnly: ##class(OcuPilot.Api.ConfigError).#ACCEPTSREADONLY, 1: ..AcceptsOf(tLimits)), "string")
     Do tRow.%Set("Restart", ''$List(pData, 4), "boolean")
     Do tRow.%Set("ReadOnly", ''tReadOnly, "boolean")
+    Do tRow.%Set("Purges", ''$List(pData, 5), "boolean")
     Quit tRow
 }
 
@@ -331,12 +394,14 @@ ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Priva
 /// <code>blocksizes</code>; <code>choices</code> is a <code>$ListBuild</code> list; <code>sentinel</code> is the one value
 /// outside the range that the setting also accepts, or <code>""</code>.</p>
 /// <p>Beyond the dictionary: <code>DBSizesAllowed</code> is block sizes, <code>ListFormat</code> is 0 or 1,
-/// <code>bbsiz</code> is -1 or 256 to 2147483647 and <code>routines</code> is 0 or 36 to 65536, as the classic Memory and
-/// Startup page and value editor judge them; an integer with no declared minimum starts at 0, which is stricter than the
-/// dictionary and what the vendor's own check holds the two settings that declare only a maximum to.</p>
+/// <code>bbsiz</code> is -1 or 256 to 2147483647, <code>routines</code> is 0 or 36 to 65536 and
+/// <code>HNSWLIBMemoryLimit</code> is -1 or 0 to 2147483647, as the classic pages and value editor judge them; an integer with
+/// no declared minimum starts at 0, which is stricter than the dictionary and what the vendor's own check holds the two settings
+/// that declare only a maximum to. A roster endpoint's limits are its roster entry's (<method>EntryLimits</method>).</p>
 ClassMethod Limits(pEndpoint As %String, pName As %String) As %List
 {
     Set tLimits = ""
+    If ..IsRoster(pEndpoint) Quit ..EntryLimits(..RosterEntry(pEndpoint, pName))
     Set tClass = ..VendorClass(pEndpoint)
     If tClass = "" Quit ""
     Set tOrigNS = $NAMESPACE
@@ -359,6 +424,7 @@ ClassMethod LimitsOf(pClass As %String, pName As %String) As %List [ Private ]
     If pName = "ListFormat" Quit $ListBuild("choice", "", "", $ListBuild(0, 1), "", "")
     If pName = "bbsiz" Quit $ListBuild("integer", 256, 2147483647, "", "", -1)
     If pName = "routines" Quit $ListBuild("integer", 36, 65536, "", "", 0)
+    If pName = "HNSWLIBMemoryLimit" Quit $ListBuild("integer", 0, 2147483647, "", "", -1)
     Set tType = tProperty.RuntimeType
     Set tValueList = tProperty.Parameters.GetAt("VALUELIST")
     If tValueList '= "" {
@@ -395,11 +461,12 @@ ClassMethod AcceptsOf(pLimits As %List) As %String
     Quit ""
 }
 
-/// <p>Whether the setting <var>pName</var> of <var>pClass</var> is shown and never changed: one of
-/// <parameter>READONLY</parameter>, or a property of the vendor's path type (<parameter>PATHTYPE</parameter>). In
-/// <code>%SYS</code>.</p>
-ClassMethod IsReadOnly(pClass As %String, pName As %String) As %Boolean [ Private ]
+/// <p>Whether the setting <var>pName</var> of <var>pClass</var> is shown and never changed: for the <code>SQL</code> endpoint,
+/// any key outside <parameter>SETTABLESQL</parameter>; otherwise one of <parameter>READONLY</parameter>, or a property of the
+/// vendor's path type (<parameter>PATHTYPE</parameter>). In <code>%SYS</code>.</p>
+ClassMethod IsReadOnly(pEndpoint As %String, pClass As %String, pName As %String) As %Boolean [ Private ]
 {
+    If pEndpoint = ..#SQLENDPOINT Quit '$ListFind($ListFromString(..#SETTABLESQL), pName)
     If $ListFind($ListFromString(..#READONLY), pName) Quit 1
     Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(pClass _ "||" _ pName, 0)
     Quit $IsObject(tProperty) && (tProperty.RuntimeType = ..#PATHTYPE)
@@ -407,10 +474,11 @@ ClassMethod IsReadOnly(pClass As %String, pName As %String) As %Boolean [ Privat
 
 /// <p>Whether a change of the setting <var>pName</var> takes effect only at the next restart, by the vendor's own source
 /// for each class: <code>Config.config.NoRestartOnActivate</code> for a memory setting, and the lists the vendor's
-/// documentation and the classic pages state for the other two. A setting with no source reads false. In
-/// <code>%SYS</code>.</p>
+/// documentation and the classic pages state for the other two. A setting with no source reads false, as does every SQL
+/// setting. In <code>%SYS</code>.</p>
 ClassMethod NeedsRestart(pEndpoint As %String, pClass As %String, pName As %String) As %Boolean [ Private ]
 {
+    If pEndpoint = ..#SQLENDPOINT Quit 0
     If pEndpoint = ..#MEMORYENDPOINT Quit '$ClassMethod(pClass, "NoRestartOnActivate", pName)
     If pEndpoint = ..#STARTUPENDPOINT Quit ''$ListFind($ListFromString(..#RESTARTSTARTUP), pName)
     Quit ''$ListFind($ListFromString(..#RESTARTCOMPATIBILITY), pName)
@@ -433,8 +501,12 @@ ClassMethod BlockSizeAvailable(pSize As %Integer) As %Boolean
 }
 
 /// <p>Set the setting <var>pQuery</var> names to the <code>Value</code> of <var>pBody</var>: the setting is read, the rules
-/// refuse a setting shown and never changed and a value it does not accept, and then the class is read fresh and sent
-/// whole with that one key changed (<method>VendorModify</method>). Answers <code>{Name, Value}</code>.</p>
+/// refuse a setting shown and never changed and a value it does not accept, and then the write is made as its family does: a
+/// class is read fresh and sent whole with that one key changed (<method>VendorModify</method>), a roster node is written with
+/// the stored code of the choice (<method>SendNode</method>), a TSQL setting goes through its setter
+/// (<method>SendTsql</method>). After a write that changed a <code>Purges</code> row the cached queries of every namespace
+/// are purged (<method>PurgeCachedQueries</method>); a purge that fails is 500 <code>INTERNAL</code>, logged, with the setting
+/// changed. Answers <code>{Name, Value}</code>.</p>
 ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -447,16 +519,231 @@ ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstra
     Set tValue = pBody.%Get("Value")
     Set tCode = ##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).Code(pEndpoint, tRow, tValue)
     If tCode '= "" Quit ..Refused(tCode, .pHttpStatus, .pFault)
-    Set tVendor = ..VendorModify(..VendorClass(pEndpoint), tName, tValue)
+    Set tVendor = ..Apply(pEndpoint, tName, tValue)
     If $$$ISERR(tVendor) {
         Do ..LogFault("the setting " _ tName _ " was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
         Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    }
+    If tRow.%Get("Purges") && (tRow.%Get("Value") '= tValue) {
+        Set tPurge = ..PurgeCachedQueries()
+        If $$$ISERR(tPurge) Quit ..Fail("the cached queries could not be purged after the setting " _ tName _ " changed", tPurge, .pHttpStatus, .pFault)
     }
     Set pResult = {}
     Do pResult.%Set("Name", tName, "string")
     Do pResult.%Set("Value", tValue, "string")
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>The write of the setting <var>pName</var> of <var>pEndpoint</var> to the value <var>pValue</var>, as its family makes it.</p>
+ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As %Status [ Private ]
+{
+    If pEndpoint = ..#TSQLENDPOINT {
+        Set tDialect = ..StoredDialect()
+        Quit ..SendTsql(pName, $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect), pValue)
+    }
+    If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
+    Quit ..VendorModify(..VendorClass(pEndpoint), pName, pValue)
+}
+
+/// <p>The roster of <var>pEndpoint</var>, as a list of <code>$ListBuild(name, kind, detail, default, settable)</code>, or
+/// <code>""</code> for an endpoint that has none.</p>
+ClassMethod RosterOf(pEndpoint As %String) As %List
+{
+    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, : "")
+    Set tRoster = ""
+    For tI = 1:1:$Length(tSpec, ";") {
+        Set tEntry = $Piece(tSpec, ";", tI)
+        If tEntry = "" Continue
+        Set tRoster = tRoster _ $ListBuild($ListBuild($Piece(tEntry, "|", 1), $Piece(tEntry, "|", 2), $Piece(tEntry, "|", 3), $Piece(tEntry, "|", 4), +$Piece(tEntry, "|", 5)))
+    }
+    Quit tRoster
+}
+
+/// <p>The entry of the roster of <var>pEndpoint</var> that names <var>pName</var>, compared exactly, or <code>""</code>.</p>
+ClassMethod RosterEntry(pEndpoint As %String, pName As %String) As %List
+{
+    Set tRoster = ..RosterOf(pEndpoint)
+    For tI = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tI), 1) = pName Quit
+    }
+    Quit $Select(($ListLength(tRoster) > 0) && ($List($List(tRoster, tI), 1) = pName): $List(tRoster, tI), 1: "")
+}
+
+/// <p>The limits of a roster entry, in <method>Limits</method>'s shape, or <code>""</code> for no entry.</p>
+ClassMethod EntryLimits(pEntry As %List) As %List
+{
+    If pEntry = "" Quit ""
+    Set tKind = $List(pEntry, 2)
+    If tKind = "boolean" Quit $ListBuild("boolean", "", "", "", "", "")
+    If tKind = "choice" Quit $ListBuild("choice", "", "", ..ChoiceNames($List(pEntry, 3)), "", "")
+    Quit $ListBuild("text", "", "", "", $Select($List(pEntry, 3) = "": ..#DEFAULTMAXLEN, 1: $List(pEntry, 3)), "")
+}
+
+/// <p>The names a roster entry's choices show, from its <code>shown=stored</code> pairs.</p>
+ClassMethod ChoiceNames(pDetail As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(pDetail, ",") Set tNames = tNames _ $ListBuild($Piece($Piece(pDetail, ",", tI), "=", 1))
+    Quit tNames
+}
+
+/// <p>The stored code of the value <var>pValue</var> a roster entry's choices show, or <var>pValue</var> itself for a kind that has
+/// no choices.</p>
+ClassMethod StoredFor(pEntry As %List, pValue As %String) As %String
+{
+    If $List(pEntry, 2) '= "choice" Quit pValue
+    Set tDetail = $List(pEntry, 3)
+    For tI = 1:1:$Length(tDetail, ",") {
+        Set tPair = $Piece(tDetail, ",", tI)
+        If $Piece(tPair, "=", 1) = pValue Quit
+    }
+    If $Piece($Piece(tDetail, ",", tI), "=", 1) '= pValue Quit pValue
+    Quit $Piece(tPair, "=", $Length(tPair, "="))
+}
+
+/// <p>The choice a roster entry shows for the stored code <var>pStored</var>, or the stored text itself when no choice has that
+/// code.</p>
+ClassMethod ShownFor(pEntry As %List, pStored As %String) As %String
+{
+    If $List(pEntry, 2) '= "choice" Quit pStored
+    Set tDetail = $List(pEntry, 3)
+    For tI = 1:1:$Length(tDetail, ",") {
+        Set tPair = $Piece(tDetail, ",", tI)
+        If $Piece(tPair, "=", $Length(tPair, "=")) = pStored Quit
+    }
+    If $Piece($Piece(tDetail, ",", tI), "=", $Length($Piece(tDetail, ",", tI), "=")) '= pStored Quit pStored
+    Quit $Piece(tPair, "=", 1)
+}
+
+/// <p>The rows of the roster endpoint <var>pEndpoint</var> into <var>pData</var>, or the one named <var>pName</var>, in
+/// <code>%SYS</code>.</p>
+ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) As %Status [ Private ]
+{
+    Set tRoster = ..RosterOf(pEndpoint)
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tI)
+        Set tKey = $List(tEntry, 1)
+        If (pName '= "") && (tKey '= pName) Continue
+        Set pData(tKey) = $ListBuild(..RosterValue(pEndpoint, tEntry), ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
+    }
+    Quit $$$OK
+}
+
+/// <p>The value the roster entry <var>pEntry</var> reads now: a TSQL setting's getter answer, otherwise the node as stored, or
+/// the roster's default while it is not defined, shown as its choice. In <code>%SYS</code>.</p>
+ClassMethod RosterValue(pEndpoint As %String, pEntry As %List) As %String [ Private ]
+{
+    Set tName = $List(pEntry, 1)
+    If pEndpoint = ..#TSQLENDPOINT Quit ..TsqlValue(tName)
+    If pEndpoint = ..#SHELLENDPOINT Quit ..ShownFor(pEntry, $Get(^%SYS("sql", "shell", tName), $List(pEntry, 4)))
+    Quit ..ShownFor(pEntry, $Get(^%SYS("xsql", "informix", tName), $List(pEntry, 4)))
+}
+
+/// <p>The TSQL setting <var>pName</var> as <code>%SYSTEM.TSQL</code>'s getter answers it: the flag follows the comma and space the
+/// getters put after the dialect, and an unset dialect reads empty. In <code>%SYS</code>.</p>
+ClassMethod TsqlValue(pName As %String) As %String [ Private ]
+{
+    If pName = "DIALECT" Quit ##class(%SYSTEM.TSQL).GetDialect()
+    If pName = "ANSI_NULLS" Quit $Piece(##class(%SYSTEM.TSQL).GetAnsiNulls(), ", ", 2)
+    If pName = "CASEINSCOMPARE" Quit $Piece(##class(%SYSTEM.TSQL).GetCaseInsCompare(), ", ", 2)
+    If pName = "QUOTED_IDENTIFIER" Quit $Piece(##class(%SYSTEM.TSQL).GetQuotedIdentifier(), ", ", 2)
+    If pName = "EQUAL_LITERAL_REPLACEMENT" Quit $Piece(##class(%SYSTEM.TSQL).GetEqualLiteralReplacement(), ", ", 2)
+    If pName = "OWNER_AS_SCHEMA" Quit ##class(%SYSTEM.TSQL).GetOwnerAsSchema()
+    If pName = "TRACE" Quit ##class(%SYSTEM.TSQL).GetTrace()
+    Quit ""
+}
+
+/// <p>Whether a change of the setting <var>pName</var> of <var>pEndpoint</var> purges the cached queries of every namespace.</p>
+ClassMethod IsPurging(pEndpoint As %String, pName As %String) As %Boolean [ Private ]
+{
+    Quit (pEndpoint = ..#SQLENDPOINT) && ''$ListFind($ListFromString(..#PURGESQL), pName)
+}
+
+/// <p>The TSQL dialect stored on this instance, or <code>""</code> when none is. Overridable so a fixture can feed the stored
+/// dialect a flag set passes on; production never overrides it.</p>
+ClassMethod StoredDialect() As %String
+{
+    Set tDialect = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDialect = ##class(%SYSTEM.TSQL).GetDialect()
+    } Catch {
+        Set tDialect = ""
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tDialect
+}
+
+/// <p>The one call that changes a SQL Shell or ISQL node: <var>pName</var>'s node of <var>pEndpoint</var> set to the stored code
+/// <var>pStored</var>, in <code>%SYS</code> by save and restore. The name is a roster name the rules have already admitted.
+/// Overridable so a fixture can record the write; production never overrides it.</p>
+ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If pEndpoint = ..#SHELLENDPOINT {
+            Set ^%SYS("sql", "shell", pName) = pStored
+        } ElseIf pEndpoint = ..#ISQLENDPOINT {
+            Set ^%SYS("xsql", "informix", pName) = pStored
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "no node is written for " _ pEndpoint)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The one call that changes a TSQL setting: <var>pName</var>'s <code>%SYSTEM.TSQL</code> setter, given the dialect
+/// <var>pDialect</var> the flag setters take and the value, in <code>%SYS</code> by save and restore. A setter answer that starts
+/// with <parameter>TSQLREFUSAL</parameter> is an error. Overridable so a fixture can record the call; production never overrides
+/// it.</p>
+ClassMethod SendTsql(pName As %String, pDialect As %String, pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSetter = ""
+        For tI = 1:1:$Length(..#TSQLSETTERS, ",") {
+            If $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 1) = pName Set tSetter = $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 2)
+        }
+        If tSetter = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "no TSQL setter is named for " _ pName)
+            Quit
+        }
+        If pName = "DIALECT" {
+            Set tAnswer = $ClassMethod("%SYSTEM.TSQL", tSetter, pValue)
+        } Else {
+            Set tAnswer = $ClassMethod("%SYSTEM.TSQL", tSetter, pDialect, pValue)
+        }
+        If $Extract(tAnswer, 1, $Length(..#TSQLREFUSAL)) = ..#TSQLREFUSAL Set tSC = $$$ERROR($$$GeneralError, tAnswer)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Purge the cached queries of every namespace, as the classic SQL page does after one of the settings it names changes. A
+/// failed purge is the returned status. Overridable so a fixture can record the call or feed a failure; production never
+/// overrides it.</p>
+ClassMethod PurgeCachedQueries() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.SQL.PurgeQueries({"allNamespace": 1})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The vendor's <code>Modify</code> of <var>pClass</var> with every key its <code>Get</code> answers and the key
@@ -554,19 +841,45 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     Quit ""
 }
 
-/// <p>The write as a script (AD-59), in <code>%SYS</code>: the class's <code>Get</code>, the one key set, and
-/// <code>Modify</code>, the same call the port makes. The name and the value are string literals, so nothing the query or
-/// the body carries runs as code.</p>
+/// <p>The write as a script (AD-59), in <code>%SYS</code>: for a class, its <code>Get</code>, the one key set, and
+/// <code>Modify</code>, the same call the port makes, and the purge of the cached queries for a key that purges; for a roster
+/// endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter. The name and the value are string
+/// literals, so nothing the query or the body carries runs as code. A roster name that is not settable renders no script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tAdmin = "OcuPilot.Port.AdminPort"
-    Set tClass = ..VendorClass(pEndpoint)
+    Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
+    If ..IsRoster(pEndpoint) {
+        Set tEntry = ..RosterEntry(pEndpoint, tName)
+        If (tEntry = "") || '$List(tEntry, 5) Quit []
+        Set tLines = $ListBuild(..RosterLine(pEndpoint, tEntry, tValue))
+        Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+    }
+    Set tClass = ..VendorClass(pEndpoint)
     Set tLines = $ListBuild("Set tSC = ##class(" _ tClass _ ").Get(.tProps)")
-    Set tLines = tLines _ $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", $Get(pQuery(..#NAMEKEY))) _ ") = " _ $ClassMethod(tAdmin, "Literal", tValue))
+    Set tLines = tLines _ $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", tValue))
     Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ tClass _ ").Modify(.tProps)")
+    If ..IsPurging(pEndpoint, tName) Set tLines = tLines _ $ListBuild("Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+}
+
+/// <p>The line of script that sets the roster entry <var>pEntry</var> of <var>pEndpoint</var> to <var>pValue</var>.</p>
+ClassMethod RosterLine(pEndpoint As %String, pEntry As %List, pValue As %String) As %String [ Private ]
+{
+    Set tAdmin = "OcuPilot.Port.AdminPort"
+    Set tName = $List(pEntry, 1)
+    If pEndpoint = ..#TSQLENDPOINT {
+        For tI = 1:1:$Length(..#TSQLSETTERS, ",") {
+            If $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 1) = tName Set tSetter = $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 2)
+        }
+        If tName = "DIALECT" Quit "Set tPrevious = ##class(%SYSTEM.TSQL)." _ tSetter _ "(" _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"
+        Set tDialect = ..StoredDialect()
+        Quit "Set tPrevious = ##class(%SYSTEM.TSQL)." _ tSetter _ "(" _ $ClassMethod(tAdmin, "Literal", $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect)) _ ", " _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"
+    }
+    Set tRoot = $Select(pEndpoint = ..#SHELLENDPOINT: """sql"", ""shell""", 1: """xsql"", ""informix""")
+    Quit "Set ^%SYS(" _ tRoot _ ", " _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", ..StoredFor(pEntry, pValue))
 }
 
 }

@@ -66,6 +66,7 @@ const {
   CONSEQUENCE_BACKUPRUN,
   CONSEQUENCE_BACKUPFREEZE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
+  CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
   CONSEQUENCE_JOURNALSETTINGSFREEZE,
@@ -1164,6 +1165,19 @@ test('Story 21.3: a setting that takes effect at the next restart states the res
   const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGRESTART, 'ConfigSettingSet.cls declares the code the card reads');
   for (const name of ['StartupSettingSet', 'MemorySettingSet', 'CompatibilitySettingSet']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 21.4: a SQL setting whose change purges the cached queries of every namespace states the purge sentence on the card, under the code the
+// abstract set tool declares as its purge code, which the four SQL set tools inherit.
+// Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGSETTINGPURGE` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.4: a setting whose change purges the cached queries states the purge sentence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGPURGE), STRINGS.configSettingPurge);
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGPURGE), 'Changing this setting purges the cached queries in every namespace.');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter PURGECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGPURGE, 'ConfigSettingSet.cls declares the code the card reads');
+  for (const name of ['SqlSettingSet', 'SqlShellSettingSet', 'TsqlSettingSet', 'IsqlSettingSet']) {
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
   }
 });

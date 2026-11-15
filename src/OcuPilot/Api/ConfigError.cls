@@ -1,4 +1,4 @@
-/// <p>The startup, memory and compatibility settings' codes and sentences (AD-29, AD-39, Story 21.3): every
+/// <p>The configuration settings' codes and sentences (AD-29, AD-39, Stories 21.3 and 21.4): every
 /// <code>CONFIG.*</code> code <class>OcuPilot.Port.ConfigPort</class> and
 /// <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class> answer with, and the one sentence each carries, and the
 /// sentences a row's <code>Accepts</code> reads. Each sentence is published once in EXPERIENCE.md's Fixed strings and
@@ -6,8 +6,9 @@
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit of 1,000
 /// parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>SETTINGRESTART</parameter> is not a refusal: it is the consequence code the proposal card, the dialog
-/// and the Save of a setting that takes effect only at the next restart carry.</p>
+/// <p><parameter>SETTINGRESTART</parameter> and <parameter>SETTINGPURGE</parameter> are not refusals: each is the consequence
+/// code the proposal card, the dialog and the Save of a setting that takes effect only at the next restart, or that purges the
+/// cached queries when it changes, carry.</p>
 Class OcuPilot.Api.ConfigError Extends %RegisteredObject
 {
 
@@ -30,6 +31,11 @@ Parameter REASONSETTINGVALUE = "This setting does not accept that value.";
 Parameter SETTINGRESTART = "CONFIG.SETTING.RESTART";
 
 Parameter REASONSETTINGRESTART = "Takes effect at the next restart.";
+
+/// <p>The consequence code of a set of a setting whose change purges the cached queries of every namespace.</p>
+Parameter SETTINGPURGE = "CONFIG.SETTING.PURGE";
+
+Parameter REASONSETTINGPURGE = "Changing this setting purges the cached queries in every namespace.";
 
 /// <p>What a row's <code>Accepts</code> reads, one sentence per kind. <code>%1</code> and <code>%2</code> are replaced
 /// by <method>Accepting</method>.</p>
@@ -54,6 +60,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGREADONLY Quit ..#REASONSETTINGREADONLY
     If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
     If pCode = ..#SETTINGRESTART Quit ..#REASONSETTINGRESTART
+    If pCode = ..#SETTINGPURGE Quit ..#REASONSETTINGPURGE
     Quit ""
 }
 

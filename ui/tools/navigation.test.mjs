@@ -250,6 +250,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/startup-settings',
       'os-management/memory-settings',
       'os-management/compatibility-settings',
+      // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, the twenty-ninth to thirty-second.
+      'os-management/sql-settings',
+      'os-management/sql-shell-settings',
+      'os-management/tsql-settings',
+      'os-management/isql-settings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -517,6 +522,11 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/startup-settings',
       'os-management/memory-settings',
       'os-management/compatibility-settings',
+      // Story 21.4: the twenty-ninth to thirty-second.
+      'os-management/sql-settings',
+      'os-management/sql-shell-settings',
+      'os-management/tsql-settings',
+      'os-management/isql-settings',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

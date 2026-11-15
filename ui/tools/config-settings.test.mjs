@@ -1,5 +1,5 @@
 /**
- * Story 21.3's setting sentences, held to the one published copy (AD-29, AD-39).
+ * Stories 21.3 and 21.4's setting sentences, held to the one published copy (AD-29, AD-39).
  *
  * Each `REASON*` and `ACCEPTS*` parameter of `OcuPilot.Api.ConfigError` is one published sentence on three surfaces: the server sends it, the
  * client's strings table holds it, and EXPERIENCE.md's Fixed strings publish it. The restart consequence is the reused
@@ -26,6 +26,7 @@ const SENTENCES = [
   ['REASONSETTINGREADONLY', 'configRefusalReadOnly'],
   ['REASONSETTINGVALUE', 'configRefusalValue'],
   ['REASONSETTINGRESTART', 'encryptionStartupRestart'],
+  ['REASONSETTINGPURGE', 'configSettingPurge'],
   ['ACCEPTSBOOLEAN', 'configAcceptsBoolean'],
   ['ACCEPTSRANGE', 'configAcceptsRange'],
   ['ACCEPTSMINIMUM', 'configAcceptsMinimum'],

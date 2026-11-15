@@ -1,8 +1,9 @@
-/// <p>The set of one startup, memory or compatibility setting (AD-4, AD-6, AD-51, AD-52, AD-53, AD-55, AD-56, AD-58,
-/// Story 21.3): store a value for one setting of one of the three configuration classes behind
+/// <p>The set of one startup, memory, compatibility, SQL, SQL Shell, TSQL or ISQL setting (AD-4, AD-6, AD-51, AD-52, AD-53,
+/// AD-55, AD-56, AD-58, Stories 21.3 and 21.4): store a value for one setting of one of the endpoints behind
 /// <class>OcuPilot.Port.ConfigPort</class>. It changes the instance's stored configuration; a setting whose vendor
 /// source states a restart takes effect only at the next restart, which its card states
-/// (<parameter>CONSEQUENCECODE</parameter>), and nothing here restarts the instance.</p>
+/// (<parameter>CONSEQUENCECODE</parameter>), and nothing here restarts the instance. A SQL setting whose change purges the
+/// cached queries of every namespace says so on its card (<parameter>PURGECODE</parameter>).</p>
 /// <p>Two callers reach it: the screen's row action Set value through <class>OcuPilot.Api.ScreenAction</class>, whose
 /// dialog sends the value as text, and the agent's proposal and confirmation. It is a merge over the setting's fresh
 /// read, so its card shows one <code>Value</code> row, its read-back compares the value
@@ -10,7 +11,7 @@
 /// A setting shown and never changed, and a value the setting does not accept, are refused before any vendor call by
 /// <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class>, at the mint and again at the write.</p>
 /// <p><b>Its pairs</b> are its screen's, then <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>,
-/// then the custom resource of each <parameter>CLASSICPAGES</parameter> page (AD-8, AD-44). The three concrete tools each
+/// then the custom resource of each <parameter>CLASSICPAGES</parameter> page (AD-8, AD-44). The concrete tools each
 /// name a descriptor and an endpoint. It is a sibling of <class>OcuPilot.Screen.Tool.InteropSettingSet</class>, not a
 /// subclass, so the OS management screens stay clear of the interoperability port.</p>
 Class OcuPilot.Screen.Tool.ConfigSettingSet Extends OcuPilot.Screen.Tool.Write [ Abstract ]
@@ -41,7 +42,7 @@ Parameter SCREENEMPTY = "set=Value";
 Parameter READBACKFIELDS = "Value";
 
 /// <p>The names this tool's own read answers.</p>
-Parameter READANSWERS = "Name,Value,Kind,Accepts,Restart,ReadOnly";
+Parameter READANSWERS = "Name,Value,Kind,Accepts,Restart,ReadOnly,Purges";
 
 /// <p>The one argument: the new value.</p>
 Parameter ARGUMENT = "Value";
@@ -57,6 +58,10 @@ Parameter WRITEPERMISSION = "WRITE";
 /// <p>The consequence code of a set of a setting that takes effect only at the next restart, pinned equal to
 /// <parameter>OcuPilot.Api.ConfigError.SETTINGRESTART</parameter>.</p>
 Parameter CONSEQUENCECODE = "CONFIG.SETTING.RESTART";
+
+/// <p>The consequence code of a set of a setting whose change purges the cached queries of every namespace, pinned equal to
+/// <parameter>OcuPilot.Api.ConfigError.SETTINGPURGE</parameter>.</p>
+Parameter PURGECODE = "CONFIG.SETTING.PURGE";
 
 ClassMethod Endpoint() As %String
 {
@@ -124,7 +129,8 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 }
 
 /// <p><parameter>CONSEQUENCECODE</parameter> when the setting's fresh row, read as the caller through this tool's port,
-/// says a change takes effect only at the next restart, else <code>""</code>. The payload names the setting.</p>
+/// says a change takes effect only at the next restart, else <parameter>PURGECODE</parameter> when it says a change purges the
+/// cached queries, else <code>""</code>. The payload names the setting.</p>
 ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
 {
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf("Name") '= "string") Quit ""
@@ -133,6 +139,7 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Set tSC = $ClassMethod(..PortClass(), "Invoke", ..Endpoint(), ..ReadType(), .tQuery, "", .tRow, .tHttp, .tFault)
     If $$$ISERR(tSC) || '$IsObject($Get(tRow)) Set tRow = pPayload
     If (tRow.%GetTypeOf("Restart") = "boolean") && tRow.%Get("Restart") Quit ..#CONSEQUENCECODE
+    If (tRow.%GetTypeOf("Purges") = "boolean") && tRow.%Get("Purges") Quit ..#PURGECODE
     Quit ""
 }
 

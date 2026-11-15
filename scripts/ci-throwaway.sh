@@ -866,8 +866,9 @@ services:
       # Changes one startup, one memory and one compatibility setting of the instance to a value of their own and back, through the shipped
       # screen-action and confirm paths, and sets the memory setting errlog, which needs a restart, and back. No restore clears the
       # instance's pending-restart flag, so the flag stays set on the throwaway; the class restores every setting it changed on
-      # every path (Story 21.3).
-      # classes: ConfigSettingWrite
+      # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
+      # and purges the cached queries of every namespace once (Story 21.4).
+      # classes: ConfigSettingWrite, SqlSettingWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable
