@@ -209,6 +209,13 @@ deferred:
 - AC5: mutation: one word of the purge sentence changed in `strings.ts` -> `config-settings.test.mjs` red.
 - Also observed red: `Consequence` without the purge code -> `SqlSettingRules`; `SHELLROSTER` without `Path` -> `SqlSettingRead`; `Admit` answering OK -> `SqlSettingRead`; `IsqlSettingSet` without `CLASSICPAGES` -> `SqlSettingRead`; `NOTFOUND` answered 400 -> `SqlSettingWrite`; a descriptor dropped from the page's served lists -> `config-settings.page.spec.ts`; the purge consequence dropped from `consequenceSentence` -> `proposal-view.test.mjs`.
 
+**QA pass (files and mutations):**
+
+- (QA) `src/OcuPilot/Test/SqlSettingWrite.cls` (three tests added), `src/OcuPilot/Test/SeamSqlSettingSet.cls`, `src/OcuPilot/Test/SeamSqlActionFixture.cls`; `src/OcuPilot/Test/ConfigGateSeam.cls` gained `WriteThrough`.
+- mutation: `ConfigPort.SetValue` ignores a failed purge -> `SqlSettingWrite.TestAFailedPurgeAnswersInternalWithTheSettingChangedOnBothCallers` red (AC2).
+- mutation: `TSQLREFUSAL` reads `Invalidx` -> `SqlSettingWrite.TestAVendorRefusalOfAnAdmittedTsqlValueIsAValueRefusalOnBothCallers` red (AC3).
+- `SqlSettingWrite.TestAFailedPurgeStillMarksTheAgentsWrite` is red on the shipped code: a confirm whose purge fails writes the setting and records `not-marking`, because `ConfigPort` answers the purge failure as the write's own and `Operation.ApplyAt` marks a write only when `pApplied` is set (open).
+
 ## Auto Run Result
 
 Status: done

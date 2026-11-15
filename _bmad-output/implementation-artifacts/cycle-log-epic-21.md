@@ -148,3 +148,5 @@
 2026-11-15T18:42:34Z	Epic 21	ruling	question=EXPERIENCE.md_literal_cap_3807>3800_after_merge choice=raise_to_4200(protocol_precedent) rejected=hold_merge why=drift_tripwire_protocol(raise_by_400_when_within_50) category=decide policy=b9ff703e
 2026-11-15T18:44:35Z	Epic 21	integrated_forward	feature=ddd1ffd7b head=fde74e282 conflicts_resolved=10_code_files(add-only_unions)+sprint-status.yaml(regenerated)+literal_cap ci=pending runs=43748408456 note=staging_head_at_21.4_QA
 2026-11-15T18:44:35Z	Story 21.4	stage_spawned	stage=qa spawn_at=2026-11-15T18:44:35Z model=sonnet agent_name=21-4-nls-locales-and-sql-settings-qa-1 cycle_iteration=1
+2026-11-15T18:54:15Z	Story 21.4	qa_complete	spawn_at=2026-11-15T18:45:00Z model=sonnet tests=src/OcuPilot/Test/SqlSettingWrite.cls(+3) tests_added=3 mutations_demonstrated=2 first_run_failures=1(defect:failed_purge_loses_AD-15_marker) clarifications=0 closing_sections_present=true
+2026-11-15T18:54:15Z	Story 21.4	stage_spawned	stage=code-review spawn_at=2026-11-15T18:54:15Z model=opus agent_name=21-4-nls-locales-and-sql-settings-code-review-1 cycle_iteration=1
