@@ -137,3 +137,7 @@
 2026-11-15T15:50:37Z	Story 21.12	ruling	question=register_group,AD-10_pointer choice=A_new_group+Epic22_AC_addonly;pointer_updated rejected=fallback_sharding_heading why=orchestrator_ruling category=veto inbox=U-52(orchestrator) policy=b9ff703e
 2026-11-15T15:50:37Z	Epic 21	spine_updated	ad=AD-10 reason=owner_answer(U-39)+ruling(U-52) by=runner story=21-12-mirroring lint=preexisting_low_placeholder_only
 2026-11-15T15:50:37Z	Story 21.12	spec_validated	service_introducing=true integration_ac=present(in-story_callers) adr_constrained_acs=AD-10,AD-29,AD-8,AD-5,AD-36 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=false model=claude-opus-5-5 amendments_planned=epics.md_22.1_AC,catalog,extract
+2026-11-15T16:43:37Z	Story 21.3	gate_step	step=full_sweep result=pass shards_green=20/20 classes=725 tests=5589 failed=0
+2026-11-15T16:43:37Z	Story 21.3	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50+config-settings.browser-spec_4/4(fresh_check) model=claude-opus-5-5
+2026-11-15T16:43:37Z	Story 21.3	committed	sha=e83ff412a submodules= ci=pending runs=43737049667 amendments=EXPERIENCE.md(new_settings_strings,veto_U-47/U-49)
+2026-11-15T16:43:37Z	Story 21.3	story_cycle	plan_to_commit_min=420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
