@@ -56,3 +56,5 @@
 2026-11-14T23:57:32Z	Epic 22	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_fixed_2026-10-01)
 2026-11-15T00:03:07Z	Epic 22	integrated_forward	feature=e1ab5d2c9 head=c8c5251f6 conflicts_resolved=none suite=npm_test(test:tools_2278/2278+ng_test_3427/3427_in_269_files)+lint-docs_0+check-objectscript_0+client-lint_0 smoke=exclusion-register.test_16/16(epic_delivers_docs_and_its_drift_test_only;no_product_code,so_no_instance_smoke) ledger_dupes=none
 2026-11-15T00:03:07Z	Epic 22	epic_runner_complete	stories_completed=2
+2026-11-15T00:37:38Z	Epic 22	integrated_forward	feature=e1ab5d2c9 head=7d2355658 conflicts_resolved=none suite=npm_test(test:tools_2278/2278+ng_test_3427/3427_in_269_files)+lint-docs_0+check-objectscript_0+client-lint_0 smoke=exclusion-register.test_16/16(no_product_code,so_no_instance_smoke) ledger_dupes=none timings=feature_side correction=the_previous_integrated_forward_line_(head=c8c5251f6)_names_feature=e1ab5d2c9_but_that_merge_took_acd822931
+2026-11-15T00:37:38Z	Epic 22	epic_runner_complete	stories_completed=2
