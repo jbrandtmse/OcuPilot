@@ -430,6 +430,41 @@ Parameter PARTNERREMOVE = "INTEROP.PARTNER.REMOVE";
 
 Parameter REASONPARTNERREMOVE = "Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.";
 
+/// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
+/// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
+/// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
+Parameter STARTUPSAME = "INTEROP.STARTUP.SAME";
+
+Parameter REASONSTARTUPSAME = "This production is already set that way, so there is nothing to change.";
+
+Parameter STARTUPPRIORITY = "INTEROP.STARTUP.PRIORITY";
+
+Parameter REASONSTARTUPPRIORITY = "A startup priority is a whole number of at most nine digits, with a minus sign if it is negative.";
+
+Parameter STARTUPGROUP = "INTEROP.STARTUP.GROUP";
+
+Parameter REASONSTARTUPGROUP = "A shutdown group is a whole number of at most nine digits, with a minus sign if it is negative.";
+
+Parameter STARTUPNOPRIORITY = "INTEROP.STARTUP.NOPRIORITY";
+
+Parameter REASONSTARTUPNOPRIORITY = "A startup priority applies only to a production that starts with the instance.";
+
+Parameter STARTUPALLNAMESPACES = "INTEROP.STARTUP.ALLNAMESPACES";
+
+Parameter REASONSTARTUPALLNAMESPACES = "Changing a startup priority or a shutdown group needs read access to the settings of every namespace that runs interoperability on this instance.";
+
+Parameter STARTUPREADONLY = "INTEROP.STARTUP.READONLY";
+
+Parameter REASONSTARTUPREADONLY = "This namespace's database is mounted read-only, so this setting cannot be saved.";
+
+Parameter AUTOSTART = "INTEROP.AUTOSTART";
+
+Parameter REASONAUTOSTART = "A namespace starts at most one production with the instance, so this replaces any production set to start before.";
+
+Parameter SHUTDOWNGROUP = "INTEROP.SHUTDOWNGROUP";
+
+Parameter REASONSHUTDOWNGROUP = "A shutdown group other than 2 can make the instance take longer to stop, which matters where a failover must finish in time.";
+
 /// <p>The host test's refusals and violations (Story 20.6). The first five refuse a test before a request is built, each 409 on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and the last three are the 422 violations of a request's fields.
 /// <code>INTEROP.PRODUCTION.NOTRUNNING</code> is the production-not-running refusal, reused.</p>
@@ -566,13 +601,13 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -642,6 +677,22 @@ ClassMethod PartnerCodes() As %List
 ClassMethod PartnerPreconditionCodes() As %List
 {
     Quit $ListBuild(..#PARTNERTAKEN, ..#PARTNERNAMECASE, ..#PARTNERNAMED, ..#PARTNERSOURCECONTROL)
+}
+
+/// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
+/// already holds, the all-namespaces refusal and the read-only refusal. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod StartupCodes() As %List
+{
+    Quit $ListBuild(..#STARTUPSAME, ..#STARTUPPRIORITY, ..#STARTUPGROUP, ..#STARTUPNOPRIORITY, ..#STARTUPALLNAMESPACES, ..#STARTUPREADONLY)
+}
+
+/// <p>The startup refusals a startup tool's fresh read answers when the values do not fit the production: the value it
+/// already holds and a priority with auto-start off. The shape violations and the two refusals the write alone judges are not among
+/// them.</p>
+ClassMethod StartupPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#STARTUPSAME, ..#STARTUPNOPRIORITY)
 }
 
 /// <p>The host test's codes (Story 20.6), as a <class>%List</class>: the five refusals a test is refused with before a request is
@@ -789,6 +840,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PARTNERNAME Quit ..#REASONPARTNERNAME
     If pCode = ..#PARTNERLENGTH Quit ..#REASONPARTNERLENGTH
     If pCode = ..#PARTNERREMOVE Quit ..#REASONPARTNERREMOVE
+    If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
+    If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
+    If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP
+    If pCode = ..#STARTUPNOPRIORITY Quit ..#REASONSTARTUPNOPRIORITY
+    If pCode = ..#STARTUPALLNAMESPACES Quit ..#REASONSTARTUPALLNAMESPACES
+    If pCode = ..#STARTUPREADONLY Quit ..#REASONSTARTUPREADONLY
+    If pCode = ..#AUTOSTART Quit ..#REASONAUTOSTART
+    If pCode = ..#SHUTDOWNGROUP Quit ..#REASONSHUTDOWNGROUP
     If pCode = ..#TESTDISABLED Quit ..#REASONTESTDISABLED
     If pCode = ..#TESTTARGETTYPE Quit ..#REASONTESTTARGETTYPE
     If pCode = ..#TESTTARGETDISABLED Quit ..#REASONTESTTARGETDISABLED

@@ -18239,6 +18239,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "recover",
         "selfProtection": ""
+      },
+      {
+        "id": "autostart",
+        "selfProtection": ""
+      },
+      {
+        "id": "shutdowngroup",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -18246,7 +18254,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Name",
         "Status",
         "LastStartTime",
-        "LastStopTime"
+        "LastStopTime",
+        "AutoStart",
+        "StartupPriority",
+        "ShutdownGroup"
       ],
       "secretFields": []
     },
@@ -18294,7 +18305,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Name",
         "Status",
         "LastStartTime",
-        "LastStopTime"
+        "LastStopTime",
+        "AutoStart",
+        "StartupPriority",
+        "ShutdownGroup"
       ],
       "filter": [
         "Name",
@@ -18305,7 +18319,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Name",
           "Status",
           "LastStartTime",
-          "LastStopTime"
+          "LastStopTime",
+          "AutoStart",
+          "StartupPriority",
+          "ShutdownGroup"
         ],
         "default": "Name",
         "direction": "asc"
@@ -18332,6 +18349,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "LastStopTime",
           "labelKey": "interopProductionColumnLastStopped",
+          "kind": "text"
+        },
+        {
+          "field": "AutoStart",
+          "labelKey": "interopProductionColumnAutoStart",
+          "kind": "text"
+        },
+        {
+          "field": "StartupPriority",
+          "labelKey": "interopProductionColumnStartupPriority",
+          "kind": "text"
+        },
+        {
+          "field": "ShutdownGroup",
+          "labelKey": "interopProductionColumnShutdownGroup",
           "kind": "text"
         }
       ],

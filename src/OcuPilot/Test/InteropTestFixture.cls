@@ -58,7 +58,8 @@ Parameter BOXCLASS = "OcuPilotProbe.Interop.TestBox";
 
 Parameter REPLYDOCUMENT = "MSH|^~\&|REPLYAPP|REPLYFAC|OCURECV|OCUFAC|20260101000000||ACK^A01|ACK1|P|2.5";
 
-/// <p>The message class a virtual-document test sends, and the text of one message of it, whose sending application the echo returns.</p>
+/// <p>The message class a virtual-document test sends, and the text of one message of it, whose sending application the echo returns, and
+/// the second component of its second segment's fifth field when it has one (Story 24.3).</p>
 Parameter DOCUMENTCLASS = "EnsLib.HL7.Message";
 
 Parameter DOCUMENTTEXT = "MSH|^~\&|OCUSENDER|OCUFAC|OCURECV|OCUFAC|20260101000000||ADT^A01|MSG1|P|2.5";
@@ -122,7 +123,9 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
         "Method EchoString(pRequest As Ens.StringRequest, Output pResponse As Ens.StringResponse) As %Status" _ tNL _ "{" _ tNL _
         " Set pResponse = ##class(Ens.StringResponse).%New(""echo:"" _ pRequest.StringValue)" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
         "Method EchoDocument(pRequest As " _ ..#DOCUMENTCLASS _ ", Output pResponse As Ens.StringResponse) As %Status" _ tNL _ "{" _ tNL _
-        " Set pResponse = ##class(Ens.StringResponse).%New(""echo:"" _ pRequest.GetValueAt(""1:3""))" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
+        " Set tEcho = pRequest.GetValueAt(""1:3"")" _ tNL _
+        " If pRequest.GetValueAt(""2:5.2"") '= """" Set tEcho = tEcho _ ""|"" _ pRequest.GetValueAt(""2:5.2"")" _ tNL _
+        " Set pResponse = ##class(Ens.StringResponse).%New(""echo:"" _ tEcho)" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
         "XData MessageMap" _ tNL _ "{" _ tNL _
         "<MapItems><MapItem MessageType=""" _ ..#REQUESTCLASS _ """><Method>Echo</Method></MapItem>" _
         "<MapItem MessageType=""Ens.StringRequest""><Method>EchoString</Method></MapItem>" _

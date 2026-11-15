@@ -100,7 +100,8 @@ interface FieldView extends TestFieldRow {
  * **The result stays in the dialog.** After a send the status sentence, the session and the response's lines show beneath the
  * fields as text, never as markup, and a further send replaces them. When the answer names a session, a link under the status line
  * opens that session's trace in the namespace the tab is scoped to (Story 20.30). A refusal the instance gives a field is drawn under
- * it, and any other is drawn above the fields as an alert; both are the server's sentences.
+ * it, and any other is drawn above the fields as an alert; both are the server's sentences. The status sentence is also written into a
+ * polite `role="status"` region the dialog keeps mounted, so a screen reader announces the end of a test (WCAG 4.1.3).
  */
 @Component({
   selector: 'app-interop-item-test-dialog',
@@ -108,6 +109,7 @@ interface FieldView extends TestFieldRow {
   imports: [Dialog, CodeBlock],
   template: `<app-dialog [heading]="title()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
     <p class="ocu-banner" data-interop-test-consequence>{{ consequenceText }}</p>
+    <p class="ocu-visually-hidden" role="status" data-interop-test-announce>{{ statusLine }}</p>
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-test-reason>{{ refusal() }}</p>
     }

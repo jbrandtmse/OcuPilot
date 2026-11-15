@@ -1261,6 +1261,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEMFTCONNECTION Quit ..MftConnectionFields(0)
     If pType = ..#TYPEROUTINEAPPLICATION Quit ..RoutineApplicationChangeFields()
     If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
+    ; Story 24.3: the two startup writes move these; the replaced auto-start production's row is the auto-start tool's state label.
+    If pType = ..#TYPEPRODUCTION Quit $ListBuild("AutoStart", "StartupPriority", "ShutdownGroup")
     Quit ""
 }
 
@@ -1783,8 +1785,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        ; A production (Story 20.2): AD-10 names no effect on one -- its five actions send no body, and
-        ; their card row is the state -- so a write passes the reviewed-few sweep and nothing else.
+        ; A production (Stories 20.2 and 24.3): AD-10 names no effect on one -- the five actions' card row is the
+        ; state, and the two startup writes move the fields PermittedChangeFields lists -- so a write passes the
+        ; reviewed-few sweep and nothing else.
         If tType = ..#TYPEPRODUCTION {
             Set tSC = ..ReviewedFewOnly(..#TYPEPRODUCTION, .tChanged, .pProhibits, .pCode)
             Quit

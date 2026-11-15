@@ -210,7 +210,7 @@ XData ReadShapes
 <screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>
 <screen name="InteropUsageVolumeTab" filter="Namespace,Type" sort="Namespace,Type,Volume" kinds="Namespace:name,Type:text,Volume:number"/>
 <screen name="InteropUsageImpactTab" filter="Database" sort="Database,DataCreated" kinds="Database:name,DataCreated:number"/>
-<screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>
+<screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime,AutoStart,StartupPriority,ShutdownGroup" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text,AutoStart:text,StartupPriority:text,ShutdownGroup:text"/>
 <screen name="InteropProcessList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropTransformList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropRuleList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>

@@ -490,6 +490,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2).
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update'],
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
+  // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
+  'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).

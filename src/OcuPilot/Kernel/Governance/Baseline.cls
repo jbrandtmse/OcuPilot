@@ -222,6 +222,8 @@ XData Keys [ MimeType = application/json ]
   "interop.productions.restart": true,
   "interop.productions.update": true,
   "interop.productions.recover": true,
+  "interop.productions.autostart": true,
+  "interop.productions.shutdowngroup": true,
   "interop.items.enable": true,
   "interop.items.disable": true,
   "interop.items.add": true,

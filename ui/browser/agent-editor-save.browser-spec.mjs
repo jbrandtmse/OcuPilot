@@ -25,11 +25,9 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { EDITOR_API, until, watchEditorTraffic } from './interop-editor-spec.mjs';
-import { waitForMapAnswered } from './namespace-features.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { EDITOR_API, answered as screenAnswered, editorShows as screenShows, shellAt, until } from './interop-editor-spec.mjs';
 import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
-import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
+import { assertThrowaway } from './structural-walk.mjs';
 import { cardViolations, proposeFromPanel, slotText } from './proposal-card-spec.mjs';
 import {
   armProbeDefinition,
@@ -64,7 +62,6 @@ const ROUTE = 'interoperability/transforms/document/:id';
 const SCREEN_URL = `/ocupilot/interoperability/transforms/document/${encodeEntityId(DOCUMENT)}?ns=${NAMESPACE}`;
 const FRAME = 'app-interop-editor-frame iframe';
 const DOCUMENT_READ = `${EDITOR_API}v7/${NAMESPACE}/dtl/${CLASS}`;
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
 /** The probe's assignment line (`OcuPilot.Test.InteropEditorProbe.DTLASSIGN`), its edit and the code that does not compile. */
 const ASSIGN = "<assign value='source.StringValue' property='target.StringValue' action='set'/>";
@@ -217,10 +214,9 @@ const endReply = `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`;
  * A fresh signed-in context at the probe's editor screen, with the editors' traffic observed from the first request and every
  * answer to the editor's own document read kept with its body, so nothing the editor asks goes unseen.
  */
-async function shellAtEditor() {
-  const observers = { reads: [] };
-  const { context, page } = await signedInAt(browser, config, SCREEN_URL, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
-    observers.traffic = watchEditorTraffic(opened);
+const shellAtEditor = () =>
+  shellAt(browser, config, SCREEN_URL, async (opened, observers) => {
+    observers.reads = [];
     opened.on('response', (response) => {
       const url = new URL(response.url());
       if (response.request().method() !== 'GET' || url.pathname !== DOCUMENT_READ) return;
@@ -236,28 +232,12 @@ async function shellAtEditor() {
       );
     });
   });
-  await waitForMapAnswered(page, config.navigationTimeoutMs);
-  return { context, page, ...observers };
-}
 
 /** The editor screen has answered the list's read: its section is no longer busy and it draws a block. */
-async function answered(page) {
-  await page.waitForFunction(
-    () => {
-      const section = document.querySelector('app-interop-editor-page section');
-      return section !== null && section.getAttribute('aria-busy') === 'false' && section.querySelector('[data-ocu-editor]') !== null;
-    },
-    { timeout: config.navigationTimeoutMs }
-  );
-}
+const answered = (page) => screenAnswered(page, config.navigationTimeoutMs);
 
 /** Wait until the frame's editor shows the signed-in person and `text`, answering the puppeteer frame. */
-async function editorShows(page, text) {
-  const handle = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
-  const frame = await handle.contentFrame();
-  await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(config.username) && body.includes(text), `the editor shows ${text}`, config.navigationTimeoutMs);
-  return frame;
-}
+const editorShows = (page, text) => screenShows(page, config.username, text, config.navigationTimeoutMs);
 
 // Mutation (Rule 19): the page omits the agent line (bundle rebuilt and redeployed) -> the bar assertion goes red.
 test('AC1: the bar says the agent reads only what is saved, beside the note and before any request of the agent', async () => {

@@ -23,7 +23,8 @@
  * judge it.
  *
  * Named without the `.browser-spec` suffix, so `npm run test:browser` does not collect it as a spec.
- * It signs in nothing itself: the caller's context comes from `panel-spec.mjs`'s `signedInAt`.
+ * It signs in only through `shellAt`, which hands `panel-spec.mjs`'s `signedInAt` the observers above, so every spec of an editor screen opens one
+ * the same way.
  */
 
 import assert from 'node:assert/strict';
@@ -33,6 +34,9 @@ import { fileURLToPath } from 'node:url';
 
 import { SHELL_PATH } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { waitForMapAnswered } from './namespace-features.mjs';
+import { signedInAt } from './panel-spec.mjs';
+import { VIEWPORTS } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { PAIR_STORAGE_KEY } = await import(join(uiRoot, 'src', 'app', 'core', 'token-store.ts'));
@@ -95,17 +99,68 @@ export async function answered(page, timeoutMs) {
   );
 }
 
-/** The screen's frame, as a puppeteer frame, once it is drawn. */
-export async function editorFrame(page, timeoutMs) {
-  const handle = await page.waitForSelector(SCREEN_FRAME_SELECTOR, { timeout: timeoutMs });
+/** The screen's frame, as a puppeteer frame, once it is drawn; `frameSelector` names another screen's frame. */
+export async function editorFrame(page, timeoutMs, frameSelector = SCREEN_FRAME_SELECTOR) {
+  const handle = await page.waitForSelector(frameSelector, { timeout: timeoutMs });
   return handle.contentFrame();
 }
 
-/** Wait until the frame's editor shows the signed-in person `username` and `text`, answering the puppeteer frame. */
-export async function editorShows(page, username, text, timeoutMs) {
-  const frame = await editorFrame(page, timeoutMs);
-  await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(username) && body.includes(text), `the editor shows ${text}`, timeoutMs);
+/** Wait until the frame's editor shows the signed-in person `username` and every text of `texts` (a text, or an array of them), answering the puppeteer frame. */
+export async function editorShows(page, username, texts, timeoutMs, frameSelector = SCREEN_FRAME_SELECTOR) {
+  const wanted = Array.isArray(texts) ? texts : [texts];
+  const frame = await editorFrame(page, timeoutMs, frameSelector);
+  await until(
+    () => frame.evaluate(() => document.body.innerText),
+    (body) => body.includes(username) && wanted.every((text) => body.includes(text)),
+    `the editor shows ${wanted.join(' and ')}`,
+    timeoutMs
+  );
   return frame;
+}
+
+/** The flag every spec of these screens signs in with, so no transition animates under a measurement. */
+export const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
+
+/**
+ * A fresh signed-in context at `url`, with the editors' observers armed before the first request, so nothing a screen draws goes
+ * unseen: `observers.traffic`, `observers.violations` and `observers.messages`, then whatever `observe(page, observers)` adds. Answers
+ * `{ context, page, ...observers }` once the namespace map has answered.
+ */
+export async function shellAt(browser, config, url, observe = async () => {}) {
+  const observers = {};
+  const { context, page } = await signedInAt(browser, config, url, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
+    observers.traffic = watchEditorTraffic(opened);
+    observers.violations = watchPolicyViolations(opened);
+    observers.messages = await armMessageCounters(opened);
+    await observe(opened, observers);
+  });
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
+  return { context, page, ...observers };
+}
+
+/** The path of the page's address, with the entity encoding the router applies to an id undone twice. */
+export const decodedPath = (page) => decodeURIComponent(decodeURIComponent(new URL(page.url()).pathname));
+
+/** The box of the frame, its host and the outlet, which the layout assertions compare. */
+export function boxes(page) {
+  return page.evaluate(() => {
+    const rect = (node) => {
+      const box = node.getBoundingClientRect();
+      return { left: box.left, top: box.top, width: box.width, height: box.height, bottom: box.bottom };
+    };
+    const host = document.querySelector('app-interop-editor-frame');
+    return { host: rect(host), frame: rect(host.querySelector('iframe')), outlet: rect(document.querySelector('.ocu-screen-outlet')) };
+  });
+}
+
+/** The frame fills its host, to a pixel, ends at the outlet's bottom edge, and is at least 400 px tall. */
+export async function assertFillsHost(page) {
+  const box = await boxes(page);
+  for (const side of ['left', 'top', 'width', 'height']) {
+    assert.ok(Math.abs(box.frame[side] - box.host[side]) <= 1, `the frame's ${side} equals its host's: ${JSON.stringify(box)}`);
+  }
+  assert.ok(Math.abs(box.host.bottom - box.outlet.bottom) <= 1, `the host ends at the outlet's bottom edge: ${JSON.stringify(box)}`);
+  assert.ok(box.frame.height >= 400, `the frame is at least 400 px tall: ${box.frame.height}`);
 }
 
 /** Wait until the editor's snackbar holds a sentence `accept` takes, and answer the sentence. */

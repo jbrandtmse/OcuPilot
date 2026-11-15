@@ -440,6 +440,8 @@ XData Coverage
 <tool name="interop.productions.restart" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRestartConfirms"/>
 <tool name="interop.productions.update" class="OcuPilot.Test.InteropControl" method="TestTheAgentsUpdateConfirms"/>
 <tool name="interop.productions.recover" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRecoverConfirms"/>
+<tool name="interop.productions.autostart" class="OcuPilot.Test.InteropStartupControl" method="TestTheAgentsAutoStartReplacesTheOtherAndTurnsOff"/>
+<tool name="interop.productions.shutdowngroup" class="OcuPilot.Test.InteropStartupControl" method="TestEachCallerSetsTheShutdownGroupOfAStoppedAndARunningProduction"/>
 <tool name="interop.items.enable" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsDisableAndEnableConfirmOverHttp" corpus="the enable and the disable are asserted together in one test"/>
 <tool name="interop.items.disable" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsDisableAndEnableConfirmOverHttp" corpus="the enable and the disable are asserted together in one test"/>
 <tool name="interop.items.stop" class="OcuPilot.Test.InteropItemRun" method="TestTheAgentsStopAndStartConfirmOverHttp" corpus="the stop and the start are asserted together in one test"/>

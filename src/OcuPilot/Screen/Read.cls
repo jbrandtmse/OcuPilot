@@ -621,11 +621,13 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tPortCut)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
             }
+            If tPortCut Set tTruncated = 1
         } ElseIf tSource.%Get("port") = ..#SOURCEANALYTICS {
             ; The namespace's cubes, term lists and folder items (Story 20.11): the route's own scope travels as the port's
             ; namespace, and the port's gate runs before any row. A parent-scoped list (a cube's tabs, a term list's entries)

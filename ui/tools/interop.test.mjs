@@ -142,6 +142,14 @@ const SENTENCES = [
   ['VERDICTNOREPLYQUEUE', 'interopResendVerdictNoReplyQueue'],
   ['OUTCOMERESENT', 'interopResendOutcome'],
   ['OUTCOMEFAILED', 'interopResendFailed'],
+  ['REASONSTARTUPSAME', 'interopStartupRefusalSame'],
+  ['REASONSTARTUPPRIORITY', 'interopStartupRefusalPriority'],
+  ['REASONSTARTUPGROUP', 'interopStartupRefusalGroup'],
+  ['REASONSTARTUPNOPRIORITY', 'interopStartupRefusalNoPriority'],
+  ['REASONSTARTUPALLNAMESPACES', 'interopStartupRefusalNeedsAll'],
+  ['REASONSTARTUPREADONLY', 'interopStartupRefusalReadOnly'],
+  ['REASONAUTOSTART', 'interopAutoStartConsequence'],
+  ['REASONSHUTDOWNGROUP', 'interopShutdownGroupConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -208,4 +216,26 @@ test("Story 20.5: the number the too-large sentence states is the Atelier port's
   const stated = `${Number(match[1]).toLocaleString('en-US')} characters`;
   assert.ok(serverSentence('REASONLOOKUPTOOLARGE').includes(stated), `REASONLOOKUPTOOLARGE states "${stated}"`);
   assert.ok(stringValue('interopLookupRefusalTooLarge').includes(stated), `interopLookupRefusalTooLarge states "${stated}"`);
+});
+
+const MIRROR = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
+
+test('Story 24.3 (DW-2452): the empty-agent phrase of every write-capable Interoperability screen starts with a lowercase letter and ends without a period', () => {
+  // The table draws it inside "Or ask the agent: <phrase>.", so a whole sentence there reads "Or ask the agent: Ask the agent ...".
+  const screens = JSON.parse(
+    readFileSync(MIRROR, 'utf8').match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  const writeCapable = screens.filter(
+    (screen) =>
+      screen.area === 'interoperability' &&
+      screen.table !== null &&
+      (screen.primaryAction.id !== '' || screen.rowActions.some((action) => action.id !== ''))
+  );
+  assert.ok(writeCapable.length >= 11, `the write-capable Interoperability screens are found: ${writeCapable.length}`);
+  const wrong = [];
+  for (const screen of writeCapable) {
+    const phrase = stringValue(screen.table.emptyAgentKey);
+    if (!/^[a-z]/.test(phrase) || phrase.endsWith('.')) wrong.push(`${screen.table.emptyAgentKey}: ${JSON.stringify(phrase)}`);
+  }
+  assert.deepEqual(wrong, [], `empty-agent phrases that are not lowercase action phrases:\n${wrong.join('\n')}`);
 });

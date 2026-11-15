@@ -29,6 +29,12 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_DATABASE_CONFIG";
 
 Parameter PROBE = "OcuPilot.Test.CompileWithoutInteropProbe";
 
+/// <p>The environment variable the production-backed leg also needs, because it runs the probe production in <code>USER</code>
+/// (<class>OcuPilot.Test.ProductionProbe</class>); set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter PRINCIPALSVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+Parameter PRODUCTIONPROBE = "OcuPilot.Test.ProductionProbe";
+
 Parameter PORT = "OcuPilot.Port.InteropPort";
 
 Parameter NAVIGATION = "OcuPilot.Kernel.Shell.Navigation";
@@ -348,6 +354,71 @@ Method TestItServesAnInteroperabilityNamespace()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $$$AssertEquals(tCaught, "", "Home's production line raised nothing for " _ tTarget)
     Do $$$AssertTrue(tState '= "", "and answers a state word: " _ tState)
+}
+
+/// <p>One call of the probe copy's port from inside the probe namespace, for <var>pEndpoint</var> and <var>pType</var>: the status
+/// in <var>pHttp</var>, how many rows (or <code>1</code> for one object) it answered in <var>pCount</var>, and what it raised in
+/// <var>pCaught</var>. The probe namespace is switched to and restored explicitly.</p>
+ClassMethod ProbeCall(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicObject, Output pHttp As %Integer, Output pCount As %Integer, Output pCaught As %String) [ Private ]
+{
+    Set pHttp = 0
+    Set pCount = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = $Parameter(..#PROBE, "NAMESPACENAME")
+        Set tSC = $ClassMethod(..#PORT, "Invoke", pEndpoint, pType, .pQuery, pBody, .tResult, .pHttp, .tFault)
+        If $IsObject($Get(tResult)) Set pCount = $Select(tResult.%IsA("%Library.DynamicArray"): tResult.%Size(), 1: 1)
+        Set tResult = ""
+        Set tFault = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex.DisplayString()
+    }
+}
+
+/// <p>With the probe production running in <code>USER</code>, the probe copy serves it from inside the probe namespace: the Items list and
+/// one Item, the Settings list, the Queues and Jobs lists each answer 200 with at least one row, and the auto-start write and its undo
+/// answer 200. Each runs its vendor calls while switched to <code>USER</code>, where no <code>OcuPilot.*</code> class exists, so a copy
+/// that calls one inside a switched block fails here, on a path the reads of an empty namespace never reach.</p>
+/// <p>It runs the probe production in <code>USER</code> and writes its auto-start setting, so it needs
+/// <parameter>PRINCIPALSVARIABLE</parameter> beside <parameter>ARMINGVARIABLE</parameter>, and puts <code>USER</code>'s startup settings
+/// back.</p>
+Method TestItServesAProductionRunningInAnInteroperabilityNamespace()
+{
+    If $System.Util.GetEnviron(..#PRINCIPALSVARIABLE) '= 1 {
+        Do $$$AssertEquals($System.Util.GetEnviron(..#PRINCIPALSVARIABLE), 1, ..#PRINCIPALSVARIABLE _ " reads 1, because this leg runs the probe production in USER; bring a throwaway up with scripts/ci-throwaway.sh")
+        Quit
+    }
+    Set tProbe = ..#PRODUCTIONPROBE
+    Set tProduction = $Parameter(tProbe, "PRODUCTION")
+    Set tSaved = $ClassMethod(tProbe, "SaveStartup")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove"), "no probe production is left from an earlier run")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Create"), "the probe production is made in USER")
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.InteropControl", "StartIt"), "and started")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "AwaitRunning"), "and reads running")
+    Set tItem = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tProduction, $Parameter(tProbe, "OPNAME")))
+    For tCase = $ListBuild("Items", "LIST", "production", tProduction, "rows"), $ListBuild("Items", "ITEM", "id", tItem, "one"), $ListBuild("Settings", "LIST", "item", tItem, "rows"), $ListBuild("Queues", "LIST", "", "", "rows"), $ListBuild("Jobs", "LIST", "", "", "rows") {
+        Kill tQuery
+        Set tQuery("namespace") = ..#TARGET
+        If $List(tCase, 3) '= "" Set tQuery($List(tCase, 3)) = $List(tCase, 4)
+        Do ..ProbeCall($List(tCase, 1), $List(tCase, 2), .tQuery, "", .tHttp, .tCount, .tCaught)
+        Set tLabel = $List(tCase, 1) _ " " _ $List(tCase, 2)
+        Do $$$AssertEquals(tCaught, "", tLabel _ " raised nothing in " _ $Parameter(..#PROBE, "NAMESPACENAME"))
+        Do $$$AssertEquals(tHttp, 200, tLabel _ " answers 200 for " _ ..#TARGET)
+        Do $$$AssertTrue(tCount > 0, tLabel _ " answers a non-zero count: " _ tCount)
+    }
+    For tBody = {"AutoStart": "1", "StartupPriority": "0"}, {"AutoStart": "0"} {
+        Kill tQuery
+        Set tQuery("namespace") = ..#TARGET
+        Set tQuery("id") = tProduction
+        Do ..ProbeCall("Productions", "AUTOSTART", .tQuery, tBody, .tHttp, .tCount, .tCaught)
+        Do $$$AssertEquals(tCaught _ "|" _ tHttp, "|200", "the auto-start write " _ tBody.%ToJSON() _ " answers 200 from the probe copy")
+    }
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Settle"), "the probe production is stopped")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreStartup", tSaved), "USER's startup settings are put back")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove"), "and the probe production is removed")
 }
 
 /// <p>The probe copy refuses the namespace it runs in, which runs no interoperability, as the install does:

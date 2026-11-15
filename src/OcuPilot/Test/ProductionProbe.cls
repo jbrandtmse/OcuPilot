@@ -150,6 +150,23 @@ ClassMethod Current(Output pState As %Integer) As %String
     Quit $Get(tCurrent)
 }
 
+/// <p>Wait, <var>pSeconds</var> at most, until the probe production reads running in <code>USER</code>. A failing status naming what
+/// <code>USER</code> read last when it did not.</p>
+ClassMethod AwaitRunning(pSeconds As %Integer = 30) As %Status
+{
+    Set tEnd = $ZHorolog + pSeconds
+    Set tCurrent = ""
+    Set tState = 0
+    While 1 {
+        Set tCurrent = ..Current(.tState)
+        If (tCurrent = ..#PRODUCTION) && (tState = 1) Quit
+        If $ZHorolog > tEnd Quit
+        Hang 0.5
+    }
+    If (tCurrent = ..#PRODUCTION) && (tState = 1) Quit $$$OK
+    Quit $$$ERROR($$$GeneralError, "the probe production did not read running within " _ pSeconds _ " seconds; USER read '" _ tCurrent _ "' in state " _ tState)
+}
+
 /// <p>A failing status naming the foreign production when <code>USER</code>'s current production is
 /// neither empty nor one the probe owns.</p>
 ClassMethod CheckOwn() As %Status
@@ -754,6 +771,58 @@ ClassMethod StoredResponse(pRequestId As %String, pQueue As %String, Output pId 
     Quit tSC
 }
 
+/// <p>The startup settings of <code>USER</code> as they read now, as a <class>%List</class> of the production the namespace starts
+/// with the instance (<code>""</code> when none), its priority (<code>""</code> when none) and each probe production's shutdown group
+/// (<parameter>PRODUCTION</parameter>'s, then <parameter>OTHER</parameter>'s), for <method>RestoreStartup</method> and for a test's
+/// as-found assertion (Story 24.3).</p>
+ClassMethod SaveStartup() As %List
+{
+    Set tSaved = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tName = $Get(^Ens.AutoStart)
+        Set tSaved = $ListBuild(tName, $Select(tName = "": "", 1: +$Get(^Ens.AutoStart("StartupPriority"), 0)), ##class(Ens.Director).GetProductionShutdownGroup(..#PRODUCTION, , 0), ##class(Ens.Director).GetProductionShutdownGroup(..#OTHER, , 0))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tSaved = ""
+    }
+    Quit tSaved
+}
+
+/// <p>Put the startup settings <var>pSaved</var> (<method>SaveStartup</method>) back in <code>USER</code> through the vendor's own calls:
+/// the auto-start production and its priority (cleared when none was saved), and each probe production's shutdown group
+/// (the default group removes the vendor's node). A production the namespace no longer holds keeps no setting.</p>
+ClassMethod RestoreStartup(pSaved As %List) As %Status
+{
+    Set tSC = $$$OK
+    If pSaved = "" Quit $$$ERROR($$$GeneralError, "no startup settings were saved to restore")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tName = $List(pSaved, 1)
+        If (tName '= "") && ##class(Ens.Config.Production).%ExistsId(tName) {
+            Set tSC = ##class(Ens.Director).SetAutoStart(tName, $List(pSaved, 2))
+        } Else {
+            Set tSC = ##class(Ens.Director).SetAutoStart("")
+        }
+        For tI = 1:1:2 {
+            Set tProduction = $Select(tI = 1: ..#PRODUCTION, 1: ..#OTHER)
+            If ##class(Ens.Config.Production).%ExistsId(tProduction) {
+                Set tSC = $$$ADDSC(tSC, ##class(Ens.Director).SetProductionShutdownGroup(tProduction, $List(pSaved, 2 + tI)))
+            } Else {
+                Do ##class(Ens.Director).RemoveProductionShutdownGroup(tProduction)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>1 when <code>USER</code> holds no probe state: no current production, no probe production
 /// configuration and no probe class; 0 otherwise.</p>
 ClassMethod Gone() As %Boolean
@@ -788,6 +857,9 @@ ClassMethod Remove() As %Status
         If $ListFind($ListBuild(..#PRODUCTION, ..#OTHER), $Get(^Ens.Suspended)) Kill ^Ens.Suspended
         Set tProductionName = ""
         For tProductionName = ..#PRODUCTION, ..#OTHER {
+            ; The startup settings the probe's tests set go with the production, through the vendor's own calls.
+            If $Get(^Ens.AutoStart) = tProductionName Do ##class(Ens.Director).SetAutoStart("")
+            Do ##class(Ens.Director).RemoveProductionShutdownGroup(tProductionName)
             If ##class(Ens.Config.Production).%ExistsId(tProductionName) Do ##class(Ens.Config.Production).%DeleteId(tProductionName)
             Kill ^Ens.Configuration("csp", "Activity", tProductionName)
             If $Get(^Ens.Configuration("csp", "LastProduction")) = tProductionName Kill ^Ens.Configuration("csp", "LastProduction")

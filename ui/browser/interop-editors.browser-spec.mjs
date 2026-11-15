@@ -43,22 +43,21 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import {
   answered as screenAnswered,
-  armMessageCounters,
+  assertFillsHost,
   assertSignOutEndsEditors,
   assertSignedInSilently,
+  decodedPath,
   editorSessionControls,
   editorShows as screenShows,
+  shellAt as sharedShellAt,
   signOutThroughMenu,
   snackbarWhere as editorSnackbarWhere,
   tabSnapshot,
   until,
   waitForEditorTokens,
-  watchEditorTraffic,
-  watchPolicyViolations,
 } from './interop-editor-spec.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { readNamespaceFeatures, waitForMapAnswered } from './namespace-features.mjs';
-import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -75,7 +74,6 @@ const FRAME = 'app-interop-editor-frame iframe';
 const NOTE = '[data-ocu-editor="note"]';
 /** A Data transformations row of the vendor's own, which opens in the DTL editor. */
 const VENDOR_DTL = 'Ens.Util.DTL.Audit.MessageView.cls';
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 /** The editor's notice when its compile route fails inside the vendor's code (DW-2394), which no Compile leg accepts. */
 const VENDOR_FAILURE_NOTICE = /Internal Server Error/;
 /** OcuPilot's integrity log read, which renders the named check's report in the web process that serves it. */
@@ -266,21 +264,12 @@ async function structural(page, route) {
 const screenUrl = (listRoute, name) => `/ocupilot/${listRoute}/document/${encodeEntityId(name)}?ns=${NAMESPACE}`;
 
 /** A fresh signed-in context at `url`, with the editors' observers armed before the first request, so nothing a screen draws goes unseen. */
-async function shellAt(url) {
-  const observers = {};
-  const { context, page } = await signedInAt(browser, config, url, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
-    observers.traffic = watchEditorTraffic(opened);
-    observers.violations = watchPolicyViolations(opened);
-    observers.messages = await armMessageCounters(opened);
-  });
-  await waitForMapAnswered(page, config.navigationTimeoutMs);
-  return { context, page, ...observers };
-}
+const shellAt = (url) => sharedShellAt(browser, config, url);
 
 /** The editor screen has answered the list's read (`interop-editor-spec.mjs`). */
 const answered = (page) => screenAnswered(page, config.navigationTimeoutMs);
 
-/** Wait until the frame's editor shows the signed-in person and `text`. */
+/** Wait until the frame's editor shows the signed-in person and `text` (a text, or an array of them). */
 const editorShows = (page, text) => screenShows(page, config.username, text, config.navigationTimeoutMs);
 
 /** Wait until the list on screen has drawn its rows, narrow it to `name`, and answer that row's cells once it is the one shown. */
@@ -314,21 +303,6 @@ async function rowCells(page, name) {
 /** Load the list at `listRoute` afresh, as a person returning to it does. */
 async function openList(page, listRoute) {
   await page.goto(`${config.origin}/ocupilot/${listRoute}?ns=${NAMESPACE}`, { waitUntil: 'networkidle2' });
-}
-
-/** The path of the page's address, with the entity encoding the router applies to an id undone twice. */
-const decodedPath = (page) => decodeURIComponent(decodeURIComponent(new URL(page.url()).pathname));
-
-/** The box of each element the layout assertions compare. */
-function boxes(page) {
-  return page.evaluate(() => {
-    const rect = (node) => {
-      const box = node.getBoundingClientRect();
-      return { left: box.left, top: box.top, width: box.width, height: box.height, bottom: box.bottom };
-    };
-    const host = document.querySelector('app-interop-editor-frame');
-    return { host: rect(host), frame: rect(host.querySelector('iframe')), outlet: rect(document.querySelector('.ocu-screen-outlet')) };
-  });
 }
 
 /** Wait until the editor's snackbar reads a sentence `accept` takes, and answer the sentence. */
@@ -429,12 +403,7 @@ test('AC1: each list\'s name cell opens its editor in place: the builder\'s addr
           assert.equal(entry.status, 200, `${entry.path} is answered by the instance`);
         }
 
-        const box = await boxes(page);
-        for (const side of ['left', 'top', 'width', 'height']) {
-          assert.ok(Math.abs(box.frame[side] - box.host[side]) <= 1, `the frame's ${side} equals its host's: ${JSON.stringify(box)}`);
-        }
-        assert.ok(Math.abs(box.host.bottom - box.outlet.bottom) <= 1, `the host ends at the outlet's bottom edge: ${JSON.stringify(box)}`);
-        assert.ok(box.frame.height >= 400, `the frame is at least 400 px tall: ${box.frame.height}`);
+        await assertFillsHost(page);
 
         const link = await page.$eval('#ocu-locator-screen .ocu-locator-link', (node) => node.textContent.trim());
         assert.equal(link, kind.title, 'the locator names the editor screen as a link');
@@ -508,6 +477,62 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
     assert.deepEqual(await broken.messages.seen(), [], 'a class that does not compile sends no message either');
   } finally {
     await broken.context.close();
+  }
+});
+
+/**
+ * Make an unsaved change in the editor `kind` opens: type into the DTL editor's settings description, type into the rule editor's first text field,
+ * and add an activity to the BPL editor's diagram. Answers what was changed.
+ */
+async function typeUnsavedChange(frame, kind) {
+  if (kind.key === 'transform') {
+    await frame.waitForSelector('#transform-settings-iconbutton', { timeout: config.navigationTimeoutMs });
+    await frame.click('#transform-settings-iconbutton');
+    await frame.waitForSelector('#transform-settings-description-textarea', { visible: true, timeout: config.navigationTimeoutMs });
+    await frame.type('#transform-settings-description-textarea', 'unsaved by the browser spec');
+    return 'transform-settings-description-textarea';
+  }
+  if (kind.key === 'process') {
+    // The BPL editor draws no text field until an activity is selected, so its unsaved change is an activity added to the diagram.
+    await frame.evaluate(() => [...document.querySelectorAll('button')].find((node) => node.innerText.trim().endsWith('Add'))?.click());
+    await frame.waitForSelector('.mat-mdc-menu-panel .mat-mdc-menu-item', { visible: true, timeout: config.navigationTimeoutMs });
+    const added = await frame.$eval('.mat-mdc-menu-panel .mat-mdc-menu-item', (node) => {
+      const label = node.innerText.trim();
+      node.click();
+      return label;
+    });
+    return `an added activity (${added})`;
+  }
+  const field = await frame.evaluateHandle(() =>
+    [...document.querySelectorAll('textarea, input[type="text"], input:not([type])')].find((node) => {
+      const box = node.getBoundingClientRect();
+      return !node.disabled && !node.readOnly && box.width > 0 && box.height > 0;
+    }) ?? null
+  );
+  const element = field.asElement();
+  assert.ok(element !== null, `the ${kind.key} editor draws a field that takes typing`);
+  const named = await element.evaluate((node) => `${node.id}/${node.name}/${node.placeholder}`);
+  await element.click();
+  await element.type('unsaved');
+  return named;
+}
+
+test('DW-2388: an unsaved change typed into the rule, BPL and DTL editors sends no message to the shell', async (t) => {
+  for (const kind of KINDS) {
+    await t.test(kind.key, async (inner) => {
+      const { context, page, messages } = await shellAt(screenUrl(kind.listRoute, kind.name));
+      try {
+        await answered(page);
+        const frame = await editorShows(page, kind.name.slice(0, -'.cls'.length));
+        await messages.reset();
+        const typed = await typeUnsavedChange(frame, kind);
+        inner.diagnostic(`typed into ${typed}`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        assert.deepEqual(await messages.seen(), [], `no message reached the shell or the frame after typing into ${typed}`);
+      } finally {
+        await context.close();
+      }
+    });
   }
 });
 

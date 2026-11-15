@@ -1,8 +1,8 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.26, 20.27, 20.31, 20.40 and 20.41): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.26, 20.27, 20.31, 20.40, 20.41 and 24.3): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds, copies, changes the class of or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
-/// table, adds, changes or removes a business partner, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
+/// table, adds, changes or removes a business partner, sets the production that starts with the instance or a production's shutdown group, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
 /// edited body</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
@@ -54,10 +54,19 @@
 /// <code>SETPARTNER</code> and <code>REMOVEPARTNER</code>, each over the port-composed <code>PARTNER</code> read) save and delete an
 /// <code>Ens.Config.BusinessPartner</code> through the vendor class's own <code>%Save</code> and <code>%DeleteId</code>, which check
 /// no privilege and audit nothing (measured), so the gate is the whole gate and the port records OcuPilot's own row
-/// (<method>AuditRuntime</method>). A rename cannot be expressed: the name is the target, and an update's body carries the other
-/// thirteen fields. Before any vendor call the port refuses a namespace under source control, an add of a name the namespace holds
+/// (<method>AuditRuntime</method>). A rename cannot be expressed: the name is the target, and an update's body carries the fields it
+/// changes. Before any vendor call the port refuses a namespace under source control, an add of a name the namespace holds
 /// in any letter case, a remove of a partner that any item of any production of the namespace names in its Host
 /// <code>BusinessPartner</code> setting, and a field past the vendor's own length (<method>PartnerViolations</method>).</p>
+/// <p><b>The startup settings</b> (Story 24.3, the Productions endpoint's <code>STARTUP</code> read and its <code>AUTOSTART</code> and
+/// <code>SHUTDOWNGROUP</code> writes) set which production the namespace starts with the instance, at which startup priority, and the
+/// shutdown group a production stops in, through <code>Ens.Director</code>'s <code>SetAutoStart</code> and its <code>[Internal]</code>
+/// <code>SetProductionShutdownGroup</code>, as the classic Auto-Start Production and Production Shutdown Group pages call them. The
+/// vendor records no audit row for either (measured), so the port records OcuPilot's own (<method>AuditRuntime</method>). Beyond the
+/// gate it refuses before any vendor call: a value outside its shape (422), a value the production already holds, a priority for a
+/// production that does not start with the instance, a priority or group change when the caller cannot read every interoperability
+/// namespace's settings (<method>AllNamespacesReadable</method>, as the classic pages ask), and a namespace whose database is mounted
+/// read-only (<method>DefaultReadOnly</method>). It never sets a vendor global itself.</p>
 /// <p><b>The host test</b> (Story 20.6, the <code>ItemTest</code> endpoint) lists the request classes an item takes (the host class's
 /// own <code>GetMessageList</code>, as the classic dialog reads it, then their subclasses from the class dictionary) and their
 /// settable fields from the class dictionary, and sends one test request through <code>EnsLib.Testing.Service</code> as the
@@ -98,8 +107,9 @@
 /// item can change to (<method>CandidateClasses</method>).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
-/// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
-/// and <method>TestWait</method>, and the parameter <parameter>ABORTMAX</parameter>. Production overrides none.</p>
+/// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>,
+/// <method>TestWait</method>, <method>AllNamespacesReadable</method>, <method>DefaultReadOnly</method>,
+/// <method>VendorSetAutoStart</method> and <method>VendorSetShutdownGroup</method>, and the parameter <parameter>ABORTMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -680,6 +690,43 @@ Parameter VERBIMPORT = "import";
 
 Parameter VERBEXPORT = "export";
 
+/// <p>The Productions endpoint's startup types (Story 24.3): <code>STARTUP</code>, one production's startup settings
+/// <code>{Name, Namespace, AutoStart, StartupPriority, ShutdownGroup, AutoStartOther}</code> (<code>AutoStart</code> is <code>1</code>
+/// or <code>0</code>; <code>AutoStartOther</code> names the namespace's other auto-start production or is empty), and the two writes
+/// over it. With <parameter>ACTIONKEY</parameter> and the values the write would carry in the query, the read refuses what the write
+/// would be refused (<method>StartupRefusal</method>).</p>
+Parameter TYPESTARTUP = "STARTUP";
+
+Parameter TYPEAUTOSTART = "AUTOSTART";
+
+Parameter TYPESHUTDOWNGROUP = "SHUTDOWNGROUP";
+
+/// <p>The pair an auto-start write adds: the classic Auto-Start Production page's <code>EDITRESOURCE</code>.</p>
+Parameter AUTOSTARTPAIR = "%Ens_ProductionConfig:WRITE";
+
+/// <p>The pair a shutdown-group write adds: the classic Production Shutdown Group page's <code>EDITRESOURCE</code>.</p>
+Parameter GROUPPAIR = "%Admin_Manage:USE";
+
+/// <p>The query keys carrying the values a <code>STARTUP</code> read is composed from.</p>
+Parameter AUTOSTARTKEY = "autoStart";
+
+Parameter PRIORITYKEY = "priority";
+
+Parameter GROUPKEY = "group";
+
+/// <p>The shape of a startup priority and a shutdown group: an optional minus sign and one to nine digits.</p>
+Parameter STARTUPNUMBER = "^-?[0-9]{1,9}$";
+
+/// <p>The class an HL7 v2 message body is told apart by (Story 24.3).</p>
+Parameter HL7MESSAGE = "EnsLib.HL7.Message";
+
+/// <p>The entity type and the tool names the audit row of a startup write names.</p>
+Parameter ENTITYPRODUCTION = "production";
+
+Parameter TOOLAUTOSTART = "interop.productions.autostart";
+
+Parameter TOOLSHUTDOWNGROUP = "interop.productions.shutdowngroup";
+
 /// <p>The query key naming the item a <code>Settings</code> list reads: its one criterion. Its value is the item's
 /// composite id <code>[Production, Name]</code> or the vendor's config name <code>Production||Name</code>.</p>
 Parameter ITEMKEY = "item";
@@ -922,10 +969,17 @@ ClassMethod IsPartnerWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEADDPARTNER) || (pType = ..#TYPESETPARTNER) || (pType = ..#TYPEREMOVEPARTNER)
 }
 
+/// <p>Whether <var>pType</var> is one of the Productions endpoint's two startup writes (Story 24.3): a merge over the
+/// <code>STARTUP</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsStartupWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEAUTOSTART) || (pType = ..#TYPESHUTDOWNGROUP)
+}
+
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
@@ -996,6 +1050,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
+    If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
+    If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
@@ -1024,7 +1080,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
-    Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
+    Quit (pType = ..#TYPESTATE) || (pType = ..#TYPESTARTUP) || ..IsWrite(pType) || ..IsStartupWrite(pType)
 }
 
 /// <p>The code a write of type <var>pType</var> is refused with, or <code>""</code> when it may go ahead
@@ -1075,6 +1131,14 @@ ClassMethod PreconditionCodes() As %List
     Quit ##class(OcuPilot.Api.InteropError).PreconditionCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#NAMESPACE)
 }
 
+/// <p>The codes a startup tool's fresh read refuses with when the values do not fit the production, and a namespace that runs no
+/// productions, as a <class>%List</class> (Story 24.3): the tools' <method>OcuPilot.Screen.Tool.Write.PreconditionCodes</method>, which
+/// may not name <class>OcuPilot.Api.InteropError</class> themselves.</p>
+ClassMethod StartupPreconditionCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.InteropError).StartupPreconditionCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#NAMESPACE)
+}
+
 /// <p>The published sentence of <var>pCode</var>, <code>""</code> for a code this port does not
 /// declare.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -1106,14 +1170,17 @@ ClassMethod ReasonFor(pCode As %String) As %String
 /// <code>PORT.UNAVAILABLE</code> when the runtime lock cannot be taken; 403
 /// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and 500
 /// <code>INTERNAL</code>, logged, for anything else.</p>
+/// <p><var>pCut</var> is 1 when a text the answer carries was cut at <parameter>TESTOUTPUTMAX</parameter> characters (a message's
+/// contents); 0 otherwise.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is
 /// unchanged on return.</p>
-ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pCut As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pCut = 0
     Try {
         If '..Serves(pEndpoint, pType) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
@@ -1146,7 +1213,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         If $ListFind(..RuntimeEndpoints(), pEndpoint) {
-            Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault, .pCut)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTPRODUCTIONS) && ((pType = ..#TYPESTARTUP) || ..IsStartupWrite(pType)) {
+            Set tSC = ..InvokeStartup(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
@@ -1235,7 +1306,9 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 }
 
 /// <p>The Productions list: one row per <code>Ens.Config.Production</code>, <code>{Name, Status,
-/// LastStartTime, LastStopTime}</code>, at most <var>pMax</var> of them when it is above zero. The
+/// LastStartTime, LastStopTime, AutoStart, StartupPriority, ShutdownGroup}</code> (<code>AutoStart</code> is <code>Yes</code> for the
+/// production the namespace starts with the instance and <code>No</code> otherwise, <code>StartupPriority</code> is empty unless
+/// <code>Yes</code>, and <code>ShutdownGroup</code> is the group the vendor reads for it), at most <var>pMax</var> of them when it is above zero. The
 /// vendor's own query answers them (<code>Ens.Config.Production:ProductionStatus</code>); only vendor
 /// classes run while the namespace is switched, and the rows are built once it is restored.</p>
 ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -1248,6 +1321,7 @@ ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRow
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
+        Set tAutoName = $Get(^Ens.AutoStart)
         Set tResultSet = ##class(%ResultSet).%New("Ens.Config.Production:ProductionStatus")
         Set tStatusSC = tResultSet.Execute()
         If $$$ISOK(tStatusSC) {
@@ -1256,7 +1330,9 @@ ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRow
                 Set tFound = tFound + 1
                 Set tWord = ##class(Ens.Config.Production).ProductionStateToText(+tResultSet.GetData(5), 0)
                 If $Extract(tWord, 1, 13) = "Unrecognized:" Set tWord = "Unknown"
-                Set tFound(tFound) = $ListBuild(tResultSet.GetData(1), tWord, tResultSet.GetData(3), tResultSet.GetData(4))
+                Set tName = tResultSet.GetData(1)
+                Set tAuto = (tAutoName '= "") && (tAutoName = tName)
+                Set tFound(tFound) = $ListBuild(tName, tWord, tResultSet.GetData(3), tResultSet.GetData(4), $Select(tAuto: "Yes", 1: "No"), $Select(tAuto: +$Get(^Ens.AutoStart("StartupPriority"), 0), 1: ""), ##class(Ens.Director).GetProductionShutdownGroup(tName, , 0))
             }
             Do tResultSet.Close()
         }
@@ -1275,6 +1351,9 @@ ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRow
         Do tRow.%Set("Status", $List(tFound(tI), 2) _ "", "string")
         Do tRow.%Set("LastStartTime", $List(tFound(tI), 3) _ "", "string")
         Do tRow.%Set("LastStopTime", $List(tFound(tI), 4) _ "", "string")
+        Do tRow.%Set("AutoStart", $List(tFound(tI), 5), "string")
+        Do tRow.%Set("StartupPriority", $List(tFound(tI), 6) _ "", "string")
+        Do tRow.%Set("ShutdownGroup", $List(tFound(tI), 7) _ "", "string")
         Do pRows.%Push(tRow)
     }
     Set pHttpStatus = 200
@@ -3485,10 +3564,11 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 /// <parameter>TYPEJOB</parameter>) and the action writes of Story 20.23 (<method>InvokeTyped</method>); Messages serves the four
 /// resend types of Story 20.31 (<method>InvokeMessageAction</method>).</li>
 /// </ul>
-ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pCut As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
+    Set pCut = 0
     Try {
         If pType '= ..#TYPELIST {
             If pEndpoint = ..#ENDPOINTMESSAGES {
@@ -3540,7 +3620,7 @@ ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As 
             } ElseIf pEndpoint = ..#ENDPOINTMESSAGETRACE {
                 Set tSC = ..ListMessageTrace(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault)
             } Else {
-                Set tSC = ..ReadMessageContents(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault)
+                Set tSC = ..ReadMessageContents(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault, .pCut)
             }
             Quit
         }
@@ -4487,14 +4567,15 @@ ClassMethod ContentsText(pNamespace As %String, pHeaderId As %String, pClass As 
 /// <p>The message <var>pId</var>'s body as text lines (Story 20.9): <code>{Message, Line, Text}</code>, <code>Line</code> from 1 (a
 /// JSON number), at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero) of them, each cut at
 /// <parameter>CONTENTLINEMAX</parameter> characters with <parameter>TESTCUT</parameter>, and the whole text cut at
-/// <parameter>TESTOUTPUTMAX</parameter> characters. The text is split on <code>CRLF</code>, <code>LF</code> or <code>CR</code>, and a
+/// <parameter>TESTOUTPUTMAX</parameter> characters, which sets <var>pCut</var>. The text is split on <code>CRLF</code>, <code>LF</code> or <code>CR</code>, and a
 /// final terminator ends the last line. A header that is gone, one that names no body and a body that no longer opens read as no rows,
 /// and record no view. A body that opens is recorded (<method>AuditViewHere</method>) before it is rendered
 /// (<method>ContentsText</method>); one that is not text is 409 <parameter>OcuPilot.Api.InteropError.MESSAGECONTENTS</parameter>. The
 /// id's shape is judged by the caller.</p>
-ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pCut As %Boolean) As %Status [ Private ]
 {
     Set pRows = ""
+    Set pCut = 0
     Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
     Set tSC = ..SqlRows(pNamespace, ..#BODYSQL, .tFound, .tCaught, +pId)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's body could not be named", .pHttpStatus, .pFault)
@@ -4510,7 +4591,10 @@ ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %
         Quit ..Conflict(##class(OcuPilot.Api.InteropError).#MESSAGECONTENTS, .pHttpStatus, .pFault)
     }
     If tOutcome '= "text" Quit $$$OK
-    If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT
+    If $Length(tText) > ..#TESTOUTPUTMAX {
+        Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT
+        Set pCut = 1
+    }
     Set tText = $Replace($Replace(tText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
     If $Extract(tText, *) = $Char(10) Set tText = $Extract(tText, 1, *-1)
     Set tPos = 1
@@ -4846,6 +4930,21 @@ ClassMethod EditBodyFacts(pNamespace As %String, pHeaderId As %String, pBodyClas
     Quit $$$OK
 }
 
+/// <p>The virtual document class <var>pClass</var> parsed from the text <var>pText</var>, or <code>""</code> with the parser's refusal in
+/// <var>pStatus</var>. An <code>EnsLib.HL7.Message</code> (or <var>pAsStream</var> for any class) goes through a
+/// <class>%Stream.TmpCharacter</class> and <code>ImportFromLibraryStream</code>, as the classic dialogs parse it: <code>ImportFromString</code>
+/// translates text already decoded a second time, and a character past Latin-1 arrives as <code>?</code>. Every other document class keeps
+/// <code>ImportFromString</code>. Called while the document's namespace is switched.</p>
+ClassMethod ImportDocumentHere(pClass As %String, pText As %String, Output pStatus As %Status, pAsStream As %Boolean = 0) [ Private ]
+{
+    Set pStatus = $$$OK
+    If 'pAsStream && '$ClassMethod(pClass, "%Extends", ..#HL7MESSAGE) Quit $ClassMethod(pClass, "ImportFromString", pText, .pStatus)
+    Set tStream = ##class(%Stream.TmpCharacter).%New()
+    Do tStream.Write(pText)
+    Do tStream.Rewind()
+    Quit $ClassMethod(pClass, "ImportFromLibraryStream", tStream, .pStatus)
+}
+
 /// <p>The text <var>pText</var> parsed as the HL7 v2 message class <var>pClass</var> would parse an edited body, and rendered as its
 /// raw view in <var>pNewText</var> (Story 20.31): the text is written to a <class>%Stream.TmpCharacter</class> and handed to the
 /// class's <code>ImportFromLibraryStream</code>, as the classic edit does. <var>pStatus</var> is the parser's refusal. Called while
@@ -4854,10 +4953,7 @@ ClassMethod ParseEditDocumentHere(pClass As %String, pText As %String, Output pN
 {
     Set pNewText = ""
     Set pStatus = $$$OK
-    Set tStream = ##class(%Stream.TmpCharacter).%New()
-    Do tStream.Write(pText)
-    Do tStream.Rewind()
-    Set tTemp = $ClassMethod(pClass, "ImportFromLibraryStream", tStream, .pStatus)
+    Set tTemp = ..ImportDocumentHere(pClass, pText, .pStatus, 1)
     If $$$ISERR(pStatus) Quit
     If '$IsObject(tTemp) {
         Set pStatus = $$$ERROR($$$GeneralError, "the text did not give an HL7 message")
@@ -5784,7 +5880,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
-    If ..IsWrite(pType) Quit "objectscript"
+    If ..IsWrite(pType) || ..IsStartupWrite(pType) Quit "objectscript"
     Quit ""
 }
 
@@ -5821,6 +5917,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..TransferSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf ..IsLookupWrite(pType) {
         Set tText = tText _ ..LookupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf ..IsStartupWrite(pType) {
+        Set tText = tText _ ..StartupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pType = ..#TYPESTART {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(Ens.Director).StartProduction(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
     } ElseIf pType = ..#TYPERECOVER {
@@ -7342,6 +7440,336 @@ ClassMethod PerformPartner(pNamespace As %String, pType As %String, pName As %St
     Quit $$$OK
 }
 
+/// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>
+Parameter STARTUPCODEPREFIX = "INTEROP.STARTUP.";
+
+/// <p>The shape violations of a startup write <var>pType</var> over the values <var>pValues</var> (Story 24.3), in
+/// <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in <code>pViolations</code>. For
+/// <code>AUTOSTART</code>, <code>pValues("AutoStart")</code> is <code>"1"</code> or <code>"0"</code> and
+/// <code>pValues("StartupPriority")</code> an optional minus sign and one to nine digits (<parameter>STARTUPNUMBER</parameter>), or empty
+/// beside <code>AutoStart</code> <code>"0"</code>, where it carries nothing; for
+/// <code>SHUTDOWNGROUP</code>, <code>pValues("ShutdownGroup")</code> is required and has the same shape. A value that is not a string is
+/// the caller's to refuse. Pure.</p>
+ClassMethod StartupViolations(pType As %String, ByRef pValues, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pType = ..#TYPEAUTOSTART {
+        If $Data(pValues("AutoStart")) && (pValues("AutoStart") '= "1") && (pValues("AutoStart") '= "0") Set pViolations($Increment(pViolations)) = $ListBuild("AutoStart", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        If $Data(pValues("StartupPriority")) && '$Match(pValues("StartupPriority"), ..#STARTUPNUMBER) && '((pValues("StartupPriority") = "") && ($Get(pValues("AutoStart")) = "0")) Set pViolations($Increment(pViolations)) = $ListBuild("StartupPriority", ##class(OcuPilot.Api.InteropError).#STARTUPPRIORITY)
+    } ElseIf pType = ..#TYPESHUTDOWNGROUP {
+        If '$Data(pValues("ShutdownGroup")) || '$Match($Get(pValues("ShutdownGroup")), ..#STARTUPNUMBER) Set pViolations($Increment(pViolations)) = $ListBuild("ShutdownGroup", ##class(OcuPilot.Api.InteropError).#STARTUPGROUP)
+    }
+    Quit $$$OK
+}
+
+/// <p>The token a startup write <var>pType</var> is refused with, or <code>""</code> when it may go ahead (Story 24.3): whatever the
+/// vendor would answer as a silent success is refused by its own name. <var>pAutoNow</var>, <var>pPriorityNow</var> and
+/// <var>pGroupNow</var> are what the production holds, and <var>pAutoWant</var>, <var>pPriorityWant</var> and <var>pGroupWant</var>
+/// what the write would set (<code>""</code> for a value it does not carry), all of a valid shape
+/// (<method>StartupViolations</method>). Pure.</p>
+/// <ul>
+/// <li><code>NOPRIORITY</code>: a priority beside <code>AutoStart</code> <code>"0"</code>.</li>
+/// <li><code>SAME</code>: stopping auto-start for a production that does not start with the instance; auto-start on for one that does,
+/// with the priority it holds or none; a shutdown group equal to the one it holds.</li>
+/// </ul>
+ClassMethod StartupRefusal(pType As %String, pAutoNow As %Boolean, pPriorityNow As %String, pGroupNow As %String, pAutoWant As %String = "", pPriorityWant As %String = "", pGroupWant As %String = "") As %String
+{
+    If pType = ..#TYPESHUTDOWNGROUP {
+        If (pGroupWant '= "") && (+pGroupWant = +pGroupNow) Quit "SAME"
+        Quit ""
+    }
+    If (pAutoWant = "0") && (pPriorityWant '= "") Quit "NOPRIORITY"
+    Set tOn = $Select(pAutoWant = "": ''pAutoNow, 1: (pAutoWant = "1"))
+    If 'tOn Quit $Select(pAutoNow: "", 1: "SAME")
+    If 'pAutoNow Quit ""
+    If (pPriorityWant = "") || (+pPriorityWant = +pPriorityNow) Quit "SAME"
+    Quit ""
+}
+
+/// <p>Whether the caller can read every interoperability namespace's startup settings, as the classic Auto-Start Production and Production
+/// Shutdown Group pages ask before they offer a priority or a group: the vendor's own all-namespaces read for <var>pType</var>
+/// (<code>GetNamespacesByShutdownGroup</code> for a shutdown group, <code>GetNamespacesByStartupPriority</code> for a priority) answers
+/// OK. It leaves <code>$NAMESPACE</code> as it found it and writes nothing (measured). Overridable so a fixture can answer 0 without a
+/// second namespace; production never overrides it.</p>
+ClassMethod AllNamespacesReadable(pType As %String) As %Boolean
+{
+    Set tReadable = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If pType = ..#TYPESHUTDOWNGROUP {
+            Set tSC = ##class(%Library.EnsembleMgr).GetNamespacesByShutdownGroup(.tList)
+        } Else {
+            Set tSC = ##class(%Library.EnsembleMgr).GetNamespacesByStartupPriority(.tList)
+        }
+        Set tReadable = $$$ISOK(tSC)
+    } Catch {
+        Set tReadable = 0
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tReadable
+}
+
+/// <p>Whether <var>pNamespace</var>'s default database is mounted read-only, as the classic pages read it
+/// (<code>%SYS.Namespace.GetNSInfo</code>, <code>ReadOnly</code>). Overridable so a fixture can answer 1; production never overrides
+/// it.</p>
+ClassMethod DefaultReadOnly(pNamespace As %String) As %Boolean
+{
+    Set tReadOnly = 0
+    Try {
+        Do ##class(%SYS.Namespace).GetNSInfo(pNamespace, .tInfo)
+        Set tReadOnly = ''+$Get(tInfo("ReadOnly"), 0)
+    } Catch {
+        Set tReadOnly = 0
+    }
+    Quit tReadOnly
+}
+
+/// <p><code>Ens.Director.SetAutoStart</code> of <var>pName</var> at <var>pPriority</var>, or of <code>""</code> to stop starting a
+/// production with the instance. Called while the namespace is switched. Overridable so a fixture can observe the call; production never
+/// overrides it.</p>
+ClassMethod VendorSetAutoStart(pName As %String, pPriority As %String = "") As %Status
+{
+    Quit ##class(Ens.Director).SetAutoStart(pName, pPriority)
+}
+
+/// <p><code>Ens.Director.SetProductionShutdownGroup</code> (<code>[Internal]</code>, as the classic page calls it) of <var>pName</var>
+/// to <var>pGroup</var>. Called while the namespace is switched. Overridable so a fixture can observe the call; production never
+/// overrides it.</p>
+ClassMethod VendorSetShutdownGroup(pName As %String, pGroup As %Integer) As %Status
+{
+    Quit ##class(Ens.Director).SetProductionShutdownGroup(pName, pGroup)
+}
+
+/// <p>Gather the startup facts of production <var>pName</var> in the namespace already switched to, in <var>pFacts</var>:
+/// <code>exists</code>; <code>auto</code>, whether the namespace starts it with the instance (<code>^Ens.AutoStart</code> read as the
+/// classic page reads it); <code>other</code>, the namespace's other auto-start production or <code>""</code>; <code>priority</code>, the
+/// stored priority when it starts with the instance and otherwise <code>""</code>; and <code>group</code>, the group the vendor reads for
+/// it. The vendor's recommended priority (<code>GetAutoStartRecommendedPriority</code>, reserved for the vendor's own use) is not read,
+/// and a write that carries no priority sets 0.</p>
+ClassMethod StartupFactsHere(pName As %String, Output pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = ''##class(Ens.Config.Production).%ExistsId(pName)
+    Set pFacts("auto") = 0
+    Set pFacts("other") = ""
+    Set pFacts("priority") = ""
+    Set pFacts("group") = 2
+    If 'pFacts("exists") Quit
+    Set tAutoName = $Get(^Ens.AutoStart)
+    Set pFacts("auto") = (tAutoName '= "") && (tAutoName = pName)
+    Set pFacts("other") = $Select(pFacts("auto"): "", 1: tAutoName)
+    Set pFacts("priority") = $Select(pFacts("auto"): +$Get(^Ens.AutoStart("StartupPriority"), 0), 1: "")
+    Set pFacts("group") = +##class(Ens.Director).GetProductionShutdownGroup(pName, , 0)
+}
+
+/// <p><method>StartupFactsHere</method> in <var>pNamespace</var>, switched by explicit save and restore; a fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod StartupFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..StartupFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The <code>STARTUP</code> answer from <var>pFacts</var>: <code>{Name, Namespace, AutoStart, StartupPriority, ShutdownGroup,
+/// AutoStartOther}</code>, each a string.</p>
+ClassMethod StartupRow(pNamespace As %String, pName As %String, ByRef pFacts) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Do tRow.%Set("AutoStart", $Select(pFacts("auto"): "1", 1: "0"), "string")
+    Do tRow.%Set("StartupPriority", pFacts("priority") _ "", "string")
+    Do tRow.%Set("ShutdownGroup", pFacts("group") _ "", "string")
+    Do tRow.%Set("AutoStartOther", pFacts("other"), "string")
+    Quit tRow
+}
+
+/// <p>Serve the Productions endpoint's startup types (Story 24.3) after <method>Invoke</method>'s gate: the <code>STARTUP</code> read and
+/// the two writes, the production named under <parameter>IDKEY</parameter> by its class name, kept exactly (AD-13). An
+/// <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeStartup(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsStartupWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsStartupWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsStartupWrite(pType) {
+            Set tSC = ..PerformStartup(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadStartup(pNamespace, tName, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the startup settings call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>One production's startup settings, fresh (Story 24.3): <method>StartupRow</method>. A production the namespace does not hold is
+/// 404 <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> and the values the write would carry in <var>pQuery</var>
+/// (<parameter>AUTOSTARTKEY</parameter>, <parameter>PRIORITYKEY</parameter>, <parameter>GROUPKEY</parameter>) it refuses what that write
+/// would be refused: <code>NOPRIORITY</code> as a 422 violation and <code>SAME</code> as a 409, from values of a valid shape.</p>
+ClassMethod ReadStartup(pNamespace As %String, pName As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..StartupFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the startup settings read failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Kill tWant
+        If (pAction = ..#TYPEAUTOSTART) && $Data(pQuery(..#AUTOSTARTKEY)) Set tWant("AutoStart") = pQuery(..#AUTOSTARTKEY)
+        If (pAction = ..#TYPEAUTOSTART) && $Data(pQuery(..#PRIORITYKEY)) Set tWant("StartupPriority") = pQuery(..#PRIORITYKEY)
+        If (pAction = ..#TYPESHUTDOWNGROUP) && $Data(pQuery(..#GROUPKEY)) Set tWant("ShutdownGroup") = pQuery(..#GROUPKEY)
+        If ($Get(tWant("AutoStart")) = "0") && ($Get(tWant("StartupPriority")) = "") Kill tWant("StartupPriority")
+        Set tCompose = $Data(tWant)
+        If tCompose {
+            Do ..StartupViolations(pAction, .tWant, .tViolations)
+            If tViolations Set tCompose = 0
+        }
+        If tCompose {
+            Set tToken = ..StartupRefusal(pAction, tFacts("auto"), tFacts("priority"), tFacts("group"), $Get(tWant("AutoStart")), $Get(tWant("StartupPriority")), $Get(tWant("ShutdownGroup")))
+            If tToken = "NOPRIORITY" {
+                Set tNoPriority(1) = $ListBuild("StartupPriority", ##class(OcuPilot.Api.InteropError).#STARTUPNOPRIORITY)
+                Set tNoPriority = 1
+                Quit ..Violations(.tNoPriority, .pHttpStatus, .pFault)
+            }
+            If tToken '= "" Quit ..Conflict(..#STARTUPCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+        }
+    }
+    Set pRow = ..StartupRow(pNamespace, pName, .tFacts)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Run startup write <var>pType</var> on the production <var>pName</var> in <var>pNamespace</var> from the body <var>pBody</var>
+/// (<code>AutoStart</code> and <code>StartupPriority</code>, or <code>ShutdownGroup</code>, each a string) and answer what it leaves
+/// (Story 24.3). The sequence, each step before any vendor call:</p>
+/// <ol>
+/// <li>The values are judged by <method>StartupViolations</method> (422; a value that is not a string is <code>PORT.FIELD.SHAPE</code>).</li>
+/// <li>The production's facts are read in the namespace; a production it does not hold is 404.</li>
+/// <li><method>StartupRefusal</method>: <code>NOPRIORITY</code> is a 422 violation and <code>SAME</code> a 409.</li>
+/// <li>A shutdown-group change, or a priority different from the one the read answered, needs <method>AllNamespacesReadable</method>
+/// (403 <code>INTEROP.STARTUP.ALLNAMESPACES</code>); turning auto-start on or off with the priority the read answered does not.</li>
+/// <li>A namespace whose database <method>DefaultReadOnly</method> is 409 <code>INTEROP.STARTUP.READONLY</code>.</li>
+/// </ol>
+/// <p>Then the vendor call in the namespace (<method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method>), the
+/// namespace restored, and OcuPilot's own audit row (<method>AuditRuntime</method>) naming the tool, the namespace and the production
+/// and no value. The answer is the production's <code>STARTUP</code> read again.</p>
+ClassMethod PerformStartup(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Kill tValues
+    Set tViolations = 0
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tFields = $Select(pType = ..#TYPEAUTOSTART: $ListBuild("AutoStart", "StartupPriority"), 1: $ListBuild("ShutdownGroup"))
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tFieldType = pBody.%GetTypeOf(tField)
+        If tFieldType = "string" {
+            Set tValues(tField) = pBody.%Get(tField)
+        } ElseIf tFieldType '= "unassigned" {
+            Set tViolations($Increment(tViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+    }
+    If 'tViolations {
+        Set tSC = ..StartupViolations(pType, .tValues, .tShape)
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:tShape {
+            Set tViolations($Increment(tViolations)) = tShape(tI)
+        }
+    }
+    If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    If ($Get(tValues("AutoStart")) = "0") && ($Get(tValues("StartupPriority")) = "") Kill tValues("StartupPriority")
+    Do ..StartupFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the startup settings write failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set tToken = ..StartupRefusal(pType, tFacts("auto"), tFacts("priority"), tFacts("group"), $Get(tValues("AutoStart")), $Get(tValues("StartupPriority")), $Get(tValues("ShutdownGroup")))
+    If tToken = "NOPRIORITY" {
+        Set tViolations(1) = $ListBuild("StartupPriority", ##class(OcuPilot.Api.InteropError).#STARTUPNOPRIORITY)
+        Set tViolations = 1
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If tToken '= "" Quit ..Conflict(..#STARTUPCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    Set tAutoWant = $Get(tValues("AutoStart"))
+    Set tOn = $Select(tAutoWant = "": tFacts("auto"), 1: (tAutoWant = "1"))
+    Set tNeedsAll = (pType = ..#TYPESHUTDOWNGROUP) || (tOn && $Data(tValues("StartupPriority")) && (+$Get(tValues("StartupPriority")) '= +tFacts("priority")))
+    If tNeedsAll && '..AllNamespacesReadable(pType) {
+        Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.InteropError).#STARTUPALLNAMESPACES, ##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#STARTUPALLNAMESPACES), .pHttpStatus, .pFault)
+    }
+    If ..DefaultReadOnly(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#STARTUPREADONLY, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType = ..#TYPESHUTDOWNGROUP {
+            Set tVendorSC = ..VendorSetShutdownGroup(pName, +tValues("ShutdownGroup"))
+        } ElseIf 'tOn {
+            Set tVendorSC = ..VendorSetAutoStart("")
+        } Else {
+            Set tVendorSC = ..VendorSetAutoStart(pName, $Select($Data(tValues("StartupPriority")): +tValues("StartupPriority"), 1: +tFacts("priority")))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the startup settings write failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the startup settings write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("tool", $Select(pType = ..#TYPEAUTOSTART: ..#TOOLAUTOSTART, 1: ..#TOOLSHUTDOWNGROUP), "string")
+    If (pType = ..#TYPEAUTOSTART) && tOn && (tFacts("other") '= "") Do tEffects.%Set("replaces", tFacts("other"), "string")
+    Do ..AuditRuntime(..#VERBSET, ..#ENTITYPRODUCTION, pName, tEffects)
+    Kill tQuery
+    Set tReadSC = ..ReadStartup(pNamespace, pName, "", .tQuery, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the startup write <var>pType</var> of the production <var>pId</var> (Story 24.3),
+/// carrying the body <var>pBody</var>: <code>SetAutoStart</code> of the production and the priority the body carries (none when it
+/// carries none), <code>SetAutoStart("")</code> for <code>AutoStart</code> <code>"0"</code>, or
+/// <code>SetProductionShutdownGroup</code> of the production and the group. Names and values are string literals.</p>
+ClassMethod StartupSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If pType = ..#TYPESHUTDOWNGROUP {
+        Set tGroup = ""
+        If $IsObject(pBody) && (pBody.%GetTypeOf("ShutdownGroup") = "string") Set tGroup = pBody.%Get("ShutdownGroup")
+        Quit tNL _ " Set tSC = ##class(Ens.Director).SetProductionShutdownGroup(" _ ..Literal(pId) _ ", " _ ..Literal(tGroup) _ ")"
+    }
+    If $IsObject(pBody) && (pBody.%GetTypeOf("AutoStart") = "string") && (pBody.%Get("AutoStart") = "0") Quit tNL _ " Set tSC = ##class(Ens.Director).SetAutoStart("""")"
+    Set tPriority = ""
+    If $IsObject(pBody) && (pBody.%GetTypeOf("StartupPriority") = "string") Set tPriority = pBody.%Get("StartupPriority")
+    Quit tNL _ " Set tSC = ##class(Ens.Director).SetAutoStart(" _ ..Literal(pId) _ ", " _ ..Literal(tPriority) _ ")"
+}
+
 /// <p>The lines <method>Snippet</method> adds for the partner write <var>pType</var> of the partner named <var>pId</var>
 /// (Story 20.26): the vendor's <code>%Save</code> of a new partner with each of the thirteen fields the body <var>pBody</var>
 /// carries, a <code>%Save</code> of the partner opened at concurrency 4 with the fields it carries, or
@@ -8007,7 +8435,7 @@ ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output p
             If tReason '= "" Quit $$$ERROR($$$GeneralError, tReason)
         }
         Set tImport = $$$OK
-        Set tObject = $ClassMethod(pRequestClass, "ImportFromString", tText, .tImport)
+        Set tObject = ..ImportDocumentHere(pRequestClass, tText, .tImport)
         If $$$ISERR(tImport) Quit tImport
         If '$IsObject(tObject) Quit $$$ERROR($$$GeneralError, "the text did not give a " _ pRequestClass)
     } Else {
@@ -8465,7 +8893,7 @@ ClassMethod ParseSourceHere(pClass As %String, pKind As %String, pContent As %St
         }
     }
     If pKind = "document" {
-        Set pObject = $ClassMethod(pClass, "ImportFromString", tText, .pStatus)
+        Set pObject = ..ImportDocumentHere(pClass, tText, .pStatus)
         If $IsObject(pObject) {
             Try {
                 Set pObject.IsMutable = 0
@@ -8723,6 +9151,7 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
     If '..ParseTestFields($Get(pQuery(..#FIELDSKEY)), .tInput, .tBad) Kill tInput
     Set tMeta = 0
     Set tXmlDocument = 0
+    Set tHL7 = 0
     Kill tConvert
     Set tOrigNS = $NAMESPACE
     Try {
@@ -8731,7 +9160,7 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
         For tI = 1:1:tMeta {
             Set tConvert(tI) = ##class(%Dictionary.CompiledMethod).%ExistsId($List(tMeta(tI), 8) _ "||" _ $List(tMeta(tI), 3) _ "DisplayToLogical")
         }
-        If $Get(tMeta(1)) '= "" && ($List(tMeta(1), 1) = "document") Set tXmlDocument = ''$ClassMethod(tClass, "%Extends", ..#XMLDOCUMENT)
+        If $Get(tMeta(1)) '= "" && ($List(tMeta(1), 1) = "document") Set tXmlDocument = ''$ClassMethod(tClass, "%Extends", ..#XMLDOCUMENT), tHL7 = ''$ClassMethod(tClass, "%Extends", ..#HL7MESSAGE)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
@@ -8746,7 +9175,14 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
         If tReason '= "" {
             Set tText = tNL _ " Set tRequest = """", tSC = $System.Status.Error(5001, " _ ..Literal(tReason) _ ")"
         } Else {
-            Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromString"", " _ ..Literal(tDocument) _ ", .tSC)"
+            If tHL7 {
+                Set tText = tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()"
+                Set tText = tText _ tNL _ " Do tStream.Write(" _ ..Literal(tDocument) _ ")"
+                Set tText = tText _ tNL _ " Do tStream.Rewind()"
+                Set tText = tText _ tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromLibraryStream"", tStream, .tSC)"
+            } Else {
+                Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromString"", " _ ..Literal(tDocument) _ ", .tSC)"
+            }
             Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
         }
     } Else {
@@ -8792,14 +9228,17 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
     Set tNL = $Char(10)
     Set tClass = ..TransformClassOf(pName)
     Kill tFacts
+    Set tSourceHL7 = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = $Get(pQuery(..#NAMESPACEKEY))
         Do ..TransformFactsHere(tClass, .tFacts)
+        If $Get(tFacts("compiled")) && ($Get(tFacts("sourceKind")) = "document") Set tSourceHL7 = ''$ClassMethod(tFacts("sourceClass"), "%Extends", ..#HL7MESSAGE)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
         Kill tFacts
+        Set tSourceHL7 = 0
     }
     Set tCall = " Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget, """")"
     If '$Get(tFacts("compiled")) Quit tNL _ tCall
@@ -8811,7 +9250,14 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
     If tReason '= "" {
         Set tText = tNL _ " Set tSource = """", tSC = $System.Status.Error(5001, " _ ..Literal(tReason) _ ")"
     } ElseIf tFacts("sourceKind") = "document" {
-        Set tText = tNL _ " Set tSource = $ClassMethod(" _ tSourceClass _ ", ""ImportFromString"", " _ tContent _ ", .tSC)"
+        If tSourceHL7 {
+            Set tText = tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()"
+            Set tText = tText _ tNL _ " Do tStream.Write(" _ tContent _ ")"
+            Set tText = tText _ tNL _ " Do tStream.Rewind()"
+            Set tText = tText _ tNL _ " Set tSource = $ClassMethod(" _ tSourceClass _ ", ""ImportFromLibraryStream"", tStream, .tSC)"
+        } Else {
+            Set tText = tNL _ " Set tSource = $ClassMethod(" _ tSourceClass _ ", ""ImportFromString"", " _ tContent _ ", .tSC)"
+        }
         Set tText = tText _ tNL _ " If $IsObject(tSource) Set tSource.IsMutable = 0"
     } Else {
         Set tText = tNL _ " Set tSC = ##class(Ens.Util.XML.Reader).ObjectFromString(.tSource, " _ tContent _ ", " _ tSourceClass _ ", ##class(%XML.SAX.NullEntityResolver).%New())"

@@ -597,6 +597,13 @@ services:
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
       # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
+      # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
+      # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
+      # principals each missing a pair, with a second interoperability namespace registered for the length of one test.
+      # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals
+      # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
+      # class is armed by the database variable too.
+      # classes: CompileWithoutInterop
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
