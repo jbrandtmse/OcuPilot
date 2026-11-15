@@ -1949,3 +1949,6 @@
 2026-11-14T22:42:39Z	orchestrator	ci_green_verified	runs=43645120786 head=76ccaa892 result=success gate=dispatch(Rule_32) attempt=2
 2026-11-14T22:42:39Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-redispatch-20261114T2152Z-prompt.md(+e21-unattended-20261114-prompt.md,resume/epic-21.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
 2026-11-14T22:42:39Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-redispatch-20261114T2152Z-prompt.md(+e22-unattended-20261114-prompt.md,resume/epic-22.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-15T00:00:38Z	Epic 22	runner_reported	boundary=story_22.2 code_head=6b064cec8(43652655378_success) ledger=no_new_entries(DW-2558_routed_burndown_to_decision_sheet) next=burndown_gate,epic_close orchestrator=accepted
+2026-11-15T00:00:38Z	Story 22.2	merged	feature=58586c319 tip=b58284e26 route=code_equal_merge checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none new_keys=none
+2026-11-15T00:00:38Z	ci	timings_refreshed	rule=29 run=43652655378
