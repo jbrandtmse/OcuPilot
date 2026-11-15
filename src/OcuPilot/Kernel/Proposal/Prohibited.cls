@@ -279,7 +279,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -762,6 +762,14 @@ Parameter TYPEBACKUPTASK = "backup-task";
 
 Parameter TYPEBACKUPDATABASE = "backup-database";
 
+/// <p>A startup, memory or compatibility setting (Story 21.3). AD-10 names no effect on any of them, and the four network settings that could
+/// cut OcuPilot off are shown and never set by the port itself, so a write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPESTARTUPSETTING = "startup-setting";
+
+Parameter TYPEMEMORYSETTING = "memory-setting";
+
+Parameter TYPECOMPATIBILITYSETTING = "compatibility-setting";
+
 /// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
 /// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
 Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
@@ -1220,6 +1228,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEPRODUCTIONITEMSETTING Quit $ListBuild("Value")
     If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Value")
+    If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) Quit $ListBuild("Value")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
@@ -1463,7 +1472,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1823,6 +1832,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; A backup task and a backup list entry (Story 21.2): AD-10 names no effect on either, so a write passes the reviewed-few sweep and
         ; nothing else.
         If (tType = ..#TYPEBACKUPTASK) || (tType = ..#TYPEBACKUPDATABASE) {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A startup, memory or compatibility setting (Story 21.3): AD-10 names no effect on any of them, so a write passes the reviewed-few sweep
+        ; and nothing else.
+        If (tType = ..#TYPESTARTUPSETTING) || (tType = ..#TYPEMEMORYSETTING) || (tType = ..#TYPECOMPATIBILITYSETTING) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }

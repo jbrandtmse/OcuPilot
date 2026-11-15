@@ -2740,6 +2740,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.BackupDatabaseList',
       'OcuPilot.Screen.Descriptor.BackupHistoryList',
       'OcuPilot.Screen.Descriptor.BackupTaskList',
+      'OcuPilot.Screen.Descriptor.CompatibilitySettingList',
       'OcuPilot.Screen.Descriptor.EcpSettings',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
@@ -3137,7 +3138,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');

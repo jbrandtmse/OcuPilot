@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -558,7 +558,10 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "term-list-entry",
   "folder-item",
   "backup-task",
-  "backup-database"
+  "backup-database",
+  "startup-setting",
+  "memory-setting",
+  "compatibility-setting"
 ];
 
 /**
@@ -4810,6 +4813,153 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "osmgmt.backuptasks",
     "refreshDefault": 0,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.CompatibilitySettingList",
+    "route": "os-management/compatibility-settings",
+    "area": "os-management",
+    "labelKey": "compatibilitySettingsLabel",
+    "sideBarPosition": 28,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "compatibility-setting",
+    "entityLabelKey": "aboutCompatibilitySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "compatibility settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "compatibilitySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "compatibilitySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "compatibilitySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Compatibility",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "compatibility setting",
+      "label": "The instance's compatibility settings: how the language treats null subscripts, undefined variables and list format. The startup settings are in osmgmt.startupsettings and the memory settings in osmgmt.memorysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Compatibility",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "compatibilitySettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.compatibilitysettings",
+    "refreshDefault": 0,
+    "banner": null,
     "tab": null,
     "rowTarget": null,
     "multiSelect": null,
@@ -23650,6 +23800,143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.MemorySettingList",
+    "route": "os-management/memory-settings",
+    "area": "os-management",
+    "labelKey": "memorySettingsLabel",
+    "sideBarPosition": 27,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "memory-setting",
+    "entityLabelKey": "aboutMemorySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "memory settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "memorySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "memorySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "memorySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Memory",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "memory setting",
+      "label": "The instance's memory settings, including the database cache for each block size, the routine cache and the lock table. The startup settings are in osmgmt.startupsettings and the compatibility settings in osmgmt.compatibilitysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Memory",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "memorySettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.memorysettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.MetricsList",
     "route": "os-management/metrics",
     "area": "os-management",
@@ -28976,6 +29263,143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.StartupSettingList",
+    "route": "os-management/startup-settings",
+    "area": "os-management",
+    "labelKey": "startupSettingsLabel",
+    "sideBarPosition": 26,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "startup-setting",
+    "entityLabelKey": "aboutStartupSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "startup settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "startupSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "startupSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "startupSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Startup",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "startup setting",
+      "label": "The instance's startup settings; one marked as shown and never changed is not offered for change. The memory settings are in osmgmt.memorysettings and the compatibility settings in osmgmt.compatibilitysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Startup",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "startupSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.startupsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SuperserverForm",

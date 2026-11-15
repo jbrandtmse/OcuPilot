@@ -402,6 +402,8 @@ export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE'
 /** Story 21.2: a backup run's and a freeze's cards; each is one published sentence. */
 export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
+/** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
+export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -522,6 +524,8 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.21: the settings' restart sentence and the two warnings, each published once.
   if (code === CONSEQUENCE_ECPSETTINGSRESTART) return STRINGS.ecpSettingsRestart;
   if (code === CONSEQUENCE_ECPSSLAUTHORIZE) return STRINGS.ecpSslAuthorizeConsequence;
+  // Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart, published once.
+  if (code === CONSEQUENCE_CONFIGSETTINGRESTART) return STRINGS.encryptionStartupRestart;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;

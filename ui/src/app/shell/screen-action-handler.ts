@@ -152,6 +152,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.2: Backup tasks, whose Run warns first, and Backup database list, whose Remove is sent at once.
   'OcuPilot.Screen.Descriptor.BackupTaskList',
   'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+  // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.StartupSettingList',
+  'OcuPilot.Screen.Descriptor.MemorySettingList',
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -472,6 +476,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // registers Add database itself, whose dialog names the database (Story 21.2).
   [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
   [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
+  // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
+  'OcuPilot.Screen.Descriptor.StartupSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.MemorySettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': ['set'],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class

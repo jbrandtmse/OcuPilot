@@ -260,7 +260,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.backuptasks.freeze": false,
   "osmgmt.backuptasks.thaw": false,
   "osmgmt.backupdatabases.add": false,
-  "osmgmt.backupdatabases.remove": false
+  "osmgmt.backupdatabases.remove": false,
+  "osmgmt.startupsettings.set": true,
+  "osmgmt.memorysettings.set": true,
+  "osmgmt.compatibilitysettings.set": true
 }
 }
 

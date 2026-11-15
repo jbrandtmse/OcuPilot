@@ -178,6 +178,10 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.3: the three settings screens' Set value, which opens the page's dialog.
+  'OcuPilot.Screen.Descriptor.StartupSettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.MemorySettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
   // Story 20.6: an item's Test tab's Send test opens the dialog that builds and sends one test request.

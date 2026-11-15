@@ -7930,6 +7930,64 @@ export const STRINGS = {
   backupDatabasesPrompt2: 'Is this database on the backup list?',
   /** EXPERIENCE.md:604 */
   backupDatabasesPrompt3: 'Why is a database missing from the backup list?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsLabel: 'Startup settings',
+  /** EXPERIENCE.md:604 */
+  memorySettingsLabel: 'Memory settings',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsLabel: 'Compatibility settings',
+  /** EXPERIENCE.md:604 */
+  aboutStartupSetting: 'Startup setting',
+  /** EXPERIENCE.md:604 */
+  aboutMemorySetting: 'Memory setting',
+  /** EXPERIENCE.md:604 */
+  aboutCompatibilitySetting: 'Compatibility setting',
+  /** EXPERIENCE.md:604 */
+  configSettingsEmpty: 'No settings to show.',
+  /** EXPERIENCE.md:604 */
+  startupSettingsEmptyAgent: 'change a startup setting',
+  /** EXPERIENCE.md:604 */
+  memorySettingsEmptyAgent: 'change a memory setting',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsEmptyAgent: 'change a compatibility setting',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt1: 'Which startup settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt2: 'What does ShutdownTimeout control?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt3: 'Explain the job and process start and halt settings.',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt1: 'How much memory goes to the database cache for each block size?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt2: 'Which memory settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt3: 'What do gmheap and locksiz control?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt1: 'What does NullSubscripts change?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt2: 'Which compatibility settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt3: 'What does the Undefined setting do?',
+  /** EXPERIENCE.md:604 */
+  configRefusalNotFound: 'There is no setting with that name.',
+  /** EXPERIENCE.md:604 */
+  configRefusalReadOnly: 'This setting is shown here and never changed here.',
+  /** EXPERIENCE.md:604 */
+  configRefusalValue: 'This setting does not accept that value.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBoolean: '0 (off) or 1 (on).',
+  /** EXPERIENCE.md:604 */
+  configAcceptsRange: 'A whole number from %1 to %2.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsMinimum: 'A whole number of at least %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsChoice: 'One of %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsText: 'Text of up to %1 characters.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBlockSizes: 'Block sizes from 4096, 8192, 16384, 32768 and 65536, separated by commas; 8192 is required.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsReadOnly: 'Shown here and never changed here.',
 } as const;
 
 /**

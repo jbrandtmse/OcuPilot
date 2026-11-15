@@ -2,12 +2,20 @@
 title: 'Story 21.3: Startup, memory and compatibility settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'af15d1c923c6a5aa10d84d2e31cf020851396de7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The reused interop setting dialog tells the person to leave the field empty to clear the value for every non-boolean setting, which is wrong for integer and choice settings.
+    evidence: |-
+      config-settings.page.ts opens InteropItemSettingDialog unedited; an empty value for an integer or choice setting is refused 400 CONFIG.SETTING.VALUE. A fix needs a dialog input or a new string, and the dialog is an Epic 24 file.
+    location: >-
+      ui/src/app/areas/interoperability/interop-item-setting-dialog.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -109,6 +117,23 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 ## Review Triage Log
 
+### 2026-11-15 - Review pass
+
+- verdicts: 12 findings - high 0, medium 1, low 5, false 3, maybe-false 0 (3 rejected by rule or scope)
+- findings:
+  - `[medium]` `patch` Truncation of a capped config read is not pinned (AD-36) - fixed: `ConfigSettingRead` asserts a read capped at five answers five rows with `truncated` 1, the port's `maxRows` stops at three and refuses 0, x, -1 and 1.5; mutation observed red.
+  - `[low]` `patch` The `SCREENEMPTY` declaration (a text setting may be cleared) is not pinned - fixed: the same test asserts `ScreenActionEmptyNames` and `ScreenActionValueNames` for each tool; mutation observed red.
+  - `[low]` `patch` `Accepts` for a text setting is never observed - fixed: `SystemMode` reads `text|Text of up to 32 characters.`. The minimum-only branch has no setting on this build to read (inference), so it stays unpinned.
+  - `[low]` `patch` The unknown-setting mint assertion compared nothing about the sentence - fixed in `ConfigSettingRules` and `ConfigSettingWrite`: the mint reads the target first and answers the sibling mints' sentence ("'X' is not present on this instance", as `BackupWrite` pins); the port's own `CONFIG.SETTING.NOTFOUND` is pinned by the rules rows.
+  - `[low]` `patch` Page-spec mutations for the dialog and Save halves of AC2 were claimed in comments and not recorded - both applied, each red, reverted byte-identical; recorded in Verification.
+  - `[low]` `reject` Browser spec's fixed 500 ms wait before asserting no dialog opened - a negative check has no signal to wait on; the press is synchronous and the dialog opens in the same task, so the wait only widens the window.
+  - `[low]` `reject` Four page-spec tests carry no mutation line - each asserts a specific value; the reviewer did not call them unfalsifiable.
+  - `[false]` `reject` An armed assertion that `PendingRestart` is unchanged after `history` is not measured - the armed class ran green on `ocupilot-ci` with that assertion, which is the measurement.
+  - `[low]` `reject` Stale text in the intent contract's Always bullet and the proposed AD-4 paragraph - the fix is an edit to this spec's read-only contract; the runner ruling under Design Notes supersedes it.
+  - `[low]` `defer` The reused `InteropItemSettingDialog` shows "Leave it empty to clear the value." under every non-boolean field, which misleads on integer and choice settings (an empty value is refused 400 `CONFIG.SETTING.VALUE`) - the file belongs to Epic 24's tree and the spec forbids an interop-file edit; recorded in `deferred:`.
+  - `[low]` `reject` Intent-alignment: the Save answer's restart sentence is a client banner, as the route's answer carries no consequence - the spec's own client task is the banner, and the browser and component specs observe it at the surface.
+  - `[low]` `reject` Intent-alignment: a read-only row's Set value is drawn disabled with a reason, not hidden - the registered-reason convention every other screen uses; the action cannot open the dialog (browser spec).
+
 ## Design Notes
 
 **Governing ADs:** AD-4 (merge; the named exception below), AD-21 (no path is set), AD-22 (keys; a person's write is not governed), AD-29 (`ConfigPort`'s gate), AD-36 (bounded reads), AD-52, AD-53, AD-55, AD-56 (declared values), AD-58 (read-back), AD-6, AD-34, AD-15 (proposal, transition, audit), AD-14 (change event), AD-5, AD-44 (descriptors, classic keys), AD-16, AD-59 (namespace, `Snippet`), AD-10 (covered types, no new predicate), AD-39 (vendor text normalized), AD-35 (no secret field exists in these classes; `PasswordHash` holds hash parameters, not a password).
@@ -129,6 +154,18 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - Value rules beyond the dictionary: `bbsiz` -1 or 256-2147483647; `routines` 0 or 36-65536 (`MemoryStartup.cls:117-119`); `DBSizesAllowed` a comma list of 4096, 8192, 16384, 32768 and 65536 that holds 8192, each `CheckBlockSizeAvailable` (`ValueEditor.cls:226-256`); `ListFormat` 0 or 1 (`ValueEditor.cls:409-414`); `%Library.Boolean` 0 or 1. Everything else follows `MINVAL`, `MAXVAL`, `VALUELIST` and `MAXLEN`, and the vendor's own validation stays the last word.
 - The armed restart test writes `errlog` for real and restores it. That leaves the throwaway's pending-restart flag set, because no restore clears it (measured; Story 18.21 measured the same). No test reads the flag except `EcpProbe` and `EncryptionProbe` snapshots, which compare before and after inside one test. The dev instance never runs it (armed).
 - Governance keys `true` (see Always).
+- **Batch 1 choices.**
+  - A set re-sends the complete `Get` array, the excluded and read-only keys as read (measured: a full-array `Modify` with one key changed changes only that key), after the rules judge the value. This is the runner's AD-4 ruling; the Always text's one-key `Modify` is superseded by it.
+  - An integer property that declares no `MINVAL` has a lower bound of 0 (stricter than the dictionary; the vendor's own check holds `gmheap` and `locksiz`, the two that declare only a maximum, to it). `bbsiz` -1 and `routines` 0 are accepted beside their ranges, and their `Accepts` line states the range alone ("A whole number from 256 to 2147483647."), because the ruled strings hold no sentence for a range plus one value.
+  - A vendor `Modify` refusal of a value the rules passed is answered 400 `CONFIG.SETTING.VALUE`, with the raw status logged (AD-39); no such refusal was found among the settings measured, so a test seam feeds it.
+  - The restart consequence is read from the fresh row's `Restart` through the port. The row action route's answer carries no consequence (no route does); the client shows the restart sentence from the row's `Restart`.
+  - Three read tools and a confusable group "Configuration settings" carry the screens' `read.label`; Compatibility's own pair is `%Admin_Secure:USE`, so a holder of OS management's pairs without it sees Compatibility settings unavailable.
+  - String keys the descriptors name, for batch 2 to add to `strings.ts` and EXPERIENCE.md: `startupSettingsLabel`, `memorySettingsLabel`, `compatibilitySettingsLabel`, `aboutStartupSetting`, `aboutMemorySetting`, `aboutCompatibilitySetting`, `configSettingsEmpty`, `startupSettingsEmptyAgent`, `memorySettingsEmptyAgent`, `compatibilitySettingsEmptyAgent` and `<startup|memory|compatibility>SettingsPrompt1` to `3`. `OcuPilot.Api.ConfigError`'s `REASON*` and `ACCEPTS*` parameters hold the other ruled sentences, to be pinned equal to their `strings.ts` keys.
+- **Task 0, measured on `ocupilot-ci` before code (batch 1).**
+  - Classic keys from `%SYS.Portal.Resources.NormalizePage`: `%CSP.UI.Portal.Config.Startup`, `%CSP.UI.Portal.Config.Memory`, `%CSP.UI.Portal.Config.Compatibility`, `%CSP.UI.Portal.MemoryStartup` and `%CSP.UI.Portal.Config.ValueEditor`, each answered as spelled and none carrying a custom resource on this instance. The descriptors' `classicPage` names the first three, and the tools' `CLASSICPAGES` add `%CSP.UI.Portal.MemoryStartup` (memory and startup) and `%CSP.UI.Portal.Config.ValueEditor` (all three).
+  - A `Modify` of `Config.Startup`, `Config.config` and `Config.Miscellaneous` by a caller holding only `%Admin_Manage:USE` and `%DB_IRISSYS:READ` fails `<PROTECT>` on `^SYS("CONFIG",...)` in each class; the same caller with `%DB_IRISSYS:WRITE` succeeds. So the write pairs add `%DB_IRISSYS:WRITE` (no longer an inference).
+  - A full-set `Modify` (every key `Get` answers, 35, 41 and 33 keys, one changed) changed exactly that key in each class and added no pending-restart reason for any other key (AD-4 comply holds; the one-key exception is not needed). An `errlog` change 500 to 501 made `Config.CPF.PendingRestart` answer one reason, `config`/`errlog` old 500 new 501; restoring it added a second reason and cleared none. A `SystemMode` set to `TEST` changed `$SYSTEM.Version.SystemMode()` from empty to `TEST`, and restoring it read empty again. `NullSubscripts` added no reason.
+  - `SYS.Database.CheckBlockSizeAvailable` answers 0 for 4096 and 1 for 8192, 16384, 32768 and 65536 on this build. The vendor's own `IsValid` refuses a negative `gmheap` and `locksiz` and passes `ListFormat` 5, `routines` 5 and `bbsiz` 100 (so those three are judged by the rules beyond the dictionary).
 - Pairs: reads `%Admin_Manage:USE` and `%DB_IRISSYS:READ` (the classic `RESOURCE`, in `%SYS`); Compatibility adds its own `%Admin_Secure:USE` (classic menu); writes add `%DB_IRISSYS:WRITE`, unless Task 0 measures otherwise (inference from every `Config.*` write in Epics 16 and 18). Stricter is allowed, looser is not.
 - The client reuses `InteropItemSettingDialog` by import rather than moving it. Moving it would edit an Epic 24 file, and a second dialog would copy it (Rule 31).
 
@@ -173,12 +210,22 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), and the reverted source reloaded:**
 
-- AC1: `ConfigPort.Rows` drops the `Restart` member, then sends the whole `Get` array on a set -> `ConfigSettingRead` red, then `ConfigSettingWrite`'s other-keys-unchanged assertion red.
-- AC2: `ConfigSettingSet.Consequence` answers nothing -> `ConfigSettingWrite`'s restart test red; the client mapping removed -> `proposal-view.test.mjs` red.
-- AC3: `DefaultPort` removed from the read-only set -> `ConfigSettingRules` red.
-- AC4: `osmgmt.startupsettings.set` set `false` -> `ConfigSettingRead`'s governance test red.
+- AC1: `ConfigPort.BuildRow` drops the `Restart` member -> `ConfigSettingRead` red; `VendorModify` sends the one key alone -> `ConfigSettingRules`' key-list assertion red; `SendProperties` sends no `Modify` -> `ConfigSettingWrite`'s value assertions red (all three observed red and reverted, batch 1).
+- AC2: `ConfigSettingSet.Consequence` answers nothing -> `ConfigSettingWrite`'s restart test red (observed, batch 1); the client mapping removed -> `proposal-view.test.mjs` red; one word of a `ConfigError` sentence changed -> `config-settings.test.mjs` red (both observed, batch 2); the page's dialog statement without the restart sentence, and the page's banner after a Save without it -> `config-settings.page.spec.ts` red, one test each (observed). A capped read that loses its extra row (`Screen/Read.cls` asks the port for the cap alone) -> `ConfigSettingRead`'s truncation assertion red; `SCREENEMPTY` emptied -> its empty-names assertion red (observed).
+- AC3: `DefaultPort` removed from the read-only set -> `ConfigSettingRules` and `ConfigSettingRead` red (observed, batch 1; never against `ConfigSettingWrite`, which would write it); the page's `set` registration drops its `reason` -> `config-settings.page.spec.ts` and the browser spec's read-only test red (observed after rebuild and redeploy, batch 2).
+- AC4: `osmgmt.startupsettings.set` set `false` -> `ConfigSettingRead`'s governance test red; `osmgmt.compatibilitysettings.set` set `false` -> `ConfigSettingWrite`'s dispatch assertions red (observed, batch 1).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** `ConfigPort` and three OS management screens (Startup, Memory and Compatibility settings, positions 26 to 28) with a Set value write for each, reachable by a person's dialog and by a confirmed agent proposal. A set re-sends the complete property set (the runner's AD-4 ruling; Task 0 measured that it changes only the one key). Restart text comes from the vendor's own source per setting; the four network settings and path settings are shown and never set. Three governance keys ship `true`.
+
+**Files.** New: `Port/ConfigPort`, `Area/OsMgmt/ConfigSettingRules`, `Api/ConfigError`, three descriptors, `Screen/Tool/ConfigSettingSet` and its three subclasses, four test classes (`ConfigSettingRead`, `ConfigSettingRules`, `ConfigSettingWrite` armed, `ConfigGateSeam`), `config-settings.page.ts` with its spec, `ui/tools/config-settings.test.mjs`, `ui/browser/config-settings.browser-spec.mjs`. Add-only rows: `Error`, `EntityType`, `Prohibited`, `Baseline`, `Read`, `Registry`, `Titles`, `strings.ts`, `screens.generated.ts`, `screen-mirror.mjs`, `screen-outlet.ts`, `screen-action-handler.ts`, `screen-actions.ts`, `proposal-view.ts`, `EXPERIENCE.md`, `ci-throwaway.sh` and `docs/DEVELOPMENT.md` (`OCUPILOT_ALLOW_CONFIG_SETTINGS`), and the shared-surface rosters.
+
+**Review.** 12 findings: 5 patched (1 medium, 4 low), 1 deferred, 6 rejected with reasons in the Review Triage Log. Follow-up review recommended: false (one medium patched).
+
+**Verification.** All spec `(loop)` ObjectScript classes green on `ocupilot-ci` (armed `ConfigSettingWrite` with the variable injected); `check-objectscript.py` 0 problems; `lint-docs.sh` clean; `npm run build` clean; `test:components` 3456 pass; `test:tools` 2286 pass; `config-settings.browser-spec.mjs` 4/4 after rebuild and redeploy. Rule 19 mutations recorded in Verification, each observed red and reverted.
+
+**Residual risks.** `Prohibited.cls` long lines also edited by Epic 24: expect a textual union at merge. The throwaway's pending-restart flag holds the armed test's `errlog` reasons. The full ObjectScript sweep, `smoke.sh` and Rule 30's fresh check are the runner's `(once)` items.

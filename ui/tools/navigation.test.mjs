@@ -246,6 +246,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/backup-tasks',
       'os-management/backup-history',
       'os-management/backup-databases',
+      // Story 21.3: Startup, Memory and Compatibility settings, the twenty-sixth to twenty-eighth.
+      'os-management/startup-settings',
+      'os-management/memory-settings',
+      'os-management/compatibility-settings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -509,6 +513,10 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/backup-tasks',
       'os-management/backup-history',
       'os-management/backup-databases',
+      // Story 21.3: the twenty-sixth to twenty-eighth.
+      'os-management/startup-settings',
+      'os-management/memory-settings',
+      'os-management/compatibility-settings',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

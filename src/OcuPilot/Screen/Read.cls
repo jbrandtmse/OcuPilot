@@ -306,6 +306,18 @@ ClassMethod BackupPortClass() As %String
     Quit "OcuPilot.Port.BackupPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's startup, memory and compatibility settings, read
+/// through <method>ConfigPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36,
+/// Story 21.3).</p>
+Parameter SOURCECONFIG = "config";
+
+/// <p>The port every <b>config</b> read is issued through. Overridable so a fixture can reach another; production never
+/// overrides it.</p>
+ClassMethod ConfigPortClass() As %String
+{
+    Quit "OcuPilot.Port.ConfigPort"
+}
+
 /// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics or its
 /// interoperability usage, read through <method>MonitorPortClass</method> behind that port's own gate,
 /// with no namespace and no criteria (AD-29, AD-36).</p>
@@ -463,7 +475,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -680,6 +692,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Quit
             }
             If tPortCut Set tTruncated = 1
+        } ElseIf tSource.%Get("port") = ..#SOURCECONFIG {
+            ; The instance's startup, memory or compatibility settings (Story 21.3): no namespace and no criteria, so the cap is
+            ; the whole ask; the port's gate runs before any vendor call (AD-36).
+            Set tPortSC = $ClassMethod(..ConfigPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
             ; The instance's Prometheus metrics or interoperability usage: no namespace and no criteria,
             ; so the cap is the whole ask; the port's gate runs before any vendor call.

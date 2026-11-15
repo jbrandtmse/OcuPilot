@@ -138,6 +138,9 @@ XData Elsewhere
 <screen name="BackupDatabaseList"/>
 <screen name="BackupHistoryList"/>
 <screen name="BackupTaskList"/>
+<screen name="CompatibilitySettingList"/>
+<screen name="MemorySettingList"/>
+<screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsFolderItemList"/>
