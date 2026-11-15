@@ -1042,8 +1042,10 @@ export const ACCESS_READ_TYPE = 'LIST';
 export const SOURCE_MONITOR = 'monitor';
 /** The namespace's cubes, term lists and folder items read through `OcuPilot.Port.AnalyticsPort` (AD-65, AD-36, Story 20.11). */
 export const SOURCE_ANALYTICS = 'analytics';
+/** The developer tools that count a namespace's lines and hash its documents, read through `OcuPilot.Port.DevToolPort` (AD-23, AD-29, Story 24.1). */
+export const SOURCE_DEVTOOL = 'devtool';
 export const SOURCE_BACKUP = 'backup';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_BACKUP];
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1177,6 +1179,25 @@ export function analyticsEndpoints() {
 
 /** The one request type an `analytics` source declares. */
 export const ANALYTICS_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.DevToolPort` declares the two endpoints a `devtool` read names. */
+export const DEVTOOL_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DevToolPort.cls');
+
+const DEVTOOL_ENDPOINT_PARAM_RE = /^Parameter\s+ENDPOINT[A-Z]+\s*=\s*"([^"]*)"\s*;/gm;
+
+let devToolEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.DevToolPort`'s `ENDPOINT*` parameters declare, read from its own class, or `null` when it declares none. */
+export function devToolEndpoints() {
+  if (devToolEndpointsCache === undefined) {
+    const found = [...readFileSync(DEVTOOL_PORT_SOURCE, 'utf8').matchAll(DEVTOOL_ENDPOINT_PARAM_RE)].map((match) => match[1]);
+    devToolEndpointsCache = found.length === 0 ? null : found;
+  }
+  return devToolEndpointsCache;
+}
+
+/** The one request type a `devtool` source declares. */
+export const DEVTOOL_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.BackupPort` declares the three list endpoints a `backup` read names. */
 export const BACKUP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'BackupPort.cls');
@@ -1459,8 +1480,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}' or '${SOURCE_BACKUP}', ` +
-      'the sixteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}' or '${SOURCE_BACKUP}', ` +
+      'the seventeen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1604,6 +1625,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an analytics source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A devtool source lists the developer tools' answers through `OcuPilot.Port.DevToolPort`, which answers each endpoint whole behind
+  // its own gate (AD-23, AD-29, AD-36, Story 24.1): one of the port's two endpoints, a LIST, and nothing the port would have to issue
+  // per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_DEVTOOL) {
+    const endpoints = devToolEndpoints();
+    if (endpoints === null) return `${DEVTOOL_PORT_SOURCE} declares no 'Parameter ENDPOINT...'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the devtool port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== DEVTOOL_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a devtool source, which lists the developer tools' rows (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a devtool source, which answers its list whole (AD-36)`;
     }
   }
   // A backup source lists the instance's backup tasks, its backup history or its backup database list through
@@ -2102,7 +2140,7 @@ export function criteriaProblem(declaration) {
   const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
   // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
   const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (!parentOnly || (!parented && !searches))) {
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && port !== SOURCE_DEVTOOL && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 

@@ -469,4 +469,51 @@ ClassMethod HoldsOversized(pContainer As %DynamicAbstractObject, pKey As %String
     Quit tOversized
 }
 
+/// <p>The text of the source document <var>pDocName</var> in the current namespace, one line to a
+/// node: <code>pLines(0)</code> is the line count and <code>pLines(1..n)</code> the lines. A class
+/// is read in its UDL form. A routine, include file or generated routine opens with the header
+/// line the source code API writes (<code>ROUTINE name</code>, then a bracketed list of
+/// <code>Type=INC</code> or <code>Type=INT</code>, and <code>Generated</code>) followed by its own lines.
+/// The reads are the system classes' own, so the method runs while the process is switched to any
+/// namespace.</p>
+ClassMethod DocumentLines(pDocName As %String, Output pLines) As %Status
+{
+    Set tSC = $$$OK
+    Kill pLines
+    Set pLines(0) = 0
+    Try {
+        Set tExt = $ZConvert($Piece(pDocName, ".", *), "L")
+        If tExt = "cls" {
+            Kill pLines
+            Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsArray($NAMESPACE, pDocName, .pLines)
+            Quit
+        }
+        Set tRoutine = ##class(%Routine).%OpenId(pDocName)
+        If '$IsObject(tRoutine) {
+            Set tSC = $$$ERROR($$$GeneralError, "The document " _ pDocName _ " could not be opened")
+            Quit
+        }
+        Set tAttributes = ""
+        If tExt '= "mac" Set tAttributes = "Type=" _ $ZConvert(tExt, "U")
+        If tRoutine.Generated Set tAttributes = tAttributes _ $Select(tAttributes = "": "", 1: ",") _ "Generated"
+        Set tHeader = "ROUTINE " _ $Piece(pDocName, ".", 1, $Length(pDocName, ".") - 1) _ $Select(tAttributes = "": "", 1: " [" _ tAttributes _ "]")
+        Set pLines(1) = tHeader
+        Set pLines(0) = 1
+        Do tRoutine.Rewind()
+        While 'tRoutine.AtEnd {
+            Set tLength = 3641144
+            Set tLine = tRoutine.ReadLine(.tLength, .tReadSC)
+            If $$$ISERR(tReadSC) {
+                Set tSC = tReadSC
+                Quit
+            }
+            Set pLines(0) = pLines(0) + 1
+            Set pLines(pLines(0)) = tLine
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 }

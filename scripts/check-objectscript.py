@@ -753,6 +753,8 @@ HARVEST_DIR = "src/OcuPilot/Port/Harvest/"
 HARVEST_TEST_DIR = "src/OcuPilot/Test/"
 HARVEST_CALLERS = {
     "OcuPilot.Port.Harvest.Monitor": "src/OcuPilot/Port/BackupPort.cls",
+    "OcuPilot.Port.Harvest.Loc": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
 }
 
 

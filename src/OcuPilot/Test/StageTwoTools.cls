@@ -160,8 +160,10 @@ XData Elsewhere
 <screen name="ExplorerClassDocument"/>
 <screen name="ExplorerClassEditor"/>
 <screen name="ExplorerClassList"/>
+<screen name="ExplorerCodeMetrics"/>
 <screen name="ExplorerCompare"/>
 <screen name="ExplorerDocDbList"/>
+<screen name="ExplorerDocumentHashes"/>
 <screen name="ExplorerMacro"/>
 <screen name="ExplorerRoutineDocument"/>
 <screen name="ExplorerRoutineEditor"/>

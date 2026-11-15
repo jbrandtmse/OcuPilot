@@ -203,6 +203,8 @@ XData ReadShapes
 <screen name="SqlColumnPrivilegeList" filter="Column,Action,GrantedBy,GrantedVia" sort="Column,Action,GrantedBy,GrantedVia" kinds="Column:name,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlAdminPrivilegeList" filter="Privilege,GrantedVia" sort="Privilege,GrantedVia" kinds="Privilege:name,GrantOption:text,GrantedVia:text"/>
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
+<screen name="ExplorerCodeMetrics" filter="" sort="Documents,Lines" kinds="Documents:name,Lines:number,Code:number,CodePercent:number,SourceCode:number,TestCode:number,Comments:number,CommentPercent:number,Blank:number,BlankPercent:number"/>
+<screen name="ExplorerDocumentHashes" filter="Document,Hash" sort="Document,Modified" kinds="Document:name,Hash:text,Modified:text"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
 <screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>

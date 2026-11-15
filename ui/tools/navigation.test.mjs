@@ -379,6 +379,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-data',
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
+      // Story 24.1: Code metrics and Document hashes, after Document databases.
+      'system-explorer/code-metrics',
+      'system-explorer/document-hashes',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.

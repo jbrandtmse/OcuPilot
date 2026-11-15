@@ -98,3 +98,4 @@
 2026-11-15T11:21:20Z	Story 21.2	smoke_complete	method=browser+cli result=pass iterations=3 defects_caught=2(ci_reds) evidence=smoke.sh_50/50+specs model=claude-opus-5-5
 2026-11-15T11:24:17Z	Story 21.2	committed	sha=d34907395 submodules= ci=pending runs=43708708723 fix_for=21-2-backup note=carries_integrate_forward_merge_e0688197c(feature_1cd2bd663)
 2026-11-15T12:01:39Z	Story 21.2	ci_resolved	story=21.2 sha=d34907395 runs=43708708723 result=success failed=none via=none resolved_at=next_plan
+2026-11-15T12:18:16Z	Epic 21	ruling	question=merge_e820aac45_harvest_containment(21.2_rule_vs_24.1_DevToolPort) choice=add_HARVEST_CALLERS_rows(Loc,EnvSync->DevToolPort) rejected=move_handler_names_behind_HarvestPort,ask why=add-only_union;DevToolPort_is_the_declared_area_port_and_invokes_through_HarvestPort_like_BackupPort category=decide policy=b9ff703e

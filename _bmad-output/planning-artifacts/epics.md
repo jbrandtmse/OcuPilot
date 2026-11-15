@@ -9819,21 +9819,11 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
-- **Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (LOC metrics and drift hashes) and Stories 24.5 to 24.9; the other surfaces' acceptance criteria moved to them word for word.
+
+- **Given** the LOC metrics and drift hashes
 - **When** each runs
 - **Then** it round-trips over its backing class.
-
-- **Given** the execute-command console's output
-- **When** it is returned
-- **Then** it is bounded by the harvested output ceiling rather than unbounded.
-
-- **Given** environment promote
-- **When** it runs
-- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
-
-- **Given** remote instance profiles
-- **When** they are sequenced
-- **Then** they land **before** environment diff and promote, which depend on them.
 
 ### Story 24.2: The analytics editors
 
@@ -9845,7 +9835,9 @@ So that analytics reaches parity too.
 
 **Acceptance Criteria:**
 
-- **Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (the term-list editor) and Stories 24.10 to 24.14; the rest of the criterion moved to them. Which editors "the remaining analytics editors" names is read from the catalog's analytics rows (inference).
+
+- **Given** the term-list editor
 - **When** each runs
 - **Then** it round-trips over its backing class.
 
@@ -9892,3 +9884,159 @@ So that the last two steps of the agent's growth land together.
 - **Then** it captures a snapshot **before** the write and offers a one-click revert
 - **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
 - **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+### Story 24.5: Unit-test runner and work-queue viewer
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the unit-test runner and the work-queue viewer,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the unit-test runner and work-queue viewer
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.6: The command and class-method consoles
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the execute-command and class-method consoles,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the execute-command and class-method consoles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the execute-command console's output
+- **When** it is returned
+- **Then** it is bounded by the harvested output ceiling rather than unbounded.
+
+### Story 24.7: Web terminal
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the web terminal,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the web terminal
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.8: Remote instance profiles and environment diff
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want remote instance profiles and environment diff,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** environment diff and remote instance profiles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** remote instance profiles
+- **When** they are sequenced
+- **Then** they land **before** environment diff and promote, which depend on them.
+
+### Story 24.9: Environment promote
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want environment promote,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
+
+### Story 24.10: Folder manager transfer and term-list import, export and copy
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the folder manager's export, import and delete, and term-list import, export and copy,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the folder manager's export, import and delete
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the term-list editor's import, export and copy
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.11: Listing groups
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the listing group manager,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the listing group manager
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.12: Quality measures
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the quality measures editor,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the quality measures editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.13: Analytics settings
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the analytics settings,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the analytics settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.14: PMML model tester and dashboard viewer
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the PMML model tester and the dashboard and pivot viewer,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the PMML model tester and the dashboard and pivot viewer
+- **When** each runs
+- **Then** it round-trips over its backing class.

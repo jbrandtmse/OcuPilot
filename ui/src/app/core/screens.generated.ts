@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'backup';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -9404,6 +9404,197 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCodeMetrics",
+    "route": "system-explorer/code-metrics",
+    "area": "system-explorer",
+    "labelKey": "explorerCodeMetricsLabel",
+    "sideBarPosition": 13,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Documents",
+        "Lines",
+        "Code",
+        "CodePercent",
+        "SourceCode",
+        "TestCode",
+        "Comments",
+        "CommentPercent",
+        "Blank",
+        "BlankPercent"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerDevToolEmpty",
+    "commandAliases": [
+      "code metrics",
+      "lines of code",
+      "loc"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "line totals of a document set",
+      "source": {
+        "port": "devtool",
+        "endpoint": "CodeMetrics",
+        "type": "LIST"
+      },
+      "fields": [
+        "Documents",
+        "Lines",
+        "Code",
+        "CodePercent",
+        "SourceCode",
+        "TestCode",
+        "Comments",
+        "CommentPercent",
+        "Blank",
+        "BlankPercent"
+      ],
+      "filter": [],
+      "sort": {
+        "fields": [
+          "Documents",
+          "Lines"
+        ],
+        "default": "Documents",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Documents",
+          "labelKey": "explorerDocumentsLabel",
+          "kind": "name"
+        },
+        {
+          "field": "Lines",
+          "labelKey": "explorerColumnLines",
+          "kind": "number"
+        },
+        {
+          "field": "Code",
+          "labelKey": "webAppPromptGroupCode",
+          "kind": "number"
+        },
+        {
+          "field": "CodePercent",
+          "labelKey": "explorerColumnCodePercent",
+          "kind": "number"
+        },
+        {
+          "field": "SourceCode",
+          "labelKey": "explorerColumnSourceCode",
+          "kind": "number"
+        },
+        {
+          "field": "TestCode",
+          "labelKey": "explorerColumnTestCode",
+          "kind": "number"
+        },
+        {
+          "field": "Comments",
+          "labelKey": "explorerColumnComments",
+          "kind": "number"
+        },
+        {
+          "field": "CommentPercent",
+          "labelKey": "explorerColumnCommentPercent",
+          "kind": "number"
+        },
+        {
+          "field": "Blank",
+          "labelKey": "explorerColumnBlank",
+          "kind": "number"
+        },
+        {
+          "field": "BlankPercent",
+          "labelKey": "explorerColumnBlankPercent",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "explorerCodeMetricsInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.codemetrics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCompare",
     "route": "system-explorer/compare",
     "area": "system-explorer",
@@ -9623,6 +9814,150 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "explorerDocDbListEmptyAgent"
     },
     "toolIdentifier": "explorer.docdb",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerDocumentHashes",
+    "route": "system-explorer/document-hashes",
+    "area": "system-explorer",
+    "labelKey": "explorerDocumentHashesLabel",
+    "sideBarPosition": 14,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Document",
+        "Hash",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerDevToolEmpty",
+    "commandAliases": [
+      "document hashes",
+      "drift hashes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "document with its content hash",
+      "source": {
+        "port": "devtool",
+        "endpoint": "DocumentHashes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Document",
+        "Hash",
+        "Modified"
+      ],
+      "filter": [
+        "Document",
+        "Hash"
+      ],
+      "sort": {
+        "fields": [
+          "Document",
+          "Modified"
+        ],
+        "default": "Document",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "name"
+        },
+        {
+          "field": "Hash",
+          "labelKey": "explorerColumnSha256",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "explorerDocumentHashesInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.documenthashes",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
