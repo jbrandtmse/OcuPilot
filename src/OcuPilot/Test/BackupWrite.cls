@@ -93,9 +93,9 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If '..PreparedPolicyTaken Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Do $ClassMethod(..#PROBE, "Thaw")
-    If '..PreparedPolicyTaken Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Quit ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
 }
