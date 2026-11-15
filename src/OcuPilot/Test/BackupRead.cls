@@ -192,7 +192,9 @@ Method TestOnlyTheTwoFixedRequestsReachTheHarvestedBody()
 Method TestTheVendorsRefusalOfAFreezeWhileABackupRunsIsAnswered409Running()
 {
     Do ..HoldAll()
+    Do $ClassMethod(..#SEAM, "Cluster", 0)
     Do $ClassMethod(..#SEAM, "VendorRefuses", $Parameter(..#PORT, "CODEBACKUPRUNNING"))
+    Do $$$AssertEquals(##class(OcuPilot.Test.BackupProbe).WritesFrozen(), 0, "writes are thawed, so the rules let the freeze through")
     Kill tQuery
     Set tQuery("limit") = 5
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Writes", "FREEZE", .tQuery, "", .tFreeze, .tHttp, .tFault)

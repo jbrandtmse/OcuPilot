@@ -257,8 +257,8 @@ Method TestTheFreezeAndThawRefusalsSendNothing()
 /// <p><b>AC1.</b> A run starts the probe task in the background on both callers, with a read-back reading <code>nothingSent</code>, and the
 /// task's status leaves its prior value and a history row appears. A task the list does not hold is refused 404, and a run while a task
 /// runs is refused 409 with nothing started.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Area.OsMgmt.BackupRules</class> never answers <code>BACKUP.RUNNING</code> -> the run-while-running
-/// rows go red.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Area.OsMgmt.BackupRules</class> answers no refusal for a run -> the run-while-running rows go
+/// red.</p>
 Method TestARunStartsTheTaskOnBothCallers()
 {
     Set tTask = $Parameter(..#PROBE, "TASK")
@@ -270,7 +270,7 @@ Method TestARunStartsTheTaskOnBothCallers()
     Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer), "200|nothingSent", "the screen's run starts the task: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Completed", 120), 1, "its status leaves " _ $Select(tPrior = "": "(none)", 1: tPrior) _ " and reads Completed")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 1, "and a history row appears")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 1, 15), 1, "and a history row appears")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForSettled", 15), 1, "and the instance's own suspension of writes ends, which a second run waits for")
     Set tOutcome = ..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult)
     Do $$$AssertEquals(tOutcome _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult), "200 |nothingSent", "the agent's confirmed run starts it too: " _ tOutcome)
@@ -282,19 +282,22 @@ Method TestARunStartsTheTaskOnBothCallers()
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", "NoSuchTask", {"Name": "NoSuchTask"}, .tResult), "refused: 'NoSuchTask' is not present on this instance", "and at the mint, which reads the target first")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start"), "the vendor starts the probe task")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Running", 20), 1, "a task is running")
-    ; While a backup holds writes (its own suspension, or the vendor's refusal) a freeze is refused 409 on either code; the vendor's
-    ; #7309 mapping is pinned by BackupRead, where it cannot race the backup's phases.
+    ; While a backup holds writes a freeze and a run are refused 409, as running or, in the backup's own suspension of writes, as
+    ; frozen. Each code is pinned where it cannot race the backup's phases: the vendor's #7309 in BackupRead, a run's in BackupRules.
+    ; The refusals are asked first, while the backup is youngest.
     Kill tQuery
     Set tQuery("limit") = 5
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
     Set tCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
     Do $$$AssertTrue($Get(tHttp) = 409 && ((tCode = "BACKUP.RUNNING") || (tCode = "BACKUP.FROZEN")), "a freeze while a backup runs is refused 409 as running or frozen: " _ $Get(tHttp) _ "|" _ tCode)
+    Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
+    Set tGot = tStatus _ "|" _ ..Code(tAnswer)
+    Do $$$AssertTrue((tGot = "409|BACKUP.RUNNING") || (tGot = "409|BACKUP.FROZEN"), "a run while a task runs is refused at the screen: " _ tGot)
+    Set tGot = ..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult)
+    Do $$$AssertTrue((tGot = "refused: A backup is already running.") || (tGot = "refused: Database writes are already frozen."), "and at the mint: " _ tGot)
     Set tWB = $ClassMethod(..#PROBE, "WaitForBackupProcess", 5)
     Do $$$AssertEquals(tWB, 1, "and the instance has a backup process")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForNoBackup", 1), 0, "and the no-backup signal does not come while it runs")
-    Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
-    Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "409|BACKUP.RUNNING", "a run while a task runs is refused at the screen")
-    Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult), "refused: A backup is already running.", "and at the mint")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 3, 120) _ "|" _ $ClassMethod(..#PROBE, "WaitForIdle", 120), "1|1", "it completes")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 3, "and only the run that started added a row")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForNoBackup", 30), 1, "and the no-backup signal comes once it has ended")

@@ -12906,11 +12906,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ocupilot-ci runs 33, 35, 37: no DBACK* routine within 5 s of the probe task reading Running; whether the job outlives Completed and resumed writes in another routine is unmeasured; WaitForNoBackup's process clause has no pin
 - 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=settle: name the backup job by pid and sample it to exit in a shipped test; pin the clause through a seam
+- 2026-11-15T11:07:39Z occurrence=21-2-backup
 
 ### DW-2575: BackupWrite's run test asserts on a backup that lasts seconds, so its mid-backup rows race the backup's end
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ocupilot-ci: run 38 red (freeze answered BACKUP.FROZEN on all 10 tries) and runs 33, 35, 37 red (no backup process in 5 s) at earlier row orders; shipped order green in runs 45, 46, 50; CI legs unmeasured
 - 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=fix: hold the backup open (a larger run database) or assert every mid-backup row straight after Running
+- 2026-11-15T11:07:39Z occurrence=21-2-backup
+- 2026-11-15T11:07:39Z status=routed owner=burndown by=cr note=rework 3 cr: freeze and run rows take RUNNING or FROZEN, asked first; a backup ending before them still reds
 
 ### DW-2576: BackupProbe.Remove's wait for the no-backup signal is unpinned because every caller already waits for an idle task and settled writes
 - source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
@@ -12935,3 +12938,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
 - evidence: job 132695467996 log: [vitest-pool]: Worker forks emitted error, errno -32 EPIPE; the node 24 and 26 legs passed on the same sha
 - 2026-11-15T04:44:38Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun after the run completes
+
+### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: re-review iteration 3 on ocupilot-ci: 'Failed to start backup job' after a license-limit refusal, task Running ever since
+- 2026-11-15T11:12:20Z status=routed owner=burndown by=cr note=measure whether Backup.Task can be reset; consider reading the backup process as well as the task status before refusing

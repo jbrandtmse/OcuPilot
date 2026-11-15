@@ -92,3 +92,7 @@
 2026-11-15T10:05:30Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T10:05:30Z model=sonnet agent_name=21-2-backup-implement-5 cycle_iteration=5
 2026-11-15T10:28:49Z	Story 21.2	dev_complete	spawn_at=2026-11-15T10:06:00Z model=sonnet build_sha=898ae0440 baseline_revision=354285471(rework3) review_loop_iteration=0 followup_review_recommended=false deferred=0 files=5 cycle_iteration=5 note=subagent_sent_two_test_calls_in_one_message_once(no_overlap_reported)
 2026-11-15T10:28:49Z	Story 21.2	stage_spawned	stage=code-review spawn_at=2026-11-15T10:28:49Z model=opus agent_name=21-2-backup-code-review-4 cycle_iteration=4
+2026-11-15T11:12:20Z	Story 21.2	cr_complete	spawn_at=2026-11-15T10:30:00Z model=opus resolved=2 fixed_at_source=2 routed=2 deferred=2 dismissed=10 high=1 med=2 low=1 rows=17 unresolved_high_med=0 clarifications=1(rebuild_needed) closing_sections_present=true final=pending_verification cycle_iteration=4 note=high_patched_in_pass(run_rows_phase_race);throwaway_wedged_by_reviewer_session(license_limit)
+2026-11-15T11:21:20Z	Story 21.2	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed=DW-2587(routed_burndown) occurrences=DW-2574,DW-2575 note=after_rework3
+2026-11-15T11:21:20Z	Story 21.2	fresh_check	env=recipe(rebuilt_11:14Z) tests=11_classes(BackupWrite_x2)+backup,language-servers_specs result=pass order=forward,reverse
+2026-11-15T11:21:20Z	Story 21.2	smoke_complete	method=browser+cli result=pass iterations=3 defects_caught=2(ci_reds) evidence=smoke.sh_50/50+specs model=claude-opus-5-5
