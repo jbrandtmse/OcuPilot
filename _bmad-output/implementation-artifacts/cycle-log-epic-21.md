@@ -60,3 +60,4 @@
 2026-11-15T05:17:51Z	Story 21.2	rework_opened	cycle_iteration=2 iteration=1 trigger=med_first_review items=probe_db_recreate_wedge,fresh_throwaway_verification(BackupWriteGate+mutation,BackupWrite_x2_shipped_names,backup.browser-spec) scope_baseline=pending
 2026-11-15T05:21:06Z	Story 21.2	throwaway_rebuilt	container=ocupilot-ci reason=wedged_by_review(ghost_db+stuck_backup_job) started_by=epic-21-runner source=837574ac9
 2026-11-15T05:21:06Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T05:21:06Z model=sonnet agent_name=21-2-backup-implement-2 cycle_iteration=2
+2026-11-15T05:31:14Z	Story 21.2	dev_blocked	cycle_iteration=2 condition=throwaway_wedged(backup_job_DBACKA_never_finished;experiment_B_disposable_probe) class=environment action=rebuild_throwaway+redispatch_with_planned_fix_no_experiments

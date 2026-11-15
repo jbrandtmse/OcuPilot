@@ -140,6 +140,8 @@ Rejected: the second wait in the run test racing the start (false: `StartTask` r
 
 ## Spec Change Log
 
+- 2026-11-15, rework 1 re-dispatch (lead): the first rework pass wedged the throwaway with a disposable-probe experiment and changed no source; the runner rebuilt `ocupilot-ci`. The next pass applies the planned fix (the run test gets its own probe database name and directory) and runs the verification item, with no delete-after-backup experiments.
+
 - 2026-11-15, rework 1 (lead): re-opened after the first review for the probe-database recreate failure and the verification the wedged throwaway blocked.
 
 - 2026-11-14, spec gate: split ruled (Backup here, Mirroring to 21.12); retitled and re-keyed; freeze limit and strings ruled (Design Notes). Status reset to `draft` for a re-plan of the backup scope only.
@@ -271,8 +273,10 @@ Rejected: the second wait in the run test racing the start (false: `StartTask` r
 
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: throwaway wedged: ocupilot-ci holds writes suspended by a backup job (DBACKA, pid 2964) that never finished, and this pass's own disposable-probe process (pid 2956, in SYS.Database) is hung behind it
+
+Rework 1 (this pass): no source changed and none of the two open items is closed. Read: `irissys/SYS/Database.cls` holds signatures only (no bodies), so the cause could not be read. Measured on a disposable database `OCURW1A`, with the delete issued while its backup ran: the delete succeeded after 2.3 s and nothing wedged. A second disposable probe, `OCURW1B`, started a one-database backup that still read `Running` with writes suspended after 30 s; the delete then hung, leaving `ocurw1b/IRIS.DAT` unmounted and unconfigured, `ocurw1bdev/`, a scratch class `Zz.Rw1` in HSCUSTOM, and the backup database list reset (restored before the second probe; the second probe emptied it again and it is not restored). A thaw changes nothing. Stopped testing as instructed; no `<PROTECT>` clear was attempted, no container touched. Inference: the old `BackupProbe.Remove` ignored a refused `DeleteDatabase` and removed the directory under a still-mounted database, which would leave the ghost the review saw; the review's patch already stops that. The runner rebuilds `ocupilot-ci`, then the two open items (distinct probe database for the run test, `BackupWriteGate` run and mutation, `BackupWrite` twice, browser spec) run on it.
 
 Changed: the harvested backup body, `BackupPort`, its rules and codes, three screens, five tools, the governance, entity, read-source and banner rows, DW-2560's checker rule, `PortGate` rows and the spec-21-1 sentence, the screens' pages and dialog on the client, EXPERIENCE.md, and the tests listed in Verification. Review patches: a command-box spec case, `ui/tools/backup.test.mjs`, a seeded history-truncation test and a frozen-banner assertion in `BackupWrite`, its teardown resets, a wait for the previous backup in `OnBeforeOneTest`, and `ScreenActionDelta` refusing a leading zero.
 
