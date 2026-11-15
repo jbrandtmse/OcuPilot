@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-11-15'
 status: 'done'
 baseline_revision: '3f8933beaeae27122b6ef465043c3433403fe414'
-baseline_commit: 'af15d1c923c6a5aa10d84d2e31cf020851396de7'
+baseline_commit: '3f8933beaeae27122b6ef465043c3433403fe414'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -180,7 +180,7 @@ Code review 2026-11-15 (first review; four layers, full-opus).
 - Memory (`Config.config`): `Config.config.NoRestartOnActivate(Name)`, called at read time, the source the classic `ValueEditor` uses (`:338-342`). Measured on slot A: `errlog`, `routines`, `globals*kb`, `gmheap` and `jrnbufs` need a restart; `bbsiz`, `history`, `locksiz` and `MaxServers` do not. Measured on `ocupilot-ci`: an `errlog` change makes `Config.CPF.PendingRestart` name `config`/`errlog`, so the method and the instance agree for that row.
 - Startup (`Config.Startup`): `WebServer` (CPF reference `RACS_WebServer`: "A restart is required for this setting to take effect."), `ErrorPurge` (`RACS_ErrorPurge`: "the change is applied the next time you restart"), `DefaultPort` (the classic Memory and Startup page's restart message, `MemoryStartup.cls:380-383`).
 - Compatibility (`Config.Miscellaneous`): `NullSubscripts` (`ValueEditor.cls:22-24`, `RESTARTREQUIREDLIST`).
-- Every other Startup and Compatibility setting has no vendor source: each one's CPF reference page (`RACS_<Name>`, all read at plan time) says nothing about a restart, and `ExtendedDatabaseSize`'s page is not published. That silence does not show the setting applies at once (inference). `PendingRestart` does not report Startup or Compatibility changes: `NullSubscripts`, `DefaultPort`, `ErrorPurge` and `SystemMode` changes added no reason to it (measured on `ocupilot-ci`). So the product states a restart only where a source above states one.
+- `MaxIRISTempSizeAtStart` states a restart from its own vendor property description (`irissys/Config/Startup.cls:106-108`). Every other Startup and Compatibility setting has no vendor source: each one's CPF reference page (`RACS_<Name>`, all read at plan time) says nothing about a restart, and `ExtendedDatabaseSize`'s page is not published. That silence does not show the setting applies at once (inference). `PendingRestart` does not report Startup or Compatibility changes: `NullSubscripts`, `DefaultPort`, `ErrorPurge` and `SystemMode` changes added no reason to it (measured on `ocupilot-ci`). So the product states a restart only where a source above states one.
 
 **Decided in-stage:**
 
@@ -285,4 +285,4 @@ Blocking condition: none
 
 **Verification.** `ConfigSettingRead` 9, `ConfigSettingRules` 7, `ConfigSettingMint` 4 and armed `ConfigSettingWrite` 4 green on `ocupilot-ci` after a reload (`LOADERRORS=0`); `test:tools` 2287 pass; `check-objectscript.py` 0 problems; `lint-docs.sh` clean. The Rule 19 mutations for the exclusion, the read-only roster and the shape rules are recorded in Verification, each observed red and reverted.
 
-**Residual risk.** The Design Notes sentence that every other Startup setting has no vendor source still omits `MaxIRISTempSizeAtStart`, which the code states as a restart setting. The full ObjectScript sweep, `smoke.sh` and Rule 30's fresh check are the runner's.
+**Residual risk.** The full ObjectScript sweep, `smoke.sh` and Rule 30's fresh check are the runner's.
