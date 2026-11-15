@@ -96,3 +96,4 @@
 2026-11-15T11:21:20Z	Story 21.2	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed=DW-2587(routed_burndown) occurrences=DW-2574,DW-2575 note=after_rework3
 2026-11-15T11:21:20Z	Story 21.2	fresh_check	env=recipe(rebuilt_11:14Z) tests=11_classes(BackupWrite_x2)+backup,language-servers_specs result=pass order=forward,reverse
 2026-11-15T11:21:20Z	Story 21.2	smoke_complete	method=browser+cli result=pass iterations=3 defects_caught=2(ci_reds) evidence=smoke.sh_50/50+specs model=claude-opus-5-5
+2026-11-15T11:24:17Z	Story 21.2	committed	sha=d34907395 submodules= ci=pending runs=43708708723 fix_for=21-2-backup note=carries_integrate_forward_merge_e0688197c(feature_1cd2bd663)
