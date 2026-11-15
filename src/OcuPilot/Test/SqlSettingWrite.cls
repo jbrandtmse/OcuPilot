@@ -135,31 +135,32 @@ ClassMethod Node(pFamily As %Integer, pName As %String) As %String
     Quit $Select($Data(^%SYS("xsql", "informix", pName)) # 2: ^%SYS("xsql", "informix", pName), 1: "(none)")
 }
 
-/// <p>Prepare a query in <parameter>OTHERNS</parameter>, which caches one query class there, and answer how many cached query classes that namespace
-/// holds.</p>
+/// <p>Prepare a query in <parameter>OTHERNS</parameter>, which caches one query class there, remember that class's name in the process-private
+/// <code>^||SqlSettingWriteProbe</code>, and answer how many of the test's own cached query classes exist there: 1, or 0 when the prepare failed.</p>
 ClassMethod Prepared() As %Integer
 {
     Set tOrigNS = $NAMESPACE
     Set $NAMESPACE = ..#OTHERNS
+    Set ^||SqlSettingWriteProbe = ""
     Set tStmt = ##class(%SQL.Statement).%New()
     Set tSC = tStmt.%Prepare("SELECT 1 AS SqlSettingWriteProbe FROM %Dictionary.ClassDefinition WHERE 1 = 0")
+    If $$$ISOK(tSC) {
+        Do tStmt.%GetImplementationDetails(.tClass)
+        Set ^||SqlSettingWriteProbe = tClass
+    }
     Set $NAMESPACE = tOrigNS
     Quit ..Cached()
 }
 
-/// <p>How many cached query classes <parameter>OTHERNS</parameter> holds.</p>
+/// <p>Whether the cached query class <method>Prepared</method> made in <parameter>OTHERNS</parameter> still exists: 1 or 0. Only that class is
+/// counted, so a cached query class another test class left in the namespace, which the vendor purge does not remove, does not change the answer.</p>
 ClassMethod Cached() As %Integer
 {
+    Set tClass = $Get(^||SqlSettingWriteProbe)
+    If tClass = "" Quit 0
     Set tOrigNS = $NAMESPACE
     Set $NAMESPACE = ..#OTHERNS
-    Set tCount = 0
-    Set tPrefix = "%sqlcq." _ ..#OTHERNS _ "."
-    Set tName = tPrefix
-    For {
-        Set tName = $Order(^oddDEF(tName))
-        If ($Extract(tName, 1, $Length(tPrefix)) '= tPrefix) Quit
-        Set tCount = tCount + 1
-    }
+    Set tCount = $Select($Data(^oddDEF(tClass)): 1, 1: 0)
     Set $NAMESPACE = tOrigNS
     Quit tCount
 }
@@ -271,6 +272,7 @@ Method TestARefusedSetChangesAndPurgesNothingOnEitherCaller()
     Set tDisplayPath = $ClassMethod(..#WRITE, "ValueOf", "SQLShell", "DisplayPath")
     Set tTrace = $ClassMethod(..#WRITE, "ValueOf", "TSQL", "TRACE")
     Set tPrepared = ..Prepared()
+    Do $$$AssertTrue(tPrepared > 0, "a query is cached in " _ ..#OTHERNS _ " before the refused sets: " _ tPrepared)
     For tCase = $ListBuild("osmgmt.sqlsettings", "NoSuchSetting", "1", "404|CONFIG.SETTING.NOTFOUND"), $ListBuild("osmgmt.sqlsettings", "DefaultSchema", tSchema, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "DelimitedIds", tDelimited, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "FastDistinct", "7", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.sqlshellsettings", "EscapeCondition", tEscape, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "DisplayPath", tDisplayPath, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "SelectMode", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.tsqlsettings", "TRACE", tTrace, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.tsqlsettings", "ANSI_NULLS", "1", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "DELIMIDENT", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "NoSuchNode", "1", "404|CONFIG.SETTING.NOTFOUND") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), .tAnswer)
         Do $$$AssertEquals(tStatus, $List(tCase, 4), $List(tCase, 1) _ " " _ $List(tCase, 2) _ " '" _ $List(tCase, 3) _ "' is refused at the screen")

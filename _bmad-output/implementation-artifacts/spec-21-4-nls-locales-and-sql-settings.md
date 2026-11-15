@@ -2,7 +2,7 @@
 title: 'Story 21.4: NLS locales and SQL settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '6108728a37aabfa0530335c247643351a32a5fbe'
 baseline_commit: '6108728a37aabfa0530335c247643351a32a5fbe'
 review_loop_iteration: 0
@@ -103,7 +103,7 @@ deferred:
 
 ### Review Findings
 
-- [ ] [Smoke] `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` is order-dependent: it is red on CI run 43748408456's instance shard 2/8 and on the runner's local sweep shard 9/20, where it ran right after `SqlDataRoutes` (and `Secret`), and green alone and on a fresh instance. Failing asserts: +7 (the screen's change of `ParameterSampling` did not purge the other namespace's cached query: `Cached()` not 0) and +11 (the agent's confirmed change likewise). Find the cause on `ocupilot-ci` by running `SqlDataRoutes` then `SqlSettingWrite`, one call each; fix the product if the purge is really skipped (for example the after-write purge's 'value differs' check reading a stale or already-changed value), or make the test create and assert on its own state if the test is what depends on another class's leftovers. Name the cause, `(inference)` where unproved; then `SqlDataRoutes` then `SqlSettingWrite` green, and `SqlSettingWrite` alone green.
+- [x] [Smoke] `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` is order-dependent: it is red on CI run 43748408456's instance shard 2/8 and on the runner's local sweep shard 9/20, where it ran right after `SqlDataRoutes` (and `Secret`), and green alone and on a fresh instance. Failing asserts: +7 (the screen's change of `ParameterSampling` did not purge the other namespace's cached query: `Cached()` not 0) and +11 (the agent's confirmed change likewise). Find the cause on `ocupilot-ci` by running `SqlDataRoutes` then `SqlSettingWrite`, one call each; fix the product if the purge is really skipped (for example the after-write purge's 'value differs' check reading a stale or already-changed value), or make the test create and assert on its own state if the test is what depends on another class's leftovers. Name the cause, `(inference)` where unproved; then `SqlDataRoutes` then `SqlSettingWrite` green, and `SqlSettingWrite` alone green.
 
 Code review 2026-11-15 (full-opus; four layers): 38 rows grouped into 24 entries (1 high, 1 medium, 20 low, 1 false, 1 maybe-false); 6 patched, 5 ledgered, 13 rejected.
 
@@ -138,11 +138,25 @@ Rejected:
 ## Spec Change Log
 
 - 2026-11-15, rework 1 (lead): re-opened for an order-dependent red in the purge test (CI and the local sweep).
+- 2026-11-15, rework 1 (implement): the purge test counted every cached query class in `USER`; it now counts the one it prepared. No product change.
 
 - 2026-11-15 (lead): plan halt ruled (split, Q2-Q4); status reset to draft for re-plan.
 - 2026-11-15 (re-plan): the intent matrix's `Config.SQL` key count corrected from 47 to 46 (re-measured on slot A: `Get` answers 46 keys, the class declares 46).
 
 ## Review Triage Log
+
+### 2026-11-15 — Rework 1 review pass
+
+- verdicts: 8 findings — high 0, medium 0, low 6, false 2, maybe-false 0
+- findings:
+  - `[low]` `patch` the refused-set test passes vacuously when its prepare fails (0 = 0) — added `tPrepared > 0` beside the prepare.
+  - `[low]` `patch` no observed-red run for the AC3 "purges nothing" clause or the over-purge leg of AC2 — both mutations run and written under Verification.
+  - `[low]` `reject` the probe global is never killed — `Prepared()` resets it and `Cached()` before any `Prepared()` answers 0, so nothing reads a stale value.
+  - `[low]` `reject` the refused-set test lacks the `USER` exists assertion — a missing namespace fails loudly in `Prepared()`, and the same class asserts it once.
+  - `[false]` `reject` the claim that the vendor purge leaves an unrelated class was unverified — checked: `%sqlcq.USER.cls80` has no `STATEMENT_LOCATIONS` row and survives `PurgeQueries({"allNamespace":1})` (runs 486, 487).
+  - `[low]` `reject` the leftover as a product matter — the port makes the same call as the classic page; the vendor behavior is not the product's to change.
+  - `[low]` `reject` the assertion text names "the cached queries" while the check covers the test's own class — the text states the contract, the helper doc states the scope.
+  - `[false]` `reject` the helper change reaches the refused-set test — it is the same class's own helpers, and that test's claim (the cached queries read as before) holds on the narrower check, now guarded.
 
 ### 2026-11-15 — Review pass
 
@@ -252,14 +266,17 @@ Rejected:
 - (review) mutation: `SetValue` runs `PurgeAfterSet` itself, as part of the write -> `SqlSettingWrite.TestAFailedPurgeStillMarksTheAgentsWrite` red (AC2, AC4, AD-15), run 871.
 - (review) mutation: `PurgeAfterSet` answers OK after a failed purge -> `SqlSettingRules.TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal` red (AC2), run 872.
 - (review) mutation: `PURGESQL` loses `ParameterSampling` -> `SqlSettingRules.TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal` red (AC2), run 873; the AC2 line above it stands for the rewritten test.
+- (rework 1) `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` counts only the cached query class it prepared. mutation: `PURGESQL` loses `ParameterSampling` -> that test red (runs 488; screen and agent asserts, with an unindexed `%sqlcq.USER.cls80` present in `USER`), `ConfigPort` reverted byte-identical and reloaded (AC2).
+- (rework 1) AC3, "purges nothing": mutation: `SetValue` purges before it validates -> `SqlSettingWrite.TestARefusedSetChangesAndPurgesNothingOnEitherCaller` red on the cached-queries assertion (also two others), run 493, reverted byte-identical.
+- (rework 1) AC2, over-purge: mutation: `IsPurging` answers true for every SQL key -> `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` red on the `SaveMAC` assertion, run 494, reverted byte-identical.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Review pass: 15 findings; patched 1 medium and 3 low, deferred 2 (one medium unverified, one low), rejected 9 with reasons in the Review Triage Log. Follow-up review recommended: false (one medium patched).
+Rework 1 (the [Smoke] item in Review Findings, closed): `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` counted every cached query class in `USER`, and the warm `ocupilot-ci` held `%sqlcq.USER.cls80`, a class the vendor purge does not remove (no statement-index row; `PurgeQueries` left it in runs 486 and 487). The product's purge ran and answered 200. The creator of that class is not identified (inference: an earlier test class). No product change.
 
-Patches after review, verified on `ocupilot-ci`: `reload.sh` `LOADERRORS=0`; `SqlSettingWrite` green (4); the page spec green (14); `config-settings.browser-spec.mjs` green (7) on the rebuilt, redeployed bundle; `check-objectscript.py`, `lint-docs.sh` clean; `npm run test:tools` 2288 green; two mutations red and reverted byte-identical.
+Changed: `Prepared()` and `Cached()` in `src/OcuPilot/Test/SqlSettingWrite.cls` now track only the class the test prepared; the refused-set test gained a `tPrepared > 0` guard.
 
-This pass: `ConfigPort` gained the `SQL`, `SQLShell`, `TSQL` and `ISQL` endpoints, `Purges` on every row and the four seams; `ConfigError` the purge consequence; `ConfigSettingSet` the purge code and four subclasses; four descriptors, four tools' governance keys, entity types and `Prohibited` rows; the page, strings, action tables, `EXPERIENCE.md` and the arming comment. Verified on `ocupilot-ci`: the loop commands in Verification, one class per call (all green), `check-objectscript.py` and its harness, `lint-docs.sh`, `npm run build`, `npm run test:components` (3460), `config-settings.browser-spec.mjs` (7) and `npm run test:tools` (2288); the mutations above.
+Verified on `ocupilot-ci` with `cls80` still present: `reload.sh` `LOADERRORS=0`; `SqlDataRoutes` green then `SqlSettingWrite` green (7); `SqlSettingWrite` alone green; `SqlSettingRules` green (7); `check-objectscript.py` clean. Three mutations red and reverted (lines under Verification, reloaded). Review pass 2 layers: 8 findings, 2 low patched, 6 rejected (Review Triage Log). Follow-up review recommended: false (no high patched).
