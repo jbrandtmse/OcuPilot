@@ -12919,3 +12919,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-1-developer-tools.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: EnvSync.HashDoc calls SHAHash on the joined text (harvested, unchanged by AC2); measured on slot B by the edge-case layer
 - 2026-11-15T08:47:50Z status=by-design owner=24-1-developer-tools by=cr note=spec-bound by AC2; real if a person compares a hash with another tool's; 24.8 compares OcuPilot hashes only (inference)
+
+### DW-2596: Term-list writes are refused on a database with journaling off, though a TROLLBACK undid a write there on this build
+- source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Task 0 on ocupilot-b-ci: TSTART, Set, Kill, Set, TROLLBACK in a GlobalJournalState 2 database left no partial write; crash recovery unmeasured
+- 2026-11-15T15:22:44Z status=by-design owner=24-2-the-analytics-editors by=harvest note=runner ruling kept the refusal as the safe default; veto U-48 lets the owner drop it
