@@ -12907,3 +12907,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: deleting the WaitForNoBackup guard in Remove leaves BackupWrite, BackupWriteGate and the browser spec green; holding a backup or freeze for its 120 s bound is not test-sized
 - 2026-11-15T06:59:04Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a ghost mount or PROTECT %SaveData on a probe database recurs in CI or a local run
+
+### DW-2585: BackupWriteGate's OnAfterAllTests has no arming guard: an unarmed run whose setup fails still thaws writes and removes probe principals, which would end a deliberate freeze on a dev or slot instance
+- source: spec-21-2-backup.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: re-review iteration 2, src/OcuPilot/Test/BackupWriteGate.cls OnAfterAllTests
+- 2026-11-15T09:27:30Z status=routed owner=burndown by=adjudication note=found outside the re-review range; guard the teardown on the arming flag like BackupWrite's
+
+### DW-2586: Navigation.cls count-history comment stops at fifty-four while its assertion reads fifty-seven
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: re-review iteration 2, src/OcuPilot/Test/Navigation.cls
+- 2026-11-15T09:27:31Z status=wontfix-accepted owner=21-2-backup by=adjudication note=reopen_if=the Navigation count comment is edited or another screen joins OS management

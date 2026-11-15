@@ -6,7 +6,8 @@
 /// sentence; the agent's confirmed start, and a stop minted
 /// while running then stopped out of band, refused at Confirm; a start the instance refuses answering
 /// <code>LANGUAGESERVER.START</code>; and a holder of OS management's pairs without the own pair
-/// refused by name on every call while the rest of OS management stays open.</p>
+/// refused by name on every call while the rest of OS management stays open, but for the screens that
+/// declare a pair of their own.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
 /// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, a JVM the instance's Java
 /// servers find, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
@@ -243,8 +244,8 @@ Method TestARefusedStartAnswersItsPublishedCode()
 }
 
 /// <p>AC5, AD-8 as amended: a holder of OS management's three pairs without the own pair keeps the
-/// area and every other listed OS management screen, while External language servers alone reads
-/// refused on <code>%Admin_ExternalLanguageServerEdit:USE</code>, beside Journal settings on its own
+/// area and every listed OS management screen but six, each refused on a pair of its own: External
+/// language servers on <code>%Admin_ExternalLanguageServerEdit:USE</code>, Journal settings on
 /// <code>%Admin_Journal:USE</code> (Story 18.18), ECP settings on <code>%Admin_Secure:USE</code> and the three Backup
 /// screens on <code>%DB_IRISSYS:WRITE</code> (Story 21.2); the servers' reads and both
 /// actions answer 403 naming that pair, and the probe is not started.</p>
