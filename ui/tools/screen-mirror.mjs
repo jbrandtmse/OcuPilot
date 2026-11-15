@@ -1042,7 +1042,8 @@ export const ACCESS_READ_TYPE = 'LIST';
 export const SOURCE_MONITOR = 'monitor';
 /** The namespace's cubes, term lists and folder items read through `OcuPilot.Port.AnalyticsPort` (AD-65, AD-36, Story 20.11). */
 export const SOURCE_ANALYTICS = 'analytics';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS];
+export const SOURCE_BACKUP = 'backup';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_BACKUP];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1176,6 +1177,22 @@ export function analyticsEndpoints() {
 
 /** The one request type an `analytics` source declares. */
 export const ANALYTICS_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.BackupPort` declares the three list endpoints a `backup` read names. */
+export const BACKUP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'BackupPort.cls');
+
+let backupEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.BackupPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function backupEndpoints() {
+  if (backupEndpointsCache === undefined) {
+    backupEndpointsCache = parseInteropEndpoints(readFileSync(BACKUP_PORT_SOURCE, 'utf8'));
+  }
+  return backupEndpointsCache;
+}
+
+/** The one request type a `backup` source declares. */
+export const BACKUP_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1442,8 +1459,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}' or '${SOURCE_ANALYTICS}', ` +
-      'the fifteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}' or '${SOURCE_BACKUP}', ` +
+      'the sixteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1587,6 +1604,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an analytics source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A backup source lists the instance's backup tasks, its backup history or its backup database list through
+  // `OcuPilot.Port.BackupPort`, which answers each endpoint whole behind its own gate (AD-29, AD-36, Story 21.2): one of the port's list
+  // endpoints, a LIST, and nothing the port would have to issue per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_BACKUP) {
+    const endpoints = backupEndpoints();
+    if (endpoints === null) return `${BACKUP_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the backup port's list endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== BACKUP_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a backup source, which lists the instance's backup tasks, history and database list (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a backup source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
@@ -1964,8 +1998,8 @@ export function bannerProblem(declaration) {
   if (!isObject(source)) return 'banner.source is not an object naming its port, endpoint and type';
   const sourceKeysFault = unknownKeyProblem('banner.source', source, ['port', 'endpoint', 'type']);
   if (sourceKeysFault !== null) return sourceKeysFault;
-  if (source.port !== 'admin') {
-    return `banner.source.port '${shown(source.port)}' is not 'admin', the one port a Release 1 read names (AD-2)`;
+  if (source.port !== 'admin' && source.port !== SOURCE_BACKUP) {
+    return `banner.source.port '${shown(source.port)}' is not 'admin' or 'backup', the two ports a banner reads (AD-2)`;
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
     return `banner.source.endpoint '${shown(source.endpoint)}' is not a package-relative endpoint name`;
@@ -3900,7 +3934,7 @@ export interface ReadDeclaration {
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
 export interface BannerSource {
-  readonly port: 'admin';
+  readonly port: 'admin' | 'backup';
   readonly endpoint: string;
   readonly type: 'GET';
 }

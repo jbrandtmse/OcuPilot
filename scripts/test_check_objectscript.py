@@ -1250,6 +1250,71 @@ class TestAdminApiContainment(FixtureTreeCase):
         self.assertEqual(self.containment_problems(), [])
 
 
+class TestHarvestBodyContainment(FixtureTreeCase):
+    """DW-2560: a harvested body class is named in code by the harvest port, `Port/Harvest/`, the one
+    area port that declares it and the test package; every other file is refused, and the rule runs as
+    part of the containment rule the checker's run reaches."""
+
+    CALLER = "src/OcuPilot/Port/BackupPort.cls"
+
+    def containment_problems(self, via_checks: bool = False) -> list[str]:
+        problems: list[str] = []
+        if via_checks:
+            for check in co.CHECKS:
+                check(problems)
+        else:
+            co.check_harvest_containment(problems)
+        return [p for p in problems if "DW-2560" in p]
+
+    def plant(self, rel: str, line: str) -> None:
+        self.write(
+            rel,
+            "Class Planted Extends %RegisteredObject\n{\n\nClassMethod Run() As %String\n{\n"
+            f"    {line}\n" "}\n\n}\n",
+        )
+
+    def test_a_planted_reference_outside_the_allowed_set_is_refused_through_the_checker_run(self):
+        self.plant("src/OcuPilot/Screen/Tool/Planted.cls", "Quit ##class(OcuPilot.Port.Harvest.Monitor).BackupManage()")
+        problems = self.containment_problems(via_checks=True)
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Screen/Tool/Planted.cls:6:") and "OcuPilot.Port.Harvest.Monitor" in p for p in problems),
+            f"expected the planted class refused at its line, naming the body, got {problems}",
+        )
+
+    def test_a_body_named_by_a_literal_string_is_refused(self):
+        self.plant("src/OcuPilot/Port/OtherPort.cls", 'Quit "OcuPilot.Port.Harvest.Monitor"')
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith("src/OcuPilot/Port/OtherPort.cls:6:") for p in problems), f"got {problems}")
+
+    def test_the_declared_caller_may_name_only_its_own_body(self):
+        self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.Monitor"')
+        self.assertEqual(self.containment_problems(), [], "the declared caller names its body")
+        self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.Other"')
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith(self.CALLER + ":6:") for p in problems), f"another body is refused, got {problems}")
+
+    def test_a_caller_not_in_the_declared_table_is_refused(self):
+        original = dict(co.HARVEST_CALLERS)
+        try:
+            co.HARVEST_CALLERS.clear()
+            self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.Monitor"')
+            problems = self.containment_problems()
+        finally:
+            co.HARVEST_CALLERS.update(original)
+        self.assertTrue(any(p.startswith(self.CALLER + ":6:") for p in problems), f"got {problems}")
+
+    def test_the_port_the_harvest_directory_the_tests_and_a_doc_comment_pass(self):
+        self.plant("src/OcuPilot/Port/HarvestPort.cls", 'Quit "OcuPilot.Port.Harvest.Monitor"')
+        self.plant("src/OcuPilot/Port/Harvest/Monitor.cls", "Quit ##class(OcuPilot.Port.Harvest.Handler).Render()")
+        self.plant("src/OcuPilot/Test/Fixture.cls", "Quit ##class(OcuPilot.Port.Harvest.Monitor).BackupManage()")
+        self.write(
+            "src/OcuPilot/Screen/Tool/Prose.cls",
+            "/// <p>Explains that <class>OcuPilot.Port.Harvest.Monitor</class> is reached through the port.</p>\n"
+            "Class OcuPilot.Screen.Tool.Prose Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.assertEqual(self.containment_problems(), [])
+
+
 class TestRestraintContainment(FixtureTreeCase):
     """AD-30's one enforcement point: a restraint code is produced by
     `Kernel/Restraint.cls` alone, declared by `Api/Error.cls`, and asserted by a test class."""
@@ -1482,6 +1547,7 @@ class TestToolDispatchRule(FixtureTreeCase):
         self.cls("src/OcuPilot/Port/InteropPort.cls", "OcuPilot.Port.InteropPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Port/AnalyticsPort.cls", "OcuPilot.Port.AnalyticsPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Port/HarvestPort.cls", "OcuPilot.Port.HarvestPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
+        self.cls("src/OcuPilot/Port/BackupPort.cls", "OcuPilot.Port.BackupPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Test/AdminPortFault.cls", "OcuPilot.Test.AdminPortFault", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         problems = self.problems()
         self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Dispatch.cls:6:") and "capture" in p for p in problems), f"got {problems}")
@@ -1776,6 +1842,19 @@ class TestShippedTreeAdminApiContainment(unittest.TestCase):
         problems: list[str] = []
         co.check_admin_api_containment(problems)
         self.assertEqual(problems, [], "check_admin_api_containment over the shipped tree")
+
+
+class TestShippedTreeHarvestBodyContainment(unittest.TestCase):
+    """DW-2560 over the real tree: every body class under `Port/Harvest/` is named only where the rule
+    allows, and the declared caller table names a file that exists."""
+
+    def test_the_shipped_tree_names_a_harvested_body_only_where_allowed(self):
+        problems: list[str] = []
+        co.check_harvest_containment(problems)
+        self.assertEqual(problems, [], "check_harvest_containment over the shipped tree")
+        for body, caller in co.HARVEST_CALLERS.items():
+            self.assertTrue((co.ROOT / caller).is_file(), f"{body}'s declared caller {caller} exists")
+            self.assertIn(body, (co.ROOT / caller).read_text(encoding="utf-8"), f"{caller} names {body}")
 
 
 class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):

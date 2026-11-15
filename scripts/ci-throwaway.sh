@@ -852,6 +852,14 @@ services:
       # never restarts the instance.
       # classes: DatabaseCreateEncrypted
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
+      # Runs a backup of one probe database to a directory under the manager directory, freezes database
+      # writes for a few seconds and thaws them, and adds and removes a probe database on the backup
+      # database list, through the shipped screen-action and confirm paths. Its own variable because no
+      # narrower one names that effect: a freeze suspends every database write on the instance until the
+      # limit passes, and a list change moves what the list backups cover. The class thaws on every path,
+      # restores the backup list it found and removes the probe task, database and directories (Story 21.2).
+      # classes: BackupWrite
+      OCUPILOT_ALLOW_BACKUP_CONTROL: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

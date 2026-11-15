@@ -149,6 +149,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
   // Story 20.34: the Cube manager, whose Build types the cube's name and whose Synchronize is sent at once, each reporting the lines the instance answered.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
+  // Story 21.2: Backup tasks, whose Run warns first, and Backup database list, whose Remove is sent at once.
+  'OcuPilot.Screen.Descriptor.BackupTaskList',
+  'OcuPilot.Screen.Descriptor.BackupDatabaseList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -242,6 +245,23 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  * status as the action's one declared value.
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
+
+/**
+ * Backup tasks and Backup database list (Story 21.2). Backup tasks' Run is a row action with its warning, its Freeze writes is sent by its
+ * page with its limit and its Thaw writes at once, each on the one target `BACKUP_WRITES_TARGET` names; Backup database list's Add database is
+ * its page's dialog, and its Remove is a row action sent at once.
+ */
+export const BACKUP_TASK_LIST = 'OcuPilot.Screen.Descriptor.BackupTaskList';
+export const BACKUP_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.BackupDatabaseList';
+export const BACKUP_FREEZE = 'freeze';
+export const BACKUP_THAW = 'thaw';
+export const BACKUP_ADD_DATABASE = 'add';
+
+/** The one target the freeze and the thaw name: the instance's database writes. */
+export const BACKUP_WRITES_TARGET = 'SYSTEM';
+
+/** The value Freeze writes sends beside its target, under the name its tool declares (AD-56). */
+export const BACKUP_LIMIT_VALUE = 'limit';
 export const ECP_CHANGE_STATUS = 'changestatus';
 
 /**
@@ -448,6 +468,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
   // ECP data servers' page registers Change status itself, whose dialog sends the status (Story 18.20).
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
+  // Backup tasks' page registers Freeze writes and Thaw writes itself, each on the instance's database writes, and Backup database list's page
+  // registers Add database itself, whose dialog names the database (Story 21.2).
+  [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
+  [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -771,6 +795,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
   // removes anything, so each warns.
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
+  // Story 21.2: a run starts in the background, and a freeze stops database writes until a thaw or its limit.
+  [BACKUP_TASK_LIST]: { run: STRINGS.backupRunNote, [BACKUP_FREEZE]: STRINGS.backupFreezeConsequence },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
@@ -831,6 +857,8 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   },
   // Story 18.5: a journal integrity check reads every record only when asked.
   [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
+  // Story 21.2: a freeze names how many seconds the instance suspends writes, from 1 to 600.
+  [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
 };
 
 /**

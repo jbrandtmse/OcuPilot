@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'backup';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -314,7 +314,7 @@ export interface ReadDeclaration {
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
 export interface BannerSource {
-  readonly port: 'admin';
+  readonly port: 'admin' | 'backup';
   readonly endpoint: string;
   readonly type: 'GET';
 }
@@ -556,7 +556,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "cube",
   "term-list",
   "term-list-entry",
-  "folder-item"
+  "folder-item",
+  "backup-task",
+  "backup-database"
 ];
 
 /**
@@ -610,7 +612,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "superserver": "portbind",
   "docdb-application": "foldcase",
   "routine-application": "foldcase",
-  "interop-message": "integerset"
+  "interop-message": "integerset",
+  "backup-database": "foldcase"
 };
 
 /**
@@ -4326,6 +4329,492 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupDatabaseList",
+    "route": "os-management/backup-databases",
+    "area": "os-management",
+    "labelKey": "backupDatabasesLabel",
+    "sideBarPosition": 25,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "backup-database",
+    "entityLabelKey": "aboutBackupDatabase",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Database"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "add",
+        "selfProtection": ""
+      },
+      {
+        "id": "removedatabase",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Database",
+        "Directory"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupDatabasesEmpty",
+    "commandAliases": [
+      "backup database list",
+      "backup databases",
+      "add backup database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupDatabasesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupDatabasesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupDatabasesPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.mgr.utilsysbackupdatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "database on the backup list",
+      "label": "The databases the list backups cover; a list nobody defined is empty and the list backups then cover every database except IRISTEMP.",
+      "source": {
+        "port": "backup",
+        "endpoint": "Databases",
+        "type": "LIST"
+      },
+      "fields": [
+        "Database",
+        "Directory"
+      ],
+      "filter": [
+        "Database",
+        "Directory"
+      ],
+      "sort": {
+        "fields": [
+          "Database",
+          "Directory"
+        ],
+        "default": "Database",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "name"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backupDatabasesEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.backupdatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupHistoryList",
+    "route": "os-management/backup-history",
+    "area": "os-management",
+    "labelKey": "backupHistoryLabel",
+    "sideBarPosition": 24,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Time",
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupHistoryEmpty",
+    "commandAliases": [
+      "backup history",
+      "backup log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupHistoryPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupHistoryPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupHistoryPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysbackuplogs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "backup",
+      "label": "The most recent backups, newest first, at most fifty, with each one's type, status and the databases it covered.",
+      "source": {
+        "port": "backup",
+        "endpoint": "History",
+        "type": "LIST"
+      },
+      "fields": [
+        "Time",
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "filter": [
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Time",
+          "Type",
+          "Status"
+        ],
+        "default": "Time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Databases",
+          "labelKey": "databaseListLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.backuphistory",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupTaskList",
+    "route": "os-management/backup-tasks",
+    "area": "os-management",
+    "labelKey": "backupTasksLabel",
+    "sideBarPosition": 23,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "backup-task",
+    "entityLabelKey": "aboutBackupTask",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      },
+      {
+        "id": "freeze",
+        "selfProtection": ""
+      },
+      {
+        "id": "thaw",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "LastRun",
+        "Status",
+        "Description",
+        "SystemTask",
+        "WritesFrozen"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupTasksEmpty",
+    "commandAliases": [
+      "backup tasks",
+      "backups",
+      "run backup",
+      "freeze writes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupTasksPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupTasksPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupTasksPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysbackups",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "backup task",
+      "label": "Backup tasks, the four built-in tasks first, with when each last ran and its status; the backup history is in osmgmt.backuphistory and the backup database list in osmgmt.backupdatabases.",
+      "source": {
+        "port": "backup",
+        "endpoint": "Tasks",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "LastRun",
+        "Status",
+        "Description",
+        "SystemTask",
+        "WritesFrozen"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Status",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "LastRun",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "LastRun",
+          "labelKey": "taskColumnLastRun",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "SystemTask",
+          "labelKey": "backupColumnSystemTask",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backupTasksEmptyAgent"
+    },
+    "banner": {
+      "source": {
+        "port": "backup",
+        "endpoint": "Writes",
+        "type": "GET"
+      },
+      "field": "WriteState",
+      "cases": [
+        {
+          "equals": "Frozen",
+          "messageKey": "backupFrozenBanner",
+          "severity": "warning",
+          "action": "thaw"
+        }
+      ]
+    },
+    "toolIdentifier": "osmgmt.backuptasks",
+    "refreshDefault": 0,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Dashboard",

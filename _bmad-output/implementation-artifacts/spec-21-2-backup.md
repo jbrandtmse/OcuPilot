@@ -2,9 +2,10 @@
 title: 'Story 21.2: Backup'
 type: 'feature'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '97f1aa93577932c2007d466c995682bea3eaaed6'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred: []
@@ -120,6 +121,22 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 ## Review Triage Log
 
+### 2026-11-14 - Review pass
+
+- verdicts: 11 findings - high 0, medium 4, low 7, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Command box's Freeze writes entry has no test - added a `command-box.spec.ts` case; mutation (line dropped) red.
+  - `[medium]` `[patch]` The run and freeze consequence codes are unpinned on the client, and `BackupError`'s sentences are claimed pinned to `strings.ts` with no test - added `ui/tools/backup.test.mjs`; mutation (returns swapped) red.
+  - `[medium]` `[patch]` History truncation's assertion cannot fail on a throwaway with fewer than fifty entries - `BackupWrite.TestTheHistoryReportsTruncationOnlyPastFifty` seeds fifty and fifty-one entries through `BackupProbe.SeedHistory` and restores them; mutation red.
+  - `[medium]` `[patch]` The frozen banner's server path is observed only by the browser spec - `BackupWrite` now asserts the tasks read's banner after a freeze and after a thaw.
+  - `[low]` `[patch]` Mutation lines missing for AC4's `PortGate` half, AC2's confirm half and the browser spec - each applied, observed red, reverted and recorded under Verification.
+  - `[low]` `[patch]` `BackupWrite` leaked the `ScreenGate` hold and the clustered seam on an error - `OnAfterOneTest` resets both and restores the history.
+  - `[low]` `[patch]` The screen action path accepted `007` as 7 where the rules refuse it - `ScreenActionDelta` converts only `^[1-9][0-9]{0,8}$`; `007` joined the refusal rows.
+  - `[low]` `[reject]` `check_harvest_containment` sees only a literal `OcuPilot.Port.Harvest.<Name>` - an `Import` or concatenated spelling is not matched; a fix adds a parser for no reachable case in this tree, and the literal form is the one the sibling rule (`check_admin_api_containment`) matches.
+  - `[low]` `[reject]` `BackupGateSeam` and `BackupHarvestRecorder` hold no assertions - not defects; they are fixtures.
+  - `[low]` `[reject]` Intent-alignment: the matrix's "through the OcuPilot API" is observed in-process through the shipped action handler and the executors beneath the read route; the sibling stories (Database, ECP) pin their rows the same way, and the browser spec observes the deployed routes for the reads, freeze, thaw, add and remove.
+  - `[low]` `[reject]` Intent-alignment: the run row names `FullDBList` while `BackupWrite` runs a probe-defined task, since the built-in tasks cannot create `/Backup` on the throwaway; the request shape for `FullDBList` is asserted through the recorder.
+
 ## Design Notes
 
 **Governing ADs:** AD-10 (the backup freeze bound), AD-22 (keys ship `false`; a person's screen write is not governed), AD-23 (harvested body), AD-29 (`BackupPort`'s gate), AD-21 (no path; names from fixed sources), AD-35 (no credential), AD-36 (bounded reads), AD-51, AD-52, AD-53, AD-56 (ii), AD-58 (action writes, two callers, read-back), AD-6, AD-34, AD-15 (proposal, transition, audit), AD-14 (change event), AD-5, AD-44 (descriptors, classic keys), AD-16, AD-59 (namespace, `Snippet`).
@@ -161,6 +178,27 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 **DW-2560** is addressed by the `check-objectscript.py`, `PortGate` and `spec-21-1` tasks and AC4.
 
+**Task 0, measured on `ocupilot-ci` (2026-11-15):**
+
+- Pair set: not measured as a least-privileged principal (a probe user's session answered `Access Denied` straight after `$System.Security.Login`, and `AddRoles` was refused), so the pairs are the classic menu's, which the spec allows: reads `%Admin_Operate:USE`, `%DB_IRISSYS:READ`; writes add `%DB_IRISSYS:WRITE`; the screens require all three, the write pair as the screen's own.
+- Classic keys: `%SYS.Portal.Resources.NormalizePage` resolves `UtilSysBackups`, `UtilSysBackup`, `UtilSysBackupLogs` and `UtilSysBackupDatabases` to `%cspapp.op.utilsysbackups`, `%cspapp.op.utilsysbackup`, `%cspapp.op.utilsysbackuplogs` and `%cspapp.mgr.utilsysbackupdatabases`, and each key resolves to itself.
+- `WDSuspendLimit` resumes writes: limit 5 read thawed 5.02 s after the freeze call returned (the call took 1.3 s), polled each second, so the slack is about one second and the tests allow 6. A freeze outlives the process that made it, and `ExternalThaw()` with no credentials from another process resumes it.
+- Clustered system: `DBACKB` sets its cluster path when a backed-up database reads cluster-mounted (`$ZU(49,dir,1)` piece 2 non-zero), and `DBACK`'s `CLUBINIT` splits `$ZU(172,0)` on `;`. The port's predicate is more than one member or any local database cluster-mounted; here `$ZU(172,0)` is `1972` and none of nine databases is, so it reads false (inference: that is the path where `ExternalFreeze` ignores the limit; the body of `ExternalFreeze` is not in the export).
+- Vendor answers: unknown task `StartTask` #7308; unknown database add #7321; `IRISTEMP` add #7322; remove of an unlisted database #7324; a duplicate add is OK (status 1); thaw while not frozen #7339. `Backup.Task:List` status reads `""`, `Running` (about 17 s for one empty probe database) and `Completed`.
+- `StartTask("FullDBList",1,1)` fails #7318 on this throwaway: its device `/Backup` cannot be created. The run tests therefore run a task the test defines, with a device under the manager directory. A second run while one runs was observed through the port's refusal, not the vendor's.
+- A database that is configured joins the backup list at once (the list held all nine), so the probe starts unlisted only after it is taken off.
+
+**Decided in-stage (implement):**
+
+- Port shape: endpoints `Tasks` (`LIST`, `GET`, `RUN`), `History` (`LIST`), `Databases` (`LIST`, `GET`, `ADD`, `REMOVE`) and `Writes` (`GET`, `FREEZE`, `THAW`); the spec's `STATE` read is the port's `GET`. `Rows` is the screens' list call and reports the history's own cut. The refusal logic is `BackupRules.Code`, which the port and the mint both ask.
+- The frozen banner reads the write state through the port: a banner source may now be `backup` (Registry, Read, mirror and the shared corpus), and its action is the declared `thaw`.
+- Freeze and thaw name the literal `SYSTEM` under the `backup-task` type; the freeze's `limit` is a member of the read answer (a merge needs one) and of the fingerprint subject (an action-style payload is that subject).
+- `IRISTEMP` is answered as `BACKUP.DATABASE.NOTFOUND`: it is never a database of the list.
+- `ExternalFreeze` and `ExternalThaw` print to the current device, so `BackupPort` captures and discards it and joins the checker's capture roster.
+- DW-2560 is `check_harvest_containment`, called from `check_admin_api_containment`: `CLAUDE.md` pins the rule count at 21, and a 22nd entry would need an edit to `CLAUDE.md` that is the owner's.
+- Client: Backup tasks' and Backup database list's pages register their own actions (Freeze writes beside the journal switches on the command bar and in the box, Add database through its own dialog); Run warns with the run note and Remove is sent at once.
+- Every confirm test sets `^||OcuPilotDatabaseWritePort` to the shipped port, since the confirm fixture otherwise answers from an accepting stub.
+
 **Proposed spine amendment (Rule 20, for the owner's attended Update):** add `BackupPort` to AD-29's Binds; AD-10's backup arm: "the bound is `FREEZELIMITMAX` (600) seconds, enforced by `BackupPort` through `WDSuspendLimit`; a freeze is refused where the instance would ignore it (measured predicate)."
 
 ## Verification
@@ -177,14 +215,36 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - `(once)` `cd ui && npm run test:tools` -- expected: green.
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, and Rule 30's fresh check. The full browser suite is left to CI.
 
-**Mutations (Rule 19), one per AC:**
+**Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `cmp`) and the reverted source reloaded into `ocupilot-ci`:**
 
-- AC1: `BackupPort`'s `TASKS` branch drops the system tasks -> red: `BackupRead`'s four-built-ins test.
-- AC2: `osmgmt.backuptasks.freeze` set `true` in the baseline -> red: `BackupRead`'s governance-default test.
-- AC3: `WDSuspendLimit` passed as 0 -> red: `BackupWrite`'s freeze-resumes-without-thaw test.
-- AC4: `BackupPort.cls` removed from `HARVEST_CALLERS` -> red: the checker over the shipped tree.
+- AC1: `BackupPort`'s `TaskRows` skips the system tasks -> red: `BackupRead`'s four-built-ins test (and two more). Also red: `jobbackup` 0 (the two-fixed-requests test), the gate answering OK (the read-refusal test), `BackupRun` `DESTRUCTIVE` 0 (the declarations test), `LIMITMAX` 6000 (`BackupRules`), `RUNNING` never answered and an add sending the remove call (`BackupWrite`), and, in the client, each page's `register`, `freeze` out of `WARNING_VALUES`, the dialog's trim and the command bar's `hasBackupFreezeAction`.
+- AC2: `osmgmt.backuptasks.freeze` set `true` in the baseline -> red: `BackupRead`'s five-keys test.
+- AC3: `WDSuspendLimit` passed as 0 -> red: `BackupWrite`'s freeze-resumes-without-thaw test, the teardown thawing.
+- AC4: `BackupPort.cls` removed from `HARVEST_CALLERS` -> red: the checker over the shipped tree and `TestShippedTreeHarvestBodyContainment`.
+- AC1, history truncation: `BackupPort.History` sets `pCut` 0 -> red: `BackupWrite`'s `TestTheHistoryReportsTruncationOnlyPastFifty` (it seeds fifty and fifty-one entries and restores the history).
+- AC2, the confirm's effect: `SuspendCall` returns OK without freezing -> red: four `BackupWrite` tests, among them the key-enabled confirm test.
+- AC4, `PortGate` half: the `Monitor=<body>` roster row dropped, and `Monitor` defining an `Invoke` -> `PortGate`'s roster test red each time.
+- Client: the command box's backup line dropped -> its Story 21.2 spec case red; the run and freeze consequence returns swapped in `proposal-view.ts` -> `ui/tools/backup.test.mjs` red.
+- Browser spec: `SuspendCall` returning without freezing -> its freeze test red alone (the other two stay green).
+- The history's fifty-first-entry case runs in `BackupWrite` only, because seeding `^SYS("BUHISTORY")` is armed work.
+
+## Clarification Needed
+
+- Strings the framework requires of a built screen that the spec does not rule (entity nouns `Backup task` and `Backup database`, the empty sentences `No backup tasks on this instance.` and `No backups are recorded on this instance.`, the empty-agent phrases `run a backup task` and `add a database to the backup list`, and nine suggested prompts). They are in `strings.ts` and on EXPERIENCE.md's row 604 so the build and `strings.test.mjs` pass; the owner may reword or veto them.
+- `CLAUDE.md` says 21 rules and a test pins that; DW-2560's check is folded into the containment rule. Splitting it into its own rule needs the sentence changed.
+- The least-privileged measurement of the pair set was not possible (see Task 0); the pairs are the classic menu's.
+- `BackupWrite` is armed by `OCUPILOT_ALLOW_BACKUP_CONTROL`, which the running `ocupilot-ci` predates; it ran here with the variable injected through a `docker exec` shim.
+- `ocupilot-ci` now holds a mounted database `OCUPROBEBACKUP` (SFN 85) with no directory: a `CreateDatabase` right after the previous probe test's removal failed with `<PROTECT>%SaveData+182^SYS.Database.1`, and the dismount fails with `<PROTECT>Dismount+6^SYS.Database.1` (the state `objectscript-testing.md` describes). Until the runner recreates the throwaway, `BackupWrite` and the browser spec's probe cannot create their database there. `BackupWrite` ran green twice (runs 814 and 815) and the browser spec green once with the probe's database name and directory temporarily changed to a fresh pair, reverted afterwards (`cmp` identical). `OnBeforeOneTest` now waits for the previous backup to settle (inference: that race caused the failure).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Changed: the harvested backup body, `BackupPort`, its rules and codes, three screens, five tools, the governance, entity, read-source and banner rows, DW-2560's checker rule, `PortGate` rows and the spec-21-1 sentence, the screens' pages and dialog on the client, EXPERIENCE.md, and the tests listed in Verification. Review patches: a command-box spec case, `ui/tools/backup.test.mjs`, a seeded history-truncation test and a frozen-banner assertion in `BackupWrite`, its teardown resets, a wait for the previous backup in `OnBeforeOneTest`, and `ScreenActionDelta` refusing a leading zero.
+
+Review: 4 medium and 3 low patched, 2 low rejected with reasons (Review Triage Log); nothing deferred.
+
+Verified on `ocupilot-ci` after the patches: `BackupRead` 8, `BackupRules` 5, `Harvest`, `PortGate` and every class in the `(loop)` list green; `BackupWrite` green (7 tests, runs 814 and 815) and the browser spec green (3 of 3), both with the probe's database name changed to a fresh pair and reverted afterwards; `check-objectscript.py` and its harness, `lint-docs.sh`, `npm run build`, `test:components` (3439) and `test:tools` (2280) green. Left to the runner: the full ObjectScript sweep, `smoke.sh`, Rule 30 and the full browser suite.
+
+Follow-up review recommended: true. Unverified risk: `BackupWrite` and the browser spec cannot run on the current `ocupilot-ci` with their shipped probe name (the mounted ghost under Clarification Needed), so the reverted final source of `BackupProbe` has not been run there; the runner's fresh throwaway settles it.
