@@ -116,3 +116,4 @@
 2026-11-15T14:47:38Z	Story 21.3	cr_complete	spawn_at=2026-11-15T14:35:00Z model=opus resolved=2 fixed_at_source=2 deferred=0 dismissed=13 high=0 med=0 low=2 rows=15 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done cycle_iteration=2
 2026-11-15T14:47:46Z	Story 21.3	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 filed_by_cr=DW-2589..2595 model=claude-opus-5-5
 2026-11-15T14:52:01Z	Story 21.3	fresh_check	env=recipe(rebuilt_14:48Z) tests=26_classes+config-settings,language-servers_specs result=pass order=forward,reverse
+2026-11-15T14:53:46Z	Story 21.4	stage_spawned	stage=plan spawn_at=2026-11-15T14:53:46Z model=opus agent_name=21-4-nls-locales-and-sql-settings-plan-1 cycle_iteration=1
