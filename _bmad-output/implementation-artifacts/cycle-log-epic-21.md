@@ -130,3 +130,5 @@
 2026-11-15T15:31:26Z	Story 21.12	owner_decision	id=U-39 at=2026-11-15T15:30:04Z#142 via=inbox(relayed_by_orchestrator) by=owner(planner_relay) answer=A:monitor+refusal quote="A: monitor + refusal (Recommended)"
 2026-11-15T15:31:26Z	Story 21.12	story_unparked	via=inbox story_base=none note=no_code;criteria_narrowed_in_epics.md(Rule5_owner_amendment);register_rows_to_be_built_by_21.12
 2026-11-15T15:31:26Z	Epic 21	spine_updated	ad=AD-10 reason=owner_answer(U-39) by=runner story=21-12-mirroring lint=preexisting_low_placeholder_only
+2026-11-15T15:34:04Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(U-39_21.12_narrowed,AD-10) model=claude-opus-5-5 lines=77
+2026-11-15T15:34:04Z	Story 21.12	stage_spawned	stage=plan spawn_at=2026-11-15T15:34:04Z model=opus agent_name=21-12-mirroring-plan-2 cycle_iteration=2
