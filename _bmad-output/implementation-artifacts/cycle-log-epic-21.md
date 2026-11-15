@@ -170,3 +170,4 @@
 2026-11-15T20:15:08Z	Story 21.14	ruling	question=AD-39_exception_for_vendor_validation_lines choice=comply(no_vendor_lines;sentence) rejected=amend_unattended why=U7_comply_first category=decide policy=b9ff703e
 2026-11-15T20:15:08Z	Story 21.14	ruling	question=three_new_strings choice=keep rejected=reword why=plain category=veto inbox=U-57 policy=b9ff703e reversal=reword
 2026-11-15T20:15:08Z	Story 21.14	spec_validated	service_introducing=true(LocalePort) integration_ac=present adr_constrained_acs=AD-4,AD-10,AD-21,AD-22,AD-29,AD-35,AD-39,AD-51,AD-52,AD-53,AD-58 decision_dependency=none owned_ledger=none mutates_shared_runtime=false(throwaway_only) filed=DW-2606(decision-pending_export) model=claude-opus-5-5
+2026-11-15T20:18:21Z	Story 21.15	stage_spawned	stage=plan spawn_at=2026-11-15T20:18:21Z model=opus agent_name=21-15-locale-and-table-import-plan-1 cycle_iteration=1
