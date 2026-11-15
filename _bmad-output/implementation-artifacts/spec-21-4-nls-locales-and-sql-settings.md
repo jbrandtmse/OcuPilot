@@ -105,6 +105,21 @@ deferred:
 
 - [x] [Smoke] `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` is order-dependent: it is red on CI run 43748408456's instance shard 2/8 and on the runner's local sweep shard 9/20, where it ran right after `SqlDataRoutes` (and `Secret`), and green alone and on a fresh instance. Failing asserts: +7 (the screen's change of `ParameterSampling` did not purge the other namespace's cached query: `Cached()` not 0) and +11 (the agent's confirmed change likewise). Find the cause on `ocupilot-ci` by running `SqlDataRoutes` then `SqlSettingWrite`, one call each; fix the product if the purge is really skipped (for example the after-write purge's 'value differs' check reading a stale or already-changed value), or make the test create and assert on its own state if the test is what depends on another class's leftovers. Name the cause, `(inference)` where unproved; then `SqlDataRoutes` then `SqlSettingWrite` green, and `SqlSettingWrite` alone green.
 
+Code review 2026-11-15, rework 1 re-review (full-opus; four layers): 17 rows grouped into 9 entries (0 high, 1 medium unverified, 4 low, 3 false, 1 maybe-false); 0 patched, 1 ledgered, 8 rejected. The [Smoke] item is closed: the purge test asserts on the class it prepared, and its mutation lines (runs 488, 493, 494) stand.
+
+- [x] [Review][Defer] (medium, unverified) A cached query class with no statement-index row (`%sqlcq.USER.cls80`) survives the all-namespace purge, so the Q3 purge sentence may claim more than the purge does [src/OcuPilot/Port/ConfigPort.cls:777] — deferred: DW-2610, decision-pending burndown; settled by whether a later `%Prepare` of its text reuses it
+
+Rejected (rework 1 re-review):
+
+- (false) `Prepared()` raises `<UNDEFINED>` and stays in `USER` when `%GetImplementationDetails` answers 0: a successful `%Prepare` always sets `%PreparedStatement` (`%SQL.Statement:646`), and a failed one returns an error first.
+- (false) The `Prepared()` doc's "0 when the prepare failed" misleads: it holds on every reachable path, by the same refutation.
+- (false) The cycle log's `deferred=0` contradicts DW-2609: `deferred=` counts the implement stage's frontmatter items; DW-2609 is the runner's harvest of a flake.
+- (low) The guards report a bare 0 with no error text: they still fail loudly; carrying the status out adds plumbing.
+- (low) DW-2609 is owned by 21.4 and the run-484 red is not tied to the cached-query state: a terminal entry's owner is calibration, and its `reopen_if` probe stands.
+- (low) Verification lines say "runs 488" for one run and omit "reloaded" on the 493 and 494 lines: the fix edits the spec under review.
+- (low) The original red was not reproduced on record: the old loop counted every `%sqlcq.USER.` class, and `cls80` survived the purge in runs 486 and 487, so the cause follows.
+- (maybe-false) The probe's constant text reuses a class left by the last run, which a lost index row could turn into a false red: low if true; a per-call alias would settle it.
+
 Code review 2026-11-15 (full-opus; four layers): 38 rows grouped into 24 entries (1 high, 1 medium, 20 low, 1 false, 1 maybe-false); 6 patched, 5 ledgered, 13 rejected.
 
 - [x] [Review][Patch] (high) A confirmed agent write whose purge failed got no AD-15 marker, and `SqlSettingWrite` was red: the purge moved out of `SetValue` into `ConfigSettingSet.AfterWrite` -> `ConfigPort.PurgeAfterSet` (gated, re-reads, purges when changed, 500 `INTERNAL` on failure) [src/OcuPilot/Port/ConfigPort.cls, src/OcuPilot/Screen/Tool/ConfigSettingSet.cls]

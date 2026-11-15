@@ -13103,3 +13103,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.4 rework run 484 red; runs after it green
 - 2026-11-15T21:34:00Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=harvest note=reopen_if=it reddens again on CI or a fresh throwaway
+
+### DW-2610: A cached query class with no statement-index row survives the all-namespace purge, so the purge sentence may claim more than the purge does (unverified)
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: 21.4 runs 486-487: %sqlcq.USER.cls80, no STATEMENT_LOCATIONS row, survived PurgeQueries allNamespace; inference: SqlPort's prepare-only RTPC path leaves such classes. Settle: does a later %Prepare of its text reuse it
+- 2026-11-15T21:39:23Z status=decision-pending owner=burndown by=cr note=product call: purge beyond the classic page's vendor call, or the U-51 sentence; med if reuse is real
