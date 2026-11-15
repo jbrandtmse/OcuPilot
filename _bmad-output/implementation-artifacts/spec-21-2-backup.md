@@ -228,6 +228,12 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - Client: the command box's backup line dropped -> its Story 21.2 spec case red; the run and freeze consequence returns swapped in `proposal-view.ts` -> `ui/tools/backup.test.mjs` red.
 - Browser spec: `SuspendCall` returning without freezing -> its freeze test red alone (the other two stay green).
 - The history's fifty-first-entry case runs in `BackupWrite` only, because seeding `^SYS("BUHISTORY")` is armed work.
+- (QA) AC1, write gate: `BackupPort`'s `WRITEPAIRS` without `%DB_IRISSYS:WRITE` -> `BackupRead.TestEveryWriteIsRefusedToACallerWithoutTheWritePair` red alone (run 3).
+- (QA) AC3, bounds: `SuspendCall` passes a limit of 5 whatever it is given -> `BackupWrite.TestTheLimitReachesTheInstanceUnchangedAtItsBounds` red alone (run 4).
+- (QA) AC2, key to tool: `osmgmt.backuptasks.thaw` set `true` in the baseline -> `BackupWrite.TestEachKeyGovernsOnlyItsOwnTool` red alone (run 5).
+- (QA) AC4, direct: a stray `src/OcuPilot/Port/ZzStray.cls` naming `OcuPilot.Port.Harvest.Monitor` -> `check-objectscript.py` fails naming the file and DW-2560; the file removed, clean again.
+- (QA) Each mutation reverted (`cmp` and `git diff --stat` identical) and the source reloaded; `BackupWrite` then green twice in succession (runs 6 and 7) and the browser spec green (3 of 3), with no `OCUPROBEBACKUP` database configured or mounted and writes thawed after each.
+- (QA) Added to existing classes, no new file: `Test/BackupRead.cls` (`TestEveryWriteIsRefusedToACallerWithoutTheWritePair`), `Test/BackupWrite.cls` (`TestTheLimitReachesTheInstanceUnchangedAtItsBounds`, `TestEachKeyGovernsOnlyItsOwnTool`; `Dispatched` answers the call's content).
 
 ## Clarification Needed
 

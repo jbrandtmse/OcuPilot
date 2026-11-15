@@ -54,3 +54,5 @@
 2026-11-15T04:01:55Z	Story 21.2	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-15T04:02:57Z	Story 21.2	throwaway_rebuilt	container=ocupilot-ci reason=ghost_probe_db(OCUPROBEBACKUP)_left_by_implement started_by=epic-21-runner armed=OCUPILOT_ALLOW_BACKUP_CONTROL=1
 2026-11-15T04:02:57Z	Story 21.2	stage_spawned	stage=qa spawn_at=2026-11-15T04:02:57Z model=sonnet agent_name=21-2-backup-qa-1 cycle_iteration=1
+2026-11-15T04:19:14Z	Story 21.2	qa_complete	spawn_at=2026-11-15T04:03:30Z model=sonnet tests=src/OcuPilot/Test/BackupRead.cls,src/OcuPilot/Test/BackupWrite.cls tests_added=3 mutations_demonstrated=4 first_run_failures=0 clarifications=0 closing_sections_present=true ghost_recurrence=none(2_BackupWrite_runs+spec)
+2026-11-15T04:19:14Z	Story 21.2	stage_spawned	stage=code-review spawn_at=2026-11-15T04:19:14Z model=opus agent_name=21-2-backup-code-review-1 cycle_iteration=1
