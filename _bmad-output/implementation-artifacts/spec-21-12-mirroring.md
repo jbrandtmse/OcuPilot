@@ -137,6 +137,12 @@ The owner chose option A, quoted: "A: monitor + refusal (Recommended)". This sto
 
 **Ledger inbox:** none. **Contended paths:** `origin/OCU-1-epic24` has changed none of the files named here (checked 2026-11-15); Epic 22 is done. Shared registration files take add-only rows.
 
+**Runner and orchestrator rulings at the spec gate (2026-11-15):**
+
+- Strings and the screen's own `%DB_IRISSYS:WRITE` pair: kept as planned (veto U-53).
+- Register group (orchestrator ruling U-52, option A): create the 'License-gated mirroring' group; move catalog rows SA-45..SA-49 and SO-17 from P3 to P4, the extract's rows from Stage 4 to Stage 5 with its totals re-derived; add 'license-gated mirroring' to Story 22.1's acceptance line in `epics.md` (add-only, Rule 5 consequence of U-39). Epic 24 also adds register rows (U-45): a conflict there is a union, totals re-derived from the merged rows.
+- AD-10's pointer now names `PROHIBITED.MIRRORDATABASES` at this story (done by the runner in the spine, citing owner answer U-39 and ruling U-52). The `MirrorPort` addition to AD-29's Binds stays a proposal beside DW-2559.
+
 ## Verification
 
 **Shared surfaces:** OS management's screen roster, positions and visible or unavailable sets (`Navigation`, `WireSecurityRead`, `WireAreaAnyScreen`, `LanguageServerWire`, `ui/browser/language-servers.browser-spec.mjs`, `ui/tools/navigation.test.mjs`, `Descriptor`, `StageTwoTools`, `ui/tools/screen-mirror.test.mjs`), the read-tool roster (`ReadTool`, `ReadDescriptions`, `ToolDispatch`, `ToolEmit`, `SurfaceCoverage`), the read source kinds and banner ports (`screen-mirror.test.mjs`, `BannerCorpus`, `AdminPairCorpus`, `DocDbDescriptor`, `InteropDescriptor`, `MetricsDescriptor`, `SqlActivityDescriptor`), entity types (`Descriptor`, `EntityRef`, `Prohibited`'s covered-types literal), the prohibited codes (`Prohibited`'s count, `GuardrailsWire`, `ui/browser/guardrails.browser-spec.mjs`, `self-protection.test.mjs`), `PortGate`, `ClassicPageGate`, `MappingDescriptor`, `TeardownGuard` (only if a new class tears down shared state), and the register (`exclusion-register.test.mjs`). The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each; every test it changes joins `(loop)`.
