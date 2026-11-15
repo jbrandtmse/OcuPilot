@@ -63,3 +63,5 @@
 2026-11-15T05:31:14Z	Story 21.2	dev_blocked	cycle_iteration=2 condition=throwaway_wedged(backup_job_DBACKA_never_finished;experiment_B_disposable_probe) class=environment action=rebuild_throwaway+redispatch_with_planned_fix_no_experiments
 2026-11-15T05:32:50Z	Story 21.2	throwaway_rebuilt	container=ocupilot-ci reason=wedged_by_rework_experiment started_by=epic-21-runner
 2026-11-15T05:32:50Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T05:32:50Z model=sonnet agent_name=21-2-backup-implement-3 cycle_iteration=3
+2026-11-15T06:46:45Z	Story 21.2	dev_complete	spawn_at=2026-11-15T05:33:30Z model=sonnet build_sha=70d5929f5 baseline_revision=d78f35b41(rework;frontmatter_not_updated_by_build-auto) review_loop_iteration=0 followup_review_recommended=false deferred=0 files=5 loc_added=182 loc_removed=68 cycle_iteration=3 note=probe_split,Remove_waits_no_backup,SuspendCall_null_device_med_fix
+2026-11-15T06:46:46Z	Story 21.2	stage_spawned	stage=code-review spawn_at=2026-11-15T06:46:46Z model=opus agent_name=21-2-backup-code-review-2 cycle_iteration=2
