@@ -21,3 +21,6 @@
 2026-11-15T05:23:21Z	Epic 24	throwaway_up_started	project=ocupilot-b-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci web=52777 super=1976 run=20261114T1656Z-21,22 by=runner-24
 2026-11-15T05:23:51Z	Epic 24	throwaway_up	project=ocupilot-b-ci container=ocupilot-b-ci web=52777 super=1976 health=healthy run=20261114T1656Z-21,22 started_by=runner-24
 2026-11-15T05:23:52Z	Story 24.1	stage_spawned	stage=implement spawn_at=2026-11-15T05:23:52Z model=sonnet agent_name=24-1-developer-tools-implement-1 cycle_iteration=1 story_base=5aac4ebcd
+2026-11-15T08:21:17Z	Epic 24	orchestrator_message	note=24.8_24.9_scope_question_parked_by_orchestrator_as_U-45 action=when_reached_mark_waiting_on_U-45_unless_answered no_duplicate_item=true ad66_line_kept_in_spec
+2026-11-15T08:21:17Z	Story 24.1	dev_complete	spawn_at=2026-11-15T05:36:00Z model=sonnet build_sha=f499b11f2 baseline_revision=3b5afae9c story_base=5aac4ebcd review_loop_iteration=0 followup_review_recommended=false deferred=0 files=44 loc_added=3598 loc_removed=32 sweep=17/17_green self_review=high0_med1_low11 cycle_iteration=1
+2026-11-15T08:21:17Z	Story 24.1	adr_verifications_complete	tool=least_privileged_principal_on_ocupilot-b-ci acs=AC3 result=pass executed_by=implement_stage_task0 evidence=spec_Design_Notes_Task0 mutations=AD-29:withhold_%Development:USE_and_%DB_USER:READ_each_403 model=claude-opus-5-5
