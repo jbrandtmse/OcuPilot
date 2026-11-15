@@ -2,9 +2,9 @@
 title: 'Story 21.2: Backup'
 type: 'feature'
 created: '2026-11-14'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '97f1aa93577932c2007d466c995682bea3eaaed6'
-baseline_commit: 'd78f35b41c47008a99b3502dbf1d49e7f850226d'
+baseline_commit: '6b14e280035f93fbcd6f22ca80497bda2e8947d0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
