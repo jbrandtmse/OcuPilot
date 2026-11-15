@@ -1986,3 +1986,6 @@
 2026-11-15T04:12:40Z	orchestrator	tracker_generated	new=epic-24,24-1..24-4,epic-24-retrospective dropped_orphans=21-7,21-8,21-9,21-11(all_backlog) validate=ok
 2026-11-15T04:12:40Z	orchestrator	ledger_rerouted	from=21-7-interoperability-parity to=24-3-interoperability-parity ids=DW-2361,DW-2378,DW-2379,DW-2388,DW-2421,DW-2433,DW-2452,DW-2554
 2026-11-15T04:12:40Z	Epic 24	dispatch_writeahead	slot=b retro_review=skip(handled_by_epic_21) gate=feature_head_needs_real_run(Rule_32)
+2026-11-15T04:47:50Z	orchestrator	ci_red_classified	run=43675769752 workflow=.github/workflows/ci.yml class=flake leg=gates(node_22.22.3) cause=vitest_fork_pool_EPIPE head=cee4d3671(planning_only) ledger=DW-2567(routed_21-10) action=rerun_failed
+2026-11-15T04:56:49Z	Epic 24	ci_green_verified	runs=43675769752 head=cee4d3671 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-15T04:56:49Z	Epic 24	runner_dispatched	name=epic-runner-24 slot=b model=opus worktree=.worktrees/epic-24 branch=OCU-1-epic24 base=cee4d3671 prompt=prompts/e24-unattended-20261115-prompt.md retro_review=skip(handled_by_epic_21)

@@ -12873,3 +12873,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (Epic 22 merge, feature head e20007c42) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: run 43662142967 attempt 1 browser shard 5/5 red (6 passed, 3 failed, 162.7 s); no ui/src, ui/browser or src change since the last green feature run; attempt 2 green
 - 2026-11-15T02:26:04Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=routed with the other CI flakes to 21.10
+
+### DW-2567: flake: the component runner's fork pool crashed in CI gates (node 22.22.3) with 170 EPIPE write errors ('Worker forks emitted error'), leaving 3 of 102 files unfinished, on a planning-only commit
+- source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
+- evidence: job 132695467996 log: [vitest-pool]: Worker forks emitted error, errno -32 EPIPE; the node 24 and 26 legs passed on the same sha
+- 2026-11-15T04:44:38Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun after the run completes
