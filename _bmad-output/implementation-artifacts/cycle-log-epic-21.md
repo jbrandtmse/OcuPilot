@@ -79,3 +79,5 @@
 2026-11-15T09:27:56Z	Story 21.2	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=3(sweep_shared_surfaces) evidence=smoke.sh_50/50+backup.browser-spec_3/3(fresh_check) model=claude-opus-5-5
 2026-11-15T09:29:48Z	Story 21.2	committed	sha=32dc20d7c submodules= ci=pending runs=43699492613 amendments=EXPERIENCE.md_row_604(new_backup_strings,veto_U-42)
 2026-11-15T09:29:48Z	Story 21.2	story_cycle	plan_to_commit_min=820(incl_hold_and_quiet_window) implement_passes=4 reviews=3 rework=2 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-15T09:33:09Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(epic_24_split) model=claude-opus-5-5 lines=68
+2026-11-15T09:33:19Z	Story 21.3	stage_spawned	stage=plan spawn_at=2026-11-15T09:33:19Z model=opus agent_name=21-3-startup-memory-and-compatibility-settings-plan-1 cycle_iteration=1
