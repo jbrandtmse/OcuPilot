@@ -185,6 +185,23 @@ Method TestOnlyTheTwoFixedRequestsReachTheHarvestedBody()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#RECORDER, "Requests"), "409|BACKUP.FREEZE.UNBOUNDED|", "a freeze is refused where the limit cannot hold, and reaches no body")
 }
 
+/// <p>AC1, AD-51. The vendor's refusal #7309, fed to a freeze the rules let through, is answered 409 <code>BACKUP.RUNNING</code> with
+/// nothing sent to the harvested body. It is the mapping the write test cannot pin, because a live backup's own suspension of writes
+/// answers <code>BACKUP.FROZEN</code> at an unpredictable moment.</p>
+/// <p>Mutation (Rule 19): <code>FreezeOrThaw</code> maps <code>CODEBACKUPRUNNING</code> to <code>FROZEN</code> -> the assertion goes red.</p>
+Method TestTheVendorsRefusalOfAFreezeWhileABackupRunsIsAnswered409Running()
+{
+    Do ..HoldAll()
+    Do $ClassMethod(..#SEAM, "VendorRefuses", $Parameter(..#PORT, "CODEBACKUPRUNNING"))
+    Kill tQuery
+    Set tQuery("limit") = 5
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Writes", "FREEZE", .tQuery, "", .tFreeze, .tHttp, .tFault)
+    Do $$$AssertEquals($Parameter(..#PORT, "CODEBACKUPRUNNING"), 7309, "the code the port maps is the vendor's #7309")
+    Do $$$AssertStatusNotOK(tSC, "the freeze fails")
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "409|BACKUP.RUNNING", "#7309 is answered as a backup already running")
+    Do $$$AssertEquals($ClassMethod(..#RECORDER, "Requests"), "", "and reaches no body")
+}
+
 /// <p>AC1. Every read is refused to a caller holding none of its pairs, naming the first, before any vendor call: the history's body is
 /// not run, so it answers no rows.</p>
 /// <p>Mutation (Rule 19): <code>Admit</code> answers OK without evaluating the pairs -> the denial assertions go red.</p>

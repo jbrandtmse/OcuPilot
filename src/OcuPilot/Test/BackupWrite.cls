@@ -282,18 +282,13 @@ Method TestARunStartsTheTaskOnBothCallers()
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", "NoSuchTask", {"Name": "NoSuchTask"}, .tResult), "refused: 'NoSuchTask' is not present on this instance", "and at the mint, which reads the target first")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start"), "the vendor starts the probe task")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Running", 20), 1, "a task is running")
-    ; Asked at once, the freeze meets the vendor's refusal; a backup soon suspends writes itself, and a freeze asked then is answered as
-    ; already frozen without a vendor call.
+    ; While a backup holds writes (its own suspension, or the vendor's refusal) a freeze is refused 409 on either code; the vendor's
+    ; #7309 mapping is pinned by BackupRead, where it cannot race the backup's phases.
     Kill tQuery
     Set tQuery("limit") = 5
-    For tTry = 1:1:10 {
-        Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
-        Set tCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
-        If tCode '= "BACKUP.FROZEN" Quit
-        Hang 0.25
-    }
-    Set tGot = $Get(tHttp) _ "|" _ tCode
-    Do $$$AssertEquals(tGot, "409|BACKUP.RUNNING", "a freeze while a backup runs is the vendor's refusal, answered on its code: " _ tGot)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
+    Set tCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+    Do $$$AssertTrue($Get(tHttp) = 409 && ((tCode = "BACKUP.RUNNING") || (tCode = "BACKUP.FROZEN")), "a freeze while a backup runs is refused 409 as running or frozen: " _ $Get(tHttp) _ "|" _ tCode)
     Set tWB = $ClassMethod(..#PROBE, "WaitForBackupProcess", 5)
     Do $$$AssertEquals(tWB, 1, "and the instance has a backup process")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForNoBackup", 1), 0, "and the no-backup signal does not come while it runs")
