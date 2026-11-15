@@ -9243,6 +9243,8 @@ So that a localized instance is configurable.
 
 ### Story 21.5: Globals and the data tools
 
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] This story keeps the global list, view, edit and kill. Export and import moved to Story 21.17 and find and replace to Story 21.18, each planned next in that order; the criterion is split verbatim across the three.
+
 As a developer,
 I want globals listed, viewed, edited, killed, exported and imported,
 So that the last of the Explorer's data surfaces exists.
@@ -9389,6 +9391,35 @@ So that a localized instance is configurable.
 - **Given** these configure the **server's** locales rather than OcuPilot's own interface language
 - **When** the scope is stated
 - **Then** OcuPilot's interface stays English, as it does in every stage.
+
+
+### Story 21.17: Global export and import
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose export and import criterion it carries verbatim; it is planned next after Story 21.5.
+
+As a developer,
+I want globals exported and imported,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** global export and import
+- **When** each runs
+- **Then** it round-trips, every write a confirmed proposal.
+
+### Story 21.18: Global find and replace
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose find-and-replace criterion it carries verbatim; it is planned next after Story 21.17.
+
+As a developer,
+I want find and replace across a global's values,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** find and replace
+- **When** it runs
+- **Then** it round-trips, every write a confirmed proposal.
 
 ---
 

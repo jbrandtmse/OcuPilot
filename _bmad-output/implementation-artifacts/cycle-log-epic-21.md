@@ -175,3 +175,7 @@
 2026-11-15T20:31:06Z	Story 21.15	story_parked	stage=plan(spec_written) reason=AD-51_named_entry_owner_only(re-architecture:epic24_cites) category=park inbox=U-58(orchestrator) code=none
 2026-11-15T20:31:06Z	Story 21.16	story_parked	stage=before_plan reason=AD-51_named_entry_owner_only category=park inbox=U-58(orchestrator) code=none
 2026-11-15T20:31:18Z	Story 21.5	stage_spawned	stage=plan spawn_at=2026-11-15T20:31:18Z model=opus agent_name=21-5-globals-and-the-data-tools-plan-1 cycle_iteration=1
+2026-11-15T20:47:19Z	Story 21.5	ruling	question=plan_intent_gap_too_large choice=split(21.5_list_view_edit_kill,21.17_export_import,21.18_find_replace) rejected=one_story why=size;four_backing_shapes category=decide policy=b9ff703e split_children=3
+2026-11-15T20:47:19Z	Epic 21	deps_hash_rerecorded	reason=split story=21.5->21.5,21.17,21.18 note=orchestrator_rerecords
+2026-11-15T20:47:37Z	Story 21.5	story_parked	stage=plan(spec_written,blocked) reason=needs_AD-10_arm,AD-36_record,AD-53_record(named_entries;re-architecture_by_U7c) category=park(pending_orchestrator_item) code=none
+2026-11-15T20:47:37Z	Story 21.18	story_parked	stage=before_plan reason=AD-51_named_entry_likely(same_as_U-58) category=park code=none
