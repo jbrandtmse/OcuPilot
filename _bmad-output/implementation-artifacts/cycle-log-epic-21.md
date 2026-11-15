@@ -152,3 +152,7 @@
 2026-11-15T18:54:15Z	Story 21.4	stage_spawned	stage=code-review spawn_at=2026-11-15T18:54:15Z model=opus agent_name=21-4-nls-locales-and-sql-settings-code-review-1 cycle_iteration=1
 2026-11-15T19:17:02Z	Story 21.4	cr_complete	spawn_at=2026-11-15T18:56:00Z model=opus resolved=11 fixed_at_source=11 routed=1 deferred=5 dismissed=13 high=1 med=1 low=20 rows=38 unresolved_high_med=1(DW-2601_routed_burndown) clarifications=0 closing_sections_present=true final=done note=HIGH_AD-15_failed_purge_marker_fixed(purge_to_AfterWrite)
 2026-11-15T19:17:02Z	Story 21.4	ledger_adjudicated	owned=2 resolved=2 reowned=0 terminal=0 filed_by_cr=DW-2601(routed_burndown),DW-2602..2605(wontfix-accepted)
+2026-11-15T19:25:07Z	Story 21.4	fresh_check	env=recipe(rebuilt_19:19Z) tests=29_classes(SqlSettingWrite_x2)+config-settings_spec result=pass order=forward,reverse
+2026-11-15T19:25:07Z	Story 21.4	ci_red_classified	run=43748408456 workflow=.github/workflows/ci.yml class=story test=SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing head=fde74e282(pre-review_21.4) note=repro_attempt_with_ci_shard_2/8_composition
+2026-11-15T19:38:44Z	Story 21.4	ci_resolved	story=21.4(staging) sha=fde74e282 runs=43748408456 result=failure failed=instance_shard_2/8(SqlSettingWrite_purge) via=none resolved_at=next_plan note=pre-review_code;CR_moved_purge_after_write;local_ci_shard_2/8_repro_green_on_33d2391d9
+2026-11-15T19:38:44Z	Story 21.13	stage_spawned	stage=plan spawn_at=2026-11-15T19:38:44Z model=opus agent_name=21-13-ddl-mappings-plan-1 cycle_iteration=1
