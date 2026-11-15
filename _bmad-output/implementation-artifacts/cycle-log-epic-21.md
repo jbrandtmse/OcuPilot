@@ -146,3 +146,5 @@
 2026-11-15T18:26:35Z	Story 21.4	dev_complete	spawn_at=2026-11-15T17:21:00Z model=sonnet build_sha=a69923585 baseline_revision=6108728a3 story_base=6108728a3 review_loop_iteration=0 followup_review_recommended=false deferred=2(DW-2598,DW-2599) cycle_iteration=1 note=handoff_did_not_run_skill(main_session_reviewed_and_finalized)
 2026-11-15T18:26:35Z	Story 21.4	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-15T18:42:34Z	Epic 21	ruling	question=EXPERIENCE.md_literal_cap_3807>3800_after_merge choice=raise_to_4200(protocol_precedent) rejected=hold_merge why=drift_tripwire_protocol(raise_by_400_when_within_50) category=decide policy=b9ff703e
+2026-11-15T18:44:35Z	Epic 21	integrated_forward	feature=ddd1ffd7b head=fde74e282 conflicts_resolved=10_code_files(add-only_unions)+sprint-status.yaml(regenerated)+literal_cap ci=pending runs=43748408456 note=staging_head_at_21.4_QA
+2026-11-15T18:44:35Z	Story 21.4	stage_spawned	stage=qa spawn_at=2026-11-15T18:44:35Z model=sonnet agent_name=21-4-nls-locales-and-sql-settings-qa-1 cycle_iteration=1
