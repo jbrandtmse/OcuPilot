@@ -12830,6 +12830,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Design Notes claim a body cannot be wired as a route past the gate, but only the render fails outside the port, after the body ran; PortGate.PortClasses lists every OcuPilot.Port. class at any depth
 - 2026-11-14T19:22:46Z status=routed owner=21-2-backup-and-mirroring by=cr note=add a checker rule on who names Port.Harvest body classes, a PortGate row kind for a body, and correct the spec claim
 - 2026-11-14T19:49:14Z owner=21-2-backup by=spec_gate note=story_retitled_on_split(21.2_backup,21.12_mirroring)
+- 2026-11-15T07:02:08Z status=resolved-by:21-2-backup by=adjudication note=check-objectscript.py harvest-body containment check (AD-23, DW-2560) with harness rows; PortGate <body> row kind; commits 43c2560bf,837574ac9
 
 ### DW-2561: HarvestPort restores only the three CSP stubs, the device and the namespace: a body that leaves a transaction open, sets $ROLES or %SourceControl, or switches device is not undone
 - source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: med | footprint: in-story
@@ -12885,8 +12886,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: review measured IsWDSuspended 1 for 0.76 s after a probe backup read Completed with its job gone; BackupRules allows THAW whenever WriteState is Frozen
 - 2026-11-15T05:04:48Z status=routed owner=burndown by=cr note=settle: thaw within that second on a throwaway and read the backup's history status
+- 2026-11-15T06:59:04Z occurrence=21-2-backup
 
 ### DW-2573: Rule 31: BackupAction repeats DatabaseAction's one-argument tool shape (SettableFields, InputSchema, PortQuery, StateDiff, PrivilegePairs) and BackupRules and BackupPort add more copies of the ports' Text helper
 - source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: BackupAction.cls vs DatabaseAction.cls:79-230; Text() also in JournalRules, DatabasePort, EcpPort, JournalPort; the spec gives a reason against subclassing, not against a shared base
 - 2026-11-15T05:04:48Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a third action-tool base copies the one-argument shape
+
+### DW-2574: BackupProbe's no-backup signal relies on a DBACK routine-name match that misses a measured phase of a running backup
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci runs 33, 35, 37: no DBACK* routine within 5 s of the probe task reading Running; whether the job outlives Completed and resumed writes in another routine is unmeasured; WaitForNoBackup's process clause has no pin
+- 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=settle: name the backup job by pid and sample it to exit in a shipped test; pin the clause through a seam
+
+### DW-2575: BackupWrite's run test asserts on a backup that lasts seconds, so its mid-backup rows race the backup's end
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci: run 38 red (freeze answered BACKUP.FROZEN on all 10 tries) and runs 33, 35, 37 red (no backup process in 5 s) at earlier row orders; shipped order green in runs 45, 46, 50; CI legs unmeasured
+- 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=fix: hold the backup open (a larger run database) or assert every mid-backup row straight after Running
+
+### DW-2576: BackupProbe.Remove's wait for the no-backup signal is unpinned because every caller already waits for an idle task and settled writes
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: deleting the WaitForNoBackup guard in Remove leaves BackupWrite, BackupWriteGate and the browser spec green; holding a backup or freeze for its 120 s bound is not test-sized
+- 2026-11-15T06:59:04Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a ghost mount or PROTECT %SaveData on a probe database recurs in CI or a local run
