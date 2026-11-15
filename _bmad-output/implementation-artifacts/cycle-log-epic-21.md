@@ -47,3 +47,4 @@
 2026-11-15T01:54:10Z	Story 21.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_executed=50_passed=50+HarvestWire_in_sweep model=claude-opus-5-5
 2026-11-15T01:54:10Z	Story 21.1	committed	sha=c7ccce2a9 submodules= ci=success runs=43649659020 via=6e759ee41 amendments=none note=pushed_earlier_by_owner_waiver;ci_verified_on_no_token_head
 2026-11-15T01:54:10Z	Story 21.1	story_cycle	plan_to_commit_min=484(incl_hold_~150) implement_passes=1 reviews=1 rework=0 first_ci=success models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-15T01:58:25Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T01:58:25Z model=sonnet agent_name=21-2-backup-implement-1 cycle_iteration=1 story_base=8c1f45af5
