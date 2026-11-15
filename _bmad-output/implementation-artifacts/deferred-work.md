@@ -10557,6 +10557,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:06Z occurrence=18-28-sql-column-and-admin-privileges note=refined at 18.28's plan: an unknown column or a grantor without the privilege stores nothing, but DELETE, %ALTER, an unknown grantee, or a view sent as TABLE answers 200 and stores a row the column LIST never shows
 - 2026-11-14T10:35:33Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:34Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10569,6 +10570,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
 - 2026-11-14T10:35:33Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2176: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard HEAD answers 404 for a schema grant the caller holds
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10734,6 +10736,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded a one-part object, not the name T1
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2206: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin LIST names a role holder 'Role - <role>' where the standard and column lists write 'Role:<role>'
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10741,6 +10744,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded the Role - <r> shape, not which probe role it was read for
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 ### DW-2203: The either-of roster reads descriptor and tool declarations only: a port's pair parameters and a tool's per-call ArgumentPairs are unread
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
@@ -12094,6 +12098,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 - 2026-11-14T00:21:26Z status=decision-pending owner=burndown by=unattended note=inbox=U-30
+- 2026-11-15T15:32:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=owner_answer_U-30_A(amend_AD-10_KMIP_bullet_and_add_the_refusal_with_the_proposed_sentence_in_inbox_U-30);spine_amendment_owner-sanctioned
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12573,6 +12578,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AnalyticsPort.PerformCube returns before AuditWrite on busy, failed and denied; the spec's Measured notes say a cascade whose dependent was locked rebuilt the target and then failed (not atomic).
 - 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=AD-15 call: whether and how a partly applied cube update is audited; the spec's Always list audits completed ones only
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-34
+- 2026-11-15T15:32:34Z status=routed owner=24-13-analytics-settings by=orchestrator note=owner_answer_U-34_A(audit_a_partly_applied_cube_update_as_a_failed_configuration_change_naming_the_steps_that_applied);AD-15_sentence_owner-sanctioned
 
 ### DW-2519: A cube whose dependent the caller's resources hide is judged BUSY, NODSTIME and NOTBUILT without that dependent, while the vendor's cascade still reaches it (inference)
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story

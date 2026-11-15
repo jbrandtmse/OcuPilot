@@ -2004,3 +2004,9 @@
 2026-11-15T12:59:32Z	orchestrator	ci_red_classified	run=43713431335 head=df4cf73f0 class=flake leg=gates(node_22.22.3) cause=client_suite_hang_to_job_timeout ledger=DW-2567(occurrence_2) action=rerun_failed
 2026-11-15T13:10:50Z	Story 21.2	merged	feature=df4cf73f0 tip=df4cf73f0 route=fast_forward(staging_head,run_43713431335_success_attempt_2) checks=ledger_entry_check_0(2047),dups_none,sprint_validate_ok,epics_hash_unchanged upgrade_triggers=new_governance_keys(osmgmt.backupdatabases.add,osmgmt.backupdatabases.remove,osmgmt.backuptasks.freeze,osmgmt.backuptasks.run,osmgmt.backuptasks.thaw)_note_for_next_cut feature_ci=43717597429(pending)
 2026-11-15T13:10:50Z	ci	timings_refreshed	rule=29 run=43713431335
+2026-11-15T13:47:11Z	Story 21.2	ci_green_verified	runs=43717597429 head=df4cf73f0 result=success gate=feature_after_story_merge(Rule_33)
+2026-11-15T15:21:58Z	Epic 21	runner_reported	kind=status 21.3=review_closed(HIGH_PasswordHash_excluded,veto_U-49),sweep_running,unpushed split=21.4->21.4+21.13,21.14,21.15(decide,deps_rerecord_due_at_merge) vetoes=U-50,U-51 veto_open=17/20
+2026-11-15T15:30:40Z	orchestrator	answers_applied	via=planner vetoes_kept=U-20,U-29,U-31,U-32,U-35,U-37,U-38,U-41,U-42,U-43,U-44,U-46,U-47,U-48,U-49,U-50,U-51(quote="Keep all 17 (Recommended)") veto_open=0
+2026-11-15T15:30:40Z	Epic 21	answer_relayed	item=U-39 answer=A(monitor+refusal;writes_to_Epic_22_register;AD-10_wording) quote="A: monitor + refusal (Recommended)" unparked=21.12
+2026-11-15T15:30:40Z	Epic 24	answer_relayed	item=U-45 answer=C(same-instance_diff_and_promote;remote_profiles_to_register) quote="C: same instance only (Recommended)"
+2026-11-15T15:32:41Z	orchestrator	answers_applied	via=planner quote="I agree with your recommendations" U-30=A(DW-2431->21-10,AD-10_amendment_owner-sanctioned) U-33=A(owner_hold_DW-2173,2175,2205,2206) U-34=A(DW-2518->24-13,AD-15_sentence_owner-sanctioned)
