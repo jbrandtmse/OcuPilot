@@ -9295,20 +9295,25 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.2, whose mirroring criteria it carries verbatim; it is planned next after Story 21.2.
 
+[AMENDED 2026-11-15, owner answer U-39, "A: monitor + refusal (Recommended)", Rule 5] This story keeps the mirror monitor and the prohibited-removal refusal. The mirroring writes (create, edit for failover and async members, join, and member and database actions) move to Epic 22's license-gated group as rows in its exclusion register, because this project's Community license allows no mirroring and a join needs a second instance.
+
 As an operator,
-I want the mirroring set,
-So that the highest-consequence operations are reachable.
+I want the mirror monitor and OcuPilot's refusal of the prohibited removal,
+So that the highest-consequence mirroring operation is guarded and the mirror's state is visible.
 
 **Acceptance Criteria:**
 
-- **Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
-- **When** each runs
-- **Then** it round-trips.
+- **Given** the mirror monitor
+- **When** it runs
+- **Then** it reads the instance's mirror state, including not being a member.
 
-- **Given** these are the most destructive operations OcuPilot has ever exposed
-- **When** the prohibited set is revisited
-- **Then** every mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- **Given** removing a mirror with the option that takes its databases out of mirroring (AD-10)
+- **When** either caller asks for it
+- **Then** it is refused, with its code named at this story's spec gate.
 
+- **Given** the mirroring writes this story no longer builds
+- **When** the exclusion register is read
+- **Then** each has a row in its license-gated group naming the license it needs.
 
 ### Story 21.13: DDL mappings
 
