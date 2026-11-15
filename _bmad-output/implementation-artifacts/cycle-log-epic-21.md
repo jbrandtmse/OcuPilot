@@ -166,3 +166,7 @@
 2026-11-15T20:01:07Z	Story 21.14	plan_clarification_requested	condition=intent_gap_too_large ruled=split,Q2,Q3 inbox=U-56 respawn=spec_path status_reset=draft
 2026-11-15T20:02:53Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(21.14_split) model=claude-opus-5-5 lines=79
 2026-11-15T20:02:53Z	Story 21.14	stage_spawned	stage=plan spawn_at=2026-11-15T20:02:53Z model=opus agent_name=21-14-nls-configured-defaults-and-locale-definitions-plan-2 cycle_iteration=2
+2026-11-15T20:15:08Z	Story 21.14	story_created	spawn_at=2026-11-15T20:03:30Z model=opus path=_bmad-output/implementation-artifacts/spec-21-14-nls-configured-defaults-and-locale-definitions.md build_status=ready-for-dev epic_context=reused cycle_iteration=2
+2026-11-15T20:15:08Z	Story 21.14	ruling	question=AD-39_exception_for_vendor_validation_lines choice=comply(no_vendor_lines;sentence) rejected=amend_unattended why=U7_comply_first category=decide policy=b9ff703e
+2026-11-15T20:15:08Z	Story 21.14	ruling	question=three_new_strings choice=keep rejected=reword why=plain category=veto inbox=U-57 policy=b9ff703e reversal=reword
+2026-11-15T20:15:08Z	Story 21.14	spec_validated	service_introducing=true(LocalePort) integration_ac=present adr_constrained_acs=AD-4,AD-10,AD-21,AD-22,AD-29,AD-35,AD-39,AD-51,AD-52,AD-53,AD-58 decision_dependency=none owned_ledger=none mutates_shared_runtime=false(throwaway_only) filed=DW-2606(decision-pending_export) model=claude-opus-5-5

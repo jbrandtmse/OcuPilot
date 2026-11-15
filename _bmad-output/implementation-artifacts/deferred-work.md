@@ -13080,3 +13080,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Only the seam's VendorRefuses reaches the 400 in SqlSettingRules; Task 0 measured the vendor refusal by hand once.
 - 2026-11-15T19:14:07Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=cr note=reopen_if=Config.SQL.Modify accepts an empty TODATEDefaultFormat on a later build
+
+### DW-2606: Locale Export (catalog SA-27, with the classic page's file Browse) is in no story after the 21.4 and 21.14 splits
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 21.14 re-plan: SA-27 lists Export; neither 21.14 nor 21.16 includes it; the plan recommends 21.15 beside import
+- 2026-11-15T20:15:08Z status=decision-pending owner=burndown by=spec_gate note=moving scope between stories when no milestone defines the release is the owner's; recommend adding Export to Story 21.15
