@@ -141,3 +141,5 @@
 2026-11-15T16:43:37Z	Story 21.3	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50+config-settings.browser-spec_4/4(fresh_check) model=claude-opus-5-5
 2026-11-15T16:43:37Z	Story 21.3	committed	sha=e83ff412a submodules= ci=pending runs=43737049667 amendments=EXPERIENCE.md(new_settings_strings,veto_U-47/U-49)
 2026-11-15T16:43:37Z	Story 21.3	story_cycle	plan_to_commit_min=420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-15T17:19:55Z	Story 21.3	ci_resolved	story=21.3 sha=e83ff412a runs=43737049667 result=success failed=none via=none resolved_at=next_plan
+2026-11-15T17:20:07Z	Story 21.4	stage_spawned	stage=implement spawn_at=2026-11-15T17:20:07Z model=sonnet agent_name=21-4-nls-locales-and-sql-settings-implement-1 cycle_iteration=1 story_base=e4e8e52be
