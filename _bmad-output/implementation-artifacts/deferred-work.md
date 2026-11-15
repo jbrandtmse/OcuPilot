@@ -13027,3 +13027,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: VendorModify re-reads the class and sends every key; AD-34's lock orders only OcuPilot's own callers
 - 2026-11-15T14:10:56Z status=wontfix-theoretical owner=21-3-startup-memory-and-compatibility-settings by=cr note=real if another session saves the same class within the read-to-Modify window; the runner's AD-4 ruling mandates the full set
+
+### DW-2598: A failed cached-query purge after a changed purge key is pinned only at the port, not through the screen route, the agent confirm or the dialog
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: PurgeFails appears only in ConfigGateSeam and SqlSettingRules; no confirm or screen-action case with a failing purge
+- 2026-11-15T18:26:35Z status=open owner=21-4-nls-locales-and-sql-settings by=harvest note=QA or review: add a confirm and a screen-action case with a failing purge
+
+### DW-2599: The real SendTsql refusal prefix check has no test; the seam's override bypasses it
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ConfigPort.cls:725; SqlSettingRules reaches the 400 only through ConfigGateSeam.VendorRefuses
+- 2026-11-15T18:26:35Z status=open owner=21-4-nls-locales-and-sql-settings by=harvest note=QA or review: drive the real setter with a value the rules admit and the vendor refuses, or close with a probe

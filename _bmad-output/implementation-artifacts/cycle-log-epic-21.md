@@ -143,3 +143,5 @@
 2026-11-15T16:43:37Z	Story 21.3	story_cycle	plan_to_commit_min=420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-15T17:19:55Z	Story 21.3	ci_resolved	story=21.3 sha=e83ff412a runs=43737049667 result=success failed=none via=none resolved_at=next_plan
 2026-11-15T17:20:07Z	Story 21.4	stage_spawned	stage=implement spawn_at=2026-11-15T17:20:07Z model=sonnet agent_name=21-4-nls-locales-and-sql-settings-implement-1 cycle_iteration=1 story_base=e4e8e52be
+2026-11-15T18:26:35Z	Story 21.4	dev_complete	spawn_at=2026-11-15T17:21:00Z model=sonnet build_sha=a69923585 baseline_revision=6108728a3 story_base=6108728a3 review_loop_iteration=0 followup_review_recommended=false deferred=2(DW-2598,DW-2599) cycle_iteration=1 note=handoff_did_not_run_skill(main_session_reviewed_and_finalized)
+2026-11-15T18:26:35Z	Story 21.4	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
