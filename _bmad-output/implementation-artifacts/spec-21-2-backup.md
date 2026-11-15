@@ -286,6 +286,7 @@ Rejected: the second wait in the run test racing the start (false: `StartTask` r
 - (CR, rework) AD-29, `SuspendCall`'s null-device test: the comparison back to the whole device name (`If tDevice '= tNull`) -> `TestAFreezeAndAThawSucceedOnBothCallers` and `TestARunStartsTheTaskOnBothCallers` red (run 34); reverted, `cmp` identical, reloaded.
 - (CR, rework) AC1, the backup-process clause: `BackupProbe.BackupProcessRunning` matches `DBACZ` instead of `DBACK` -> `TestARunStartsTheTaskOnBothCallers`'s "the instance has a backup process" red (run 44, with the assertions that follow it); reverted, `cmp` identical, reloaded. `Remove`'s `backup` answer is not pinned: a backup in this suite lasts seconds and `Remove` waits it out, so no test can hold it long enough to observe the refusal.
 - (QA) Added to existing classes, no new file: `Test/BackupRead.cls` (`TestEveryWriteIsRefusedToACallerWithoutTheWritePair`), `Test/BackupWrite.cls` (`TestTheLimitReachesTheInstanceUnchangedAtItsBounds`, `TestEachKeyGovernsOnlyItsOwnTool`; `Dispatched` answers the call's content).
+- mutation (runner, re-review patch): `BackupProbe.WaitForNoBackup` without its `'..WritesFrozen()` check -> red: `BackupWrite.TestAFreezeAndAThawSucceedOnBothCallers` ("the probe's no-backup signal does not come while writes are frozen"), run 25; reverted byte-identical, reloaded, green.
 
 ## Clarification Needed
 
