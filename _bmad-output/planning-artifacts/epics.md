@@ -9337,6 +9337,8 @@ So that a localized instance is configurable.
 
 [AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose NLS configured-defaults and locale-definitions criterion it carries verbatim; it is planned next after Story 21.13.
 
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] This story keeps the NLS configured defaults and the locale list with its validate, install and delete actions; Copy, the locale properties editor and Load table moved to Story 21.16, planned after Story 21.15. The first criterion is split verbatim across the two.
+
 As an operator,
 I want the NLS configured defaults and the locale definitions,
 So that a localized instance is configurable.
@@ -9362,6 +9364,25 @@ So that a localized instance is configurable.
 **Acceptance Criteria:**
 
 - **Given** locale and table import
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+
+### Story 21.16: Custom locales
+
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.14, whose locale-definitions-editor criterion it carries verbatim for copying a locale, its properties editor and loading a locale's table; it is planned next after Story 21.15.
+
+As an operator,
+I want to copy a locale, edit a custom locale's properties and load a locale's tables,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the locale definitions editor's copy, properties and table-load actions
 - **When** each runs
 - **Then** it round-trips over its backing class.
 
