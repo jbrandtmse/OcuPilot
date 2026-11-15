@@ -1916,3 +1916,55 @@
 2026-11-14T16:57:01Z	orchestrator	unattended_started	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 range=21,22 ci=gh visibility=public notify=push lock_token=1794675398-97204 kit=2026-10-19.3 deps=approved(hash_current)
 2026-11-14T16:57:01Z	orchestrator	spine_counter_seeded	next=67
 2026-11-14T16:57:01Z	orchestrator	ledger_counter_seeded	next=2558
+2026-11-14T16:58:44Z	Epic 21	worktree_provisioned	path=.worktrees/epic-21 branch=OCU-1-epic21 from=bb672a5f slot=a
+2026-11-14T16:58:44Z	Epic 22	worktree_provisioned	path=.worktrees/epic-22 branch=OCU-1-epic22 from=bb672a5f slot=b
+2026-11-14T16:58:44Z	Epic 21	worktree_bootstrapped	epic=21 result=ok
+2026-11-14T16:58:44Z	Epic 22	worktree_bootstrapped	epic=22 result=ok
+2026-11-14T16:58:44Z	orchestrator	dispatch_writeahead	epics=21(slot_a,retro_review=own),22(slot_b,retro_review=skip) prompts=e21-unattended-20261114-prompt.md,e22-unattended-20261114-prompt.md gate=token-free_push(Rule_32)
+2026-11-14T17:45:52Z	orchestrator	ci_green_verified	runs=43618538536 head=24a02c86f result=success gate=dispatch(Rule_32)
+2026-11-14T17:45:52Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T17:45:52Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T18:40:50Z	orchestrator	feature_external_commit	sha=b8a0b2e5 by=OcuPilot_Planner what=README.md_1.0.15_port(docs_only,no_token) release=1.0.15_merged_main_6d65ea8c(PR18) runners_integrate_forward=at_next_story_start
+2026-11-14T19:49:55Z	Epic 22	runner_reported	boundary=story_22.1 code_head=74ec38514(43628782453_success) ledger=DW-2558_filed(PRD_FR-80_vs_AD-22,routed_burndown) runner_ruling=rule29_sweep_skipped_for_docs-only_diff(no_src) orchestrator=accepted
+2026-11-14T19:49:55Z	Story 22.1	merged	feature=298f59de1 tip=e808b716f route=code_equal_merge checks=ledger_entry_check_0,dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-14T19:49:55Z	ci	timings_refreshed	rule=29 run=43628782453
+2026-11-14T19:51:23Z	orchestrator	hold_ordered	reason=owner(relay_Planner:weekly_usage_95pct_at_19:48Z;account_switch) hold_file=present dispatch=frozen runners=e21(running),e22(ended_hold)
+2026-11-14T19:51:23Z	Epic 22	runner_ended	reason=hold head=a66b07646 unpushed=none tree=clean state=held next=22.2_implement(spec_ready) staging_f5e641ffa_run_43634085424(pending_at_hold)
+2026-11-14T20:10:23Z	Epic 21	runner_reported	item=U-39 kind=parked unit=Story_21.12(Mirroring) reason=Community_license_NoMirror=1;join_needs_second_instance;AD-10_mirror_arm_DeleteDB_wording rec=A(21.12_monitor+refusal;writes_to_Epic_22_license-gated_group=epic_boundary_owner-only) split=21.2->21.2_Backup+21.12_Mirroring(decide;veto_U-38) open=U-37(readiness_veto) notify=push deps_hash=re-record_reason=split_at_merge
+2026-11-14T20:10:23Z	orchestrator	runner_resumed	epic=21 message=HOLD_in_effect:finish_sweep,push_21.1_code_alone_then_bookkeeping,no_new_stage,U11_hold_steps,end_reason_hold via=SendMessage
+2026-11-14T21:34:33Z	orchestrator	owner_instruction	via=relay(Contest_Planner->OcuPilot_Planner) effect=interrupt_e21_sweep_now;push_15_local_commits_as_is(21.1_unverified,sweep_not_run);patch_uncommitted;end_hold;then_hold_complete note=overrides_U11_no-interrupt_for_a_lead-owned_sweep_on_owner_word
+2026-11-14T21:36:18Z	Epic 21	runner_ended	reason=hold head=0fdb14b7a(on_origin) unpushed=none tree=clean hold_patch=none 21.1=pushed_unverified(sweep_19/20_stopped_on_owner_word;smoke+committed_pending;c7ccce2a9_CI_unknown) inbox=U-37,U-38,U-39 throwaway=ocupilot-ci_down state=held
+2026-11-14T21:36:18Z	Epic 22	ci_green_verified	staging=f5e641ffa runs=43634085424 result=success note=feature_already_holds_22.1+README
+2026-11-14T21:36:18Z	orchestrator	hold_complete	shas=feature:a681ae4b7(+this_hold_commit),e21:0fdb14b7a(origin),e22:a66b07646(origin) throwaways=none_up hold_patches=none lock=released_after_push
+2026-11-14T21:36:18Z	orchestrator	unattended_report	merged=22.1 held=e21(21.1_pushed_unverified),e22(22.2_implement_next) open_owner=U-39,U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35,U-37,U-38 release=1.0.15_on_main_6d65ea8c
+2026-11-14T21:52:35Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T21:52:35Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-14T21:52:35Z	orchestrator	launch_env	depth=4 watchdog=0 bash_max_ms=default
+2026-11-14T21:52:35Z	orchestrator	permission_mode_attested	mode=bypassPermissions source=session_system_prompt(interactive_reinvocation)
+2026-11-14T21:52:35Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T21:52:35Z	orchestrator	hold_cleared	reason=resumed_by_the_owner(interactive_reinvocation_after_account_switch)
+2026-11-14T21:52:35Z	orchestrator	unattended_resumed	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794693143-71436 feature=ae8b680aa deps=approved(hash_current) answers=none runtime_locks=none_to_sweep
+2026-11-14T21:52:35Z	orchestrator	dispatch_writeahead	epics=21(slot_a,held->running),22(slot_b,held->running) prompts=e21-unattended-20261114-prompt.md+resume/epic-21.md,e22-unattended-20261114-prompt.md+resume/epic-22.md gate=token-free_push(Rule_32)
+2026-11-14T22:42:39Z	orchestrator	ci_red_classified	run=43645120786 workflow=.github/workflows/ci.yml class=flake test=ci.test.mjs:DW-2123_bind_budget(gates_node_26.0.0) action=rerun_failed ledger=DW-2565(routed_21-10)
+2026-11-14T22:42:39Z	orchestrator	ci_green_verified	runs=43645120786 head=76ccaa892 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-14T22:42:39Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-redispatch-20261114T2152Z-prompt.md(+e21-unattended-20261114-prompt.md,resume/epic-21.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-14T22:42:39Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-redispatch-20261114T2152Z-prompt.md(+e22-unattended-20261114-prompt.md,resume/epic-22.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-15T00:00:38Z	Epic 22	runner_reported	boundary=story_22.2 code_head=6b064cec8(43652655378_success) ledger=no_new_entries(DW-2558_routed_burndown_to_decision_sheet) next=burndown_gate,epic_close orchestrator=accepted
+2026-11-15T00:00:38Z	Story 22.2	merged	feature=58586c319 tip=b58284e26 route=code_equal_merge checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none new_keys=none
+2026-11-15T00:00:38Z	ci	timings_refreshed	rule=29 run=43652655378
+2026-11-15T00:31:37Z	Epic 22	runner_complete	stories=2 head=fd4f5bbc1 ci=success_runs=43656263754 tokens=302512 decisions_for_user=DW-2558 amendments=none extensions=none retro=skipped_policy applied=none
+2026-11-15T00:31:37Z	Epic 22	merge_enqueued	head=fd4f5bbc1
+2026-11-15T00:32:20Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T00:32:20Z	Epic 22	ci_green_verified	runs=43656263754 head=fd4f5bbc1 result=success
+2026-11-15T00:32:20Z	Epic 22	runner_report_error	field=integrated_forward.feature reported=e1ab5d2c9 actual=acd822931(parent_of_c8c5251f6) impact=feature_moved_after_integrate(22.2_merge+timings),one_more_integrate-forward_needed
+2026-11-15T00:32:20Z	Epic 22	merge_gate_blocked	reason=feature_moved_after_integrate_forward feature=e1ab5d2c9 head=fd4f5bbc1 action=resume_runner_for_integrate_forward(U14)
+2026-11-15T00:32:36Z	Epic 22	runner_resumed	message=one_more_integrate-forward(feature_e1ab5d2c9)_then_Complete_contract via=SendMessage
+2026-11-15T00:32:55Z	orchestrator	ruling	question=DW-2558_FR-80_vs_AD-22_baseline choice=reword_FR-80_bullet_to_AD-22_amended_rule rejected=route_to_story(no_story_owns_the_PRD),leave_stale why=PRD_sentence_stale_against_owner-amended_AD;planning_text_sync category=veto inbox=U-41 reversal=restore_old_bullet policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-15T00:50:54Z	orchestrator	owner_instruction	via=relay(OcuPilot_Planner) quote="Pause local tests (Recommended)" effect=quiet_window(~60min):no_local_test_runs;ocupilot-ci_up_idle;no_containers_stopped;not_a_hold;e22_integrate-forward_relies_on_GitHub_CI(code-equal_fd4f5bbc1) until=QUIET_OFF
+2026-11-15T00:53:46Z	Epic 21	runner_interim_status	quiet_window=idle sweep_21.1=16/20(17-20_after_QUIET_OFF) code_ci=43649659020_on_6e759ee41 throwaway=ocupilot-ci_up_idle
+2026-11-15T01:15:05Z	Epic 22	runner_complete	stories=2 head=9ecda89db ci=success_runs=43659116328 tokens=313518 note=second_contract_after_integrate-forward(feature_e1ab5d2c9)
+2026-11-15T01:15:05Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T01:15:05Z	Epic 22	ci_green_verified	runs=43659116328 head=9ecda89db result=success
+2026-11-15T01:15:05Z	Epic 22	epic_merged_to_feature	repos=. feature_sha=e20007c42 merge_sha=e20007c42 submodules= checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none feature_ci=pending(no-token_merge)
+2026-11-15T01:15:05Z	Epic 22	decision_sheet_recorded	decided=1 to_action_items=0 to_x0=0 by=unattended items=DW-2558(veto_U-41,prd_FR-80_reworded)
+2026-11-15T01:15:05Z	Epic 22	model_tier_checkpoint	source=runner(cycle-log-epic-22) result=hold applied=record_only
