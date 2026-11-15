@@ -181,3 +181,11 @@
 2026-11-15T20:47:37Z	Story 21.18	story_parked	stage=before_plan reason=AD-51_named_entry_likely(same_as_U-58) category=park code=none
 2026-11-15T20:48:57Z	Story 21.5	runner_reported	item=U-59(orchestrator) via=SendMessage(main)
 2026-11-15T20:48:57Z	Story 21.17	stage_spawned	stage=plan spawn_at=2026-11-15T20:48:57Z model=opus agent_name=21-17-global-export-and-import-plan-1 cycle_iteration=1
+2026-11-15T20:53:54Z	Story 21.15	owner_decision	id=U-58 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: both + Export (Recommended)"
+2026-11-15T20:53:54Z	Story 21.15	story_unparked	via=inbox story_base=none note=no_code;AD-51_entry_at_spec_gate
+2026-11-15T20:53:54Z	Story 21.16	owner_decision	id=U-58 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: both + Export (Recommended)"
+2026-11-15T20:53:54Z	Story 21.16	story_unparked	via=inbox story_base=none note=no_code;AD-51_entry_at_spec_gate
+2026-11-15T20:53:54Z	Story 21.5	owner_decision	id=U-59 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: all four (Recommended)"
+2026-11-15T20:53:54Z	Story 21.5	story_unparked	via=inbox story_base=none note=no_code;AD_entries_at_spec_gate
+2026-11-15T20:53:54Z	Story 21.18	owner_decision	id=U-59 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: all four (Recommended)"
+2026-11-15T20:53:54Z	Story 21.18	story_unparked	via=inbox story_base=none note=no_code;AD_entries_at_spec_gate

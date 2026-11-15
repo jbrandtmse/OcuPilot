@@ -13086,3 +13086,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 21.14 re-plan: SA-27 lists Export; neither 21.14 nor 21.16 includes it; the plan recommends 21.15 beside import
 - 2026-11-15T20:15:08Z status=decision-pending owner=burndown by=spec_gate note=moving scope between stories when no milestone defines the release is the owner's; recommend adding Export to Story 21.15
 - 2026-11-15T20:31:06Z status=decision-pending owner=burndown by=unattended note=inbox=U-58
+- 2026-11-15T20:53:54Z status=routed owner=21-15-locale-and-table-import by=owner note=U-58 A: locale Export joins Story 21.15
