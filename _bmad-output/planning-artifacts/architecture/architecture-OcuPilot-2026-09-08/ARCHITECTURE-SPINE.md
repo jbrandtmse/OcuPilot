@@ -1216,6 +1216,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   Story 21.15's case: `LocalePort`, which hands `Config.NLS.Locales.ImportAll` and `ExportList` only a temporary file OcuPilot names and deletes. The import's file is written from the reviewed text, read from the import tool's declared `root` and `path` resolved through `PathPort` as a `source` or from the screen's local text; its flags are a constant; it answers the fresh read through a port-composed `IMPORTFILE` type and refuses an import whose text no longer yields the reviewed digest. The export's locale is its target alone; the file's text is copied to the export tool's declared `root` and `path`, resolved through `PathPort` as an overwriting `file` whose overwrite is a constant, or answered to the screen as lines; it answers its fresh read through a port-composed `EXPORTLOCALE` type. [AMENDED 2026-11-15, Story 21.15, owner answer U-58]
 
+  Story 21.16's case: `LocalePort`, which builds `Config.NLS.Tables.Load`'s locale, type and table from the load tool's declared id parts `Locale` and `Name` (`<list>:<table>`), the type fixed by the list, and loads only a table that locale's own `Tables` query lists under that type, compared exactly; it answers the fresh read through the property row, whose `Loadable` is that check. [AMENDED 2026-11-15, Story 21.16, owner answer U-58]
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
