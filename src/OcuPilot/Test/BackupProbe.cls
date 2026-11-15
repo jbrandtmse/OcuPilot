@@ -1,7 +1,9 @@
-/// <p>The probe objects <class>OcuPilot.Test.BackupWrite</class> creates and removes: one local database in a directory of its own
-/// under the manager directory, one user-defined backup task whose device is another directory of its own, and the backup database
-/// list as the test found it. The built-in tasks write to a directory the instance may not be able to create, so the run test
-/// runs a task it defines. Every vendor call here runs in <code>%SYS</code> by explicit save and restore. Not a test case.</p>
+/// <p>The probe objects <class>OcuPilot.Test.BackupWrite</class> creates and removes: two local databases, each in a directory of its
+/// own under the manager directory (<parameter>DATABASE</parameter> for the list tests, <parameter>RUNDATABASE</parameter> for the
+/// backups a test runs), one user-defined backup task whose device is another directory of its own, and the backup database list as
+/// the test found it. The built-in tasks write to a directory the instance may not be able to create, so the run test runs a task it
+/// defines. A database a backup touched is never deleted before <method>WaitForNoBackup</method> reports no backup running. Every
+/// vendor call here runs in <code>%SYS</code> by explicit save and restore. Not a test case.</p>
 Class OcuPilot.Test.BackupProbe Extends %RegisteredObject
 {
 
@@ -10,6 +12,11 @@ Parameter DATABASE = "OCUPROBEBACKUP";
 Parameter TASK = "OcuProbeBackupTask";
 
 Parameter DATABASEDIRECTORY = "ocuprobebackup/";
+
+/// <p>The database a backup runs over; no list test uses it.</p>
+Parameter RUNDATABASE = "OCUPROBERUNBACKUP";
+
+Parameter RUNDIRECTORY = "ocuproberunbackup/";
 
 Parameter DEVICEDIRECTORY = "ocuprobebackupdev/";
 
@@ -61,24 +68,41 @@ ClassMethod Directory(pRelative As %String) As %String
     Quit ##class(%File).NormalizeDirectory(pRelative, $System.Util.ManagerDirectory())
 }
 
-/// <p>Create the probe database, in its own directory, and the probe task, whose device is the other directory.</p>
-ClassMethod Create() As %Status
+/// <p>The directory, relative to the manager directory, of the probe database <var>pDatabase</var>, or <code>""</code> for a name
+/// that is not a probe database.</p>
+ClassMethod RelativeDirectory(pDatabase As %String) As %String [ Private ]
+{
+    If pDatabase = ..#DATABASE Quit ..#DATABASEDIRECTORY
+    If pDatabase = ..#RUNDATABASE Quit ..#RUNDIRECTORY
+    Quit ""
+}
+
+/// <p>Create the probe database <var>pDatabase</var> (<parameter>DATABASE</parameter> when none is given), in its own directory.
+/// Creating <parameter>RUNDATABASE</parameter> also creates the probe task, whose device is the other directory.</p>
+ClassMethod Create(pDatabase As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
+        If pDatabase = "" Set pDatabase = ..#DATABASE
+        Set tRelative = ..RelativeDirectory(pDatabase)
+        If tRelative = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "not a probe database: " _ pDatabase)
+            Quit
+        }
         Set $NAMESPACE = "%SYS"
-        Set tDirectory = ..Directory(..#DATABASEDIRECTORY)
-        Set tDevice = ..Directory(..#DEVICEDIRECTORY)
+        Set tDirectory = ..Directory(tRelative)
         Do ##class(%File).CreateDirectoryChain(tDirectory)
-        Do ##class(%File).CreateDirectoryChain(tDevice)
         Set tSC = ##class(SYS.Database).CreateDatabase(tDirectory)
         If $$$ISERR(tSC) Quit
         Set tConfig("Directory") = tDirectory
-        Set tSC = ##class(Config.Databases).Create(..#DATABASE, .tConfig)
+        Set tSC = ##class(Config.Databases).Create(pDatabase, .tConfig)
         If $$$ISERR(tSC) Quit
         ; The instance lists a database when it is configured, so the probe starts unlisted only once it is taken off.
-        Set tIgnored = ##class(Backup.General).RemoveDatabaseFromList(..#DATABASE)
+        Set tIgnored = ##class(Backup.General).RemoveDatabaseFromList(pDatabase)
+        If pDatabase '= ..#RUNDATABASE Quit
+        Set tDevice = ..Directory(..#DEVICEDIRECTORY)
+        Do ##class(%File).CreateDirectoryChain(tDevice)
         Set tTask = ##class(Backup.Task).%New(..#TASK)
         Set tTask.Type = 0
         Set tTask.Device = tDevice
@@ -92,48 +116,113 @@ ClassMethod Create() As %Status
     Quit tSC
 }
 
-/// <p>Remove whatever <method>Create</method> made, by exact name and directory, and the backup's log files the probe task left.
-/// The database is deleted through the vendor, retried while the instance still refuses it (a backup's own suspension of writes
-/// outlasts its Completed status by about a second, measured), and its directory is removed only once no database is mounted
-/// there: a directory removed under a mounted database leaves a mount nothing clears. Answers what is still there, or
-/// <code>""</code>.</p>
-ClassMethod Remove() As %String
+/// <p>Remove the probe database <var>pDatabase</var> (both probe databases when none is given) and whatever else
+/// <method>Create</method> made, by exact name and directory, and the backup's log files the probe task left. Nothing is deleted,
+/// dismounted or removed until <method>WaitForNoBackup</method> reports no backup running; when it does not within two minutes this
+/// answers <code>backup</code> and changes nothing. A database is deleted through the vendor, retried while the instance still
+/// refuses it, and its directory is removed only once no database is mounted there: a directory removed under a mounted database
+/// leaves a mount nothing clears. Answers what is still there, or <code>""</code>.</p>
+ClassMethod Remove(pDatabase As %String = "") As %String
 {
     Set tLeft = ""
     Set tOrigNS = $NAMESPACE
     Try {
+        If '..WaitForNoBackup(120) {
+            Set tLeft = " backup"
+            Quit
+        }
         Set $NAMESPACE = "%SYS"
-        Set tDirectory = ..Directory(..#DATABASEDIRECTORY)
-        Set tIgnored = ##class(Backup.General).RemoveDatabaseFromList(..#DATABASE)
-        If ##class(Backup.Task).%ExistsId(..#TASK) Do ##class(Backup.Task).%DeleteId(..#TASK)
-        If ##class(Config.Databases).Exists(..#DATABASE) Do ##class(Config.Databases).Delete(..#DATABASE)
-        If ##class(%File).Exists(tDirectory _ "IRIS.DAT") {
-            For tI = 1:1:30 {
-                If $$$ISOK(##class(SYS.Database).DeleteDatabase(tDirectory)) Quit
-                Hang 0.5
+        Set tNames = $Select(pDatabase = "": ..#DATABASE _ "," _ ..#RUNDATABASE, 1: pDatabase)
+        For tI = 1:1:$Length(tNames, ",") {
+            Set tName = $Piece(tNames, ",", tI)
+            Set tRelative = ..RelativeDirectory(tName)
+            If tRelative = "" Continue
+            Set tDirectory = ..Directory(tRelative)
+            Set tIgnored = ##class(Backup.General).RemoveDatabaseFromList(tName)
+            If ##class(Config.Databases).Exists(tName) Do ##class(Config.Databases).Delete(tName)
+            If ##class(%File).Exists(tDirectory _ "IRIS.DAT") {
+                For tJ = 1:1:30 {
+                    If $$$ISOK(##class(SYS.Database).DeleteDatabase(tDirectory)) Quit
+                    Hang 0.5
+                }
             }
+            If ..Mounted(tDirectory) {
+                Set tLeft = tLeft _ " mounted"
+            } ElseIf ##class(%File).DirectoryExists(tDirectory) {
+                Do ##class(%File).RemoveDirectoryTree(tDirectory)
+            }
+            If ##class(Config.Databases).Exists(tName) Set tLeft = tLeft _ " database"
+            If ##class(%File).DirectoryExists(tDirectory) Set tLeft = tLeft _ " directory"
         }
-        If ..Mounted(tDirectory) {
-            Set tLeft = tLeft _ " mounted"
-        } ElseIf ##class(%File).DirectoryExists(tDirectory) {
-            Do ##class(%File).RemoveDirectoryTree(tDirectory)
+        If (pDatabase = "") || (pDatabase = ..#RUNDATABASE) {
+            If ##class(Backup.Task).%ExistsId(..#TASK) Do ##class(Backup.Task).%DeleteId(..#TASK)
+            Set tDevice = ..Directory(..#DEVICEDIRECTORY)
+            If ##class(%File).DirectoryExists(tDevice) Do ##class(%File).RemoveDirectoryTree(tDevice)
+            Set tLogs = ..Directory(..#LOGDIRECTORY)
+            Set tFile = $ZSearch(tLogs _ ..#TASK _ "_*.log")
+            While tFile '= "" {
+                Do ##class(%File).Delete(tFile)
+                Set tFile = $ZSearch("")
+            }
+            If ##class(Backup.Task).%ExistsId(..#TASK) Set tLeft = tLeft _ " task"
         }
-        Set tDevice = ..Directory(..#DEVICEDIRECTORY)
-        If ##class(%File).DirectoryExists(tDevice) Do ##class(%File).RemoveDirectoryTree(tDevice)
-        Set tLogs = ..Directory(..#LOGDIRECTORY)
-        Set tFile = $ZSearch(tLogs _ ..#TASK _ "_*.log")
-        While tFile '= "" {
-            Do ##class(%File).Delete(tFile)
-            Set tFile = $ZSearch("")
-        }
-        If ##class(Backup.Task).%ExistsId(..#TASK) Set tLeft = tLeft _ " task"
-        If ##class(Config.Databases).Exists(..#DATABASE) Set tLeft = tLeft _ " database"
-        If ##class(%File).DirectoryExists(tDirectory) Set tLeft = tLeft _ " directory"
     } Catch ex {
         Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tLeft
+}
+
+/// <p>Whether a backup process is running on the instance, read fresh in <code>%SYS</code>: a process whose routine is named
+/// <code>DBACK...</code> (<code>DBACKA</code>, measured on <code>ocupilot-ci</code>). A failed read counts as running.</p>
+ClassMethod BackupProcessRunning() As %Boolean
+{
+    Set tRunning = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Routine FROM %SYS.ProcessQuery")
+        If tRS.%SQLCODE '= 0 {
+            Set tRunning = 1
+        } Else {
+            While tRS.%Next() {
+                If $Extract(tRS.%Get("Routine"), 1, 5) = "DBACK" Set tRunning = 1
+            }
+        }
+    } Catch {
+        Set tRunning = 1
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tRunning
+}
+
+/// <p>Wait up to <var>pSeconds</var> for a backup process to exist: the probe task reads <code>Running</code> a moment before its
+/// process shows. Answers whether one does.</p>
+ClassMethod WaitForBackupProcess(pSeconds As %Integer) As %Boolean
+{
+    For tI = 1:1:pSeconds * 10 {
+        If ..BackupProcessRunning() Quit
+        Hang 0.1
+    }
+    Quit ..BackupProcessRunning()
+}
+
+/// <p>Wait up to <var>pSeconds</var> for the signal that no backup is running: the probe task does not read <code>Running</code>, no
+/// backup process exists, and database writes are not suspended (a backup's own suspension outlasts its Completed status). The signal
+/// must hold on two reads half a second apart. Answers whether it came.</p>
+ClassMethod WaitForNoBackup(pSeconds As %Integer) As %Boolean
+{
+    Set tQuiet = 0
+    For tI = 1:1:pSeconds * 2 {
+        If (..TaskStatus() '= "Running") && '..BackupProcessRunning() && '..WritesFrozen() {
+            Set tQuiet = tQuiet + 1
+            If tQuiet >= 2 Quit
+        } Else {
+            Set tQuiet = 0
+        }
+        Hang 0.5
+    }
+    Quit (tQuiet >= 2)
 }
 
 /// <p>Whether a database is mounted at <var>pDirectory</var>, read fresh in <code>%SYS</code> (the caller's namespace).</p>

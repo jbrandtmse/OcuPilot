@@ -627,17 +627,17 @@ ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Priva
     Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
     Set tNull = ##class(%Library.Device).GetNullDevice()
     Set tOpened = 0
+    ; The caller's device may redirect its output to a routine (a request, a capture); the vendor's output takes none of it.
+    Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
     Try {
-        ; A caller already writing to the null device (a background job) keeps it: it is not this method's to close.
-        If tDevice '= tNull {
+        ; A caller already writing to the null device (its name is followed by a job suffix) keeps it: it is not this method's to close.
+        If $Piece(tDevice, ":", 1) '= tNull {
             Open tNull::1
             If '$Test {
                 Set tVendor = $$$ERROR($$$GeneralError, "the null device could not be opened")
                 Quit
             }
             Set tOpened = 1
-            ; The caller's device may redirect its output to a routine (a request, a capture); the null device takes none of it.
-            Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
             Use tNull
         }
         Set $NAMESPACE = "%SYS"
@@ -656,9 +656,9 @@ ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Priva
         } Else {
             Use tDevice
         }
-        Do ##class(%Library.Device).ReDirectIO(tRedirected)
         Close tNull
     }
+    Do ##class(%Library.Device).ReDirectIO(tRedirected)
     Quit tVendor
 }
 

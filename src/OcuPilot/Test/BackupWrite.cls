@@ -4,7 +4,7 @@
 /// (<class>OcuPilot.Test.LicenseProbe</class>), against the real instance. A freeze carries its limit to the instance, which resumes
 /// writes by itself within the limit and a measured second or two; the refusals of the matrix are observed at the screen's route, at
 /// the mint and at the port, with nothing sent.</p>
-/// <p>The run test runs a task this class defines over one probe database: the built-in tasks write to <code>/Backup</code>, which
+/// <p>The run test runs a task this class defines over a probe database of its own, apart from the add and remove test's: the built-in tasks write to <code>/Backup</code>, which
 /// the instance may not be able to create (measured on the throwaway), so a run of one is no run of a backup.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because the class freezes database writes, runs a backup, changes the backup database list and sets the governance
@@ -164,7 +164,8 @@ ClassMethod WaitForThaw(pSeconds As %Integer) As %Numeric
 Method TestAFreezeAndAThawSucceedOnBothCallers()
 {
     Set tStatus = ..Act(..#TASKSCREEN, "freeze", "SYSTEM", {"limit": "60"}, .tAnswer)
-    Do $$$AssertEquals(tStatus _ "|" _ ..Frozen() _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer), "200|1|nothingSent", "the screen's freeze freezes writes: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Set tGot = tStatus _ "|" _ ..Frozen() _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer)
+    Do $$$AssertEquals(tGot, "200|1|nothingSent", "the screen's freeze freezes writes: " _ tGot _ " " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals(..TasksBanner(), "backupFrozenBanner", "the Backup tasks read raises the frozen banner while writes are frozen")
     Do $$$AssertEquals(..Act(..#TASKSCREEN, "thaw", "SYSTEM", "", .tAnswer) _ "|" _ ..Frozen(), "200|0", "the screen's thaw resumes them")
     Do $$$AssertEquals(..TasksBanner(), "", "and the banner is gone once they are thawed")
@@ -261,32 +262,46 @@ Method TestARunStartsTheTaskOnBothCallers()
 {
     Set tTask = $Parameter(..#PROBE, "TASK")
     Do $ClassMethod(..#PROBE, "KeepHistory")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Create"), "the probe database and task are created")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", $Parameter(..#PROBE, "DATABASE")), "and the list holds only the probe database")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Create", $Parameter(..#PROBE, "RUNDATABASE")), "the run database and the probe task are created")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", $Parameter(..#PROBE, "RUNDATABASE")), "and the list holds only the run database")
     Set tBefore = $ClassMethod(..#PROBE, "HistoryCount")
     Set tPrior = $ClassMethod(..#PROBE, "TaskStatus")
     Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer), "200|nothingSent", "the screen's run starts the task: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Completed", 120), 1, "its status leaves " _ $Select(tPrior = "": "(none)", 1: tPrior) _ " and reads Completed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 1, "and a history row appears")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForSettled", 15), 1, "and the instance's own suspension of writes ends, which a second run waits for")
     Set tOutcome = ..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult)
     Do $$$AssertEquals(tOutcome _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult), "200 |nothingSent", "the agent's confirmed run starts it too: " _ tOutcome)
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 2, 120), 1, "a second history row appears")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForIdle", 120), 1, "and the task is no longer running")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForSettled", 15), 1, "and writes are no longer suspended")
     Set tStatus = ..Act(..#TASKSCREEN, "run", "NoSuchTask", "", .tAnswer)
     Do $$$AssertEquals(tStatus, 404, "a task the list does not hold is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", "NoSuchTask", {"Name": "NoSuchTask"}, .tResult), "refused: 'NoSuchTask' is not present on this instance", "and at the mint, which reads the target first")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start"), "the vendor starts the probe task")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Running", 20), 1, "a task is running")
+    ; Asked at once, the freeze meets the vendor's refusal; a backup soon suspends writes itself, and a freeze asked then is answered as
+    ; already frozen without a vendor call.
     Kill tQuery
     Set tQuery("limit") = 5
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ ..Frozen(), "409|BACKUP.RUNNING|0", "a freeze while a backup runs is the vendor's refusal, answered on its code")
+    For tTry = 1:1:10 {
+        Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
+        Set tCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+        If tCode '= "BACKUP.FROZEN" Quit
+        Hang 0.25
+    }
+    Set tGot = $Get(tHttp) _ "|" _ tCode
+    Do $$$AssertEquals(tGot, "409|BACKUP.RUNNING", "a freeze while a backup runs is the vendor's refusal, answered on its code: " _ tGot)
+    Set tWB = $ClassMethod(..#PROBE, "WaitForBackupProcess", 5)
+    Do $$$AssertEquals(tWB, 1, "and the instance has a backup process")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForNoBackup", 1), 0, "and the no-backup signal does not come while it runs")
     Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "409|BACKUP.RUNNING", "a run while a task runs is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult), "refused: A backup is already running.", "and at the mint")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 3, 120) _ "|" _ $ClassMethod(..#PROBE, "WaitForIdle", 120), "1|1", "it completes")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 3, "and only the run that started added a row")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForNoBackup", 30), 1, "and the no-backup signal comes once it has ended")
 }
 
 /// <p><b>AC1.</b> Add database and Remove round-trip a probe database on both callers: the list read holds it after the add and no longer
