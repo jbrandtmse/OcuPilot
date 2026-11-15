@@ -174,3 +174,4 @@
 2026-11-15T20:30:35Z	Story 21.15	story_created	spawn_at=2026-11-15T20:20:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-15-locale-and-table-import.md build_status=ready-for-dev epic_context=reused oversized=true note=spec_gate_pending(AD-51_named_entry_to_orchestrator)
 2026-11-15T20:31:06Z	Story 21.15	story_parked	stage=plan(spec_written) reason=AD-51_named_entry_owner_only(re-architecture:epic24_cites) category=park inbox=U-58(orchestrator) code=none
 2026-11-15T20:31:06Z	Story 21.16	story_parked	stage=before_plan reason=AD-51_named_entry_owner_only category=park inbox=U-58(orchestrator) code=none
+2026-11-15T20:31:18Z	Story 21.5	stage_spawned	stage=plan spawn_at=2026-11-15T20:31:18Z model=opus agent_name=21-5-globals-and-the-data-tools-plan-1 cycle_iteration=1
