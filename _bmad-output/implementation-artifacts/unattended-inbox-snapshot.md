@@ -2,8 +2,6 @@
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
-**Hold requested 2026-11-14T19:48:55Z: owner: account switch (weekly usage 95% at 19:48Z, the owner's trigger, via the Contest Planner)**
-
 ## Parked
 
 ### U-33 | parked | DW-2173, DW-2175, DW-2205, DW-2206 (vendor defect candidates) | 2026-11-14T10:35:16Z
@@ -87,6 +85,13 @@ recommendation: keep all three
 blocks: nothing (Story 21.2 continues)
 answer: (none yet -- answer with the script or --review)
 
+### U-41 | veto | DW-2558 | 2026-11-15T00:32:55Z
+question: Epic 22 decision sheet: PRD FR-80's bullet says a later stage's destructive action is absent from the governance baseline and so defaults to disabled; AD-22 as you amended it (2026-09-26, 2026-10-04) has each new write key join the baseline in its own story, enabled unless that story sets it disabled. Ruled: reword the FR-80 bullet to state AD-22's amended rule (planning text only; no code changes).
+options: keep (FR-80 matches AD-22) | reverse (restore the old FR-80 bullet and treat AD-22 as the thing to change, in an attended architecture Update)
+recommendation: keep
+blocks: nothing (Epic 22 merge proceeds)
+answer: (none yet -- answer with the script or --review)
+
 ## Holds
 
 ### U-40 | hold | Run 20261114T1656Z-21,22 | 2026-11-14T21:36:19Z
@@ -158,4 +163,4 @@ answer: (none yet -- answer with the script or --review)
 - U-27 | parked | DW-2468 (AD-24, guided-workflow tools): Story 20.36 (Investigate) is done. Its plan also tried to fix DW-2468: a guided workflow's step tools are not in the turn's starting tool set, so the model reaches a step's tool through one tool-search call when that tool is not on the current screen. Code review found that the fix breaks AD-24 (a turn starts with the always-on tools and the screen context's tools only), so it was reverted and the story shipped without it. Fixing it needs AD-24 amended, which is yours (done specs cite AD-24). Proposed wording: '... and the screen context's tools, and in a guided-workflow turn the tools its steps name (AD-66)'. -> (B): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through the tool-search call. No amendment, no follow-up story; close DW-2468 as decided-keep. (by planner, 2026-11-13T07:49:55Z#86; quoting the owner: "B: keep it as is"); resolved by orchestrator, 2026-11-13T07:50:28Z -- owner chose B: AD-24 unchanged; DW-2468 closed by-design
 - U-28 | hold | Run 20261020T0940Z-20,23: Held 2026-11-13T09:59Z on the owner's word; feature 5135d0379; Epic 20 local head b8bf20539 (20.25 gates green on 8127b55f, push on resume); Epic 23 b3f01e196 with a hold patch for 23.10 batch 2; no throwaways up -> (no answer); resolved by orchestrator, 2026-11-14T00:21:51Z -- resumed by the owner 2026-11-13T13:22Z
 
-<!-- journal: 109 lines -->
+<!-- journal: 113 lines -->

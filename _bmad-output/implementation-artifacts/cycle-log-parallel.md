@@ -1952,3 +1952,19 @@
 2026-11-15T00:00:38Z	Epic 22	runner_reported	boundary=story_22.2 code_head=6b064cec8(43652655378_success) ledger=no_new_entries(DW-2558_routed_burndown_to_decision_sheet) next=burndown_gate,epic_close orchestrator=accepted
 2026-11-15T00:00:38Z	Story 22.2	merged	feature=58586c319 tip=b58284e26 route=code_equal_merge checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none new_keys=none
 2026-11-15T00:00:38Z	ci	timings_refreshed	rule=29 run=43652655378
+2026-11-15T00:31:37Z	Epic 22	runner_complete	stories=2 head=fd4f5bbc1 ci=success_runs=43656263754 tokens=302512 decisions_for_user=DW-2558 amendments=none extensions=none retro=skipped_policy applied=none
+2026-11-15T00:31:37Z	Epic 22	merge_enqueued	head=fd4f5bbc1
+2026-11-15T00:32:20Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T00:32:20Z	Epic 22	ci_green_verified	runs=43656263754 head=fd4f5bbc1 result=success
+2026-11-15T00:32:20Z	Epic 22	runner_report_error	field=integrated_forward.feature reported=e1ab5d2c9 actual=acd822931(parent_of_c8c5251f6) impact=feature_moved_after_integrate(22.2_merge+timings),one_more_integrate-forward_needed
+2026-11-15T00:32:20Z	Epic 22	merge_gate_blocked	reason=feature_moved_after_integrate_forward feature=e1ab5d2c9 head=fd4f5bbc1 action=resume_runner_for_integrate_forward(U14)
+2026-11-15T00:32:36Z	Epic 22	runner_resumed	message=one_more_integrate-forward(feature_e1ab5d2c9)_then_Complete_contract via=SendMessage
+2026-11-15T00:32:55Z	orchestrator	ruling	question=DW-2558_FR-80_vs_AD-22_baseline choice=reword_FR-80_bullet_to_AD-22_amended_rule rejected=route_to_story(no_story_owns_the_PRD),leave_stale why=PRD_sentence_stale_against_owner-amended_AD;planning_text_sync category=veto inbox=U-41 reversal=restore_old_bullet policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-15T00:50:54Z	orchestrator	owner_instruction	via=relay(OcuPilot_Planner) quote="Pause local tests (Recommended)" effect=quiet_window(~60min):no_local_test_runs;ocupilot-ci_up_idle;no_containers_stopped;not_a_hold;e22_integrate-forward_relies_on_GitHub_CI(code-equal_fd4f5bbc1) until=QUIET_OFF
+2026-11-15T00:53:46Z	Epic 21	runner_interim_status	quiet_window=idle sweep_21.1=16/20(17-20_after_QUIET_OFF) code_ci=43649659020_on_6e759ee41 throwaway=ocupilot-ci_up_idle
+2026-11-15T01:15:05Z	Epic 22	runner_complete	stories=2 head=9ecda89db ci=success_runs=43659116328 tokens=313518 note=second_contract_after_integrate-forward(feature_e1ab5d2c9)
+2026-11-15T01:15:05Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T01:15:05Z	Epic 22	ci_green_verified	runs=43659116328 head=9ecda89db result=success
+2026-11-15T01:15:05Z	Epic 22	epic_merged_to_feature	repos=. feature_sha=e20007c42 merge_sha=e20007c42 submodules= checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none feature_ci=pending(no-token_merge)
+2026-11-15T01:15:05Z	Epic 22	decision_sheet_recorded	decided=1 to_action_items=0 to_x0=0 by=unattended items=DW-2558(veto_U-41,prd_FR-80_reworded)
+2026-11-15T01:15:05Z	Epic 22	model_tier_checkpoint	source=runner(cycle-log-epic-22) result=hold applied=record_only
