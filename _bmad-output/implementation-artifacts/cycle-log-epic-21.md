@@ -48,3 +48,7 @@
 2026-11-15T01:54:10Z	Story 21.1	committed	sha=c7ccce2a9 submodules= ci=success runs=43649659020 via=6e759ee41 amendments=none note=pushed_earlier_by_owner_waiver;ci_verified_on_no_token_head
 2026-11-15T01:54:10Z	Story 21.1	story_cycle	plan_to_commit_min=484(incl_hold_~150) implement_passes=1 reviews=1 rework=0 first_ci=success models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-15T01:58:25Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T01:58:25Z model=sonnet agent_name=21-2-backup-implement-1 cycle_iteration=1 story_base=8c1f45af5
+2026-11-15T02:34:02Z	Epic 21	integrated_forward	feature=076653ecb head=8c1f45af5 conflicts_resolved=sprint-status.yaml(regenerated) ci=success runs=43665511313 note=staging_head_at_21.2_start
+2026-11-15T04:01:47Z	Story 21.2	dev_complete	spawn_at=2026-11-15T01:59:00Z model=sonnet build_sha=43c2560bf baseline_revision=97f1aa935 story_base=97f1aa935 review_loop_iteration=0 followup_review_recommended=true deferred=0 files=78 loc_added=4727 loc_removed=63 cycle_iteration=1 note=ghost_probe_db_on_ocupilot-ci;armed_var_via_exec_shim
+2026-11-15T04:01:47Z	Story 21.2	ruling	question=unruled_screen_strings(~15:nouns,empty_sentences,agent_phrases,9_prompts) choice=keep_as_written rejected=reword_in_stage why=plain_language,match_sibling_screens category=veto inbox=U-42 policy=b9ff703e reversal=reword_strings.ts+EXPERIENCE.md_row_604
+2026-11-15T04:01:55Z	Story 21.2	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
