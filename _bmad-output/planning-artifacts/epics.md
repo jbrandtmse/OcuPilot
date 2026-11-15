@@ -9819,21 +9819,11 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
-- **Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (LOC metrics and drift hashes) and Stories 24.5 to 24.9; the other surfaces' acceptance criteria moved to them word for word.
+
+- **Given** the LOC metrics and drift hashes
 - **When** each runs
 - **Then** it round-trips over its backing class.
-
-- **Given** the execute-command console's output
-- **When** it is returned
-- **Then** it is bounded by the harvested output ceiling rather than unbounded.
-
-- **Given** environment promote
-- **When** it runs
-- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
-
-- **Given** remote instance profiles
-- **When** they are sequenced
-- **Then** they land **before** environment diff and promote, which depend on them.
 
 ### Story 24.2: The analytics editors
 
@@ -9892,3 +9882,85 @@ So that the last two steps of the agent's growth land together.
 - **Then** it captures a snapshot **before** the write and offers a one-click revert
 - **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
 - **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+### Story 24.5: Unit-test runner and work-queue viewer
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the unit-test runner and the work-queue viewer,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the unit-test runner and work-queue viewer
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.6: The command and class-method consoles
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the execute-command and class-method consoles,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the execute-command and class-method consoles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the execute-command console's output
+- **When** it is returned
+- **Then** it is bounded by the harvested output ceiling rather than unbounded.
+
+### Story 24.7: Web terminal
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the web terminal,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the web terminal
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.8: Remote instance profiles and environment diff
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want remote instance profiles and environment diff,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** environment diff and remote instance profiles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** remote instance profiles
+- **When** they are sequenced
+- **Then** they land **before** environment diff and promote, which depend on them.
+
+### Story 24.9: Environment promote
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want environment promote,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
