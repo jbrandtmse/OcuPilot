@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "2ccb94cfdf2277d99e3c448dfc9169a64e874632067f59a1ed14e1a7ca842585"
+epics_md_hash: "f59b35ca36503fb661d31eca630fb946b44e513e40f1463a2898c34d368e05c2"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -30,6 +30,7 @@ owner_graph:  # as approved, never reduced
   epic-20: [epic-11, epic-12]   # owner 2026-10-06: slot B reopens and the whole epic runs on it now, in parallel with Epic 18's remainder on slot A (replaces the 2026-10-05 order "only then Epic 20")
   epic-21: [epic-11, epic-12]   # owner 2026-10-09 ("Yes, I want to go ahead and queue Epic 21.", relayed by the Planner): the whole epic joins the run; 21.6, 21.7, 21.8 and 21.11 wait on Epic 20 stories (story_order below); owner 2026-10-12 ("Epic 21 to whichever slot frees": "Let Epic 21 start on slot B when Epic 20 finishes (its interop stories need Epic 20 anyway), so neither slot sits idle; slot A finishes Epic 18 and 23.5."); owner 2026-10-14 ("Yes please", relayed by the Planner, to "let Epic 21 start on whichever slot frees up first, with the four Epic 20-dependent stories last"): whichever slot empties its queue first starts it, the Epic 20-independent stories first
   epic-22: [epic-11, epic-12]   # owner 2026-10-12 ("Add Epic 22": "The last planned epic: the long-tail register of remaining portal pages (2 stories).", relayed by the Planner): joins the run as a gap filler (epics.epic-22 below)
+  epic-24: [epic-11, epic-12, epic-20]   # owner 2026-11-14 ("Option 1, split Epic 21 for slot B", relayed by the Planner): 21.9, 21.8, 21.7 and 21.11 move to Epic 24 (24.1 to 24.4) and run on slot B beside Epic 21; stories chosen by the orchestrator: none consumes a story Epic 21 still holds, and 21.1 (the seam they harvest through) is on feature
 
 added_edges:
   hard:
@@ -307,7 +308,7 @@ epics:
     depends_on: [epic-11, epic-12]
     submodules: []
     in_run: all   # owner 2026-10-09 ("Yes, I want to go ahead and queue Epic 21."), relayed by the Planner in reply to "If slot A runs out before you're back, may it start Epic 21 at 21.1 (the harvest seam)?"
-    story_order: ["21-1 (the harvest seam; first, every later story harvests through it)", "21-2 (backup and mirroring; posture settled by the owner 2026-10-09: confirmed proposals with destructive keys disabled by default, only removing a mirror with its databases prohibited (AD-10), every freeze bounded)", "21-3", "21-4", "21-5", "21-9 (developer tools; remote instance profiles before environment diff and promote)", "21-10 (the remaining leaves; carries DW-1562, DW-1850, DW-1856)", "21-6 (the SQL tuning track; waits until 20-12 is merged into feature, since its second AC extends 20.12's diagnose-slow-query guided workflow)", "21-8 (the analytics editors; waits until 20-11, the Analytics rider, is merged into feature)", "21-7 (interoperability parity; waits until Epic 20 is merged into feature)", "21-11 (the harvested tools, including interoperability, and undo; waits until Epic 20 is merged into feature; last)", "Epic 21 burn-down"]
+    story_order: ["21-1 (the harvest seam; first, every later story harvests through it; merged)", "21-2 (backup; split 2026-11-14, mirroring to 21-12)", "21-12 (mirroring; waits on U-39)", "21-3", "21-4", "21-5", "21-10 (the remaining leaves; carries DW-1562, DW-1850, DW-1856)", "21-6 (the SQL tuning track)", "Epic 21 burn-down"]   # 2026-11-14: 21-7, 21-8, 21-9 and 21-11 moved to Epic 24 (owner split)
     slot: "whichever slot empties its queue first (owner 2026-10-14, amending 2026-10-12): slot A's queue is 23-5, 23-11, 23-7 to 23-10, then Epic 22; slot B's is the rest of Epic 20. Run the Epic 20-independent stories first (21-1 to 21-5, 21-9, 21-10); 21-6, 21-7, 21-8 and 21-11 wait on their Epic 20 stories as story_order says. A story whose wait is unmet when reached is passed over for the next story in order, and runs once its wait clears"
     gate: "Stage 5 gate (epics.md Epic 21 preamble): FR-80's contract plus each row's backing class; every write a confirmed proposal; every new destructive key defaults to disabled (14.2 baseline rule); handler bodies are taken and nothing else (the MCP suite's manifest is stale and its bootstrap is TypeScript-driven); the task-history filter and resource creation with a description have unverified fix status, so the current bodies are read before harvesting; the prohibited set grows in the kernel, by effect (21.2)"
     paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Area/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**", "scripts/**"]
@@ -316,3 +317,17 @@ epics:
       extends the Explorer that 20.17 to 20.21 edited; 21.10 edits areas Epic 18 owned, which has closed by then. 21.6, 21.7,
       21.8 and 21.11 wait as story_order says because they extend Epic 20 stories directly. The orchestrator's analysis may add
       edges (owner's 2026-09-16 rule: the more conservative graph wins).
+  epic-24:
+    depends_on: [epic-11, epic-12, epic-20]
+    submodules: []
+    in_run: all   # owner 2026-11-14 ("Option 1, split Epic 21 for slot B"), relayed by the Planner; joins run 20261114T1656Z-21,22
+    story_order: ["24-1 (developer tools, was 21.9; remote instance profiles before environment diff and promote)", "24-2 (the analytics editors, was 21.8; extends 20.11, merged)", "24-3 (interoperability parity, was 21.7; extends Epic 20, merged; carries 8 routed entries)", "24-4 (the harvested tools and undo, was 21.11; the 28 harvested tools are iris-session-agent's interoperability inspection and search tools, so it follows 24-3; last)", "Epic 24 burn-down"]
+    slot: "b (owner 2026-11-14: split so that slot B gets work while Epic 21 runs on slot A)"
+    gate: "Epic 21's Stage 5 gate applies unchanged (epics.md Epic 24 preamble)"
+    paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Api/**", "src/OcuPilot/Area/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Test/**", "ui/src/app/areas/interop/**", "ui/src/app/areas/analytics/**", "ui/src/app/areas/explorer/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**"]
+    note: >-
+      Split from Epic 21 by the owner's decision of 2026-11-14. Epic 21 keeps backup, mirroring, the configuration tables,
+      NLS and SQL settings, globals, the SQL tuning track and the remaining leaves; Epic 24 takes the interoperability,
+      analytics and developer-tools surfaces and the agent's harvested tools with undo. The two share the harvest seam's
+      registration files (routes, governance baseline, coverage rosters, screen registry): Rule 11 contention, add-only
+      unions resolved at integrate-forward, as between every pair of parallel epics. No hard edge between 21 and 24.

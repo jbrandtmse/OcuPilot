@@ -956,6 +956,8 @@ Every remaining classic portal leaf with a backing class but no route becomes re
 
 **Implementation notes:** The largest stage by far, and the one AD-23 exists for: harvested `ExecuteMCPv2.REST.*` handler bodies inherit an OcuPilot base exposing the same `RenderResponseBody` signature, so **all 738 call sites move unedited** and only the envelope changes. Two harvest cautions carry forward: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so handler bodies are taken and nothing else; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies must be read before harvesting. DT-11 lands before DT-09 and DT-10. Undo needs a state-capture model the write path does not yet have, which is why it waited this long.
 
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] The interoperability parity, analytics editors, developer tools and harvested tools-and-undo stories moved to Epic 24.
+
 ### Epic 22: Stage 6 - the long tail, on demand
 
 Nothing is scheduled. Each excluded row is picked up only when demand appears and its own gate clears, and keeps its stated reason for exclusion until then.
@@ -963,6 +965,12 @@ Nothing is scheduled. Each excluded row is picked up only when demand appears an
 **FRs covered:** FR-80, covering 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
 
 **Implementation notes:** Grouped by the catalog's exclusion reason, with counts where the catalog gives them: license-gated sharding (3); edition-gated HealthShare, Message Bank, Enterprise and ITK (11); deprecated shadowing and iKnow Text Analytics (9); Zen Reports, InterSystems Reports and cluster settings (6); and four further groups that Story 22.1 enumerates and makes testable. A row leaves this epic only when someone asks for it and its gate is demonstrably clear.
+
+### Epic 24: Stage 5, second lane - interoperability, analytics, developer tools and the agent's harvested tools
+
+Split from Epic 21 on 2026-11-14 so that a second slot runs it beside Epic 21: interoperability parity, the analytics editors, the developer tools, and the agent's 28 harvested tools with undo.
+
+**FRs covered:** FR-80, the share of Epic 21's 165 rows those four stories carry
 
 ---
 
@@ -8431,7 +8439,7 @@ So that the analytics category is not empty.
 
 ### Story 20.12: The agent gains guided workflows and Investigate
 
-[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 21.9's promote) get none until those stories land (named limit).
+[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 24.1's promote) get none until those stories land (named limit).
 
 As a developer-administrator facing a stuck production,
 I want the agent to run a known procedure rather than a single call,
@@ -9158,6 +9166,8 @@ So that the classic per-host Actions tab is not needed for it.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Stories 21.7, 21.8, 21.9 and 21.11 moved verbatim to Epic 24 as Stories 24.3, 24.2, 24.1 and 24.4.
+
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
 **Applies to every story in this epic.** The largest stage by far, and the one the harvest seam exists for. **FR-80** governs these; acceptance is that contract plus each row's backing class. Every write is a confirmed proposal; every new destructive key defaults to disabled. Two harvest cautions carry throughout: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so **handler bodies are taken and nothing else**; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies are read before harvesting.
@@ -9257,64 +9267,6 @@ So that performance work has a home.
 - **When** this track lands
 - **Then** the workflow gains the screens it was written for.
 
-### Story 21.7: Interoperability parity
-
-As an interoperability developer,
-I want the remaining production surfaces,
-So that the area reaches parity.
-
-**Acceptance Criteria:**
-
-- **Given** credentials, default settings, purge and its settings, auto-start, managed alerts, rule and business-process logs, suspended messages, export, schedules, PEX, the registries, record maps, HL7 authoring, interface maps and references, port authority, the system monitor, the archive manager, workflow, deployment and shutdown groups
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-- **Given** deployment
-- **When** it runs
-- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
-- DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-... (ledger; routed by range-end sweep 2026-11-14)
-- DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted (ledger; routed by range-end sweep 2026-11-14)
-- DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after ... (ledger; routed by range-end sweep 2026-11-14)
-- DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformatio... (ledger; routed by range-end sweep 2026-11-14)
-- DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a tes... (ledger; routed by range-end sweep 2026-11-14)
-- DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...' (ledger; routed by range-end sweep 2026-11-14)
-
-### Story 21.8: The analytics editors
-
-As an analytics developer,
-I want the editors the rider left out,
-So that analytics reaches parity too.
-
-**Acceptance Criteria:**
-
-- **Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-### Story 21.9: Developer tools
-
-As a developer,
-I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
-So that the MCP suite's developer capabilities exist here.
-
-**Acceptance Criteria:**
-
-- **Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-- **Given** the execute-command console's output
-- **When** it is returned
-- **Then** it is bounded by the harvested output ceiling rather than unbounded.
-
-- **Given** environment promote
-- **When** it runs
-- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
-
-- **Given** remote instance profiles
-- **When** they are sequenced
-- **Then** they land **before** environment diff and promote, which depend on them.
-
 ### Story 21.10: The remaining leaves across the six areas
 
 As a developer-administrator,
@@ -9336,24 +9288,6 @@ So that no area has a remaining gap.
 - DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descript... (ledger; routed by range-end sweep 2026-11-14)
 - DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5 (ledger; routed by range-end sweep 2026-11-14)
 - DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun (ledger; routed by range-end sweep 2026-11-14)
-
-### Story 21.11: The agent gains the harvested tools and undo
-
-As a developer-administrator,
-I want the agent to reach interoperability and to be able to reverse what it did,
-So that the last two steps of the agent's growth land together.
-
-**Acceptance Criteria:**
-
-- **Given** the 28 harvested inspection and search tools
-- **When** they are added
-- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
-
-- **Given** undo
-- **When** it is built
-- **Then** it captures a snapshot **before** the write and offers a one-click revert
-- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
-- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
 
 ### Story 21.12: Mirroring
 
@@ -9864,3 +9798,97 @@ So that a red CI run means a real defect and the screens behave as they say.
 - DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's log rows behind in USER (ledger; routed by burndown 2026-11-14)
 - DW-2501: no check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last (ledger; routed by burndown 2026-11-14)
 - DW-2543: Journal records' cold open with Newest first saves the default view before the account read answers, which can lose the remembered filter, row limit and widths (ledger; routed by burndown 2026-11-14)
+
+---
+
+## Epic 24: Stage 5, second lane - interoperability, analytics, developer tools and the agent's harvested tools
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Split from Epic 21 so that a second slot runs these stories beside it. None of them depends on a story Epic 21 still holds: each harvests through Story 21.1's seam, which is on the feature branch, and the interoperability and analytics stories extend Epic 20, which has merged.
+
+The interoperability surfaces that remain, the analytics editors, a developer-tools set, and for the agent the 28 harvested inspection tools and undo by snapshot and revert.
+
+**Applies to every story in this epic.** Epic 21's preamble applies unchanged: **FR-80** governs these; acceptance is that contract plus each row's backing class. Every write is a confirmed proposal; every new destructive key defaults to disabled. **Handler bodies are taken and nothing else**, and the current bodies are read before harvesting.
+
+### Story 24.1: Developer tools
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.9.
+
+As a developer,
+I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the execute-command console's output
+- **When** it is returned
+- **Then** it is bounded by the harvested output ceiling rather than unbounded.
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
+
+- **Given** remote instance profiles
+- **When** they are sequenced
+- **Then** they land **before** environment diff and promote, which depend on them.
+
+### Story 24.2: The analytics editors
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.8.
+
+As an analytics developer,
+I want the editors the rider left out,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.3: Interoperability parity
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.7.
+
+As an interoperability developer,
+I want the remaining production surfaces,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** credentials, default settings, purge and its settings, auto-start, managed alerts, rule and business-process logs, suspended messages, export, schedules, PEX, the registries, record maps, HL7 authoring, interface maps and references, port authority, the system monitor, the archive manager, workflow, deployment and shutdown groups
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** deployment
+- **When** it runs
+- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
+- DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted (ledger; routed by range-end sweep 2026-11-14)
+- DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after ... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformatio... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a tes... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...' (ledger; routed by range-end sweep 2026-11-14)
+
+### Story 24.4: The agent gains the harvested tools and undo
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.11.
+
+As a developer-administrator,
+I want the agent to reach interoperability and to be able to reverse what it did,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the 28 harvested inspection and search tools
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+- **Given** undo
+- **When** it is built
+- **Then** it captures a snapshot **before** the write and offers a one-click revert
+- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
+- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.

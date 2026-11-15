@@ -1979,3 +1979,10 @@
 2026-11-15T02:34:51Z	Story 21.1	merged	feature=8c1f45af5 tip=8c1f45af5 route=fast_forward(staging_head) checks=ledger_entry_check_0(2025),dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
 2026-11-15T02:34:51Z	orchestrator	deps_hash_rerecorded	reason=split story=21.2->21.2_Backup+21.12_Mirroring(veto_U-38) hash=2ccb94cf
 2026-11-15T02:34:51Z	ci	timings_refreshed	rule=29 run=43665511313
+2026-11-15T04:12:40Z	orchestrator	owner_instruction	via=planner quote="Option 1, split Epic 21 for slot B" option="Move a self-contained group into a new sibling epic ... The Orchestrator would check which stories really depend on each other and make the split, since splits are already its call."
+2026-11-15T04:12:40Z	orchestrator	epic_split	from=epic-21 to=epic-24 moved=21.9->24.1,21.8->24.2,21.7->24.3,21.11->24.4 kept=21.2,21.12,21.3,21.4,21.5,21.10,21.6 basis=none_consumes_a_kept_story;21.1_seam_on_feature;20.11+Epic_20_merged;the_28_tools_are_iris-session-agent_interop_tools(21.11_follows_21.7) spine_ref=AD-66_promote_21.9->24.1 epics_ref=20.12_amend_21.9->24.1
+2026-11-15T04:12:40Z	orchestrator	deps_approved	hash=f59b35ca epics=24 by=owner_relay(planner) epic-24_depends_on=epic-11,epic-12,epic-20(all_merged) edge_21_24=none
+2026-11-15T04:12:40Z	orchestrator	range_extended	run=20261114T1656Z-21,22 add=epic-24 slot=b by=owner_relay(planner)
+2026-11-15T04:12:40Z	orchestrator	tracker_generated	new=epic-24,24-1..24-4,epic-24-retrospective dropped_orphans=21-7,21-8,21-9,21-11(all_backlog) validate=ok
+2026-11-15T04:12:40Z	orchestrator	ledger_rerouted	from=21-7-interoperability-parity to=24-3-interoperability-parity ids=DW-2361,DW-2378,DW-2379,DW-2388,DW-2421,DW-2433,DW-2452,DW-2554
+2026-11-15T04:12:40Z	Epic 24	dispatch_writeahead	slot=b retro_review=skip(handled_by_epic_21) gate=feature_head_needs_real_run(Rule_32)
