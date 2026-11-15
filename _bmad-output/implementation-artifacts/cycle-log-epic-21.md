@@ -40,3 +40,10 @@
 2026-11-14T21:34:43Z	Epic 21	ruling	question=push_before_rule29_sweep choice=push_all_local_commits_now authorized_by=owner(via_orchestrator_hold_order) waiver=rule29_sweep_before_first_code_push smoke=not_run fresh_check=pass(forward,reverse) category=owner_decision
 2026-11-14T22:44:24Z	Epic 21	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 resumed=after_hold(owner_account_switch) model=claude-opus-5-5 hold_file=absent
 2026-11-14T22:44:24Z	Story 21.1	ci_resolved	story=21.1 sha=c7ccce2a9 runs=none result=unavailable reason=skip_token_in_push action=push_no_token_bookkeeping_head resolved_at=resume
+2026-11-14T22:46:58Z	Epic 21	throwaway_up	container=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci project=ocupilot-ci web=52776 super=1975 started_by=epic-21-runner run=20261114T1656Z-21,22
+2026-11-14T23:24:00Z	Story 21.1	ci_resolved	story=21.1 sha=c7ccce2a9 runs=43649659020 result=success failed=none via=6e759ee41(no_token_head;diff_bookkeeping_only) resolved_at=resume
+2026-11-15T00:53:49Z	Story 21.1	gate_step	step=full_sweep result=paused shards_green=1-16/20 reason=owner_quiet_window(relayed_by_orchestrator_00:36Z) in_flight_shard=16(finished_green) resume_from=17
+2026-11-15T01:54:10Z	Story 21.1	gate_step	step=full_sweep result=pass shards_green=20/20 classes=716 tests=5524 failed=0 env=ocupilot-ci(up_by_this_runner_22:47Z) note=paused_16-17_for_owner_quiet_window
+2026-11-15T01:54:10Z	Story 21.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_executed=50_passed=50+HarvestWire_in_sweep model=claude-opus-5-5
+2026-11-15T01:54:10Z	Story 21.1	committed	sha=c7ccce2a9 submodules= ci=success runs=43649659020 via=6e759ee41 amendments=none note=pushed_earlier_by_owner_waiver;ci_verified_on_no_token_head
+2026-11-15T01:54:10Z	Story 21.1	story_cycle	plan_to_commit_min=484(incl_hold_~150) implement_passes=1 reviews=1 rework=0 first_ci=success models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
