@@ -105,3 +105,5 @@
 2026-11-15T13:39:34Z	Story 21.3	dev_complete	spawn_at=2026-11-15T12:22:00Z model=sonnet build_sha=548d4a1e1 baseline_revision=af15d1c92 story_base=af15d1c92 review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-2588) files=60 loc_added=3599 loc_removed=51 cycle_iteration=1 note=AD-4_comply_measured_ok
 2026-11-15T13:39:34Z	Story 21.3	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-15T13:39:35Z	Story 21.3	stage_spawned	stage=qa spawn_at=2026-11-15T13:39:35Z model=sonnet agent_name=21-3-startup-memory-and-compatibility-settings-qa-1 cycle_iteration=1
+2026-11-15T13:50:27Z	Story 21.3	qa_complete	spawn_at=2026-11-15T13:40:00Z model=sonnet tests=src/OcuPilot/Test/ConfigSettingMint.cls tests_added=4 mutations_demonstrated=5 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-11-15T13:50:27Z	Story 21.3	stage_spawned	stage=code-review spawn_at=2026-11-15T13:50:27Z model=opus agent_name=21-3-startup-memory-and-compatibility-settings-code-review-1 cycle_iteration=1

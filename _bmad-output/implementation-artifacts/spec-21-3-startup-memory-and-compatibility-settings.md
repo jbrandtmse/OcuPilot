@@ -216,6 +216,16 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - AC3: `DefaultPort` removed from the read-only set -> `ConfigSettingRules` and `ConfigSettingRead` red (observed, batch 1; never against `ConfigSettingWrite`, which would write it); the page's `set` registration drops its `reason` -> `config-settings.page.spec.ts` and the browser spec's read-only test red (observed after rebuild and redeploy, batch 2).
 - AC4: `osmgmt.startupsettings.set` set `false` -> `ConfigSettingRead`'s governance test red; `osmgmt.compatibilitysettings.set` set `false` -> `ConfigSettingWrite`'s dispatch assertions red (observed, batch 1).
 
+**QA (Rule 19), on `ocupilot-ci`, each applied, observed red, reverted (`git status --short` and `git diff --stat` identical) and reloaded:**
+
+- (QA) `src/OcuPilot/Test/ConfigSettingMint.cls` (live-safe, four tests): the rules matrix asked at the mint, every read-only row refused at the port seam and the mint, each restart statement against its source, and the route's pairs.
+- mutation: `ConfigSettingRules.WriteProblem` sets no problem for a refused code (AC1) -> `ConfigSettingMint` red, two tests.
+- mutation: `ConfigPort.RESTARTCOMPATIBILITY` emptied (AC2) -> `ConfigSettingMint` red, the value editor's list and the `NullSubscripts` card.
+- mutation: `ConfigPort.READONLY` loses `WebServerPort` (AC3) -> `ConfigSettingMint` red, the roster, port and mint refusals; run against the seam only.
+- mutation: `osmgmt.memorysettings.set` `false` in `Baseline` (AC4) -> `ConfigSettingRead` red, baseline and minted assertions.
+- mutation: `CompatibilitySettingList` drops `%Admin_Secure:USE` from `privileges` -> `ConfigSettingMint` route-pair test red.
+- The armed `ConfigSettingWrite` ran green with `OCUPILOT_ALLOW_CONFIG_SETTINGS=1`, four tests; `ConfigSettingRules` six and `ConfigSettingRead` eight green.
+
 ## Auto Run Result
 
 Status: done

@@ -12988,3 +12988,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: config-settings.page.ts opens InteropItemSettingDialog unedited; an empty integer or choice value is refused 400 CONFIG.SETTING.VALUE; the dialog is an Epic 24 file
 - 2026-11-15T13:39:34Z status=routed owner=burndown by=harvest note=fix needs a dialog input or a new string in an Epic 24-owned file; take it at the burn-down once Epic 24's dialog work has merged
+- 2026-11-15T13:39:41Z status=wontfix-accepted owner=21-3-startup-memory-and-compatibility-settings by=harvest note=reopen_if=a person reports the empty-to-clear hint on a settings screen, or Epic 24 edits InteropItemSettingDialog's hint (burndown never owns a LOW)
