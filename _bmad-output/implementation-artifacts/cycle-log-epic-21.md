@@ -234,3 +234,7 @@
 2026-11-15T23:00:55Z	Story 21.21	runner_reported	item=U-65(orchestrator) via=SendMessage(main) note=routed_entries_DW-1850,1280,2348_not_decision-pending
 2026-11-15T23:02:00Z	Story 21.21	owner_decision	id=U-65 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A (Recommended)"
 2026-11-15T23:02:00Z	Story 21.21	story_unparked	via=inbox story_base=none note=no_code;criteria_amended
+2026-11-15T23:12:15Z	Story 21.4	gate_step	step=full_sweep result=pass shards=20/20(1-8,10_pre-rework;9_rerun;11-20_post-rework) failed=0
+2026-11-15T23:12:15Z	Story 21.4	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=1(order-dependent_test) evidence=smoke.sh_50/50+config-settings_spec(fresh_check) model=claude-opus-5-5
+2026-11-15T23:12:15Z	Story 21.4	committed	sha=290709847 submodules= ci=pending runs=43773475655 amendments=EXPERIENCE.md(sql_settings_strings,veto_U-51),epics.md(21.4_split)
+2026-11-15T23:12:15Z	Story 21.4	story_cycle	plan_to_commit_min=~420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
