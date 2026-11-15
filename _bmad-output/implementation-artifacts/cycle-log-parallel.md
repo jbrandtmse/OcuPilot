@@ -1989,3 +1989,10 @@
 2026-11-15T04:47:50Z	orchestrator	ci_red_classified	run=43675769752 workflow=.github/workflows/ci.yml class=flake leg=gates(node_22.22.3) cause=vitest_fork_pool_EPIPE head=cee4d3671(planning_only) ledger=DW-2567(routed_21-10) action=rerun_failed
 2026-11-15T04:56:49Z	Epic 24	ci_green_verified	runs=43675769752 head=cee4d3671 result=success gate=dispatch(Rule_32) attempt=2
 2026-11-15T04:56:49Z	Epic 24	runner_dispatched	name=epic-runner-24 slot=b model=opus worktree=.worktrees/epic-24 branch=OCU-1-epic24 base=cee4d3671 prompt=prompts/e24-unattended-20261115-prompt.md retro_review=skip(handled_by_epic_21)
+2026-11-15T05:25:15Z	Epic 24	runner_reported	kind=heads_up split=24.1->24.1(code_metrics+doc_hashes)+24.5..24.9(veto_U-44) bookkeeping=eff701a7d(OCU-1-epic24) readiness_veto=U-43 deps_rerecord_due=split(at_next_merge)
+2026-11-15T05:25:15Z	orchestrator	parked_early	item=U-45 unit=24.8-24.9 reason=NFR-6+PRD_s9+spine_deferred_vs_remote_profiles(owner_only) recommendation=C(same-instance_diff_and_promote)
+2026-11-15T09:33:54Z	Epic 24	runner_reported	story=24.1 head=06dad46b8 runs=43696951376(success) ledger=DW-2577..DW-2584(terminal),DW-2473(occurrence) vetoes=U-43,U-44,U-46 splits=24.1->24.1+24.5..24.9,24.2->24.2+24.10..24.14
+2026-11-15T09:33:54Z	Story 24.1	merged	feature=06dad46b8 then bookkeeping a926ba6f2 route=fast_forward(green_head_pushed_alone,run_43699768641_pending) checks=ledger_entry_check_0(2035),dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-15T09:33:54Z	orchestrator	deps_hash_rerecorded	reason=split stories=24.1->24.1+24.5..24.9(veto_U-44),24.2->24.2+24.10..24.14(veto_U-46) hash=92cde470
+2026-11-15T09:33:54Z	ci	timings_refreshed	rule=29 run=43696951376
+2026-11-15T09:33:54Z	Epic 24	ruling	clarification=24.2_contended_rosters answer=A(add-only_unions_resolved_at_integrate-forward,counts_re-derived) basis=gates.merge_conflicts_resolve+Rule_22 class=decide
