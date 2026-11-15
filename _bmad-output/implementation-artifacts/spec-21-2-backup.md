@@ -2,7 +2,7 @@
 title: 'Story 21.2: Backup'
 type: 'feature'
 created: '2026-11-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '97f1aa93577932c2007d466c995682bea3eaaed6'
 baseline_commit: '97f1aa93577932c2007d466c995682bea3eaaed6'
 review_loop_iteration: 0
@@ -116,7 +116,31 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - AC3. Given any freeze, from either caller, when it is issued, then the vendor call carries `WDSuspendLimit` equal to the limit, from 1 to 600, and writes resume without a thaw within that limit plus the measured slack. A freeze whose limit cannot hold is refused before any vendor call.
 - AC4 (DW-2560). Given a file outside the allowed set that names `OcuPilot.Port.Harvest.Monitor`, when `check-objectscript.py` runs, then it fails, naming the file and the rule. `PortGate` is red for a `Port/Harvest/` class with no roster row.
 
+### Review Findings
+
+Code review 2026-11-14 (first review; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, full-opus).
+
+- [ ] [Review][Patch] Probe database recreate wedges the instance (Rule 19, MED, rework) — on this review's run 10, with the shipped names and QA's test order, `TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers`' `Create` failed `<PROTECT>%SaveData+182^SYS.Database.1` right after the run test's teardown removed the probe, leaving a database mounted at `ocuprobebackup/` (SFN 14) that `DismountDatabase` and `DeleteDatabase` refuse with `<PROTECT>`. `OnBeforeOneTest`'s wait observed nothing (the task is already gone). Patched here: `BackupProbe.Remove` retries the delete, removes the directory only once no database is mounted there and reports `mounted`; the no-op wait is gone; the teardown asserts the backup's own suspension ended. Not settled: the cause. Create, delete and create in one process (as `irisowner`) does not reproduce it, nor does a delete during a running backup. [src/OcuPilot/Test/BackupProbe.cls, src/OcuPilot/Test/BackupWrite.cls]
+- [ ] [Review] Verify on a freshly rebuilt `ocupilot-ci` (the review's throwaway was wedged by a ghost database and a stuck backup job): `BackupWriteGate` green with its `mutation:` line written (Rule 19), `BackupWrite` green twice in succession with the shipped probe names, and `backup.browser-spec.mjs` green after a rebuild and redeploy; after each, no `OCUPROBEBACKUP` configured or mounted and writes thawed.
+- [x] [Review][Patch] HIGH: a freeze fails 500 for the write pairs' holder (AD-29, Rule 6) — measured as a least-privileged principal: `%SYS.Capture` refuses `ExternalFreeze`'s output with `<PROTECT>write+2^%SYS.Capture`. `SuspendCall` now sends the output to the null device, saving and restoring the caller's redirection; `BackupPort` left the checker's capture roster; `Test/BackupWriteGate.cls` (armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_BACKUP_CONTROL`) pins both pair sets as probe principals. Measured before the patch: the read pairs' holder read all four and was refused a freeze naming `%DB_IRISSYS:WRITE`; the write pairs' holder added, removed and ran a backup through the port, and froze and thawed with the output on the null device. After it, the writer's freeze through the port reached the vendor (409 `BACKUP.RUNNING` on the wedged throwaway, no `<PROTECT>`); `BackupWriteGate`'s green run and its mutation line wait for a fresh throwaway. [src/OcuPilot/Port/BackupPort.cls:603]
+- [x] [Review][Patch] The clustered-system probe fails open (AD-10, AC3; MED) — an error now reads clustered, so the freeze is refused. [src/OcuPilot/Port/BackupPort.cls:126]
+- [x] [Review][Patch] A run while frozen and a freeze while a backup runs answered 500 (MED) — measured: the vendor refuses both with #7309. A run is refused while writes are frozen (`BACKUP.FROZEN`, before the vendor), a freeze's #7309 is answered `BACKUP.RUNNING`, a thaw's #7339 `BACKUP.NOTFROZEN`, and a freeze refused while already frozen `BACKUP.FROZEN`. [src/OcuPilot/Area/OsMgmt/BackupRules.cls, src/OcuPilot/Port/BackupPort.cls]
+- [x] [Review][Patch] AC3's limit was pinned only within six seconds (MED) — `SLACK` 3 and a still-frozen assertion three seconds into a five-second freeze. [src/OcuPilot/Test/BackupWrite.cls]
+- [x] [Review][Patch] "Every row names the write state" could not fail (MED) — counts boolean `WritesFrozen` per row. [src/OcuPilot/Test/BackupRead.cls:104]
+- [x] [Review][Patch] The client's run and freeze consequence sentences were pinned by source text only (MED) — executed asserts in `ui/tools/proposal-view.test.mjs`.
+- [x] [Review][Patch] LOWs patched: the screen's freeze and thaw refuse a target other than `SYSTEM` (AD-53); a boolean `limit` is no limit; `BackupRules.LIMITMAX` removed in favour of the port's `FREEZELIMITMAX` and the 999 cap lifted; the history label says what `Databases` holds (`All` or `List`); `KeepHistory` so the run test leaves no history row, and `Remove`'s doc no longer claims it does; the empty-list row asserted; `Start()`'s status asserted and the run test waits on the history row; `Prohibited.cls`'s comment order; EXPERIENCE.md's entry joiner and tag; `AdminPairCorpus`'s case name; the checker's rule 16 names the harvest containment; `BackupRules`' header states what its mint test reads; the browser helper's comment.
+- [x] [Review][Defer] Mint sentence for a missing task or database [src/OcuPilot/Kernel/Proposal/Mint.cls:186] — deferred: DW-2568 (wontfix-accepted).
+- [x] [Review][Defer] Frozen banner after the limit passes [src/OcuPilot/Screen/Descriptor/BackupTaskList.cls] — deferred: DW-2569 (wontfix-accepted).
+- [x] [Review][Defer] Freeze copy omits the journal switch and the failed-backup rule — deferred: DW-2570 (wontfix-accepted).
+- [x] [Review][Defer] Two runs at once answer 500 — deferred: DW-2571 (wontfix-accepted).
+- [x] [Review][Defer] Write state reads Frozen during a backup's own suspension — deferred: DW-2572 (unverified MED; settle by thawing within that second).
+- [x] [Review][Defer] Rule 31 shape copied from `DatabaseAction` and the ports' `Text` helper — deferred: DW-2573 (wontfix-accepted).
+
+Rejected: the second wait in the run test racing the start (false: `StartTask` reads `Running` within 0.03 s, measured); `InputSchema` with no `required` array (false: `Write.InputSchema` always builds one); Add as a row action on listed rows (false: the client registers Add at screen level and draws only Remove on a row); the backup source accepting `rows` (false: every source's block skips it alike); the history `LIST` through `Invoke` dropping its cut (low: no caller reads history through `Invoke`); `MoreHistory`'s catch reading not truncated, a non-integer history subscript, the snippet's database case, the browser after-hook when its first probe fails, a process death between seed and restore (low: unreachable in use, each fix adds a branch); the checker matching only the literal body name and exempting the declared caller wholly (low: rejected at the implement review on the same reason; `PortGate`'s body row and the review layer cover the caller); the body's comment dashes (forced by the ASCII rule; the fix edits only the spec); `PortGate`'s body row asserting the base render (low: every body renders through it); AC2's audit marker pinned for freeze only (low: one pinning test per AC); a free-text Add database field (an improvement, not a defect).
+
 ## Spec Change Log
+
+- 2026-11-15, rework 1 (lead): re-opened after the first review for the probe-database recreate failure and the verification the wedged throwaway blocked.
 
 - 2026-11-14, spec gate: split ruled (Backup here, Mirroring to 21.12); retitled and re-keyed; freeze limit and strings ruled (Design Notes). Status reset to `draft` for a re-plan of the backup scope only.
 
@@ -218,7 +242,7 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `cmp`) and the reverted source reloaded into `ocupilot-ci`:**
 
-- AC1: `BackupPort`'s `TaskRows` skips the system tasks -> red: `BackupRead`'s four-built-ins test (and two more). Also red: `jobbackup` 0 (the two-fixed-requests test), the gate answering OK (the read-refusal test), `BackupRun` `DESTRUCTIVE` 0 (the declarations test), `LIMITMAX` 6000 (`BackupRules`), `RUNNING` never answered and an add sending the remove call (`BackupWrite`), and, in the client, each page's `register`, `freeze` out of `WARNING_VALUES`, the dialog's trim and the command bar's `hasBackupFreezeAction`.
+- AC1: `BackupPort`'s `TaskRows` skips the system tasks -> red: `BackupRead`'s four-built-ins test (and two more). Also red: `jobbackup` 0 (the two-fixed-requests test), the gate answering OK (the read-refusal test), `BackupRun` `DESTRUCTIVE` 0 (the declarations test), the port's `FREEZELIMITMAX` 6000 (`BackupRules`, re-observed by code review, run 14), `RUNNING` never answered and an add sending the remove call (`BackupWrite`), and, in the client, each page's `register`, `freeze` out of `WARNING_VALUES`, the dialog's trim and the command bar's `hasBackupFreezeAction`.
 - AC2: `osmgmt.backuptasks.freeze` set `true` in the baseline -> red: `BackupRead`'s five-keys test.
 - AC3: `WDSuspendLimit` passed as 0 -> red: `BackupWrite`'s freeze-resumes-without-thaw test, the teardown thawing.
 - AC4: `BackupPort.cls` removed from `HARVEST_CALLERS` -> red: the checker over the shipped tree and `TestShippedTreeHarvestBodyContainment`.
@@ -233,6 +257,8 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - (QA) AC2, key to tool: `osmgmt.backuptasks.thaw` set `true` in the baseline -> `BackupWrite.TestEachKeyGovernsOnlyItsOwnTool` red alone (run 5).
 - (QA) AC4, direct: a stray `src/OcuPilot/Port/ZzStray.cls` naming `OcuPilot.Port.Harvest.Monitor` -> `check-objectscript.py` fails naming the file and DW-2560; the file removed, clean again.
 - (QA) Each mutation reverted (`cmp` and `git diff --stat` identical) and the source reloaded; `BackupWrite` then green twice in succession (runs 6 and 7) and the browser spec green (3 of 3), with no `OCUPROBEBACKUP` database configured or mounted and writes thawed after each.
+- (CR) Client: `consequenceSentence` returning the freeze sentence for `BACKUP.RUN` -> `proposal-view.test.mjs`'s Story 21.2 case red; reverted, `cmp` identical.
+- (CR) Pending a fresh throwaway: `BackupWriteGate`'s mutation (`SuspendCall` back on `%SYS.Capture` -> the writer's freeze 500), a green `BackupWrite` with the shipped probe names, and the browser spec.
 - (QA) Added to existing classes, no new file: `Test/BackupRead.cls` (`TestEveryWriteIsRefusedToACallerWithoutTheWritePair`), `Test/BackupWrite.cls` (`TestTheLimitReachesTheInstanceUnchangedAtItsBounds`, `TestEachKeyGovernsOnlyItsOwnTool`; `Dispatched` answers the call's content).
 
 ## Clarification Needed

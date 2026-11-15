@@ -33,8 +33,9 @@ Parameter LISTSCREEN = "osmgmt.backupdatabases";
 
 Parameter KEYS = "osmgmt.backuptasks.run,osmgmt.backuptasks.freeze,osmgmt.backuptasks.thaw,osmgmt.backupdatabases.add,osmgmt.backupdatabases.remove";
 
-/// <p>Seconds past a freeze's limit the instance is given to resume writes: it was measured resuming within the limit, polled each second.</p>
-Parameter SLACK = 6;
+/// <p>Seconds past a freeze's limit the instance is given to resume writes: it was measured resuming about a second after the limit,
+/// polled each second.</p>
+Parameter SLACK = 3;
 
 /// <p>The governance policy and the backup list as they stood before the class ran.</p>
 Property PreparedPolicy [ MultiDimensional ];
@@ -58,12 +59,12 @@ Method OnBeforeAllTests() As %Status
     Quit $$$OK
 }
 
-/// <p>Every test waits for the previous test's backup to finish, thaws, enables the five keys over the snapshot and starts from the list it found.</p>
+/// <p>Every test waits for the instance's own suspension of writes to end, thaws, enables the five keys over the snapshot and starts from
+/// the list it found.</p>
 Method OnBeforeOneTest() As %Status
 {
     ; The confirm fixture's port is the shipped backup port, so the confirm reads and writes the instance.
     Set ^||OcuPilotDatabaseWritePort = ..#PORT
-    Do $ClassMethod(..#PROBE, "WaitForIdle", 120)
     Do $ClassMethod(..#PROBE, "WaitForSettled", 15)
     Do $ClassMethod(..#PROBE, "Thaw")
     Kill tSettings
@@ -78,7 +79,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.BackupGateSeam).Reset()
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForIdle", 120), 1, "no probe backup is still running")
-    Do $ClassMethod(..#PROBE, "WaitForSettled", 15)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForSettled", 15), 1, "the last backup's own suspension of writes has ended")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Thaw"), 0, "writes are thawed after the test")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", ..PreparedList), "the backup list is put back")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ListedNames"), ..PreparedList, "and reads as it was found")
@@ -190,14 +191,16 @@ Method TestTheHistoryReportsTruncationOnlyPastFifty()
 }
 
 /// <p><b>AC3.</b> A freeze's limit reaches the instance: on each caller, with a limit of 5, writes read thawed again without a thaw within
-/// the limit and <parameter>SLACK</parameter> seconds.</p>
+/// the limit and <parameter>SLACK</parameter> seconds, and on the screen's freeze not before three seconds.</p>
 /// <p>Mutation (Rule 19): <code>SuspendCall</code> passes <code>WDSuspendLimit</code> 0 -> writes stay frozen and both resume
 /// assertions go red; the teardown thaws.</p>
 Method TestAFreezeResumesWithoutAThawOnBothCallers()
 {
     Set tStatus = ..Act(..#TASKSCREEN, "freeze", "SYSTEM", {"limit": "5"}, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Frozen(), "200|1", "the screen's freeze with a limit of 5 freezes writes")
-    Set tTook = ..WaitForThaw(5 + ..#SLACK)
+    Hang 3
+    Do $$$AssertEquals(..Frozen(), 1, "writes are still frozen three seconds in: the limit is not a shorter one")
+    Set tTook = ..WaitForThaw(2 + ..#SLACK)
     Do $$$AssertTrue(tTook >= 0, "writes resume by themselves within the limit and " _ ..#SLACK _ " seconds (" _ tTook _ " s)")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupFreeze", "SYSTEM", {"Name": "SYSTEM", "limit": 5}, .tResult) _ "|" _ ..Frozen(), "200 |1", "the agent's freeze with a limit of 5 freezes writes")
     Set tTook = ..WaitForThaw(5 + ..#SLACK)
@@ -226,6 +229,10 @@ Method TestTheFreezeAndThawRefusalsSendNothing()
     Set tQuery("limit") = 60
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ ..Frozen(), "200|1", "a freeze with a limit of 60 freezes writes")
+    Set tStatus = ..Act(..#TASKSCREEN, "run", "FullDBList", "", .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "409|BACKUP.FROZEN", "a run while writes are frozen is refused at the screen, before the vendor")
+    Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", "FullDBList", {"Name": "FullDBList"}, .tResult), "refused: Database writes are already frozen.", "and at the mint")
+    Do $$$AssertEquals(..Act(..#TASKSCREEN, "freeze", "FullDBList", {"limit": "30"}, .tAnswer) _ "|" _ ..Code(tAnswer), "400|TOOL.ARGUMENTS", "a screen freeze naming a target other than SYSTEM is refused")
     Set tStatus = ..Act(..#TASKSCREEN, "freeze", "SYSTEM", {"limit": "30"}, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "409|BACKUP.FROZEN", "a second freeze is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupFreeze", "SYSTEM", {"Name": "SYSTEM", "limit": 30}, .tResult), "refused: Database writes are already frozen.", "and at the mint")
@@ -253,6 +260,7 @@ Method TestTheFreezeAndThawRefusalsSendNothing()
 Method TestARunStartsTheTaskOnBothCallers()
 {
     Set tTask = $Parameter(..#PROBE, "TASK")
+    Do $ClassMethod(..#PROBE, "KeepHistory")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Create"), "the probe database and task are created")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", $Parameter(..#PROBE, "DATABASE")), "and the list holds only the probe database")
     Set tBefore = $ClassMethod(..#PROBE, "HistoryCount")
@@ -263,17 +271,21 @@ Method TestARunStartsTheTaskOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 1, "and a history row appears")
     Set tOutcome = ..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult)
     Do $$$AssertEquals(tOutcome _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult), "200 |nothingSent", "the agent's confirmed run starts it too: " _ tOutcome)
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForIdle", 120), 1, "it completes")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 2, "and a second history row appears")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 2, 120), 1, "a second history row appears")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForIdle", 120), 1, "and the task is no longer running")
     Set tStatus = ..Act(..#TASKSCREEN, "run", "NoSuchTask", "", .tAnswer)
     Do $$$AssertEquals(tStatus, 404, "a task the list does not hold is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", "NoSuchTask", {"Name": "NoSuchTask"}, .tResult), "refused: 'NoSuchTask' is not present on this instance", "and at the mint, which reads the target first")
-    Do $ClassMethod(..#PROBE, "Start")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start"), "the vendor starts the probe task")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForStatus", "Running", 20), 1, "a task is running")
+    Kill tQuery
+    Set tQuery("limit") = 5
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ ..Frozen(), "409|BACKUP.RUNNING|0", "a freeze while a backup runs is the vendor's refusal, answered on its code")
     Set tStatus = ..Act(..#TASKSCREEN, "run", tTask, "", .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "409|BACKUP.RUNNING", "a run while a task runs is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupRun", tTask, {"Name": (tTask)}, .tResult), "refused: A backup is already running.", "and at the mint")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForIdle", 120), 1, "it completes")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "WaitForHistory", tBefore + 3, 120) _ "|" _ $ClassMethod(..#PROBE, "WaitForIdle", 120), "1|1", "it completes")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HistoryCount"), tBefore + 3, "and only the run that started added a row")
 }
 
@@ -300,6 +312,9 @@ Method TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers()
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupDatabaseAdd", tDatabase, {"Name": (tDatabase)}, .tResult), "refused: The backup list already reflects that change.", "and a second add is refused at the mint")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupDatabaseRemove", tDatabase, {"Name": (tDatabase)}, .tResult) _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult), "200 |nothingSent", "the agent's confirmed remove unlists it")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.BackupDatabaseRemove", tDatabase, {"Name": (tDatabase)}, .tResult), "refused: The backup list already reflects that change.", "and a second remove is refused at the mint")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", ""), "the list is emptied")
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.BackupDatabaseList", "", .tRead, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISOK(tSC) && $IsObject($Get(tRead)) && (tRead.%Get("rows").%Size() = 0), 1, "an empty list answers no rows")
     For tName = "NOSUCHDATABASE", "IRISTEMP" {
         Set tStatus = ..Act(..#LISTSCREEN, "add", tName, "", .tAnswer)
         Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "404|BACKUP.DATABASE.NOTFOUND", tName _ " is refused at the screen")
@@ -324,11 +339,82 @@ Method TestWithTheKeyEnabledTheSameProposalMintsAndConfirmsOnce()
     Do $$$AssertEquals(..Dispatched("osmgmt.backuptasks.freeze", {"Name": "SYSTEM", "limit": 30, "rationale": "probe", "expectedImpact": "probe"}, .tNone), "refused", "and the same call is refused at dispatch")
 }
 
+/// <p><b>AC3.</b> The limit reaches the instance as asked, at both bounds. A limit of 600 through the screen holds writes frozen well past
+/// the five seconds a smaller limit would resume them in, and the Backup tasks read reports every row frozen meanwhile; a limit of 1
+/// through the port is accepted and resumes them by itself within a second and <parameter>SLACK</parameter> seconds.</p>
+/// <p>Mutation (Rule 19): <code>SuspendCall</code> passes a limit of 5 whatever it is given -> the 600 case resumes inside the wait and goes
+/// red.</p>
+Method TestTheLimitReachesTheInstanceUnchangedAtItsBounds()
+{
+    Set tStatus = ..Act(..#TASKSCREEN, "freeze", "SYSTEM", {"limit": "600"}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Frozen(), "200|1", "the screen's freeze with the largest limit, 600, freezes writes")
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.BackupTaskList", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tResult)) && (tResult.%Get("rows").%Size() > 0) && tResult.%Get("rows").%Get(0).%Get("WritesFrozen"), "the Backup tasks read reports its rows frozen")
+    Hang ..#SLACK + 1
+    Do $$$AssertEquals(..Frozen(), 1, "writes are still frozen after " _ (..#SLACK + 1) _ " seconds: the limit is the one asked, not a shorter one")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Thaw"), 0, "and a thaw resumes them")
+    Kill tQuery
+    Set tQuery("limit") = 1
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "a limit of 1 is accepted at the port")
+    Set tTook = ..WaitForThaw(1 + ..#SLACK)
+    Do $$$AssertTrue(tTook >= 0, "and writes resume by themselves within it and " _ ..#SLACK _ " seconds (" _ tTook _ " s)")
+}
+
+/// <p><b>AC2.</b> Each of the five keys governs its own tool. With one key enabled over the baseline, the agent's call for its tool is
+/// dispatched and mints a proposal, and the call for each of the other four is refused <code>GOVERNANCE.DISABLED</code>. Each target is put
+/// in the state its mint needs: writes frozen for a thaw, the list holding no database for an add and holding one for a remove.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.BackupThaw</class> declares <code>osmgmt.backuptasks.freeze</code> as its tool name
+/// -> its row goes red.</p>
+Method TestEachKeyGovernsOnlyItsOwnTool()
+{
+    Set tCount = $Length(..#KEYS, ",")
+    Set tInputs(1) = {"Name": "FullDBList"}
+    Set tInputs(2) = {"Name": "SYSTEM", "limit": 30}
+    Set tInputs(3) = {"Name": "SYSTEM"}
+    Set tInputs(4) = {"Name": "USER"}
+    Set tInputs(5) = {"Name": "USER"}
+    For tOwn = 1:1:tCount {
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the baseline decides")
+        Kill tSettings
+        Set tSettings($Piece(..#KEYS, ",", tOwn)) = "enabled"
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "only " _ $Piece(..#KEYS, ",", tOwn) _ " is enabled")
+        Do $ClassMethod(..#PROBE, "Thaw")
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetList", $Select(tOwn = 5: "USER", 1: "")), "the list is put in the state key " _ tOwn _ "'s mint needs")
+        If tOwn = 3 {
+            Kill tQuery
+            Set tQuery("limit") = 120
+            Set tSC = $ClassMethod(..#PORT, "Invoke", "Writes", "FREEZE", .tQuery, "", .tOut, .tHttp, .tFault)
+            Do $$$AssertEquals(tHttp, 200, "writes are frozen for the thaw's mint")
+        }
+        For tKey = 1:1:tCount {
+            Set tName = $Piece(..#KEYS, ",", tKey)
+            Set tAnswer = ..Dispatched(tName, ..WithRationale(tInputs(tKey)), .tProposalId, .tTurnKey, .tContent)
+            If tKey = tOwn {
+                Do $$$AssertEquals(tAnswer, "minted", tName _ " mints when it is the enabled key: " _ tContent)
+            } Else {
+                Do $$$AssertEquals(tAnswer _ "|" _ tContent, "refused|{""code"":""GOVERNANCE.DISABLED""}", tName _ " is refused while only " _ $Piece(..#KEYS, ",", tOwn) _ " is enabled")
+            }
+        }
+        Do $ClassMethod(..#PROBE, "Thaw")
+    }
+}
+
+/// <p>A copy of <var>pInput</var> with the rationale and expected impact every proposal's call carries.</p>
+ClassMethod WithRationale(pInput As %DynamicObject) As %DynamicObject
+{
+    Set tInput = ##class(%DynamicObject).%FromJSON(pInput.%ToJSON())
+    Do tInput.%Set("rationale", "probe")
+    Do tInput.%Set("expectedImpact", "probe")
+    Quit tInput
+}
+
 /// <p>The agent's dispatch of <var>pKey</var> with <var>pInput</var>: <code>minted</code> with the proposal id in
-/// <var>pProposalId</var> and the turn's key in <var>pTurnKey</var>, or <code>refused</code>.</p>
-ClassMethod Dispatched(pKey As %String, pInput As %DynamicObject, Output pProposalId As %String, Output pTurnKey As %String) As %String
+/// <var>pProposalId</var> and the turn's key in <var>pTurnKey</var>, or <code>refused</code>; the answer's content is in <var>pContent</var>.</p>
+ClassMethod Dispatched(pKey As %String, pInput As %DynamicObject, Output pProposalId As %String, Output pTurnKey As %String, Output pContent As %String) As %String
 {
     Set pProposalId = ""
+    Set pContent = ""
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
     Set pTurnKey = $Get(tTurnKey)
     If $$$ISERR(tSC) Quit "no turn"
@@ -339,6 +425,7 @@ ClassMethod Dispatched(pKey As %String, pInput As %DynamicObject, Output pPropos
     Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(tTurnKey, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Set tContent = $Select($IsObject($Get(tResults)) && (tResults.%Size() = 1): tResults.%Get(0).%Get("content"), 1: "")
+    Set pContent = tContent
     Set tParsed = ##class(OcuPilot.Test.LicenseKey).Parsed(tContent)
     If $IsObject(tParsed) Set pProposalId = tParsed.%Get("proposalId")
     Quit $Select(pProposalId '= "": "minted", 1: "refused")

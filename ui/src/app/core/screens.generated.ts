@@ -4551,7 +4551,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "row": "backup",
-      "label": "The most recent backups, newest first, at most fifty, with each one's type, status and the databases it covered.",
+      "label": "The most recent backups, newest first, at most fifty, with each one's type, status and whether it covered every database (All) or the backup list (List).",
       "source": {
         "port": "backup",
         "endpoint": "History",

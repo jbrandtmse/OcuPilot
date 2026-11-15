@@ -101,7 +101,12 @@ Method TestTheTasksReadHoldsTheFourBuiltInTasksFirst()
     Do $$$AssertEquals(tRow.%Get("SystemTask") _ "|" _ tRow.%Get("Type"), "1|Full", "a built-in task is a system task and reads its type")
     Do $$$AssertTrue(tRow.%IsDefined("LastRun") && tRow.%IsDefined("Status") && tRow.%IsDefined("Description") && tRow.%IsDefined("WritesFrozen"), "and carries its last run, status, description and whether writes are frozen")
     Do $$$AssertEquals(tResult.%Get("truncated") _ "|" _ tResult.%Get("banner"), "0|", "nothing is truncated and no banner is raised while writes run")
-    Do $$$AssertEquals($ListLength($ListFromString(..Column(tResult, "WritesFrozen"), ",")), tResult.%Get("rows").%Size(), "every row names the write state")
+    Set tNamed = 0
+    Set tIterator = tResult.%Get("rows").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEach) {
+        If $IsObject(tEach) && (tEach.%GetTypeOf("WritesFrozen") = "boolean") Set tNamed = tNamed + 1
+    }
+    Do $$$AssertEquals(tNamed, tResult.%Get("rows").%Size(), "every row names the write state as a boolean")
 }
 
 /// <p>AC1. History answers the harvested body's rows newest first, at most fifty, and reports truncation exactly when a fifty-first
@@ -195,6 +200,29 @@ Method TestEveryReadIsRefusedToACallerShortOfItsPairs()
     Do $$$AssertEquals($ClassMethod(..#RECORDER, "Requests"), "", "and no harvested body ran")
     Set tSC = $ClassMethod(..#SEAM, "Rows", "Tasks", 10, .tRows, .tHttp, .tFault, .tCut)
     Do $$$AssertEquals(tHttp, 403, "the screens' own list call is gated too")
+}
+
+/// <p>The Gate row, AC1, AD-29. Every write is refused to a caller who holds the read pairs but not <code>%DB_IRISSYS:WRITE</code>,
+/// naming that pair, before any vendor call or body, while the same caller's reads are admitted. The instance is read as clustered
+/// and the targets are ones that hold no task or database, so a gate that wrongly admitted the call would still send nothing.</p>
+/// <p>Mutation (Rule 19): <code>WRITEPAIRS</code> without <code>%DB_IRISSYS:WRITE</code> -> every write row goes red.</p>
+Method TestEveryWriteIsRefusedToACallerWithoutTheWritePair()
+{
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do $ClassMethod(..#SEAM, "Cluster", 1)
+    Kill tQuery
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Tasks", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "a caller holding the two read pairs reads the tasks")
+    For tCase = $ListBuild("Tasks", "RUN", "FullDBList"), $ListBuild("Writes", "FREEZE", ""), $ListBuild("Writes", "THAW", ""), $ListBuild("Databases", "ADD", "NOSUCHDATABASE"), $ListBuild("Databases", "REMOVE", "NOSUCHDATABASE") {
+        Kill tQuery
+        Set tQuery("limit") = 5
+        If $List(tCase, 3) '= "" Set tQuery("name") = $List(tCase, 3)
+        Set tSC = $ClassMethod(..#SEAM, "Invoke", $List(tCase, 1), $List(tCase, 2), .tQuery, "", .tOut, .tHttp, .tFault)
+        Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ tDetail, "403|AUTH.NOPRIVILEGE|%DB_IRISSYS:WRITE", $List(tCase, 2) _ " is refused naming the write pair")
+    }
+    Do $$$AssertEquals($ClassMethod(..#RECORDER, "Requests"), "", "and no harvested body ran")
 }
 
 /// <p>AC1, AD-5, AD-44, AD-51, AD-53. The three screens declare the classic Backup menu's three pages and its pairs (the write pair as the

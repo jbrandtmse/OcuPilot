@@ -12860,3 +12860,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (dispatch gate 2026-11-14) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
+
+### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Mint.cls:186-188 refuses a 404 read before ArgumentProblem; BackupWrite asserts the framework sentence for NoSuchTask, NOSUCHDATABASE and IRISTEMP
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=the owner rules the agent must see the BACKUP.*.NOTFOUND sentence; fix is in the shared Mint
+
+### DW-2569: Backup tasks keeps its frozen banner after a freeze's limit passes until the next read (refreshes false), so its Thaw then answers BACKUP.NOTFROZEN
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: BackupTaskList.cls declares refreshes false and no refreshRates; WDSuspendLimit resumes writes by itself (Task 0)
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a person reports the banner shown after writes resumed; fix is a refresh rate on the screen
+
+### DW-2570: The freeze's ruled consequence does not say the freeze also switches the journal file, nor that a backup unfinished at the limit is to be treated as failed (vendor WDSuspendLimit doc)
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: BackupPort.SuspendCall passes SwitchJournalFile 1; irissys/Backup/General.cls documents WDSuspendLimit's failure rule; copy is owner-ruled
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=the owner rewords the freeze consequence; a string change is the owner's
+
+### DW-2571: Two backup runs sent at once: the second's vendor refusal (#7309) reaches the caller as 500 INTERNAL through the harvested body, not 409 BACKUP.RUNNING
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Task 0 + review: StartTask answers #7309 while a backup runs; HarvestPort.SanitizeError collapses a body's refusal to INTERNAL; only the read-then-start window is open
+- 2026-11-15T05:04:48Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a backupport log line with #7309 on a run
+
+### DW-2572: Unverified: the write state reads Frozen during a backup's own suspension of writes (about a second after Completed), so the banner and Thaw are offered; whether ExternalThaw then ends the backup's suspension is unmeasured
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: review measured IsWDSuspended 1 for 0.76 s after a probe backup read Completed with its job gone; BackupRules allows THAW whenever WriteState is Frozen
+- 2026-11-15T05:04:48Z status=routed owner=burndown by=cr note=settle: thaw within that second on a throwaway and read the backup's history status
+
+### DW-2573: Rule 31: BackupAction repeats DatabaseAction's one-argument tool shape (SettableFields, InputSchema, PortQuery, StateDiff, PrivilegePairs) and BackupRules and BackupPort add more copies of the ports' Text helper
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: BackupAction.cls vs DatabaseAction.cls:79-230; Text() also in JournalRules, DatabasePort, EcpPort, JournalPort; the spec gives a reason against subclassing, not against a shared base
+- 2026-11-15T05:04:48Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a third action-tool base copies the one-argument shape

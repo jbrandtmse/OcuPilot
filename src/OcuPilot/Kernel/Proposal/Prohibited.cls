@@ -1820,14 +1820,14 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPENTRY, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        ; A business partner (Story 20.26): AD-10 names no effect on one, because OcuPilot stores nothing in it, so a write passes the
-        ; reviewed-few sweep and nothing else.
         ; A backup task and a backup list entry (Story 21.2): AD-10 names no effect on either, so a write passes the reviewed-few sweep and
         ; nothing else.
         If (tType = ..#TYPEBACKUPTASK) || (tType = ..#TYPEBACKUPDATABASE) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
+        ; A business partner (Story 20.26): AD-10 names no effect on one, because OcuPilot stores nothing in it, so a write passes the
+        ; reviewed-few sweep and nothing else.
         If tType = ..#TYPEBUSINESSPARTNER {
             Set tSC = ..ReviewedFewOnly(..#TYPEBUSINESSPARTNER, .tChanged, .pProhibits, .pCode)
             Quit

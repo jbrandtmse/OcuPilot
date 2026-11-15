@@ -92,8 +92,11 @@ ClassMethod Create() As %Status
     Quit tSC
 }
 
-/// <p>Remove whatever <method>Create</method> made, by exact name and directory, and the backup's log files and history rows the
-/// probe task left. Answers what is still there, or <code>""</code>.</p>
+/// <p>Remove whatever <method>Create</method> made, by exact name and directory, and the backup's log files the probe task left.
+/// The database is deleted through the vendor, retried while the instance still refuses it (a backup's own suspension of writes
+/// outlasts its Completed status by about a second, measured), and its directory is removed only once no database is mounted
+/// there: a directory removed under a mounted database leaves a mount nothing clears. Answers what is still there, or
+/// <code>""</code>.</p>
 ClassMethod Remove() As %String
 {
     Set tLeft = ""
@@ -104,8 +107,17 @@ ClassMethod Remove() As %String
         Set tIgnored = ##class(Backup.General).RemoveDatabaseFromList(..#DATABASE)
         If ##class(Backup.Task).%ExistsId(..#TASK) Do ##class(Backup.Task).%DeleteId(..#TASK)
         If ##class(Config.Databases).Exists(..#DATABASE) Do ##class(Config.Databases).Delete(..#DATABASE)
-        If ##class(%File).Exists(tDirectory _ "IRIS.DAT") Do ##class(SYS.Database).DeleteDatabase(tDirectory)
-        If ##class(%File).DirectoryExists(tDirectory) Do ##class(%File).RemoveDirectoryTree(tDirectory)
+        If ##class(%File).Exists(tDirectory _ "IRIS.DAT") {
+            For tI = 1:1:30 {
+                If $$$ISOK(##class(SYS.Database).DeleteDatabase(tDirectory)) Quit
+                Hang 0.5
+            }
+        }
+        If ..Mounted(tDirectory) {
+            Set tLeft = tLeft _ " mounted"
+        } ElseIf ##class(%File).DirectoryExists(tDirectory) {
+            Do ##class(%File).RemoveDirectoryTree(tDirectory)
+        }
         Set tDevice = ..Directory(..#DEVICEDIRECTORY)
         If ##class(%File).DirectoryExists(tDevice) Do ##class(%File).RemoveDirectoryTree(tDevice)
         Set tLogs = ..Directory(..#LOGDIRECTORY)
@@ -122,6 +134,20 @@ ClassMethod Remove() As %String
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tLeft
+}
+
+/// <p>Whether a database is mounted at <var>pDirectory</var>, read fresh in <code>%SYS</code> (the caller's namespace).</p>
+ClassMethod Mounted(pDirectory As %String) As %Boolean [ Private ]
+{
+    Set tMounted = 0
+    Try {
+        Set tDatabase = ##class(SYS.Database).%OpenId(pDirectory)
+        Set tMounted = $IsObject(tDatabase) && tDatabase.Mounted
+        Set tDatabase = ""
+    } Catch {
+        Set tMounted = 0
+    }
+    Quit tMounted
 }
 
 /// <p>Resume database writes, whatever state they are in, and answer whether they are frozen afterwards.</p>
@@ -209,18 +235,14 @@ ClassMethod HistoryCount() As %Integer
     Quit tCount
 }
 
-/// <p>Replace the backup history with <var>pCount</var> entries, keeping what it held once in a process-private copy that
-/// <method>RestoreHistory</method> puts back. A second call keeps the first call's copy. Armed classes only: it rewrites an
-/// instance global.</p>
+/// <p>Replace the backup history with <var>pCount</var> entries, keeping what it held once (<method>KeepHistory</method>) for
+/// <method>RestoreHistory</method> to put back. Armed classes only: it rewrites an instance global.</p>
 ClassMethod SeedHistory(pCount As %Integer)
 {
+    Do ..KeepHistory()
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If '$Data(^||OcuPilotBackupHistorySaved) {
-            Set ^||OcuPilotBackupHistorySaved = $Data(^SYS("BUHISTORY"))
-            If $Data(^SYS("BUHISTORY")) Merge ^||OcuPilotBackupHistorySaved("data") = ^SYS("BUHISTORY")
-        }
         Kill ^SYS("BUHISTORY")
         For tI = 1:1:pCount {
             Set tKey = 66000000000 + tI
@@ -234,7 +256,23 @@ ClassMethod SeedHistory(pCount As %Integer)
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
 }
 
-/// <p>Put back the history <method>SeedHistory</method> kept; nothing when it kept none.</p>
+/// <p>Keep the history as it stands in the process-private copy <method>RestoreHistory</method> puts back, so the backups a test
+/// runs leave no row; a second call keeps the first call's copy. Armed classes only.</p>
+ClassMethod KeepHistory()
+{
+    If $Data(^||OcuPilotBackupHistorySaved) Quit
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set ^||OcuPilotBackupHistorySaved = $Data(^SYS("BUHISTORY"))
+        If $Data(^SYS("BUHISTORY")) Merge ^||OcuPilotBackupHistorySaved("data") = ^SYS("BUHISTORY")
+    } Catch {
+        Kill ^||OcuPilotBackupHistorySaved
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+}
+
+/// <p>Put back the history <method>SeedHistory</method> or <method>KeepHistory</method> kept; nothing when it kept none.</p>
 ClassMethod RestoreHistory()
 {
     If '$Data(^||OcuPilotBackupHistorySaved) Quit
@@ -260,9 +298,10 @@ ClassMethod WaitForStatus(pStatus As %String, pSeconds As %Integer) As %Boolean
 }
 
 /// <p>Wait up to <var>pSeconds</var> for the instance's own suspension of writes to end: a backup that read Completed still holds writes
-/// for a moment, and a thaw is not asked of it.</p>
-ClassMethod WaitForSettled(pSeconds As %Integer)
+/// for about a second (measured), and a thaw is not asked of it. Answers whether writes read resumed.</p>
+ClassMethod WaitForSettled(pSeconds As %Integer) As %Boolean
 {
+    Set tSettled = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
@@ -270,9 +309,23 @@ ClassMethod WaitForSettled(pSeconds As %Integer)
             If '##class(Backup.General).IsWDSuspended() Quit
             Hang 0.5
         }
+        Set tSettled = '##class(Backup.General).IsWDSuspended()
     } Catch {
+        Set tSettled = 0
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSettled
+}
+
+/// <p>Wait up to <var>pSeconds</var> for the history to hold <var>pCount</var> backups: the vendor writes a backup's row as it
+/// finishes. Answers whether it did.</p>
+ClassMethod WaitForHistory(pCount As %Integer, pSeconds As %Integer) As %Boolean
+{
+    For tI = 1:1:pSeconds * 2 {
+        If ..HistoryCount() >= pCount Quit
+        Hang 0.5
+    }
+    Quit (..HistoryCount() >= pCount)
 }
 
 /// <p>Wait up to <var>pSeconds</var> for the probe task to stop running; whether it did.</p>

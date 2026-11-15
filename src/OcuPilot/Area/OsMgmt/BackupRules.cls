@@ -4,7 +4,7 @@
 /// and <class>OcuPilot.Port.BackupPort</class>, which asks it again at the write for the confirm and for a screen's
 /// action alike (<method>Code</method>).</p>
 /// <p><b>The state is the port's own read</b> of the target (<code>GET</code>): a task's row with
-/// <code>AnyRunning</code>, a database's <code>Listed</code>, the write state's <code>WriteState</code> and
+/// <code>AnyRunning</code> and <code>WritesFrozen</code>, a database's <code>Listed</code>, the write state's <code>WriteState</code> and
 /// <code>Clustered</code>. Nothing here reads the instance.</p>
 Class OcuPilot.Area.OsMgmt.BackupRules Extends %RegisteredObject
 {
@@ -23,24 +23,21 @@ Parameter REMOVE = "REMOVE";
 /// <p>The query key a freeze's suspend limit travels under.</p>
 Parameter LIMITKEY = "limit";
 
-/// <p>The longest suspend limit a freeze may name, in seconds: the longest the instance suspends writes before it
-/// blocks the processes that update a database (<method>OcuPilot.Port.BackupPort.FREEZELIMITMAX</method>).</p>
-Parameter LIMITMAX As INTEGER = 600;
-
 /// <p>The write state a frozen instance reads as.</p>
 Parameter FROZENSTATE = "Frozen";
 
-/// <p>Whether <var>pLimit</var> is a whole number of seconds from 1 to <parameter>LIMITMAX</parameter>, written
-/// without a sign, a leading zero or a fraction.</p>
+/// <p>Whether <var>pLimit</var> is a whole number of seconds from 1 to the port's
+/// <code>FREEZELIMITMAX</code>, written without a sign, a leading zero or a fraction.</p>
 ClassMethod LimitHolds(pLimit As %String) As %Boolean
 {
-    If '$Match(pLimit, "^[1-9][0-9]{0,2}$") Quit 0
-    Quit (+pLimit <= ..#LIMITMAX)
+    If '$Match(pLimit, "^[1-9][0-9]{0,8}$") Quit 0
+    Quit (+pLimit <= ##class(OcuPilot.Port.BackupPort).#FREEZELIMITMAX)
 }
 
 /// <p>The code of the refusal the write <var>pWriteType</var> meets against the state <var>pState</var>, with the
 /// arguments <var>pQuery</var>, or <code>""</code> when it may run. A freeze is judged on its limit first, then on
-/// the state: writes already frozen, then the instance that would ignore the limit (<code>Clustered</code>).</p>
+/// the state: writes already frozen, then the instance that would ignore the limit (<code>Clustered</code>). A run is
+/// refused while any task runs, then while writes are frozen.</p>
 ClassMethod Code(pWriteType As %String, pState As %DynamicObject, ByRef pQuery) As %String
 {
     If pWriteType = ..#FREEZE {
@@ -55,6 +52,8 @@ ClassMethod Code(pWriteType As %String, pState As %DynamicObject, ByRef pQuery) 
     }
     If pWriteType = ..#RUN {
         If ..Flag(pState, "AnyRunning") Quit ##class(OcuPilot.Api.BackupError).#RUNNING
+        ; The vendor refuses a backup while writes are frozen (#7309, measured), so the run is refused before it.
+        If ..Flag(pState, "WritesFrozen") Quit ##class(OcuPilot.Api.BackupError).#FROZEN
         Quit ""
     }
     If pWriteType = ..#ADD {

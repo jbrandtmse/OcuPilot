@@ -591,6 +591,8 @@ services:
       # actions class drives both callers over HTTP and reads the audit rows each leaves; and the gate class signs in as probe principals
       # each missing a pair or WRITE on the facts database, with a cube none of them may see.
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
+      # The backup gate class signs in as probe principals holding the backup port's read pairs and its write pairs (Story 21.2).
+      # classes: BackupWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -857,8 +859,9 @@ services:
       # database list, through the shipped screen-action and confirm paths. Its own variable because no
       # narrower one names that effect: a freeze suspends every database write on the instance until the
       # limit passes, and a list change moves what the list backups cover. The class thaws on every path,
-      # restores the backup list it found and removes the probe task, database and directories (Story 21.2).
-      # classes: BackupWrite
+      # restores the backup list it found and removes the probe task, database and directories (Story 21.2). The gate class does the
+      # same as two probe principals.
+      # classes: BackupWrite, BackupWriteGate
       OCUPILOT_ALLOW_BACKUP_CONTROL: "1"
     volumes:
       - $DIR/data:/durable

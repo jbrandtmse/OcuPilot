@@ -125,7 +125,9 @@ prose into one checker.
     itself accepts, may appear only in `OcuPilot/Port/AdminPort.cls` -- every other `.cls`/`.mac`/
     `.inc` file, and every shell script under `scripts/`, is refused the moment it appears in code
     (comments excluded), so a vendor dependency the port does not already route through has a
-    blast radius of exactly one file.
+    blast radius of exactly one file. The same rule holds a harvested handler body (AD-23, DW-2560): a
+    class under `OcuPilot/Port/Harvest/` may be named in code only in `OcuPilot/Port/HarvestPort.cls`,
+    `OcuPilot/Port/Harvest/`, `OcuPilot/Test/` and the one area port `HARVEST_CALLERS` declares for it.
 
 17. **Destructive test guard (DW-289, Story 2.13).** A `%UnitTest.TestCase` under `Test/` that
     creates or deletes an IRIS user, creates a role, or moves the console log -- directly, or
@@ -957,8 +959,7 @@ CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # the only port that captured; Epic 6's MgmntPort captures the same way, Story 19.1's AtelierPort
 # is the third, and Story 20.6's InteropPort the fourth, around the host test's send; Story 20.34's
 # AnalyticsPort is the fifth, around the cube build and synchronize; Story 21.1's HarvestPort is
-# the sixth, around a harvested handler body; Story 21.2's BackupPort is the seventh, around the
-# freeze and thaw of database writes, whose vendor methods print to the current device. The rule still
+# the sixth, around a harvested handler body. The rule still
 # refuses a capture anywhere else, which is what keeps one from opening inside another (DW-1173
 # asks whether these can nest).
 CAPTURE_ALLOWED = frozenset(
@@ -969,7 +970,6 @@ CAPTURE_ALLOWED = frozenset(
         "src/OcuPilot/Port/InteropPort.cls",
         "src/OcuPilot/Port/AnalyticsPort.cls",
         "src/OcuPilot/Port/HarvestPort.cls",
-        "src/OcuPilot/Port/BackupPort.cls",
     }
 )
 

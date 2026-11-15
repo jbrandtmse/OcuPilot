@@ -89,13 +89,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The stored payload's <parameter>ARGUMENT</parameter>, as its text, under the port's own query key (AD-52).
-/// <var>pPayload</var> may also be the caller's arguments, which carry the same name.</p>
+/// <p>The stored payload's <parameter>ARGUMENT</parameter>, as its text, under the port's own query key (AD-52): a number or a
+/// string only, so a boolean is no limit. <var>pPayload</var> may also be the caller's arguments, which carry the same name.</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     If (..#ARGUMENT = "") || '$IsObject(pPayload) Quit
     Set tType = pPayload.%GetTypeOf(..#ARGUMENT)
-    If (tType = "unassigned") || (tType = "null") || (tType = "object") || (tType = "array") Quit
+    If (tType '= "number") && (tType '= "string") Quit
     Set pQuery(..#ARGUMENT) = pPayload.%Get(..#ARGUMENT)
 }
 
@@ -112,20 +112,27 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
 /// <method>OcuPilot.Area.OsMgmt.BackupRules.WriteProblem</method>.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
-    Set pProblem = ""
-    If (..#FIXEDID '= "") && (pIdValue '= ..#FIXEDID) {
-        Set pProblem = "'" _ ..IdArgument() _ "' must be the literal '" _ ..#FIXEDID _ "': this acts on the instance's database writes"
-        Quit $$$OK
-    }
+    Set pProblem = ..IdProblem(pIdValue)
+    If pProblem '= "" Quit $$$OK
     Quit $ClassMethod(..#RULES, "WriteProblem", ..ToolClass(), pIdValue, pArgs, .pProblem)
 }
 
+/// <p>Why <var>pId</var> is not this tool's target where <parameter>FIXEDID</parameter> is declared, or <code>""</code>.</p>
+ClassMethod IdProblem(pId As %String) As %String
+{
+    If (..#FIXEDID = "") || (pId = ..#FIXEDID) Quit ""
+    Quit "'" _ ..IdArgument() _ "' must be the literal '" _ ..#FIXEDID _ "': this acts on the instance's database writes"
+}
+
 /// <p>The screen's value as this tool's argument (AD-56 (ii)): the text of a whole number from 1 without a leading zero as a number, anything else as it came,
-/// so the port's rules refuse it before any vendor call.</p>
+/// so the port's rules refuse it before any vendor call. The screen's target is refused unless it is <parameter>FIXEDID</parameter>
+/// where one is declared, as for the agent.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pArgs = {}
     Set pProblem = ""
+    If $IsObject(pValues) && (pValues.%GetTypeOf(..IdArgument()) = "string") Set pProblem = ..IdProblem(pValues.%Get(..IdArgument()))
+    If pProblem '= "" Quit $$$OK
     If (..#ARGUMENT = "") || '$IsObject(pValues) Quit $$$OK
     If pValues.%GetTypeOf(..#ARGUMENT) = "unassigned" Quit $$$OK
     Set tValue = pValues.%Get(..#ARGUMENT)

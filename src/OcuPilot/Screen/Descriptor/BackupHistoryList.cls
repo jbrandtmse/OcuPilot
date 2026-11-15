@@ -1,4 +1,4 @@
-/// <p>Backup history: the instance's most recent backups, newest first, at most fifty, each with its type, the databases it covered,
+/// <p>Backup history: the instance's most recent backups, newest first, at most fifty, each with its type, whether it covered every database or the backup list,
 /// its status and its description, read through the harvested backup body behind <class>OcuPilot.Port.BackupPort</class> (source
 /// kind <code>backup</code>, endpoint <code>History</code>) and rendered by the <code>list</code> archetype's page from the declared
 /// <code>table</code> (AD-5, AD-23, AD-29, AD-36, Story 21.2). It is OS management's twenty-fourth side-bar entry and it is read-only.</p>
@@ -39,7 +39,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "row": "backup",
-    "label": "The most recent backups, newest first, at most fifty, with each one's type, status and the databases it covered.",
+    "label": "The most recent backups, newest first, at most fifty, with each one's type, status and whether it covered every database (All) or the backup list (List).",
     "source": {"port": "backup", "endpoint": "History", "type": "LIST"},
     "fields": ["Time", "Type", "Status", "Databases", "Description"],
     "filter": ["Type", "Status", "Databases", "Description"],

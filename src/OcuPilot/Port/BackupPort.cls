@@ -96,6 +96,12 @@ Parameter CODEDATABASETEMP = 7322;
 
 Parameter CODENOTLISTED = 7324;
 
+/// <p>The vendor's refusal of a thaw while writes are not suspended (#7339), and of a freeze or a run while a backup runs or
+/// writes are frozen (#7309), both measured on <code>ocupilot-ci</code>.</p>
+Parameter CODENOTSUSPENDED = 7339;
+
+Parameter CODEBACKUPRUNNING = 7309;
+
 /// <p>The temporary database, which is never listed.</p>
 Parameter TEMPDATABASE = "IRISTEMP";
 
@@ -121,8 +127,9 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 }
 
 /// <p>Whether this instance would ignore a freeze's suspend limit: a clustered system, by the vendor's own test, a
-/// cluster member list on the superserver or a database mounted by the cluster. Overridable so a fixture can drive the
-/// refusal; production never overrides it.</p>
+/// cluster member list on the superserver or a database mounted by the cluster. A probe that cannot be completed answers
+/// true, so a freeze is refused rather than sent unbounded. Overridable so a fixture can drive the refusal; production
+/// never overrides it.</p>
 ClassMethod ClusteredSystem() As %Boolean
 {
     Set tClustered = 0
@@ -133,6 +140,7 @@ ClassMethod ClusteredSystem() As %Boolean
         If 'tClustered {
             Set tRS = ##class(%ResultSet).%New("Config.Databases:LocalDatabaseList")
             Set tSC = tRS.Execute()
+            If $$$ISERR(tSC) Set tClustered = 1
             While $$$ISOK(tSC) && tRS.Next() {
                 Set tDirectory = tRS.Get("Directory")
                 If tDirectory '= "" && (+$Piece($ZUtil(49, tDirectory, 1), ",", 2) '= 0) {
@@ -142,7 +150,7 @@ ClassMethod ClusteredSystem() As %Boolean
             }
         }
     } Catch {
-        Set tClustered = 0
+        Set tClustered = 1
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tClustered
@@ -574,7 +582,9 @@ ClassMethod ChangeList(pType As %String, ByRef pQuery, Output pResult, Output pH
 
 /// <p>Freeze database writes with the suspend limit <var>pQuery</var> names, or thaw them. The write state is read and
 /// the rules refuse a freeze whose limit cannot hold, writes already frozen and an instance that would ignore the limit,
-/// and a thaw of writes that are not frozen, before any vendor call. A freeze sends the limit as
+/// and a thaw of writes that are not frozen, before any vendor call. A vendor refusal of the same states, reached when the
+/// state changes between the read and the call, or of a freeze while a backup runs, is answered on the same codes. A freeze
+/// sends the limit as
 /// <code>WDSuspendLimit</code>, so the instance resumes writes by itself when it passes. Answers
 /// <code>{WriteState, Limit}</code> for a freeze and <code>{WriteState}</code> for a thaw.</p>
 ClassMethod FreezeOrThaw(pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -585,7 +595,14 @@ ClassMethod FreezeOrThaw(pType As %String, ByRef pQuery, Output pResult, Output 
     If tCode '= "" Quit ..Refused(tCode, .pHttpStatus, .pFault)
     Set tLimit = +$Get(pQuery(..#LIMITKEY))
     Set tVendor = ..SuspendCall(pType, tLimit)
-    If $$$ISERR(tVendor) Quit ..Fail("the " _ $ZConvert(pType, "L") _ " of database writes was refused", tVendor, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendor) {
+        ; The write state can change between the read and the call: a freeze's limit passing, or another caller.
+        Set tCodes = $ListFromString($System.Status.GetErrorCodes(tVendor))
+        If (pType = "THAW") && $ListFind(tCodes, ..#CODENOTSUSPENDED) Quit ..Refused(##class(OcuPilot.Api.BackupError).#NOTFROZEN, .pHttpStatus, .pFault)
+        If (pType = "FREEZE") && $ListFind(tCodes, ..#CODEBACKUPRUNNING) Quit ..Refused(##class(OcuPilot.Api.BackupError).#RUNNING, .pHttpStatus, .pFault)
+        If (pType = "FREEZE") && $$$ISOK(..WriteState(.tNow, .tNowHttp, .tNowFault)) && (tNow.%Get("WriteState") = ..#FROZENSTATE) Quit ..Refused(##class(OcuPilot.Api.BackupError).#FROZEN, .pHttpStatus, .pFault)
+        Quit ..Fail("the " _ $ZConvert(pType, "L") _ " of database writes was refused", tVendor, .pHttpStatus, .pFault)
+    }
     Set pResult = {}
     If pType = "FREEZE" {
         Do pResult.%Set("WriteState", ..#FROZENSTATE, "string")
@@ -598,21 +615,31 @@ ClassMethod FreezeOrThaw(pType As %String, ByRef pQuery, Output pResult, Output 
 }
 
 /// <p>The vendor's <code>ExternalFreeze</code> with the suspend limit <var>pLimit</var> as <code>WDSuspendLimit</code>, or its
-/// <code>ExternalThaw</code>, in <code>%SYS</code> by save and restore, with the vendor's own console output captured and discarded:
-/// both print their progress to the current device, which in a request is the response (AD-1, the harvest port's capture).</p>
+/// <code>ExternalThaw</code>, in <code>%SYS</code> by save and restore, with the current device switched to the null device for the
+/// call: both print their progress to the current device, which in a request is the response. The output is discarded rather than
+/// captured, because <code>%SYS.Capture</code> refuses the freeze's output with <code>&lt;PROTECT&gt;</code> for a caller holding only
+/// <parameter>WRITEPAIRS</parameter> (measured on <code>ocupilot-ci</code>).</p>
 ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Private ]
 {
     Set tVendor = $$$OK
     Set tOrigNS = $NAMESPACE
     Set tDevice = $IO
-    Set tCapturing = 0
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Set tOpened = 0
     Try {
-        Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
-        If $$$ISERR(tCaptureSC) {
-            Set tVendor = tCaptureSC
-            Quit
+        ; A caller already writing to the null device (a background job) keeps it: it is not this method's to close.
+        If tDevice '= tNull {
+            Open tNull::1
+            If '$Test {
+                Set tVendor = $$$ERROR($$$GeneralError, "the null device could not be opened")
+                Quit
+            }
+            Set tOpened = 1
+            ; The caller's device may redirect its output to a routine (a request, a capture); the null device takes none of it.
+            Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
+            Use tNull
         }
-        Set tCapturing = 1
         Set $NAMESPACE = "%SYS"
         If pType = "FREEZE" {
             Set tVendor = ##class(Backup.General).ExternalFreeze("", ..#FREEZETEXT, 1, 10, 0, 0, 0, "", "", pLimit)
@@ -623,13 +650,14 @@ ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Priva
         Set tVendor = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-    If tCapturing {
-        Try {
-            Set tEndSC = $$EndCapture^%SYS.Capture(tCookie, .tLines)
-        } Catch {
-            If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    If tOpened {
+        If tMnemonic '= "" {
+            Use tDevice::("^" _ tMnemonic)
+        } Else {
+            Use tDevice
         }
-        If $IO '= tDevice Use tDevice
+        Do ##class(%Library.Device).ReDirectIO(tRedirected)
+        Close tNull
     }
     Quit tVendor
 }

@@ -1,8 +1,9 @@
 /// <p>Pins every refusal row of Story 21.2's matrix as <class>OcuPilot.Area.OsMgmt.BackupRules</class> judges it (AC1, AC3; AD-51,
 /// AD-55): the freeze's limit, writes already frozen, the instance that would ignore the limit, a thaw of writes that are not frozen, a
-/// run while any task runs, a list change the list already reflects, and the one sentence each code carries. The rules are pure over the
-/// target's state, so this class reads nothing and writes nothing.</p>
-/// <p><b>Live-safe.</b> It needs nothing from the environment.</p>
+/// run while any task runs or writes are frozen, a list change the list already reflects, and the one sentence each code carries. The
+/// rules are pure over the target's state; only the mint test reads the instance, through the tools' own port.</p>
+/// <p><b>Live-safe.</b> It writes nothing. The mint test needs database writes not frozen and no task named <code>NoSuchTask</code> or
+/// database named <code>NOSUCHDATABASE</code>.</p>
 Class OcuPilot.Test.BackupRules Extends %UnitTest.TestCase
 {
 
@@ -20,7 +21,7 @@ ClassMethod Verdict(pType As %String, pState As %String, pLimit As %String = "")
 
 /// <p>AC3. A suspend limit is a whole number of seconds from 1 to 600, written plainly: a missing limit, 0, 601, text, a fraction, a
 /// sign or a leading zero is <code>BACKUP.FREEZE.LIMIT</code>, and 1 and 600 hold.</p>
-/// <p>Mutation (Rule 19): <code>LIMITMAX</code> 6000 -> the 601 row goes red.</p>
+/// <p>Mutation (Rule 19): the port's <code>FREEZELIMITMAX</code> 6000 -> the 601 row goes red.</p>
 Method TestAFreezeNeedsALimitFromOneToSixHundred()
 {
     Set tThawed = "{""WriteState"":""Thawed"",""Clustered"":false}"
@@ -31,8 +32,7 @@ Method TestAFreezeNeedsALimitFromOneToSixHundred()
     For tLimit = 1, 5, 600 {
         Do $$$AssertEquals(..Verdict("FREEZE", tThawed, tLimit), "", "limit " _ tLimit _ " holds")
     }
-    Do $$$AssertEquals($Parameter("OcuPilot.Port.BackupPort", "FREEZELIMITMAX"), $Parameter(..#RULES, "LIMITMAX"), "the port's bound is the rules' bound")
-    Do $$$AssertEquals($Parameter(..#RULES, "LIMITMAX"), 600, "and it is 600 seconds")
+    Do $$$AssertEquals($Parameter("OcuPilot.Port.BackupPort", "FREEZELIMITMAX"), 600, "the port's bound is 600 seconds")
 }
 
 /// <p>AC1. A freeze is refused while writes are frozen and where the instance would ignore its limit, a bad limit first; a thaw is refused
@@ -48,11 +48,14 @@ Method TestAFreezeAndAThawAreJudgedAgainstTheWriteState()
     Do $$$AssertEquals(..Verdict("THAW", "{}"), "BACKUP.NOTFROZEN", "and a state that names no write state is not frozen")
 }
 
-/// <p>AC1. A run is refused while any task runs; a list change is refused when the list already reflects it.</p>
+/// <p>AC1. A run is refused while any task runs, then while writes are frozen; a list change is refused when the list already reflects
+/// it.</p>
 Method TestARunAndAListChangeAreJudgedAgainstTheirTarget()
 {
     Do $$$AssertEquals(..Verdict("RUN", "{""Status"":""Running"",""AnyRunning"":true}"), "BACKUP.RUNNING", "a run while a task runs")
     Do $$$AssertEquals(..Verdict("RUN", "{""Status"":"""",""AnyRunning"":false}"), "", "a run while none runs")
+    Do $$$AssertEquals(..Verdict("RUN", "{""Status"":"""",""AnyRunning"":false,""WritesFrozen"":true}"), "BACKUP.FROZEN", "a run while writes are frozen")
+    Do $$$AssertEquals(..Verdict("RUN", "{""Status"":""Running"",""AnyRunning"":true,""WritesFrozen"":true}"), "BACKUP.RUNNING", "a running task is judged first")
     Do $$$AssertEquals(..Verdict("ADD", "{""Listed"":true}"), "BACKUP.LIST.CONFLICT", "an add of a listed database")
     Do $$$AssertEquals(..Verdict("ADD", "{""Listed"":false}"), "", "an add of an unlisted one")
     Do $$$AssertEquals(..Verdict("REMOVE", "{""Listed"":false}"), "BACKUP.LIST.CONFLICT", "a remove of an unlisted database")

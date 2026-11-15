@@ -68,7 +68,7 @@ function banner(page) {
   return page.evaluate(() => document.querySelector('p.ocu-banner[role="status"] .ocu-banner-message')?.textContent.trim() ?? '');
 }
 
-/** Click the command-bar button labeled `label` with a real pointer. */
+/** Click the command-bar button labeled `label` once it is drawn (an element click, not a pointer event). */
 async function bar(page, label) {
   await page.waitForFunction(
     (wanted) => [...document.querySelectorAll('.ocu-command-bar button')].some((button) => button.textContent.trim() === wanted),
