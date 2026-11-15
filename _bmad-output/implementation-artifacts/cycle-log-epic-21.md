@@ -193,3 +193,5 @@
 2026-11-15T20:57:41Z	Story 21.17	story_created	spawn_at=2026-11-15T20:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-17-global-export-and-import.md build_status=blocked condition=depends_on_Story_21.5
 2026-11-15T20:57:41Z	Story 21.17	story_waiting	story=21-17-global-export-and-import on=21.5(same_epic) note=re-plan_after_21.5_done
 2026-11-15T20:57:41Z	Story 21.17	ledger_routed_planned	story=21-5,21-17 entries=DW-2607,DW-2608 excess=0 by=harvest
+2026-11-15T20:58:51Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(21.5_split,U-58/U-59,DW_bullets) model=claude-opus-5-5 lines=90
+2026-11-15T20:58:51Z	Story 21.5	stage_spawned	stage=plan spawn_at=2026-11-15T20:58:51Z model=opus agent_name=21-5-globals-and-the-data-tools-plan-2 cycle_iteration=2
