@@ -238,3 +238,4 @@
 2026-11-15T23:12:15Z	Story 21.4	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=1(order-dependent_test) evidence=smoke.sh_50/50+config-settings_spec(fresh_check) model=claude-opus-5-5
 2026-11-15T23:12:15Z	Story 21.4	committed	sha=290709847 submodules= ci=pending runs=43773475655 amendments=EXPERIENCE.md(sql_settings_strings,veto_U-51),epics.md(21.4_split)
 2026-11-15T23:12:15Z	Story 21.4	story_cycle	plan_to_commit_min=~420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-15T23:15:46Z	Story 21.20	stage_spawned	stage=plan spawn_at=2026-11-15T23:15:46Z model=opus agent_name=21-20-os-management-and-log-leaves-plan-1 cycle_iteration=1
