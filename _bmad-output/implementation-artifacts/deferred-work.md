@@ -13108,3 +13108,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: 21.4 runs 486-487: %sqlcq.USER.cls80, no STATEMENT_LOCATIONS row, survived PurgeQueries allNamespace; inference: SqlPort's prepare-only RTPC path leaves such classes. Settle: does a later %Prepare of its text reuse it
 - 2026-11-15T21:39:23Z status=decision-pending owner=burndown by=cr note=product call: purge beyond the classic page's vendor call, or the U-51 sentence; med if reuse is real
+
+### DW-2613: AD-53 named gap: a person's global node save, delete (Story 21.5) and find-and-replace (Story 21.18) record no vendor audit event with the stock event set (%System/%SMPExplorer/Change ships disabled, measured read-only)
+- source: spec-21-18-global-find-and-replace.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 21.18 plan: the gap sentence was proposed inside its AD-51 entry; AD-53 wording is the owner's
+- 2026-11-15T22:25:05Z status=decision-pending owner=burndown by=spec_gate note=owner's attended architecture update: record the named gap in AD-53, or enable the event

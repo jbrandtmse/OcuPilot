@@ -1218,6 +1218,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   Story 21.16's case: `LocalePort`, which builds `Config.NLS.Tables.Load`'s locale, type and table from the load tool's declared id parts `Locale` and `Name` (`<list>:<table>`), the type fixed by the list, and loads only a table that locale's own `Tables` query lists under that type, compared exactly; it answers the fresh read through the property row, whose `Loadable` is that check. [AMENDED 2026-11-15, Story 21.16, owner answer U-58]
 
+  Story 21.18's case: `GlobalPort`, which builds a global's find and replace from the replace tool's declared `Find`, `Replace` and `MatchCase`, never as code. It walks the global's nodes in `$Query` order, at most 20,000, and changes only a plain-text value that holds `Find`, each such value once with every occurrence replaced, in one transaction, and only while the value still holds what the walk read. It answers the fresh read through a port-composed `REPLACE` type, composed from those values, holding the counts of the nodes and occurrences that change, the directories those nodes resolve to, and a digest of their references and values, and no value or subscript. The digest is the fingerprint's and a person's `Reviewed`, so a global that moved after the review refuses the write. The agent proposes it by the global's name, beside Story 21.5's whole-global delete; its card states only those counts (AD-36). [AMENDED 2026-11-15, Story 21.18, owner answer U-59]
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
