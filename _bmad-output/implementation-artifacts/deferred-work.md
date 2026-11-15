@@ -13145,3 +13145,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-18-global-find-and-replace.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 21.18 plan: the gap sentence was proposed inside its AD-51 entry; AD-53 wording is the owner's
 - 2026-11-15T22:25:05Z status=decision-pending owner=burndown by=spec_gate note=owner's attended architecture update: record the named gap in AD-53, or enable the event
+
+### DW-2614: PM-23 TOTP QR code is not built: the QR code displays the shared secret, which AD-35 keeps from every surface
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.10 plan leaf inventory; owner answer U-65 A
+- 2026-11-15T23:02:00Z status=by-design owner=21-21-leaves-that-wait-on-the-owner by=owner note=owner answer U-65 (A): by design
+
+### DW-2615: OS-25 process variables are not built: AD-24, AD-35 and AD-48 withhold a process's Variables
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.10 plan leaf inventory; owner answer U-65 A
+- 2026-11-15T23:02:00Z status=by-design owner=21-21-leaves-that-wait-on-the-owner by=owner note=owner answer U-65 (A): by design

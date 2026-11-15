@@ -9464,19 +9464,21 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
 
+[AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
+
 As a developer-administrator,
-I want the leaves whose design needs the owner's decision first,
+I want a custom resource on a classic menu item and an Operate-only dismount,
 So that no area has a remaining gap.
 
 **Acceptance Criteria:**
 
-- **Given** security escalation, a custom resource on a classic menu item, Contact WRC, the TOTP QR code, diagnostic reports, Web Gateway management and process variables
+- **Given** a custom resource on a classic menu item and the Operate-only dismount
 - **When** each runs
 - **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
 
-- **Given** each of these needs an architecture change, a vendor report or a scope decision
-- **When** the owner has decided it
-- **Then** it is built as decided, moved to the exclusion register, or closed as by design.
+- **Given** security escalation, Contact WRC, diagnostic reports and Web Gateway management
+- **When** the exclusion register is read
+- **Then** each has a not-planned row with its reason: OcuPilot's own token's roles, a send to the vendor (NFR-6), and no backing class.
 
 - DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
 - DW-1280: A write that fails after the claim tells the user a tool could not be answered, on a path whose own class header says confirm is not a tool (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)

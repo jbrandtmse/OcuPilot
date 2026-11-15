@@ -231,3 +231,6 @@
 2026-11-15T22:59:45Z	Story 21.10	ledger_routed_planned	story=21.10..21.23 entries=29_reowned,5_closed excess=21.22:7,21.23:3_ledger-only by=spec_gate
 2026-11-15T22:59:45Z	Story 21.21	story_parked	stage=before_plan reason=owner-only_leaves(AD-28/AD-44/AD-35/AD-24/AD-48/AD-27_changes,vendor_reports,scope) category=park code=none note=orchestrator_item_requested
 2026-11-15T22:59:45Z	Epic 21	deps_hash_rerecorded	reason=split story=21.10->21.10,21.19..21.23 note=orchestrator_rerecords
+2026-11-15T23:00:55Z	Story 21.21	runner_reported	item=U-65(orchestrator) via=SendMessage(main) note=routed_entries_DW-1850,1280,2348_not_decision-pending
+2026-11-15T23:02:00Z	Story 21.21	owner_decision	id=U-65 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A (Recommended)"
+2026-11-15T23:02:00Z	Story 21.21	story_unparked	via=inbox story_base=none note=no_code;criteria_amended
