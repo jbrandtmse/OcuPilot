@@ -13000,3 +13000,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
 - 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint
+
+### DW-2611: InteropPort.DefaultReadOnly's true path is not run against a real read-only database; the READONLY refusal is pinned through the seam
+- source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GetNSInfo(USER) defines ReadOnly; a test needs a read-only mounted probe database
+- 2026-11-15T22:19:40Z status=wontfix-accepted owner=24-3-interoperability-parity by=harvest note=reopen_if=a production write reaches a read-only database without INTEROP read-only refusal
+
+### DW-2612: flake: OAuthClientRegister.TestAStoppedServerIsANamedRefusal failed once in a local shard 12 sweep, green alone and on a full shard rerun
+- source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 24.3 implement (once) sweep on ocupilot-b-ci 2026-11-15; class untouched by the story
+- 2026-11-15T22:19:41Z status=routed owner=burndown by=harvest note=flake; priority at the Epic 24 burn-down
