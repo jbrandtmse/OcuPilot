@@ -77,3 +77,5 @@
 2026-11-15T09:27:41Z	Story 21.2	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed=DW-2585(routed_burndown),DW-2586(wontfix-accepted) note=after_rework2_rereview
 2026-11-15T09:27:41Z	Epic 21	ruling	question=full_sweep_rerun_after_rework2(test-only_roster_fixes) choice=rerun_the_3_red_classes+BackupWrite+BackupWriteGate(green_runs_758-764) rejected=second_20-shard_sweep(~2h) why=sweep_17/20_green_on_this_code;rework_touched_3_test_files_only;CI_runs_every_class_on_fresh_legs category=decide policy=b9ff703e
 2026-11-15T09:27:56Z	Story 21.2	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=3(sweep_shared_surfaces) evidence=smoke.sh_50/50+backup.browser-spec_3/3(fresh_check) model=claude-opus-5-5
+2026-11-15T09:29:48Z	Story 21.2	committed	sha=32dc20d7c submodules= ci=pending runs=43699492613 amendments=EXPERIENCE.md_row_604(new_backup_strings,veto_U-42)
+2026-11-15T09:29:48Z	Story 21.2	story_cycle	plan_to_commit_min=820(incl_hold_and_quiet_window) implement_passes=4 reviews=3 rework=2 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
