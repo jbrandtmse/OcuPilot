@@ -2,7 +2,7 @@
 title: 'Story 21.4: NLS locales and SQL settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6108728a37aabfa0530335c247643351a32a5fbe'
 baseline_commit: '6108728a37aabfa0530335c247643351a32a5fbe'
 review_loop_iteration: 0
@@ -103,6 +103,8 @@ deferred:
 
 ### Review Findings
 
+- [ ] [Smoke] `SqlSettingWrite.TestAChangedPurgeKeyPurgesEveryNamespaceAndAnotherKeyPurgesNothing` is order-dependent: it is red on CI run 43748408456's instance shard 2/8 and on the runner's local sweep shard 9/20, where it ran right after `SqlDataRoutes` (and `Secret`), and green alone and on a fresh instance. Failing asserts: +7 (the screen's change of `ParameterSampling` did not purge the other namespace's cached query: `Cached()` not 0) and +11 (the agent's confirmed change likewise). Find the cause on `ocupilot-ci` by running `SqlDataRoutes` then `SqlSettingWrite`, one call each; fix the product if the purge is really skipped (for example the after-write purge's 'value differs' check reading a stale or already-changed value), or make the test create and assert on its own state if the test is what depends on another class's leftovers. Name the cause, `(inference)` where unproved; then `SqlDataRoutes` then `SqlSettingWrite` green, and `SqlSettingWrite` alone green.
+
 Code review 2026-11-15 (full-opus; four layers): 38 rows grouped into 24 entries (1 high, 1 medium, 20 low, 1 false, 1 maybe-false); 6 patched, 5 ledgered, 13 rejected.
 
 - [x] [Review][Patch] (high) A confirmed agent write whose purge failed got no AD-15 marker, and `SqlSettingWrite` was red: the purge moved out of `SetValue` into `ConfigSettingSet.AfterWrite` -> `ConfigPort.PurgeAfterSet` (gated, re-reads, purges when changed, 500 `INTERNAL` on failure) [src/OcuPilot/Port/ConfigPort.cls, src/OcuPilot/Screen/Tool/ConfigSettingSet.cls]
@@ -134,6 +136,8 @@ Rejected:
 - (low) Spec record, matrix and deferred list are stale: the fix edits the spec under review.
 
 ## Spec Change Log
+
+- 2026-11-15, rework 1 (lead): re-opened for an order-dependent red in the purge test (CI and the local sweep).
 
 - 2026-11-15 (lead): plan halt ruled (split, Q2-Q4); status reset to draft for re-plan.
 - 2026-11-15 (re-plan): the intent matrix's `Config.SQL` key count corrected from 47 to 46 (re-measured on slot A: `Get` answers 46 keys, the class declares 46).

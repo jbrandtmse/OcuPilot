@@ -392,7 +392,7 @@ development_status:
   21-1-the-harvest-seam: done
   21-2-backup: done
   21-3-startup-memory-and-compatibility-settings: done
-  21-4-nls-locales-and-sql-settings: done
+  21-4-nls-locales-and-sql-settings: in-progress
   21-5-globals-and-the-data-tools: ready-for-dev
   21-6-the-sql-tuning-track: backlog
   21-10-the-remaining-leaves-across-the-six-areas: backlog
