@@ -243,3 +243,4 @@
 2026-11-15T23:33:41Z	Story 21.20	ruling	question=strings,keys_on,no_own_process_cancel_rule,alerts_in_os_mgmt choice=keep rejected=destructive_keys,AD-10_arm why=reversible;no_unattended_AD_change category=veto inbox=U-66 policy=b9ff703e reversal=name_which
 2026-11-15T23:33:41Z	Story 21.20	spec_validated	service_introducing=true(Harvest.Alerts) integration_ac=present adr_constrained_acs=AD-21,AD-22,AD-23,AD-29,AD-36,AD-51,AD-53 owned_ledger=DW-1562,DW-1856,DW-2479 addressed=2 declined=1(DW-1856_to_owner) mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
 2026-11-15T23:51:42Z	Story 21.4	ci_resolved	story=21.4 sha=290709847 runs=43773475655 result=success failed=none via=none resolved_at=next_plan
+2026-11-15T23:51:58Z	Story 21.12	stage_spawned	stage=implement spawn_at=2026-11-15T23:51:58Z model=sonnet agent_name=21-12-mirroring-implement-1 cycle_iteration=1 story_base=29d5b8d8e
