@@ -58,3 +58,5 @@
 2026-11-15T04:19:14Z	Story 21.2	stage_spawned	stage=code-review spawn_at=2026-11-15T04:19:14Z model=opus agent_name=21-2-backup-code-review-1 cycle_iteration=1
 2026-11-15T05:17:39Z	Story 21.2	cr_complete	spawn_at=2026-11-15T04:20:00Z model=opus resolved=19 fixed_at_source=19 by_design=0 wontfix_theoretical=0 routed=1 escalated=0 decision_pending=0 deferred=6 dismissed=16 high=1 med=7 low=18 rows=56 unresolved_high_med=1 clarifications=0 closing_sections_present=true final=in-progress note=high_fixed(freeze_capture_PROTECT);throwaway_wedged(ghost_db+stuck_backup_job)
 2026-11-15T05:17:51Z	Story 21.2	rework_opened	cycle_iteration=2 iteration=1 trigger=med_first_review items=probe_db_recreate_wedge,fresh_throwaway_verification(BackupWriteGate+mutation,BackupWrite_x2_shipped_names,backup.browser-spec) scope_baseline=pending
+2026-11-15T05:21:06Z	Story 21.2	throwaway_rebuilt	container=ocupilot-ci reason=wedged_by_review(ghost_db+stuck_backup_job) started_by=epic-21-runner source=837574ac9
+2026-11-15T05:21:06Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T05:21:06Z model=sonnet agent_name=21-2-backup-implement-2 cycle_iteration=2
