@@ -90,3 +90,5 @@
 2026-11-15T10:05:29Z	Story 21.2	ci_red_classified	run=43699492613 workflow=.github/workflows/ci.yml class=story test=language-servers.browser-spec.mjs_AC5(and_no_other:Backup_screens_now_unavailable_to_OS_mgmt_holder)
 2026-11-15T10:05:30Z	Story 21.2	rework_opened	cycle_iteration=5 iteration=3 trigger=ci items=BackupWrite_run_race(DW-2575),language-servers.browser-spec_AC5 scope_baseline=915e24f4e note=last_iteration_cap3
 2026-11-15T10:05:30Z	Story 21.2	stage_spawned	stage=implement spawn_at=2026-11-15T10:05:30Z model=sonnet agent_name=21-2-backup-implement-5 cycle_iteration=5
+2026-11-15T10:28:49Z	Story 21.2	dev_complete	spawn_at=2026-11-15T10:06:00Z model=sonnet build_sha=898ae0440 baseline_revision=354285471(rework3) review_loop_iteration=0 followup_review_recommended=false deferred=0 files=5 cycle_iteration=5 note=subagent_sent_two_test_calls_in_one_message_once(no_overlap_reported)
+2026-11-15T10:28:49Z	Story 21.2	stage_spawned	stage=code-review spawn_at=2026-11-15T10:28:49Z model=opus agent_name=21-2-backup-code-review-4 cycle_iteration=4
