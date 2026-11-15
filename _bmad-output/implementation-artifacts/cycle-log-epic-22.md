@@ -54,3 +54,5 @@
 2026-11-14T23:57:32Z	Epic 22	epic_status_done	stories=2
 2026-11-14T23:57:32Z	Epic 22	model_tier_checkpoint	armed=true stack_risk=uncommon review_tier=full-opus implement_model=claude-sonnet high_med_avg=5.0 unresolved_high_med_avg=0.0 metric=unresolved rework_stories=0 review_loop_thrash=0 rework_lang_defects=0 review_high=2 review_med=8 result=hold applied=false note=gates.model_tier=record_only
 2026-11-14T23:57:32Z	Epic 22	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_fixed_2026-10-01)
+2026-11-15T00:03:07Z	Epic 22	integrated_forward	feature=e1ab5d2c9 head=c8c5251f6 conflicts_resolved=none suite=npm_test(test:tools_2278/2278+ng_test_3427/3427_in_269_files)+lint-docs_0+check-objectscript_0+client-lint_0 smoke=exclusion-register.test_16/16(epic_delivers_docs_and_its_drift_test_only;no_product_code,so_no_instance_smoke) ledger_dupes=none
+2026-11-15T00:03:07Z	Epic 22	epic_runner_complete	stories_completed=2
