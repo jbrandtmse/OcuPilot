@@ -239,3 +239,6 @@
 2026-11-15T23:12:15Z	Story 21.4	committed	sha=290709847 submodules= ci=pending runs=43773475655 amendments=EXPERIENCE.md(sql_settings_strings,veto_U-51),epics.md(21.4_split)
 2026-11-15T23:12:15Z	Story 21.4	story_cycle	plan_to_commit_min=~420 implement_passes=2 reviews=2 rework=1 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-15T23:15:46Z	Story 21.20	stage_spawned	stage=plan spawn_at=2026-11-15T23:15:46Z model=opus agent_name=21-20-os-management-and-log-leaves-plan-1 cycle_iteration=1
+2026-11-15T23:33:41Z	Story 21.20	story_created	spawn_at=2026-11-15T23:24:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-20-os-management-and-log-leaves.md build_status=ready-for-dev oversized=true
+2026-11-15T23:33:41Z	Story 21.20	ruling	question=strings,keys_on,no_own_process_cancel_rule,alerts_in_os_mgmt choice=keep rejected=destructive_keys,AD-10_arm why=reversible;no_unattended_AD_change category=veto inbox=U-66 policy=b9ff703e reversal=name_which
+2026-11-15T23:33:41Z	Story 21.20	spec_validated	service_introducing=true(Harvest.Alerts) integration_ac=present adr_constrained_acs=AD-21,AD-22,AD-23,AD-29,AD-36,AD-51,AD-53 owned_ledger=DW-1562,DW-1856,DW-2479 addressed=2 declined=1(DW-1856_to_owner) mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5

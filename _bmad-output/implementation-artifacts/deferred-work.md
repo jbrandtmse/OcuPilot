@@ -8704,6 +8704,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:40Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the remaining-leaves story (external language servers)
 - 2026-11-15T22:56:33Z status=routed owner=21-20-os-management-and-log-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-20-os-management-and-log-leaves
+- 2026-11-15T23:33:41Z status=decision-pending owner=burndown by=spec_gate note=setting the language-server paths changes AD-21's shown-never-set clause and needs two owner choices (clearing a value; whether LogFile may be overwritten); for the decision sheet
 
 ### DW-1857: audit.browser-spec AC6 waits for a row the opening read already drew, so its timing can measure the response arriving rather than this Search's first row (same weak wait as DW-1780's audit AC1)
 - source: DW-1780 fix | severity: low | fix-risk: low | footprint: in-epic
