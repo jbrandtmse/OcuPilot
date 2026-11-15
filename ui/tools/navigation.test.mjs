@@ -242,6 +242,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/metrics',
       // Story 18.37: Interoperability usage, the twenty-second.
       'os-management/interoperability-usage',
+      // Story 21.2: Backup tasks, Backup history and Backup database list, the twenty-third to twenty-fifth.
+      'os-management/backup-tasks',
+      'os-management/backup-history',
+      'os-management/backup-databases',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -501,6 +505,10 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/metrics',
       // Story 18.37: the twenty-second.
       'os-management/interoperability-usage',
+      // Story 21.2: the twenty-third to twenty-fifth.
+      'os-management/backup-tasks',
+      'os-management/backup-history',
+      'os-management/backup-databases',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

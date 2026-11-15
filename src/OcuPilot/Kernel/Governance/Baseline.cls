@@ -261,7 +261,12 @@ XData Keys [ MimeType = application/json ]
   "analytics.termlistentries.remove": false,
   "interop.businesspartners.add": true,
   "interop.businesspartners.update": true,
-  "interop.businesspartners.remove": false
+  "interop.businesspartners.remove": false,
+  "osmgmt.backuptasks.run": false,
+  "osmgmt.backuptasks.freeze": false,
+  "osmgmt.backuptasks.thaw": false,
+  "osmgmt.backupdatabases.add": false,
+  "osmgmt.backupdatabases.remove": false
 }
 }
 

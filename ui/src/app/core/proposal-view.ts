@@ -399,6 +399,9 @@ export const CONSEQUENCE_INTEROPJOBSTOP = 'INTEROP.JOB.STOP';
 /** Story 20.34: the Cube manager's build and synchronize; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSCUBEBUILD = 'ANALYTICS.CUBE.BUILD';
 export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE';
+/** Story 21.2: a backup run's and a freeze's cards; each is one published sentence. */
+export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
+export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -574,6 +577,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 20.34: the Cube manager's build and synchronize sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSCUBEBUILD) return STRINGS.analyticsCubeBuildConsequence;
   if (code === CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE) return STRINGS.analyticsCubeSynchronizeConsequence;
+  // Story 21.2: a backup run's note and a freeze's warning, each published once.
+  if (code === CONSEQUENCE_BACKUPRUN) return STRINGS.backupRunNote;
+  if (code === CONSEQUENCE_BACKUPFREEZE) return STRINGS.backupFreezeConsequence;
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSTERMLISTREMOVE) return STRINGS.analyticsTermListRemoveConsequence;

@@ -390,8 +390,8 @@ development_status:
 
   epic-21: in-progress
   21-1-the-harvest-seam: done
-  21-2-backup: ready-for-dev
-  21-3-startup-memory-and-compatibility-settings: backlog
+  21-2-backup: done
+  21-3-startup-memory-and-compatibility-settings: ready-for-dev
   21-4-nls-locales-and-sql-settings: backlog
   21-5-globals-and-the-data-tools: backlog
   21-6-the-sql-tuning-track: backlog

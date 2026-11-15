@@ -29,6 +29,7 @@ import {
   TASK_MANAGER_SUSPEND_ACTION_ID,
   JOURNAL_SWITCH_FILE_ACTION_ID,
   JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
+  BACKUP_FREEZE_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -564,6 +565,9 @@ export class CommandBox {
     for (const id of [JOURNAL_SWITCH_FILE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID]) {
       if (this.actions.has(screen.descriptor, id)) declared.push({ id, rowScoped: false });
     }
+    // Freeze writes on Backup tasks (Story 21.2), by the same test: screen-level too. Its Thaw writes is the frozen banner's declared action, which
+    // the loop below lists at screen level.
+    if (this.actions.has(screen.descriptor, BACKUP_FREEZE_ACTION_ID)) declared.push({ id: BACKUP_FREEZE_ACTION_ID, rowScoped: false });
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       // A registrant's own reason (Story 18.46) lists the primary action held back, with the sentence inline.
       declared.push({ id: screen.primaryAction.id, rowScoped: false, reason: this.actions.reason(screen.descriptor, screen.primaryAction.id) });

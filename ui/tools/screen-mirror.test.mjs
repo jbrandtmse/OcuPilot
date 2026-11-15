@@ -341,6 +341,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['routine-application', 'foldcase'],
     // Story 20.31: a message header's id may name the set of messages a resend names, each once and ascending.
     ['interop-message', 'integerset'],
+    // Story 21.2: a database on the backup list is named without regard to case.
+    ['backup-database', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -1701,7 +1703,7 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     ],
   });
   for (const screen of emittedScreens) {
-    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') continue;
+    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList') continue;
     assert.equal(screen.banner, null, `${screen.descriptor} emits no banner`);
   }
 
@@ -1709,6 +1711,15 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
   // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,
   // and the top-level key check DW-271 added would otherwise refuse this clone before the banner
   // rule ran.
+  // Story 21.2: Backup tasks' banner reads the backup port's write state and offers the thaw.
+  const backup = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList');
+  assert.ok(backup !== undefined, 'Backup tasks is declared');
+  assert.deepEqual(backup.banner, {
+    source: { port: 'backup', endpoint: 'Writes', type: 'GET' },
+    field: 'WriteState',
+    cases: [{ equals: 'Frozen', messageKey: 'backupFrozenBanner', severity: 'warning', action: 'thaw' }],
+  });
+
   const hostile = structuredClone(tasks);
   delete hostile.descriptor;
   hostile.banner = { ...hostile.banner, cases: [{ ...hostile.banner.cases[0], severity: 'error' }] };
@@ -2726,6 +2737,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+      'OcuPilot.Screen.Descriptor.BackupHistoryList',
+      'OcuPilot.Screen.Descriptor.BackupTaskList',
       'OcuPilot.Screen.Descriptor.EcpSettings',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
@@ -3123,7 +3137,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');

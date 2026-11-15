@@ -294,6 +294,18 @@ ClassMethod SqlActivityPortClass() As %String
     Quit "OcuPilot.Port.SqlActivityPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's backup tasks, backup history and backup
+/// database list, and the write state a banner reads, read through <method>BackupPortClass</method> behind that
+/// port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.2).</p>
+Parameter SOURCEBACKUP = "backup";
+
+/// <p>The port every <b>backup</b> read is issued through. Overridable so a fixture can reach another; production
+/// never overrides it.</p>
+ClassMethod BackupPortClass() As %String
+{
+    Quit "OcuPilot.Port.BackupPort"
+}
+
 /// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics or its
 /// interoperability usage, read through <method>MonitorPortClass</method> behind that port's own gate,
 /// with no namespace and no criteria (AD-29, AD-36).</p>
@@ -451,7 +463,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -657,6 +669,17 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEBACKUP {
+            ; The instance's backup tasks, history or database list (Story 21.2): no namespace and no criteria, so the
+            ; cap is the whole ask; the port's gate runs before any vendor call, and a cut it made itself (the history's
+            ; fixed fifty) is a truncation this read reports as well (AD-36).
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..BackupPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+            If tPortCut Set tTruncated = 1
         } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
             ; The instance's Prometheus metrics or interoperability usage: no namespace and no criteria,
             ; so the cap is the whole ask; the port's gate runs before any vendor call.
@@ -1329,7 +1352,8 @@ ClassMethod BannerKey(pDescriptor As %String, Output pRequires As %String) As %S
         Set tSource = tBanner.%Get("source")
         If '$IsObject(tSource) Quit
         Kill tQuery
-        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Set tBannerPort = $Select(tSource.%Get("port") = ..#SOURCEBACKUP: ..BackupPortClass(), 1: ..PortClass())
+        Set tPortSC = $ClassMethod(tBannerPort, "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         If $$$ISERR(tPortSC) Quit
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit
         Set tValue = tAnswer.%Get(tBanner.%Get("field"))

@@ -591,6 +591,8 @@ services:
       # actions class drives both callers over HTTP and reads the audit rows each leaves; and the gate class signs in as probe principals
       # each missing a pair or WRITE on the facts database, with a cube none of them may see.
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
+      # The backup gate class signs in as probe principals holding the backup port's read pairs and its write pairs (Story 21.2).
+      # classes: BackupWriteGate
       # The term list editor classes (Story 24.2) turn analytics on in USER and write marker-named term lists there: the edit class drives the port's six
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
@@ -856,6 +858,15 @@ services:
       # never restarts the instance.
       # classes: DatabaseCreateEncrypted
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
+      # Runs a backup of one probe database to a directory under the manager directory, freezes database
+      # writes for a few seconds and thaws them, and adds and removes a probe database on the backup
+      # database list, through the shipped screen-action and confirm paths. Its own variable because no
+      # narrower one names that effect: a freeze suspends every database write on the instance until the
+      # limit passes, and a list change moves what the list backups cover. The class thaws on every path,
+      # restores the backup list it found and removes the probe task, database and directories (Story 21.2). The gate class does the
+      # same as two probe principals.
+      # classes: BackupWrite, BackupWriteGate
+      OCUPILOT_ALLOW_BACKUP_CONTROL: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

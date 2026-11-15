@@ -125,7 +125,9 @@ prose into one checker.
     itself accepts, may appear only in `OcuPilot/Port/AdminPort.cls` -- every other `.cls`/`.mac`/
     `.inc` file, and every shell script under `scripts/`, is refused the moment it appears in code
     (comments excluded), so a vendor dependency the port does not already route through has a
-    blast radius of exactly one file.
+    blast radius of exactly one file. The same rule holds a harvested handler body (AD-23, DW-2560): a
+    class under `OcuPilot/Port/Harvest/` may be named in code only in `OcuPilot/Port/HarvestPort.cls`,
+    `OcuPilot/Port/Harvest/`, `OcuPilot/Test/` and the one area port `HARVEST_CALLERS` declares for it.
 
 17. **Destructive test guard (DW-289, Story 2.13).** A `%UnitTest.TestCase` under `Test/` that
     creates or deletes an IRIS user, creates a role, or moves the console log -- directly, or
@@ -735,6 +737,46 @@ def check_admin_api_containment(problems: list[str]) -> None:
         for i, raw in iter_shell_code_lines(text):
             if ADMIN_API_RE.search(raw):
                 refuse(rel, i)
+
+    check_harvest_containment(problems)
+
+
+# --- Harvested body containment (AD-23, DW-2560) ---------------------------------------
+
+# A harvested handler body is reached only through OcuPilot.Port.HarvestPort, which gates the call. The
+# body's own render outside a port call records nothing, but nothing in the class stops another file from
+# naming it, so the rule does: a class under Port/Harvest/ is named only in the port, in Port/Harvest/
+# itself, in the one area port that declares it, and in the test package. Doc comments are not scanned.
+HARVEST_PACKAGE_RE = re.compile(r"OcuPilot\.Port\.Harvest\.([A-Za-z0-9]+)")
+HARVEST_PORT = "src/OcuPilot/Port/HarvestPort.cls"
+HARVEST_DIR = "src/OcuPilot/Port/Harvest/"
+HARVEST_TEST_DIR = "src/OcuPilot/Test/"
+HARVEST_CALLERS = {
+    "OcuPilot.Port.Harvest.Monitor": "src/OcuPilot/Port/BackupPort.cls",
+    "OcuPilot.Port.Harvest.Loc": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
+}
+
+
+def check_harvest_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if rel == HARVEST_PORT or rel.startswith(HARVEST_DIR) or rel.startswith(HARVEST_TEST_DIR):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_non_comment_lines(text):
+            for m in HARVEST_PACKAGE_RE.finditer(raw):
+                name = f"OcuPilot.Port.Harvest.{m.group(1)}"
+                if HARVEST_CALLERS.get(name) == rel:
+                    continue
+                caller = HARVEST_CALLERS.get(name)
+                allowed = f"{HARVEST_PORT}, {HARVEST_DIR}, {HARVEST_TEST_DIR}" + (f" or {caller}" if caller else "")
+                problems.append(
+                    f"{rel}:{i}: '{name}' may be named only in {allowed} (AD-23, DW-2560); "
+                    f"reach a harvested body through OcuPilot.Port.HarvestPort instead"
+                )
 
 
 def check_escalation_containment(problems: list[str]) -> None:

@@ -17,6 +17,8 @@ import {
   TASK_MANAGER_SUSPEND_ACTION_ID,
   JOURNAL_SWITCH_FILE_ACTION_ID,
   JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
+  BACKUP_FREEZE_ACTION_ID,
+  BACKUP_THAW_ACTION_ID,
 } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
@@ -1473,6 +1475,34 @@ describe('the command bar', () => {
     file()?.click();
     directory()?.click();
     expect(ran).toEqual(['file', 'directory']);
+  });
+
+  it('Story 21.2: the bar draws Freeze writes and Thaw writes at screen level on the screen that registered them', () => {
+    // Mutation (Rule 19): drop `hasBackupFreezeAction` from the template -> the drawn assertion goes red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.BackupTaskList',
+      rowActions: [
+        { id: 'run', selfProtection: '' },
+        { id: 'freeze', selfProtection: '' },
+        { id: 'thaw', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    const freeze = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-backup-freeze');
+    const thaw = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-backup-thaw');
+    fixture.detectChanges();
+    expect(freeze()).toBeNull();
+    expect(thaw()).toBeNull();
+    const ran: string[] = [];
+    actions.register(declared.descriptor, BACKUP_FREEZE_ACTION_ID, () => ran.push('freeze'));
+    actions.register(declared.descriptor, BACKUP_THAW_ACTION_ID, () => ran.push('thaw'));
+    fixture.detectChanges();
+    expect(freeze()?.textContent?.trim()).toBe(STRINGS.backupFreezeAction);
+    expect(thaw()?.textContent?.trim()).toBe(STRINGS.backupThawAction);
+    expect(freeze()?.getAttribute('aria-disabled')).toBeNull();
+    freeze()?.click();
+    thaw()?.click();
+    expect(ran).toEqual(['freeze', 'thaw']);
   });
 
   // --- Story 16.23: Download CSV --------------------------------------------------------------

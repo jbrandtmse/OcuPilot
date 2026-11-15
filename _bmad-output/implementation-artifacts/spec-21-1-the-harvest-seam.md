@@ -180,7 +180,7 @@ HTTP status by code: `PORT.ACCESSDENIED` 403, `PORT.NOTFOUND` 404, `PORT.CONFLIC
 - Device output is discarded.
 - `scripts/check-objectscript.py` lists `HarvestPort` as a port that may open an output capture, with its harness row; `OcuPilot.Test.PortGate` gets roster rows for the port and its two stubs.
 - Every body fault is logged. A later story that reads an absence on purpose adds an unlogged list, as `AdminPort` does.
-- `RenderResponseBody` outside a `HarvestPort` call records nothing and fails, so a body cannot be wired as a route past the port's gate.
+- `RenderResponseBody` outside a `HarvestPort` call records nothing and fails; what keeps a body behind the gate is the containment rule (DW-2560).
 
 **Named limits:**
 

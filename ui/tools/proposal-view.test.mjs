@@ -63,6 +63,8 @@ const {
   CONSEQUENCE_UNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
   CONSEQUENCE_JOURNALSWITCHFILE,
+  CONSEQUENCE_BACKUPRUN,
+  CONSEQUENCE_BACKUPFREEZE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
   CONSEQUENCE_JOURNALSETTINGSFREEZE,
@@ -1140,4 +1142,14 @@ test('Story 18.26: a connection delete and a token revoke state their consequenc
 test('the code-save consequences are the explorer save\'s and the editor save\'s alone', () => {
   assert.deepEqual([...CODESAVECONSEQUENCES].sort(), [CONSEQUENCE_EXPLORERSAVECOMPILES, CONSEQUENCE_INTEROPEDITORRELOADS].sort());
   assert.equal(CONSEQUENCE_INTEROPEDITORRELOADS, 'INTEROP.EDITOR.RELOADS');
+});
+
+// Story 21.2: the run and the freeze state their ruled sentences on the card, each tool declaring the code the card reads.
+// Mutation (Rule 19): swap the two returns in `consequenceSentence` -> both assertions go red.
+test('Story 21.2: a backup run and a freeze state their consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_BACKUPRUN), STRINGS.backupRunNote);
+  assert.equal(consequenceSentence(CONSEQUENCE_BACKUPFREEZE), STRINGS.backupFreezeConsequence);
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupRun'))?.[1], CONSEQUENCE_BACKUPRUN, 'BackupRun.cls declares the run code the card reads');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupFreeze'))?.[1], CONSEQUENCE_BACKUPFREEZE, 'BackupFreeze.cls declares the freeze code the card reads');
 });

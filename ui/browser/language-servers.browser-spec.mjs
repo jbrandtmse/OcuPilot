@@ -54,6 +54,9 @@ const JOURNAL_PAIR = '%Admin_Journal:USE';
 
 /** Story 18.21's ECP settings declares `%Admin_Secure:USE` as its own pair, which the principal does not hold. */
 const ECP_SETTINGS_PAIR = '%Admin_Secure:USE';
+
+/** The three Backup screens (Story 21.2) declare `%DB_IRISSYS:WRITE` after the two pairs the principal holds. */
+const BACKUP_PAIR = '%DB_IRISSYS:WRITE';
 const PRINCIPAL = 'OcuPilotELSBrowserArea';
 const PRINCIPAL_ROLE = 'OcuPilotELSBrowserAreaRole';
 const PRINCIPAL_PASSWORD = 'OcuPilotELSBrowser1!';
@@ -344,8 +347,9 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the editor, whi
 // `ownPrivileges` and recompile on the throwaway -> External language servers reads open and the
 // refused-entry assertion goes red. Grant the principal's role `%Admin_Journal:U` -> Journal
 // settings reads open and its assertion goes red; grant it `%Admin_Secure:U` -> ECP settings reads open
-// and its assertion goes red.
-test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable naming that pair, Journal settings naming %Admin_Journal:USE and ECP settings naming %Admin_Secure:USE, and no other', async () => {
+// and its assertion goes red. Grant it `%DB_IRISSYS:W` -> the three Backup screens read open and their per-screen
+// assertions go red.
+test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable naming that pair, Journal settings naming %Admin_Journal:USE, ECP settings naming %Admin_Secure:USE and the three Backup screens naming %DB_IRISSYS:WRITE, and no other', async () => {
   const { context, page } = await signedInAt(browser, { ...config, username: PRINCIPAL, password: PRINCIPAL_PASSWORD }, '/ocupilot/os-management/processes?ns=HSCUSTOM', VIEWPORTS.wide);
   try {
     await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaOsManagement}"]`);
@@ -370,10 +374,16 @@ test('AC5: a holder of OS management\'s pairs without the own pair sees External
     const ecpSettings = `${STRINGS.ecpSettingsLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', ECP_SETTINGS_PAIR)}`;
     assert.ok(refused.includes(ecpSettings), `ECP settings is unavailable on its own pair, ${ECP_SETTINGS_PAIR}: ${JSON.stringify(entries)}`);
     refused.splice(refused.indexOf(ecpSettings), 1);
+    // Story 21.2's three Backup screens declare `%DB_IRISSYS:WRITE`, which this principal does not hold.
+    for (const label of [STRINGS.backupTasksLabel, STRINGS.backupHistoryLabel, STRINGS.backupDatabasesLabel]) {
+      const backup = `${label}: ${STRINGS.privilegeRequiresResource.replace('<resource>', BACKUP_PAIR)}`;
+      assert.ok(refused.includes(backup), `${label} is unavailable on its own pair, ${BACKUP_PAIR}: ${JSON.stringify(entries)}`);
+      refused.splice(refused.indexOf(backup), 1);
+    }
     assert.deepEqual(
       refused,
       [`${STRINGS.languageServersLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', OWN_PAIR)}`],
-      `apart from Journal settings and ECP settings, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
+      `apart from Journal settings, ECP settings and the Backup screens, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
     );
     assert.ok(entries.filter((entry) => !entry.disabled).length >= 9, 'while the other OS management entries stay open');
   } finally {

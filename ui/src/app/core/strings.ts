@@ -7914,6 +7914,78 @@ export const STRINGS = {
   agentInvestigateEntryMessage: 'Investigate the selected entry',
   /** EXPERIENCE.md:268 */
   agentEntryActionsColumn: 'Ask the agent',
+  /** EXPERIENCE.md:604 */
+  backupTasksLabel: 'Backup tasks',
+  /** EXPERIENCE.md:604 */
+  backupHistoryLabel: 'Backup history',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesLabel: 'Backup database list',
+  /** EXPERIENCE.md:604 */
+  backupColumnSystemTask: 'System task',
+  /** EXPERIENCE.md:604 */
+  backupFreezeAction: 'Freeze writes',
+  /** EXPERIENCE.md:604 */
+  backupThawAction: 'Thaw writes',
+  /** EXPERIENCE.md:604 */
+  backupAddDatabaseAction: 'Add database',
+  /** EXPERIENCE.md:604 */
+  backupFreezeLimitLabel: 'Suspend limit (seconds)',
+  /** EXPERIENCE.md:604 */
+  backupFreezeLimitHelp: 'Writes resume by themselves after this many seconds, from 1 to 600.',
+  /** EXPERIENCE.md:604 */
+  backupFrozenBanner: 'Database writes are frozen. Thaw them when the external backup finishes.',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesEmpty: 'The list is empty, so a list backup includes every database except IRISTEMP.',
+  /** EXPERIENCE.md:604 */
+  backupFreezeConsequence: 'Database writes stop until you thaw them or the limit passes.',
+  /** EXPERIENCE.md:604 */
+  backupRunNote: 'The backup runs in the background; its result appears in Backup history.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalTaskNotFound: 'There is no backup task with that name.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalRunning: 'A backup is already running.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFreezeLimit: 'Give a suspend limit from 1 to 600 seconds.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFrozen: 'Database writes are already frozen.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFreezeUnbounded: 'Writes cannot be frozen with a limit on this system.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalNotFrozen: 'Database writes are not frozen.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalDatabaseNotFound: 'There is no database with that name.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalListConflict: 'The backup list already reflects that change.',
+  /** EXPERIENCE.md:604 */
+  aboutBackupTask: 'Backup task',
+  /** EXPERIENCE.md:604 */
+  aboutBackupDatabase: 'Backup database',
+  /** EXPERIENCE.md:604 */
+  backupTasksEmpty: 'No backup tasks on this instance.',
+  /** EXPERIENCE.md:604 */
+  backupTasksEmptyAgent: 'run a backup task',
+  /** EXPERIENCE.md:604 */
+  backupHistoryEmpty: 'No backups are recorded on this instance.',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesEmptyAgent: 'add a database to the backup list',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt1: 'Which backup tasks does this instance have, and when did each last run?',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt2: 'Are database writes frozen right now?',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt3: 'Is a backup running?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt1: 'What was the last backup, and did it complete?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt2: 'Which recent backups did not complete?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt3: 'Which databases did the last full backup cover?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt1: 'Which databases do the list backups cover?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt2: 'Is this database on the backup list?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt3: 'Why is a database missing from the backup list?',
 } as const;
 
 /**

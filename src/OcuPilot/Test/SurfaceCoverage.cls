@@ -266,6 +266,14 @@ XData Coverage
 <screen name="AnalyticsCubeManager" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheCubeManagerDeclaration"/>
 <tool name="analytics.cubemanager.build" class="OcuPilot.Test.AnalyticsCubeActions" method="TestTheAgentsBuildIsADestructiveCardNamingItsDependentsBeforeItConfirms"/>
 <tool name="analytics.cubemanager.synchronize" class="OcuPilot.Test.AnalyticsCubeActions" method="TestASynchronizeAppliesExactlyTheChangesForBothCallers"/>
+<screen name="BackupTaskList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
+<screen name="BackupHistoryList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
+<screen name="BackupDatabaseList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
+<tool name="osmgmt.backuptasks.run" class="OcuPilot.Test.BackupWrite" method="TestARunStartsTheTaskOnBothCallers"/>
+<tool name="osmgmt.backuptasks.freeze" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
+<tool name="osmgmt.backuptasks.thaw" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
+<tool name="osmgmt.backupdatabases.add" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>
+<tool name="osmgmt.backupdatabases.remove" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>
 <tool name="analytics.termlists.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestACreateMakesTheListAndEveryPropertyReadsBack"/>
 <tool name="analytics.termlists.update" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAChangeMovesOnlyTheHeader"/>
 <tool name="analytics.termlists.delete" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>

@@ -135,6 +135,9 @@ XData Elsewhere
 <screen name="AnalyticsCubeDimensionsTab"/>
 <screen name="AnalyticsCubeList"/>
 <screen name="AnalyticsCubeManager"/>
+<screen name="BackupDatabaseList"/>
+<screen name="BackupHistoryList"/>
+<screen name="BackupTaskList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsFolderItemList"/>

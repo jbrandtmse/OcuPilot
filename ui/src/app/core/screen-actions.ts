@@ -66,6 +66,14 @@ export const JOURNAL_SWITCH_FILE_ACTION_ID = 'journal-switch-file';
 export const JOURNAL_SWITCH_DIRECTORY_ACTION_ID = 'journal-switch-directory';
 
 /**
+ * Freeze writes and Thaw writes on Backup tasks (Story 21.2): screen-level like Switch file. Each acts on the instance's database writes,
+ * not a row, so neither is held back for want of a selection. Freeze is the page's own id, since the declared `freeze` would be drawn as a
+ * row action; Thaw is the declared id, which the frozen banner's own action runs too.
+ */
+export const BACKUP_FREEZE_ACTION_ID = 'backup-freeze';
+export const BACKUP_THAW_ACTION_ID = 'thaw';
+
+/**
  * The declared actions `screen`'s banner cases offer (Story 16.11, AD-5), in case order. Each is
  * screen-level: it names no row, so the command bar draws none of them as a row action -- the strip
  * does -- and the command box lists them beside the screen's other screen-level actions.
@@ -116,6 +124,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   [TASK_MANAGER_SUSPEND_ACTION_ID]: STRINGS.taskManagerSuspendAction,
   [JOURNAL_SWITCH_FILE_ACTION_ID]: STRINGS.journalSwitchFileAction,
   [JOURNAL_SWITCH_DIRECTORY_ACTION_ID]: STRINGS.journalSwitchDirectoryAction,
+  [BACKUP_FREEZE_ACTION_ID]: STRINGS.backupFreezeAction,
+  [BACKUP_THAW_ACTION_ID]: STRINGS.backupThawAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -165,6 +175,9 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropQueueList': { abort: STRINGS.interopQueuesAbortAllAction },
   'OcuPilot.Screen.Descriptor.InteropJobList': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
   'OcuPilot.Screen.Descriptor.InteropItemJobTab': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
+  // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
+  'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
+  'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
   // Story 24.2: Term lists' New term list opens the dialog that creates a list, its Edit term list the dialog that changes one and its Delete removes one;

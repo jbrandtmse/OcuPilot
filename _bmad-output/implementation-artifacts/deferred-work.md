@@ -10557,6 +10557,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:06Z occurrence=18-28-sql-column-and-admin-privileges note=refined at 18.28's plan: an unknown column or a grantor without the privilege stores nothing, but DELETE, %ALTER, an unknown grantee, or a view sent as TABLE answers 200 and stores a row the column LIST never shows
 - 2026-11-14T10:35:33Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:34Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10569,6 +10570,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
 - 2026-11-14T10:35:33Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2176: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard HEAD answers 404 for a schema grant the caller holds
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10734,6 +10736,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded a one-part object, not the name T1
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 
 ### DW-2206: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin LIST names a role holder 'Role - <role>' where the standard and column lists write 'Role:<role>'
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10741,6 +10744,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded the Role - <r> shape, not which probe role it was read for
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-33
+- 2026-11-15T15:32:35Z by=orchestrator note=owner_hold(U-33_A:_keep_held,_never_report)
 ### DW-2203: The either-of roster reads descriptor and tool declarations only: a port's pair parameters and a tool's per-call ArgumentPairs are unread
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
@@ -12094,6 +12098,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 - 2026-11-14T00:21:26Z status=decision-pending owner=burndown by=unattended note=inbox=U-30
+- 2026-11-15T15:32:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=owner_answer_U-30_A(amend_AD-10_KMIP_bullet_and_add_the_refusal_with_the_proposed_sentence_in_inbox_U-30);spine_amendment_owner-sanctioned
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12573,6 +12578,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AnalyticsPort.PerformCube returns before AuditWrite on busy, failed and denied; the spec's Measured notes say a cascade whose dependent was locked rebuilt the target and then failed (not atomic).
 - 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=AD-15 call: whether and how a partly applied cube update is audited; the spec's Always list audits completed ones only
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-34
+- 2026-11-15T15:32:34Z status=routed owner=24-13-analytics-settings by=orchestrator note=owner_answer_U-34_A(audit_a_partly_applied_cube_update_as_a_failed_configuration_change_naming_the_steps_that_applied);AD-15_sentence_owner-sanctioned
 
 ### DW-2519: A cube whose dependent the caller's resources hide is judged BUSY, NODSTIME and NOTBUILT without that dependent, while the vendor's cascade still reaches it (inference)
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -12833,12 +12839,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Handler.RenderResponseBody only records on the stub; HarvestPort has no PAIRS and PortGate needed a <caller> row; the spec's proposed amendment adds HarvestPort to AD-29's Binds but no Rule sentence
 - 2026-11-14T19:22:46Z status=escalated owner=burndown by=cr note=runner's Rule 20 veto window for 21.1: apply AD-23 amendment and add an AD-29 Rule sentence for a caller-declared gate
+- 2026-11-15T09:50:11Z occurrence=21-3-startup-memory-and-compatibility-settings note=ConfigPort joins the AD-29 Binds proposal
 
 ### DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class under Port/Harvest/
 - source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Design Notes claim a body cannot be wired as a route past the gate, but only the render fails outside the port, after the body ran; PortGate.PortClasses lists every OcuPilot.Port. class at any depth
 - 2026-11-14T19:22:46Z status=routed owner=21-2-backup-and-mirroring by=cr note=add a checker rule on who names Port.Harvest body classes, a PortGate row kind for a body, and correct the spec claim
 - 2026-11-14T19:49:14Z owner=21-2-backup by=spec_gate note=story_retitled_on_split(21.2_backup,21.12_mirroring)
+- 2026-11-15T07:02:08Z status=resolved-by:21-2-backup by=adjudication note=check-objectscript.py harvest-body containment check (AD-23, DW-2560) with harness rows; PortGate <body> row kind; commits 43c2560bf,837574ac9
 
 ### DW-2561: HarvestPort restores only the three CSP stubs, the device and the namespace: a body that leaves a transaction open, sets $ROLES or %SourceControl, or switches device is not undone
 - source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: med | footprint: in-story
@@ -12870,6 +12878,64 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
 
+### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Mint.cls:186-188 refuses a 404 read before ArgumentProblem; BackupWrite asserts the framework sentence for NoSuchTask, NOSUCHDATABASE and IRISTEMP
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=the owner rules the agent must see the BACKUP.*.NOTFOUND sentence; fix is in the shared Mint
+
+### DW-2569: Backup tasks keeps its frozen banner after a freeze's limit passes until the next read (refreshes false), so its Thaw then answers BACKUP.NOTFROZEN
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: BackupTaskList.cls declares refreshes false and no refreshRates; WDSuspendLimit resumes writes by itself (Task 0)
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a person reports the banner shown after writes resumed; fix is a refresh rate on the screen
+
+### DW-2570: The freeze's ruled consequence does not say the freeze also switches the journal file, nor that a backup unfinished at the limit is to be treated as failed (vendor WDSuspendLimit doc)
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: BackupPort.SuspendCall passes SwitchJournalFile 1; irissys/Backup/General.cls documents WDSuspendLimit's failure rule; copy is owner-ruled
+- 2026-11-15T05:04:47Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=the owner rewords the freeze consequence; a string change is the owner's
+
+### DW-2571: Two backup runs sent at once: the second's vendor refusal (#7309) reaches the caller as 500 INTERNAL through the harvested body, not 409 BACKUP.RUNNING
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Task 0 + review: StartTask answers #7309 while a backup runs; HarvestPort.SanitizeError collapses a body's refusal to INTERNAL; only the read-then-start window is open
+- 2026-11-15T05:04:48Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a backupport log line with #7309 on a run
+
+### DW-2572: Unverified: the write state reads Frozen during a backup's own suspension of writes (about a second after Completed), so the banner and Thaw are offered; whether ExternalThaw then ends the backup's suspension is unmeasured
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: review measured IsWDSuspended 1 for 0.76 s after a probe backup read Completed with its job gone; BackupRules allows THAW whenever WriteState is Frozen
+- 2026-11-15T05:04:48Z status=routed owner=burndown by=cr note=settle: thaw within that second on a throwaway and read the backup's history status
+- 2026-11-15T06:59:04Z occurrence=21-2-backup
+
+### DW-2573: Rule 31: BackupAction repeats DatabaseAction's one-argument tool shape (SettableFields, InputSchema, PortQuery, StateDiff, PrivilegePairs) and BackupRules and BackupPort add more copies of the ports' Text helper
+- source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: BackupAction.cls vs DatabaseAction.cls:79-230; Text() also in JournalRules, DatabasePort, EcpPort, JournalPort; the spec gives a reason against subclassing, not against a shared base
+- 2026-11-15T05:04:48Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a third action-tool base copies the one-argument shape
+
+### DW-2574: BackupProbe's no-backup signal relies on a DBACK routine-name match that misses a measured phase of a running backup
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci runs 33, 35, 37: no DBACK* routine within 5 s of the probe task reading Running; whether the job outlives Completed and resumed writes in another routine is unmeasured; WaitForNoBackup's process clause has no pin
+- 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=settle: name the backup job by pid and sample it to exit in a shipped test; pin the clause through a seam
+- 2026-11-15T11:07:39Z occurrence=21-2-backup
+
+### DW-2575: BackupWrite's run test asserts on a backup that lasts seconds, so its mid-backup rows race the backup's end
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci: run 38 red (freeze answered BACKUP.FROZEN on all 10 tries) and runs 33, 35, 37 red (no backup process in 5 s) at earlier row orders; shipped order green in runs 45, 46, 50; CI legs unmeasured
+- 2026-11-15T06:59:04Z status=routed owner=burndown by=cr note=fix: hold the backup open (a larger run database) or assert every mid-backup row straight after Running
+- 2026-11-15T11:07:39Z occurrence=21-2-backup
+- 2026-11-15T11:07:39Z status=routed owner=burndown by=cr note=rework 3 cr: freeze and run rows take RUNNING or FROZEN, asked first; a backup ending before them still reds
+
+### DW-2576: BackupProbe.Remove's wait for the no-backup signal is unpinned because every caller already waits for an idle task and settled writes
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: deleting the WaitForNoBackup guard in Remove leaves BackupWrite, BackupWriteGate and the browser spec green; holding a backup or freeze for its 120 s bound is not test-sized
+- 2026-11-15T06:59:04Z status=wontfix-accepted owner=21-2-backup by=cr note=reopen_if=a ghost mount or PROTECT %SaveData on a probe database recurs in CI or a local run
+
+### DW-2585: BackupWriteGate's OnAfterAllTests has no arming guard: an unarmed run whose setup fails still thaws writes and removes probe principals, which would end a deliberate freeze on a dev or slot instance
+- source: spec-21-2-backup.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: re-review iteration 2, src/OcuPilot/Test/BackupWriteGate.cls OnAfterAllTests
+- 2026-11-15T09:27:30Z status=routed owner=burndown by=adjudication note=found outside the re-review range; guard the teardown on the arming flag like BackupWrite's
+
+### DW-2586: Navigation.cls count-history comment stops at fifty-four while its assertion reads fifty-seven
+- source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: re-review iteration 2, src/OcuPilot/Test/Navigation.cls
+- 2026-11-15T09:27:31Z status=wontfix-accepted owner=21-2-backup by=adjudication note=reopen_if=the Navigation count comment is edited or another screen joins OS management
 ### DW-2566: flake: context-chip.browser-spec.mjs failed 3 of 9 tests (Waiting failed: 30000ms exceeded) in CI browser shard 5/5 and passed on the unchanged rerun
 - source: cycle-log-parallel.md (Epic 22 merge, feature head e20007c42) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: run 43662142967 attempt 1 browser shard 5/5 red (6 passed, 3 failed, 162.7 s); no ui/src, ui/browser or src change since the last green feature run; attempt 2 green
@@ -12879,7 +12945,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
 - evidence: job 132695467996 log: [vitest-pool]: Worker forks emitted error, errno -32 EPIPE; the node 24 and 26 legs passed on the same sha
 - 2026-11-15T04:44:38Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun after the run completes
+- 2026-11-15T12:59:32Z occurrence=21-2-backup note=run_43713431335_staging_df4cf73f0:_gates_node_22.22.3_client_suite_hung_to_the_job_timeout_(25_min),_node_24_and_26_green;_second_occurrence_in_11_h;_unchanged_rerun
 
+### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
+- source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: re-review iteration 3 on ocupilot-ci: 'Failed to start backup job' after a license-limit refusal, task Running ever since
+- 2026-11-15T11:12:20Z status=routed owner=burndown by=cr note=measure whether Backup.Task can be reset; consider reading the backup process as well as the task status before refusing
 ### DW-2577: dev-tool.page.ts repeats code-search.page.ts's constructor lifecycle (bind, arrival, Refresh action, destroy) around a different table
 - source: spec-24-1-developer-tools.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Store copy merged into SentSearchState in review; the page lifecycle is the same about 50 lines in both pages, and code-list/macro-lookup repeat the pattern
