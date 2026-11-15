@@ -12924,3 +12924,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Task 0 on ocupilot-b-ci: TSTART, Set, Kill, Set, TROLLBACK in a GlobalJournalState 2 database left no partial write; crash recovery unmeasured
 - 2026-11-15T15:22:44Z status=by-design owner=24-2-the-analytics-editors by=harvest note=runner ruling kept the refusal as the safe default; veto U-48 lets the owner drop it
+
+### DW-2597: The agent's mint and confirm answer a term-list rule refusal (FIELDINUSE, NOFIELD, KEY, ABSENT) as the kernel's 400 TOOL.ARGUMENTS with the rule's sentence, not the row's code AC3 names for either caller
+- source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
+- 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint

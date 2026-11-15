@@ -2085,7 +2085,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <p>The lines <method>Snippet</method> adds for the term list write <var>pType</var> of the list or entry the id <var>pId</var> names
 /// (Story 24.2), the vendor calls <method>PerformTermList</method> makes: a create, a header write, a delete, a value write per entry
 /// value and field value, an entry removal as the vendor's documented layout has it. A write that makes several calls is one transaction,
-/// rolled back when one fails. The body <var>pBody</var> is the body the confirm sends. Names and values are string literals.</p>
+/// rolled back when one fails. Each step is gated on one line by the port's own refusal: a create by a free name (the vendor's create
+/// kills a list of the same name) and an entry add by a free key; every other write but the delete by the list being held. The body
+/// <var>pBody</var> is the body the confirm sends; a change names the list as the body's <code>Name</code> carries it, the stored
+/// spelling. Names and values are string literals.</p>
 ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -2093,13 +2096,17 @@ ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicA
     Set tEntry = (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
     Set tParts = $Select(tEntry: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId), 1: $ListBuild(pId))
     Set tName = ..Literal($ListGet(tParts, 1))
+    If (pType = ..#TYPEUPDATE) && (..Text(pBody, "Name") '= "") Set tName = ..Literal(..Text(pBody, "Name"))
     Set tKey = ..Literal($ListGet(tParts, 2))
     Set tList = "##class(%DeepSee.TermList)"
     Set tStamp = "$ZDateTime($Horolog, 3)"
-    If pType = ..#TYPEADD Quit tNL _ " Set tSC = " _ tList _ ".%CreateTermList(" _ tName _ ", " _ ..Literal(..Text(pBody, "Caption")) _ ", " _ ..Literal(..FieldListOf(pBody, "")) _ ", " _ ..Literal(..Text(pBody, "Pattern")) _ ", " _ ..Literal(..Text(pBody, "Description")) _ ", " _ ..Literal(..Text(pBody, "SubjectArea")) _ ", " _ ..Hidden(pBody, 0) _ ")"
+    Set tHeld = " Set tId = $ZConvert(" _ tName _ ", ""U""), tSC = $Select($Data(^DeepSee.TermList(tId)): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTABSENT) _ "))"
+    If pType = ..#TYPEADD Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTTAKEN) _ ")" _ tNL _ " If '" _ tList _ ".%TermListExists(" _ tName _ ") Set tSC = " _ tList _ ".%CreateTermList(" _ tName _ ", " _ ..Literal(..Text(pBody, "Caption")) _ ", " _ ..Literal(..FieldListOf(pBody, "")) _ ", " _ ..Literal(..Text(pBody, "Pattern")) _ ", " _ ..Literal(..Text(pBody, "Description")) _ ", " _ ..Literal(..Text(pBody, "SubjectArea")) _ ", " _ ..Hidden(pBody, 0) _ ")"
     If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = " _ tList _ ".%DeleteTermList(" _ tName _ ")"
-    If pType = ..#TYPEENTRYREMOVE Quit tNL _ " Set tId = $ZConvert(" _ tName _ ", ""U"")" _ tNL _ " Kill ^DeepSee.TermList(tId, ""data"", " _ tKey _ ")" _ tNL _ " Set ^DeepSee.TermList(tId, ""modDate"") = " _ tStamp _ tNL _ " Set tSC = 1"
-    Set tText = tNL _ " TSTART"
+    If pType = ..#TYPEENTRYREMOVE Quit tNL _ tHeld _ tNL _ " If $System.Status.IsOK(tSC) Kill ^DeepSee.TermList(tId, ""data"", " _ tKey _ ") Set ^DeepSee.TermList(tId, ""modDate"") = " _ tStamp
+    Set tText = tNL _ tHeld
+    If pType = ..#TYPEENTRYADD Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC), $Data(^DeepSee.TermList(tId, ""data"", " _ tKey _ ")) Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTENTRYTAKEN) _ ")"
+    Set tText = tText _ tNL _ " TSTART"
     If pType = ..#TYPEUPDATE {
         Set tText = tText _ tNL _ " Set tObject = ##class(%DeepSee.UserLibrary.TermList).%New()"
         Set tText = tText _ tNL _ " Set tObject.name = " _ tName
@@ -2109,11 +2116,11 @@ ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicA
         Set tText = tText _ tNL _ " Set tObject.description = " _ ..Literal(..Text(pBody, "Description"))
         Set tText = tText _ tNL _ " Set tObject.subjectArea = " _ ..Literal(..Text(pBody, "SubjectArea"))
         Set tText = tText _ tNL _ " Set tObject.modDate = " _ tStamp
-        Set tText = tText _ tNL _ " Set tSC = " _ tList _ ".%FromObj(tObject)"
-        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { " _ $Select(..Hidden(pBody, 0): "Set ^DeepSee.TermList($ZConvert(" _ tName _ ", ""U""), ""hideValue"") = 1", 1: "Kill ^DeepSee.TermList($ZConvert(" _ tName _ ", ""U""), ""hideValue"")") _ " }"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%FromObj(tObject)"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { " _ $Select(..Hidden(pBody, 0): "Set ^DeepSee.TermList(tId, ""hideValue"") = 1", 1: "Kill ^DeepSee.TermList(tId, ""hideValue"")") _ " }"
     } Else {
-        Set tText = tText _ tNL _ " Set tSC = 1"
-        If pBody.%GetTypeOf("Value") = "string" Set tText = tText _ tNL _ " Set tSC = " _ tList _ ".%SetValue(" _ tName _ ", " _ tKey _ ", " _ ..Literal(pBody.%Get("Value")) _ ", """")"
+        ; An add writes the entry's own value even when the body carries none, as the port's write does.
+        If (pBody.%GetTypeOf("Value") = "string") || (pType = ..#TYPEENTRYADD) Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%SetValue(" _ tName _ ", " _ tKey _ ", " _ ..Literal(..Text(pBody, "Value")) _ ", """")"
         If pBody.%GetTypeOf("FieldValues") = "array" {
             Set tIterator = pBody.FieldValues.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tPair) {
@@ -2214,7 +2221,7 @@ ClassMethod TermListFits(pName As %String, pKey As %String = "", pField As %Stri
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>): <var>pType</var> is the write,
 /// <var>pName</var> the term list, <var>pKey</var> the entry's key (entry writes), <var>pBody</var> what the caller sends. A caption,
 /// pattern or subject area is at most <parameter>SHORTTEXTMAX</parameter> characters, a description or value at most
-/// <parameter>LONGTEXTMAX</parameter>; a name and a key are <method>NameShaped</method> and <method>TermListFits</method>; a field name is
+/// <parameter>LONGTEXTMAX</parameter>; a name and a key are <method>NameShaped</method> and <method>TermListFits</method>, a key beside each field its values name; a field name is
 /// <method>NameShaped</method> without <code>^</code>, is never <code>Value</code>, is not repeated without regard to case, and a list has
 /// at most <parameter>FIELDSMAX</parameter>; a member of the wrong type is <code>PORT.FIELD.SHAPE</code>. Pure.</p>
 ClassMethod TermListViolations(pType As %String, pName As %String, pKey As %String, pBody As %DynamicObject, Output pViolations) As %Status
@@ -2280,13 +2287,16 @@ ClassMethod TermListViolations(pType As %String, pName As %String, pKey As %Stri
             Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", tShape)
         } ElseIf $Length(tPair.%Get("Value")) > ..#LONGTEXTMAX {
             Set pViolations($Increment(pViolations)) = $ListBuild("FieldValues", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTVALUE)
+        } ElseIf (pKey '= "") && ..NameShaped(pKey, 1) && ..NameShaped(tPair.%Get("Field"), 1) && '..TermListFits(pName, pKey, tPair.%Get("Field")) {
+            ; The instance's limit counts the key and the field together, so a key that fits beside the value can be too long beside a field.
+            Set pViolations($Increment(pViolations)) = $ListBuild("Key", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTKEY)
         }
     }
     Quit $$$OK
 }
 
 /// <p>The violations that need the instance's own state, in <var>pViolations</var> as <method>TermListViolations</method> answers them, for
-/// the term list read into <var>pData</var> (<method>TermListHere</method>): an entry value naming a field the list does not hold
+/// the term list read into <var>pData</var> (<method>ReadTermListData</method>): an entry value naming a field the list does not hold
 /// (<code>NOFIELD</code>), and, on an update, a field that leaves the list while an entry holds a value for it (<code>FIELDINUSE</code>).
 /// Pure.</p>
 ClassMethod TermListStateViolations(pType As %String, ByRef pData, pBody As %DynamicObject, Output pViolations) As %Status
@@ -2313,8 +2323,10 @@ ClassMethod TermListStateViolations(pType As %String, ByRef pData, pBody As %Dyn
     While tIterator.%GetNext(.tIndex, .tField) {
         Set tKept = tKept _ $ListBuild($ZConvert(tField, "U"))
     }
-    For tAt = 1:1:$ListLength(tHeld) {
-        If $ListFind(tKept, $List(tHeld, tAt)) Continue
+    ; pData("val", n, f) is indexed by the field's piece of the stored list, an empty piece included.
+    For tAt = 1:1:$Length(pData("fieldList"), "^") {
+        Set tField = $ZConvert($Piece(pData("fieldList"), "^", tAt), "U")
+        If (tField = "") || $ListFind(tKept, tField) Continue
         For tEntry = 1:1:+$Get(pData("keys")) {
             If $Get(pData("val", tEntry, tAt)) '= "" {
                 Set pViolations($Increment(pViolations)) = $ListBuild("Fields", ##class(OcuPilot.Api.AnalyticsError).#TERMLISTFIELDINUSE)

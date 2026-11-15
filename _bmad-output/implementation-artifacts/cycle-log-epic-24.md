@@ -61,3 +61,9 @@
 2026-11-15T15:35:42Z	Epic 24	owner_answer_relayed	vetoes_kept=U-43,U-44,U-46,U-48 note=all_17_open_vetoes_kept
 2026-11-15T15:35:42Z	Story 24.2	qa_complete	spawn_at=2026-11-15T15:23:00Z model=sonnet tests=src/OcuPilot/Test/AnalyticsTermListRoutes.cls(2_methods) tests_added=2 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-11-15T15:35:42Z	Story 24.2	stage_spawned	stage=code-review spawn_at=2026-11-15T15:35:42Z model=opus agent_name=24-2-the-analytics-editors-code-review-1 cycle_iteration=1
+2026-11-15T16:16:01Z	Story 24.2	cr_complete	spawn_at=2026-11-15T15:37:00Z model=opus resolved=9 fixed_at_source=9 by_design=3 wontfix=7 routed=0 escalated=1 decision_pending=0 deferred=1 dismissed=14 high=1 med=5 low=11 rows=1 unresolved_high_med=0 high_fixed=AD-59_script_form_gates clarifications=0 closing_sections_present=true final=done
+2026-11-15T16:16:01Z	Story 24.2	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2596 escalated_to_decision_sheet=DW-2597 model=claude-opus-5-5
+2026-11-15T16:16:01Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.2 run=20261114T1656Z-21,22
+2026-11-15T16:16:46Z	Epic 24	throwaway_up	project=ocupilot-b-ci health=healthy reason=fresh_check_24.2 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-15T16:25:33Z	Story 24.2	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49_skip_agentswitches(written_by_fresh_check_tests)+analytics-term-list-editor_browser_spec_on_fresh_throwaway model=claude-opus-5-5
+2026-11-15T16:25:33Z	Story 24.2	fresh_check	env=recipe tests=23_classes+2_specs result=pass order=forward,reverse classes_tests=214 browser=7/7_together,5+2_reverse_singly

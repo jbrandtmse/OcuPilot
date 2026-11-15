@@ -243,6 +243,51 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `857ef051
   - **When** it ends.
   - **Then** no marker-named term list remains, and `AnalyticsProbe.Gone()` is true.
 
+### Review Findings
+
+Code review 2026-11-15 (four layers, full-opus tier). Each patch is in-story with low fix-risk (a small, reversible edit whose tests ran green on `ocupilot-b-ci`).
+
+- [x] [Review][Patch] (high, AD-59) The script forms had no gate: the create's `%CreateTermList` kills a held list of that name, an entry add overwrote a held key or made a headerless list, and a removal re-made a gone list's `modDate`. Each step is now gated on one line by the port's own refusal, reusing the published sentences [src/OcuPilot/Port/AnalyticsPort.cls `TermListSnippet`]
+- [x] [Review][Patch] (medium, AC3) The person's Add entry for a list that is gone answered 404 `PORT.NOTFOUND`, and any other failure of the parent read (a refused namespace, a vendor fault) became that 404 too. The code was wrong, not the matrix. `ItemSave` gains an overridable `ParentRefusal` whose default is unchanged, and `TermListEntrySave` answers 404 `ANALYTICS.TERMLIST.ABSENT` and passes any other refusal through [src/OcuPilot/Area/Interop/ItemSave.cls, src/OcuPilot/Area/Analytics/TermListEntrySave.cls]
+- [x] [Review][Patch] (medium, shape rules) An entry key was checked against the instance's length only beside `VALUE`. Beside a long field, the vendor raised `<SUBSCRIPT>` and the write answered 500. The check now runs beside each field the call writes, before any vendor call, and answers 422 `KEY` [src/OcuPilot/Port/AnalyticsPort.cls `TermListViolations`]
+- [x] [Review][Patch] (medium) Edit term list could be confirmed before its header read answered, or after that read failed, and then sent a blank header over the list. Confirm now waits for the header [ui/src/app/areas/analytics/term-list-dialog.ts]
+- [x] [Review][Patch] (medium, Rule 19) Gaps in the tests:
+  - the audit verbs of the entry add and the entry change;
+  - the agent marker carrying the proposal id, and the audit and ledger rows, for each of the six confirms;
+  - the effect of the agent's list change;
+  - the hide-value round trip of Edit, on the server and in the dialog;
+  - the script forms' read-back;
+  - a read composed for a write, gated under read-only and under not journaled;
+  - the rollback of an exception raised inside a transaction.
+
+  Each now has a leg [src/OcuPilot/Test/AnalyticsTermList{Edit,Routes,Seam}.cls, ui/src/app/areas/analytics/term-list-dialog.spec.ts]
+- [x] [Review][Patch] (low) The entry-add script wrote no value of its own when the body had none, unlike the write. The change script used the caller's spelling of the list name, not the stored one [src/OcuPilot/Port/AnalyticsPort.cls `TermListSnippet`]
+- [x] [Review][Patch] (low) `FIELDINUSE` read an entry's values by the compacted field position, so it checked the wrong value when the stored field list held an empty piece [src/OcuPilot/Port/AnalyticsPort.cls `TermListStateViolations`]
+- [x] [Review][Patch] (low, Rule 19 hermeticity) Fixes to test setup:
+  - `TestTheDeleteAndRemoveKeysShipOffForTheAgentOnly` asserted a stored policy it did not create; it now takes and clears the policy, which is restored after;
+  - the arranging posts are asserted;
+  - the script runner rolls back a transaction a failed script left open;
+  - the removal script's status can now fail.
+- [x] [Review][Patch] (low) Four comments claimed more than the code: the Gate header's "for both callers", "AD-65 as amended" in `ui/tools/analytics.test.mjs`, the mint-refusal test's codes, and a method `TermListHere` that does not exist.
+- [x] [Review][Defer] (medium) The agent's mint and confirm answer a rule refusal as the kernel's 400 `TOOL.ARGUMENTS` with the rule's sentence, not the row's code that AC3 names [src/OcuPilot/Kernel/Proposal/Mint.cls]. Deferred because it is outside the story's footprint and high-risk to fix: the lookup editor answers the same way, and a change would touch every tool's mint. DW-2597, escalated, owner `burndown`.
+
+Rejected:
+
+- (by-design) A create racing a classic-page create between the absence read and the vendor call. Design Notes, Decided 4: no lock, because the vendor and the classic page take none.
+- (by-design) The entry removal is a `Kill` and a stamp `Set` outside a transaction. The spec names the three tools that take one.
+- (by-design) AD-65 is not amended in the spine. That was the runner's ruling, which the owner kept; the code comment that claimed an amendment is corrected.
+- (false) An `ACTIONKEY` naming the other endpoint's write. Only a tool's `PortQuery` sets it, server-side.
+- (false) The EXPERIENCE.md row's "four dialog titles". There are four, and three of them carry a placeholder.
+- (false) A change script that blanks members when given a partial body. The draft renders from the stored payload, which is complete.
+- (rejected) The spec's Measured line on `%ToObj` of an absent list. The fix would edit the spec outside `## Verification`.
+- (low, wontfix-accepted) Change entry rebuilds every field from the row's joined text, so a stale row or a value holding `; <field>: ` clears a field nobody edited. reopen_if: a person reports a field value cleared by a Change entry that did not edit it.
+- (low, wontfix-accepted) The Edit dialog trims field names, so a padded name made outside OcuPilot is renamed. reopen_if: a list whose field name has leading or trailing spaces is reported.
+- (low, wontfix-theoretical) An entry written in the same second as the delete's mint is not caught by the fingerprint's one-second `Modified`. This becomes real if an entry is written in the same second as a delete is minted. The delete card's lack of an entry count is not a defect, since its rows are as specified.
+- (low, wontfix-accepted) A term list global mapped to a remote database is refused 400 with the generic namespace sentence. It fails closed, and a better sentence would be a new string. reopen_if: a namespace whose `^DeepSee.TermList` maps to an ECP database is reported.
+- (low, wontfix-accepted) The tools' WRITE pair on `DESTINATIONGLOBAL` cannot be told from the facts global where both map to one database. reopen_if: a namespace maps `^DeepSee.TermList` apart from `^DeepSee.Fact`.
+- (low, wontfix-accepted) The not-journaled refusal is pinned through the seam and through the production `DestinationJournaled` against `IRISTEMP`, not by a full write against a created database. Both halves are pinned; the premise is under the `deferred:` medium. reopen_if: that medium is reopened.
+- (low, wontfix-accepted) The editor borrows four string keys from other areas (`webAppPctAccessAdd`, `oauthClientAlgKey`, `errorLogColumnValue`, `explorerSqlTabFields`). reopen_if: one of those keys' text changes.
+
 ## Spec Change Log
 
 - 2026-11-15, runner spec gate (unattended rulings, one veto item): (1) the `Proposed split` is applied in `epics.md`: 24.2 keeps the term-list editor; Stories 24.10-24.14 are inserted after 24.9, and AN-16 and AN-17 stay in scope as 24.14 (the runner's reading of "the remaining analytics editors"; inference). (2) **Partial application (U-34 avoided, not decided):** every one of the six term-list writes is refused before any vendor call when the database the term-list global maps to in that namespace is not journaled, so a write is always all-or-nothing inside its transaction and no partly applied write exists to audit. Task 0 measures that a `TROLLBACK` undoes a multi-step term-list write in a journaled database and that the journal check reads the right database. The refusal is 409 `ANALYTICS.TERMLIST.NOTJOURNALED` with the ruled reason "Term lists can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace's term lists." (3) The `Proposed strings` are kept as written, with that reason added. (4) The term-list writes extend `AnalyticsPort` under AD-65's Binds ("later writes"), the vendor-unaudited writes record OcuPilot's own `ConfigChange` under AD-15's existing Rule, and the six keys join the baseline under AD-22's Rule; the spine is not edited in this run, and the `Spine clauses for the spec gate` above wait for the owner's attended architecture update as proposed lines. Contended files were checked against `origin/OCU-1-epic21` on 2026-11-15; the runner re-checks before implement.
@@ -562,6 +607,27 @@ These edits are add-only, at clean positions:
 - mutation: the `AnalyticsTermListEntryMint` row removed from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` went red, alone (found by the `(once)` sweep, which also found the missing script forms).
 - mutation: the field argument of the value write dropped in `AnalyticsPort.TermListSnippet` -> `AnalyticsTermListEdit` `TestEachWritesScriptFormMakesTheSameChange` (the entry add, change and property change legs) went red; the `Kill` of the entry removal dropped there -> its removal leg went red.
 - mutation: `this.reason.set(...)` blanked in `term-list-dialog.ts`, then in `term-list-entry-dialog.ts` (client rebuilt and redeployed each time) -> `analytics-term-list-editor.browser-spec.mjs` AC3 went red for each; both reverted, rebuilt and redeployed.
+
+**QA pass (gaps added to `src/OcuPilot/Test/AnalyticsTermListRoutes.cls`, no new class, so shard discovery is unchanged):**
+
+- `(QA)` `TestThePersonsRefusalsAnswerTheirCodesAndWriteNothing`: the person's real routes and screen action answer the matrix's refusal rows over HTTP (taken name, field in use, entry taken, list gone, shape) with the list's nodes unchanged. An entry add to a list that is gone answers 404 `ANALYTICS.TERMLIST.ABSENT`.
+- `(QA)` `TestTheAgentsDeleteAndRemoveAreRefusedAtTheConfirmWhileThePersonsRun`: a minted delete and remove are refused 403 `GOVERNANCE.DISABLED` at the confirm over HTTP at the baseline, list and entry intact, and the person's own Remove entry and Delete run.
+- mutation: the removed-field test in `TermListStateViolations` made `If 0` -> `AnalyticsTermListRoutes` `TestThePersonsRefusalsAnswerTheirCodesAndWriteNothing` (the Edit leg and the nodes leg) and `TestAMintRefusesWhatTheWriteWouldRefuse` went red; reverted, recompiled, green.
+- mutation: `analytics.termlists.delete` shipped `true` in `Baseline.cls` -> `TestTheAgentsDeleteAndRemoveAreRefusedAtTheConfirmWhileThePersonsRun` (nodes and both person legs) and `TestTheDeleteAndRemoveKeysShipOffForTheAgentOnly` went red; reverted, recompiled, green (run 1365, 7 of 7).
+- mutation (code review): the free-name gate of the create removed from `TermListSnippet` -> `AnalyticsTermListEdit` `TestEachWritesScriptFormMakesTheSameChange` went red (run 1369).
+- mutation (code review): the key-beside-field check in `TermListViolations` made `ElseIf 0` -> `TestAKeyTooLongBesideAFieldIsRefusedBeforeTheVendor` went red (run 1369).
+- mutation (code review): `TermListStateViolations` indexed by the compacted field position again -> `TestAFieldInUseIsFoundBesideAnEmptyPieceOfTheStoredList` went red (run 1369).
+- mutation (code review): `Invoke` no longer counts a `TERMLIST` or `TERMLISTENTRY` read carrying an action as a write -> `TestAReadComposedForAWriteIsGatedAsTheWrite` went red (run 1369).
+- mutation (code review): `PerformTermList`'s `tFailed` ignores `tCaught` -> `TestAFailedSecondValueWriteRollsTheEntryBack` (the `throwsecond` leg) went red (run 1369). The five above ran together, each reddening only its own method.
+- mutation (code review): `TermListEntrySave.ParentRefusal` renamed so `ItemSave`'s default answers -> `AnalyticsTermListRoutes` `TestThePersonsRefusalsAnswerTheirCodesAndWriteNothing` went red on `PORT.NOTFOUND`; the `HideValue` branch of `AnalyticsTermListUpdate.ScreenActionDelta` made `If 0` -> `TestThePersonsRoutesAndActionsWriteAndAreAudited` (the hide-value node leg) went red (run 1370).
+- mutation (code review): the entry change audited under the remove verb -> `TestThePersonsRoutesAndActionsWriteAndAreAudited` (entry change row) and `TestTheAgentsSixProposalsConfirmAndTheEntryReadsBack` (`AssertAgentRecords` for set and remove) went red (run 1371).
+- mutation (code review): Edit's confirm gate on the loaded header removed in `term-list-dialog.ts` -> `term-list-dialog.spec.ts` (the failed-read leg) went red; `this.hide.set(header.hideValue)` removed -> its sent-values leg went red.
+- Each was reverted byte-identically (`cmp` against the saved copy) and the tree reloaded. Then green on `ocupilot-b-ci`:
+  - `AnalyticsTermListEdit` 15/15 and `AnalyticsTermListRoutes` 7/7;
+  - the `ItemSave` callers `SaveHoldCoverage`, `InteropItemRefusals`, `InteropPartnerRefusals`, `InteropLookupRefusals`, `InteropLookupEdges`, `InteropItemGate`, `InteropLookupGate` and `InteropPartnerGate`, with `AnalyticsTermListGate`, 50 tests together;
+  - `npm run test:tools` 2283, `npm run test:components` 273 files and 3443 tests, and `npm run build` (initial 2.04 MB);
+  - `analytics-term-list-editor.browser-spec.mjs` (2) on the redeployed bundle;
+  - `check-objectscript.py` clean.
 
 ## Auto Run Result
 

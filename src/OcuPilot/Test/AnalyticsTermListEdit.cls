@@ -288,34 +288,51 @@ Method TestAFailedSecondValueWriteRollsTheEntryBack()
     Set tStatus = ..Call("TermLists", "UPDATE", tName, {"Caption": "Changed", "HideValue": false}, .tRes, .tFault)
     Do $$$AssertEquals(tStatus, "500 INTERNAL", "a property change whose hide-value write fails answers its failure")
     Do $$$AssertEquals(..Snapshot() _ "|" _ $TLevel, tBefore _ "|0", "and the header reads as it did before, with no transaction left open")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "throwsecond")
+    Set tStatus = ..Call("TermListEntries", "ENTRYSET", ..Entry(tName, "K1"), {"Value": "changed", "FieldValues": [{"Field": "Region", "Value": "East"}]}, .tRes, .tFault)
+    Do $$$AssertEquals(tStatus, "500 INTERNAL", "an entry change whose second value write raises answers its failure")
+    Do $$$AssertEquals(..Snapshot() _ "|" _ $TLevel, tBefore _ "|0", "and the entry reads as it did before, with no transaction left open")
 }
 
 /// <p>AC1, AC2 (AD-59): each write's script form, run line by line in <code>USER</code>, makes the same change the write makes: the create, an entry add with a
-/// field value, the entry change, the property change (caption and hide value), the entry removal and the delete, each read back through the vendor.</p>
+/// field value and one with none of its own, the entry change, the property change (every header member, the list named in its stored spelling), the entry removal
+/// and the delete, each read back through the vendor. Each script refuses what the port refuses: a create over a held name, an entry add over a held key, and a
+/// removal from a list that is gone, each leaving the list as it was.</p>
 /// <p>Mutation (Rule 19): drop the field argument of the value write in <method>OcuPilot.Port.AnalyticsPort.TermListSnippet</method> -- the entry legs go red; drop the
-/// <code>Kill</code> of the entry removal there -- the removal leg goes red.</p>
+/// free-name gate of the create there -- the held-name leg goes red.</p>
 Method TestEachWritesScriptFormMakesTheSameChange()
 {
     Set tName = ..#MARKER _ "Script"
     Set tUpper = $ZConvert(tName, "U")
     Set tEntry = ..Entry(tName, "K1")
-    Do ..Run("TermLists", "ADD", tName, {"Caption": "Cap", "Fields": ["Region"], "HideValue": true})
+    Do ..Run("TermLists", "ADD", tName, {"Caption": "Cap", "Description": "Desc", "Pattern": "*", "SubjectArea": "Sales", "Fields": ["Region"], "HideValue": true})
     Do $$$AssertEquals(..Marked(), tUpper, "the create script makes the list")
+    Do $$$AssertEquals(..Call("TermLists", "TERMLIST", tName, "", .tRes, .tFault), "200 ", "the list reads")
+    If $IsObject(tRes) Do $$$AssertEquals(tRes.Caption _ "|" _ tRes.Description _ "|" _ tRes.Pattern _ "|" _ tRes.SubjectArea _ "|" _ tRes.Fields.%ToJSON() _ "|" _ tRes.HideValue, "Cap|Desc|*|Sales|[""Region""]|1", "with every property the create script set")
     Do ..Run("TermListEntries", "ENTRYADD", tEntry, {"Value": "V1", "FieldValues": [{"Field": "Region", "Value": "West"}]})
     Do $$$AssertEquals(..Lookup(tName, "K1") _ "|" _ ..Lookup(tName, "K1", "Region"), "V1|West", "the entry add script writes the value and the field value")
+    Do ..Run("TermLists", "ADD", $ZConvert(tName, "L"), {"Caption": "Other"}, 0)
+    Do ..Run("TermListEntries", "ENTRYADD", tEntry, {"Value": "Over"}, 0)
+    Do $$$AssertEquals(..Lookup(tName, "K1") _ "|" _ ..Lookup(tName, "K1", "Region"), "V1|West", "a create over the held name and an add over the held key change nothing")
+    Do ..Run("TermListEntries", "ENTRYADD", ..Entry(tName, "K2"), {"FieldValues": [{"Field": "Region", "Value": "North"}]})
+    Do $$$AssertEquals(..Lookup(tName, "K2") _ "|" _ ..Lookup(tName, "K2", "Region"), "|North", "an add with no value of its own writes an empty value, as the write does")
     Do ..Run("TermListEntries", "ENTRYSET", tEntry, {"Value": "V2", "FieldValues": [{"Field": "Region", "Value": "East"}]})
     Do $$$AssertEquals(..Lookup(tName, "K1") _ "|" _ ..Lookup(tName, "K1", "Region"), "V2|East", "the entry change script changes both")
-    Do ..Run("TermLists", "UPDATE", tName, {"Caption": "Changed", "Fields": ["Region"], "HideValue": false})
+    Do ..Run("TermLists", "UPDATE", $ZConvert(tName, "L"), {"Name": (tName), "Caption": "Changed", "Description": "D2", "Pattern": "*", "SubjectArea": "S2", "Fields": ["Region"], "HideValue": false})
     Do $$$AssertEquals(..Call("TermLists", "TERMLIST", tName, "", .tRes, .tFault), "200 ", "the list reads")
-    If $IsObject(tRes) Do $$$AssertEquals(tRes.Caption _ "|" _ tRes.HideValue _ "|" _ ..Lookup(tName, "K1"), "Changed|0|V2", "the property change script changes the header and the hide value and keeps the entry")
+    If $IsObject(tRes) Do $$$AssertEquals(tRes.Name _ "|" _ tRes.Caption _ "|" _ tRes.Description _ "|" _ tRes.Pattern _ "|" _ tRes.SubjectArea _ "|" _ tRes.HideValue _ "|" _ ..Lookup(tName, "K1"), tName _ "|Changed|D2|*|S2|0|V2", "the property change script changes the header in the stored spelling and keeps the entry")
     Do ..Run("TermListEntries", "ENTRYREMOVE", tEntry, "")
     Do $$$AssertEquals(..Lookup(tName, "K1"), "<default>", "the removal script takes the entry")
     Do ..Run("TermLists", "DELETE", tName, "")
     Do $$$AssertEquals(..Marked(), "", "the delete script takes the list")
+    Do ..Run("TermListEntries", "ENTRYREMOVE", ..Entry(tName, "K2"), "", 0)
+    Do $$$AssertEquals(..Marked(), "", "and a removal from the list that is gone writes nothing")
 }
 
-/// <p>Run the script form of the write <var>pType</var> on <var>pEndpoint</var> for <var>pId</var> with <var>pBody</var>, one line at a time, in the namespace it names.</p>
-Method Run(pEndpoint As %String, pType As %String, pId As %String, pBody)
+/// <p>Run the script form of the write <var>pType</var> on <var>pEndpoint</var> for <var>pId</var> with <var>pBody</var>, one line at a time, in the namespace it names,
+/// and assert its final status is OK, or, when <var>pExpectOK</var> is 0, that it is not.</p>
+Method Run(pEndpoint As %String, pType As %String, pId As %String, pBody, pExpectOK As %Boolean = 1)
 {
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
@@ -324,6 +341,7 @@ Method Run(pEndpoint As %String, pType As %String, pId As %String, pBody)
     Do $$$AssertTrue($IsObject(tSteps) && (tSteps.%Size() = 1), pType _ " renders one script step")
     If '$IsObject(tSteps) || (tSteps.%Size() '= 1) Quit
     Set tOrigNS = $NAMESPACE
+    Set tLevel = $TLevel
     XECUTE "Kill tSC"
     Try {
         For tI = 1:1:$Length(tSteps.%Get(0).text, $Char(10)) {
@@ -331,12 +349,16 @@ Method Run(pEndpoint As %String, pType As %String, pId As %String, pBody)
             If tLine '= "" XECUTE tLine
         }
     } Catch ex {
+        While $TLevel > tLevel {
+            TROLLBACK 1
+        }
         Do $$$AssertTrue(0, pType _ " script ran: " _ ex.DisplayString())
     }
     Set $NAMESPACE = tOrigNS
     ; The script's variables are public: a procedure-block method reads them by indirection.
     Set tScriptStatus = $Get(@"tSC")
-    Do $$$AssertEquals(tScriptStatus, 1, pType _ " script ends with its status OK")
+    Do $$$AssertEquals(''$System.Status.IsOK(tScriptStatus), ''pExpectOK, pType _ " script ends with its status " _ $Select(pExpectOK: "OK", 1: "refused") _ ": " _ $System.Status.GetErrorText(tScriptStatus))
+    Do $$$AssertEquals($TLevel, tLevel, pType _ " script leaves no transaction open")
 }
 
 /// <p>AC1, AC2: a delete takes the list and its entries, a remove the one entry; the audit row of each names the tool, the namespace and the
@@ -396,6 +418,50 @@ Method TestAWriteIsRefusedWhenTheDatabaseIsNotJournaled()
     Do $ClassMethod(..#SEAM, "Reset")
     Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationJournaled(..#NAMESPACE, "^DeepSee.TermList", .tUserJournaled) && tUserJournaled, "and the instance reports USER's term list database journaled")
     Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationJournaled(..#NAMESPACE, "^IRIS.Temp", .tTempJournaled) && 'tTempJournaled, "and the instance's temporary database, which journals nothing, reads not journaled through the production method")
+}
+
+/// <p>AC3: a key that fits beside the entry's value but not beside a long field the call writes is refused 422 <code>KEY</code> before any vendor call, because
+/// the instance's limit counts the key and the field together.</p>
+/// <p>Mutation (Rule 19): drop the key-beside-field check in <method>OcuPilot.Port.AnalyticsPort.TermListViolations</method> -- the write reaches the vendor, which
+/// raises, and this goes red.</p>
+Method TestAKeyTooLongBesideAFieldIsRefusedBeforeTheVendor()
+{
+    Set tName = ..#MARKER _ "Fit"
+    Set tField = $Translate($Justify("", 255), " ", "F")
+    Set tKey = $Translate($Justify("", 255), " ", "k")
+    Do $$$AssertEquals(..Call("TermLists", "ADD", tName, {"Fields": [(tField)]}, .tRes, .tFault), "200 ", "a list with a 255-character field is made")
+    Set tBefore = ..Snapshot()
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $$$AssertEquals(..Call("TermListEntries", "ENTRYADD", ..Entry(tName, tKey), {"Value": "v", "FieldValues": [{"Field": (tField), "Value": "x"}]}, .tRes, .tFault), "422 ANALYTICS.TERMLIST.KEY", "a 255-character key beside that field is refused by its rule")
+    Do $$$AssertEquals(..Snapshot() _ "|" _ $ClassMethod(..#SEAM, "Calls"), tBefore _ "|0", "and nothing was written or called")
+}
+
+/// <p>AC3: a field leaves the list only when no entry holds a value for it, read by the field's piece of the stored list even when that list holds an empty piece.</p>
+/// <p>Mutation (Rule 19): index the entry's values by the compacted field position in <method>OcuPilot.Port.AnalyticsPort.TermListStateViolations</method> -- this goes red.</p>
+Method TestAFieldInUseIsFoundBesideAnEmptyPieceOfTheStoredList()
+{
+    Kill tData
+    Set tData("exists") = 1, tData("fieldList") = "^Region", tData("keys") = 1, tData("key", 1) = "K1", tData("val", 1, 0) = "v", tData("val", 1, 2) = "West"
+    Set tSC = ##class(OcuPilot.Port.AnalyticsPort).TermListStateViolations("UPDATE", .tData, {"Fields": []}, .tViolations)
+    Do $$$AssertStatusOK(tSC, "the rule runs")
+    Do $$$AssertEquals(+$Get(tViolations) _ "|" _ $ListGet($Get(tViolations(1)), 2), "1|ANALYTICS.TERMLIST.FIELDINUSE", "removing the field that holds a value is refused")
+}
+
+/// <p>AC3: the read a mint or a screen action makes for a write is gated as the write is: under a read-only or a not journaled term list database it is refused
+/// with that write's code, so no proposal is minted that could never be confirmed, while a plain read still answers.</p>
+/// <p>Mutation (Rule 19): stop counting a term list read that carries an action as a write in <method>OcuPilot.Port.AnalyticsPort.Invoke</method> -- this goes red.</p>
+Method TestAReadComposedForAWriteIsGatedAsTheWrite()
+{
+    Set tName = ..#MARKER _ "Composed"
+    Do ..Arrange(tName)
+    For tMode = "readonly", "nonjournaled" {
+        Set tCode = $Select(tMode = "readonly": "409 ANALYTICS.TERMLIST.READONLY", 1: "409 ANALYTICS.TERMLIST.NOTJOURNALED")
+        Do $ClassMethod(..#SEAM, "Reset")
+        Do $ClassMethod(..#SEAM, "Arm", tMode)
+        Do $$$AssertEquals(..Call("TermLists", "TERMLIST", tName, "", .tRes, .tFault, "UPDATE"), tCode, tMode _ ": the read for a change is refused")
+        Do $$$AssertEquals(..Call("TermListEntries", "TERMLISTENTRY", ..Entry(tName, "K1"), "", .tRes, .tFault, "ENTRYSET"), tCode, tMode _ ": the read for an entry change is refused")
+        Do $$$AssertEquals(..Call("TermLists", "TERMLIST", tName, "", .tRes, .tFault), "200 ", tMode _ ": a plain read still answers")
+    }
 }
 
 }

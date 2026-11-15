@@ -1,4 +1,4 @@
-/// <p>Pins Story 24.2's gate on the term list editor's six writes (AD-8, AD-29, AD-44, AD-65), for both callers, against <code>USER</code>: a
+/// <p>Pins Story 24.2's gate on the term list editor's six writes (AD-8, AD-29, AD-44, AD-65) at the person's routes and actions and at the port, against <code>USER</code>: a
 /// principal without the Term List Manager's own pair <code>%DeepSee_PortalEdit:USE</code>, and one holding the pairs but only READ on the
 /// database <code>^DeepSee.TermList</code> maps to, are each refused 403 <code>AUTH.NOPRIVILEGE</code> naming the failed pair on every route
 /// and screen action, with the term lists as they were; and a term list database that is mounted read-only is refused 409

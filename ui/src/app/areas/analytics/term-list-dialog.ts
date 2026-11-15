@@ -127,6 +127,9 @@ export class TermListDialog {
 
   private readonly busy = signal(false);
 
+  /** Whether an edit's form holds the header the instance answered; until it does, nothing is sent, so a blank form never replaces it. */
+  private readonly loaded = signal(false);
+
   private closed = false;
 
   protected readonly drawn: readonly Drawn[] = [
@@ -159,7 +162,8 @@ export class TermListDialog {
   }
 
   protected get confirmDisabled(): string | null {
-    return this.busy() || (this.isNew && (this.values()['Name'] ?? '').trim() === '') ? 'true' : null;
+    const unready = this.isNew ? (this.values()['Name'] ?? '').trim() === '' : !this.loaded();
+    return this.busy() || unready ? 'true' : null;
   }
 
   protected fieldId(member: string): string {
@@ -216,6 +220,7 @@ export class TermListDialog {
       Fields: header.fields.join('\n'),
     });
     this.hide.set(header.hideValue);
+    this.loaded.set(true);
   }
 
   protected async onConfirm(): Promise<void> {

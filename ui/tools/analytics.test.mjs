@@ -292,7 +292,7 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
     [
       'Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1',
       'Lock -^DeepSee.Build(tIndex, "")',
-      // Story 24.2 (AD-65 as amended), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
+      // Story 24.2 (AD-65), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
       // read, and its two named nodes, the hide-value flag and an entry's removal with the modified stamp.
       'Set tProbe = $Data(^||DeepSee.TermList(tList))',
       'Set tProbe = $Data(^||DeepSee.TermList(tList, "", pKey, $ZConvert(pField, "")))',

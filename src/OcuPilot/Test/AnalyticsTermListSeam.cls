@@ -3,7 +3,7 @@
 /// <class>OcuPilot.Test.AnalyticsTermListGate</class> drive the port's refusals and its rollback in process. Every call that is not failed
 /// is made on the vendor, in <code>USER</code>.</p>
 /// <p><method>Arm</method> names the mode: <code>failsecond</code> (the second <code>%SetValue</code> since <method>Reset</method> answers an
-/// error), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
+/// error), <code>throwsecond</code> (it raises an exception instead), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
 /// read) or <code>readonly</code> (it reads as mounted read-only). <method>Calls</method> counts the vendor write calls made.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.AnalyticsTermListSeam Extends OcuPilot.Port.AnalyticsPort
@@ -63,6 +63,10 @@ ClassMethod VendorTermListSetValue(pNamespace As %String, pName As %String, pKey
     Set pCaught = ""
     Set tSC = ..Count("set")
     If $$$ISERR(tSC) Quit tSC
+    If ($Get(^||OcuPilotTermListSeam("mode")) = "throwsecond") && ($Get(^||OcuPilotTermListSeam("sets")) = 2) {
+        Set pCaught = ##class(%Exception.General).%New("ArmedFailure", 5001, , "armed exception of the second value write")
+        Quit $$$OK
+    }
     Quit ##super(pNamespace, pName, pKey, pValue, pField, .pCaught)
 }
 
