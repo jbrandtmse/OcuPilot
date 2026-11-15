@@ -52,3 +52,5 @@
 2026-11-15T04:01:47Z	Story 21.2	dev_complete	spawn_at=2026-11-15T01:59:00Z model=sonnet build_sha=43c2560bf baseline_revision=97f1aa935 story_base=97f1aa935 review_loop_iteration=0 followup_review_recommended=true deferred=0 files=78 loc_added=4727 loc_removed=63 cycle_iteration=1 note=ghost_probe_db_on_ocupilot-ci;armed_var_via_exec_shim
 2026-11-15T04:01:47Z	Story 21.2	ruling	question=unruled_screen_strings(~15:nouns,empty_sentences,agent_phrases,9_prompts) choice=keep_as_written rejected=reword_in_stage why=plain_language,match_sibling_screens category=veto inbox=U-42 policy=b9ff703e reversal=reword_strings.ts+EXPERIENCE.md_row_604
 2026-11-15T04:01:55Z	Story 21.2	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-15T04:02:57Z	Story 21.2	throwaway_rebuilt	container=ocupilot-ci reason=ghost_probe_db(OCUPROBEBACKUP)_left_by_implement started_by=epic-21-runner armed=OCUPILOT_ALLOW_BACKUP_CONTROL=1
+2026-11-15T04:02:57Z	Story 21.2	stage_spawned	stage=qa spawn_at=2026-11-15T04:02:57Z model=sonnet agent_name=21-2-backup-qa-1 cycle_iteration=1
