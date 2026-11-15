@@ -227,3 +227,7 @@
 2026-11-15T22:43:16Z	Story 21.17	ruling	question=export_own_globals,strings choice=refuse_own_export(GLOBAL.OWNDATA),strings_kept rejected=classic_parity_export why=AD-35_stricter category=veto inbox=U-64 policy=b9ff703e reversal=allow_export
 2026-11-15T22:43:16Z	Story 21.17	spec_validated	service_introducing=false(extends_AtelierPort,GlobalPort) integration_ac=present adr_constrained_acs=AD-10,AD-21,AD-35,AD-51,AD-61,AD-6,AD-22 owned_ledger=DW-2608 addressed=1 depends_on=21.5 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
 2026-11-15T22:43:38Z	Story 21.10	stage_spawned	stage=plan spawn_at=2026-11-15T22:43:38Z model=opus agent_name=21-10-the-remaining-leaves-across-the-six-areas-plan-1 cycle_iteration=1
+2026-11-15T22:59:45Z	Story 21.10	ruling	question=plan_intent_gap_split choice=split_6(21.10,21.19,21.20,21.21,21.22,21.23) rejected=fewer_children why=size;owner-gated_leaves_isolated category=decide policy=b9ff703e split_children=6_of_6
+2026-11-15T22:59:45Z	Story 21.10	ledger_routed_planned	story=21.10..21.23 entries=29_reowned,5_closed excess=21.22:7,21.23:3_ledger-only by=spec_gate
+2026-11-15T22:59:45Z	Story 21.21	story_parked	stage=before_plan reason=owner-only_leaves(AD-28/AD-44/AD-35/AD-24/AD-48/AD-27_changes,vendor_reports,scope) category=park code=none note=orchestrator_item_requested
+2026-11-15T22:59:45Z	Epic 21	deps_hash_rerecorded	reason=split story=21.10->21.10,21.19..21.23 note=orchestrator_rerecords
