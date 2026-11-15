@@ -11659,6 +11659,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T17:14:15Z status=routed owner=burndown by=lead note=harvested from 20.28 implement; settled by a production fixture in USER driven from the probe namespace, or by DW-2356's static rule
 - 2026-10-12T18:08:24Z occurrence=20-28-ocupilot-compiles-in-a-namespace-without-interoperability note=cr: the fixture exists (Test.ProductionProbe seeds a USER production); the nine reads pin no row count, so no row loop is held
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2362: ci-runner's classifyLeftovers words every leftover token as a probe web application to remove with ProbeApps.Remove(), which misleads for the namespace, database and directory tokens ProbeApps.Existing() now reports
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: in-story
@@ -11754,12 +11755,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T10:11:54Z status=decision-pending owner=burndown by=cr note=spec-bound: amend AD-62 item 11 (Rule 5) to hand HL7 a character stream, then change both tests' parse
 - 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: HL7 as a character stream in both tests (AD-62 item 11 amended); a test with a char past Latin-1 must round-trip
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Story 20.27's review gave interop-transform-test-dialog.ts a mounted role=status region; interop-item-test-dialog.ts (Story 20.6) still draws its status only inside the result block. EXPERIENCE.md's WCAG 4.1.3 list names the Test connection result as role=status.
 - 2026-10-13T10:11:55Z status=routed owner=burndown by=cr note=20.6 is done: give the host dialog the same mounted status region; list both test results in EXPERIENCE.md's role=status set
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2380: InteropTransformMint is a third copy of the run-ArgumentProblem-before-the-fresh-read preamble (ExplorerImportMint, RestServiceCreateMint), where one Mint option would serve all three
 - source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -11812,6 +11815,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-2376 ruled by-design: removing the frame raises no beforeunload alert; AD-63 forbids reading the frame's state; a vendor-emitted signal is the only sanctioned path (unmeasured).
 - 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=burn-down probe; if a signal exists, a leave warning keyed to it
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2389: An interop editor screen whose class name has a letter outside vendor-frame.ts CLASS_NAME (a non-ASCII letter) answers open but draws no frame, so the note and Refresh sit over an empty body with no sentence
 - source: spec-20-7-the-three-embedded-vendor-editors.md (cr) | severity: low | fix-risk: med | footprint: in-story
@@ -12059,6 +12063,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: interop-viewers.browser-spec.mjs:234-298 (20.8) repeats interop-editors.browser-spec.mjs:266-345 (20.7) nearly verbatim; agent-editor-save.browser-spec.mjs (20.16) holds its own shellAt and answered; interop-editor-spec.mjs is the shared module these specs already import.
 - 2026-10-14T12:12:09Z status=routed owner=burndown by=cr note=move them into interop-editor-spec.mjs, parameterized by browser and config; rerun the three specs
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2422: On IRIS (not for Health) the vendor schema viewer lists ASC X12 only, so the Schema viewer's note, prompts and hl7/astm aliases name families it cannot show
 - source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
@@ -12126,6 +12131,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T20:29:43Z status=escalated owner=burndown by=cr note=fix: an interop port cut flag through Screen/Read as LogSourcePort's tPortCut, or a product call on how the cut shows
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-14T13:09:03Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:interop_port_cut_flag(re-owned_from_21-10)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters (boundHere, loaded, fault, showRefusal, showSkeleton, busy, showEmpty) and its skeleton, refusal and empty markup instead of sharing them
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-epic
@@ -12212,6 +12218,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: table-model.ts emptyStateView joins tableWriteCapableEmptyState ('Or ask the agent: <a write it could propose here>.') with the key's text; interopProductions/Items/ItemSettings/Queues/QueueMessages/Jobs/LookupTables/LookupEntries/ItemTest/TransformsEmptyAgent are sentences (strings.ts:6635-7279) on write-capable descriptors (InteropItemList.cls:78, InteropQueueList.cls:55). 20.31's own key fixed in review.
 - 2026-10-15T10:52:19Z status=routed owner=burndown by=cr note=reword each to the bare phrase (as userListEmptyAgent) in strings.ts and EXPERIENCE.md :604; 20.31's fixed
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2453: ScreenDryRun.Handle repeats ScreenAction.Handle's body preamble (descriptor lookup, body read, closed-key loop) and its NotFound/Refuse
 - source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12773,6 +12780,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: interop-business-partner-list.page.ts onOpenEdit fills from the list row (AD-43, no refresh) and onEdit sends every field; PerformPartner writes each that differs from the fresh read. The spec's task says the dialog sends all thirteen.
 - 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=product call: send only the fields the person changed, or refuse when the row moved; spec text says send all
 - 2026-11-14T13:10:57Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:send_only_the_fields_the_person_changed
+- 2026-11-15T04:11:04Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
 
 ### DW-2555: AD-62 (10), AD-15 and AD-22 still describe business partners as read-only with READ pairs; Story 20.26's ADD/SET/REMOVEPARTNER amendments are unwritten
 - source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12917,3 +12925,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-2-backup.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: re-review iteration 2, src/OcuPilot/Test/Navigation.cls
 - 2026-11-15T09:27:31Z status=wontfix-accepted owner=21-2-backup by=adjudication note=reopen_if=the Navigation count comment is edited or another screen joins OS management
+### DW-2566: flake: context-chip.browser-spec.mjs failed 3 of 9 tests (Waiting failed: 30000ms exceeded) in CI browser shard 5/5 and passed on the unchanged rerun
+- source: cycle-log-parallel.md (Epic 22 merge, feature head e20007c42) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: run 43662142967 attempt 1 browser shard 5/5 red (6 passed, 3 failed, 162.7 s); no ui/src, ui/browser or src change since the last green feature run; attempt 2 green
+- 2026-11-15T02:26:04Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=routed with the other CI flakes to 21.10
+
+### DW-2567: flake: the component runner's fork pool crashed in CI gates (node 22.22.3) with 170 EPIPE write errors ('Worker forks emitted error'), leaving 3 of 102 files unfinished, on a planning-only commit
+- source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
+- evidence: job 132695467996 log: [vitest-pool]: Worker forks emitted error, errno -32 EPIPE; the node 24 and 26 legs passed on the same sha
+- 2026-11-15T04:44:38Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun after the run completes
