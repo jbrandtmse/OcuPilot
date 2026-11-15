@@ -222,3 +222,4 @@
 2026-11-15T22:25:06Z	Story 21.18	story_created	spawn_at=2026-11-15T22:10:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-18-global-find-and-replace.md build_status=ready-for-dev oversized=true
 2026-11-15T22:25:06Z	Story 21.18	ruling	question=agent_counts_card,strings,AD-53_scope choice=keep rejected=person-only,AD-53_edit why=counts_only;owner_scope category=veto inbox=U-63 policy=b9ff703e reversal=person-only_tool
 2026-11-15T22:25:06Z	Story 21.18	spec_validated	service_introducing=false(extends_GlobalPort) integration_ac=present adr_constrained_acs=AD-10,AD-36,AD-51,AD-53,AD-6,AD-22 depends_on=21.5 decision_dependency=none filed=DW-2613 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-15T22:25:18Z	Story 21.17	stage_spawned	stage=plan spawn_at=2026-11-15T22:25:18Z model=opus agent_name=21-17-global-export-and-import-plan-2 cycle_iteration=2

@@ -2,7 +2,7 @@
 title: 'Story 21.17: Global export and import'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -42,6 +42,10 @@ These rows show what the current code does, as evidence for the halt. They are n
 | Import a new global today | an XML file holding `<Global>` for a missing global | listed as `<name>.GBL new` and loaded (inference) | none |
 | Import over an existing global today | the same file, the global present | the reviewed `ts` is the current time, so the write differs | 409 `EXPLORER.IMPORT.CHANGED` (inference) |
 | Import a code or `%` global today | `oddDEF.GBL` or `%SYS.GBL` | not refused, because only the name is judged (inference) | none: the gap |
+
+## Re-plan basis (2026-11-15)
+
+Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its AD-10 `PROHIBITED.PROTECTEDGLOBAL` arm with an import clause, now in the spine (owner answer U-59). Re-plan this story on 21.5's declared `GlobalPort`, Globals list (export as a row action), `global` entity type and the arm, reusing Story 19.13's export and import tools, server-file handling and dialogs. DW-2608 (routed here) is this story's to fix. Any new AD entry is not covered by an owner answer: if one is needed, HALT as an intent gap naming it.
 
 </intent-contract>
 
