@@ -2017,3 +2017,7 @@
 2026-11-15T17:23:09Z	orchestrator	merge_order	first=24.2(staging_7965f70ab,reported_first) then=21.3(needs_integrate_forward;conflicts_with_24.2_staging) fallback=21.3_code_equal_if_24.2_red
 2026-11-15T17:50:57Z	Story 24.2	merged	feature=7965f70ab tip=7965f70ab route=fast_forward(staging_head,run_43738892741_success) checks=ledger_entry_check_0(2049),dups_none,sprint_validate_ok,epics_hash_unchanged upgrade_triggers=new_governance_keys(analytics.termlists.*,analytics.termlistentries.*;6;delete/remove_false)_note_for_next_cut
 2026-11-15T17:50:57Z	ci	timings_refreshed	rule=29 run=43738892741
+2026-11-15T18:29:29Z	orchestrator	ci_red_classified	run=43743358535 head=7965f70ab class=flake leg=browser_shard_1/5 spec=a11y-structural-invariants_AC5(governance_settle_protocol_timeout) evidence=same_sha_green_on_epic_branch_43738892741 action=rerun_failed
+2026-11-15T18:49:23Z	Epic 21	runner_reported	staging=fde74e282(43748408456) carries=feature_ddd1ffd7b+21.3(e83ff412a)+21.4_implement_a69923585(unreviewed) conflicts=add-only_unions;ReadTool_445;write_tools_257;strings_cap_3800->4200(decide)
+2026-11-15T18:49:23Z	Story 21.3	merge_gate_blocked	reason=staging_carries_unreviewed_21.4_code action=merge_21.3+21.4_together_at_21.4_boundary
+2026-11-15T18:56:02Z	Story 24.2	ci_green_verified	runs=43743358535 head=7965f70ab result=success gate=feature_after_story_merge(Rule_33) attempt=2
