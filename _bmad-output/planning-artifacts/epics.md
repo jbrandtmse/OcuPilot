@@ -9835,7 +9835,9 @@ So that analytics reaches parity too.
 
 **Acceptance Criteria:**
 
-- **Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (the term-list editor) and Stories 24.10 to 24.14; the rest of the criterion moved to them. Which editors "the remaining analytics editors" names is read from the catalog's analytics rows (inference).
+
+- **Given** the term-list editor
 - **When** each runs
 - **Then** it round-trips over its backing class.
 
@@ -9964,3 +9966,77 @@ So that the MCP suite's developer capabilities exist here.
 - **Given** environment promote
 - **When** it runs
 - **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
+
+### Story 24.10: Folder manager transfer and term-list import, export and copy
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the folder manager's export, import and delete, and term-list import, export and copy,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the folder manager's export, import and delete
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the term-list editor's import, export and copy
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.11: Listing groups
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the listing group manager,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the listing group manager
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.12: Quality measures
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the quality measures editor,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the quality measures editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.13: Analytics settings
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the analytics settings,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the analytics settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.14: PMML model tester and dashboard viewer
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the PMML model tester and the dashboard and pivot viewer,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the PMML model tester and the dashboard and pivot viewer
+- **When** each runs
+- **Then** it round-trips over its backing class.
