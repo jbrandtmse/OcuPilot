@@ -16,6 +16,9 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - Story 21.6: The SQL tuning track
 - Story 21.10: The remaining leaves across the six areas
 - Story 21.12: Mirroring
+- Story 21.13: DDL mappings
+- Story 21.14: NLS configured defaults and locale definitions
+- Story 21.15: Locale and table import
 
 ## Requirements & Constraints
 
@@ -25,7 +28,7 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - **Harvested bodies are not policed yet (21.2):** a body is a public class method that any code or route could call past the harvest port's gate, and the port-gate test has no row kind for a body class.
 - **Mirroring (21.12):** every write is a confirmed proposal whose destructive key ships disabled. Only removing a mirror together with its databases joins the kernel's prohibited set, beside the self-protection cases it already holds; removal that keeps the databases is an ordinary disabled-by-default write.
 - Settings that need a restart say so on each change.
-- NLS work configures the server's locales. OcuPilot's own interface stays English.
+- **SQL, locale and NLS settings (21.4, 21.13 to 21.15):** 21.4 keeps the SQL, TSQL and ISQL settings with the SQL Shell settings; 21.13 the system and user DDL mappings; 21.14 the NLS configured defaults and the locale definitions editor; 21.15 locale and table import. Each round-trips over its backing class. All four configure the server's locales and settings; OcuPilot's own interface stays English in every one.
 - The diagnose-slow-query guided workflow gains the SQL tuning screens it was written for.
 - **Harvest cautions:**
   - Take handler bodies and nothing else. The MCP suite's IPM manifest is stale and its bootstrap is driven from TypeScript.
@@ -50,7 +53,7 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - **No caller value is concatenated into SQL, and no endpoint accepts a filesystem path (AD-21).** This matters for backup, global export and import, and locale and table import: a caller names files from a fixed enum or a strict single-segment name. Secrets never reach a displayed surface or a log (AD-35).
 - **Governance (AD-22):** each tool declares `read` or `write` at definition time and passes the single call-time gate.
 - **Guided workflows (AD-66):** a workflow is a new entry in the catalog's `XData Catalog`, never a code path. Each write in it is one confirmed proposal; there is never a batch approval.
-- **Classic page keys (AD-44):** each descriptor declares the classic page class it replaces, and its privilege set unions any custom resource assigned to that page.
+- **Classic page keys (AD-44):** each descriptor declares the classic page class it replaces, and its privilege set unions any custom resource assigned to that page. The portal's own pages for the split SQL and NLS stories are `%CSP.UI.Portal.SQL.Configure.SQL`, `.TSQL` and `.ISQL` (21.4), `%CSP.UI.Portal.Config.SQLDataTypes` with `Subject=SystemDataTypes` or `UserDataTypes` (21.13), `%CSP.UI.Portal.NLSConfigDefs` and `%CSP.UI.Portal.NLS` (21.14), and `%CSP.UI.Portal.NLSImport` (21.15); confirm each against the instance before keying a descriptor to it.
 - Harvested helpers worth reusing: namespace switch and restore, the validators, `SanitizeError`, `ApplyOutputCeiling` and `SurrogateSafeCutLength`.
 
 ## UX & Interaction Patterns
@@ -61,8 +64,9 @@ Make every remaining classic-portal leaf in the instance-administration and data
 
 ## Cross-Story Dependencies
 
-- 21.1 (the seam) is on the feature branch and comes before every story that harvests a handler body: 21.2 to 21.6, 21.10 and 21.12. Epic 24's stories also harvest through it.
+- 21.1 (the seam) is on the feature branch and comes before every story that harvests a handler body: 21.2 to 21.6, 21.10 and 21.12 to 21.15. Epic 24's stories also harvest through it.
 - 21.12 was split from 21.2 and is planned right after it.
+- 21.13, 21.14 and 21.15 were split from 21.4 and are planned in that order right after it; each carries one part of 21.4's original round-trip criterion and the same English-interface criterion.
 - 21.6 extends the diagnose-slow-query workflow from Epic 20.
 - 21.10 adds leaves to the area slices from earlier epics, each in the slice that already owns its neighbors.
 - Epic 24 (interoperability, analytics, developer tools, the 28 tools and undo) runs on another slot and depends on no story this epic still holds. Epic 22's long-tail rows stay out of scope.

@@ -9225,6 +9225,8 @@ So that instance tuning is possible here.
 
 ### Story 21.4: NLS locales and SQL settings
 
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] This story keeps the SQL, TSQL and ISQL settings (with the SQL Shell settings) and the English-interface criterion. The DDL-mapping settings moved to Story 21.13, the NLS configured defaults and the locale definitions editor to Story 21.14, and locale and table import to Story 21.15, each planned next in that order; the first criterion is split verbatim across the four.
+
 As an operator,
 I want locales, collation and the SQL settings,
 So that a localized instance is configurable.
@@ -9306,6 +9308,61 @@ So that the highest-consequence operations are reachable.
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
 - **Then** every mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+
+
+### Story 21.13: DDL mappings
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose DDL-mapping criterion it carries verbatim; it is planned next after Story 21.4.
+
+As an operator,
+I want the SQL DDL mappings,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the DDL-mapping settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.14: NLS configured defaults and locale definitions
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose NLS configured-defaults and locale-definitions criterion it carries verbatim; it is planned next after Story 21.13.
+
+As an operator,
+I want the NLS configured defaults and the locale definitions,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the NLS configured defaults and the locale definitions editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.15: Locale and table import
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose locale and table import criterion it carries verbatim; it is planned next after Story 21.14.
+
+As an operator,
+I want locale and table import,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** locale and table import
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
 
 ---
 

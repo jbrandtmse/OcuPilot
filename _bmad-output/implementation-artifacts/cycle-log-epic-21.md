@@ -117,3 +117,10 @@
 2026-11-15T14:47:46Z	Story 21.3	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 filed_by_cr=DW-2589..2595 model=claude-opus-5-5
 2026-11-15T14:52:01Z	Story 21.3	fresh_check	env=recipe(rebuilt_14:48Z) tests=26_classes+config-settings,language-servers_specs result=pass order=forward,reverse
 2026-11-15T14:53:46Z	Story 21.4	stage_spawned	stage=plan spawn_at=2026-11-15T14:53:46Z model=opus agent_name=21-4-nls-locales-and-sql-settings-plan-1 cycle_iteration=1
+2026-11-15T15:04:40Z	Story 21.4	ruling	question=plan_intent_gap_too_large choice=split(21.4_sql_settings,21.13_ddl,21.14_nls_defaults_locales,21.15_import) rejected=one_story,two-way_split why=size;four_backing_shapes category=decide policy=b9ff703e split_children=4
+2026-11-15T15:04:40Z	Story 21.4	ruling	question=ISQL_and_SQL_Shell_have_no_class choice=fixed_roster_of_classic_page_globals rejected=caller-named_nodes why=classic_page_parity;AD-21 category=decide policy=b9ff703e
+2026-11-15T15:04:40Z	Story 21.4	ruling	question=cached_query_purge,settable_set choice=purge_as_classic+new_sentence;classic_page_settable_set_only rejected=no_purge,all_keys_settable why=parity;stricter_for_widening_or_self-breaking_keys category=veto inbox=U-50 policy=b9ff703e reversal=drop_purge/make_keys_settable
+2026-11-15T15:04:40Z	Epic 21	deps_hash_rerecorded	reason=split story=21.4->21.4,21.13,21.14,21.15 note=orchestrator_rerecords
+2026-11-15T15:04:40Z	Story 21.4	plan_clarification_requested	condition=intent_gap_too_large ruled=split,Q2,Q3,Q4 inbox=U-50 respawn=spec_path status_reset=draft
+2026-11-15T15:08:06Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(21.4_split) model=claude-opus-5-5 lines=72
+2026-11-15T15:08:06Z	Story 21.4	stage_spawned	stage=plan spawn_at=2026-11-15T15:08:06Z model=opus agent_name=21-4-nls-locales-and-sql-settings-plan-2 cycle_iteration=2
