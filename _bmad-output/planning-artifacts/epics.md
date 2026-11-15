@@ -9255,6 +9255,8 @@ So that the last of the Explorer's data surfaces exists.
 - **When** each runs
 - **Then** it round-trips, every write a confirmed proposal and every kill destructive by name.
 
+- DW-2607: The shipped System Explorer import judges global self-protection by name only; the protected-global arm covers imported .GBL documents too (ledger; routed by harvest 2026-11-15)
+
 ### Story 21.6: The SQL tuning track
 
 As a developer diagnosing a slow query,
@@ -9373,6 +9375,7 @@ So that a localized instance is configurable.
 - **When** the scope is stated
 - **Then** OcuPilot's interface stays English, as it does in every stage.
 
+- DW-2606: Locale export (catalog SA-27, with the classic page's file browse) joins this story (ledger; routed by owner answer U-58, 2026-11-15)
 
 ### Story 21.16: Custom locales
 
@@ -9406,6 +9409,8 @@ So that the last of the Explorer's data surfaces exists.
 - **Given** global export and import
 - **When** each runs
 - **Then** it round-trips, every write a confirmed proposal.
+
+- DW-2608: Importing over an existing global refuses as changed because its version reads as the current time (ledger; routed by harvest 2026-11-15)
 
 ### Story 21.18: Global find and replace
 

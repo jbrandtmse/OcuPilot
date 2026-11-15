@@ -13087,3 +13087,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T20:15:08Z status=decision-pending owner=burndown by=spec_gate note=moving scope between stories when no milestone defines the release is the owner's; recommend adding Export to Story 21.15
 - 2026-11-15T20:31:06Z status=decision-pending owner=burndown by=unattended note=inbox=U-58
 - 2026-11-15T20:53:54Z status=routed owner=21-15-locale-and-table-import by=owner note=U-58 A: locale Export joins Story 21.15
+
+### DW-2607: The shipped System Explorer import (Story 19.13) loads globals from an XML file and judges self-protection by document name only, so OcuPilot's code globals (oddDEF, rOBJ, ROUTINE through the package mapping) and %-globals landing in IRISSYS are not refused
+- source: spec-21-17-global-export-and-import.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: AtelierPort.Examine keeps every name xml/list answers; Prohibited.Code judges names by OwnNameStems only; 31 of 37 globals in OcuPilot's database are code globals (measured read-only on slot A); write not run (inference)
+- 2026-11-15T20:57:31Z status=routed owner=21-5-globals-and-the-data-tools by=harvest note=21.5's PROHIBITED.PROTECTEDGLOBAL arm (U-59) takes an import clause covering .GBL documents in 19.13's import
+
+### DW-2608: A System Explorer import that replaces an existing global reads its version from %RoutineMgr.GetDate, which answers the current time, so the reviewed summary changes every second and the write refuses EXPLORER.IMPORT.CHANGED
+- source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: GetDate on any existing global equals the current time (measured read-only on slot A); the refusal at the write is inferred from ImportSet's summary comparison
+- 2026-11-15T20:57:31Z status=routed owner=21-17-global-export-and-import by=harvest note=fix with 21.17's global import

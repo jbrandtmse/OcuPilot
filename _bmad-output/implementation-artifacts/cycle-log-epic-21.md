@@ -189,3 +189,7 @@
 2026-11-15T20:53:54Z	Story 21.5	story_unparked	via=inbox story_base=none note=no_code;AD_entries_at_spec_gate
 2026-11-15T20:53:54Z	Story 21.18	owner_decision	id=U-59 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: all four (Recommended)"
 2026-11-15T20:53:54Z	Story 21.18	story_unparked	via=inbox story_base=none note=no_code;AD_entries_at_spec_gate
+2026-11-15T20:54:15Z	Story 21.15	ledger_routed_planned	story=21-15-locale-and-table-import entries=1(DW-2606) excess=0 by=owner(U-58)
+2026-11-15T20:57:41Z	Story 21.17	story_created	spawn_at=2026-11-15T20:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-17-global-export-and-import.md build_status=blocked condition=depends_on_Story_21.5
+2026-11-15T20:57:41Z	Story 21.17	story_waiting	story=21-17-global-export-and-import on=21.5(same_epic) note=re-plan_after_21.5_done
+2026-11-15T20:57:41Z	Story 21.17	ledger_routed_planned	story=21-5,21-17 entries=DW-2607,DW-2608 excess=0 by=harvest
