@@ -14,7 +14,8 @@ import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
-import { DevToolState, GENERATED_PARAM, SPEC_PARAM, createDevToolRead } from './dev-tool.store';
+import { createSearchRead } from './code-search.store';
+import { DevToolState, GENERATED_PARAM, SPEC_PARAM } from './dev-tool.store';
 
 /** The screen this page renders and the store its read writes. */
 interface DevToolView {
@@ -163,7 +164,7 @@ export class DevToolPage {
   }
 
   private boundRead(screen: ScreenDeclaration) {
-    return this.state.readFor(() => createDevToolRead(this.api, screen, this.state));
+    return this.state.readFor(() => createSearchRead(this.api, screen, this.state));
   }
 
   private criterion(param: string) {

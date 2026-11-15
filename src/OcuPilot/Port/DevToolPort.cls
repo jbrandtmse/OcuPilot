@@ -12,7 +12,7 @@
 /// checked.</li>
 /// <li><method>OcuPilot.Port.AtelierPort.NamespacePairs</method>, refused 400 <code>PORT.VALIDATION</code>
 /// when it answers <code>""</code> and evaluated like step 1 otherwise.</li>
-/// <li>The endpoint and the request type, and the row cap.</li>
+/// <li>The endpoint and the request type, the row cap, and the generated choice.</li>
 /// <li>The spec's shape: each comma-separated part is one name with <code>*</code> and <code>?</code>
 /// wildcards, and spaces around a part are dropped.</li>
 /// <li>The wide-spec rule: a part that is a bare <code>*</code> is 400 <parameter>OcuPilot.Api.AtelierError.SPECWIDE</parameter>.</li>
@@ -44,7 +44,8 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 Parameter LOGSUBSYSTEM = "devtoolport";
 
 /// <p>The most documents one call reads: the largest multiple of 500, at most 5,000, for which the slower
-/// of the two bodies is projected to finish within 20 seconds.</p>
+/// of the two bodies is projected to finish within 20 seconds at its measured average cost a document. A
+/// set of larger documents takes longer.</p>
 Parameter MAXDOCUMENTS As INTEGER = 1000;
 
 /// <p>The endpoint answering the totals of a namespace's lines.</p>
@@ -84,15 +85,8 @@ Parameter HANDLERHASH = "OcuPilot.Port.Harvest.EnvSync";
 
 Parameter METHODHASH = "DocHashes";
 
-/// <p>The reasons this port's own refusals carry.</p>
-Parameter REASONNOTIMPLEMENTED = "This instance does not implement that operation.";
-
-Parameter REASONNAMESPACESHAPE = "Name the namespace the read runs in.";
-
-Parameter REASONNAMESPACEUNKNOWN = "This instance cannot name the databases that namespace reads code from.";
-
-Parameter REASONMAXROWS = "maxRows must be a whole number above zero.";
-
+/// <p>The reasons this port's own argument refusals carry. Its endpoint, namespace and row-cap refusals carry
+/// <class>OcuPilot.Port.AtelierPort</class>'s.</p>
 Parameter REASONSPECLENGTH = "Name the documents: 1 to 256 characters.";
 
 Parameter REASONSPECSHAPE = "Name documents with letters, digits, %, dots, * and ?, separated by commas.";
@@ -171,12 +165,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
             Quit
         }
         Set tNamespacePairs = ##class(OcuPilot.Port.AtelierPort).NamespacePairs(tNamespace)
         If tNamespacePairs = "" {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
             Quit
         }
         If '$ClassMethod(..GateClass(), "EvaluateRequired", tNamespacePairs, .tFailedPair) {
@@ -185,12 +179,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
 
         If ('$ListFind(..Endpoints(), pEndpoint)) || (pType '= ..#TYPELIST) {
-            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
         If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONMAXROWS, .pHttpStatus, .pFault)
             Quit
         }
         Set tMax = +tMaxText

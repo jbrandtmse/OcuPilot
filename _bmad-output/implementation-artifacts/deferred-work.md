@@ -12335,6 +12335,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Read.cls :590-:611 against :567-:589 at review; merging them rewrites the interop branch's ElseIf in Read.cls, a roster Epics 20 and 23 both extend, where this run admits add-only edits
 - 2026-10-21T03:24:26Z status=escalated owner=burndown by=cr note=Rule 2: merge into one ElseIf naming both ports once Read.cls is not contended; decide at the decision sheet
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
+- 2026-11-15T08:47:49Z occurrence=24-1-developer-tools
 
 ### DW-2474: Cubes' empty sentence says no cube is defined, and the cube tabs' that the cube no longer exists, when cubes are present but hidden from the caller by their resource
 - source: spec-20-11-the-analytics-rider.md | severity: low | fix-risk: low | footprint: in-story
@@ -12878,3 +12879,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
 - evidence: job 132695467996 log: [vitest-pool]: Worker forks emitted error, errno -32 EPIPE; the node 24 and 26 legs passed on the same sha
 - 2026-11-15T04:44:38Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun after the run completes
+
+### DW-2577: dev-tool.page.ts repeats code-search.page.ts's constructor lifecycle (bind, arrival, Refresh action, destroy) around a different table
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Store copy merged into SentSearchState in review; the page lifecycle is the same about 50 lines in both pages, and code-list/macro-lookup repeat the pattern
+- 2026-11-15T08:47:49Z status=wontfix-accepted owner=24-1-developer-tools by=cr note=reopen_if=a third page binds a SentSearchState with the same constructor
+
+### DW-2578: LocClassifier's block-comment, string-masking, #; and test-method rules have no test in this repository
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ClassifyDoc/MaskStrings/IsTestMethodName are harvested unchanged (AC2); no probe line exercises them; the sibling's own suite is not run here
+- 2026-11-15T08:47:49Z status=wontfix-accepted owner=24-1-developer-tools by=cr note=reopen_if=a change lands in src/OcuPilot/Port/Harvest/Loc*.cls
+
+### DW-2579: Registry.CriteriaProblem and the mirror still say server criteria travel on admin, mgmnt, atelier, timeline and encryption alone, though devtool (and interop, analytics with a parent) take them
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Registry.cls:1814, screen-mirror.mjs:2110 and about twelve corpus rows across ten test classes pin the sentence; a developer-only diagnostic
+- 2026-11-15T08:47:49Z status=wontfix-accepted owner=24-1-developer-tools by=cr note=reopen_if=CriteriaProblem's sentence is edited for any port, then name every port that takes criteria
+
+### DW-2580: MAXDOCUMENTS bounds a read by document count only; 1,000 large classes (about 50 ms each, measured on %CSP) take about 50 s, near the 60 s gateway
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: Task 0: %CSP.*.cls 493 documents in 24.8 s; the cap follows the spec's Task 0 formula; doc comment corrected in review to say it is an average
+- 2026-11-15T08:47:49Z status=by-design owner=24-1-developer-tools by=cr note=spec-bound: the cap's rule is Task 0's; a size or time bound is a new AC
+
+### DW-2581: The wide-spec rule refuses only a bare *; *.*, ** and ?* pass and are bounded only by the document cap
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.SpecProblem; the spec's Decided in-stage and matrix define the rule as a bare *
+- 2026-11-15T08:47:49Z status=by-design owner=24-1-developer-tools by=cr note=spec-bound: the count cap bounds every pattern; widening the rule changes the matrix
+
+### DW-2582: Over the route an unknown namespace answers NS.UNKNOWN and a long spec or bad generated READ.CRITERION before the port, so the matrix row and REASONGENERATED name the port's own answer
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: code-metrics-route.browser-spec.mjs asserts NS.UNKNOWN and READ.CRITERION; DevToolRead pins PORT.VALIDATION in process; Search's REASONSEARCHCASE has the same precedence
+- 2026-11-15T08:47:50Z status=by-design owner=24-1-developer-tools by=cr note=code right; the lead may restate the Unknown-namespace row and the Fixed-strings row under Rule 5 apply-and-report
+
+### DW-2583: DevToolRead.cls is 517 lines against the spec's under 500
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: wc -l after review patches; the class covers eleven matrix rows, AC4 and the source corpus
+- 2026-11-15T08:47:50Z status=wontfix-accepted owner=24-1-developer-tools by=cr note=reopen_if=a later story adds a test method to DevToolRead
+
+### DW-2584: Document hashes hash the internal string, not UTF-8, so a non-ASCII document's hash differs from an external sha256 of its text
+- source: spec-24-1-developer-tools.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: EnvSync.HashDoc calls SHAHash on the joined text (harvested, unchanged by AC2); measured on slot B by the edge-case layer
+- 2026-11-15T08:47:50Z status=by-design owner=24-1-developer-tools by=cr note=spec-bound by AC2; real if a person compares a hash with another tool's; 24.8 compares OcuPilot hashes only (inference)

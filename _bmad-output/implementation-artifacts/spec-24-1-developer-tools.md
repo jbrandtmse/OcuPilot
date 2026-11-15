@@ -170,6 +170,44 @@ The sibling repository is `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31`.
 - **AC3.** Given any refusal row (Wide spec, Bad shape, Too many, Gate, Unknown namespace), when the read runs, then it answers that row's status and code, and `DevToolHarvestRecorder` recorded no call.
 - **AC4 (Integration).** Given the read tools `explorer.codemetrics.read` and `explorer.documenthashes.read`, when called through tool dispatch with the matrix's first spec, then each produces the same rows the screen route answered.
 
+### Review Findings
+
+Code review 2026-11-15 (full-opus tier; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No high; no AD mismatch (AD-16 held in production code; a test helper fixed below).
+
+- [x] [Review][Patch] `[med]` Rule 31: `dev-tool.store.ts` copied `code-search.store.ts`'s state and read -- both now extend `SentSearchState` and share `createSearchRead` (fix-risk med: Search's store; its component and browser specs green) [ui/src/app/areas/system-explorer/code-search.store.ts:89]
+- [x] [Review][Patch] `[med]` The count's `includeGenerated` was untested -- generated yes and no legs against a cap of 4 [src/OcuPilot/Test/DevToolRead.cls:385]
+- [x] [Review][Patch] `[med]` The routine metrics leg skipped its checks unless one row came back -- row count asserted [src/OcuPilot/Test/DevToolRead.cls:242]
+- [x] [Review][Patch] `[low]` Routine, include and generated hashes had no independent oracle -- route spec compares them with the document API [ui/browser/code-metrics-route.browser-spec.mjs:160]
+- [x] [Review][Patch] `[low]` The generated header assertion checked the test's own helper, and the mutation line claimed it -- assertion removed, line corrected [src/OcuPilot/Test/DevToolRead.cls:258]
+- [x] [Review][Patch] `[low]` A fixture-only assertion was labeled as the production cap -- removed [src/OcuPilot/Test/DevToolRead.cls:384]
+- [x] [Review][Patch] `[low]` The gate leg accepted any READ pair -- asserts `%DB_USER:READ` [src/OcuPilot/Test/DevToolRead.cls:405]
+- [x] [Review][Patch] `[low]` The body-keys test never sent the port a key of its own -- a direct call with `allowWide` and `topN` [src/OcuPilot/Test/DevToolRead.cls:435]
+- [x] [Review][Patch] `[low]` `DevToolPort` copied four of `AtelierPort`'s reasons -- references them, as `SqlPort` does [src/OcuPilot/Port/DevToolPort.cls:88]
+- [x] [Review][Patch] `[low]` The header's ordered list omitted the generated check, and `MAXDOCUMENTS` read as a bound for any documents -- both doc comments corrected [src/OcuPilot/Port/DevToolPort.cls:15]
+- [x] [Review][Patch] `[low]` `Reset`'s comment misstated it, and `GeneratedLines` restored the namespace after an empty `Catch` -- comment corrected, restore first in `Catch` [src/OcuPilot/Test/DevToolRead.cls:46]
+- [x] [Review][Patch] `[low]` Two blank lines in a row under `## Verification` -- one removed
+- [x] [Review][Defer] `[med]` The devtool branch of `Screen.Read.Execute` repeats the atelier branch's shape -- deferred: occurrence on DW-2473 (routed)
+- [x] [Review][Defer] `[low]` `dev-tool.page.ts` repeats Search's page lifecycle -- deferred: DW-2577, wontfix-accepted
+- [x] [Review][Defer] `[low]` `LocClassifier`'s comment and test-method rules have no test here -- deferred: DW-2578, wontfix-accepted
+- [x] [Review][Defer] `[low]` The criteria refusal sentence omits devtool -- deferred: DW-2579, wontfix-accepted
+- [x] [Review][Defer] `[low]` The cap counts documents, not their size -- deferred: DW-2580, by-design
+- [x] [Review][Defer] `[low]` The wide rule refuses only a bare `*` -- deferred: DW-2581, by-design
+- [x] [Review][Defer] `[low]` Over the route, `NS.UNKNOWN` and `READ.CRITERION` answer before the port's `PORT.VALIDATION`; the code is right, the matrix row names the port's answer -- deferred: DW-2582, by-design
+- [x] [Review][Defer] `[low]` `DevToolRead` is 517 lines -- deferred: DW-2583, wontfix-accepted
+- [x] [Review][Defer] `[low]` Hashes are over the internal string, not UTF-8 -- deferred: DW-2584, by-design
+
+Rejected:
+
+- `false` The devtool corpus lacks a `rows` case -- the devtool arm refuses exactly `rowGet`, `forEach`, `query` and `parts`, all four in the corpus.
+- `low` The 501 and `maxRows` refusals are untested -- `Screen.Read` validates the endpoint and always sends a number, so neither is reachable.
+- `low` The `Fail` path, `LogFault` and a harvest failure are untested -- needs a failure seam in the recorder; no matrix row names it.
+- `low` A document over the string limit fails the whole hash read -- the harvested body, at about 3.6 MB of text.
+- `low` A document deleted between the count and the scan fails the read -- a race no screen drives.
+- `low` `HashRows` reports no truncation to a direct caller -- its one caller asks for `maxRows` + 1.
+- `low` Two reads answering out of order can show the wrong refusal -- Search's existing behavior; a fix adds sequencing.
+- `low` The page spec's negative checks settle on timers -- the stub answers inside the first pass.
+- `low` The Auto Run Result and the Design Notes' "the client page is the generic one" predate QA and this review -- spec sections outside Verification, for the lead.
+
 ## Spec Change Log
 
 - 2026-11-15, runner spec gate (unattended rulings, veto U-44): the `Proposed split` is applied in `epics.md` (24.1 keeps its title and key; Stories 24.5-24.9 are inserted after 24.4, run after it); the `Proposed strings` are kept as written; `DevToolPort` is built under AD-29's Rule without amending its Binds, and the `Proposed spine amendment` lines and AD-66's "promote, Story 24.1" -> 24.9 wait for the owner's attended architecture update. Contended files checked on 2026-11-15: `origin/OCU-1-epic21` has changed none of them; the runner re-checks before implement and resolves roster lines as plain unions at integrate-forward. The escalation for 24.8 and 24.9 is raised when those stories are planned.
@@ -244,7 +282,7 @@ Why the library is inherited and not called: OcuPilot classes may be invisible i
 
 - The gate reuses `AtelierPort.Pairs()` and `NamespacePairs()`.
 - The bodies run through `HarvestPort`.
-- The descriptors follow `ExplorerSearch`, and the client page is the generic one.
+- The descriptors follow `ExplorerSearch`. The client page is a bespoke page (see Task 0, "The generic list page cannot show a refusal's reason"), and its store extends Search's `SentSearchState` (code review).
 - The count query copies the bodies' six-line `StudioOpenDialog` enumeration. Reason: the body cannot be edited and must not run before the cap.
 
 **Integration ACs:** in-story consumers are the two read tools and the two screens (AC4 and the browser spec).
@@ -372,10 +410,19 @@ Each was applied on `ocupilot-b-ci`, the tree recompiled, the red observed, and 
 - AC3, mutation: move the wide-spec check after the `HarvestPortClass()` call. Red, observed: `TestAWideSpecIsRefusedBeforeAnyBody`'s no-call assertion, on all four legs. It needs the cap lifted and the recorder dry (`SetDry`), because with the real cap a whole-namespace spec is refused as too many first.
 - AC4, mutation: point the code-metrics descriptor's source endpoint at `DocumentHashes`. Red, observed: `TestTheReadToolsAnswerTheScreenRows` (the row's own field) with four other tests.
 - Source refusals, mutation: drop the devtool arm from `Registry.ReadProblem`, and separately from `readProblem` in `screen-mirror.mjs`. Red, observed: `TestTheDevtoolSourceRefusals`, and `Story 24.1: the devtool source refusals agree with the instance corpus`.
-- Generated header, mutation: drop the `Generated` attribute from `Kernel.Utils.DocumentLines`. Red, observed: `TestGeneratedRoutinesFollowTheChoice`'s header and hash legs.
+- Generated header, mutation: drop the `Generated` attribute from `Kernel.Utils.DocumentLines`. Red, observed: `TestGeneratedRoutinesFollowTheChoice`'s hash leg for both generated rows (run 787), and the route spec's routines leg (the `.int` hash against the document API).
+- Generated count (review), mutation: `CountDocuments` passes `includeGenerated` 0 always. Red, observed: `TestTooManyDocumentsAreRefusedBeforeAnyBody`'s generated-yes leg (run 787). Reverted, md5 equal, `DevToolRead` 15 of 15 (run 788), route spec 4 of 4.
 - Cap sentence, mutation: set `MAXDOCUMENTS` to 1500. Red, observed: `TestTooManyDocumentsAreRefusedBeforeAnyBody`'s reason-names-the-cap leg.
 - Retry and clearing, mutation: make `onRetry` do nothing. Red, observed: `clears a refusal when the next search is answered, and Retry runs the refused search again`.
 
+### QA additions (QA)
+
+- `(QA)` `ui/browser/code-metrics-route.browser-spec.mjs` -- new. Over the shipped read route on `ocupilot-b-ci`, with the shipped port, gate and cap and no in-process seam: the matrix rows Metrics, Hashes (compared with a SHA-256 over the lines the Atelier document API serves), Routines, Generated, No match and Over the cap; every refusal row (wide, nine bad shapes, 257 characters, `generated` `abc`, the shipped cap of 1,000 with `detail.count` and `detail.max`, unknown namespace); and real principals (a `%Developer` principal reads both screens, an administrator without `%Development:USE` is 403 `AUTH.NOPRIVILEGE` naming it). Run: `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/code-metrics-route.browser-spec.mjs`, 4 of 4.
+- mutation: `Kernel.Utils.DocumentLines` drops a class's last line -> `AC1: over the route, the probe package answers one metrics row and one hash per class` (Lines 39 against 42) and the Gate test's developer leg.
+- mutation: `Screen.Gate.EvaluatePairs` never fails a pair -> `Gate: a %Developer principal reads both screens, and an administrator without %Development:USE is refused` (200 against 403).
+- mutation: `DevToolPort.MAXDOCUMENTS` 1000 -> 100000 -> `AC3: over the route, every refusal row answers its status and code` (`%*.cls` is read and the route answers 504 after 60 s, against 400).
+- Each mutation was applied on `ocupilot-b-ci`, the tree reloaded, the red observed, the file restored with `git checkout` and its md5 compared with the one taken before; the reverted tree read 4 of 4 and `DevToolRead` 15 of 15 (run 785).
+- Observed on the route, not changed: an unknown namespace answers `NS.UNKNOWN` (the route's scope check) and a 257-character spec or `generated` other than `yes` or `no` answers `READ.CRITERION` (the screen's criterion check), before the port's `PORT.VALIDATION` that the matrix and `DevToolRead` pin in process.
 
 ## Auto Run Result
 

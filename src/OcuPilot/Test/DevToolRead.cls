@@ -43,7 +43,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Forget the fixtures, remove the probe documents and make them again, so each test starts on the same set.</p>
+/// <p>Forget the fixtures and remove the probe documents, so each test starts with none; a test makes them itself.</p>
 Method Reset()
 {
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
@@ -145,9 +145,11 @@ ClassMethod GeneratedLines(pName As %String, Output pLines)
             }
         }
         Set tRoutine = ""
+        Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pLines(0) = 0
     }
-    Set $NAMESPACE = tOrigNS
 }
 
 /// <p>The SHA-256 of <var>pLines</var>' text, each line followed by a line feed, in hex, as <code>$System.Encryption.ToHex</code> writes it: the hash the story pins.</p>
@@ -237,6 +239,7 @@ Method TestRoutinesAndIncludeFilesAreListedAndCounted()
     Set tTotals("documents") = 2
     Set tSC = ..Run(..#METRICS, tSpec, , , .tMetrics, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the metrics read answers")
+    Do $$$AssertEquals(tMetrics.rows.%Size(), 1, "one metrics row")
     If tMetrics.rows.%Size() = 1 Do ..AssertMetricsRow(tMetrics.rows.%Get(0), .tTotals, "routines")
 }
 
@@ -253,7 +256,6 @@ Method TestGeneratedRoutinesFollowTheChoice()
     Set tIterator = tYes.rows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Do ..GeneratedLines(tRow.%Get("Document"), .tLines)
-        Do $$$AssertEquals(tLines(1), "ROUTINE " _ $Piece(tRow.%Get("Document"), ".", 1, 3) _ " [Type=INT,Generated]", tRow.%Get("Document") _ ": the header the instance gives a generated routine")
         Do $$$AssertEquals(tRow.%Get("Hash"), ..HashOf(.tLines), tRow.%Get("Document") _ ": hashed over that header and its lines")
     }
     Set tCall = $ClassMethod(..#RECORDER, "CallAt", 1)
@@ -380,7 +382,11 @@ Method TestTooManyDocumentsAreRefusedBeforeAnyBody()
     Set tSC = ..Run(..#HASHES, "OcuProbe241.*.cls", , , .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "at a cap equal to the count the read answers")
     Do $$$AssertEquals(tResult.rows.%Size(), 3, "every row")
-    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "MaxDocuments"), 3, "and the production cap is the port's own")
+    Do $ClassMethod(..#FIXTURE, "SetMaxDocuments", 4)
+    Set tSC = ..Run(..#HASHES, "OcuProbe241.*.cls,OcuProbe241.*.int", "yes", , .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.detail.count, 1: ""), "400 5", "generated yes counts the two generated routines against the cap")
+    Set tSC = ..Run(..#HASHES, "OcuProbe241.*.cls,OcuProbe241.*.int", "no", , .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tResult.rows.%Size(), 3, "and generated no counts the classes alone")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Port.DevToolPort", "MaxDocuments"), $Parameter("OcuPilot.Port.DevToolPort", "MAXDOCUMENTS"), "the shipped port's cap is its MAXDOCUMENTS")
 }
 
@@ -396,7 +402,7 @@ Method TestAnUnprivilegedCallerIsRefusedBeforeAnyBody()
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Development", "USE")
     Do ..Refusal(..#HASHES, "OcuProbe241.*.cls")
     Do ..AssertRefused(403, ##class(OcuPilot.Kernel.Denial).Code(), "the code databases' READ not held")
-    Do $$$AssertTrue(i%Fault.detail.failedPair [ ":READ", "naming a READ pair: " _ i%Fault.detail.failedPair)
+    Do $$$AssertEquals(i%Fault.detail.failedPair, "%DB_USER:READ", "naming READ on the namespace's code database")
 }
 
 /// <p>Matrix, Unknown namespace: a scope the instance does not hold is 400 <code>PORT.VALIDATION</code>, before any body
@@ -406,7 +412,7 @@ Method TestAnUnknownNamespaceIsRefusedBeforeAnyBody()
     Do ##class(OcuPilot.Kernel.Scope).Set("NOSUCH241")
     Do ..Refusal(..#METRICS, "OcuProbe241.*.cls")
     Do ..AssertRefused(400, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "a namespace the instance does not hold")
-    Do $$$AssertEquals(i%Fault.%Get("reason"), ##class(OcuPilot.Port.DevToolPort).#REASONNAMESPACEUNKNOWN, "with the written reason")
+    Do $$$AssertEquals(i%Fault.%Get("reason"), ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, "with the written reason")
 }
 
 /// <p>The port builds the body's query itself: <code>spec</code> without the spaces around its parts,
@@ -424,6 +430,10 @@ Method TestTheBodyIsSentOnlyTheKeysThePortBuilds()
     Set tSecond = $ClassMethod(..#RECORDER, "CallAt", 2)
     Do $$$AssertEquals(tSecond.handler _ "." _ tSecond.method, "OcuPilot.Port.Harvest.EnvSync.DocHashes", "Document hashes runs the hasher")
     Do $$$AssertEquals(tSecond.query.%ToJSON(), "{""includeGenerated"":""0"",""namespace"":""USER"",""spec"":""OcuProbe241.*.cls""}", "with three keys, and no allowWide")
+    Kill tCriteria
+    Set tCriteria("spec") = "OcuProbe241.*.cls", tCriteria("allowWide") = 1, tCriteria("topN") = 50
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Invoke", "DocumentHashes", "LIST", .tCriteria, "", .tRows, .tHttp, .tFault), "a direct call answers")
+    Do $$$AssertEquals($ClassMethod(..#RECORDER, "CallAt", 3).query.%ToJSON(), tSecond.query.%ToJSON(), "and a key the caller adds is not sent")
 }
 
 /// <p>Integration (AC4): <code>explorer.codemetrics.read</code> and <code>explorer.documenthashes.read</code>, dispatched

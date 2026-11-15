@@ -27,3 +27,9 @@
 2026-11-15T08:21:23Z	Story 24.1	stage_spawned	stage=qa spawn_at=2026-11-15T08:21:23Z model=sonnet agent_name=24-1-developer-tools-qa-1 cycle_iteration=1
 2026-11-15T08:30:44Z	Story 24.1	qa_complete	spawn_at=2026-11-15T08:21:00Z model=sonnet tests=ui/browser/code-metrics-route.browser-spec.mjs tests_added=1 mutations_demonstrated=3 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-11-15T08:30:44Z	Story 24.1	stage_spawned	stage=code-review spawn_at=2026-11-15T08:30:44Z model=opus agent_name=24-1-developer-tools-code-review-1 cycle_iteration=1
+2026-11-15T08:52:41Z	Story 24.1	cr_complete	spawn_at=2026-11-15T08:31:00Z model=opus resolved=12 fixed_at_source=12 by_design=4 wontfix_theoretical=0 wontfix_accepted=4 routed=0 escalated=0 decision_pending=0 occurrence=DW-2473 deferred=9 dismissed=9 high=0 med=4 low=26 rows=9 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
+2026-11-15T08:52:41Z	Story 24.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2577..DW-2584 model=claude-opus-5-5
+2026-11-15T08:52:41Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.1 run=20261114T1656Z-21,22
+2026-11-15T08:53:19Z	Epic 24	throwaway_up	project=ocupilot-b-ci health=healthy reason=fresh_check_24.1 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-15T08:56:47Z	Story 24.1	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50_on_ocupilot-b-ci+GET_screens/explorer.codemetrics/read_one_row model=claude-opus-5-5
+2026-11-15T08:56:47Z	Story 24.1	fresh_check	env=recipe tests=14_classes+3_specs result=pass order=forward,reverse classes_tests=173 browser=12/12_together,6+4+2_reverse_singly
