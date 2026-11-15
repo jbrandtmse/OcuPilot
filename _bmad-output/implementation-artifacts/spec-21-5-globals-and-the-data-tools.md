@@ -2,7 +2,7 @@
 title: 'Story 21.5: Globals and the data tools'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -59,6 +59,12 @@ deferred: []
 | Code global | a write to a `CODEGLOBALS` member, resolving to the install namespace's routines database, that is the whole global or reaches an own-name subscript | refused | 409 `PROHIBITED.OCUPILOTCODE` |
 | No privilege | caller lacks WRITE on the global's database | vendor `<PROTECT>` | 403 `PORT.ACCESSDENIED` |
 | Key off | default baseline, agent's global kill | governance refusal | as every key-off write |
+
+## Runner rulings and owner answer (2026-11-15)
+
+- **Split (decide):** this story keeps list, view, edit and kill; export and import are Story 21.17 (which reuses this story's `GlobalPort`, Globals list and `global` entity type, so it is planned after this one) and find and replace Story 21.18 (`epics.md`).
+- **Owner answer U-59, quoted: "A: all four (Recommended)".** The three AD records this plan proposed are allowed: the AD-10 `PROHIBITED.PROTECTEDGLOBAL` arm, the AD-36 record (the node page is screen-only) and the AD-53 record (node save and delete are person-only and unadvertised). The runner writes them into the spine at this story's spec gate.
+- **DW-2607 (routed here):** the protected-global arm also covers `.GBL` documents loaded by the shipped System Explorer import (Story 19.13), whose self-protection judges names only; add that import clause to the arm's wording and a test that an import of a code global or a `%`-global is refused.
 
 </intent-contract>
 
