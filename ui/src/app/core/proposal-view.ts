@@ -402,6 +402,9 @@ export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE'
 /** Story 21.2: a backup run's and a freeze's cards; each is one published sentence. */
 export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
+/** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
+export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
@@ -585,6 +588,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 21.2: a backup run's note and a freeze's warning, each published once.
   if (code === CONSEQUENCE_BACKUPRUN) return STRINGS.backupRunNote;
   if (code === CONSEQUENCE_BACKUPFREEZE) return STRINGS.backupFreezeConsequence;
+  // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
+  if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSTERMLISTREMOVE) return STRINGS.analyticsTermListRemoveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

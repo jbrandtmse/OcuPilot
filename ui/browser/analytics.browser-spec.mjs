@@ -110,7 +110,10 @@ function allRows(page) {
   return page.evaluate(
     (rowSelector) =>
       Array.from(document.querySelectorAll(rowSelector)).map((row) =>
-        Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim().replace(/^(\d{1,3}(,\d{3})+)$/, (digits) => digits.replace(/,/g, '')))
+        // The cell that holds a row's action menu (Story 24.2's term list screens carry actions) is no column of the data.
+        Array.from(row.querySelectorAll('[role="gridcell"]'))
+          .filter((cell) => cell.querySelector('.ocu-data-table-trigger') === null)
+          .map((cell) => cell.textContent.trim().replace(/^(\d{1,3}(,\d{3})+)$/, (digits) => digits.replace(/,/g, '')))
       ),
     ROW_SELECTOR
   );

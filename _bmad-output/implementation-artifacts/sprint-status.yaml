@@ -426,7 +426,7 @@ development_status:
 
   epic-24: in-progress
   24-1-developer-tools: done
-  24-2-the-analytics-editors: ready-for-dev
+  24-2-the-analytics-editors: done
   24-3-interoperability-parity: backlog
   24-4-the-agent-gains-the-harvested-tools-and-undo: backlog
   24-5-unit-test-runner-and-work-queue-viewer: backlog

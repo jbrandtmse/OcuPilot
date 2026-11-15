@@ -133,8 +133,10 @@ Method TestTheSevenDeclarationsRegister()
         Do $$$AssertEquals($Select($IsObject(tDeclaration.%Get("tab")): tDeclaration.tab.group _ "|" _ tDeclaration.tab.position, 1: ""), $Select($Piece(tRow, "|", 13) = "": "", 1: "analytics/cubes/document|" _ $Piece(tRow, "|", 13)), tClass _ ": its place in the cube tab group")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
         Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), tDeclaration.context.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
-        Do $$$AssertEquals(tDeclaration.primaryAction.id _ "|" _ tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.refreshes _ "|" _ tDeclaration.classicLinkExemption.exempt, "|0|0|0", tClass _ ": no action, no refresh and no classic-link exemption")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "tableReadOnlyEmptyNext|", tClass _ ": the read-only empty state")
+        ; Story 24.2: the two term list screens carry the editor's New term list or Add entry and two row actions, and invite the agent when empty.
+        Set tTermListScreen = ($Piece(tRow, "|", 1) = "AnalyticsTermListList") || ($Piece(tRow, "|", 1) = "AnalyticsTermListEntryList")
+        Do $$$AssertEquals(tDeclaration.primaryAction.id _ "|" _ tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.refreshes _ "|" _ tDeclaration.classicLinkExemption.exempt, $Select(tTermListScreen: "add|2", 1: "|0") _ "|0|0", tClass _ ": its actions, no refresh and no classic-link exemption")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, $Select(tTermListScreen: "|" _ $Select($Piece(tRow, "|", 1) = "AnalyticsTermListList": "analyticsTermListsEmptyAgent", 1: "analyticsTermListEntriesEmptyAgent"), 1: "tableReadOnlyEmptyNext|"), tClass _ ": its empty state")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read passes the registry")
         If $Piece(tRow, "|", 1) = "AnalyticsCubeRelationshipsTab" {
             Do $$$AssertEquals(tDeclaration.rowTarget.%ToJSON(), "{""route"":""analytics/cubes/document"",""field"":""RelatedCube""}", "a Relationships row opens the related cube's Measures tab")

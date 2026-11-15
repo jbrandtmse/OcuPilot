@@ -46,6 +46,9 @@ Parameter STATEFIELD = "Facts";
 /// <p>The classic page whose Build and Synchronize this tool performs (AD-44).</p>
 Parameter CLASSICPAGES = "%DeepSee.UI.CubeRegistry";
 
+/// <p>The global whose database the write needs WRITE on: the cube facts here, the term lists for the term list editor's tools.</p>
+Parameter DESTINATIONGLOBAL = "^DeepSee.Fact";
+
 /// <p>The consequence code the proposal carries; the client maps it to its published sentence.</p>
 Parameter CONSEQUENCECODE;
 
@@ -115,7 +118,7 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Set tReadOnly = 0
     Set tMounted = 0
     Set tRoutines = ""
-    If '##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase(tNamespace, ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL, .tFacts, .tReadOnly, .tMounted) || (tFacts = "") {
+    If '##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase(tNamespace, ..#DESTINATIONGLOBAL, .tFacts, .tReadOnly, .tMounted) || (tFacts = "") {
         Set pResolved = 0
         Quit ""
     }

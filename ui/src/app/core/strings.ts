@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:648 */
+  /** EXPERIENCE.md:649 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -7852,6 +7852,62 @@ export const STRINGS = {
   analyticsCubeManagerPrompt3: 'When was each cube last built or updated?',
   /** EXPERIENCE.md:604 */
   analyticsCubeManagerEmptyAgent: 'Ask the agent why no cube is listed here.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListNewAction: 'New term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEditAction: 'Edit term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListDeleteAction: 'Delete term list',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryChangeAction: 'Change entry',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryRemoveAction: 'Remove entry',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEditTitle: 'Edit term list <name>',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryAddTitle: 'Add an entry to <name>',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryChangeTitle: 'Change entry <key>',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListName: 'Term list name',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListPattern: 'Pattern',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListSubjectArea: 'Subject area',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListHideValue: 'Hide value',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListFieldsHelp: 'Fields name the extra columns each entry can hold besides its value.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListTaken: 'This namespace already holds a term list with that name. Names are compared without regard to case.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListEntryTaken: 'This term list already holds an entry with that key.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListAbsent: 'This term list no longer exists.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListName: 'A term list name is 1 to 255 characters with no control character, within the length the instance can store.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListKey: 'An entry key is 1 to 255 characters with no control character and no ^, within the length the instance can store.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListField: 'A field name is 1 to 255 characters with no control character and no ^. It is not Value, and no two fields share a name. A term list has at most 50 fields.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListNoField: 'This term list has no field of that name.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListFieldInUse: 'Some entries hold a value for this field. Clear those values first, then remove the field.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListValue: 'A caption, pattern or subject area is at most 255 characters, and a description or value at most 32,000.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListReadonly: 'The database that holds this namespace\'s term lists is read-only, so nothing was written.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListNotJournaled: 'Term lists can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace\'s term lists.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListDeleteConsequence: 'Deleting this term list removes it and all its entries, and anything that uses it can no longer read them. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListRemoveConsequence: 'Removing this entry cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListsEmptyAgent: 'create a term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEntriesEmptyAgent: 'add an entry to this term list',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

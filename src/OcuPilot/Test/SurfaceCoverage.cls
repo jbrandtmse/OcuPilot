@@ -274,6 +274,12 @@ XData Coverage
 <tool name="osmgmt.backuptasks.thaw" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
 <tool name="osmgmt.backupdatabases.add" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>
 <tool name="osmgmt.backupdatabases.remove" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>
+<tool name="analytics.termlists.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestACreateMakesTheListAndEveryPropertyReadsBack"/>
+<tool name="analytics.termlists.update" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAChangeMovesOnlyTheHeader"/>
+<tool name="analytics.termlists.delete" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
+<tool name="analytics.termlistentries.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
+<tool name="analytics.termlistentries.set" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
+<tool name="analytics.termlistentries.remove" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

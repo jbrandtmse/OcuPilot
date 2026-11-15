@@ -189,6 +189,18 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
+  // Story 24.2: Term lists' New term list opens the dialog that creates a list, its Edit term list the dialog that changes one and its Delete removes one;
+  // a term list's entries' Add entry opens the dialog that adds one, its Change entry the dialog that changes one and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': {
+    add: STRINGS.analyticsTermListNewAction,
+    update: STRINGS.analyticsTermListEditAction,
+    delete: STRINGS.analyticsTermListDeleteAction,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {
+    add: STRINGS.webAppPctAccessAdd,
+    set: STRINGS.analyticsEntryChangeAction,
+    remove: STRINGS.analyticsEntryRemoveAction,
+  },
   // Story 20.6: an item's Test tab's Send test opens the dialog that builds and sends one test request.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': { test: STRINGS.interopItemTestAction },
   // Story 20.27: Data transformations' Test opens the dialog that runs the selected transformation once on a pasted message.
