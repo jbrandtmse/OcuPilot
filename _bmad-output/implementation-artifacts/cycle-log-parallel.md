@@ -1996,3 +1996,11 @@
 2026-11-15T09:33:54Z	orchestrator	deps_hash_rerecorded	reason=split stories=24.1->24.1+24.5..24.9(veto_U-44),24.2->24.2+24.10..24.14(veto_U-46) hash=92cde470
 2026-11-15T09:33:54Z	ci	timings_refreshed	rule=29 run=43696951376
 2026-11-15T09:33:54Z	Epic 24	ruling	clarification=24.2_contended_rosters answer=A(add-only_unions_resolved_at_integrate-forward,counts_re-derived) basis=gates.merge_conflicts_resolve+Rule_22 class=decide
+2026-11-15T10:14:26Z	Epic 21	runner_reported	kind=story_red story=21.2 head=32dc20d7c run=43699492613 reds=instance_4/8(BackupWrite_freeze_race,DW-2575)+browser_4/5(language-servers_AC5_shared_surface) class=story rework=3_of_3 next=21.3(ready-for-dev,veto_U-47) unpushed=e0688197c(integrate_forward_1cd2bd663)
+2026-11-15T10:22:11Z	Story 24.1	ci_green_verified	runs=43699768641 head=06dad46b8 result=success gate=feature_after_story_merge(Rule_33)
+2026-11-15T12:02:51Z	Epic 21	runner_reported	story=21.2 head=d34907395 runs=43708708723(success) rework=3(cap) ledger=DW-2560_resolved;DW-2568..2571,2573,2576,2586_wontfix;DW-2572,2574,2575,2585,2587_routed_burndown vetoes=U-42,U-47
+2026-11-15T12:02:51Z	Story 21.2	merge_gate_blocked	reason=feature_moved_by_code(24.1,e820aac45) route=none(no_ff,merge_conflicts) action=runner_integrates_forward_and_reports_staging_head
+2026-11-15T12:22:06Z	Epic 21	runner_reported	staging=df4cf73f0(43713431335_registered) carries=21.2(d34907395)+feature_e820aac45 conflicts=add-only_unions(PortGate_ROSTER,ReadTool_425,ToolRoundTrip_REFUSEEMPTY,descriptor_tests,screen-mirror,tracker) ruling=check-objectscript_rule16_HARVEST_CALLERS+DevToolPort(decide)
+2026-11-15T12:59:32Z	orchestrator	ci_red_classified	run=43713431335 head=df4cf73f0 class=flake leg=gates(node_22.22.3) cause=client_suite_hang_to_job_timeout ledger=DW-2567(occurrence_2) action=rerun_failed
+2026-11-15T13:10:50Z	Story 21.2	merged	feature=df4cf73f0 tip=df4cf73f0 route=fast_forward(staging_head,run_43713431335_success_attempt_2) checks=ledger_entry_check_0(2047),dups_none,sprint_validate_ok,epics_hash_unchanged upgrade_triggers=new_governance_keys(osmgmt.backupdatabases.add,osmgmt.backupdatabases.remove,osmgmt.backuptasks.freeze,osmgmt.backuptasks.run,osmgmt.backuptasks.thaw)_note_for_next_cut feature_ci=43717597429(pending)
+2026-11-15T13:10:50Z	ci	timings_refreshed	rule=29 run=43713431335
