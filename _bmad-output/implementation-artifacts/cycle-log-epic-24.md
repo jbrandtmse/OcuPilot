@@ -76,3 +76,11 @@
 2026-11-15T16:45:43Z	Story 24.3	merged_tree_checked	throwaway=rebuilt BackupWriteGate,BackupWrite=11/11 smoke=PASSED
 2026-11-15T16:48:24Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
 2026-11-15T16:48:24Z	Story 24.3	stage_spawned	stage=plan spawn_at=2026-11-15T16:48:24Z model=opus agent_name=24-3-interoperability-parity-plan-1 cycle_iteration=1
+2026-11-15T17:06:33Z	Story 24.2	ci_resolved	story=24.2 sha=fcaa50bf7 runs=43735531222 failed=none via=none result=success resolved_at=next_plan first_ci=success
+2026-11-15T17:06:33Z	Story 24.3	integrate_forward_pushed	merge=7965f70ab ci=pending runs=43738892741 reported_to=main
+2026-11-15T17:06:33Z	Story 24.3	story_created	spawn_at=2026-11-15T16:50:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-3-interoperability-parity.md build_status=ready-for-dev spec_bytes=48000 epic_context=reused warnings=oversized,multiple-goals
+2026-11-15T17:06:33Z	Story 24.3	ruling	question=story_size choice=split_into_24.3_and_24.15-24.19 rejected=one_story why=twenty_surfaces category=veto reversal=re-plan inbox=U-54 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-15T17:06:33Z	Story 24.3	ruling	question=strings_and_keys choice=keep_strings,two_keys_enabled rejected=none why=non_destructive_AD-22 category=veto inbox=U-54 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-15T17:06:33Z	Story 24.3	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-62,AD-63,AD-15,AD-22,AD-6 decision_dependency=none sections_created=none owned_ledger=DW-2361,DW-2378,DW-2379,DW-2388,DW-2421,DW-2433,DW-2452,DW-2554 addressed=8 declined=0 mutates_shared_runtime=true throwaway=ocupilot-b-ci implement_waits=orchestrator_ruling_contended model=claude-opus-5-5
+2026-11-15T17:06:33Z	Epic 24	split_applied	story=24-3-interoperability-parity children=24-15,24-16,24-17,24-18,24-19 split_children_total=6 limit=6 deps_hash=needs_rerecord_reason_split
+2026-11-15T17:06:33Z	Story 24.3	clarification_requested	stage=spec_gate to=orchestrator question=more_than_append_edits_in_epic21_files files=Screen/Read.cls,Kernel/Proposal/Prohibited.cls,EXPERIENCE.md_row_604,strings.ts_interop_EmptyAgent

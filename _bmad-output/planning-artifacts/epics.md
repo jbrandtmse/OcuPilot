@@ -9851,13 +9851,11 @@ So that the area reaches parity.
 
 **Acceptance Criteria:**
 
-- **Given** credentials, default settings, purge and its settings, auto-start, managed alerts, rule and business-process logs, suspended messages, export, schedules, PEX, the registries, record maps, HL7 authoring, interface maps and references, port authority, the system monitor, the archive manager, workflow, deployment and shutdown groups
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (auto-start and shutdown groups, plus the cleanup entries below) and Stories 24.15 to 24.19; the first criterion's list is cut in its own order and the deployment criterion moved word for word to 24.19.
+
+- **Given** auto-start and shutdown groups
 - **When** each runs
 - **Then** it round-trips over its backing class.
-
-- **Given** deployment
-- **When** it runs
-- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
 - DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-... (ledger; routed by range-end sweep 2026-11-14)
 - DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted (ledger; routed by range-end sweep 2026-11-14)
 - DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after ... (ledger; routed by range-end sweep 2026-11-14)
@@ -10040,3 +10038,77 @@ So that analytics reaches parity too.
 - **Given** the remaining analytics editors: the PMML model tester and the dashboard and pivot viewer
 - **When** each runs
 - **Then** it round-trips over its backing class.
+
+### Story 24.15: Credentials, default settings and schedules
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want credentials, default settings and schedules,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** credentials, default settings and schedules
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.16: Purge, suspended messages, export and the archive manager
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want purge and its settings, suspended messages, export and the archive manager,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** purge and its settings, suspended messages, export and the archive manager
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.17: Managed alerts, logs, the system monitor and workflow
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want managed alerts, rule and business-process logs, the system monitor and workflow,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** managed alerts, rule and business-process logs, the system monitor and workflow
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.18: PEX, record maps and HL7 authoring
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want PEX, record maps and HL7 authoring,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** PEX, record maps and HL7 authoring
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.19: The registries, interface maps and references, port authority and deployment
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want the registries, interface maps and references, port authority and deployment,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** the registries, interface maps and references, port authority and deployment
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** deployment
+- **When** it runs
+- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
