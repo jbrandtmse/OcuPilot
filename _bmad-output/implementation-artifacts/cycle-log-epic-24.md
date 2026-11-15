@@ -71,3 +71,6 @@
 2026-11-15T16:27:19Z	Story 24.2	story_cycle	plan_to_commit_min=430 implement_passes=2 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-15T16:27:58Z	Story 24.3	integrate_forward_started	feature=cc0cf1324 conflicts=14_code_files+sprint-status(resolved) resolver=opus_subagent ruling=orchestrator_A_union
 2026-11-15T16:40:49Z	Story 24.3	integrate_forward_resolved	feature=cc0cf1324 conflicts_resolved=sprint-status.yaml,ci-throwaway.sh,Prohibited.cls,ClassicPageGate,Governance,GovernanceBaseline,MappingDescriptor,Test/Prohibited,ReadTool,SurfaceCoverage,ToolDispatch,ToolRoundTrip,ToolWrite,proposal-view.ts,screen-action-handler.ts method=union counts_rederived=yes count_mutations_red=10 verification=27_classes_green,test:tools,test:components,build,check-objectscript pending=BackupWrite,BackupWriteGate_need_merged_throwaway
+2026-11-15T16:43:34Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=merged_tree_backup_arming run=20261114T1656Z-21,22
+2026-11-15T16:44:13Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=merged_tree run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-15T16:45:43Z	Story 24.3	merged_tree_checked	throwaway=rebuilt BackupWriteGate,BackupWrite=11/11 smoke=PASSED
