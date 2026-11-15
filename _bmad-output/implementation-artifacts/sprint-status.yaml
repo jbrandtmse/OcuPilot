@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-15-2026 20:47'
+last_updated: '11-15-2026 21:08'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -393,7 +393,7 @@ development_status:
   21-2-backup: done
   21-3-startup-memory-and-compatibility-settings: done
   21-4-nls-locales-and-sql-settings: done
-  21-5-globals-and-the-data-tools: backlog
+  21-5-globals-and-the-data-tools: ready-for-dev
   21-6-the-sql-tuning-track: backlog
   21-10-the-remaining-leaves-across-the-six-areas: backlog
   21-12-mirroring: ready-for-dev

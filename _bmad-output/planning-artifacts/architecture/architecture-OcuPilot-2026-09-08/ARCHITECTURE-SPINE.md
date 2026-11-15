@@ -428,6 +428,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`cube` is a covered type (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], `ReviewedFewOnly`; OcuPilot owns no cube.
 
+  OcuPilot's own and the instance's protected globals (Story 21.5). Refused from either caller, key on or off, read at the write; a read that fails refuses. (1) A write to a global whose name begins with one of OcuPilot's name stems, in any case: `PROHIBITED.PROTECTEDGLOBAL`. (2) A value edit of a node that resolves to OcuPilot's own database or one of `SYSTEMDATABASES`, or a kill of a node or a whole global any of whose mapping rows in the namespace, top or subscript-level, resolves to one: `PROHIBITED.PROTECTEDGLOBAL`. (3) A write to one of `CODEGLOBALS` that resolves to the install namespace's routines database and is the whole global or reaches a first subscript beginning with an own stem (any node of a `NESTEDCODEGLOBALS` member counts as reaching one): `PROHIBITED.OCUPILOTCODE`. Import clause: an import (Story 19.13) whose reviewed documents include a global (`.gbl`, any case) is refused `PROHIBITED.PROTECTEDGLOBAL` when that global is one of `CODEGLOBALS`, or any of its mapping rows in the target namespace resolves to OcuPilot's own database or one of `SYSTEMDATABASES`; the file's subscripts are not read. Other globals stay as writable as the classic page leaves them. [AMENDED 2026-11-15, Story 21.5, owner answer U-59]
+
 ### AD-11 — Untrusted content never becomes instruction
 
 - **Binds:** NFR-6, FR-13, FR-15; screen context, tool results, log text, audit entries, entity names and comments
@@ -883,6 +885,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The agent's MDX read is a read tool, not a declared read (Story 20.35)** [AMENDED 2026-10-15, Story 20.35 spec gate, Rule 20]: its cells, labels, listing rows and error message reach the model through AD-60, bounded by the `MDX*` limits and AD-24, listing columns named like credentials reading `[redacted]`. A person's MDX run stays screen-only.
 
+  A global's node page (Story 21.5) is a screen-only payload, as a data browser page is: a node's subscripts and values carry no classification. It holds 50 to 500 rows, cuts each value and subscript at 1,000 characters, holds 1,000,000 characters in all, and pages by an explicit reference cursor. The global list is an ordinary declared read. [AMENDED 2026-11-15, Story 21.5, owner answer U-59]
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -1275,6 +1279,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The REST service delete's deployed check** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2311): "deployed" spans every namespace the caller can enter and every UrlMap `Forward` chain reaching `<Name>.disp`; a namespace the caller cannot enter refuses the delete rather than calling it undeployed.
 
   **Dry-run review of a person's screen action** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: a screen action whose tool declares `DRYRUN` is reviewed through `POST /screens/:screen/dryrun`, which resolves it as the action route does and stops before the write, answering the rows the agent's card shows. The person's action then carries the reviewed digest, and the port refuses it when the verdicts moved (Story 20.31).
+
+  `explorer.globalnodes.save` and `explorer.globalnodes.delete` (Story 21.5) are unadvertised person-only writes, Story 19.8's case: their card and fresh read carry node values, which never reach the model (AD-36). Their keys ship `false`; a person's own write asks no governance key. The agent proposes only a whole global's delete, by name. [AMENDED 2026-11-15, Story 21.5, owner answer U-59]
 
 ### AD-54 - A create write inverts what the fresh read must find, and fingerprints the target's absence
 
