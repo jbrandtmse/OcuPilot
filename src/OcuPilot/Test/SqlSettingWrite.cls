@@ -19,6 +19,12 @@ Parameter WRITE = "OcuPilot.Test.ConfigSettingWrite";
 
 Parameter VERDICT = "OcuPilot.Test.EcpDataServerWrite";
 
+/// <p>The port the failed-purge and refusal cases run the callers through.</p>
+Parameter SEAM = "OcuPilot.Test.ConfigGateSeam";
+
+/// <p>The screen route whose SQL settings tool declares <parameter>SEAM</parameter>.</p>
+Parameter SEAMACTION = "OcuPilot.Test.SeamSqlActionFixture";
+
 /// <p>The namespace a purge assertion prepares its query in, which is not the one the port runs in.</p>
 Parameter OTHERNS = "USER";
 
@@ -80,6 +86,8 @@ Method OnAfterOneTest() As %Status
     Merge tRows = ..PreparedPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do $ClassMethod(..#SEAM, "Reset")
     Quit $$$OK
 }
 
@@ -257,8 +265,13 @@ Method TestARefusedSetChangesAndPurgesNothingOnEitherCaller()
     Set tBefore = $ClassMethod(..#WRITE, "Snapshot", "Config.SQL").%ToJSON()
     Set tNodes = ..Nodes()
     Set tSchema = $ClassMethod(..#WRITE, "ValueOf", "SQL", "DefaultSchema")
+    ; A read-only setting is sent the value it already holds, so a regressed read-only check is seen on the status and changes nothing.
+    Set tDelimited = $ClassMethod(..#WRITE, "ValueOf", "SQL", "DelimitedIds")
+    Set tEscape = $ClassMethod(..#WRITE, "ValueOf", "SQLShell", "EscapeCondition")
+    Set tDisplayPath = $ClassMethod(..#WRITE, "ValueOf", "SQLShell", "DisplayPath")
+    Set tTrace = $ClassMethod(..#WRITE, "ValueOf", "TSQL", "TRACE")
     Set tPrepared = ..Prepared()
-    For tCase = $ListBuild("osmgmt.sqlsettings", "NoSuchSetting", "1", "404|CONFIG.SETTING.NOTFOUND"), $ListBuild("osmgmt.sqlsettings", "DefaultSchema", tSchema, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "DelimitedIds", "0", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "FastDistinct", "7", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.sqlshellsettings", "EscapeCondition", "1", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "DisplayPath", "x", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "SelectMode", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.tsqlsettings", "TRACE", "ON", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.tsqlsettings", "ANSI_NULLS", "1", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "DELIMIDENT", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "NoSuchNode", "1", "404|CONFIG.SETTING.NOTFOUND") {
+    For tCase = $ListBuild("osmgmt.sqlsettings", "NoSuchSetting", "1", "404|CONFIG.SETTING.NOTFOUND"), $ListBuild("osmgmt.sqlsettings", "DefaultSchema", tSchema, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "DelimitedIds", tDelimited, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlsettings", "FastDistinct", "7", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.sqlshellsettings", "EscapeCondition", tEscape, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "DisplayPath", tDisplayPath, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.sqlshellsettings", "SelectMode", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.tsqlsettings", "TRACE", tTrace, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.tsqlsettings", "ANSI_NULLS", "1", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "DELIMIDENT", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.isqlsettings", "NoSuchNode", "1", "404|CONFIG.SETTING.NOTFOUND") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), .tAnswer)
         Do $$$AssertEquals(tStatus, $List(tCase, 4), $List(tCase, 1) _ " " _ $List(tCase, 2) _ " '" _ $List(tCase, 3) _ "' is refused at the screen")
     }
@@ -303,6 +316,96 @@ Method TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily()
         Set tStatus = ..Act($List(tCase, 2), tName, tFound, .tAnswer)
         Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the baseline decides again")
     }
+}
+
+/// <p>The screen action <code>set</code> through the screen route whose SQL settings tool declares <parameter>SEAM</parameter>, answering the HTTP
+/// status and the refusal code, comma-joined, with the parsed envelope in <var>pAnswer</var>.</p>
+ClassMethod SeamAct(pName As %String, pValue As %String, Output pAnswer As %DynamicObject) As %String
+{
+    Set tBody = {"action": "set"}
+    Do tBody.%Set("id", pName, "string")
+    Set tValues = {}
+    Do tValues.%Set("Value", pValue, "string")
+    Do tBody.%Set("values", tValues)
+    Set tSC = $ClassMethod(..#SEAMACTION, "Act", "osmgmt.sqlsettings", tBody, .tJson, .tStatus)
+    Set pAnswer = $ClassMethod(..#VERDICT, "Parsed", tJson)
+    Quit tStatus _ "|" _ $ClassMethod(..#WRITE, "Code", pAnswer)
+}
+
+/// <p>Route both callers through the seam port with every pair the port's sets name held, so each write really reaches the instance and each
+/// refusal is the vendor's own.</p>
+ClassMethod ThroughSeam()
+{
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "WRITE")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "WriteThrough")
+    Set ^||OcuPilotDatabaseWritePort = ..#SEAM
+}
+
+/// <p>The agent's confirm of a change of <code>FastDistinct</code> to <var>pNew</var> through the seam port whose purge fails and whose write really
+/// reaches the instance, with the turn's key in <var>pTurnKey</var> and the confirm's answer in <var>pHttp</var> and <var>pCode</var>; answers whether
+/// the confirm was refused as an error status.</p>
+Method FailedPurgeConfirm(pNew As %String, Output pTurnKey As %String, Output pHttp As %Integer, Output pCode As %String) As %Boolean
+{
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "PurgeFails")
+    Do $ClassMethod(..#SEAM, "WriteThrough")
+    Set tInput = {"Name": "FastDistinct", "rationale": "probe", "expectedImpact": "probe"}
+    Do tInput.%Set("Value", pNew, "string")
+    Do $$$AssertEquals($ClassMethod(..#WRITE, "Dispatched", "osmgmt.sqlsettings.set", tInput, .tProposalId, .pTurnKey) _ "|" _ (tProposalId '= ""), "minted|1", "the agent's call mints a proposal")
+    Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tProposalId, "", $Username, .tResult, .pHttp, .pCode, .tDetail)
+    Quit $$$ISERR(tSC)
+}
+
+/// <p><b>AC2.</b> A purge that fails after a changed purge key is written is answered 500 <code>INTERNAL</code> to the person's Set value and to the
+/// agent's confirm, and the setting stays changed on the instance after one attempt to purge; the agent's ledger row records the error.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>PurgeAfterSet</code> swallows a failed purge (answers OK) -> the status
+/// assertions go red on both callers.</p>
+Method TestAFailedPurgeAnswersInternalWithTheSettingChangedOnBothCallers()
+{
+    Do ..ThroughSeam()
+    Do $ClassMethod(..#SEAM, "PurgeFails")
+    Set tFound = $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct")
+    Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", "FastDistinct", tFound) _ ""
+    Set tStatus = ..SeamAct("FastDistinct", tNew, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "500|INTERNAL|" _ tNew _ "|1", "the person's Set value is answered 500 INTERNAL, the setting stays changed and one purge was tried: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Do $$$AssertStatusOK($ClassMethod(..#WRITE, "Restore", ##class(%DynamicObject).%FromJSON(..PreparedSettings), "Config.SQL"), "the setting is put back")
+    Set tRefused = ..FailedPurgeConfirm(tNew, .tTurnKey, .tHttp, .tCode)
+    Do $$$AssertEquals(tRefused _ "|" _ $Get(tHttp) _ "|" _ $Get(tCode) _ "|" _ $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|500|INTERNAL|" _ tNew _ "|1", "the agent's confirm is answered 500 INTERNAL, the setting stays changed and one purge was tried")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row records the confirm")
+    Do $$$AssertEquals($Get(tRow("Status")) _ "|" _ $Get(tRow("Code")), "error|INTERNAL", "as an error with its code")
+}
+
+/// <p><b>AC2, AC4.</b> A change the agent's confirm wrote and whose purge then failed is still an agent write, so its ledger row carries the audit
+/// marker (AD-15), as <class>OcuPilot.Kernel.Proposal.Confirm</class> does for a write whose follow-up failed.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>SetValue</code> runs <code>PurgeAfterSet</code> itself, as part of the
+/// write -> the marker assertion goes red.</p>
+Method TestAFailedPurgeStillMarksTheAgentsWrite()
+{
+    Do ..ThroughSeam()
+    Set tFound = $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct")
+    Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", "FastDistinct", tFound) _ ""
+    Do ..FailedPurgeConfirm(tNew, .tTurnKey, .tHttp, .tCode)
+    Do $$$AssertEquals($ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct"), tNew, "the write landed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row records the confirm")
+    Do $$$AssertEquals($Get(tRow("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the audit marker landed on it")
+}
+
+/// <p><b>AC1, AC3.</b> The port's own check of a vendor refusal: with a TSQL dialect the vendor does not know stored beside the settings, a flag value the
+/// rules admit is refused by the real setter's answer, so both callers get 400 <code>CONFIG.SETTING.VALUE</code>, and neither the flag nor the stored
+/// dialect changes.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>TSQLREFUSAL</code> reads <code>Invalidx</code> -> both refusals go red as the
+/// set is answered 200.</p>
+Method TestAVendorRefusalOfAnAdmittedTsqlValueIsAValueRefusalOnBothCallers()
+{
+    Kill ^%SYS("tsql")
+    Set ^%SYS("tsql", "DIALECT") = "Oracle"
+    Set tNodes = ..Nodes()
+    Set tStatus = ..Act("osmgmt.tsqlsettings", "ANSI_NULLS", "ON", .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Nodes(), "400|CONFIG.SETTING.VALUE|" _ tNodes, "the person's Set value of an admitted flag is refused with the vendor's answer and changes nothing: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Do $$$AssertEquals($ClassMethod(..#WRITE, "Agent", "OcuPilot.Screen.Tool.TsqlSettingSet", "ANSI_NULLS", "ON", .tResult, .tProposal) _ "|" _ ..Nodes(), "400 CONFIG.SETTING.VALUE|" _ tNodes, "and so is the agent's confirm")
 }
 
 }

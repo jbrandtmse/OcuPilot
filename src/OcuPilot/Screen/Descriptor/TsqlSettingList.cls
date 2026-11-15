@@ -1,4 +1,4 @@
-/// <p>TSQL settings: the TSQL compatibility settings, read through <code>%SYSTEM.TSQL</code>, read through <class>OcuPilot.Port.ConfigPort</class> (source kind <code>config</code>, endpoint
+/// <p>TSQL settings: the TSQL compatibility settings, read from <code>%SYSTEM.TSQL</code> through <class>OcuPilot.Port.ConfigPort</class> (source kind <code>config</code>, endpoint
 /// <code>TSQL</code>) and rendered by the <code>list</code> archetype's page from the declared <code>table</code> (AD-5, AD-29,
 /// AD-36, AD-53, Story 21.4). It is OS management's thirty-first side-bar entry.</p>
 /// <p><b>Its pairs</b> are the classic page's: <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:READ</code> (AD-8,

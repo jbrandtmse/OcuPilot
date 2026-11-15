@@ -4,8 +4,8 @@
 /// test sees what the port would send and no setting changes; <method>VendorRefuses</method> makes it answer an error. The SQL Shell,
 /// ISQL and TSQL writes and the purge of the cached queries are recorded the same way (<method>SendNode</method>,
 /// <method>SendTsql</method>, <method>PurgeCachedQueries</method>), the stored TSQL dialect a flag set passes on is the one
-/// <method>HoldDialect</method> names, and <method>PurgeFails</method> makes the purge answer an error. Nothing else differs from the
-/// shipped port.</p>
+/// <method>HoldDialect</method> names, and <method>PurgeFails</method> makes the purge answer an error. <method>WriteThrough</method> makes
+/// <method>SendProperties</method> make its call after recording it. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ConfigGateSeam Extends OcuPilot.Port.ConfigPort
 {
@@ -19,7 +19,7 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails
+    Kill ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough
 }
 
 /// <p>Make <method>StoredDialect</method> answer <var>pDialect</var> (possibly empty) until <method>Reset</method>.</p>
@@ -44,6 +44,13 @@ ClassMethod Purges() As %Integer
 ClassMethod PurgeFails()
 {
     Set ^||OcuPilotConfigPurgeFails = 1
+}
+
+/// <p>Make <method>SendProperties</method> send its call to the instance after recording it, so a class write really changes the setting,
+/// until <method>Reset</method>.</p>
+ClassMethod WriteThrough()
+{
+    Set ^||OcuPilotConfigWriteThrough = 1
 }
 
 /// <p>Answer an error from <method>VendorModify</method> until <method>Reset</method>.</p>
@@ -84,6 +91,7 @@ ClassMethod SendProperties(pClass As %String, pName As %String, ByRef pProps) As
     }
     Set ^||OcuPilotConfigModifies($Increment(^||OcuPilotConfigModifies)) = $ListBuild(pClass _ "|" _ pName _ "|" _ $Get(pProps(pName)), tKeys)
     If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pClass, pName, .pProps)
     Quit $$$OK
 }
 

@@ -1,4 +1,4 @@
-/// <p>SQL settings: the settings of <code>Config.SQL</code>, each with its value, whether a change purges the cached queries of every namespace and whether it is offered for change, read through <class>OcuPilot.Port.ConfigPort</class> (source kind <code>config</code>, endpoint
+/// <p>SQL settings: the settings of <code>Config.SQL</code>, each shown with its value and read with whether a change purges the cached queries of every namespace and whether it is offered for change, which the Set value dialog states, read through <class>OcuPilot.Port.ConfigPort</class> (source kind <code>config</code>, endpoint
 /// <code>SQL</code>) and rendered by the <code>list</code> archetype's page from the declared <code>table</code> (AD-5, AD-29,
 /// AD-36, AD-53, Story 21.4). It is OS management's twenty-ninth side-bar entry.</p>
 /// <p><b>Its pairs</b> are the classic page's: <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:READ</code> (AD-8,

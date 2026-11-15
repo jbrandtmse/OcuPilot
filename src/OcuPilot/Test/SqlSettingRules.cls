@@ -1,7 +1,7 @@
 /// <p>Pins Story 21.4's refusals and write shapes (AC1, AC2, AC3; AD-4, AD-29, AD-39, AD-55, AD-59): every refusal of the SQL, SQL Shell, TSQL
 /// and ISQL sets, asked of the port through <class>OcuPilot.Test.ConfigGateSeam</class>, whose vendor calls are recorded and never made, and of
 /// the agent's mint; the stored code each choice is written with; the dialect a TSQL flag set passes on; the purge of the cached queries
-/// after a changed purge key, and a purge that fails; and the script each set renders.</p>
+/// after a changed purge key, and a purge that fails, as the set tool's after-write step; and the script each set renders.</p>
 /// <p><b>Live-safe:</b> no setting is changed and no cached query is purged; the only write is a proposal row the mint stores and the test
 /// removes. <b>What it needs from the environment:</b> OcuPilot installed and serving.</p>
 Class OcuPilot.Test.SqlSettingRules Extends %UnitTest.TestCase
@@ -122,14 +122,17 @@ Method TestATsqlFlagPassesTheStoredDialectOrTheDefault()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "|" _ $IsObject($Get(tOut)), "400|CONFIG.SETTING.VALUE|0", "a setter refusal is answered as a value this setting does not accept, and answers no write")
 }
 
-/// <p><b>AC2.</b> After a write that changes one of the six purge keys the port purges the cached queries once; a write that leaves the value as it
-/// was, and a write of any other key, purges none; a purge that fails answers 500 <code>INTERNAL</code> after the vendor call was made, so the
-/// setting stays changed; a refused write purges none.</p>
+/// <p><b>AC2.</b> The port's write purges nothing; the purge is the set tool's step once the write has read OK
+/// (<method>OcuPilot.Screen.Tool.ConfigSettingSet.AfterWrite</method>, through the port's <code>PurgeAfterSet</code>). After a write that
+/// changed one of the five purge keys it purges the cached queries once; a value that reads as it was before the write, and a change of any
+/// other key, purge none; with no value known from before the write a purge key purges; a purge that fails is 500 <code>INTERNAL</code>; the
+/// step is gated, and a refused write purges none.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>PURGESQL</code> loses <code>ParameterSampling</code> -> the
 /// <code>ParameterSampling</code> assertion goes red.</p>
 Method TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal()
 {
     Do ..HoldAll()
+    Set tTool = "OcuPilot.Screen.Tool.SqlSettingSet"
     For tName = "AdaptiveMode", "AutoParallel", "FastDistinct", "ODBCVarcharMaxlen", "ParameterSampling" {
         Set tFound = ##class(OcuPilot.Test.ConfigSettingWrite).ValueOf("SQL", tName)
         Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", tName, tFound)
@@ -137,31 +140,36 @@ Method TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal()
         Kill tQuery
         Set tQuery("name") = tName
         Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": (tNew _ "")}, .tOut, .tHttp, .tFault)
-        Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Purges") _ "|" _ $ClassMethod(..#SEAM, "Modifies"), "200|1|Config.SQL|" _ tName _ "|" _ tNew, tName _ ": a changed value is sent and purges once")
+        Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Purges") _ "|" _ $ClassMethod(..#SEAM, "Modifies"), "200|0|Config.SQL|" _ tName _ "|" _ tNew, tName _ ": the port's write sends the value and purges nothing itself")
+        Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", tName, {"Value": (tNew _ "")}, .tHttp, .tFault)
+        Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|1", tName _ ": a value that reads changed since the fresh read purges once")
         Do $ClassMethod(..#SEAM, "Reset")
-        Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": (tFound _ "")}, .tOut, .tHttp, .tFault)
-        Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Purges"), "200|0", tName _ ": the value it already holds purges none")
+        Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", tName, {"Value": (tFound _ "")}, .tHttp, .tFault)
+        Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|0", tName _ ": a value that reads as it did before the write purges none")
     }
     For tName = "SaveMAC", "IdKey", "LockTimeout", "TimePrecision" {
         Set tFound = ##class(OcuPilot.Test.ConfigSettingWrite).ValueOf("SQL", tName)
         Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", tName, tFound)
         Do $ClassMethod(..#SEAM, "Reset")
-        Kill tQuery
-        Set tQuery("name") = tName
-        Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": (tNew _ "")}, .tOut, .tHttp, .tFault)
-        Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Purges"), "200|0", tName _ ": a changed value of a key that does not purge purges none")
+        Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", tName, {"Value": (tNew _ "")}, .tHttp, .tFault)
+        Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|0", tName _ ": a changed value of a key that does not purge purges none")
     }
-    Do $ClassMethod(..#SEAM, "Reset")
     Set tFound = ##class(OcuPilot.Test.ConfigSettingWrite).ValueOf("SQL", "FastDistinct")
     Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", "FastDistinct", tFound)
-    Kill tQuery
-    Set tQuery("name") = "FastDistinct"
-    Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": (tNew _ "")}, .tOut, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "a changed purge key is written")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", "FastDistinct", "", .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|1", "with no fresh read to compare a purge key purges")
     Do $ClassMethod(..#SEAM, "Reset")
     Do $ClassMethod(..#SEAM, "PurgeFails")
-    Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": (tNew _ "")}, .tOut, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#SEAM, "Modifies") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "500|INTERNAL|Config.SQL|FastDistinct|" _ tNew _ "|1", "a purge that fails is answered as an internal fault after the setting was written")
+    Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", "FastDistinct", {"Value": (tNew _ "")}, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|500|INTERNAL|1", "a purge that fails is answered as an internal fault")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Set tSC = $ClassMethod(tTool, "AfterWrite", ..#SEAM, "SQL", "name", "FastDistinct", {"Value": (tNew _ "")}, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ tHttp _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|403|0", "a caller without the write pairs is refused before any purge")
+    Do ..HoldAll()
+    Kill tQuery
+    Set tQuery("name") = "FastDistinct"
     Do $ClassMethod(..#SEAM, "Reset")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "SQL", "SET", .tQuery, {"Value": "7"}, .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Modifies") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "400||0", "a refused value purges none")
@@ -216,7 +224,11 @@ Method TestEachFamilyRendersItsSetAsAScript()
     Kill tQuery
     Set tQuery("name") = "FastDistinct"
     Set tText = $ClassMethod(..#PORT, "Snippet", "SQL", "SET", .tQuery, {"Value": "0"}).%Get(0).%Get("text")
-    Do $$$AssertEquals(tText, " Set $NAMESPACE = ""%SYS""" _ $Char(10) _ " Set tSC = ##class(Config.SQL).Get(.tProps)" _ $Char(10) _ " Set tProps(""FastDistinct"") = ""0""" _ $Char(10) _ " Set tSC = ##class(Config.SQL).Modify(.tProps)" _ $Char(10) _ " Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})", "a purge key's script ends with the purge")
+    Do $$$AssertEquals(tText, " Set $NAMESPACE = ""%SYS""" _ $Char(10) _ " Set tSC = ##class(Config.SQL).Get(.tProps)" _ $Char(10) _ " Set tProps(""FastDistinct"") = ""0""" _ $Char(10) _ " Set tSC = ##class(Config.SQL).Modify(.tProps)", "a purge key's write step is the Modify alone")
+    Set tTool = "OcuPilot.Screen.Tool.SqlSettingSet"
+    Set tAfter = $ClassMethod(tTool, "SnippetAfter", "SQL", "name", "FastDistinct", "", {"diff": ["Value"]})
+    Do $$$AssertEquals(tAfter.%Size() _ "|" _ tAfter.%Get(0).%Get("text"), "1| Set $NAMESPACE = ""%SYS""" _ $Char(10) _ " Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})", "and the set tool's after-step purges")
+    Do $$$AssertEquals($ClassMethod(tTool, "SnippetAfter", "SQL", "name", "FastDistinct", "", {"diff": []}).%Size() _ "|" _ $ClassMethod(tTool, "SnippetAfter", "SQL", "name", "SaveMAC", "", {"diff": ["Value"]}).%Size(), "0|0", "no purge step for an unchanged value or a key that does not purge")
     Set tQuery("name") = "SaveMAC"
     Set tText = $ClassMethod(..#PORT, "Snippet", "SQL", "SET", .tQuery, {"Value": "1"}).%Get(0).%Get("text")
     Do $$$AssertTrue((tText [ "Config.SQL).Modify(.tProps)") && (tText '[ "PurgeQueries"), "another key's script has no purge: " _ tText)

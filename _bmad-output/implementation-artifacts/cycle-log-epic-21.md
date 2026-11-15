@@ -150,3 +150,5 @@
 2026-11-15T18:44:35Z	Story 21.4	stage_spawned	stage=qa spawn_at=2026-11-15T18:44:35Z model=sonnet agent_name=21-4-nls-locales-and-sql-settings-qa-1 cycle_iteration=1
 2026-11-15T18:54:15Z	Story 21.4	qa_complete	spawn_at=2026-11-15T18:45:00Z model=sonnet tests=src/OcuPilot/Test/SqlSettingWrite.cls(+3) tests_added=3 mutations_demonstrated=2 first_run_failures=1(defect:failed_purge_loses_AD-15_marker) clarifications=0 closing_sections_present=true
 2026-11-15T18:54:15Z	Story 21.4	stage_spawned	stage=code-review spawn_at=2026-11-15T18:54:15Z model=opus agent_name=21-4-nls-locales-and-sql-settings-code-review-1 cycle_iteration=1
+2026-11-15T19:17:02Z	Story 21.4	cr_complete	spawn_at=2026-11-15T18:56:00Z model=opus resolved=11 fixed_at_source=11 routed=1 deferred=5 dismissed=13 high=1 med=1 low=20 rows=38 unresolved_high_med=1(DW-2601_routed_burndown) clarifications=0 closing_sections_present=true final=done note=HIGH_AD-15_failed_purge_marker_fixed(purge_to_AfterWrite)
+2026-11-15T19:17:02Z	Story 21.4	ledger_adjudicated	owned=2 resolved=2 reowned=0 terminal=0 filed_by_cr=DW-2601(routed_burndown),DW-2602..2605(wontfix-accepted)

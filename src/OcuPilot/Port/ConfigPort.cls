@@ -24,8 +24,8 @@
 /// names (<parameter>SHELLROSTER</parameter>, <parameter>ISQLROSTER</parameter>), written as the classic page writes it, with
 /// the stored code of the choice the caller named. The TSQL settings are read and set through <code>%SYSTEM.TSQL</code>
 /// (<parameter>TSQLROSTER</parameter>). No caller value names a node or a method. A row is <code>Purges</code> when a change
-/// of it purges the cached queries of every namespace (<parameter>PURGESQL</parameter>); the port then purges them after a
-/// confirmed write that changed it (<method>PurgeCachedQueries</method>).</p>
+/// of it purges the cached queries of every namespace (<parameter>PURGESQL</parameter>); the set tool purges them once a write
+/// that changed it has read OK (<method>PurgeAfterSet</method>).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
 /// <method>PurgeCachedQueries</method>. Production overrides none of them.</p>
@@ -504,9 +504,8 @@ ClassMethod BlockSizeAvailable(pSize As %Integer) As %Boolean
 /// refuse a setting shown and never changed and a value it does not accept, and then the write is made as its family does: a
 /// class is read fresh and sent whole with that one key changed (<method>VendorModify</method>), a roster node is written with
 /// the stored code of the choice (<method>SendNode</method>), a TSQL setting goes through its setter
-/// (<method>SendTsql</method>). After a write that changed a <code>Purges</code> row the cached queries of every namespace
-/// are purged (<method>PurgeCachedQueries</method>); a purge that fails is 500 <code>INTERNAL</code>, logged, with the setting
-/// changed. Answers <code>{Name, Value}</code>.</p>
+/// (<method>SendTsql</method>). It purges no cached query: the set tool does that once the write has read OK
+/// (<method>PurgeAfterSet</method>). Answers <code>{Name, Value}</code>.</p>
 ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -523,10 +522,6 @@ ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstra
     If $$$ISERR(tVendor) {
         Do ..LogFault("the setting " _ tName _ " was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
         Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
-    }
-    If tRow.%Get("Purges") && (tRow.%Get("Value") '= tValue) {
-        Set tPurge = ..PurgeCachedQueries()
-        If $$$ISERR(tPurge) Quit ..Fail("the cached queries could not be purged after the setting " _ tName _ " changed", tPurge, .pHttpStatus, .pFault)
     }
     Set pResult = {}
     Do pResult.%Set("Name", tName, "string")
@@ -699,6 +694,17 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
     Quit tSC
 }
 
+/// <p>The <code>%SYSTEM.TSQL</code> setter <parameter>TSQLSETTERS</parameter> names for the TSQL setting <var>pName</var>, or
+/// <code>""</code>.</p>
+ClassMethod TsqlSetter(pName As %String) As %String [ Private ]
+{
+    Set tSetter = ""
+    For tI = 1:1:$Length(..#TSQLSETTERS, ",") {
+        If $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 1) = pName Set tSetter = $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 2)
+    }
+    Quit tSetter
+}
+
 /// <p>The one call that changes a TSQL setting: <var>pName</var>'s <code>%SYSTEM.TSQL</code> setter, given the dialect
 /// <var>pDialect</var> the flag setters take and the value, in <code>%SYS</code> by save and restore. A setter answer that starts
 /// with <parameter>TSQLREFUSAL</parameter> is an error. Overridable so a fixture can record the call; production never overrides
@@ -709,10 +715,7 @@ ClassMethod SendTsql(pName As %String, pDialect As %String, pValue As %String) A
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tSetter = ""
-        For tI = 1:1:$Length(..#TSQLSETTERS, ",") {
-            If $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 1) = pName Set tSetter = $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 2)
-        }
+        Set tSetter = ..TsqlSetter(pName)
         If tSetter = "" {
             Set tSC = $$$ERROR($$$GeneralError, "no TSQL setter is named for " _ pName)
             Quit
@@ -728,6 +731,44 @@ ClassMethod SendTsql(pName As %String, pDialect As %String, pValue As %String) A
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tSC
+}
+
+/// <p>The purge a set of the setting <var>pName</var> of <var>pEndpoint</var> owes once its write has read OK, run by the set tool's
+/// <method>OcuPilot.Screen.Tool.ConfigSettingSet.AfterWrite</method> for both callers, so a purge that fails is the failure of an
+/// applied write, which the agent's confirm still marks (AD-15). A setting that does not purge owes none. Otherwise, after the
+/// write gate, the setting is read again and the cached queries of every namespace are purged in this request
+/// (<method>PurgeCachedQueries</method>) when it no longer reads <var>pBefore</var>, its value before the write; with
+/// <var>pKnown</var> 0, no value before the write being known, they are purged whatever it reads. A re-read or a purge that fails
+/// is 500 <code>INTERNAL</code>, logged; the setting stays as written.</p>
+ClassMethod PurgeAfterSet(pEndpoint As %String, pName As %String, pBefore As %String, pKnown As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '..IsPurging(pEndpoint, pName) Quit $$$OK
+    Set tSC = ..Admit(pEndpoint, ..#TYPESET, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tMessage = "the cached queries could not be purged after the setting " _ pName _ " changed"
+    Try {
+        If pKnown {
+            Set tSC = ..Row(pEndpoint, pName, .tRow, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set pHttpStatus = 0
+            If (tRow.%Get("Value") _ "") = (pBefore _ "") Quit
+        }
+        Set tPurge = ..PurgeCachedQueries()
+        If $$$ISERR(tPurge) Set tSC = ..Fail(tMessage, tPurge, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set tSC = ..Fail(tMessage, ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p><method>PurgeAfterSet</method> as a copy-out script step (AD-59): the purge of the cached queries of every namespace for a
+/// setting <var>pName</var> of <var>pEndpoint</var> that purges, else no step.</p>
+ClassMethod PurgeSteps(pEndpoint As %String, pName As %String) As %DynamicArray
+{
+    If '..IsPurging(pEndpoint, pName) Quit []
+    Quit [(##class(OcuPilot.Port.AdminPort).ObjectScriptStep($ListBuild("Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})")))]
 }
 
 /// <p>Purge the cached queries of every namespace, as the classic SQL page does after one of the settings it names changes. A
@@ -842,8 +883,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 }
 
 /// <p>The write as a script (AD-59), in <code>%SYS</code>: for a class, its <code>Get</code>, the one key set, and
-/// <code>Modify</code>, the same call the port makes, and the purge of the cached queries for a key that purges; for a roster
-/// endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter. The name and the value are string
+/// <code>Modify</code>, the same call the port makes (the purge a key that purges owes is the set tool's step,
+/// <method>PurgeSteps</method>); for a roster endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter. The name and the value are string
 /// literals, so nothing the query or the body carries runs as code. A roster name that is not settable renders no script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
@@ -861,7 +902,6 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tLines = $ListBuild("Set tSC = ##class(" _ tClass _ ").Get(.tProps)")
     Set tLines = tLines _ $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", tValue))
     Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ tClass _ ").Modify(.tProps)")
-    If ..IsPurging(pEndpoint, tName) Set tLines = tLines _ $ListBuild("Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
 }
 
@@ -871,9 +911,8 @@ ClassMethod RosterLine(pEndpoint As %String, pEntry As %List, pValue As %String)
     Set tAdmin = "OcuPilot.Port.AdminPort"
     Set tName = $List(pEntry, 1)
     If pEndpoint = ..#TSQLENDPOINT {
-        For tI = 1:1:$Length(..#TSQLSETTERS, ",") {
-            If $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 1) = tName Set tSetter = $Piece($Piece(..#TSQLSETTERS, ",", tI), "=", 2)
-        }
+        Set tSetter = ..TsqlSetter(tName)
+        If tSetter = "" Quit ""
         If tName = "DIALECT" Quit "Set tPrevious = ##class(%SYSTEM.TSQL)." _ tSetter _ "(" _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"
         Set tDialect = ..StoredDialect()
         Quit "Set tPrevious = ##class(%SYSTEM.TSQL)." _ tSetter _ "(" _ $ClassMethod(tAdmin, "Literal", $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect)) _ ", " _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"

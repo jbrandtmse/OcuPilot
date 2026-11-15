@@ -140,10 +140,11 @@ before(async () => {
 after(async () => {
   try {
     if (touched && /-ci$/.test(config.container)) {
+      // Both restores run before either is asserted, so a failed first one cannot leave the second setting changed.
       const put = restore(found);
+      const putSql = restoreSql(foundSql);
       assert.equal(put.value, '1', `${NAME} is put back to ${found}: ${put.output}`);
       assert.equal(stored(NAME).value, found, `and reads ${found} again`);
-      const putSql = restoreSql(foundSql);
       assert.equal(putSql.value, '1', `${SQL_NAME} is put back to ${foundSql}: ${putSql.output}`);
       assert.equal(storedSql(SQL_NAME).value, foundSql, `and reads ${foundSql} again`);
     }

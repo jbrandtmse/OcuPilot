@@ -101,6 +101,38 @@ deferred:
 - AC4. Given the default baseline, when the agent proposes any of the four sets, then it mints and the confirm writes once with one audit marker and a `readBack`; with the key `false` the governance gate refuses it.
 - AC5. Given these settings configure the server's SQL rather than OcuPilot's own interface, when the four screens render, then every label, Accepts line and consequence is an English `strings.ts` value, pinned equal to its `ConfigError` sentence.
 
+### Review Findings
+
+Code review 2026-11-15 (full-opus; four layers): 38 rows grouped into 24 entries (1 high, 1 medium, 20 low, 1 false, 1 maybe-false); 6 patched, 5 ledgered, 13 rejected.
+
+- [x] [Review][Patch] (high) A confirmed agent write whose purge failed got no AD-15 marker, and `SqlSettingWrite` was red: the purge moved out of `SetValue` into `ConfigSettingSet.AfterWrite` -> `ConfigPort.PurgeAfterSet` (gated, re-reads, purges when changed, 500 `INTERNAL` on failure) [src/OcuPilot/Port/ConfigPort.cls, src/OcuPilot/Screen/Tool/ConfigSettingSet.cls]
+- [x] [Review][Patch] (low) The script showed a purge for any purge key, and the TSQL setter lookup was copied: the purge is the tool's `SnippetAfter`, only when the draft's diff changes `Value`; `TsqlSetter` shared [src/OcuPilot/Port/ConfigPort.cls]
+- [x] [Review][Patch] (low) The browser `after` hook could skip the `SaveMAC` restore [ui/browser/config-settings.browser-spec.mjs]
+- [x] [Review][Patch] (low) The refused-set test sent new values to read-only keys: each is sent its current value [src/OcuPilot/Test/SqlSettingWrite.cls]
+- [x] [Review][Patch] (low) Doc comments in `SqlSettingList`, `TsqlSettingList` and `SqlSettingRead.ShellStored` [src/OcuPilot/Screen/Descriptor, src/OcuPilot/Test/SqlSettingRead.cls]
+- [x] [Review][Patch] (low) The TSQL and SQL Shell tool descriptions said a boolean takes 1 or 0 [src/OcuPilot/Screen/Tool/TsqlSettingSet.cls, SqlShellSettingSet.cls]
+- [x] [Review][Defer] (medium) An applied write whose after-write step fails answers an error, so no change event and a stale row (shared kernel and handler) — DW-2601, routed burndown
+- [x] [Review][Defer] (low) Choice settings take free text in the dialog — DW-2602, wontfix-accepted
+- [x] [Review][Defer] (low) Config-source validation text names three families (contended files) — DW-2603, wontfix-accepted
+- [x] [Review][Defer] (low) EXPERIENCE.md 21.4 clause separator (contended line) — DW-2604, wontfix-accepted
+- [x] [Review][Defer] (low) Empty `TODATEDefaultFormat` vendor refusal not driven through a real `Modify` — DW-2605, wontfix-accepted
+
+Rejected:
+
+- (low) A retry of the same value does not purge again after a failed purge: `PurgeQueries` fails only by a thrown error, and a retry path adds a branch.
+- (low) The client decides the purge note from the dialog's value, so a concurrent change can mislead it: concurrent edits only; the server decides the purge.
+- (low) A TSQL flag set stores `DIALECT` Sybase, and AC1's wording: ruled U-51; a wording fix edits the spec.
+- (low) The dialect read and the flag setter can race: theoretical, two writers on `^%SYS("tsql")` at once.
+- (false) `RosterLine` reads an undefined setter: only settable entries render, and each has one (the shared helper now guards it anyway).
+- (low) `MessagesMode` has no effect in the shell: ruled Q2.
+- (low) A partial purge reads as success: vendor behavior inside `PurgeAllNamespaces`.
+- (low) The script reads the stored dialect with no gate: the mint already gated the caller and the dialect is not sensitive.
+- (low) A read-only SQL key renders a script outside the mint: unreachable, the mint refuses first.
+- (low) The script does not check `tSC` between lines: the copy-out style of every 21.3 script.
+- (low) Free-text shell and ISQL nodes get no vendor check: the classic page writes them as-is (Q2).
+- (maybe-false) `HNSWLIBMemoryLimit` -1 may not land: would be low; a real `Modify` of -1 would settle it.
+- (low) Spec record, matrix and deferred list are stale: the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-11-15 (lead): plan halt ruled (split, Q2-Q4); status reset to draft for re-plan.
@@ -212,9 +244,10 @@ deferred:
 **QA pass (files and mutations):**
 
 - (QA) `src/OcuPilot/Test/SqlSettingWrite.cls` (three tests added), `src/OcuPilot/Test/SeamSqlSettingSet.cls`, `src/OcuPilot/Test/SeamSqlActionFixture.cls`; `src/OcuPilot/Test/ConfigGateSeam.cls` gained `WriteThrough`.
-- mutation: `ConfigPort.SetValue` ignores a failed purge -> `SqlSettingWrite.TestAFailedPurgeAnswersInternalWithTheSettingChangedOnBothCallers` red (AC2).
 - mutation: `TSQLREFUSAL` reads `Invalidx` -> `SqlSettingWrite.TestAVendorRefusalOfAnAdmittedTsqlValueIsAValueRefusalOnBothCallers` red (AC3).
-- `SqlSettingWrite.TestAFailedPurgeStillMarksTheAgentsWrite` is red on the shipped code: a confirm whose purge fails writes the setting and records `not-marking`, because `ConfigPort` answers the purge failure as the write's own and `Operation.ApplyAt` marks a write only when `pApplied` is set (open).
+- (review) mutation: `SetValue` runs `PurgeAfterSet` itself, as part of the write -> `SqlSettingWrite.TestAFailedPurgeStillMarksTheAgentsWrite` red (AC2, AC4, AD-15), run 871.
+- (review) mutation: `PurgeAfterSet` answers OK after a failed purge -> `SqlSettingRules.TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal` red (AC2), run 872.
+- (review) mutation: `PURGESQL` loses `ParameterSampling` -> `SqlSettingRules.TestAChangedPurgeKeyPurgesOnceAndAFailedPurgeIsInternal` red (AC2), run 873; the AC2 line above it stands for the rewritten test.
 
 ## Auto Run Result
 

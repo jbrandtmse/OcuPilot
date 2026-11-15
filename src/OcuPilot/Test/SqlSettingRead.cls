@@ -55,7 +55,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The shell node <var>pName</var> as the instance stores it, or its default, read in <code>%SYS</code>.</p>
+/// <p>The shell node <var>pName</var> as the instance stores it, or its default; <code>^%SYS</code> is a percent global, so it reads the same from any namespace.</p>
 ClassMethod ShellStored(pName As %String, pDefault As %String) As %String
 {
     Quit $Get(^%SYS("sql", "shell", pName), pDefault)

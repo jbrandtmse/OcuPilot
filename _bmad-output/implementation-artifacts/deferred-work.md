@@ -13039,11 +13039,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: PurgeFails appears only in ConfigGateSeam and SqlSettingRules; no confirm or screen-action case with a failing purge
 - 2026-11-15T18:26:35Z status=open owner=21-4-nls-locales-and-sql-settings by=harvest note=QA or review: add a confirm and a screen-action case with a failing purge
+- 2026-11-15T19:17:02Z status=resolved-by:21-4-nls-locales-and-sql-settings by=adjudication note=SqlSettingWrite.TestAFailedPurgeAnswersInternalWithTheSettingChangedOnBothCallers drives a failed purge through the screen route and the confirm
 
 ### DW-2599: The real SendTsql refusal prefix check has no test; the seam's override bypasses it
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ConfigPort.cls:725; SqlSettingRules reaches the 400 only through ConfigGateSeam.VendorRefuses
 - 2026-11-15T18:26:35Z status=open owner=21-4-nls-locales-and-sql-settings by=harvest note=QA or review: drive the real setter with a value the rules admit and the vendor refuses, or close with a probe
+- 2026-11-15T19:17:02Z status=resolved-by:21-4-nls-locales-and-sql-settings by=adjudication note=SqlSettingWrite.TestAVendorRefusalOfAnAdmittedTsqlValueIsAValueRefusalOnBothCallers drives the real setter
 ### DW-2596: Term-list writes are refused on a database with journaling off, though a TROLLBACK undid a write there on this build
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Task 0 on ocupilot-b-ci: TSTART, Set, Kill, Set, TROLLBACK in a GlobalJournalState 2 database left no partial write; crash recovery unmeasured
@@ -13053,3 +13055,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
 - 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint
+
+### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
+- 2026-11-15T19:14:07Z status=routed owner=burndown by=cr note=shared kernel/handler; fix needs a code that says applied-then-failed
+
+### DW-2602: Choice settings on the SQL Shell and TSQL screens take free text in the Set value dialog, so a value must be typed exactly as its Accepts line lists it
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: config-settings.page.ts passes an input type only for boolean; ConfigSettingRules refuses 'on' or 'display' with 400 CONFIG.SETTING.VALUE.
+- 2026-11-15T19:14:07Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=cr note=reopen_if=a person reports a choice refused for its case or spelling on the SQL Shell or TSQL settings screen
+
+### DW-2603: Config-source validation and read doc text still name only startup, memory and compatibility settings
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Screen/Registry.cls:1364, ui/tools/screen-mirror.mjs:1692 and Screen/Read.cls:309 (contended by Epic 24), pinned at ConfigSettingRead.cls:66.
+- 2026-11-15T19:14:07Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=cr note=reopen_if=after Epic 24 merges, grep for 'startup, memory and compatibility settings' in src or ui/tools still hits
+
+### DW-2604: EXPERIENCE.md's OS management prompt clause for Story 21.4 lacks its separator and the group of each prompt
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md line 604: '[ADDED 2026-11-15 - Story 21.3]and SQL, SQL Shell' with no ' ; '; the line is contended by Epic 24's uncommitted edits.
+- 2026-11-15T19:14:07Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=cr note=reopen_if=EXPERIENCE.md line 604 still reads 'Story 21.3]and SQL' after Epic 24 merges
+
+### DW-2605: An empty TODATEDefaultFormat, which the rules admit and the vendor refuses, is not driven through a real Modify by any test
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Only the seam's VendorRefuses reaches the 400 in SqlSettingRules; Task 0 measured the vendor refusal by hand once.
+- 2026-11-15T19:14:07Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=cr note=reopen_if=Config.SQL.Modify accepts an empty TODATEDefaultFormat on a later build

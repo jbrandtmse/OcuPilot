@@ -143,6 +143,33 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit ""
 }
 
+/// <p>The purge of the cached queries a SQL setting's change owes, once the write has read OK, through the same port
+/// <var>pPort</var> (<method>OcuPilot.Port.ConfigPort.PurgeAfterSet</method>), for the setting <var>pIdValue</var> whose fresh read
+/// before the write was <var>pFresh</var>. Both callers reach it through
+/// <method>OcuPilot.Kernel.Proposal.Operation.ApplyAt</method>, so a purge that fails is answered 500 <code>INTERNAL</code> as an
+/// applied write's failure, which the agent's confirm still marks (AD-15). A setting that does not purge owes nothing.</p>
+ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tKnown = $IsObject(pFresh) && (pFresh.%GetTypeOf(..#ARGUMENT) = "string")
+    Quit $ClassMethod(pPort, "PurgeAfterSet", pEndpoint, pIdValue, $Select(tKnown: pFresh.%Get(..#ARGUMENT), 1: ""), tKnown, .pHttpStatus, .pFault)
+}
+
+/// <p><method>AfterWrite</method> as a copy-out script step (AD-59): the purge of the cached queries of every namespace for a setting
+/// that purges (<method>OcuPilot.Port.ConfigPort.PurgeSteps</method>), unless the draft's diff <var>pContext</var> shows the value
+/// unchanged.</p>
+ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As %String, pStoredPayload As %DynamicObject, pContext As %DynamicObject = "") As %DynamicArray
+{
+    If $IsObject(pContext) && (pContext.%GetTypeOf("diff") = "array") {
+        Set tChanged = 0
+        Set tIterator = pContext.%Get("diff").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            If tField = ..#ARGUMENT Set tChanged = 1
+        }
+        If 'tChanged Quit []
+    }
+    Quit $ClassMethod(..PortClass(), "PurgeSteps", pEndpoint, pIdValue)
+}
+
 /// <p>What the caller must hold: the screen's own pairs, then
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter> where the set lacks it, then the custom
 /// resource of each <parameter>CLASSICPAGES</parameter> page (AD-8, AD-44).</p>

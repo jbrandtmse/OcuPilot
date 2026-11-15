@@ -8,7 +8,7 @@ Parameter TOOLNAME = "osmgmt.tsqlsettings.set";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.TsqlSettingList";
 
-Parameter DESCRIPTION = "Propose setting one TSQL compatibility setting of this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the setting as the TSQL settings list reports it, and give the new value as text in the form the list's Accepts column states; a boolean setting takes 1 or 0. A setting the list marks as shown and never changed, a name the list does not report and a value the setting does not accept are refused.";
+Parameter DESCRIPTION = "Propose setting one TSQL compatibility setting of this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the setting as the TSQL settings list reports it, and give the new value as text in the form the list's Accepts column states; a choice takes one of the names it lists, written exactly. A setting the list marks as shown and never changed, a name the list does not report and a value the setting does not accept are refused.";
 
 Parameter ENDPOINTNAME = "TSQL";
 
