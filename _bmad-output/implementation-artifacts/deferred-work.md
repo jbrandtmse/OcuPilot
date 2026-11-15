@@ -12983,3 +12983,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-1-developer-tools.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: EnvSync.HashDoc calls SHAHash on the joined text (harvested, unchanged by AC2); measured on slot B by the edge-case layer
 - 2026-11-15T08:47:50Z status=by-design owner=24-1-developer-tools by=cr note=spec-bound by AC2; real if a person compares a hash with another tool's; 24.8 compares OcuPilot hashes only (inference)
+
+### DW-2588: The reused interop setting dialog tells the person to leave the field empty to clear the value for every non-boolean setting, which is wrong for integer and choice settings on the new settings screens
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: config-settings.page.ts opens InteropItemSettingDialog unedited; an empty integer or choice value is refused 400 CONFIG.SETTING.VALUE; the dialog is an Epic 24 file
+- 2026-11-15T13:39:34Z status=routed owner=burndown by=harvest note=fix needs a dialog input or a new string in an Epic 24-owned file; take it at the burn-down once Epic 24's dialog work has merged
