@@ -113,3 +113,5 @@
 2026-11-15T14:14:55Z	Story 21.3	stage_spawned	stage=implement spawn_at=2026-11-15T14:14:55Z model=sonnet agent_name=21-3-startup-memory-and-compatibility-settings-implement-2 cycle_iteration=2
 2026-11-15T14:34:50Z	Story 21.3	dev_complete	spawn_at=2026-11-15T14:15:30Z model=sonnet build_sha=a957a12e0 baseline_revision=3f8933bea(rework1) review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=2 note=lead_fixed_stale_design_note(MaxIRISTempSizeAtStart)
 2026-11-15T14:34:50Z	Story 21.3	stage_spawned	stage=code-review spawn_at=2026-11-15T14:34:50Z model=opus agent_name=21-3-startup-memory-and-compatibility-settings-code-review-2 cycle_iteration=2
+2026-11-15T14:47:38Z	Story 21.3	cr_complete	spawn_at=2026-11-15T14:35:00Z model=opus resolved=2 fixed_at_source=2 deferred=0 dismissed=13 high=0 med=0 low=2 rows=15 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done cycle_iteration=2
+2026-11-15T14:47:46Z	Story 21.3	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 filed_by_cr=DW-2589..2595 model=claude-opus-5-5

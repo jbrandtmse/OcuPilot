@@ -12995,6 +12995,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ConfigPort.READONLY names DefaultPort, DefaultPortBindAddress, WebServer, WebServerPort only; WebServerName restricts the private web server's accepted address (Config.Startup.cls:192-195) and the private web server serves OcuPilot (measured by 21.3)
 - 2026-11-15T14:10:56Z status=decision-pending owner=burndown by=cr note=veto: stricter posture beyond U-47; recommend both join READONLY (cut-off is inference)
 - 2026-11-15T14:13:20Z status=routed owner=21-3-startup-memory-and-compatibility-settings by=spec_gate note=ruled by the runner (veto U-49): both join ConfigPort.READONLY in rework 1
+- 2026-11-15T14:47:46Z status=resolved-by:21-3-startup-memory-and-compatibility-settings by=adjudication note=ConfigPort.READONLY holds WebServerName and WebServerProtocol; pinned by ConfigSettingMint and ConfigSettingRead (commit a957a12e0)
 
 ### DW-2590: Startup settings refuse the negative SystemPerformanceDailyReportsOn values the vendor documents as an interval
 - source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: in-story
