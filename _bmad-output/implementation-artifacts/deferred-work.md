@@ -12860,3 +12860,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (dispatch gate 2026-11-14) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
+
+### DW-2566: flake: context-chip.browser-spec.mjs failed 3 of 9 tests (Waiting failed: 30000ms exceeded) in CI browser shard 5/5 and passed on the unchanged rerun
+- source: cycle-log-parallel.md (Epic 22 merge, feature head e20007c42) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: run 43662142967 attempt 1 browser shard 5/5 red (6 passed, 3 failed, 162.7 s); no ui/src, ui/browser or src change since the last green feature run; attempt 2 green
+- 2026-11-15T02:26:04Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=routed with the other CI flakes to 21.10

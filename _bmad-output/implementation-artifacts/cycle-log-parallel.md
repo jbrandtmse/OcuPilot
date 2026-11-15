@@ -1968,3 +1968,14 @@
 2026-11-15T01:15:05Z	Epic 22	epic_merged_to_feature	repos=. feature_sha=e20007c42 merge_sha=e20007c42 submodules= checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none feature_ci=pending(no-token_merge)
 2026-11-15T01:15:05Z	Epic 22	decision_sheet_recorded	decided=1 to_action_items=0 to_x0=0 by=unattended items=DW-2558(veto_U-41,prd_FR-80_reworded)
 2026-11-15T01:15:05Z	Epic 22	model_tier_checkpoint	source=runner(cycle-log-epic-22) result=hold applied=record_only
+2026-11-15T01:15:29Z	Epic 22	worktree_removed	path=.worktrees/epic-22
+2026-11-15T01:15:29Z	Epic 22	epic_branches_deleted	branch=OCU-1-epic22 local+remote
+2026-11-15T01:20:53Z	orchestrator	owner_instruction	via=relay(OcuPilot_Planner) effect=QUIET_OFF(local_tests_resume) runner_21=told
+2026-11-15T01:55:13Z	Epic 21	runner_reported	boundary=story_21.1 code_head=c7ccce2a9(43649659020_success_on_6e759ee41,bookkeeping-only_above) sweep=20/20 smoke=50/50 ledger=DW-2559_escalated,DW-2560_routed_21-2,DW-2561..2564_terminal orchestrator=accepted merge_route=await_staging_head(fast-forward)
+2026-11-15T01:55:13Z	orchestrator	ci_red_classified	run=43662142967 workflow=.github/workflows/ci.yml class=flake?(pending_rerun) test=context-chip.browser-spec.mjs(3_waits_30000ms) head=e20007c42 note=no_client_or_src_change_since_last_green action=rerun_failed
+2026-11-15T02:26:04Z	orchestrator	ci_red_classified	run=43662142967 workflow=.github/workflows/ci.yml class=flake test=context-chip.browser-spec.mjs ledger=DW-2566(routed_21-10)
+2026-11-15T02:26:04Z	Epic 22	ci_green_verified	runs=43662142967 head=e20007c42 result=success gate=feature_after_epic_merge(U9_step3) attempt=2
+2026-11-15T02:34:51Z	Epic 21	runner_reported	staging=8c1f45af5(43665511313_success) carries=21.1(c7ccce2a9)+feature_076653ecb conflicts=sprint-status.yaml(regenerated)
+2026-11-15T02:34:51Z	Story 21.1	merged	feature=8c1f45af5 tip=8c1f45af5 route=fast_forward(staging_head) checks=ledger_entry_check_0(2025),dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-15T02:34:51Z	orchestrator	deps_hash_rerecorded	reason=split story=21.2->21.2_Backup+21.12_Mirroring(veto_U-38) hash=2ccb94cf
+2026-11-15T02:34:51Z	ci	timings_refreshed	rule=29 run=43665511313
