@@ -74,3 +74,5 @@
 2026-11-15T16:43:34Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=merged_tree_backup_arming run=20261114T1656Z-21,22
 2026-11-15T16:44:13Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=merged_tree run=20261114T1656Z-21,22 started_by=runner-24
 2026-11-15T16:45:43Z	Story 24.3	merged_tree_checked	throwaway=rebuilt BackupWriteGate,BackupWrite=11/11 smoke=PASSED
+2026-11-15T16:48:24Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
+2026-11-15T16:48:24Z	Story 24.3	stage_spawned	stage=plan spawn_at=2026-11-15T16:48:24Z model=opus agent_name=24-3-interoperability-parity-plan-1 cycle_iteration=1
