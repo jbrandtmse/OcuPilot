@@ -13098,3 +13098,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: GetDate on any existing global equals the current time (measured read-only on slot A); the refusal at the write is inferred from ImportSet's summary comparison
 - 2026-11-15T20:57:31Z status=routed owner=21-17-global-export-and-import by=harvest note=fix with 21.17's global import
+
+### DW-2609: flake: SqlDataRoutes.TestAPageAnswersItsShape went red once on a warm ocupilot-ci right after a reload, then green three times unchanged
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.4 rework run 484 red; runs after it green
+- 2026-11-15T21:34:00Z status=wontfix-accepted owner=21-4-nls-locales-and-sql-settings by=harvest note=reopen_if=it reddens again on CI or a fresh throwaway
