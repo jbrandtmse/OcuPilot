@@ -2,7 +2,8 @@
 title: 'Story 24.1: Developer tools (first slice: code metrics and document hashes)'
 type: 'feature'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3b5afae9c60f503baaeaf368b5b2b3331057713d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -174,6 +175,23 @@ The sibling repository is `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31`.
 
 ## Review Triage Log
 
+### 2026-11-15 -- Review pass
+
+- verdicts: 12 findings -- high 0, medium 1, low 11, false 0, maybe-false 0 (five rows record the intent audit's descriptive divergences)
+- findings:
+  - `[low]` `[reject]` AC2's pin is a manual comparison against the sibling repository, and no automated test fails on an edit to a harvested body -- the spec defines AC2's check as that comparison, run on the loop, against a repository outside this one; a digest pin would also redden on every comment edit; the recorded mutation reddened the comparison.
+  - `[medium]` `[patch]` The devtool source's endpoint, type and key refusals in `Registry` and the mirror have no corpus rows -- a `Cases` corpus and `TestTheDevtoolSourceRefusals` added to `DevToolRead`, the same corpus run by `screen-mirror.test.mjs`.
+  - `[low]` `[patch]` `DocumentLines`'s generated-routine header is not asserted -- `TestGeneratedRoutinesFollowTheChoice` now asserts each generated row's header and hash.
+  - `[low]` `[patch]` The "more than 1,000 documents" sentence is not tied to `MAXDOCUMENTS` -- one assertion in the Too many test.
+  - `[low]` `[patch]` The page spec never clicks Retry and never reads a refusal cleared by a later answer -- one test covering both, with its mutation line.
+  - `[low]` `[reject]` The page spec settles on fixed timers -- a late read would fail a positive assertion, so it cannot read green over a defect; the fix is wider than a direct correction.
+  - `[low]` `[reject]` Mutation lines exist for the server tests and not for each browser leg or each AC3 refusal row -- the rule is one demonstrated mutation per AC; each refusal row has its own assertion.
+  - `[low]` `[reject]` Intent alignment: AC1 and AC3 are driven in process through `Screen.Read.Execute` with fixture seams, where the intent says the route -- the route handler only dispatches to that method; the browser spec covers the deployed route for a read and for `*`; the seams are the spec's own.
+  - `[low]` `[reject]` Intent alignment: AC2 has no in-repo test -- the same finding as the first row.
+  - `[low]` `[reject]` Intent alignment: the gate rows use the `ScreenGate` seam, and the real-principal measurement is recorded rather than asserted -- the spec names that seam for the Gate row.
+  - `[low]` `[reject]` Intent alignment: `DocumentLines` is new code outside the harvested files -- the rename table's fourth rule names it; its equivalence is measured in Design Notes.
+  - `[low]` `[reject]` Intent alignment: the page is a bespoke client page where the Code Map said the generic one would do -- recorded in Design Notes, Decided in-stage, with the reason.
+
 ## Design Notes
 
 ### Governing ADs
@@ -208,6 +226,18 @@ Why the library is inherited and not called: OcuPilot classes may be invisible i
 - **The document cap.** The port counts matches first and refuses above `MAXDOCUMENTS`. The bodies have no cap, and a scan through the read tool runs in the turn job, with no gateway to stop it. Truncating after the scan would not bound the cost.
 - **Validation in the port.** The port refuses a bare `*` and a bad shape itself, because the body's own refusal would reach the caller as `INTERNAL`.
 - **Body class names.** The body classes are `Loc` and `EnvSync`, after the sibling's file names.
+- **Task 0, measured on `ocupilot-b-ci`.**
+  - Reader: `Kernel.Utils.DocumentLines` gives a class its UDL lines from `%Compiler.UDL.TextServices.GetTextAsArray`. It gives a routine, include file or generated routine the header line the Atelier reader writes (`ROUTINE name`, with `[Type=INC]` or `[Type=INT]` for an include file or intermediate routine, and `Generated` appended after a comma for a generated one), then the lines `%Routine.ReadLine` answers. Over all 21,668 classes, routines, include files and generated routines in `HSCUSTOM`, the count and every line equal the Atelier reader's (0 differ).
+  - Generated routines: a compiled probe class's `.1.int` is listed with `includeGenerated` 1 and not with 0.
+  - Scan cost in `HSCUSTOM`, LOC at 17.5 to 18.2 ms a document over 420 to 7,170 documents (`EnsLib.*.cls`: 1,103 documents in 20.1 s), hashes at 0.26 to 0.30 ms a document. LOC is the slower, so `MAXDOCUMENTS` is 1,000 (18.2 s projected; 1,500 would be 27 s). A package of larger classes runs slower (`%CSP.*.cls`: 493 documents in 24.8 s).
+  - Pair set, run as a real principal in `USER` (a role of the four pairs plus READ on `HSCUSTOM`, which runs OcuPilot's code): the full set reads both screens' rows; without `%Development:USE` or without `%DB_USER:READ` each is 403 naming that pair. Without `%DB_ENSLIB:READ` or `%DB_IRISLIB:READ` the read still answers, because those resources are publicly readable.
+- **The generic list page cannot show a refusal's reason**, which the browser spec needs for `*`: its table draws one generic sentence, and its form always draws the time hint. The two screens therefore get one page, `dev-tool.page.ts`, registered by descriptor in `screen-outlet.ts`, over the generic table.
+- **The invitations** are each descriptor's `emptyNextKey`, shown before the first search and under an empty answer.
+- **The Code column** reuses `webAppPromptGroupCode`, as `ExplorerSqlTriggers` does, because `strings.ts` holds each value once.
+- **`Documents` is Code metrics' name column**, because the table requires exactly one.
+- **Hashes are upper-case hex**, as `$System.Encryption.ToHex` writes them.
+- **Two lines of the harvested files differ from the rename table.** One `;` comment in `EnvSync.HashDoc` names the sibling's class, and one in `LocClassifier.ClassifyDoc` spells the Python language keyword, and the checker refuses both. The AC2 comparison drops `///` lines and applies those two replacements.
+- **Registry and mirror.** The `devtool` source joins `Screen.Read`'s and `Registry`'s rosters and `screen-mirror.mjs`; a devtool source takes criteria, and the refusal sentence now counts sixteen sources, in the five corpora that pin it.
 
 ### Extend, don't copy (Rule 2/31)
 
@@ -334,14 +364,36 @@ The implement stage greps `ui/browser`, `ui/tools`, `ui/src` specs and `src/OcuP
 
 ### Mutations (Rule 19), one per AC:
 
-- AC1: `DevToolPort` sends `includeGenerated` 1 always. Expected red: the Generated row.
-- AC2: add one statement to `Loc.LocCount` (change the `topN` default to 21). Expected red: the AC2 diff command.
-- AC3: move the wide-spec check after the `HarvestPortClass()` call. Expected red: the Wide spec row's no-call assertion.
-- AC4: point the code-metrics descriptor's tool read at `DocumentHashes`. Expected red: the Read tool row.
+Each was applied on `ocupilot-b-ci`, the tree recompiled, the red observed, and the file restored and compared byte for byte.
+
+- AC1, mutation: `DevToolPort` sends `includeGenerated` 1 always. Red, observed: `TestGeneratedRoutinesFollowTheChoice` (generated `no` lists rows, and the body was sent 1) and `TestTheBodyIsSentOnlyTheKeysThePortBuilds`.
+- AC2, mutation: change `Loc.LocCount`'s `topN` default to 21. Red, observed: the AC2 comparison shows that one line.
+- AC3, mutation: move the wide-spec check after the `HarvestPortClass()` call. Red, observed: `TestAWideSpecIsRefusedBeforeAnyBody`'s no-call assertion, on all four legs. It needs the cap lifted and the recorder dry (`SetDry`), because with the real cap a whole-namespace spec is refused as too many first.
+- AC4, mutation: point the code-metrics descriptor's source endpoint at `DocumentHashes`. Red, observed: `TestTheReadToolsAnswerTheScreenRows` (the row's own field) with four other tests.
+- Source refusals, mutation: drop the devtool arm from `Registry.ReadProblem`, and separately from `readProblem` in `screen-mirror.mjs`. Red, observed: `TestTheDevtoolSourceRefusals`, and `Story 24.1: the devtool source refusals agree with the instance corpus`.
+- Generated header, mutation: drop the `Generated` attribute from `Kernel.Utils.DocumentLines`. Red, observed: `TestGeneratedRoutinesFollowTheChoice`'s header and hash legs.
+- Cap sentence, mutation: set `MAXDOCUMENTS` to 1500. Red, observed: `TestTooManyDocumentsAreRefusedBeforeAnyBody`'s reason-names-the-cap leg.
+- Retry and clearing, mutation: make `onRetry` do nothing. Red, observed: `clears a refusal when the next search is answered, and Retry runs the refused search again`.
+
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned as the first slice only (DT-07, DT-08). For the runner's spec gate, under Design Notes: the `Proposed split` (five siblings, 24.5-24.9), the `Proposed strings`, the proposed spine amendment, the contended-file list, and the escalation for 24.8 and 24.9 (NFR-6, PRD section 9 and the spine's Deferred row contradict remote profiles, diff and promote as worded).
+Summary: LOC metrics and drift hashes ship as two read-only System Explorer screens (Code metrics, Document hashes) over one gated port, `DevToolPort`, that runs the harvested `Loc` and `EnvSync` bodies through `HarvestPort` after the six ordered checks. Both screens and their read tools answer the same bounded rows.
+
+Files changed:
+
+- `src/OcuPilot/Port/DevToolPort.cls` (new): the gate, validation, document cap and row shaping.
+- `src/OcuPilot/Port/Harvest/{Loc,EnvSync,LocGenerate,LocScanner,LocClassifier}.cls` (new): the harvested bodies and library, renamed only.
+- `src/OcuPilot/Kernel/Utils.cls`: `DocumentLines`, the reader the bodies call.
+- `src/OcuPilot/Api/AtelierError.cls`, `Screen/Read.cls`, `Screen/Registry.cls`, `Screen/Titles.cls`, `Screen/Descriptor/Explorer{CodeMetrics,DocumentHashes}.cls`: the two refusal codes, the `devtool` source and the two descriptors.
+- `src/OcuPilot/Test/DevTool*.cls` (new) and thirteen roster and corpus classes appended to for the two screens, two tools and six port-package classes.
+- `ui/src/app/areas/system-explorer/dev-tool.{page,store}.ts` and its spec (new), `strings.ts`, `screens.generated.ts`, `screen-outlet.ts`, `ui/tools/screen-mirror{,.test}.mjs`, `navigation.test.mjs`, `self-protection.test.mjs`, `ui/browser/code-metrics.browser-spec.mjs` (new), and EXPERIENCE.md's Fixed strings.
+
+Review: 12 findings -- patches applied 4 (one medium: the devtool source's refusals now have a corpus run by both engines; three low: the generated-routine header, the cap sentence's number, and the Retry and refusal-clearing page test), deferred 0, rejected 8 with the reasons in the Review Triage Log. Follow-up review recommended: false (one medium patched, no high).
+
+Verification: `reload.sh` LOADERRORS=0; the full ObjectScript sweep, shards 1 to 17 of 17 on `ocupilot-b-ci`, every shard green with 0 failed; `DevToolRead` 15 of 15; `npm run test:tools` 2,280 and `npm run test:components` 3,435 green; `npm run build` clean; the new browser spec 2 of 2 on the redeployed bundle; `check-objectscript` (0 problems), its harness (146 tests) and `lint-docs` clean; the AC2 comparison identical for all five harvested files. The four AC mutations and the four review-pass mutations were applied, observed red and restored byte for byte (see Verification, Mutations).
+
+Residual risks: the full browser suite is left to CI; the command-box alias search in `definitions.browser-spec.mjs` may be sensitive to the new aliases (`loc`, `lines of code`, `drift hashes`). Root-owned scratch files `/tmp/Task0.cls` and `/tmp/Priv.cls` remain inside `ocupilot-b-ci`. The proposed spine amendment and AD-66's 24.9 wording wait for the owner's attended architecture update. `ci-timings.json` does not yet list the new test class or spec; the merge gate refreshes it.

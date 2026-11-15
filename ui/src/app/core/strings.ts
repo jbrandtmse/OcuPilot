@@ -4882,6 +4882,60 @@ export const STRINGS = {
   explorerMacroPrompt2: 'Where is $$$OK defined?',
   /** EXPERIENCE.md:594 */
   explorerMacroPrompt3: 'What does $$$ThrowOnError do?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsLabel: 'Code metrics',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesLabel: 'Document hashes',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentsLabel: 'Documents',
+  /** EXPERIENCE.md:594 */
+  explorerIncludeGeneratedLabel: 'Include generated',
+  /** EXPERIENCE.md:594 */
+  explorerColumnLines: 'Lines',
+  /** EXPERIENCE.md:594 */
+  explorerColumnCodePercent: 'Code %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnSourceCode: 'Source code',
+  /** EXPERIENCE.md:594 */
+  explorerColumnTestCode: 'Test code',
+  /** EXPERIENCE.md:594 */
+  explorerColumnComments: 'Comments',
+  /** EXPERIENCE.md:594 */
+  explorerColumnCommentPercent: 'Comments %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnBlank: 'Blank',
+  /** EXPERIENCE.md:594 */
+  explorerColumnBlankPercent: 'Blank %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnSha256: 'SHA-256',
+  /** EXPERIENCE.md:594 */
+  explorerDevToolEmpty: 'No class or routine in this namespace matches that pattern.',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsInvite: 'Enter a pattern to count the lines of this namespace\'s classes and routines.',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesInvite: 'Enter a pattern to list a content hash for each matching class and routine.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecLengthReason: 'Name the documents: 1 to 256 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerGeneratedReason: 'generated must be yes or no.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecShapeReason: 'Name documents with letters, digits, %, dots, * and ?, separated by commas.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecWideReason: 'Name a package or a pattern, such as MyApp.*.cls; * on its own covers the whole namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecTooManyReason: 'That pattern matches more than 1,000 documents, the most one read covers. Narrow it to a package.',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt1: 'How much of this package is test code?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt2: 'What share of these classes is comments?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt3: 'How many lines of code does this package hold?',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt1: 'List the content hash of every class in this package.',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt2: 'Which of these documents changed most recently?',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt3: 'How many documents does this pattern match?',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse

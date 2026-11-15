@@ -240,4 +240,19 @@ Parameter DATAREADONLY = "EXPLORER.DATA.READONLY";
 
 Parameter REASONDATAREADONLY = "This is a view, or a table without a key this account can see, so its rows are not changed here.";
 
+/// <p>Envelope code: a Code metrics or Document hashes spec has a part that is a bare <code>*</code>, which
+/// names the whole namespace, so no body ran (Story 24.1). Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, and never logged.</p>
+Parameter SPECWIDE = "EXPLORER.SPEC.WIDE";
+
+Parameter REASONSPECWIDE = "Name a package or a pattern, such as MyApp.*.cls; * on its own covers the whole namespace.";
+
+/// <p>Envelope code: a Code metrics or Document hashes spec matches more documents than one read covers, so
+/// no body ran (Story 24.1). Rendered on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with
+/// 400, <code>detail.count</code> the documents it matches and <code>detail.max</code> the most one read
+/// covers, and never logged.</p>
+Parameter SPECTOOMANY = "EXPLORER.SPEC.TOOMANY";
+
+Parameter REASONSPECTOOMANY = "That pattern matches more than 1,000 documents, the most one read covers. Narrow it to a package.";
+
 }
