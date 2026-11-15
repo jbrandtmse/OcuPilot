@@ -212,3 +212,4 @@
 2026-11-15T21:51:27Z	Story 21.15	story_created	spawn_at=2026-11-15T21:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-15-locale-and-table-import.md build_status=ready-for-dev cycle_iteration=2
 2026-11-15T21:51:27Z	Story 21.15	ruling	question=drop_LTB_choice,strings,export_key_on choice=keep rejected=add_choice,key_off why=smaller;sibling_parity category=veto inbox=U-61 policy=b9ff703e reversal=add_choice/reword/key_off
 2026-11-15T21:51:27Z	Story 21.15	spec_validated	service_introducing=false(extends_LocalePort_from_21.14) integration_ac=present adr_constrained_acs=AD-21,AD-51,AD-53,AD-10,AD-22,AD-29 decision_dependency=none owned_ledger=DW-2606 addressed=1 depends_on=21.14 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-15T21:51:36Z	Story 21.16	stage_spawned	stage=plan spawn_at=2026-11-15T21:51:36Z model=opus agent_name=21-16-custom-locales-plan-1 cycle_iteration=1
