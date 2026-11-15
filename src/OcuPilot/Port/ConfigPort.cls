@@ -85,7 +85,7 @@ Parameter EXCLUDED = "EnableLongStrings,OsType,Platform,PageSizeAlt,ZaMode,globa
 Parameter INTEROPONLY = "EnsembleAutoStart";
 
 /// <p>The settings shown and never changed (AD-21): the path-valued strings, and the six network settings whose change
-/// would cut OcuPilot off at the next restart, because the web gateway reaches the instance through the default
+/// could cut OcuPilot off at the next restart, because the web gateway reaches the instance through the default
 /// superserver and the private web server serves OcuPilot on this build. Every property of the vendor's path type
 /// (<parameter>PATHTYPE</parameter>) is read only too.</p>
 Parameter READONLY = "LibPath,Path,PythonPath,PythonRuntimeLibrary,DefaultPort,DefaultPortBindAddress,WebServer,WebServerName,WebServerPort,WebServerProtocol";

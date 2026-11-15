@@ -57,7 +57,7 @@ XData Cases
 {
   "cases": [
     {"name": "a config LIST of Startup is sound", "source": {"port": "config", "endpoint": "Startup", "type": "LIST"}, "expected": null},
-    {"name": "so are Memory and Compatibility", "source": {"port": "config", "endpoint": "Memory", "type": "LIST"}, "expected": null},
+    {"name": "so is Memory", "source": {"port": "config", "endpoint": "Memory", "type": "LIST"}, "expected": null},
     {"name": "an endpoint the port does not serve", "source": {"port": "config", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the config port's endpoints ('Startup', 'Memory', 'Compatibility') (AD-29)"},
     {"name": "a type other than LIST", "source": {"port": "config", "endpoint": "Startup", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a config source, which lists the instance's startup, memory and compatibility settings (AD-36)"},
     {"name": "rowGet", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Value"], "derived": []}}, "expected": "read.source.rowGet is declared on a config source, which answers its list whole (AD-36)"},
