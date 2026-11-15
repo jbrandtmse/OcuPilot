@@ -179,3 +179,5 @@
 2026-11-15T20:47:19Z	Epic 21	deps_hash_rerecorded	reason=split story=21.5->21.5,21.17,21.18 note=orchestrator_rerecords
 2026-11-15T20:47:37Z	Story 21.5	story_parked	stage=plan(spec_written,blocked) reason=needs_AD-10_arm,AD-36_record,AD-53_record(named_entries;re-architecture_by_U7c) category=park(pending_orchestrator_item) code=none
 2026-11-15T20:47:37Z	Story 21.18	story_parked	stage=before_plan reason=AD-51_named_entry_likely(same_as_U-58) category=park code=none
+2026-11-15T20:48:57Z	Story 21.5	runner_reported	item=U-59(orchestrator) via=SendMessage(main)
+2026-11-15T20:48:57Z	Story 21.17	stage_spawned	stage=plan spawn_at=2026-11-15T20:48:57Z model=opus agent_name=21-17-global-export-and-import-plan-1 cycle_iteration=1
