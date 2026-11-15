@@ -12989,3 +12989,39 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: config-settings.page.ts opens InteropItemSettingDialog unedited; an empty integer or choice value is refused 400 CONFIG.SETTING.VALUE; the dialog is an Epic 24 file
 - 2026-11-15T13:39:34Z status=routed owner=burndown by=harvest note=fix needs a dialog input or a new string in an Epic 24-owned file; take it at the burn-down once Epic 24's dialog work has merged
 - 2026-11-15T13:39:41Z status=wontfix-accepted owner=21-3-startup-memory-and-compatibility-settings by=harvest note=reopen_if=a person reports the empty-to-clear hint on a settings screen, or Epic 24 edits InteropItemSettingDialog's hint (burndown never owns a LOW)
+
+### DW-2589: Startup settings WebServerName and WebServerProtocol stay settable, though changing either can cut OcuPilot off at the next restart as the four read-only network settings can
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ConfigPort.READONLY names DefaultPort, DefaultPortBindAddress, WebServer, WebServerPort only; WebServerName restricts the private web server's accepted address (Config.Startup.cls:192-195) and the private web server serves OcuPilot (measured by 21.3)
+- 2026-11-15T14:10:56Z status=decision-pending owner=burndown by=cr note=veto: stricter posture beyond U-47; recommend both join READONLY (cut-off is inference)
+- 2026-11-15T14:13:20Z status=routed owner=21-3-startup-memory-and-compatibility-settings by=spec_gate note=ruled by the runner (veto U-49): both join ConfigPort.READONLY in rework 1
+
+### DW-2590: Startup settings refuse the negative SystemPerformanceDailyReportsOn values the vendor documents as an interval
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The property declares no MINVAL and its doc allows -300 to -2 (Config.Startup.cls:146-150); LimitsOf starts every such integer at 0
+- 2026-11-15T14:10:56Z status=by-design owner=21-3-startup-memory-and-compatibility-settings by=cr note=Design Notes: an integer with no declared minimum starts at 0, stricter than the dictionary
+
+### DW-2591: The settings dialog types a choice setting such as Undefined or WebServerProtocol as free text instead of offering its choices
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: config-settings.page.ts passes the reused InteropItemSettingDialog a boolean type or nothing; a wrong choice is refused only after Save
+- 2026-11-15T14:10:56Z status=by-design owner=21-3-startup-memory-and-compatibility-settings by=cr note=spec forbids an interop-file edit; the dialog is reused as is
+
+### DW-2592: The settings screens do not show a restart already pending from an earlier change, as the classic Memory and Startup page does
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The page states the restart sentence only after its own Save (config-settings.page.ts); MemoryStartup.cls:444-445 reads Config.CPF.PendingRestart
+- 2026-11-15T14:10:56Z status=wontfix-accepted owner=21-3-startup-memory-and-compatibility-settings by=cr note=reopen_if=an operator reports missing a pending restart set by the agent or another session
+
+### DW-2593: The Restart column draws a setting that needs a restart as Yes with a success disc
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The three descriptors declare Restart kind status; cellView draws a true boolean in a status column with a success disc (table-model.ts)
+- 2026-11-15T14:10:56Z status=wontfix-accepted owner=21-3-startup-memory-and-compatibility-settings by=cr note=reopen_if=a user reads the disc as a healthy state; the table convention draws every status boolean so
+
+### DW-2594: ConfigPort's three narrow paths are theoretical: the snippet keeps Comment subnodes and skips Get's status, a read given a body answers 500, and Rows evaluates its gate outside its Try
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ConfigPort.Snippet, Invoke and Rows; Get answers no Comment subnodes on this build (measured) and no caller passes a read a body
+- 2026-11-15T14:10:56Z status=wontfix-theoretical owner=21-3-startup-memory-and-compatibility-settings by=cr note=real if Get gains Comment subnodes or a caller sends a body to a read
+
+### DW-2595: A concurrent change made outside OcuPilot between ConfigPort's read and its full-set Modify is overwritten
+- source: spec-21-3-startup-memory-and-compatibility-settings.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: VendorModify re-reads the class and sends every key; AD-34's lock orders only OcuPilot's own callers
+- 2026-11-15T14:10:56Z status=wontfix-theoretical owner=21-3-startup-memory-and-compatibility-settings by=cr note=real if another session saves the same class within the read-to-Modify window; the runner's AD-4 ruling mandates the full set

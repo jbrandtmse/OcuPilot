@@ -2,7 +2,7 @@
 title: 'Story 21.3: Startup, memory and compatibility settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'af15d1c923c6a5aa10d84d2e31cf020851396de7'
 baseline_commit: 'af15d1c923c6a5aa10d84d2e31cf020851396de7'
 review_loop_iteration: 0
@@ -114,7 +114,33 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - AC3. Given a read-only row, when either caller sets it, then it is refused before any vendor call, and the screen offers no Set value on it.
 - AC4. Given the default baseline, when the agent proposes any of the three sets, then it mints, and the confirm writes once with one audit marker and a `readBack`. With the key `false` the governance gate refuses it.
 
+### Review Findings
+
+- [ ] [Review] HIGH (AD-35): `Config.Startup.PasswordHash` holds the instance password's hash, salt, work factor and algorithm, and is listed, sent to the agent and settable. Runner ruling (veto U-49): add it to `ConfigPort.EXCLUDED`, so it is never listed, read, minted or set by either caller; pin it with a test that it appears in no read, no tool answer and no set path, and correct the Design Notes sentence that says it holds only hash parameters.
+- [ ] [Review] DW-2589: `WebServerName` and `WebServerProtocol` join `ConfigPort.READONLY` (runner ruling, veto U-49), refused at both callers like the four network settings; update the read-only roster test and its mutation line.
+- [ ] [Review] Fix Pack: the `config` read source's shape-rule cases (see `## Fix Pack`).
+
+Code review 2026-11-15 (first review; four layers, full-opus).
+
+- [ ] [Review][Decision] HIGH: `PasswordHash` is listed, readable by the agent and settable as plain text -- `Config.Startup.PasswordHash` is "hash,salt,workFactor,algorithm" of the instance password (`irissys/Config/Startup.cls:113-121`), not hash parameters as Design Notes say. Its value reaches the table, the read tool (and so the provider), the card, the ledger and the audit unredacted, and a set replaces the predefined accounts' password at the next restart (inference from the vendor description). AD-35 and Conventions › Secrets. The fix is a stricter, credential-handling posture (veto window), escalated to the runner. Recommended: add `PasswordHash` to `ConfigPort.EXCLUDED`.
+- [x] [Review][Defer] `WebServerName` and `WebServerProtocol` stay settable, though either can cut OcuPilot off at the next restart as the four read-only network keys can [`src/OcuPilot/Port/ConfigPort.cls:89`] -- deferred: decision-pending (stricter posture, beyond veto U-47's four keys); recommended: add both to `READONLY`.
+- [x] [Review][Patch] `MaxIRISTempSizeAtStart`'s vendor source states its effect at restart, but it read `Restart` false (AC2) [`src/OcuPilot/Port/ConfigPort.cls:96`] -- added to `RESTARTSTARTUP`; the Design Notes sentence "every other Startup setting has no vendor source" is wrong for it (`irissys/Config/Startup.cls:106-108`).
+- [x] [Review][Patch] Mint-success tests assumed the instance does not already hold the probe value (Rule 19 hermeticity) [`ConfigSettingRead`, `ConfigSettingRules`, `ConfigSettingMint`] -- `ConfigSettingRead.Unlike` picks a value the setting does not hold.
+- [x] [Review][Patch] The armed `Restore` stopped at the first failing class, and a failed `Snapshot` read went unnoticed [`src/OcuPilot/Test/ConfigSettingWrite.cls`] -- each class restores on its own; `OnBeforeOneTest` refuses to run when a class could not be read.
+- [x] [Review][Patch] The armed refusal rows sent `DefaultPort` 1973 and `TempDirectory` `x` to the shipped port [`src/OcuPilot/Test/ConfigSettingWrite.cls`] -- each now sends the value it already holds, so a regressed guard writes nothing new.
+- [x] [Review][Patch] The matrix's "a person's Set value is not governed" had no test -- `TestTheAgentsConfirmWritesOnceWithOneAuditMarker` sets it through the screen with the key disabled.
+- [x] [Review][Patch] Unpinned: the minimum-only `Accepts` line (`errlog` "A whole number of at least 10."), the write gate's read pairs (a caller holding nothing), the control-character and digit-cap value rules, `ReasonForToolCode`'s `CONFIG.` dispatch, and the page's refusal with no field (the shape the port answers).
+- [ ] [Review][Patch] Fix Pack: the `config` read-source shape rules (`Registry.ReadProblem`, `screen-mirror.mjs` `readProblem`: an endpoint outside `ENDPOINTS`, a type other than `LIST`, a declared `rowGet`) have no case on either side (the `backup` sibling neither).
+- Rejected: `ConfigSettingMint` untracked (false: the runner commits QA's file); `DEFAULTMAXLEN` 255 advertised (false: the compiled property carries `%Library.String`'s `MAXLEN` 50, and a 255 mutation left `Accepts` at 50); the restart test fails on a re-run (false: Task 0 measured each `errlog` change adds a reason); `VendorRefuses` doc (false); the mint's circular startup assertion (`ConfigSettingRead` pins the literal); `PathProperties` swallows errors (the roster literal covers it); the matrix's mint 404 and the "no Set value" task text (fixes edit the spec; AC3 kept, see Decisions); missing mutation lines for the gate and vendor rows (one per AC is recorded); every vendor refusal answered `CONFIG.SETTING.VALUE` (Design Notes ruling); the tool descriptions' "Accepts column" wording (the read carries the field).
+- Deferred (ledger): negative `SystemPerformanceDailyReportsOn` refused (Design Notes' minimum 0); choice settings typed as free text (the dialog is reused as is); a restart pending from an earlier change is not shown; the `Restart` column's success disc; the snippet's `Comment` subnodes and unchecked `Get`; a body on a read answered 500; `Rows`' gate outside its `Try`; a concurrent external change lost between the read and the full-set `Modify`.
+
+## Fix Pack
+
+- Add cases for the `config` read source's shape rules on both sides: an endpoint outside `ConfigPort.ENDPOINTS`, a type other than `LIST`, and a declared `rowGet`, each expecting its sentence, in a descriptor `XData Cases` corpus (as `MetricsDescriptor` does) and in `ui/tools/screen-mirror.test.mjs`; record one mutation.
+
 ## Spec Change Log
+
+- 2026-11-15, rework 1 (lead): re-opened after the first review for a HIGH (PasswordHash) and the two runner rulings that answer it.
 
 ## Review Triage Log
 
@@ -225,6 +251,15 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - mutation: `osmgmt.memorysettings.set` `false` in `Baseline` (AC4) -> `ConfigSettingRead` red, baseline and minted assertions.
 - mutation: `CompatibilitySettingList` drops `%Admin_Secure:USE` from `privileges` -> `ConfigSettingMint` route-pair test red.
 - The armed `ConfigSettingWrite` ran green with `OCUPILOT_ALLOW_CONFIG_SETTINGS=1`, four tests; `ConfigSettingRules` six and `ConfigSettingRead` eight green.
+
+**Code review (Rule 19), on `ocupilot-ci`, each applied, observed red, reverted (`git status --short` and `git diff --stat` identical) and reloaded:**
+
+- mutation: `RESTARTSTARTUP` without `MaxIRISTempSizeAtStart` (AC2) -> `ConfigSettingRead` red, "and no other startup setting states a restart".
+- mutation: `AcceptsOf`'s minimum-only branch removed -> `ConfigSettingRead` red, the `errlog` Accepts assertion.
+- mutation: `WRITEPAIRS` reduced to `%DB_IRISSYS:WRITE` -> `ConfigSettingRead` red, the hold-nothing write row.
+- mutation: `ValueHolds`' text branch answers 1 -> `ConfigSettingRules` red, the control-character assertion.
+- mutation: the page's `else this.refusal.set(...)` sets `''` -> `config-settings.page.spec.ts` red, the no-field refusal test.
+- After review: `ConfigSettingRead` 8, `ConfigSettingRules` 6, `ConfigSettingMint` 4, armed `ConfigSettingWrite` 4, `TeardownGuard` 4, `Descriptor` 60 green; `config-settings.page.spec.ts` 10 green; `check-objectscript.py` 0 problems.
 
 ## Auto Run Result
 

@@ -54,7 +54,13 @@ Method OnBeforeOneTest() As %Status
 {
     ; The confirm fixture's port is the shipped config port, so the confirm reads and writes the instance.
     Set ^||OcuPilotDatabaseWritePort = ..#PORT
-    Set ..PreparedSettings = ..Snapshot().%ToJSON()
+    Set tSnapshot = ..Snapshot()
+    Set tMissing = ""
+    For tI = 1:1:$Length(..#CLASSES, ",") {
+        If tSnapshot.%GetTypeOf($Piece(..#CLASSES, ",", tI)) '= "object" Set tMissing = tMissing _ " " _ $Piece(..#CLASSES, ",", tI)
+    }
+    If tMissing '= "" Quit $$$ERROR($$$GeneralError, "could not read" _ tMissing _ ", so no test changes a setting it could not put back")
+    Set ..PreparedSettings = tSnapshot.%ToJSON()
     Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
@@ -92,6 +98,7 @@ ClassMethod Snapshot() As %DynamicObject
             Set tClass = $Piece(..#CLASSES, ",", tI)
             Kill tProps
             Set tSC = $ClassMethod(tClass, "Get", .tProps)
+            If $$$ISERR(tSC) Continue
             Set tObject = {}
             Set tKey = ""
             For {
@@ -108,15 +115,17 @@ ClassMethod Snapshot() As %DynamicObject
 }
 
 /// <p>Put every key of <var>pPrepared</var> back where the instance reads another value, through the vendor's own <code>Modify</code> of the
-/// complete set, in <code>%SYS</code>.</p>
+/// complete set, in <code>%SYS</code>. Each class is restored on its own, so one class that fails leaves the others restored; the first
+/// failure is answered.</p>
 ClassMethod Restore(pPrepared As %DynamicObject) As %Status
 {
-    Set tSC = $$$OK
+    Set tFirst = $$$OK
     Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#CLASSES, ",") {
-            Set tClass = $Piece(..#CLASSES, ",", tI)
+    For tI = 1:1:$Length(..#CLASSES, ",") {
+        Set tClass = $Piece(..#CLASSES, ",", tI)
+        Set tSC = $$$OK
+        Try {
+            Set $NAMESPACE = "%SYS"
             Kill tProps
             Set tSC = $ClassMethod(tClass, "Get", .tProps)
             If $$$ISERR(tSC) Quit
@@ -136,13 +145,13 @@ ClassMethod Restore(pPrepared As %DynamicObject) As %Status
                 }
             }
             If tDiffers Set tSC = $ClassMethod(tClass, "Modify", .tProps)
-            If $$$ISERR(tSC) Quit
+        } Catch ex {
+            Set tSC = ex.AsStatus()
         }
-    } Catch ex {
-        Set tSC = ex.AsStatus()
+        If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
     }
-    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit tFirst
 }
 
 /// <p>The reasons <code>Config.CPF.PendingRestart</code> reports now, as <code>section/property</code> lines in order, and their count in
@@ -278,14 +287,17 @@ Method TestARestartBoundSetStatesTheConsequenceAndTheInstanceNamesItPending()
 Method TestARefusedSetChangesNothingOnEitherCaller()
 {
     Set tBefore = ..Snapshot().%ToJSON()
-    For tCase = $ListBuild("osmgmt.startupsettings", "NoSuchSetting", "1", "404|CONFIG.SETTING.NOTFOUND"), $ListBuild("osmgmt.startupsettings", "DefaultPort", "1973", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.startupsettings", "TempDirectory", "x", "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.startupsettings", "ShutdownTimeout", "119", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.startupsettings", "ShutdownTimeout", "x", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.memorysettings", "bbsiz", "100", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.compatibilitysettings", "LineRecall", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.compatibilitysettings", "Undefined", "3", "400|CONFIG.SETTING.VALUE") {
+    ; A setting shown and never changed is sent the value it already holds, so a guard that regressed would write nothing new.
+    Set tPort = ..ValueOf("Startup", "DefaultPort")
+    Set tTemp = ..ValueOf("Startup", "TempDirectory")
+    For tCase = $ListBuild("osmgmt.startupsettings", "NoSuchSetting", "1", "404|CONFIG.SETTING.NOTFOUND"), $ListBuild("osmgmt.startupsettings", "DefaultPort", tPort, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.startupsettings", "TempDirectory", tTemp, "409|CONFIG.SETTING.READONLY"), $ListBuild("osmgmt.startupsettings", "ShutdownTimeout", "119", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.startupsettings", "ShutdownTimeout", "x", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.memorysettings", "bbsiz", "100", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.compatibilitysettings", "LineRecall", "2", "400|CONFIG.SETTING.VALUE"), $ListBuild("osmgmt.compatibilitysettings", "Undefined", "3", "400|CONFIG.SETTING.VALUE") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), .tAnswer)
         Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), $List(tCase, 4), $List(tCase, 2) _ " '" _ $List(tCase, 3) _ "' is refused at the screen")
     }
     Set tDbSizes = ..Act("osmgmt.startupsettings", "DBSizesAllowed", "16384", .tAnswer)
     Do $$$AssertEquals(tDbSizes _ "|" _ ..Code(tAnswer), "400|CONFIG.SETTING.VALUE", "DBSizesAllowed without 8192 is refused at the screen")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.StartupSettingSet", "ShutdownTimeout", "119", .tResult, .tProposal), "refused: This setting does not accept that value.", "a value out of range is refused at the mint")
-    Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.StartupSettingSet", "DefaultPort", "1973", .tResult, .tProposal), "refused: This setting is shown here and never changed here.", "a setting shown and never changed is refused at the mint")
+    Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.StartupSettingSet", "DefaultPort", tPort, .tResult, .tProposal), "refused: This setting is shown here and never changed here.", "a setting shown and never changed is refused at the mint")
     Do $$$AssertEquals(..Agent("OcuPilot.Screen.Tool.MemorySettingSet", "NoSuchSetting", "1", .tResult, .tProposal), "refused: 'NoSuchSetting' is not present on this instance", "an unknown setting is refused at the mint, which reads the target first")
     Do $$$AssertEquals(..Snapshot().%ToJSON(), tBefore, "and every setting of the three classes reads as before")
 }
@@ -313,6 +325,8 @@ Method TestTheAgentsConfirmWritesOnceWithOneAuditMarker()
     Set tSettings("osmgmt.compatibilitysettings.set") = "disabled"
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the key is stored disabled")
     Do $$$AssertEquals(..Dispatched("osmgmt.compatibilitysettings.set", tInput, .tNone), "refused", "and the same call is refused at dispatch")
+    Set tStatus = ..Act("osmgmt.compatibilitysettings", "LineRecall", tNew, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..ValueOf("Compatibility", "LineRecall"), "200|" _ tNew, "while a person's Set value is not governed and still changes it (AD-22)")
 }
 
 /// <p>The agent's dispatch of <var>pKey</var> with <var>pInput</var>: <code>minted</code> with the proposal id in <var>pProposalId</var> and

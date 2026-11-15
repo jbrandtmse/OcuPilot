@@ -91,8 +91,9 @@ Parameter READONLY = "LibPath,Path,PythonPath,PythonRuntimeLibrary,DefaultPort,D
 Parameter PATHTYPE = "%Library.SysPath";
 
 /// <p>The settings a vendor source states take effect only at the next restart, and the vendor's own source for each
-/// memory setting is <code>Config.config.NoRestartOnActivate</code>.</p>
-Parameter RESTARTSTARTUP = "WebServer,ErrorPurge,DefaultPort";
+/// memory setting is <code>Config.config.NoRestartOnActivate</code>. <code>MaxIRISTempSizeAtStart</code>'s source is its own property
+/// description in <code>Config.Startup</code>, which applies it when the system restarts.</p>
+Parameter RESTARTSTARTUP = "WebServer,ErrorPurge,DefaultPort,MaxIRISTempSizeAtStart";
 
 Parameter RESTARTCOMPATIBILITY = "NullSubscripts";
 

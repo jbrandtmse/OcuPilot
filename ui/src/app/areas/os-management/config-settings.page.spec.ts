@@ -225,4 +225,16 @@ describe('the settings page', () => {
     expect(events).toEqual([]);
     expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
   });
+
+  it("keeps a refusal that names no field in the dialog as the envelope's own sentence, as the port answers it", async () => {
+    const reason = 'This setting does not accept that value.';
+    const { fixture, host, store, actions, events } = mount([{ kind: 'error', status: 400, code: 'CONFIG.SETTING.VALUE', reason } as JsonResult<unknown>]);
+    await open(fixture, store, actions, STARTUP_SETTING_LIST, 'ShutdownTimeout');
+    type(fixture, host, '119');
+    confirm(host);
+    await settle(fixture);
+    expect(host.querySelector('app-interop-item-setting-dialog')).not.toBeNull();
+    expect(host.querySelector('[data-interop-setting-reason]')?.textContent?.trim()).toBe(reason);
+    expect(events).toEqual([]);
+  });
 });

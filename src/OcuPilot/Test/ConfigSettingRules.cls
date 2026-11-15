@@ -135,13 +135,18 @@ Method TestTheMintRefusesWhatThePortRefuses()
     Do $$$AssertEquals($IsObject(tProposal) _ "|" _ tProblem, "0|'NoSuchSetting' is not present on this instance", "a name the instance does not list mints nothing and is answered in the sentence the sibling mints give")
     Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.CompatibilitySettingSet", "LineRecall", {"Name": "LineRecall", "Value": "2"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertEquals($IsObject(tProposal) _ "|" _ tProblem, "0|" _ $ClassMethod(..#ERROR, "ReasonFor", "CONFIG.SETTING.VALUE"), "a boolean setting refuses 2 at the mint")
-    Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.MemorySettingSet", "history", {"Name": "history", "Value": "501"}, .tProposal, .tHttp, .tProblem)
+    Set tHistory = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("Memory", "history", "501") _ ""
+    Set tArgs = {"Name": "history"}
+    Do tArgs.%Set("Value", tHistory, "string")
+    Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.MemorySettingSet", "history", tArgs, .tProposal, .tHttp, .tProblem)
     Do $$$AssertEquals($IsObject(tProposal), 1, "a value the setting accepts mints a proposal: " _ tProblem)
     If '$IsObject(tProposal) Quit
     Set tChanged = tProposal.%Get("changed")
-    Do $$$AssertEquals(tChanged.%Size() _ "|" _ tChanged.%Get(0).%Get("field") _ "|" _ tChanged.%Get(0).%Get("after"), "1|Value|501", "whose one diff row is the value")
+    Do $$$AssertEquals(tChanged.%Size() _ "|" _ tChanged.%Get(0).%Get("field") _ "|" _ tChanged.%Get(0).%Get("after"), "1|Value|" _ tHistory, "whose one diff row is the value")
     Do $$$AssertEquals(##class(OcuPilot.Test.EcpSettingsWrite).Consequence(tProposal), "", "and which states no consequence for a setting that needs no restart")
-    Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.MemorySettingSet", "errlog", {"Name": "errlog", "Value": "501"}, .tRestart, .tHttp, .tProblem)
+    Set tArgs = {"Name": "errlog"}
+    Do tArgs.%Set("Value", ##class(OcuPilot.Test.ConfigSettingRead).Unlike("Memory", "errlog", "501") _ "", "string")
+    Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.MemorySettingSet", "errlog", tArgs, .tRestart, .tHttp, .tProblem)
     Do $$$AssertEquals($IsObject(tRestart), 1, "a restart-bound value mints too: " _ tProblem)
     If $IsObject(tRestart) Do $$$AssertEquals(##class(OcuPilot.Test.EcpSettingsWrite).Consequence(tRestart), "CONFIG.SETTING.RESTART", "and its card states the restart consequence")
 }
@@ -154,12 +159,16 @@ Method TestTheCodesAndSentencesArePublished()
         Set tCode = $List(tCase, 1)
         Do $$$AssertEquals($ClassMethod(..#ERROR, "ReasonFor", tCode) _ "|" _ $ClassMethod(..#ERROR, "HttpStatusFor", tCode) _ "|" _ $ClassMethod(..#ERROR, "SlugFor", tCode), $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), tCode _ ": its sentence, status and slug")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), $List(tCase, 2), tCode _ ": the violation dispatch reaches it")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), $List(tCase, 2), tCode _ ": and so does the tool-code dispatch")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).IsValidCode(tCode), 1, tCode _ " is a well-formed machine code")
     }
     Do $$$AssertEquals($ClassMethod(..#ERROR, "ReasonFor", "CONFIG.SETTING.RESTART") _ "|" _ $ClassMethod(..#ERROR, "HttpStatusFor", "CONFIG.SETTING.RESTART"), "Takes effect at the next restart.|0", "the restart code is a consequence with a sentence and no status")
     Do $$$AssertEquals($ClassMethod(..#ERROR, "ReasonFor", "CONFIG.NO.SUCH"), "", "and a code the class does not declare carries none")
     Do $$$AssertEquals($ClassMethod(..#ERROR, "Accepting", $Parameter(..#ERROR, "ACCEPTSRANGE"), 120, 100000), "A whole number from 120 to 100000.", "a range sentence takes its two numbers")
     Do $$$AssertEquals($ClassMethod(..#ERROR, "Accepting", $Parameter(..#ERROR, "ACCEPTSCHOICE"), "0, 1, 2"), "One of 0, 1, 2.", "a choice sentence takes its list")
+    Set tRules = "OcuPilot.Area.OsMgmt.ConfigSettingRules"
+    Do $$$AssertEquals($ClassMethod(tRules, "ValueHolds", $ListBuild("text", "", "", "", 32, ""), "A" _ $Char(10) _ "B") _ $ClassMethod(tRules, "ValueHolds", $ListBuild("text", "", "", "", 32, ""), "AB"), "01", "a text value holding a control character is refused, and the same text without it is not")
+    Do $$$AssertEquals($ClassMethod(tRules, "ValueHolds", $ListBuild("integer", 0, "", "", "", ""), "1234567890123456") _ $ClassMethod(tRules, "ValueHolds", $ListBuild("integer", 0, "", "", "", ""), "123456789012345"), "01", "a whole number longer than fifteen digits is refused, and one of fifteen is not")
 }
 
 /// <p>AD-59. A set renders as a script of the vendor's own <code>Get</code>, the one key and <code>Modify</code>, in <code>%SYS</code>, with

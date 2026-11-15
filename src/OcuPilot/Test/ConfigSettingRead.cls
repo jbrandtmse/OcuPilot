@@ -204,7 +204,7 @@ Method TestTheKindsRestartAndReadOnlyFlagsAreTheMatrixOnes()
         If tName = "" Quit
         If tStartup(tName).Restart Set tRestart = tRestart _ $Select(tRestart = "": "", 1: ",") _ tName
     }
-    Do $$$AssertEquals(tRestart, "DefaultPort,ErrorPurge,WebServer", "and no other startup setting states a restart")
+    Do $$$AssertEquals(tRestart, "DefaultPort,ErrorPurge,MaxIRISTempSizeAtStart,WebServer", "and no other startup setting states a restart")
     For tName = "DefaultPort", "DefaultPortBindAddress", "WebServer", "WebServerPort", "TempDirectory", "WebServerURLPrefix" {
         Set tRow = tStartup(tName)
         Do $$$AssertEquals(tRow.ReadOnly _ "|" _ tRow.Accepts, "1|Shown here and never changed here.", tName _ " is shown and never changed")
@@ -219,6 +219,7 @@ Method TestTheKindsRestartAndReadOnlyFlagsAreTheMatrixOnes()
     }
     Do $$$AssertEquals(tOk, 1, "every memory setting's restart flag is the opposite of the vendor's NoRestartOnActivate")
     Do $$$AssertEquals(tMemory("errlog").Restart _ "|" _ tMemory("history").Restart, "1|0", "errlog needs a restart and history does not")
+    Do $$$AssertEquals(tMemory("errlog").Kind _ "|" _ tMemory("errlog").Accepts, "integer|A whole number of at least 10.", "errlog declares a minimum and no maximum, and reads that minimum alone")
     For tName = "globals4kb", "globals8kb", "globals16kb", "globals32kb", "globals64kb", "routines", "bbsiz" {
         Do $$$AssertTrue($Data(tMemory(tName)), tName _ " is a row here: no form owns it")
     }
@@ -285,6 +286,11 @@ Method TestEveryReadIsRefusedToACallerShortOfItsPairs()
 /// <p>Mutation (Rule 19): <code>WRITEPAIRS</code> without <code>%DB_IRISSYS:WRITE</code> -> every write row goes red.</p>
 Method TestEveryWriteIsRefusedToACallerWithoutTheWritePair()
 {
+    Kill tQuery
+    Set tQuery("name") = "ShutdownTimeout"
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Startup", "SET", .tQuery, {"Value": "301"}, .tOut, .tHttp, .tFault)
+    Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp _ "|" _ tDetail, "403|%Admin_Manage:USE", "a caller holding no pair is refused the write naming the first read pair, which the write set holds too")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     For tCase = $ListBuild("Startup", "ShutdownTimeout", "301"), $ListBuild("Memory", "history", "501"), $ListBuild("Compatibility", "LineRecall", "0") {
@@ -336,10 +342,11 @@ Method TestTheScreensAndToolsDeclareTheirPagesPairsAndActions()
 /// the baseline assertion and the minted assertion go red for that key.</p>
 Method TestTheKeysShipEnabledAndADisabledKeyRefusesTheAgentAtDispatch()
 {
-    For tCase = $ListBuild("osmgmt.startupsettings.set", "ShutdownTimeout", "301"), $ListBuild("osmgmt.memorysettings.set", "history", "501"), $ListBuild("osmgmt.compatibilitysettings.set", "LineRecall", "0") {
+    For tCase = $ListBuild("osmgmt.startupsettings.set", "ShutdownTimeout", "301", "Startup"), $ListBuild("osmgmt.memorysettings.set", "history", "501", "Memory"), $ListBuild("osmgmt.compatibilitysettings.set", "LineRecall", "0", "Compatibility") {
         Set tKey = $List(tCase, 1)
         Do $$$AssertEquals(##class(OcuPilot.Test.Governance).Resolved(tKey), "1|baseline", tKey _ " ships enabled by the baseline")
-        Set tInput = {"Name": ($List(tCase, 2)), "Value": ($List(tCase, 3)), "rationale": "probe", "expectedImpact": "probe"}
+        Set tInput = {"Name": ($List(tCase, 2)), "rationale": "probe", "expectedImpact": "probe"}
+        Do tInput.%Set("Value", ..Unlike($List(tCase, 4), $List(tCase, 2), $List(tCase, 3)) _ "", "string")
         Set tAnswer = ..Dispatched(tKey, tInput, .tContent)
         Do $$$AssertEquals(tAnswer, "minted", tKey _ ": the agent's call mints a proposal under the baseline: " _ tContent)
         Kill tSettings
@@ -349,6 +356,26 @@ Method TestTheKeysShipEnabledAndADisabledKeyRefusesTheAgentAtDispatch()
         Do $$$AssertEquals(tAnswer _ "|" _ tContent, "refused|{""code"":""GOVERNANCE.DISABLED""}", tKey _ ": the same call is refused by the governance gate")
         Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the baseline decides again")
     }
+}
+
+/// <p><var>pCandidate</var>, or, when the setting <var>pName</var> of <var>pEndpoint</var> already holds it, another value the setting
+/// accepts, so a test that mints a change never depends on the value the instance happens to hold.</p>
+ClassMethod Unlike(pEndpoint As %String, pName As %String, pCandidate As %String) As %String
+{
+    Kill tQuery
+    Set tQuery("name") = pName
+    Set tSC = ##class(OcuPilot.Port.ConfigPort).Invoke(pEndpoint, "GET", .tQuery, "", .tRow, .tHttp, .tFault)
+    If '$IsObject($Get(tRow)) || (tRow.%Get("Value") '= pCandidate) Quit pCandidate
+    Set tLimits = ##class(OcuPilot.Port.ConfigPort).Limits(pEndpoint, pName)
+    Set tKind = $ListGet(tLimits, 1)
+    If tKind = "boolean" Quit 'pCandidate
+    If tKind = "choice" {
+        Set tChoices = $ListGet(tLimits, 4)
+        For tI = 1:1:$ListLength(tChoices) If $List(tChoices, tI) '= pCandidate Quit
+        Quit $List(tChoices, tI)
+    }
+    If ($ListGet(tLimits, 3) '= "") && ((pCandidate + 1) > $ListGet(tLimits, 3)) Quit pCandidate - 1
+    Quit pCandidate + 1
 }
 
 /// <p>The agent's dispatch of <var>pKey</var> with <var>pInput</var>: <code>minted</code> or <code>refused</code>; the answer's content is in
