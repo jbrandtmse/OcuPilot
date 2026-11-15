@@ -164,3 +164,5 @@
 2026-11-15T20:01:07Z	Story 21.14	ruling	question=install_treatment,readonly_defaults,strings choice=destructive_key_off_typed_confirm;all_default_rows_readonly;strings_kept rejected=settable_defaults why=stricter_than_classic category=veto inbox=U-56 policy=b9ff703e reversal=make_rows_settable/key_on/reword
 2026-11-15T20:01:07Z	Epic 21	deps_hash_rerecorded	reason=split story=21.14->21.14,21.16 note=orchestrator_rerecords
 2026-11-15T20:01:07Z	Story 21.14	plan_clarification_requested	condition=intent_gap_too_large ruled=split,Q2,Q3 inbox=U-56 respawn=spec_path status_reset=draft
+2026-11-15T20:02:53Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(21.14_split) model=claude-opus-5-5 lines=79
+2026-11-15T20:02:53Z	Story 21.14	stage_spawned	stage=plan spawn_at=2026-11-15T20:02:53Z model=opus agent_name=21-14-nls-configured-defaults-and-locale-definitions-plan-2 cycle_iteration=2

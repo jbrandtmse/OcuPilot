@@ -19,6 +19,7 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - Story 21.13: DDL mappings
 - Story 21.14: NLS configured defaults and locale definitions
 - Story 21.15: Locale and table import
+- Story 21.16: Custom locales
 
 ## Requirements & Constraints
 
@@ -31,13 +32,14 @@ Make every remaining classic-portal leaf in the instance-administration and data
   - Removing a mirror's configuration with the option that takes its databases out of mirroring is refused from either caller. That covers `SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB` and `RemoveOneMirrorSet` with `DeleteDBs`. The refusal joins the kernel's prohibited set, and its code is named at the story's spec gate.
   - The mirroring writes are not built: create, edit for failover and async members, join, and the member and database actions. Each one becomes a row in the exclusion register's license-gated group, naming the license it needs.
 - Each settings change states its restart requirement where one applies (21.3).
-- **SQL, locale and NLS settings (21.4, 21.13 to 21.15):** each story round-trips over its backing class.
+- **SQL, locale and NLS settings (21.4, 21.13 to 21.16):** each story round-trips over its backing class.
   - 21.4 keeps the SQL, TSQL and ISQL settings, with the SQL Shell settings.
   - 21.13 holds the system and user DDL mappings.
-  - 21.14 holds the NLS configured defaults and the locale definitions editor.
+  - 21.14 holds the NLS configured defaults and the locale list with its validate, install and delete actions.
   - 21.15 holds locale and table import.
+  - 21.16 holds the rest of the locale definitions editor: copying a locale, the custom locale's properties editor, and loading a locale's tables.
 
-  All four configure the server; OcuPilot's own interface stays English.
+  The catalog's locale-definitions row also lists export and browse, which neither 21.14 nor 21.16 names; settle their home at the spec gate. All five configure the server; OcuPilot's own interface stays English.
 - The diagnose-slow-query guided workflow gains the SQL tuning screens it was written for (21.6).
 - **Harvest cautions:**
   - Take handler bodies and nothing else. The MCP suite's manifest is stale, and its bootstrap is driven from TypeScript.
@@ -61,7 +63,7 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - **Bounded reads (AD-36):** a screen and its tool share one declared read, which is capped and reports truncation.
 - **No SQL concatenation and no caller path (AD-21).** This matters for backup, global export and import, and locale and table import: a caller names a file from a fixed enum or a strict single-segment name, never a path.
 - **Guided workflows (AD-66):** a workflow is a catalog entry, never a code path. Each write in it is one confirmed proposal.
-- **Classic page keys (AD-44):** each descriptor declares the classic page class it replaces, and its privilege set includes any custom resource assigned to that page. The mirror monitor's page is `%CSP.UI.Portal.Mirror.Monitor`, NLS import's is `%CSP.UI.Portal.NLSImport`, and the DDL mappings use `%CSP.UI.Portal.Config.SQLDataTypes` with a `Subject` of `SystemDataTypes` or `UserDataTypes`. Confirm each against the instance first.
+- **Classic page keys (AD-44):** each descriptor declares the classic page class it replaces, and its privilege set includes any custom resource assigned to that page. The mirror monitor's page is `%CSP.UI.Portal.Mirror.Monitor`. The NLS configured defaults use `%CSP.UI.Portal.NLSConfigDefs` (read-only, over `%SYS.NLS.Table` and `Config.NLS.Locales`); the locale list uses `%CSP.UI.Portal.NLS` and its properties editor `NLSEdit` (over `Config.NLS.Locales` and `Config.NLS.Tables`, both requiring `%Admin_Manage`); NLS import's is `%CSP.UI.Portal.NLSImport` (over `Config.NLS.Locales`), and the DDL mappings use `%CSP.UI.Portal.Config.SQLDataTypes` with a `Subject` of `SystemDataTypes` or `UserDataTypes`. Confirm each against the instance first.
 
 ## UX & Interaction Patterns
 
@@ -71,7 +73,7 @@ Make every remaining classic-portal leaf in the instance-administration and data
 
 ## Cross-Story Dependencies
 
-- Stories 21.1 to 21.3 are done. The seam (21.1) comes before every story that harvests a body, including Epic 24's stories.
+- Stories 21.1 to 21.4 are done. The seam (21.1) comes before every story that harvests a body, including Epic 24's stories.
 - 21.12 was split from 21.2. Its exclusion-register rows land in `docs/exclusion-register.md`. `ui/tools/exclusion-register.test.mjs` holds the register equal to the catalog's P4 rows and to the stage extract's groups, so the catalog and the extract change in the same commit. The mirroring rows are SA-43 to SA-49 and SO-17; SO-16 is the monitor.
-- 21.13, 21.14 and 21.15 were split from 21.4, and each is planned right after the previous one.
+- 21.13, 21.14 and 21.15 were split from 21.4, and 21.16 from 21.14; they are planned in the order 21.13, 21.14, 21.15, 21.16. 21.14 and 21.16 share one catalog row (locale definitions), so 21.16 likely extends 21.14's locale list rather than adding a second one (inference).
 - 21.6 extends Epic 20's diagnose-slow-query workflow. 21.10 adds each leaf to the slice that already owns its neighbors.
