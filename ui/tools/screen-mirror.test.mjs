@@ -3435,6 +3435,24 @@ test('Story 24.1: the devtool source refusals agree with the instance corpus', (
   assert.ok(refusals >= 6, `the corpus refuses its shapes (${refusals})`);
 });
 
+// Story 21.3: a config read is one LIST of ConfigPort's three endpoints with no per-row call, parent list, query or parts. Every case
+// in `OcuPilot.Test.ConfigSettingRead`'s corpus gets its exact sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): let the config arm of `readProblem` admit any endpoint -> the endpoint case goes red.
+test('Story 21.3: the config source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'ConfigSettingRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const startup = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.StartupSettingList');
+  assert.ok(startup !== undefined, 'Startup settings is declared');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(startup.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 6, `the corpus refuses its shapes (${refusals})`);
+});
+
 // Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, which both engines admit as one
 // LIST of the port's seven endpoints with no per-row call, parent list, query or parts, and with criteria only as a parent-scoped
 // list's route id. Every case in `OcuPilot.Test.AnalyticsDescriptor`'s corpus gets its exact sentence, or none, here as the

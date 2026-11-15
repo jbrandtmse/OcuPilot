@@ -25,9 +25,9 @@ Parameter NOCHANGE = "nothing would change";
 /// <p>Endpoint, set tool, vendor class.</p>
 Parameter TOOLS = "Startup|OcuPilot.Screen.Tool.StartupSettingSet|Config.Startup;Memory|OcuPilot.Screen.Tool.MemorySettingSet|Config.config;Compatibility|OcuPilot.Screen.Tool.CompatibilitySettingSet|Config.Miscellaneous";
 
-/// <p>The settings each endpoint shows and never changes: the four network settings of the default superserver and the web server, and
+/// <p>The settings each endpoint shows and never changes: the six network settings of the default superserver and the web server, and
 /// every path. The roster of the read-only half; <method>TestEveryReadOnlyRowIsRefusedAtBothCallers</method> derives the rest from it.</p>
-Parameter READONLYROSTER = "Startup|DefaultPort,DefaultPortBindAddress,TempDirectory,WebServer,WebServerPort,WebServerURLPrefix;Memory|ConsoleFile,LibPath,Path,PythonPath,PythonRuntimeLibrary,VMSConsoleTerminal;Compatibility|";
+Parameter READONLYROSTER = "Startup|DefaultPort,DefaultPortBindAddress,TempDirectory,WebServer,WebServerName,WebServerPort,WebServerProtocol,WebServerURLPrefix;Memory|ConsoleFile,LibPath,Path,PythonPath,PythonRuntimeLibrary,VMSConsoleTerminal;Compatibility|";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -135,10 +135,10 @@ Method TestEveryRulesMatrixRowIsAskedAtTheMint()
     }
 }
 
-/// <p><b>AC3.</b> The read-only rows are exactly the roster (the four network settings, and every path), every property the vendor types as a
+/// <p><b>AC3.</b> The read-only rows are exactly the roster (the six network settings, and every path), every property the vendor types as a
 /// path is among them, and each is refused 409 <code>CONFIG.SETTING.READONLY</code> at the port with no vendor call and at the mint with the
 /// published sentence, whatever value is sent.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>READONLY</code> loses <code>WebServerPort</code> -> the roster
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>READONLY</code> loses <code>WebServerName</code> -> the roster
 /// assertion and both refusals for that setting go red. The port's refusal is asked of the seam, which sends nothing, never of the shipped
 /// port.</p>
 Method TestEveryReadOnlyRowIsRefusedAtBothCallers()

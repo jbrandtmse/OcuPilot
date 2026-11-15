@@ -762,7 +762,7 @@ Parameter TYPEBACKUPTASK = "backup-task";
 
 Parameter TYPEBACKUPDATABASE = "backup-database";
 
-/// <p>A startup, memory or compatibility setting (Story 21.3). AD-10 names no effect on any of them, and the four network settings that could
+/// <p>A startup, memory or compatibility setting (Story 21.3). AD-10 names no effect on any of them, and the six network settings that could
 /// cut OcuPilot off are shown and never set by the port itself, so a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPESTARTUPSETTING = "startup-setting";
 

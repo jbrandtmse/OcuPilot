@@ -76,17 +76,19 @@ Parameter MAXROWSKEY = "maxRows";
 Parameter DEFAULTMAXROWS As INTEGER = 1000;
 
 /// <p>The settings no row lists, as the classic table leaves them out: platform facts, a value that is always 0,
-/// the journal paths Journal settings shows, and the long-string switch.</p>
-Parameter EXCLUDED = "EnableLongStrings,OsType,Platform,PageSizeAlt,ZaMode,globals2kb,pijdir,wijdir";
+/// the journal paths Journal settings shows, and the long-string switch. <code>PasswordHash</code> is listed by no read and
+/// named by no get or set: it holds the instance password's hash, salt, work factor and algorithm (AD-35). A set still sends
+/// it back as the vendor's <code>Get</code> answered it.</p>
+Parameter EXCLUDED = "EnableLongStrings,OsType,Platform,PageSizeAlt,ZaMode,globals2kb,pijdir,wijdir,PasswordHash";
 
 /// <p>The setting listed only on an interoperability instance.</p>
 Parameter INTEROPONLY = "EnsembleAutoStart";
 
-/// <p>The settings shown and never changed (AD-21): the path-valued strings, and the four network settings whose change
+/// <p>The settings shown and never changed (AD-21): the path-valued strings, and the six network settings whose change
 /// would cut OcuPilot off at the next restart, because the web gateway reaches the instance through the default
 /// superserver and the private web server serves OcuPilot on this build. Every property of the vendor's path type
 /// (<parameter>PATHTYPE</parameter>) is read only too.</p>
-Parameter READONLY = "LibPath,Path,PythonPath,PythonRuntimeLibrary,DefaultPort,DefaultPortBindAddress,WebServer,WebServerPort";
+Parameter READONLY = "LibPath,Path,PythonPath,PythonRuntimeLibrary,DefaultPort,DefaultPortBindAddress,WebServer,WebServerName,WebServerPort,WebServerProtocol";
 
 Parameter PATHTYPE = "%Library.SysPath";
 

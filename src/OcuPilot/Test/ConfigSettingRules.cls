@@ -16,7 +16,7 @@ Parameter ERROR = "OcuPilot.Api.ConfigError";
 Parameter AGENT = "OcuPilot.Test.LicenseProbe";
 
 /// <p>The matrix rows as <code>endpoint|setting|value|expected</code>, where expected is the refusal code or <code>ok</code>.</p>
-Parameter ROWS = "Startup|ShutdownTimeout|119|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|100001|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|1.5|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|x|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout||CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|0301|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|301|ok;Startup|ShutdownTimeout|120|ok;Startup|ShutdownTimeout|100000|ok;Startup|DefaultPort|1972|CONFIG.SETTING.READONLY;Startup|DefaultPortBindAddress|x|CONFIG.SETTING.READONLY;Startup|WebServer|0|CONFIG.SETTING.READONLY;Startup|WebServerPort|52773|CONFIG.SETTING.READONLY;Startup|TempDirectory|x|CONFIG.SETTING.READONLY;Startup|WebServerURLPrefix|x|CONFIG.SETTING.READONLY;Startup|NoSuchSetting|1|CONFIG.SETTING.NOTFOUND;Startup|ZaMode|1|CONFIG.SETTING.NOTFOUND;Startup|SystemMode|TEST|ok;Startup|SystemMode||ok;Startup|SystemMode|012345678901234567890123456789012|CONFIG.SETTING.VALUE;Startup|WebServerProtocol|ftp|CONFIG.SETTING.VALUE;Startup|WebServerProtocol|https|ok;Startup|ErrorPurge|1|ok;Startup|ErrorPurge|0|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|16384|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192,1024|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192,8192|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192|ok;Memory|bbsiz|100|CONFIG.SETTING.VALUE;Memory|bbsiz|-1|ok;Memory|bbsiz|256|ok;Memory|routines|5|CONFIG.SETTING.VALUE;Memory|routines|65537|CONFIG.SETTING.VALUE;Memory|routines|0|ok;Memory|routines|36|ok;Memory|history|1001|CONFIG.SETTING.VALUE;Memory|history|-1|CONFIG.SETTING.VALUE;Memory|history|501|ok;Memory|errlog|9|CONFIG.SETTING.VALUE;Memory|errlog|501|ok;Memory|gmheap|-5|CONFIG.SETTING.VALUE;Memory|gmheap|1073741761|CONFIG.SETTING.VALUE;Memory|gmheap|0|ok;Memory|ConsoleFile|x|CONFIG.SETTING.READONLY;Memory|LibPath|x|CONFIG.SETTING.READONLY;Memory|PythonRuntimeLibrary|x|CONFIG.SETTING.READONLY;Memory|globals2kb|1|CONFIG.SETTING.NOTFOUND;Compatibility|LineRecall|2|CONFIG.SETTING.VALUE;Compatibility|LineRecall|true|CONFIG.SETTING.VALUE;Compatibility|LineRecall|0|ok;Compatibility|LineRecall|1|ok;Compatibility|Undefined|3|CONFIG.SETTING.VALUE;Compatibility|Undefined|2|ok;Compatibility|ListFormat|5|CONFIG.SETTING.VALUE;Compatibility|ListFormat|0|ok;Compatibility|NullSubscripts|1|ok;Compatibility|ZaMode|1|CONFIG.SETTING.NOTFOUND";
+Parameter ROWS = "Startup|ShutdownTimeout|119|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|100001|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|1.5|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|x|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout||CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|0301|CONFIG.SETTING.VALUE;Startup|ShutdownTimeout|301|ok;Startup|ShutdownTimeout|120|ok;Startup|ShutdownTimeout|100000|ok;Startup|DefaultPort|1972|CONFIG.SETTING.READONLY;Startup|DefaultPortBindAddress|x|CONFIG.SETTING.READONLY;Startup|WebServer|0|CONFIG.SETTING.READONLY;Startup|WebServerPort|52773|CONFIG.SETTING.READONLY;Startup|TempDirectory|x|CONFIG.SETTING.READONLY;Startup|WebServerURLPrefix|x|CONFIG.SETTING.READONLY;Startup|NoSuchSetting|1|CONFIG.SETTING.NOTFOUND;Startup|ZaMode|1|CONFIG.SETTING.NOTFOUND;Startup|SystemMode|TEST|ok;Startup|SystemMode||ok;Startup|SystemMode|012345678901234567890123456789012|CONFIG.SETTING.VALUE;Startup|WebServerName|x|CONFIG.SETTING.READONLY;Startup|WebServerProtocol|ftp|CONFIG.SETTING.READONLY;Startup|WebServerProtocol|https|CONFIG.SETTING.READONLY;Startup|PasswordHash|x|CONFIG.SETTING.NOTFOUND;Startup|ErrorPurge|1|ok;Startup|ErrorPurge|0|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|16384|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192,1024|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192,8192|CONFIG.SETTING.VALUE;Startup|DBSizesAllowed|8192|ok;Memory|bbsiz|100|CONFIG.SETTING.VALUE;Memory|bbsiz|-1|ok;Memory|bbsiz|256|ok;Memory|routines|5|CONFIG.SETTING.VALUE;Memory|routines|65537|CONFIG.SETTING.VALUE;Memory|routines|0|ok;Memory|routines|36|ok;Memory|history|1001|CONFIG.SETTING.VALUE;Memory|history|-1|CONFIG.SETTING.VALUE;Memory|history|501|ok;Memory|errlog|9|CONFIG.SETTING.VALUE;Memory|errlog|501|ok;Memory|gmheap|-5|CONFIG.SETTING.VALUE;Memory|gmheap|1073741761|CONFIG.SETTING.VALUE;Memory|gmheap|0|ok;Memory|ConsoleFile|x|CONFIG.SETTING.READONLY;Memory|LibPath|x|CONFIG.SETTING.READONLY;Memory|PythonRuntimeLibrary|x|CONFIG.SETTING.READONLY;Memory|globals2kb|1|CONFIG.SETTING.NOTFOUND;Compatibility|LineRecall|2|CONFIG.SETTING.VALUE;Compatibility|LineRecall|true|CONFIG.SETTING.VALUE;Compatibility|LineRecall|0|ok;Compatibility|LineRecall|1|ok;Compatibility|Undefined|3|CONFIG.SETTING.VALUE;Compatibility|Undefined|2|ok;Compatibility|ListFormat|5|CONFIG.SETTING.VALUE;Compatibility|ListFormat|0|ok;Compatibility|NullSubscripts|1|ok;Compatibility|ZaMode|1|CONFIG.SETTING.NOTFOUND";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -149,6 +149,30 @@ Method TestTheMintRefusesWhatThePortRefuses()
     Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.MemorySettingSet", "errlog", tArgs, .tRestart, .tHttp, .tProblem)
     Do $$$AssertEquals($IsObject(tRestart), 1, "a restart-bound value mints too: " _ tProblem)
     If $IsObject(tRestart) Do $$$AssertEquals(##class(OcuPilot.Test.EcpSettingsWrite).Consequence(tRestart), "CONFIG.SETTING.RESTART", "and its card states the restart consequence")
+}
+
+/// <p><b>AD-35.</b> <code>Config.Startup.PasswordHash</code> holds the instance password's hash, so no caller sees it or names it: the
+/// screen's read and the port's list answer no such row, a get and a set of it are 404 <code>CONFIG.SETTING.NOTFOUND</code> with nothing
+/// sent to the vendor, and the agent's mint refuses it. The vendor class does answer it, so the assertions are not vacuous.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>EXCLUDED</code> loses <code>PasswordHash</code> -> the read,
+/// get, set and mint assertions go red. The set is asked of the seam, which sends nothing, never of the shipped port.</p>
+Method TestPasswordHashIsInNoReadAndNoGetAndNoSetAndNoMint()
+{
+    Do $$$AssertTrue($ListFind($ListFromString(##class(OcuPilot.Test.ConfigSettingRead).VendorKeys("Config.Startup")), "PasswordHash") > 0, "the vendor class answers PasswordHash")
+    Set tResult = ##class(OcuPilot.Test.ConfigSettingRead).Read("StartupSettingList")
+    Do $$$AssertTrue($IsObject(tResult) && ($Find(tResult.%ToJSON(), "PasswordHash") = 0), "the screen's read, which the read tool serves, names no such setting")
+    Do ..HoldAll()
+    Set tSC = $ClassMethod(..#SEAM, "Rows", "Startup", 1000, .tRows, .tHttp, .tFault)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject(tRows) && ($Find(tRows.%ToJSON(), "PasswordHash") = 0), "and the port's list names none")
+    Kill tQuery
+    Set tQuery("name") = "PasswordHash"
+    For tType = "GET", "SET" {
+        Do $ClassMethod(..#SEAM, "Reset")
+        Set tSC = $ClassMethod(..#SEAM, "Invoke", "Startup", tType, .tQuery, $Select(tType = "SET": {"Value": "x"}, 1: ""), .tOut, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#SEAM, "Modifies"), "404|CONFIG.SETTING.NOTFOUND|", "a " _ tType _ " of it is not found and sends nothing")
+    }
+    Set tSC = $ClassMethod(..#AGENT, "Mint", "OcuPilot.Screen.Tool.StartupSettingSet", "PasswordHash", {"Name": "PasswordHash", "Value": "x"}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertEquals($IsObject(tProposal) _ "|" _ tProblem, "0|'PasswordHash' is not present on this instance", "the agent's mint of it mints nothing")
 }
 
 /// <p>AD-29, AD-39. The codes, statuses, slugs and sentences are the published ones, the dispatch by prefix reaches them, and an

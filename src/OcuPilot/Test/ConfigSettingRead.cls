@@ -19,7 +19,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter SCREENS = "StartupSettingList|os-management/startup-settings|26|%CSP.UI.Portal.Config.Startup|startup-setting|Startup|Config.Startup|StartupSettingSet|osmgmt.startupsettings.set|%CSP.UI.Portal.MemoryStartup,%CSP.UI.Portal.Config.ValueEditor;MemorySettingList|os-management/memory-settings|27|%CSP.UI.Portal.Config.Memory|memory-setting|Memory|Config.config|MemorySettingSet|osmgmt.memorysettings.set|%CSP.UI.Portal.MemoryStartup,%CSP.UI.Portal.Config.ValueEditor;CompatibilitySettingList|os-management/compatibility-settings|28|%CSP.UI.Portal.Config.Compatibility|compatibility-setting|Compatibility|Config.Miscellaneous|CompatibilitySettingSet|osmgmt.compatibilitysettings.set|%CSP.UI.Portal.Config.ValueEditor";
 
 /// <p>The settings no row lists.</p>
-Parameter EXCLUDED = "EnableLongStrings,OsType,Platform,PageSizeAlt,ZaMode,globals2kb,pijdir,wijdir";
+Parameter EXCLUDED = "EnableLongStrings,OsType,Platform,PageSizeAlt,ZaMode,globals2kb,pijdir,wijdir,PasswordHash";
 
 /// <p>The governance policy as it stood before each test.</p>
 Property StoredPolicy [ MultiDimensional ];
@@ -47,6 +47,48 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Quit $$$OK
+}
+
+/// <p>The config source's refusals, which <file>ui/tools/screen-mirror.test.mjs</file> runs off this block too: each case replaces
+/// the Startup settings declaration's <code>read.source</code> and names the sentence the registry's read check answers, or
+/// <code>null</code>.</p>
+XData Cases
+{
+{
+  "cases": [
+    {"name": "a config LIST of Startup is sound", "source": {"port": "config", "endpoint": "Startup", "type": "LIST"}, "expected": null},
+    {"name": "so are Memory and Compatibility", "source": {"port": "config", "endpoint": "Memory", "type": "LIST"}, "expected": null},
+    {"name": "an endpoint the port does not serve", "source": {"port": "config", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the config port's endpoints ('Startup', 'Memory', 'Compatibility') (AD-29)"},
+    {"name": "a type other than LIST", "source": {"port": "config", "endpoint": "Startup", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a config source, which lists the instance's startup, memory and compatibility settings (AD-36)"},
+    {"name": "rowGet", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Value"], "derived": []}}, "expected": "read.source.rowGet is declared on a config source, which answers its list whole (AD-36)"},
+    {"name": "forEach", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "forEach": ["Value"]}, "expected": "read.source.forEach is declared on a config source, which answers its list whole (AD-36)"},
+    {"name": "query", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "query": {"a": "b"}}, "expected": "read.source.query is declared on a config source, which answers its list whole (AD-36)"},
+    {"name": "parts", "source": {"port": "config", "endpoint": "Startup", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on a config source, which answers its list whole (AD-36)"}
+  ]
+}
+}
+
+/// <p>Every case of the <code>Cases</code> block gets its exact sentence, or none, from the registry, and the corpus refuses at least
+/// six shapes.</p>
+/// <p>Mutation (Rule 19): <code>ReadProblem</code>'s config arm admits any endpoint -> the endpoint case goes red.</p>
+Method TestTheConfigSourceRefusals()
+{
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen($ClassName(), "Cases", , .tSC)
+    Do $$$AssertTrue($IsObject(tXData), "the corpus is declared")
+    If '$IsObject(tXData) Quit
+    Set tCorpus = ##class(%DynamicObject).%FromJSON(tXData.Data)
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Kill tDeclaration
+        Do $ClassMethod("OcuPilot.Screen.Descriptor.StartupSettingList", "DeclarationJson", .tDeclaration)
+        Do tDeclaration.read.%Set("source", ##class(%DynamicObject).%FromJSON(tCase.source.%ToJSON()))
+        Set tProblem = ##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration)
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        Do $$$AssertEquals(tProblem, tExpected, tCase.name)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+    }
+    Do $$$AssertTrue(tRefusals >= 6, "the corpus refuses its shapes: " _ tRefusals)
 }
 
 /// <p>The screen's read of <var>pDescriptor</var> through the shipped executor, answering its result object.</p>
@@ -205,7 +247,7 @@ Method TestTheKindsRestartAndReadOnlyFlagsAreTheMatrixOnes()
         If tStartup(tName).Restart Set tRestart = tRestart _ $Select(tRestart = "": "", 1: ",") _ tName
     }
     Do $$$AssertEquals(tRestart, "DefaultPort,ErrorPurge,MaxIRISTempSizeAtStart,WebServer", "and no other startup setting states a restart")
-    For tName = "DefaultPort", "DefaultPortBindAddress", "WebServer", "WebServerPort", "TempDirectory", "WebServerURLPrefix" {
+    For tName = "DefaultPort", "DefaultPortBindAddress", "WebServer", "WebServerName", "WebServerPort", "WebServerProtocol", "TempDirectory", "WebServerURLPrefix" {
         Set tRow = tStartup(tName)
         Do $$$AssertEquals(tRow.ReadOnly _ "|" _ tRow.Accepts, "1|Shown here and never changed here.", tName _ " is shown and never changed")
     }
@@ -242,7 +284,7 @@ Method TestAGetAnswersOneRowAndAnUnknownNameIsAbsent()
     Do $$$AssertEquals(tHttp, 200, "a listed setting reads")
     Do ..RowsByName(..Read("StartupSettingList"), .tStartup)
     Do $$$AssertEquals(tRow.%ToJSON(), tStartup("ShutdownTimeout").%ToJSON(), "and is the row the list answers")
-    For tName = "shutdowntimeout", "NoSuchSetting", "", "EnableLongStrings", "history" {
+    For tName = "shutdowntimeout", "NoSuchSetting", "", "EnableLongStrings", "PasswordHash", "history" {
         Set tQuery("name") = tName
         Set tSC = $ClassMethod(..#PORT, "Invoke", "Startup", "GET", .tQuery, "", .tAbsent, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "404|CONFIG.SETTING.NOTFOUND", "'" _ tName _ "' is not a startup setting")
