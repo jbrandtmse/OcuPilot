@@ -226,3 +226,4 @@
 2026-11-15T22:43:16Z	Story 21.17	story_created	spawn_at=2026-11-15T22:31:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-17-global-export-and-import.md build_status=ready-for-dev cycle_iteration=2 oversized=true
 2026-11-15T22:43:16Z	Story 21.17	ruling	question=export_own_globals,strings choice=refuse_own_export(GLOBAL.OWNDATA),strings_kept rejected=classic_parity_export why=AD-35_stricter category=veto inbox=U-64 policy=b9ff703e reversal=allow_export
 2026-11-15T22:43:16Z	Story 21.17	spec_validated	service_introducing=false(extends_AtelierPort,GlobalPort) integration_ac=present adr_constrained_acs=AD-10,AD-21,AD-35,AD-51,AD-61,AD-6,AD-22 owned_ledger=DW-2608 addressed=1 depends_on=21.5 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-15T22:43:38Z	Story 21.10	stage_spawned	stage=plan spawn_at=2026-11-15T22:43:38Z model=opus agent_name=21-10-the-remaining-leaves-across-the-six-areas-plan-1 cycle_iteration=1
