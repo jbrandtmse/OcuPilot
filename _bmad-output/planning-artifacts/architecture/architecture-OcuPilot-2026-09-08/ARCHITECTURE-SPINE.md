@@ -625,6 +625,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The MDX tool's statement (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: the statement is the person's own query. OcuPilot concatenates it into nothing and hands it only to the vendor's parser. Text the vendor splices into SQL or evaluates as code runs only on the person's confirmation in the same request (AD-65's splice clause), and a drill-through's text is composed from the vendor's filters. The agent's statement (Story 20.35) is the same, with the constructs refused [AMENDED 2026-10-15, Story 20.35 spec gate, Rule 20].
 
+  Story 21.15's consumers of the sixth case: the locale export is an overwriting `file` consumer whose overwrite is a constant, and it refuses a name whose directory does not exist; the locale import's file is a `source`; local text is a screen value. The vendor receives only a temporary file OcuPilot names. [AMENDED 2026-11-15, Story 21.15, owner answer U-58]
+
 ### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
 
 - **Binds:** FR-72 and the polish-week governance; every tool added after the Release 1 freeze
@@ -1211,6 +1213,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.31's case** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: `InteropPort` answers the resend tools' fresh reads through port-composed `RESEND` and `EDIT` types, takes the reviewed digest from the stored payload or the person's `Reviewed`, and builds the edited body from the declared `Fields`.
 
   **`AnalyticsPort` answers the cube tools' fresh read through a port-composed `STATE` type (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20].
+
+  Story 21.15's case: `LocalePort`, which hands `Config.NLS.Locales.ImportAll` and `ExportList` only a temporary file OcuPilot names and deletes. The import's file is written from the reviewed text, read from the import tool's declared `root` and `path` resolved through `PathPort` as a `source` or from the screen's local text; its flags are a constant; it answers the fresh read through a port-composed `IMPORTFILE` type and refuses an import whose text no longer yields the reviewed digest. The export's locale is its target alone; the file's text is copied to the export tool's declared `root` and `path`, resolved through `PathPort` as an overwriting `file` whose overwrite is a constant, or answered to the screen as lines; it answers its fresh read through a port-composed `EXPORTLOCALE` type. [AMENDED 2026-11-15, Story 21.15, owner answer U-58]
 
 ### AD-52 — A write tool declares the port it reaches its target through
 

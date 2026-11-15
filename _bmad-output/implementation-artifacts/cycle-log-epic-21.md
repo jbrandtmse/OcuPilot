@@ -208,3 +208,7 @@
 2026-11-15T21:41:55Z	Story 21.4	cr_complete	spawn_at=2026-11-15T21:35:00Z model=opus resolved=0 deferred=1 dismissed=8 high=0 med=1 low=4 rows=17 unresolved_high_med=1(DW-2610_decision-pending) clarifications=0 closing_sections_present=true final=done cycle_iteration=2 note=static_review
 2026-11-15T21:41:55Z	Story 21.4	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed=DW-2609(wontfix-accepted_flake),DW-2610(decision-pending_burndown)
 2026-11-15T21:42:05Z	Story 21.15	stage_spawned	stage=plan spawn_at=2026-11-15T21:42:05Z model=opus agent_name=21-15-locale-and-table-import-plan-2 cycle_iteration=2
+2026-11-15T21:51:27Z	Epic 21	spine_updated	ad=AD-51,AD-21 reason=owner_answer(U-58) by=runner story=21-15-locale-and-table-import lint=preexisting_low_placeholder_only
+2026-11-15T21:51:27Z	Story 21.15	story_created	spawn_at=2026-11-15T21:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-15-locale-and-table-import.md build_status=ready-for-dev cycle_iteration=2
+2026-11-15T21:51:27Z	Story 21.15	ruling	question=drop_LTB_choice,strings,export_key_on choice=keep rejected=add_choice,key_off why=smaller;sibling_parity category=veto inbox=U-61 policy=b9ff703e reversal=add_choice/reword/key_off
+2026-11-15T21:51:27Z	Story 21.15	spec_validated	service_introducing=false(extends_LocalePort_from_21.14) integration_ac=present adr_constrained_acs=AD-21,AD-51,AD-53,AD-10,AD-22,AD-29 decision_dependency=none owned_ledger=DW-2606 addressed=1 depends_on=21.14 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
