@@ -164,3 +164,9 @@
 2026-11-16T10:06:27Z	Story 24.8	cr_complete	spawn_at=2026-11-16T09:37:00Z model=opus resolved=10 fixed_at_source=10 wontfix=2 decision_pending=2 occurrence=DW-2641 deferred=5 dismissed=13 high=0 med=3 low=12 rows=5 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
 2026-11-16T10:06:27Z	Story 24.8	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2644,DW-2645 to_decision_sheet=DW-2642,DW-2643 model=claude-opus-5-5
 2026-11-16T10:08:07Z	Story 24.8	integrate_forward	via=staging_merge_feb6b71c7 feature=6a5bcf05f conflicts_resolved=none
+2026-11-16T10:09:32Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.8_merged_tree run=20261114T1656Z-21,22
+2026-11-16T10:10:08Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.8 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T10:15:41Z	Story 24.8	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+namespace-diff_browser_spec+NamespaceDiffRoute_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-16T10:15:41Z	Story 24.8	fresh_check	env=recipe(merged_tree_feature_48e3593a3) tests=16_classes+3_specs result=pass order=forward,reverse classes_tests=237 components=3487 tools=2292
+2026-11-16T10:15:41Z	Story 24.8	committed	sha=fd063e74a code_head=39fbcf32d(merged_with_feature_48e3593a3) submodules= ci=pending runs=43847172970 amendments=epics.md_24.8_24.9_U-45,feature-catalog_DT-09_DT-10_DT-11,extract-stages,extract-catalog,epics.md_stage_table,exclusion-register_DT-11
+2026-11-16T10:15:41Z	Story 24.8	story_cycle	plan_to_commit_min=270 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
