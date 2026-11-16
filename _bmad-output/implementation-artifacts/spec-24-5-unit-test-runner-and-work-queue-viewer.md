@@ -2,7 +2,7 @@
 title: 'Story 24.5: Unit-test runner and its run record'
 type: 'feature'
 created: '2026-11-16'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -223,6 +223,9 @@ In every refusal row the recorder records no body call, and the root global and 
 ## Review Triage Log
 
 ## Design Notes
+
+**Owner answer U-86 (2026-11-16, "A"), relayed by the Planner through the orchestrator:** the runner is built with a named AD-10 exception for a test class's own code: off by default, people only, every run confirmed with its consequence named. The DW-2634 fix (Story 21.30) is on feature, so the wait is over. "People only" means the agent gets no tool that starts a run (the run-record reads may stay agent-readable); "off by default" needs a gate a person's Run passes that ships closed, since AD-22 keys govern only the agent (AD-53). The same answer shape (U-78 A) governs Stories 24.6 and 24.7, so this design sets their precedent. The AD-10 sentence is written into the spine at this story's spec gate, citing U-86.
+
 
 ### The blocking question (intent gap, AD-10, same family as U-78)
 

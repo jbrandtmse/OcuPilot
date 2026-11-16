@@ -208,3 +208,5 @@
 2026-11-16T15:35:24Z	Story 24.9	fresh_check	env=recipe(merged_tree_feature_680e3450b) tests=16_classes+2_specs result=pass order=forward,reverse classes_tests=246 components=3503 tools=2296
 2026-11-16T15:35:24Z	Story 24.9	committed	sha=e768ee889 code_head=e34cedcd7(merged_with_feature_680e3450b) ci=pending runs=43897913630 amendments=none
 2026-11-16T15:35:24Z	Story 24.9	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-16T15:36:37Z	Story 24.5	story_unparked	via=inbox id=U-86 effect=re-plan(people_only:no_agent_run_tool;off_by_default_gate_for_people;confirm_with_consequence) spec_status=draft
+2026-11-16T15:36:37Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T15:36:37Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-3 cycle_iteration=3 story_base=94374df3b
