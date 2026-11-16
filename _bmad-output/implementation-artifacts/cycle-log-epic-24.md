@@ -178,3 +178,8 @@
 2026-11-16T10:35:35Z	Story 24.5	plan_complete	spawn_at=2026-11-16T10:21:00Z model=opus status=blocked blocking=intent_gap_AD-10(runner_executes_test_class_code;U-78_family;DW-2634) cycle_iteration=2
 2026-11-16T10:35:35Z	Story 24.5	story_parked	id=U-86 reason=owner_only:amending_AD-10(named_gap_for_test_class_code) recommendation=A_follow_U-78_after_DW-2634_fix
 2026-11-16T10:35:56Z	Story 24.9	stage_spawned	stage=plan spawn_at=2026-11-16T10:35:56Z model=opus agent_name=24-9-environment-promote-plan-1 cycle_iteration=1 story_base=2980ee21d
+2026-11-16T10:51:56Z	Story 24.9	story_created	spawn_at=2026-11-16T10:37:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-9-environment-promote.md build_status=ready-for-dev epic_context=reused oversized=warn
+2026-11-16T10:51:56Z	Story 24.9	ruling	question=strings choice=keep category=veto reversal=reword inbox=U-87 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T10:51:56Z	Story 24.9	ruling	question=AD-51_AD-52_AD-15_AD-22_clauses choice=comply_no_spine_edit_proposed_lines_in_spec rejected=amend_spine why=U7_runner_never_amends_precedent_24.2 category=veto reversal=owner_attended_update inbox=U-87 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T10:51:56Z	Story 24.9	ruling	question=promote_strictness_audit_compile choice=no_%SYS,no_%names,storage_guard_without_override,own_ConfigChange,compile_in_promote,no_rollback_stated rejected=sibling_override why=stricter_is_safe category=veto reversal=re-plan inbox=U-87 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T10:51:56Z	Story 24.9	stage_spawned	stage=implement spawn_at=2026-11-16T10:51:56Z model=sonnet agent_name=24-9-environment-promote-implement-1 cycle_iteration=1
