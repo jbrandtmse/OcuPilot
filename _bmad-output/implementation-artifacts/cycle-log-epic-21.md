@@ -331,3 +331,4 @@
 2026-11-16T08:05:10Z	Story 21.6	story_created	spawn_at=2026-11-16T07:42:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md build_status=ready-for-dev cycle_iteration=2
 2026-11-16T08:05:10Z	Story 21.6	ruling	question=strings,cached-query_entity,keys,Clean_target choice=keep;AD-51_wording_corrected_at_origin(Clean_takes_no_argument) rejected=drop_clean why=vendor_call_shape category=veto inbox=U-83 policy=b9ff703e
 2026-11-16T08:05:10Z	Story 21.6	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-51,AD-10,AD-29,AD-53 owned_ledger=none mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T08:08:11Z	Story 21.25	stage_spawned	stage=plan spawn_at=2026-11-16T08:08:11Z model=opus agent_name=21-25-plan-1 cycle_iteration=1
