@@ -119,8 +119,6 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The key-file field refusals are unlogged** [AMENDED 2026-10-14, Story 18.48 spec gate, Rule 20] (DW-2427): the encryption key file's #5022 (no readable key), #1219 (a wrong administrator password) and #1204 (an administrator the file does not list) each take a code-scoped unlogged-refusal entry at the endpoint, type and status Story 18.48's Task 0 measured for it (all `500`, on `Security.Encryption.KeyInFile` `LIST` and `POST` and `Security.Encryption.File` `ACTIVATE`). So are `Security.Encryption.Settings`' startup refusals #1217, #1231 and #1233 (`PUT`, `500`), each mapped to a field refusal on the start mode (DW-2429). Named limit: a failed `ActivateDB` also writes the vendor's own severity-2 line, which no entry suppresses.
 
-  **A stale SQL compile context is refreshed before each call** [AMENDED 2026-11-16, Story 21.32 spec gate, orchestrator ruling on DW-2646 (comply first, U7), Rule 20] (DW-2646): a `Config.SQL` change anywhere advances the instance's compile context version, and a pooled process holding an older context fails the vendor's next uncached class-query prepare (`%PrepareClassQuery(...,2)`) once with SQLCODE -428. `AdminPort` runs the vendor's `$$$SQLCompileCheckContext` before every call. It reads an internal vendor counter (`%msql.inc`) and calls an internal method (`$SYSTEM.CLS.ClearContext`); both stay in this port, as AD-27 requires.
-
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract

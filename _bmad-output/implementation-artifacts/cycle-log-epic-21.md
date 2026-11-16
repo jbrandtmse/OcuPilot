@@ -354,3 +354,4 @@
 2026-11-16T10:39:25Z	Story 21.12	ci_resolved	story=21.12 sha=90799012d runs=43845475577 result=success failed=none via=none
 2026-11-16T10:39:25Z	Story 21.13	ci_resolved	story=21.13 sha=90799012d runs=43845475577 result=success failed=none via=none
 2026-11-16T10:39:25Z	Story 21.32	stage_spawned	stage=implement spawn_at=2026-11-16T10:39:25Z model=sonnet agent_name=21-32-implement-1 cycle_iteration=1 story_base=bfa1aaca4
+2026-11-16T10:40:57Z	Story 21.32	ad_reverted	ad=AD-2 via=orchestrator_ruling note=AD-27_already_covers_vendor_internals_in_port;record_in_AdminPort_doc_and_Design_Notes
