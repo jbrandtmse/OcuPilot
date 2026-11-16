@@ -9640,6 +9640,27 @@ So that performance work has a home.
 - **When** each runs
 - **Then** it round-trips over its backing class.
 
+
+### Story 21.30: OcuPilot's guarded storage refuses a caller that is not an administrator
+
+[AMENDED 2026-11-16, owner answer U-79, "A: fix story now (Recommended)", fix-forward, Rule 5] DW-2634 (filed in Epic 24's ledger at Story 24.6's plan): `Kernel.State` `SetGuarded` and `Policy.GuardedApply` take OcuPilot's protected role for any caller and check no privilege of their own, so code a `%Development` holder runs directly can rewrite the kill switch or a governance key without being an OcuPilot administrator. Ordered straight after Story 21.24.
+
+As an administrator,
+I want OcuPilot's protected state written only by an OcuPilot administrator, whatever path the code runs on,
+So that the kill switch and governance keys cannot be rewritten by someone who only holds development rights.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code calls the guarded storage methods to rewrite the kill switch or a governance key
+- **Then** the attack is reproduced end to end first and its result recorded; if it fails end to end, the story reports back before anything is built.
+
+- **Given** the attack reproduced
+- **When** the fix lands
+- **Then** the same call is refused and changes nothing, an OcuPilot administrator's write still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
+
+- DW-2634: Guarded storage methods take OcuPilot's protected role for any caller and check no privilege (Epic 24's ledger; routed by owner answer U-79)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand

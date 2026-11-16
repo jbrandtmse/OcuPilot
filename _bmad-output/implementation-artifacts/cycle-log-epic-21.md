@@ -309,3 +309,8 @@
 2026-11-16T06:14:11Z	Story 21.13	stage_spawned	stage=qa spawn_at=2026-11-16T06:14:11Z model=sonnet agent_name=21-13-ddl-mappings-qa-1 cycle_iteration=1
 2026-11-16T06:20:19Z	Story 21.13	qa_complete	spawn_at=2026-11-16T06:38:00Z model=sonnet tests=DdlMappingWrite(+1),DdlMappingRules(+matrix_rows) tests_added=2 mutations_demonstrated=5 first_run_failures=0 clarifications=0
 2026-11-16T06:20:19Z	Story 21.13	stage_spawned	stage=code-review spawn_at=2026-11-16T06:20:19Z model=opus agent_name=21-13-ddl-mappings-code-review-1 cycle_iteration=1
+2026-11-16T06:30:32Z	Story 21.6	owner_decision	id=U-76 via=inbox(relayed) by=owner answer=A quote="A: allow both (Recommended)"
+2026-11-16T06:30:32Z	Story 21.6	ad_amended	ads=AD-51(Story_21.6_case),AD-10(OcuPilot_statements_arm) marker=[AMENDED_2026-11-16,Story_21.6,owner_answer_U-76] lint_spine=ok note=re-plan_next
+2026-11-16T06:30:32Z	Story 21.6	story_unparked	via=inbox story_base=none
+2026-11-16T06:30:32Z	Story 21.21	owner_decision	id=U-75 by=owner answer=keep quote="Keep (Recommended)"
+2026-11-16T06:30:32Z	Story 21.30	story_inserted	kind=fix_forward via=owner_answer_U-79 owns=DW-2634(epic24_ledger) order=after_21.24,before_21.12_21.13 note=deps_hash_rerecord_reason=fix_forward

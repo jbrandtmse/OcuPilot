@@ -114,6 +114,8 @@ The second criterion is split verbatim across 21.6, 21.26, 21.27 and 21.28: each
 
 **Runner ruling at the plan halt (2026-11-16, unattended):** split as proposed (decide; 5 of 6 children: 21.25 to 21.29 in `epics.md`). This story keeps the statement index and the cached-query purge. Records (c1) and (c2) need an owner answer and are asked of the orchestrator; the re-plan for the narrowed story waits for it. EX-45 and EX-43 are ledgered for the epic-close sheet.
 
+**Owner answer U-76 (2026-11-16, "A: allow both (Recommended)"):** records (c1) and (c2) are written into the spine as proposed. The re-plan for the narrowed story builds the statement actions and the purges.
+
 ## Auto Run Result
 
 Status: blocked
