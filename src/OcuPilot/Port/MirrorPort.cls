@@ -270,4 +270,17 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>""</code> for every endpoint and type,
+/// because this port carries out no write (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ""
+}
+
+/// <p><method>Invoke</method> as a script (AD-59): no step, because every branch of this port is a read.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
+}
+
 }
