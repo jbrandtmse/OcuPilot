@@ -37,6 +37,13 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
     Do $System.Event.Signal(pParent, tOut.%ToJSON())
 }
 
+/// <p><method>Run</method> as the class <var>pProbe</var>, a subclass of this one, runs it: the entry
+/// point a test that wants another probe's steps jobs.</p>
+ClassMethod RunProbe(pParent As %Integer, pProbe As %String, pUsername As %String, pPlan As %String)
+{
+    Do $ClassMethod(pProbe, "Run", pParent, pUsername, pPlan)
+}
+
 /// <p>Whether <var>pKind</var> is a step <method>Step</method> runs.</p>
 ClassMethod Handles(pKind As %String) As %Boolean
 {

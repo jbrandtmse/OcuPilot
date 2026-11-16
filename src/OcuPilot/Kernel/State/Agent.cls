@@ -28,6 +28,11 @@
 Class OcuPilot.Kernel.State.Agent Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers refuse a caller who does not hold the administrative resource, except
+/// <method>GuardedClearVerification</method>.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The definition's name, unique across definitions. Also the name a later story renders
 /// in the switcher, so it is the operator's own label rather than a generated key.</p>
 Property Name As %String(MAXLEN = 64);
@@ -206,7 +211,8 @@ ClassMethod Timestamp() As %String
 /// returns, so a caller can project the row without re-reading it.</p>
 ClassMethod GuardedCreate(pObject As OcuPilot.Kernel.State.Agent) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tNow = ..Timestamp()
         Set pObject.CreatedAt = tNow
@@ -238,7 +244,8 @@ ClassMethod GuardedCreate(pObject As OcuPilot.Kernel.State.Agent) As %Status
 /// carries is used, which is the version the open that produced it read.</p>
 ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapshot, pExpectedVersion As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tChanged = 0
         Set tFields = ..SecurityFields()
@@ -269,31 +276,28 @@ ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapsho
 
 /// <p>Clear definition <var>pId</var>'s <property>ConnectionVerified</property> and
 /// <property>Enabled</property>, so it serves no turn until Test connection succeeds against it
-/// again.</p>
+/// again, and settle the default marker.</p>
 /// <p>Two callers, one home: <method>OcuPilot.Api.Definitions.HandleStoreCredential</method>, which
 /// stored a new key behind the reference the definition was verified with, and
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method>, which found the reference no longer resolves
-/// (DW-22). It goes through <method>GuardedUpdate</method> with the security snapshot taken first,
-/// so the timestamp and the default rebalance stay where every other write puts them and no field
-/// reads as changed.</p>
-/// <p><b>This is a write to OcuPilot's own protected state, not a mutation of the instance</b>
-/// (AD-7 as amended, AD-9). A caller holding no administrative privilege can reach it through a
-/// turn, which is intended: a definition whose credential cannot be resolved serves nobody.</p>
+/// (DW-22).</p>
+/// <p><b>The one definition write open to every caller</b> (AD-7, AD-9): a turn run by any user
+/// records that a credential no longer resolves. It writes the two flags, the timestamp and the row
+/// version by one <code>UPDATE</code> and settles the marker by SQL alone
+/// (<method>RebalanceDefaultSql</method>), and never opens, saves or takes a value from a row
+/// object, so a caller's held, edited copy of the definition stores nothing.</p>
 ClassMethod GuardedClearVerification(pId As %String) As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..GuardedOpenId(pId, .tRow)
+        Set tParams = [].%Push(..Timestamp()).%Push(pId)
+        Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Agent SET ConnectionVerified = 0, Enabled = 0, UpdatedAt = ?, RowVersion = COALESCE(RowVersion, 0) + 1 WHERE ID = ?", .tParams, .tRows)
         If $$$ISERR(tSC) Quit
-        If '$IsObject(tRow) {
+        If 'tRows {
             Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
             Quit
         }
-        Do ..SnapshotSecurityFields(tRow, .tSnapshot)
-        Set tRow.ConnectionVerified = 0
-        Set tRow.Enabled = 0
-        Set tSC = ..GuardedUpdate(tRow, .tSnapshot)
-        Set tRow = ""
+        Set tSC = ..RebalanceDefaultSql()
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -320,7 +324,8 @@ ClassMethod GuardedClearVerification(pId As %String) As %Status
 /// checks nothing and is the pre-existing behaviour.</p>
 ClassMethod GuardedSetVerification(pId As %String, pExpectedVersion As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedOpenId(pId, .tRow)
         If $$$ISERR(tSC) Quit
@@ -350,7 +355,8 @@ ClassMethod GuardedSetVerification(pId As %String, pExpectedVersion As %String =
 /// it does not check it. A row that already carries the mark is left unwritten.</p>
 ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedOpenId(pId, .tRow)
         If $$$ISERR(tSC) Quit
@@ -377,7 +383,8 @@ ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
 /// the marked one (DW-20).</p>
 ClassMethod GuardedDeleteId(pId As %String) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Agent WHERE ID = ?", pId)
         If $$$ISERR(tSC) Quit
@@ -578,7 +585,8 @@ ClassMethod GuardedByName(pName As %String, Output pId As %String) As %Status
 /// and is unaffected.</p>
 ClassMethod SetDefaultGuarded(pId As %String) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Set tInTx = 0
     Try {
         Set tSC = ..GuardedExistsId(pId, .tExists)
@@ -694,6 +702,19 @@ ClassMethod ResolveFor(pUserName As %String, Output pId As %String) As %Status
 /// </ol>
 ClassMethod GuardedRebalanceDefault() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..RebalanceDefaultSql()
+}
+
+/// <p><method>GuardedRebalanceDefault</method>'s rule, without the caller check and by SQL alone, so
+/// that the writer open to every caller (<method>GuardedClearVerification</method>) settles the marker
+/// without a row object. The marker is cleared by <code>NULL</code>, which the object layer reads
+/// back as <code>""</code>; a SQL <code>''</code> would read back as <code>$Char(0)</code>. Each
+/// marker write raises the row's <property>RowVersion</property> and sets its
+/// <property>UpdatedAt</property>, and the clear precedes the set, in one transaction.</p>
+ClassMethod RebalanceDefaultSql() As %Status [ Private ]
+{
     Set tSC = $$$OK
     Set tInTx = 0
     Try {
@@ -709,9 +730,9 @@ ClassMethod GuardedRebalanceDefault() As %Status
                 If $$$ISERR(tSC) Quit
             }
         } Else {
-            Set tSC = ..GuardedOpenId(tMarked, .tMarkedRow)
+            Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE ID = ? AND Enabled = 1", tMarked, .tEnabledIds)
             If $$$ISERR(tSC) Quit
-            If tMarkedRow.Enabled Quit
+            If $Get(tEnabledIds(1)) '= "" Quit
             Set tSC = ..GuardedFirstEnabledId(.tTarget)
             If $$$ISERR(tSC) Quit
             If tTarget = "" Quit
@@ -721,10 +742,12 @@ ClassMethod GuardedRebalanceDefault() As %Status
         TSTART
         Set tInTx = 1
         If tClear '= "" {
-            Set tSC = ..MarkRow(tClear, "")
+            Set tParams = [].%Push(..Timestamp()).%Push(tClear)
+            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Agent SET DefaultMark = NULL, UpdatedAt = ?, RowVersion = COALESCE(RowVersion, 0) + 1 WHERE ID = ?", .tParams, .tRows)
             If $$$ISERR(tSC) Quit
         }
-        Set tSC = ..MarkRow(tTarget, "1")
+        Set tParams = [].%Push(..Timestamp()).%Push(tTarget)
+        Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Agent SET DefaultMark = '1', UpdatedAt = ?, RowVersion = COALESCE(RowVersion, 0) + 1 WHERE ID = ?", .tParams, .tRows)
         If $$$ISERR(tSC) Quit
         TCOMMIT
         Set tInTx = 0
@@ -737,15 +760,19 @@ ClassMethod GuardedRebalanceDefault() As %Status
     Quit tSC
 }
 
-/// <p>Set <var>pObject</var>'s <property>DefaultMark</property> to what the instance actually
-/// holds, so a caller that just created or updated a definition can project the row without
-/// re-reading it and without depending on which in-memory instance
-/// <method>%OpenId</method> handed back.</p>
+/// <p>Set <var>pObject</var>'s <property>DefaultMark</property> and <property>RowVersion</property>
+/// to what the instance actually holds, so a caller that just created or updated a definition can
+/// project the row, and save it again, without re-reading it and without depending on which
+/// in-memory instance <method>%OpenId</method> handed back. The rebalance writes by SQL and so
+/// raises the stored version of a row it marks or unmarks.</p>
 ClassMethod RefreshMark(pObject As OcuPilot.Kernel.State.Agent) As %Status [ Private ]
 {
     Set tSC = ..GuardedMarkedId(.tMarked)
     If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardedIdsWhere("SELECT COALESCE(RowVersion, 0) FROM OcuPilot_Kernel_State.Agent WHERE ID = ?", pObject.%Id(), .tVersion)
+    If $$$ISERR(tSC) Quit tSC
     Set pObject.DefaultMark = $Select(tMarked = pObject.%Id(): "1", 1: "")
+    If $Get(tVersion(1)) '= "" Set pObject.RowVersion = +tVersion(1)
     Quit tSC
 }
 

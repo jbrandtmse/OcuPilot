@@ -71,7 +71,7 @@ Method OnBeforeAllTests() As %Status
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AdminStateWrite creates and deletes users and roles and rewrites OcuPilot's stores on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Set ..PreparedPassword = "OcuPilotState" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
-    Quit ..EnsurePrincipals()
+    Quit ..EnsurePrincipals(..PreparedPassword)
 }
 
 /// <p>Remove the two principals and their roles; a failing status when any survives.</p>
@@ -273,15 +273,17 @@ Method TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned()
 
 /// <p>The administrator-owned stores are the classes whose compiled <code>ADMINWRITE</code> is 1,
 /// and each one's own public class methods are exactly its declared reads, refused writes and open
-/// writes. Every refused write is a step the probe runs, and the three refusal tests call them through
-/// <method>PlanKinds</method>; <code>GuardedRecordWritesMarked</code> is the one write open to every
-/// caller. <code>Base</code>'s own public class methods, which the four inherit, are exactly
-/// <method>BaseSurface</method>'s two halves, and each of its saves is a step the probe runs.</p>
+/// writes. Every refused write is a step the probe runs, and the three refusal tests and
+/// <class>OcuPilot.Test.StoreOwnerWrite</class>'s agent definition test call them through
+/// <method>PlanKinds</method>; <code>GuardedRecordWritesMarked</code> and
+/// <code>GuardedClearVerification</code> are the writes open to every caller. <code>Base</code>'s own
+/// public class methods, which the five inherit, are exactly <method>BaseSurface</method>'s two halves,
+/// and each of its saves is a step the probe runs.</p>
 /// <p>Mutation (Rule 19): <code>Parameter ADMINWRITE = 1</code> removed from
 /// <class>OcuPilot.Kernel.State.Policy</class> -> this and the egress and policy test go red.</p>
 Method TestTheAdministratorStoresAreDeclared()
 {
-    Set tStores = $ListBuild("Egress", "Hold", "Policy", "Switch")
+    Set tStores = $ListBuild("Agent", "Egress", "Hold", "Policy", "Switch")
     Set tDeclared = ""
     For tI = 1:1:$ListLength(tStores) {
         Set tDeclared = tDeclared _ $Select(tDeclared = "": "", 1: ",") _ ..#STOREPACKAGE _ $List(tStores, tI)
@@ -291,7 +293,7 @@ Method TestTheAdministratorStoresAreDeclared()
     While tRS.%Next() {
         Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tRS.%GetData(1)
     }
-    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled ADMINWRITE is 1 are the four stores")
+    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled ADMINWRITE is 1 are the five stores")
     Set tDeclaredWrites = ""
     For tI = 1:1:$ListLength(tStores) {
         Set tWrites = ..Writes($List(tStores, tI))
@@ -299,8 +301,8 @@ Method TestTheAdministratorStoresAreDeclared()
             Set tDeclaredWrites = tDeclaredWrites _ $ListBuild($List(tStores, tI) _ "." _ $List(tWrites, tJ))
         }
     }
-    Set tCalled = ..PlanKinds("switch") _ ..PlanKinds("hold") _ ..PlanKinds("egresspolicy")
-    Do $$$AssertEquals(..SortedJoin(tCalled), ..SortedJoin(tDeclaredWrites), "the three refusal tests call every declared write and nothing else")
+    Set tCalled = ..PlanKinds("switch") _ ..PlanKinds("hold") _ ..PlanKinds("egresspolicy") _ ..PlanKinds("agent")
+    Do $$$AssertEquals(..SortedJoin(tCalled), ..SortedJoin(tDeclaredWrites), "the refusal tests call every declared write and nothing else")
     For tI = 1:1:$ListLength(tStores) {
         Set tStore = $List(tStores, tI)
         Set tClass = ..#STOREPACKAGE _ tStore
@@ -314,7 +316,7 @@ Method TestTheAdministratorStoresAreDeclared()
         Set tWrites = ..Writes(tStore)
         For tJ = 1:1:$ListLength(tWrites) {
             Set tKind = tStore _ "." _ $List(tWrites, tJ)
-            Do $$$AssertTrue($ClassMethod(..#PROBE, "Handles", tKind), tKind _ " is a write the probe calls")
+            Do $$$AssertTrue($ClassMethod($Select(tStore = "Agent": "OcuPilot.Test.OwnerStateWriteProbe", 1: ..#PROBE), "Handles", tKind), tKind _ " is a write the probe calls")
         }
     }
     Set tPublic = ""
@@ -335,7 +337,7 @@ Method TestTheAdministratorStoresAreDeclared()
 ClassMethod BaseSurface(pWrites As %Boolean) As %List
 {
     If pWrites Quit $ListBuild("GuardedSave", "GuardedSaveIfCurrent")
-    Quit $ListBuild("AdminWriteRefused", "BoundedWhere", "CallerIsAdministrator", "GuardedExistsId", "GuardedOpenId", "GuardedProbeGet", "GuardedProbeSet", "GuardedRolesSnapshot", "GuardedRolesSnapshotThenThrow", "GuardedSslConfigRead", "GuardedStoredValue", "GuardedUserAbsent", "GuardedUserEnabled", "IsCapBusy", "IsDuplicateKey", "IsLockConflict", "IsStaleSave")
+    Quit $ListBuild("AdminWriteRefused", "BoundedWhere", "CallerIsAdministrator", "CallerOwns", "GuardedExistsId", "GuardedOpenId", "GuardedProbeGet", "GuardedProbeSet", "GuardedRolesSnapshot", "GuardedRolesSnapshotThenThrow", "GuardedSslConfigRead", "GuardedStoredValue", "GuardedUserAbsent", "GuardedUserEnabled", "IsCapBusy", "IsDuplicateKey", "IsLockConflict", "IsStaleSave", "OwnerWriteRefused")
 }
 
 /// <p>The writes the refusal test <var>pTest</var> (<code>switch</code>, <code>hold</code> or
@@ -344,12 +346,14 @@ ClassMethod PlanKinds(pTest As %String) As %List
 {
     If pTest = "switch" Quit $ListBuild("Switch.SetGuarded", "Switch.DeleteGuarded")
     If pTest = "hold" Quit $ListBuild("Hold.GuardedCreate", "Hold.GuardedDeleteId", "Hold.DeleteAllGuarded")
+    If pTest = "agent" Quit ##class(OcuPilot.Test.StoreOwnerWrite).AgentWriteKinds()
     Quit $ListBuild("Egress.SetGuarded", "Egress.DeleteGuarded", "Policy.GuardedApply", "Policy.DeleteAllGuarded")
 }
 
 /// <p>The reads <var>pStore</var> declares: its public class methods that write no row.</p>
 ClassMethod Reads(pStore As %String) As %List
 {
+    If pStore = "Agent" Quit $ListBuild("GuardedByName", "GuardedCredentialOwned", "GuardedIdsByCredentialName", "GuardedIsEnabled", "GuardedList", "GuardedRetentions", "GuardedScreenRows", "GuardedVersion", "ResolveDefault", "ResolveFor", "ScreenRow", "SecurityFields", "SnapshotSecurityFields", "Timestamp")
     If pStore = "Switch" Quit $ListBuild("GuardedVersion", "Resolve", "Timestamp")
     If pStore = "Hold" Quit $ListBuild("GuardedForUser", "GuardedIdForUser", "GuardedList", "GuardedScreenRows", "ScreenRow", "Timestamp")
     If pStore = "Egress" Quit $ListBuild("GuardedVersion", "Resolve")
@@ -360,6 +364,7 @@ ClassMethod Reads(pStore As %String) As %List
 /// privilege.</p>
 ClassMethod Writes(pStore As %String) As %List
 {
+    If pStore = "Agent" Quit $ListBuild("GuardedCreate", "GuardedUpdate", "GuardedSetVerification", "GuardedMarkCredentialCreated", "GuardedDeleteId", "SetDefaultGuarded", "GuardedRebalanceDefault")
     If pStore = "Switch" Quit $ListBuild("SetGuarded", "DeleteGuarded")
     If pStore = "Hold" Quit $ListBuild("GuardedCreate", "GuardedDeleteId", "DeleteAllGuarded")
     If pStore = "Egress" Quit $ListBuild("SetGuarded", "DeleteGuarded")
@@ -370,6 +375,7 @@ ClassMethod Writes(pStore As %String) As %List
 ClassMethod OpenWrites(pStore As %String) As %List
 {
     If pStore = "Switch" Quit $ListBuild("GuardedRecordWritesMarked")
+    If pStore = "Agent" Quit $ListBuild("GuardedClearVerification")
     Quit ""
 }
 
@@ -594,15 +600,16 @@ Method AssertDeveloperLegs(pRun As %DynamicObject)
     }
 }
 
-/// <p>Run <class>OcuPilot.Test.AdminStateWriteProbe</class> as <var>pUser</var> over <var>pPlan</var>
-/// in a child process and answer what it signalled, or an object carrying <code>error</code>.</p>
-ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
+/// <p>Run the probe class <var>pProbe</var> (<class>OcuPilot.Test.AdminStateWriteProbe</class> or a
+/// subclass of it) as <var>pUser</var> over <var>pPlan</var> in a child process and answer what it
+/// signalled, or an object carrying <code>error</code>.</p>
+ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray, pProbe As %String = "OcuPilot.Test.AdminStateWriteProbe") As %DynamicObject
 {
     Set tOut = {}
     Try {
         Do $System.Event.Clear($Job)
         Set tPlan = pPlan.%ToJSON()
-        Job ##class(OcuPilot.Test.AdminStateWriteProbe).Run($Job, pUser, tPlan)::10
+        Job ##class(OcuPilot.Test.AdminStateWriteProbe).RunProbe($Job, pProbe, pUser, tPlan)::10
         If '$Test {
             Do tOut.%Set("error", "the probe process did not start")
             Quit
@@ -638,12 +645,21 @@ ClassMethod LegText(pRun As %DynamicObject, pIndex As %Integer) As %String
     Quit tText
 }
 
-/// <p>Create the two throwaway roles and the accounts that hold them, then read the grants back:
-/// <parameter>DEVROLE</parameter> holds the install namespace's code and data read and
-/// <code>%Development:USE</code>; <parameter>ADMINROLE</parameter> holds the same read and
-/// <code>OcuPilotAdmin:USE</code>.</p>
-Method EnsurePrincipals() As %Status
+/// <p>The principals this class creates, as <method>EnsurePrincipals</method> takes them: each is
+/// <code>$ListBuild(user, role, grants, holdsAdministrator)</code>. <parameter>DEVROLE</parameter>
+/// holds the install namespace's code and data read and <code>%Development:USE</code>;
+/// <parameter>ADMINROLE</parameter> holds the same read and <code>OcuPilotAdmin:USE</code>.</p>
+ClassMethod DefaultCases() As %List
 {
+    Quit $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U", 0), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U", 1))
+}
+
+/// <p>Create each throwaway role and the account that holds it, then read the grants back. A case
+/// of <var>pCases</var> (default <method>DefaultCases</method>) holds the install namespace's code
+/// and data read plus its own grants; the account's password is <var>pPassword</var>.</p>
+ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "") As %Status
+{
+    If pCases = "" Set pCases = ..DefaultCases()
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -657,14 +673,15 @@ Method EnsurePrincipals() As %Status
             Set tResource = ##class(SYS.Database).%OpenId(tDatabase.Directory).ResourceName _ ":R"
             If tRead '[ tResource Set tRead = tRead _ $Select(tRead = "": "", 1: ",") _ tResource
         }
-        For tCase = $ListBuild(..#DEVUSER, ..#DEVROLE, tRead _ ",%Development:U", 0), $ListBuild(..#ADMINUSER, ..#ADMINROLE, tRead _ ",OcuPilotAdmin:U", 1) {
+        For tCaseIndex = 1:1:$ListLength(pCases) {
+            Set tCase = $List(pCases, tCaseIndex)
             Set tUser = $List(tCase, 1)
             Set tRole = $List(tCase, 2)
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the store gate (throwaway)", $List(tCase, 3), "")
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the store gate (throwaway)", tRead _ "," _ $List(tCase, 3), "")
             If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, ..PreparedPassword, "OcuPilot store gate test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.AdminStateWrite; deleted in OnAfterAllTests")
+            Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot store gate test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot armed test class; deleted in its OnAfterAllTests")
             If $$$ISERR(tSC) Quit
             Set tHoldsAdmin = ($SYSTEM.Security.CheckUserPermission(tUser, "OcuPilotAdmin", "USE") = 1)
             Set tHoldsDevelopment = ($SYSTEM.Security.CheckUserPermission(tUser, "%Development", "USE") = 1)

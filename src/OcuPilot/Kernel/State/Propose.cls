@@ -19,6 +19,11 @@
 Class OcuPilot.Kernel.State.Propose Extends OcuPilot.Kernel.State.Base [ SqlTableName = Proposal ]
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>):
+/// a writer refuses a caller who neither owns the row nor holds the administrative resource, and the
+/// writes across users are an administrator's, except the expiry of lapsed rows a close makes.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
 /// <p>A proposal awaiting the user's decision: the only state a claim admits.</p>
 Parameter STATELIVE = "live";
 
@@ -278,7 +283,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
     Set pKey = ""
     Set pToken = ""
     Set pExpiresAt = ""
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), $Get(pValues("user")))
+    If $$$ISERR(tSC) Quit tSC
     Try {
         If $Length($Get(pValues("targetRef"))) > ..#TARGETREFMAX {
             Set tSC = $$$ERROR($$$GeneralError, "the target reference is longer than the " _ ..#TARGETREFMAX _ " characters a proposal keeps whole")
@@ -318,7 +324,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pKey = tRow.ProposalKey
         Set pToken = tRow.Token
@@ -381,6 +387,8 @@ ClassMethod GuardedRecordReadBack(pProposalKey As %String, pReadBack As %Dynamic
     Set tSC = $$$OK
     Try {
         If (pProposalKey = "") || '$IsObject(pReadBack) Quit
+        Set tSC = ..KeyOwnerRefused("ProposalKeyIdxExists", pProposalKey)
+        If $$$ISERR(tSC) Quit
         Set tText = pReadBack.%ToJSON()
         Set tMax = ..#READBACKMAX
         If $Length(tText) > tMax {
@@ -532,6 +540,8 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
             Set tSC = $$$ERROR($$$GeneralError, "a claim needs a proposal id")
             Quit
         }
+        Set tSC = ..KeyOwnerRefused("ProposalKeyIdxExists", pProposalKey)
+        If $$$ISERR(tSC) Quit
         ; AD-34. Confirms of one scoped target are serialized here, and not by the rows' own locks.
         ; IRIS's default isolation is READ UNCOMMITTED, so the sibling update below reads a rival
         ; claim's uncommitted State = 'confirmed', matches nothing and asks for no lock -- without
@@ -598,6 +608,7 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
 ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
 {
     Set pChanged = 0
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedRowsNoParam("SELECT ID, TargetRef FROM OcuPilot_Kernel_State.Proposal WHERE TargetKey IS NULL ORDER BY ID", .tRows)
@@ -634,7 +645,9 @@ ClassMethod GuardedClose(pProposalKey As %String, pUser As %String, pReason As %
 {
     Set pClosed = 0
     If (pProposalKey = "") || (pUser = "") Quit $$$OK
-    Set tExpireSC = ..GuardedExpireStale()
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tExpireSC = ..ExpireStaleAnyCaller()
     If $$$ISERR(tExpireSC) Quit tExpireSC
     Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pProposalKey).%Push(pUser).%Push(..#STATELIVE)
     Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(ProposalKey) = ? AND %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
@@ -652,7 +665,9 @@ ClassMethod GuardedCloseLiveForConvo(pConvKey As %String, pUser As %String, pRea
 {
     Set pCount = 0
     If (pConvKey = "") || (pUser = "") Quit $$$OK
-    Set tExpireSC = ..GuardedExpireStale()
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tExpireSC = ..ExpireStaleAnyCaller()
     If $$$ISERR(tExpireSC) Quit tExpireSC
     Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pConvKey).%Push(pUser).%Push(..#STATELIVE)
     Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(ConvKey) = ? AND %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
@@ -669,7 +684,9 @@ ClassMethod GuardedCloseLiveForUser(pUser As %String, pReason As %String, Output
 {
     Set pCount = 0
     If pUser = "" Quit $$$OK
-    Set tExpireSC = ..GuardedExpireStale(pUser)
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tExpireSC = ..ExpireStaleAnyCaller(pUser)
     If $$$ISERR(tExpireSC) Quit tExpireSC
     Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pUser).%Push(..#STATELIVE)
     Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
@@ -679,13 +696,27 @@ ClassMethod GuardedCloseLiveForUser(pUser As %String, pReason As %String, Output
 }
 
 /// <p>Close every live proposal of <var>pUser</var> whose window has passed, recording the state
-/// <method>RowValues</method> already projects for it (DW-1209). Called by the three close paths
-/// before they touch a row -- the confirm path does not need it, because
-/// <method>OcuPilot.Kernel.Proposal.Write.Claim</method> refuses a row past its window before the
-/// claim is reached. A scheduled retention sweep over these rows is not this story's.
-/// <var>pUser</var> <code>""</code> flips every user's stale rows, which is what a path holding no
-/// user calls it with.</p>
+/// <method>RowValues</method> already projects for it (DW-1209). The confirm path does not need it,
+/// because <method>OcuPilot.Kernel.Proposal.Write.Claim</method> refuses a row past its window before
+/// the claim is reached. <var>pUser</var> names the caller's own rows; <code>""</code> flips every
+/// user's stale rows and is an administrator's. The three close paths expire every user's stale rows
+/// by the same rule through <method>ExpireStaleAnyCaller</method>.</p>
 ClassMethod GuardedExpireStale(pUser As %String = "") As %Status
+{
+    If pUser = "" {
+        If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
+    } Else {
+        Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Quit ..ExpireStaleAnyCaller(pUser)
+}
+
+/// <p><method>GuardedExpireStale</method>'s write without the caller check: the expiry a close
+/// makes before it touches a row, which flips every user's lapsed proposals by the instance's own
+/// rule (a live row past its window reads <parameter>STATEEXPIRED</parameter> everywhere). It writes
+/// no other column and no other state.</p>
+ClassMethod ExpireStaleAnyCaller(pUser As %String = "") As %Status [ Private ]
 {
     Set tNow = ..Stamp()
     If pUser = "" {
@@ -814,6 +845,7 @@ ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 /// <method>GuardedDeleteForTurn</method>.</p>
 ClassMethod GuardedDeleteForUser(pUser As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = ?", pUser)
 }
 
