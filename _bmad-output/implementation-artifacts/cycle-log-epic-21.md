@@ -408,3 +408,5 @@
 2026-11-16T18:52:52Z	Story 21.33	gate_step	step=full_sweep scope=batch1 result=pass shards=20/20 head=a7e5d04fa
 2026-11-16T18:52:52Z	Story 21.33	smoke_complete	scope=batch1 method=cli result=pass(fresh-ish:PASSED_no_skip)
 2026-11-16T18:52:52Z	Story 21.33	committed	sha=a7e5d04fa(batch1:4334486d8,8e6d9de06,a7e5d04fa) ci=pending runs=43933412899 note=story_stays_in-progress(batches_2-3)
+2026-11-16T18:58:17Z	Story 21.33	ad_amended	ad=AD-9 batch=2 item=DW-2665(installer_target-key_frame) marker=[AMENDED_2026-11-16,Story_21.33_Batch_2_spec_gate,owner_answer_U-82,DW-2665] note=owner_veto_item_filed_by_orchestrator
+2026-11-16T18:58:17Z	Epic 21	integrate_forward	from=feature_8074a73c5 to=386d388be conflicts=1(sprint-status_stamp) checks=ci.test.mjs_103
