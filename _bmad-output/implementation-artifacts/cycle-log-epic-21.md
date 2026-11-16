@@ -346,3 +346,4 @@
 2026-11-16T10:04:42Z	Story 21.13	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
 2026-11-16T10:04:42Z	Story 21.13	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
 2026-11-16T10:04:44Z	Story 21.32	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2646
+2026-11-16T10:05:29Z	Story 21.32	stage_spawned	stage=plan spawn_at=2026-11-16T10:05:29Z model=opus agent_name=21-32-plan-1 cycle_iteration=1 note=throwaway_writes_allowed_for_reproduction
