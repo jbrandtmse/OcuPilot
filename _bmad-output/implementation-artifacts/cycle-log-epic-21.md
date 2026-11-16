@@ -404,3 +404,4 @@
 2026-11-16T16:53:32Z	Story 21.35	stage_spawned	stage=plan spawn_at=2026-11-16T16:53:32Z model=opus agent_name=21-35-plan-1 cycle_iteration=1
 2026-11-16T17:08:40Z	Story 21.35	story_created	spawn_at=2026-11-16T16:53:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md build_status=ready-for-dev eta=10-12h waits_for=21.33_done
 2026-11-16T17:08:40Z	Story 21.35	spec_validated	owned_ledger=DW-2651(batch1),DW-2652(batch2-3) ad_text=deferred_to_start(builds_on_DW-2665) asked=AD-64_screen_access(a|b|c) behaviour_changes_listed=4
+2026-11-16T17:10:36Z	Story 21.35	ruling	question=screen_access_direct_write choice=b(store_audits;port_write_audited_once,pinned) via=orchestrator(veto_item)

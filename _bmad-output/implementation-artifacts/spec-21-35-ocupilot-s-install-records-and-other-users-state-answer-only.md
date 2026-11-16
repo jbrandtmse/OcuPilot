@@ -217,7 +217,7 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 - `Convo.LoadOrCreate`'s load branch unchecked -> its leg red.
 - `Turn.GuardedLiveUsers` gated -> the open-read leg red.
 
-**Runner ruling at the spec gate (2026-11-16):** validated. Implementation waits for Story 21.33 to be done. The AD-9 text above is written into the spine at that start, after 21.33's DW-2665 text it builds on, complying first under U7. The screen-access option (a), (b) or (c) is asked of the orchestrator; the plan's recommendation is (b).
+**Runner ruling at the spec gate (2026-11-16):** validated. Implementation waits for Story 21.33 to be done. The AD-9 text above is written into the spine at that start, after 21.33's DW-2665 text it builds on, complying first under U7. Screen access: option (b), orchestrator ruling (veto item): the store records the audit event itself, and a write through the port is audited exactly once, pinned by a test.
 
 ## Auto Run Result
 
