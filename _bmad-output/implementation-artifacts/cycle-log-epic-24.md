@@ -147,3 +147,8 @@
 2026-11-16T06:07:57Z	Epic 24	owner_decision_applied	id=U-45 effect=epics.md_24.8_24.9_amended_same_instance_only,remote_profiles_to_exclusion_register_in_24.8 applied_by=runner
 2026-11-16T06:11:09Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
 2026-11-16T06:11:09Z	Story 24.8	stage_spawned	stage=plan spawn_at=2026-11-16T06:11:09Z model=opus agent_name=24-8-remote-instance-profiles-and-environment-diff-plan-1 cycle_iteration=1
+2026-11-16T06:26:53Z	Story 24.8	story_created	spawn_at=2026-11-16T06:13:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-8-remote-instance-profiles-and-environment-diff.md build_status=ready-for-dev epic_context=reused
+2026-11-16T06:26:53Z	Story 24.8	ruling	question=diff_domains choice=documents_now,default_settings_to_24.15,mappings_to_burndown rejected=all_domains_in_24.8,drop_domains why=24.1_split_limit_reached_and_different_gates_keep_in_epic category=veto reversal=compare_remaining_in_24.8 inbox=U-80 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T06:26:53Z	Story 24.8	ruling	question=strings choice=keep category=veto inbox=U-80 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T06:26:53Z	Story 24.8	ledger_routed_planned	story=24-15-credentials-default-settings-and-schedules entries=1(DW-2636) excess=0 by=spec_gate
+2026-11-16T06:26:53Z	Story 24.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-29,AD-61,AD-36,AD-23,AD-16,AD-60,AD-5,AD-24 decision_dependency=none sections_created=none owned_ledger=none harvested_at_gate=DW-2635,DW-2636 mutates_shared_runtime=true throwaway=ocupilot-b-ci model=claude-opus-5-5

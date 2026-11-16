@@ -10271,6 +10271,7 @@ So that the area reaches parity.
 - **Given** credentials, default settings and schedules
 - **When** each runs
 - **Then** it round-trips over its backing class.
+- DW-2636: Environment diff does not yet compare two namespaces' interoperability default settings; compare this story's default-settings read per namespace (ledger; routed by spec gate 2026-11-16)
 
 ### Story 24.16: Purge, suspended messages, export and the archive manager
 

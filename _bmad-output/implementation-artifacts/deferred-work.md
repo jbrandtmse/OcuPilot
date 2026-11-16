@@ -13224,3 +13224,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-6-the-command-and-class-method-consoles.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess pins the escalation; Api/Governance checks IsAdministrator above GuardedApply; end-to-end non-admin rewrite not yet run
 - 2026-11-16T06:06:00Z status=escalated owner=burndown by=harvest note=security; found at 24.6 plan; out of Epic 24 footprint (Kernel/State, AD-9); for the orchestrator and the decision sheet
+
+### DW-2635: Environment diff does not yet compare two namespaces' global, routine and package mappings (catalog DT-09)
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: mappings read through NamespacePort under %Admin_Manage:USE and %DB_IRISSYS:READ, a different audience than the diff screen's %Development:USE (AD-5)
+- 2026-11-16T06:26:30Z status=routed owner=burndown by=harvest note=ruled at 24.8 spec gate: kept in Epic 24 at the burn-down; veto U-n
+
+### DW-2636: Environment diff does not yet compare two namespaces' interoperability default settings (catalog DT-09)
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AD-62: InteropPort is the only reader of interoperability configuration; its default-settings read is built by Story 24.15
+- 2026-11-16T06:26:31Z status=routed owner=24-15-credentials-default-settings-and-schedules by=harvest note=ruled at 24.8 spec gate: 24.15 compares its read per namespace
