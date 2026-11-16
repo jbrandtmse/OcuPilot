@@ -263,3 +263,4 @@
 2026-11-16T01:16:38Z	Story 21.19	story_created	spawn_at=2026-11-16T00:58:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-19-shell-advisor-permission-and-task-leaves.md build_status=blocked->ready-for-dev(narrowed) oversized=true
 2026-11-16T01:16:38Z	Story 21.19	spec_validated	service_introducing=true(AdvisorPort) integration_ac=present adr_constrained_acs=AD-5,AD-6,AD-15,AD-21,AD-29,AD-35,AD-52,AD-53,AD-56 owned_ledger=DW-2372,DW-2471 addressed=2 declined=0 filed=DW-2625(high,decision-pending,21.21) mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-16T01:21:58Z	Story 21.21	gate_step	step=DW-2625_measurement result=exposure_confirmed env=ocupilot-ci(between_sweep_shards_1_and_2) evidence=scratchpad/e21u/21-19/dw2625-result.txt restored=MailAuthPassword_empty
+2026-11-16T01:22:20Z	Story 21.21	stage_spawned	stage=plan spawn_at=2026-11-16T01:22:20Z model=opus agent_name=21-21-leaves-that-wait-on-the-owner-plan-1 cycle_iteration=1
