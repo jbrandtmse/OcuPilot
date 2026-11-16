@@ -307,3 +307,5 @@
 2026-11-16T06:14:04Z	Story 21.12	gate_step	step=defect_fix item=MirrorPort_missing_Snippet(found_by_21.13_implement,DraftRegistry) fix=bbae181c5 verified=DraftRegistry,MirrorRead,PortGate_green
 2026-11-16T06:14:11Z	Story 21.13	dev_complete	spawn_at=2026-11-16T04:11:00Z model=sonnet build_sha=9ca39bb68 baseline_revision=4d4cd1b4d story_base=4d4cd1b4d review_loop_iteration=0 followup_review_recommended=false deferred=1(DraftRegistry_red_from_21.12,fixed_bbae181c5) cycle_iteration=1
 2026-11-16T06:14:11Z	Story 21.13	stage_spawned	stage=qa spawn_at=2026-11-16T06:14:11Z model=sonnet agent_name=21-13-ddl-mappings-qa-1 cycle_iteration=1
+2026-11-16T06:20:19Z	Story 21.13	qa_complete	spawn_at=2026-11-16T06:38:00Z model=sonnet tests=DdlMappingWrite(+1),DdlMappingRules(+matrix_rows) tests_added=2 mutations_demonstrated=5 first_run_failures=0 clarifications=0
+2026-11-16T06:20:19Z	Story 21.13	stage_spawned	stage=code-review spawn_at=2026-11-16T06:20:19Z model=opus agent_name=21-13-ddl-mappings-code-review-1 cycle_iteration=1
