@@ -201,3 +201,10 @@
 2026-11-16T15:17:41Z	Story 24.9	cr_complete	spawn_at=2026-11-16T14:48:00Z model=opus resolved=9 fixed_at_source=9 high_fixed=AD-59_snippet_mirrors_promote wontfix=3 decision_pending=1(DW-2658) ledger_resolved=DW-2655,DW-2656 confirmed=DW-2653 annotated=DW-2657 dismissed=14 high=1 med=5 low=23 rows=29 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
 2026-11-16T15:17:41Z	Story 24.9	ledger_adjudicated	owned=2 resolved=2(DW-2655,DW-2656) reowned=0 terminal=DW-2653 born_terminal=DW-2659,DW-2660,DW-2661 to_decision_sheet=DW-2658 model=claude-opus-5-5
 2026-11-16T15:25:55Z	Story 24.9	integrate_forward	feature=c1a02ae13 conflicts_resolved=sprint-status.yaml,GovernanceBaseline,ReadTool,ToolRoundTrip,ToolWrite method=union counts_rederived=ReadTool471,GovernanceBaseline68,ToolWrite87(inference) checks=check-objectscript0,lint-docs0,tools2296
+2026-11-16T15:27:26Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.9_merged_tree run=20261114T1656Z-21,22
+2026-11-16T15:28:05Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.9 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T15:35:24Z	Epic 24	orchestrator_ruling	subject=feature_green_c1a02ae13 run=43888708331 carries=21.32(DW-2646),21.34(DW-2650) effect=shard4_signatures_cleared,any_new_shard4_red_is_new
+2026-11-16T15:35:24Z	Story 24.9	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+namespace-promote_browser_spec+NamespacePromoteRoute_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-16T15:35:24Z	Story 24.9	fresh_check	env=recipe(merged_tree_feature_680e3450b) tests=16_classes+2_specs result=pass order=forward,reverse classes_tests=246 components=3503 tools=2296
+2026-11-16T15:35:24Z	Story 24.9	committed	sha=e768ee889 code_head=e34cedcd7(merged_with_feature_680e3450b) ci=pending runs=43897913630 amendments=none
+2026-11-16T15:35:24Z	Story 24.9	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
