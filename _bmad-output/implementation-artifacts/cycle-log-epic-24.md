@@ -174,3 +174,4 @@
 2026-11-16T10:16:35Z	Story 24.5	story_unparked	via=inbox id=U-77 effect=epics.md_amended,spec_status_draft,re-plan
 2026-11-16T10:16:35Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T10:16:35Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-2 cycle_iteration=2
 2026-11-16T10:19:25Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
+2026-11-16T10:24:27Z	Epic 24	orchestrator_ruling	subject=shard4_dashboard_-428 correction=not_21.30,real_defect_from_21.3/21.4=DW-2646(high),fix=Story_21.32(planning) merge_rule=green_merges_after_epic21_head,red_with_that_signature_waits_for_21.32 staging_head=39fbcf32d(24.3+24.4+24.8) DW-2641=routed_to_epic21_by_orchestrator
