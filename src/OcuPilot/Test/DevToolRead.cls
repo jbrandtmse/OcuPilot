@@ -480,7 +480,8 @@ XData Cases
   "cases": [
     {"name": "a devtool LIST of CodeMetrics is sound", "source": {"port": "devtool", "endpoint": "CodeMetrics", "type": "LIST"}, "expected": null},
     {"name": "so is DocumentHashes", "source": {"port": "devtool", "endpoint": "DocumentHashes", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "source": {"port": "devtool", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the devtool port's endpoints ('CodeMetrics', 'DocumentHashes') (AD-29)"},
+    {"name": "so is NamespaceDiff", "source": {"port": "devtool", "endpoint": "NamespaceDiff", "type": "LIST"}, "expected": null},
+    {"name": "an endpoint the port does not serve", "source": {"port": "devtool", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the devtool port's endpoints ('CodeMetrics', 'DocumentHashes', 'NamespaceDiff') (AD-29)"},
     {"name": "a type other than LIST", "source": {"port": "devtool", "endpoint": "CodeMetrics", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a devtool source, which lists the developer tools' rows (AD-36)"},
     {"name": "rowGet", "source": {"port": "devtool", "endpoint": "CodeMetrics", "type": "LIST", "rowGet": {"key": "Documents", "param": "name", "fields": ["Lines"], "derived": []}}, "expected": "read.source.rowGet is declared on a devtool source, which answers its list whole (AD-36)"},
     {"name": "forEach", "source": {"port": "devtool", "endpoint": "CodeMetrics", "type": "LIST", "forEach": ["Lines"]}, "expected": "read.source.forEach is declared on a devtool source, which answers its list whole (AD-36)"},

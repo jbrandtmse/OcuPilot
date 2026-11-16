@@ -1,4 +1,4 @@
-/// <p><class>OcuPilot.Port.HarvestPort</class> that records each <method>Invoke</method>'s handler, method and
+/// <p><class>OcuPilot.Port.HarvestPort</class> that records each <method>Invoke</method>'s handler, method, pairs and
 /// query in <code>^||OcuPilotDevToolRecorder</code> before it runs the call, so a test reads whether a body was
 /// asked for and what it was sent. After <method>SetDry</method> it answers an empty success and runs no body, so a
 /// test can lift the port's document cap without a scan.</p>
@@ -24,7 +24,8 @@ ClassMethod Calls() As %Integer
     Quit +$Get(^||OcuPilotDevToolRecorder)
 }
 
-/// <p>Recorded call <var>pIndex</var> (1-based) as <code>{handler, method, query}</code>, or <code>{}</code>.</p>
+/// <p>Recorded call <var>pIndex</var> (1-based) as <code>{handler, method, pairs, query}</code>, or <code>{}</code>;
+/// <code>pairs</code> reads <code>resource:permission</code>, comma-separated.</p>
 ClassMethod CallAt(pIndex As %Integer) As %DynamicObject
 {
     Set tJson = $Get(^||OcuPilotDevToolRecorder(pIndex))
@@ -44,6 +45,11 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
     Set tCall = {}
     Do tCall.%Set("handler", pHandler, "string")
     Do tCall.%Set("method", pMethod, "string")
+    Set tPairText = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tPairText = tPairText _ $Select(tI = 1: "", 1: ",") _ $List($List(pPairs, tI), 1) _ ":" _ $List($List(pPairs, tI), 2)
+    }
+    Do tCall.%Set("pairs", tPairText, "string")
     Do tCall.%Set("query", tQuery)
     Set tIndex = $Increment(^||OcuPilotDevToolRecorder)
     Set ^||OcuPilotDevToolRecorder(tIndex) = tCall.%ToJSON()

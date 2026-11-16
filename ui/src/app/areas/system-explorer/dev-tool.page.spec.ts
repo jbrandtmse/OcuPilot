@@ -18,7 +18,7 @@ import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DevToolPage } from './dev-tool.page';
 
 /**
- * Code metrics and Document hashes over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
+ * Code metrics, Document hashes and (Story 24.8) Compare namespaces over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
  * `ScreenArrivals` and a stubbed HTTP answer (Story 24.1): nothing read before a search, the search's exact criteria, the rows the
  * read answered held by the screen's store, a refused search shown with the instance's reason in place of the rows, an agent's
  * arrival run once, and a re-read when a class in the namespace changes.
@@ -26,6 +26,7 @@ import { DevToolPage } from './dev-tool.page';
 
 const METRICS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics') as ScreenDeclaration;
 const HASHES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes') as ScreenDeclaration;
+const DIFF = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff') as ScreenDeclaration;
 
 const HASH_ROWS = [
   { Document: 'Demo.One.cls', Hash: 'A'.repeat(64), Modified: '2026-11-15 05:26:40.7' },
@@ -44,7 +45,7 @@ const planted: HTMLElement[] = [];
 
 async function mount(
   screen: ScreenDeclaration,
-  options: { rows?: readonly unknown[]; truncated?: boolean; arrivals?: ScreenArrivals; refusal?: { status: number; code: string; reason: string | null } } = {}
+  options: { rows?: readonly unknown[]; truncated?: boolean; arrivals?: ScreenArrivals; namespaces?: readonly string[]; refusal?: { status: number; code: string; reason: string | null } } = {}
 ) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
@@ -78,7 +79,12 @@ async function mount(
       { provide: ScreenArrivals, useValue: options.arrivals ?? new ScreenArrivals() },
       {
         provide: ScopeService,
-        useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => undefined } as unknown as ScopeService,
+        useValue: {
+          loaded: () => true,
+          namespace: () => 'HSCUSTOM',
+          namespaces: () => (options.namespaces ?? ['HSCUSTOM', 'USER', 'ZED']).map((name) => ({ name })),
+          subscribe: () => () => undefined,
+        } as unknown as ScopeService,
       },
     ],
   });
@@ -95,7 +101,12 @@ async function mount(
     bus,
     stores,
     answer,
-    search: async (spec: string, generated = false) => {
+    search: async (spec: string, generated = false, target?: string) => {
+      if (target !== undefined) {
+        const select = host.querySelector('[data-ocu-devtool="target"]') as HTMLSelectElement;
+        select.value = target;
+        select.dispatchEvent(new Event('change'));
+      }
       const input = host.querySelector('[data-ocu-devtool="spec"]') as HTMLInputElement;
       input.value = spec;
       input.dispatchEvent(new Event('input'));
@@ -193,5 +204,46 @@ describe('System Explorer Code metrics and Document hashes', () => {
     expect(paths[1]).toBe(paths[0]);
     expect(host.querySelector('[data-ocu-devtool="fault"]')).toBeNull();
     expect(host.querySelector('app-data-table')).not.toBeNull();
+  });
+});
+
+describe('System Explorer Compare namespaces', () => {
+  it("offers the instance's other namespaces first in the form, defaulting to the first, and no other control for the two screens without one", async () => {
+    // Mutation (Rule 19): offer this namespace too in `targetOptions` -> the options assertion goes red.
+    const { host } = await mount(DIFF);
+    const select = host.querySelector('[data-ocu-devtool="target"]') as HTMLSelectElement;
+    expect(host.querySelector('.ocu-criteria-field label')?.textContent?.trim()).toBe(STRINGS.explorerOtherNamespaceLabel);
+    expect(Array.from(select.options).map((option) => option.value)).toEqual(['USER', 'ZED']);
+    expect(select.value).toBe('USER');
+    expect(host.querySelector('[data-ocu-devtool="invite"]')?.textContent?.trim()).toBe(STRINGS.explorerNamespaceDiffInvite);
+    expect(host.querySelector('[data-ocu-devtool="no-target"]')).toBeNull();
+    const { host: plain } = await mount(HASHES);
+    expect(plain.querySelector('[data-ocu-devtool="target"]')).toBeNull();
+  });
+
+  it('sends the chosen namespace, and the first one when none was chosen', async () => {
+    // Mutation (Rule 19): leave `target` out of `search()` -> both request assertions go red.
+    const first = await mount(DIFF);
+    await first.search('Demo.*.cls');
+    expect(first.paths).toEqual(['/api/ocupilot/screens/explorer.namespacediff/read?maxRows=1000&target=USER&spec=Demo.*.cls&generated=no']);
+    const chosen = await mount(DIFF);
+    await chosen.search('Demo.*.cls', true, 'ZED');
+    expect(chosen.paths).toEqual(['/api/ocupilot/screens/explorer.namespacediff/read?maxRows=1000&target=ZED&spec=Demo.*.cls&generated=yes']);
+  });
+
+  it('says there is no other namespace to choose, and sends nothing, on an instance with only this one', async () => {
+    // Mutation (Rule 19): drop `this.targetOptions.length === 0` from `noTargetChoice` -> the hint assertion goes red; drop the empty-target refusal from `search()` -> the no-request assertion goes red.
+    const { host, paths, search } = await mount(DIFF, { namespaces: ['HSCUSTOM'] });
+    expect(host.querySelector('[data-ocu-devtool="no-target"]')?.textContent?.trim()).toBe(STRINGS.explorerTargetReason);
+    await search('Demo.*.cls');
+    expect(paths).toEqual([]);
+  });
+
+  it("runs an agent's arrival with the other namespace it names shown in the form", async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: DIFF.route, criterion: '', criteria: { target: 'ZED', spec: 'Demo.*.cls' } });
+    const { host, paths } = await mount(DIFF, { arrivals });
+    expect(paths).toEqual(['/api/ocupilot/screens/explorer.namespacediff/read?maxRows=1000&target=ZED&spec=Demo.*.cls&generated=no']);
+    expect((host.querySelector('[data-ocu-devtool="target"]') as HTMLSelectElement).value).toBe('ZED');
   });
 });

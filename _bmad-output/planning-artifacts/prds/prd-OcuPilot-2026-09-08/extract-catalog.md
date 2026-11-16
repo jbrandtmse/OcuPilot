@@ -405,7 +405,7 @@ Mixed rows (GET + write) are shown as "GET yes / write no".
 - **EX-15 SQL DML/DDL guard at P2** although the agent SQL tool it protects is P0: the P0 read tools use catalog SELECTs only; the free-form SQL console is P2.
 - **SS-29 Superservers at P2** per the explicit list, although it sits under Security in the SMP.
 - **SA-01 / SA-02 External language servers at P1** per the tier rule, ahead of all other System Administration remainder rows.
-- **DT-11 remote instance profiles at P3** (single-instance product) rather than P4, because DT-09/DT-10 depend on it.
+- **DT-11 remote instance profiles at P4** (owner answer U-45): environment diff and promote (DT-09, DT-10) compare namespaces of this instance.
 
 ## 5. Count summary
 

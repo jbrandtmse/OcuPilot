@@ -1,5 +1,5 @@
 /**
- * System Explorer's Code metrics and Document hashes state (AD-19, Story 24.1): what the form holds,
+ * System Explorer's Code metrics, Document hashes and Compare namespaces state (AD-19, Stories 24.1 and 24.8): what the form holds,
  * over the search last sent and the one `RefreshRead` the page binds, which `SentSearchState` holds.
  *
  * **Framework-free.** It imports nothing from Angular; `dev-tool.page.ts` holds one per screen store,
@@ -14,19 +14,43 @@
 import type { ScreenArrival } from '../../core/screen-arrival';
 import { SentSearchState } from './code-search.store';
 
-/** The two criteria both screens declare. */
+/** The two criteria every screen declares, and the other namespace Compare namespaces adds. */
 export const SPEC_PARAM = 'spec';
 export const GENERATED_PARAM = 'generated';
+export const TARGET_PARAM = 'target';
 
 /** The generated choice's two values. */
 export const GENERATED_NO = 'no';
 export const GENERATED_YES = 'yes';
 
-/** The form's pattern and generated choice, over Search's sent search, refusal and read (`code-search.store.ts`). */
+/**
+ * The form's pattern and generated choice, and the other namespace when `targeted`, over Search's sent search,
+ * refusal and read (`code-search.store.ts`).
+ */
 export class DevToolState extends SentSearchState {
   private specValue = '';
 
   private generatedValue = GENERATED_NO;
+
+  private targetValue = '';
+
+  constructor(private readonly targeted = false) {
+    super();
+  }
+
+  /** Whether the screen declares the other namespace, which a search then needs. */
+  hasTarget(): boolean {
+    return this.targeted;
+  }
+
+  target(): string {
+    return this.targetValue;
+  }
+
+  setTarget(value: string): void {
+    this.targetValue = value;
+    this.notify();
+  }
 
   spec(): string {
     return this.specValue;
@@ -46,10 +70,14 @@ export class DevToolState extends SentSearchState {
     this.notify();
   }
 
-  /** Send the form as shown from the next read on: answers false, sending nothing, with no pattern. */
+  /** Send the form as shown from the next read on: answers false, sending nothing, with no pattern or, where one is declared, no other namespace. */
   search(): boolean {
-    if (this.specValue.trim() === '') return false;
-    this.send({ [SPEC_PARAM]: this.specValue, [GENERATED_PARAM]: this.generatedValue });
+    if (this.specValue.trim() === '' || (this.targeted && this.targetValue === '')) return false;
+    this.send({
+      ...(this.targeted ? { [TARGET_PARAM]: this.targetValue } : {}),
+      [SPEC_PARAM]: this.specValue,
+      [GENERATED_PARAM]: this.generatedValue,
+    });
     return true;
   }
 
@@ -61,6 +89,7 @@ export class DevToolState extends SentSearchState {
     const criteria = arrival.criteria;
     this.specValue = typeof criteria[SPEC_PARAM] === 'string' ? criteria[SPEC_PARAM] : '';
     this.generatedValue = criteria[GENERATED_PARAM] === GENERATED_YES ? GENERATED_YES : GENERATED_NO;
+    if (this.targeted) this.targetValue = typeof criteria[TARGET_PARAM] === 'string' ? criteria[TARGET_PARAM] : '';
     if (this.search()) return true;
     this.send(null);
     return false;

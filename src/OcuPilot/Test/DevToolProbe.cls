@@ -1,3 +1,5 @@
+/// <p>Story 24.8's pair of probe packages, <method>MakePair</method> and <method>RemovePair</method>, follow the same
+/// rules for the package <code>OcuProbe248</code>.</p>
 /// <p>Story 24.1's probe documents: the classes <code>OcuProbe241.Alpha</code> (saved, not compiled),
 /// <code>OcuProbe241.Beta</code> (compiled, so its generated routine exists) and <code>OcuProbe241.Gamma</code>
 /// (a compiled unit-test class), the routine <code>OcuProbe241Mac.mac</code> and the include file
@@ -114,6 +116,82 @@ ClassMethod Remove(pNamespace As %String = "USER") As %Status
         }
         Set $NAMESPACE = tOrigNS
         If tLeft '= "" Set tSC = $$$ERROR($$$GeneralError, "probe documents survive in " _ pNamespace _ ":" _ tLeft)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The package <method>MakePair</method> saves.</p>
+Parameter PAIRPACKAGE = "OcuProbe248";
+
+/// <p>The routine <method>MakePair</method> saves in its first namespace only.</p>
+Parameter PAIRROUTINE = "OcuProbe248Mac.mac";
+
+/// <p>The text of <code>OcuProbe248.</code><var>pClass</var> with method body <var>pMethod</var>.</p>
+ClassMethod PairText(pClass As %String, pMethod As %String) As %String
+{
+    Set tCRLF = $Char(13, 10)
+    Quit "Class " _ ..#PAIRPACKAGE _ "." _ pClass _ " Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ ..Body(pClass, pMethod) _ "}" _ tCRLF
+}
+
+/// <p>Save the <code>OcuProbe248</code> documents in two namespaces: <code>Same</code> (identical) and
+/// <code>Changed</code> (a different method in each) in both, <code>OnlyHere</code> and the routine
+/// <code>OcuProbe248Mac.mac</code> in <var>pHere</var> only, and <code>OnlyThere</code> in <var>pThere</var> only.
+/// None is compiled. The second namespace's documents are saved a second after the first's, so a document held alike
+/// carries two different times.</p>
+ClassMethod MakePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tSide = 1, 2 {
+            If tSide = 2 Hang 1.1
+            Set tNamespace = $Select(tSide = 1: pHere, 1: pThere)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(tNamespace, ..#PAIRPACKAGE _ ".Same", ..PairText("Same", "One"))
+            If $$$ISERR(tSC) Quit
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(tNamespace, ..#PAIRPACKAGE _ ".Changed", ..PairText("Changed", $Select(tSide = 1: "Here", 1: "There")))
+            If $$$ISERR(tSC) Quit
+            Set tOnly = $Select(tSide = 1: "OnlyHere", 1: "OnlyThere")
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(tNamespace, ..#PAIRPACKAGE _ "." _ tOnly, ..PairText(tOnly, "One"))
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = pHere
+        Set tMac = ##class(%Routine).%New(..#PAIRROUTINE)
+        Do tMac.WriteLine("OcuProbe248Mac ; probe")
+        Do tMac.WriteLine(" Quit")
+        Set tSC = tMac.Save()
+        Set tMac = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every <code>OcuProbe248</code> document from <var>pHere</var> and <var>pThere</var> and report any that
+/// survives.</p>
+ClassMethod RemovePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tNamespace = pHere, pThere {
+            Set $NAMESPACE = tNamespace
+            Do $System.OBJ.DeletePackage(..#PAIRPACKAGE, "-d")
+            If ##class(%RoutineMgr).Exists(..#PAIRROUTINE) Do ##class(%RoutineMgr).Delete(..#PAIRROUTINE)
+            Set tLeft = ""
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PAIRPACKAGE _ ".")
+            While tRS.%Next() {
+                Set tLeft = tLeft _ " " _ tRS.%GetData(1)
+            }
+            If ##class(%RoutineMgr).Exists(..#PAIRROUTINE) Set tLeft = tLeft _ " " _ ..#PAIRROUTINE
+            Set $NAMESPACE = tOrigNS
+            If tLeft '= "" Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "probe documents survive in " _ tNamespace _ ":" _ tLeft))
+        }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

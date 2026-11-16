@@ -4936,6 +4936,36 @@ export const STRINGS = {
   explorerDocumentHashesPrompt2: 'Which of these documents changed most recently?',
   /** EXPERIENCE.md:594 */
   explorerDocumentHashesPrompt3: 'How many documents does this pattern match?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffLabel: 'Compare namespaces',
+  /** EXPERIENCE.md:594 */
+  explorerOtherNamespaceLabel: 'Other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedHere: 'Modified here',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedThere: 'Modified there',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyHere: 'Only in this namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyThere: 'Only in the other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeDiffers: 'Content differs',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffEmpty: 'No difference: every matching class and routine is the same in both namespaces.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffInvite: 'Choose another namespace and enter a pattern to see which classes and routines differ.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetReason: 'Name the other namespace: 1 to 64 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetShapeReason: 'Name the namespace to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetSameReason: 'Choose a namespace other than this one to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt1: 'Which classes differ between this namespace and the other one?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt2: 'What does this namespace hold that the other one lacks?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt3: 'Has this package drifted from the other namespace?',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse

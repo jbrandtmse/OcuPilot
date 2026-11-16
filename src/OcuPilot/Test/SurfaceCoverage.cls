@@ -191,6 +191,7 @@ XData Coverage
 <screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
 <screen name="ExplorerCodeMetrics" class="OcuPilot.Test.DevToolRead" method="TestMetricsAreTheProbesComposition"/>
 <screen name="ExplorerDocumentHashes" class="OcuPilot.Test.DevToolRead" method="TestHashesAreTheSha256OfTheStoredText"/>
+<screen name="ExplorerNamespaceDiff" class="OcuPilot.Test.NamespaceDiffRead" method="TestTheDiffListsEachDifferenceAndNotTheSameDocument"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="JournalList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalsIsOsManagementsThirteenthEntry"/>

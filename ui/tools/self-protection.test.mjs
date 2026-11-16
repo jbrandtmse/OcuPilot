@@ -681,6 +681,13 @@ const DEVTOOL_REFUSALS = [
   ['REASONSPECLENGTH', 'explorerSpecLengthReason'],
   ['REASONSPECSHAPE', 'explorerSpecShapeReason'],
   ['REASONGENERATED', 'explorerGeneratedReason'],
+  // Story 24.8: Compare namespaces' two refusals of the other namespace.
+  ['REASONTARGETSHAPE', 'explorerTargetShapeReason'],
+  ['REASONTARGETSAME', 'explorerTargetSameReason'],
+  // Story 24.8: what a Compare namespaces row's change reads.
+  ['CHANGEONLYHERE', 'explorerChangeOnlyHere'],
+  ['CHANGEONLYTHERE', 'explorerChangeOnlyThere'],
+  ['CHANGEDIFFERS', 'explorerChangeDiffers'],
 ];
 
 test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {

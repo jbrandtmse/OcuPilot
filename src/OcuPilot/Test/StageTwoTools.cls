@@ -172,6 +172,7 @@ XData Elsewhere
 <screen name="ExplorerDocDbList"/>
 <screen name="ExplorerDocumentHashes"/>
 <screen name="ExplorerMacro"/>
+<screen name="ExplorerNamespaceDiff"/>
 <screen name="ExplorerRoutineDocument"/>
 <screen name="ExplorerRoutineEditor"/>
 <screen name="ExplorerRoutineList"/>

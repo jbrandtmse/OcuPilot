@@ -350,8 +350,8 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 | 2 - the rest of the admin API (P2) | 59 | 20 / 31 / 8 | 3 | admin-v2 write payloads observed; async-result polling; SH-24 directory allow-list; the admin API's final form in IRIS 2027.1 |
 | 3 - System Explorer over the Atelier API (P2) | 36 | 17 / 15 / 4 | 0 | the `action/query` DML/DDL guard (EX-15) shipping with EX-14; Atelier v7 for the XML routes; ETag on `PUT /doc`; the iris-table-editor harvest; `%Service_DocDB` |
 | 4 - Interoperability over interop-editors v7, with an Analytics rider (P2) | 41 | 10 / 25 / 6 | 4 partial | SH-23 JWT/cookie hand-off to `/ui/interop`; SH-25 namespace gating; the `UpdateProduction {action}` vocabulary; a DeepSee-enabled namespace for the rider |
-| 5 - custom-REST parity from the MCP suite's handlers (P3) | 165 | 60 / 79 / 26 | 128 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container; DT-11 before DT-09/DT-10 |
-| 6 - the long tail, on demand (P4) | 56 | 11 / 29 / 16 | 32 | demand plus each group's license, edition, platform or deprecation gate |
+| 5 - custom-REST parity from the MCP suite's handlers (P3) | 164 | 60 / 78 / 26 | 128 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container |
+| 6 - the long tail, on demand (P4) | 57 | 11 / 30 / 16 | 32 | demand plus each group's license, edition, platform or deprecation gate |
 | **Stages 2-6** | **357** | **118 / 179 / 60** | **167** | - |
 
 The agent grows in step: Stage 2 confirmed single writes over the admin-v2 remainder plus wallet-backed keys, context-window management and proxy/custom-CA support; Stage 3 single writes over Atelier plus the agent picker and the free-form SQL tool behind EX-15's guard; Stage 4 guided multistep workflows and Investigate entry points; Stage 5 the 28 iris-session-agent tools plus undo by snapshot and revert; Stage 6 adds nothing to the agent. Token streaming is **not** here - it moved into the polish week by owner decision.

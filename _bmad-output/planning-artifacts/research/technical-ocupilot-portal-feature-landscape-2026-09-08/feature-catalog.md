@@ -33,9 +33,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | 10. System Explorer and data browser | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | 0 | 1 | 28 | 69 | 20 | 118 |
 | 12. Analytics | 0 | 1 | 9 | 7 | 7 | 24 |
-| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 10 | 1 | 12 |
+| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 9 | 2 | 12 |
 | 14. Packaging, deployment and submission | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | **119** | **62** | **137** | **164** | **56** | **538** |
+| **All sections** | **119** | **62** | **137** | **163** | **57** | **538** |
 
 **SMP leaf coverage** (leaves covered / leaves in digest): System Administration 90/90 (54 Configuration incl. 3 Sharding and 6 Mirror, 30 Security, 2 Licensing, 4 Encryption); System Operation 36/36; System Explorer 11/11; Analytics 18/18 (13 DeepSee + 5 Text Analytics); Interoperability 68/68 live and 76/76 in source (the 8 non-rendered leaves are P4 rows IO-78..IO-81 and IO-90). Distinct write actions on P0/P1/P2 pages have their own rows; P4 pages are one row per page or per group as noted in Gaps.
 
@@ -618,9 +618,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | DT-06 | Execute class method (typed args, ByRef/Output markers) | new | custom(ExecuteMCPv2.REST.Command ClassMethod) | execute-mcp Command:ClassMethod; Utils.InvokeWithArgs | iris_execute_classmethod | P3 | M | write-confirm | harvest-execute-mcp iris_execute_classmethod |
 | DT-07 | Lines-of-code metrics per namespace / package | new | custom(ExecuteMCPv2.Loc.*) | execute-mcp Loc:LocCount | iris_loc_count | P3 | S | read | harvest-execute-mcp iris_loc_count |
 | DT-08 | Document hashes for drift detection | new | custom(ExecuteMCPv2.REST.EnvSync DocHashes) | execute-mcp EnvSync:ComputeHashes | iris_env_diff | P3 | S | read | harvest-execute-mcp iris_env_diff |
-| DT-09 | Environment diff (documents, mappings, default settings, web apps, config between two instances) | new | custom(EnvSync + admin endpoints on both profiles) | execute-mcp env-diff.ts | iris_env_diff | P3 | L | read | harvest-execute-mcp iris_env_diff |
-| DT-10 | Environment promote (plan / execute with confirm, steps allowlist, plan-hash freshness, target governance) | new | custom(write endpoints + atelier PUT /doc + compile) | execute-mcp env-promote.ts four-gate model | iris_env_promote | P3 | L | write-confirm | harvest-execute-mcp iris_env_promote safety model |
-| DT-11 | Remote instance profiles (second IRIS connection for diff / promote; governance roster) | new | none (OcuPilot is single-instance; profile stored server-side) | execute-mcp server-base.ts iris_server_profiles | iris_server_profiles | P3 | M | read | harvest-execute-mcp Framework tool row |
+| DT-09 | Environment diff (documents, mappings and default settings between two namespaces of this instance) | new | custom(EnvSync in both namespaces; mapping and default-settings reads) | execute-mcp env-diff.ts (comparison rules) | iris_env_diff | P3 | L | read | harvest-execute-mcp iris_env_diff |
+| DT-10 | Environment promote between two namespaces of this instance (plan / execute with confirm, steps allowlist, plan-hash freshness) | new | custom(write endpoints + atelier PUT /doc + compile) | execute-mcp env-promote.ts four-gate model | iris_env_promote | P3 | L | write-confirm | harvest-execute-mcp iris_env_promote safety model |
+| DT-11 | Remote instance profiles (second IRIS connection for diff / promote; governance roster) | new | none (OcuPilot is single-instance; profile stored server-side) | execute-mcp server-base.ts iris_server_profiles | iris_server_profiles | P4 | M | read | harvest-execute-mcp Framework tool row — excluded: OcuPilot manages the instance that serves it (owner answer U-45, 2026-11-16) |
 | DT-12 | Debugger session / terminal tools (PRD-only placeholders) | new | official-REST atelier GET /%SYS/debug | execute-mcp debug.ts placeholder | — | P4 | L | none | harvest-execute-mcp Placeholder — excluded: dead placeholder, no implementation |
 
 ## 14. Packaging, deployment and contest submission deliverables (PK)
@@ -683,7 +683,7 @@ This catalog turns the thirteen research digests and two verification files of t
 - **EX-15 SQL DML/DDL guard at P2** although the agent SQL tool it protects is P0: the P0 read tools use catalog SELECTs only; the free-form SQL console is P2.
 - **SS-29 Superservers at P2** per the explicit list, although it sits under Security in the SMP.
 - **SA-01 / SA-02 External language servers at P1** per the tier rule, ahead of all other System Administration remainder rows.
-- **DT-11 remote instance profiles at P3** (single-instance product) rather than P4, because DT-09/DT-10 depend on it.
+- **DT-11 remote instance profiles at P4** (owner answer U-45): environment diff and promote (DT-09, DT-10) compare namespaces of this instance.
 
 ## Gaps
 

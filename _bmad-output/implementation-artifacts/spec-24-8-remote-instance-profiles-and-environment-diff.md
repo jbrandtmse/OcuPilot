@@ -2,12 +2,20 @@
 title: 'Story 24.8: Remote instance profiles and environment diff (same instance: namespace diff of documents; remote profiles excluded)'
 type: 'feature'
 created: '2026-11-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'afad7c84244352652d116556b8b8814faac3483a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      Epic 21's story block in epics.md still says DT-11 lands before DT-09 and DT-10, which Story 24.8 made untrue.
+    evidence: |-
+      epics.md:957 reads "DT-11 lands before DT-09 and DT-10"; DT-11 is now excluded (owner answer U-45) and DT-09 and DT-10 no longer depend on it.
+    location: >-
+      _bmad-output/planning-artifacts/epics.md:957
+    severity: low
 ---
 
 <intent-contract>
@@ -216,6 +224,25 @@ The screen's namespace is USER and `target` is HSCUSTOM. Every row is observed o
 
 ## Review Triage Log
 
+### 2026-11-15 -- Review pass
+
+- verdicts: 14 findings -- high 0, medium 3, low 6, false 0, maybe-false 0, descriptive 5
+- findings:
+  - `[medium]` `[patch]` Same-hash-different-time rule not deterministically pinned (verification-gap) -- `MakePair` now saves the second namespace a second later and the Diff test asserts `Same`'s two `Modified` values differ with equal non-empty hashes; mutation (compare time with hash) reddened four tests.
+  - `[medium]` `[patch]` Identical row and the `Same` equality pass when `Same` is absent from both (verification-gap) -- both tests assert a non-empty `Same` hash in each namespace.
+  - `[medium]` `[patch]` No-other-namespace branch of the target control untested (verification-gap) -- added a one-namespace case in `dev-tool.page.spec.ts`; mutation of the hint condition reddened it.
+  - `[low]` `[patch]` Cap equal to the row count not observed (verification-gap) -- `TestACapBelowTheRowCountTruncates` gains a cap-4 leg: four rows, not truncated.
+  - `[low]` `[patch]` Browser spec comment claimed a mutation the route cannot show (verification-gap, other) -- reworded to say the unit class pins it.
+  - `[low]` `[patch]` `## Verification` had no literal `mutation:` lines (verification-gap, other) -- written, one per AC plus the client cases.
+  - `[low]` `[reject]` Agent arrival naming a namespace the select does not list shows the first option while the read used the named one (verification-gap, other; intent-alignment) -- reachable only by an agent naming an unlisted namespace, which is refused with its reason; the fix needs the store to know the options.
+  - `[low]` `[reject]` Target gate order against `maxRows` and the spec checks is not pinned by a test (intent-alignment) -- each refusal test supplies one defect, and the order is a header contract with a mutation on the same-namespace step; a second ordering test is not worth its lines.
+  - `[low]` `[defer]` `epics.md:957` still says "DT-11 lands before DT-09 and DT-10" -- it sits in Epic 21's story block, which this story may not edit; filed in `deferred:`.
+  - `[descriptive]` `[reject]` Three readings of the intent (contract, capability, planning realignment) -- the diff implements all three; no divergence to act on.
+  - `[descriptive]` `[reject]` AC3 is proven through the `ScreenGate` seam, not a real principal; the route and browser run as the administrator -- the spec names the seam as the test's means; a real-principal leg is 24.4's pattern and outside this story's tests.
+  - `[descriptive]` `[reject]` The tool leg asserts the refusal code and the route spec asserts the reason -- AD-60 sanitizes the tool result; recorded in Design Notes.
+  - `[descriptive]` `[reject]` DT-09 is reworded to documents, mappings and default settings while the screen compares documents only -- the spec's Planning amendments and the spec-gate rulings send the other two to 24.15 and the burn-down.
+  - `[descriptive]` `[reject]` `truncated` comes from the shared read, not the port -- the spec's Always list says the screen and tool share one bounded read that reports truncation.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -244,6 +271,17 @@ Checked and not engaged: AD-62 (no default settings are read; see Named limits),
 - **The register row goes in the existing last group**, beside EX-58, so Story 22.1's group wording stays unchanged.
 - **Planning copies left as they are.** `research.md:440` and `research-briefing.html:335` are dated research reports whose own P3 count is a snapshot. `prd.md` §10.3 stays unchanged (U-45: PRD stands). `reconcile-catalog.md:350` records a past reconciliation.
 - **Hash equality ignores timestamps**, as the sibling's default does: a recompile with no content change is not drift.
+
+**Decided in implement:**
+
+- **Task 0.** `DocumentHashes` over 971 documents (`%Library`, `%SYS`, `%Dictionary`, `%Net` classes) through `DevToolPort.Invoke` on `ocupilot-b-ci`: 0.66 s in USER and 0.72 s in HSCUSTOM, 1.4 s for the pair.
+- **Read row** is "document that differs between namespaces" (40 characters): AD-36 caps `read.row` at 40 and the proposed 47-character sentence is refused by the mirror generator.
+- **"Change" column** reuses the existing string `databaseDirectoryChange` (`strings.test.mjs` refuses a duplicate value), so no `explorerColumnChange` key exists; EXPERIENCE.md lists "Change" once, already.
+- **Namespace-named string keys** (`explorerNamespaceDiff*`, `explorerOtherNamespaceLabel`) join the roster in `strings.test.mjs`.
+- **`DevToolHarvestRecorder`** also records each call's `pairs` (`resource:permission`, comma-separated), so the Diff row can pin each body's pair set; the existing assertions read other keys.
+- **The route's refusal** reaches the tool as its code alone (`{"code":"PORT.VALIDATION"}`, AD-60), so the tool leg asserts the code and the route spec asserts the reason.
+- **Count re-derived beyond the listed lines:** `extract-stages.md:17` (P3 163, P4 57) and the "18 P4 rows with backing `none`" sentence (19, DT-11 included), verified by parsing both stages. `epics.md:957` ("DT-11 lands before DT-09 and DT-10") is not in this story's list and is left for the next planning touch.
+- **No other control** for a namespace with nothing else to compare with: the form says "Name the other namespace: 1 to 64 characters." and sends nothing.
 
 **Named limits:**
 
@@ -337,7 +375,29 @@ The implement stage greps `ui/browser`, `ui/tools`, `ui/src` specs and `src/OcuP
 - AC4: point the descriptor's endpoint at `DocumentHashes`. Expected red: the read-tool test and the browser spec.
 - AC5: remove the DT-11 register row. Expected red: `exclusion-register.test.mjs`.
 
+Observed on `ocupilot-b-ci` (each file restored byte for byte, checked with `cmp`):
+
+- mutation: AC1, `DiffRows` skips a document only in the other namespace -> `TestTheDiffListsEachDifferenceAndNotTheSameDocument` and `TestTheReadToolAnswersTheScreenRows` red.
+- mutation: AC1, `DiffRows` compares the time with the hash -> `Same` becomes a row; the Diff, Identical, Cut and read-tool tests red.
+- mutation: AC2, the same-namespace check moved after the body calls -> `TestTheSameNamespaceIsRefusedBeforeAnyBody` red.
+- mutation: AC3, `NamespacePairs(tTarget)` not evaluated -> `TestACallerWhoMayNotReadTheOtherNamespaceIsRefusedBeforeAnyBody` red.
+- mutation: AC4, the descriptor's endpoint set to `DocumentHashes` -> ten tests of `NamespaceDiffRead`, the read-tool test among them, and all three tests of `namespace-diff.browser-spec.mjs` red.
+- mutation: AC5, the DT-11 register row removed -> two tests of `exclusion-register.test.mjs` red.
+- mutation: client, `target` left out of `search()` -> two cases of `dev-tool.page.spec.ts` red; this namespace offered in `targetOptions` -> two cases red; the hint's `length === 0` condition made false -> the no-other-namespace case red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `DevToolPort` gains `NamespaceDiff`: the target is checked (shape, not this namespace, `NamespacePairs` evaluated) before any body, each namespace is counted against the cap and runs `EnvSync.DocHashes` with its own pairs, and `DiffRows` answers the drift rows. A read-only System Explorer screen, Compare namespaces (position 16), is drawn by the extended `dev-tool.page.ts` with a target select, and `explorer.namespacediff.read` shares its bounded read. DT-11 moves to P4 and into the exclusion register; the catalog, extract and `epics.md` stage table are re-derived; DT-09 and DT-10 are reworded.
+
+**Files.** `src/OcuPilot/Port/DevToolPort.cls`, `Screen/Descriptor/ExplorerNamespaceDiff.cls`, `Screen/Titles.cls`; tests `NamespaceDiffRead`, `DevToolProbe`, `DevToolRead`, `DevToolHarvestRecorder` and the roster pins; client `dev-tool.page.ts`, `dev-tool.store.ts`, `screen-outlet.ts`, `strings.ts`, `screens.generated.ts`, their specs and `ui/browser/namespace-diff.browser-spec.mjs`; `docs/exclusion-register.md`, `feature-catalog.md`, `extract-stages.md`, `extract-catalog.md`, `epics.md`, EXPERIENCE.md.
+
+**Review.** 14 findings, none high: 3 medium and 3 low patched (test-only), 2 low rejected, 1 low deferred (`epics.md:957`, Epic 21's block), 5 descriptive. Triage Log has each row.
+
+**Verification.** Reload `LOADERRORS=0`; `NamespaceDiffRead` 12 of 12 and the 14 roster classes green; `npm run build`, `test:components` (3,487) and `test:tools` (2,292) green; `namespace-diff.browser-spec.mjs` 3 of 3 on the redeployed bundle; `check-objectscript`, its harness, `lint-docs` and the `%Net` grep clean; the `(once)` sweep, shards 1 to 17 of 17, each green, after the last patch. Mutations are listed under Verification.
+
+**Follow-up review.** Recommended: three medium test patches. The unverified risk is the one-second `Hang` in `MakePair`, which assumes the class timestamp has second resolution; the mutation that compares time with hash reddened four tests, so it holds on this build.
+
+**Residual risk.** Contended planning files (`feature-catalog.md`, `extract-stages.md`, `epics.md`) may need a union at integrate-forward with Epic 21's Story 21.12. The recorder now also records each call's `pairs`.

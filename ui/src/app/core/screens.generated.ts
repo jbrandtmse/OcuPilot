@@ -10286,6 +10286,169 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff",
+    "route": "system-explorer/namespace-diff",
+    "area": "system-explorer",
+    "labelKey": "explorerNamespaceDiffLabel",
+    "sideBarPosition": 16,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Document",
+        "Change",
+        "Hash",
+        "OtherHash",
+        "Modified",
+        "OtherModified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerNamespaceDiffEmpty",
+    "commandAliases": [
+      "compare namespaces",
+      "namespace diff",
+      "environment diff"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "document that differs between namespaces",
+      "source": {
+        "port": "devtool",
+        "endpoint": "NamespaceDiff",
+        "type": "LIST"
+      },
+      "fields": [
+        "Document",
+        "Change",
+        "Hash",
+        "OtherHash",
+        "Modified",
+        "OtherModified"
+      ],
+      "filter": [
+        "Document",
+        "Change"
+      ],
+      "sort": {
+        "fields": [
+          "Document",
+          "Modified"
+        ],
+        "default": "Document",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "target",
+            "labelKey": "explorerOtherNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "The namespace to compare this one with, spelled as osmgmt.namespaces.read answers its Name."
+          },
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "name"
+        },
+        {
+          "field": "Change",
+          "labelKey": "databaseDirectoryChange",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModifiedHere",
+          "kind": "text"
+        },
+        {
+          "field": "OtherModified",
+          "labelKey": "explorerColumnModifiedThere",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "explorerNamespaceDiffInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.namespacediff",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineDocument",
     "route": "system-explorer/routines/document",
     "area": "system-explorer",
