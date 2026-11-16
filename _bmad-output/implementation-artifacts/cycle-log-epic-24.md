@@ -145,3 +145,5 @@
 2026-11-16T06:07:04Z	Story 24.4	ci_resolved	story=24.4 sha=cae31a918 runs=43810505527 failed=browser_shard_4_inherited_config-settings via=none result=failure_inherited resolved_at=next_plan first_ci=inherited
 2026-11-16T06:07:04Z	Epic 24	orchestrator_message	note=DW-2634_to_owner_not_in_any_epic24_story; config-settings_fix_lands_with_21.24
 2026-11-16T06:07:57Z	Epic 24	owner_decision_applied	id=U-45 effect=epics.md_24.8_24.9_amended_same_instance_only,remote_profiles_to_exclusion_register_in_24.8 applied_by=runner
+2026-11-16T06:11:09Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
+2026-11-16T06:11:09Z	Story 24.8	stage_spawned	stage=plan spawn_at=2026-11-16T06:11:09Z model=opus agent_name=24-8-remote-instance-profiles-and-environment-diff-plan-1 cycle_iteration=1
