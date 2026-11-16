@@ -13210,3 +13210,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-13-ddl-mappings.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Measured on ocupilot-ci: Create of [ZZOCUB] and ;ZZOCUC wrote lines '[ZZOCUB]=...' and ';ZZOCUC=...' under [SqlUserDatatypes] in iris.cpf; NameCode admits both. Unmeasured (inference): the next startup reads them as a section and a comment, losing the mapping. Settle by a restart of a throwaway holding one.
 - 2026-11-16T06:38:57Z status=decision-pending owner=burndown by=cr note=fix is one NameCode line plus rows, but CONFIG.MAPPING.NAME's ruled sentence must change: a strings ruling
+
+### DW-2638: Kernel.State stores outside Story 21.30's four still escalate any caller's public guarded write: Agent definitions (instructions, provider, credential name) and other users' Ledger, Propose, Turn, Convo and Pref rows
+- source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: Base.GuardedSave/GuardedSaveIfCurrent escalate any object; ProviderPort.cls:187 writes Agent.GuardedClearVerification during a turn, so admin-gating Agent is not a one-line change (21.30 plan, code read)
+- 2026-11-16T06:43:58Z status=decision-pending owner=burndown by=spec_gate note=security: orchestrator/owner to decide scope (sibling of DW-2634)
+
+### DW-2639: Switch.GuardedRecordWritesMarked admits any caller, so a %Development holder can set the observed marking fact and hide or show the unmarked-writes banner (AD-15)
+- source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.30 plan: the confirm executor, screen actions and restraint read record it as the calling user
+- 2026-11-16T06:43:58Z status=wontfix-accepted owner=burndown by=spec_gate note=reopen_if the banner ever makes a positive claim; the named AD-9 exception
