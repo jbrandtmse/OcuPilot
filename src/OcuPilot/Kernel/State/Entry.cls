@@ -311,9 +311,9 @@ ClassMethod GuardedPurge(ByRef pCutoffs, Output pRemoved As %Integer) As %Status
     Quit tSC
 }
 
-/// <p>Delete every entry of conversation <var>pConvoKey</var>. For test teardown and
-/// <method>OcuPilot.Kernel.State.Convo.GuardedDelete</method>; retention removes entries one by one
-/// through <method>GuardedPurge</method>.</p>
+/// <p>Delete every entry of conversation <var>pConvoKey</var>. An administrator's; the conversation's own
+/// delete (<method>OcuPilot.Kernel.State.Convo.GuardedDelete</method>) removes them by its own statement,
+/// and retention removes entries one by one through <method>GuardedPurge</method>.</p>
 ClassMethod GuardedDeleteForConvo(pConvoKey As %String) As %Status
 {
     If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)

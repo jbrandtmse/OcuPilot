@@ -13460,3 +13460,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
 - 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
 - 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+
+### DW-2666: A non-administrator's Turn.GuardedReserve still runs the cross-user sweep on a retention it controls: a limits class with no RETENTIONSECONDS, or a held copy of another user's ended turn with EndedAt back-dated, deletes that user's unexpired turns with their steps, directive, proposals and signals
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci as a %Development principal without OcuPilotAdmin or %All (code review runs 87, 91): SweepAnyCaller takes the cutoff from the caller's pLimitsClass and EndedAt from GuardedOpenId, which answers the caller's held object. SqlRun's reserve sweep has the same shape (Batch 3).
+- 2026-11-16T21:14:16Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=HIGH, unpatched: the fix edits the reserve sweep U-89 froze; orchestrator ruling

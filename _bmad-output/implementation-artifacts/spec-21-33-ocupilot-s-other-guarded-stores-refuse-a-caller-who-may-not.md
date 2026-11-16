@@ -214,6 +214,39 @@ Rejected or closed at emission:
 - low: commit `4334486d8`'s message claims more than the code did. The message is history.
 - false: "the credential finding writes more than the flags and marker". `UpdatedAt` and `RowVersion` are stated in the spec's Batch 1 text.
 
+Code review, Batch 2 (2026-11-16, commit `d30e55097` against `06e2aec10`, HEAD `90431b452`, full-opus tier: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). QA folded in.
+
+- [ ] [Review][Decision] A non-administrator's turn reserve still runs the cross-user sweep on a retention it controls (high, measured; DW-2666) [Turn.cls GuardedReserve, SweepAnyCaller]. As `%Development` without `OcuPilotAdmin` or `%All`, a reserve that passes a limits class with no `RETENTIONSECONDS` deleted another user's turn that had just ended (run 87). A reserve with the product limits class did the same while the caller held that turn with `EndedAt` back-dated, because `GuardedOpenId` answers the held object (run 91). This is the `GuardedSweep` capability the batch closed, one hop away, which breaks AD-9 ("deletes and purges across users are an administrator's"). Proposed fix: for a non-administrator, take the cutoff from the instance's limits class (`Loop.LimitsClass()`), and read `State` and `EndedAt` by SQL. Product callers are unchanged. The fix still edits the reserve sweep that U-89 froze, so it is unpatched and goes to the orchestrator. `SqlRun`'s reserve sweep has the same shape (Batch 3).
+- [x] [Review][Patch] DW-2663 left ledger rows on another user's conversation key, which spend that conversation's access-row cap (medium) [Ledger.cls GuardedAppend, GuardedCountOverflow]. Both writers now refuse that key through `NamedOwnerRefused` on `Convo`. Two `.Convo` legs were added to `TestADeveloperCannotSpendAVictimsTurnCaps`, and `VictimState` now reads ledger rows by that key.
+- [x] [Review][Patch] No test showed that `Convo.GuardedDelete` removes the conversation's entries (medium) [TranscriptOwnerWrite.cls TestADeveloperWritesItsOwnTurnAndConversation].
+- [x] [Review][Patch] Five helpers were copied from `StoreOwnerWrite` (medium, Rule 31; Batch 1's `reopen_if` fired) [TranscriptOwnerWrite.cls]. `DetailOf`, `Detail` and `KindsOf` (was `PlanKinds`) now live in `AdminStateWrite`, and both classes call them. `AssertCalled` and `AssertPrincipal` stay as copies: they are instance assertion helpers, and sharing them needs a parent class with no tests, which the runner fails.
+- [x] [Review][Patch] Creating a conversation in another user's name was pinned by no leg (low) [TranscriptOwnerWrite.cls TestADeveloperIsRefusedAVictimsTranscript].
+- [x] [Review][Patch] No harness case had `New $ROLES` in a method after `EnsureProposalTargetKeys` (low) [test_check_objectscript.py].
+- [x] [Review][Patch] No mutation removed `New $ROLES` alone from the target-key step (low): its `mutation:` line is added.
+- [x] [Review][Patch] Two doc comments named callers that no longer call them, and `Convo.GuardedDelete` did not say why it deletes entries itself (low) [Nav.cls, Entry.cls, Convo.cls].
+- [x] [Review][Patch] The Batch 1 `mutation:` line about an administrator gate on `Propose.GuardedDeleteForTurn` describes code that now ships (low). It is removed; the Batch 2 line pins that gate.
+- [x] [Review][Patch] The installer's own addition of the role asserted only `ok`, not that the role was held (low) [AdminPathWrite.cls].
+- [x] [Review][Patch] `EnsureProposalTargetKeys` re-implemented `Base.CallerIsAdministrator` (low) [Installer.cls].
+
+U-89: the five open paths and the claim's cancel of its own target's siblings are unchanged by `d30e55097`. `Turn.GuardedAbandonForUser`, `SqlRun`, the close-time expiry, `Agent.GuardedClearVerification` and `GuardedClaimAndClose` are untouched. The reserve sweep issues the same statements in the same order, and `TestTheOpenPathsStillWork` is green (runs 88, 92). Re-parenting a held `Step` onto another user's turn, or another user's step onto the caller's own, is refused 822 in both directions (run 91). DW-2665: a developer's `Set $ROLES` is refused `<PROTECT>`, and the step answers 822 (`AdminPathWrite`, runs 89, 95).
+
+Rejected or closed at emission (Batch 2):
+
+- low, wontfix-accepted: rule 6 matches `New $ROLES` and `AddRoles` but not `Set $ROLES`, and the checker file carries Epic 24's uncommitted edits. reopen_if=a `Set $ROLES` appears in `src/` outside `Base`, the two test probes and `EnsureProposalTargetKeys`.
+- low, wontfix-accepted: `NEW_ROLES_RE` and `ADD_ROLES_RE` repeat `ESCALATION_RE`'s two patterns, in the same contended file. reopen_if=`ESCALATION_RE` gains a spelling the two lack.
+- low, wontfix-accepted: the top-of-method owner checks in `GuardedBegin`, `GuardedReserve` and `GuardedReconcile` are shadowed by `GuardedSaveOwned`, so no test separates them; without them a stranger would hold another user's slot briefly. reopen_if=a test observes another user's slot held during a refused call.
+- low, wontfix-accepted: `RunAsWatched` is `RunAs` plus a loop that answers questions about the slot. reopen_if=a third `RunAs` variant appears.
+- low, wontfix-theoretical: `Job.Run`'s "did not start as its caller" branch now gets 822 from `GuardedFinish`. Real only if a turn job's `$Username` differs from its turn's owner, which AD-7's inheritance rules out.
+- low, by-design: a refused role addition writes no install report line. AD-9 says the step then runs unescalated and the store decides, and a report line would be new user-facing text.
+- low, by-design: a turn writer on a key whose row was deleted answers 822 (Decided in-stage).
+- low: an administrator without `%All` is not run through the four new administrator-only retention calls; they use the predicate the ledger purge leg pins.
+- low: the frame covers the report building after the call; it holds only local reports and unwinds before the next step.
+- low: unguarded `Leg(...).%Get` in two tests errors on a broken run instead of failing an assertion; the test is red either way.
+- low: legs passing the developer's own name with another user's key: `GuardedFinish` is refused by the key check its leg pins, and `GuardedBegin` and `GuardedRequestStop` by their existing exact-owner comparisons.
+- low: a second escalated read of the parent owner per child save. The cost is negligible, and removing it adds a branch.
+- false: the probe profile's suffixed role. The store gate reads the unsuffixed `ADMINRESOURCE` that the step adds.
+- rejected, spec edit: frontmatter `deferred:` item 3, the residual-risk count, and the Auto Run Result's removed Batch 1 lines.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -444,7 +477,6 @@ mutation: the stored-target check removed from `Propose.GuardedClaimAndClose` ->
 mutation: `RebalanceDefaultSql` clears the marker with `''` -> `TestAClearedVerificationStoresNoHeldEdit` red alone, on the object-layer read of the cleared marker (code review, run 92); reverted, `Agent.cls` byte-identical, reloaded.
 mutation: `Propose.GuardedClose` expires only the caller's lapsed proposals (`ExpireStaleAnyCaller(pUser)`) -> `TestTheOpenPathsStillWork` red alone, path 4 (code review, run 94); reverted, `Propose.cls` byte-identical, reloaded.
 mutation: the administrator bypass removed from `OwnerWriteRefused` -> seven tests red, `TestAnAdministratorWritesAVictimsRowsAndTheDefinitions` among them, each at the suite identity's own seeding mint, which is an administrator's write (code review, run 95); reverted, `Base.cls` byte-identical, reloaded.
-mutation: an administrator gate added to `Propose.GuardedDeleteForTurn` -> `TestTheOpenPathsStillWork` red alone, the turn reserve's sweep (code review, run 96); reverted, `Propose.cls` byte-identical, reloaded.
 
 **Code review re-run** (2026-11-16, after the review patches, `ocupilot-ci`, one class per call, `LOADERRORS=0`): StoreOwnerWrite 14 (run 97), AdminStateWrite 7 (98), AgentState 13 (99), AgentWire 18 (77), AgentCredential 17 (79), ProposalConfirm 24 (80), ProposalRace 6 (81), ProposalWire 17 (82), DeveloperFloorTurn 1 (83), LedgerWire 6 (84), Ledger 11 (85), State 12 (86), ProposalClose 7 (87), Installer 27 (88), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
 
@@ -534,6 +566,11 @@ mutation: the administrator bypass removed from `OwnerWriteRefused` -> five test
 mutation: the `NamedOwnerRefused` call removed from `Ledger.GuardedCountOverflow` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its overflow leg alone, the 822 and the unchanged-rows assertions (run 78); reverted, `Ledger.cls` byte-identical (md5 `6a6e1a01...`), reloaded.
 mutation: the turn-key `NamedOwnerRefused` call removed from `Propose.GuardedMint` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its turn-key mint leg alone (run 79); with the conversation-key call removed instead, red on its conversation-key leg alone, the unchanged-rows assertion included, because `VictimState` now reads proposals by the conversation key (run 80); each reverted, `Propose.cls` byte-identical (md5 `3357c68c...`), reloaded.
 mutation: rule 6 admits `New $ROLES` in every method of `Installer.cls` -> `test_new_roles_in_another_installer_method_is_refused` red alone; reverted, `check-objectscript.py` byte-identical (md5 `f773d659...`).
+mutation: the conversation-owner check removed from `Ledger.GuardedAppend` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its `Ledger.GuardedAppend.Convo` leg alone (code review, run 105); and from `GuardedCountOverflow` -> red on its `.Convo` overflow leg alone (run 106); each reverted, `Ledger.cls` byte-identical (md5 `12af369c...`), reloaded.
+mutation: the entry `DELETE` removed from `Convo.GuardedDelete` -> `TestADeveloperWritesItsOwnTurnAndConversation` red alone, on the entries assertion (code review, run 107); reverted, `Convo.cls` byte-identical (md5 `209adec7...`), reloaded, and the run's orphan entries removed.
+mutation: `Convo.LoadOrCreate`'s create branch without its caller check and saving through `GuardedSaveIfCurrentAnyCaller` -> `TestADeveloperIsRefusedAVictimsTranscript` red alone, on its create-in-the-victim's-name leg (code review, run 108); reverted, `Convo.cls` byte-identical, reloaded.
+mutation: `New $ROLES` alone removed from `Installer.EnsureProposalTargetKeys` -> `TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` red alone, on the role still held when the step returns (code review, run 109); reverted, `Installer.cls` byte-identical (md5 `8e24d0f6...`), reloaded.
+mutation: rule 6's method tracking made sticky once `EnsureProposalTargetKeys` is entered -> `test_new_roles_in_a_method_after_the_target_key_step_is_refused` red alone; reverted, `check-objectscript.py` byte-identical (md5 `f773d659...`).
 
 ## Auto Run Result
 

@@ -1826,10 +1826,9 @@ ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
     Set tSC = $$$OK
     New $ROLES
     Try {
-        Set tAdministrator = $Parameter("OcuPilot.Kernel.State.Base", "ADMINRESOURCE")
-        If '$System.Security.Check(tAdministrator, "USE") {
+        If '##class(OcuPilot.Kernel.State.Base).CallerIsAdministrator() {
             Try {
-                Set $ROLES = $ROLES _ "," _ tAdministrator
+                Set $ROLES = $ROLES _ "," _ ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE
             } Catch exAdd {
                 Set tUnescalated = 1
             }

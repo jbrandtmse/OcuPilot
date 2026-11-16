@@ -176,8 +176,8 @@ ClassMethod GuardedSettle(pKey As %String, pSeq As %Integer, pOutcome As %String
     Quit $$$OK
 }
 
-/// <p>Delete turn <var>pKey</var>'s directive, if it has one. Called from
-/// <method>OcuPilot.Kernel.State.Turn.GuardedDelete</method> alongside the turn's steps.</p>
+/// <p>Delete turn <var>pKey</var>'s directive, if it has one. An administrator's; the turn's own delete
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>) removes it by its own statement.</p>
 ClassMethod GuardedDeleteForTurn(pKey As %String) As %Status
 {
     If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)

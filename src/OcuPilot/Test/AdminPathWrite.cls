@@ -333,6 +333,7 @@ Method TestADeveloperCallingTheTargetKeyStepIsRefused()
     Do $$$AssertEquals(..LegText(tRun, 2) _ "|" _ ..TargetKey(tKey), "Install.EnsureProposalTargetKeys ok=0 code=822 " _ ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 2).%Get("text") _ "|", "the step is refused 822 and the proposal keeps no key")
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#INSTALLERUSER, [{"kind": "Roles.AddAdministrator"}], ..#PROBE)
     Do $$$AssertEquals(..LegText(tRun, 1), "Roles.AddAdministrator ok=1 code=", "while an account that can write the system database is admitted the same addition")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("holdsAdmin"), 1, "and holds the administrative role after it")
 }
 
 }

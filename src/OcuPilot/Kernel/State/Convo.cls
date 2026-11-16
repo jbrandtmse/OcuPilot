@@ -312,7 +312,9 @@ ClassMethod NewKey() As %String [ Private ]
 }
 
 /// <p>Delete conversation <var>pKey</var> and its entries. For test teardown only; production
-/// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>).</p>
+/// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>). The entries go by
+/// this class's own statement, because <method>OcuPilot.Kernel.State.Entry.GuardedDeleteForConvo</method>
+/// is an administrator's and the owner's delete must reach them.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
     Set tSC = ..KeyOwnerRefused("ConvKeyIdxExists", pKey)
