@@ -177,3 +177,4 @@
 2026-11-16T10:24:27Z	Epic 24	orchestrator_ruling	subject=shard4_dashboard_-428 correction=not_21.30,real_defect_from_21.3/21.4=DW-2646(high),fix=Story_21.32(planning) merge_rule=green_merges_after_epic21_head,red_with_that_signature_waits_for_21.32 staging_head=39fbcf32d(24.3+24.4+24.8) DW-2641=routed_to_epic21_by_orchestrator
 2026-11-16T10:35:35Z	Story 24.5	plan_complete	spawn_at=2026-11-16T10:21:00Z model=opus status=blocked blocking=intent_gap_AD-10(runner_executes_test_class_code;U-78_family;DW-2634) cycle_iteration=2
 2026-11-16T10:35:35Z	Story 24.5	story_parked	id=U-86 reason=owner_only:amending_AD-10(named_gap_for_test_class_code) recommendation=A_follow_U-78_after_DW-2634_fix
+2026-11-16T10:35:56Z	Story 24.9	stage_spawned	stage=plan spawn_at=2026-11-16T10:35:56Z model=opus agent_name=24-9-environment-promote-plan-1 cycle_iteration=1 story_base=2980ee21d
