@@ -149,9 +149,24 @@ Parameter VENDORSETTINGSECRETS = "Create Resource Server=Authenticator;Modify Re
 /// <p>The vendor event every <parameter>VENDORSETTINGSECRETS</parameter> entry is a row of.</p>
 Parameter VENDORSETTINGSOURCE = "%System/%Security/OAuth2ResourceServerChange";
 
+/// <p>The vendor configuration rows whose every <code>Old value</code> and <code>New value</code> line
+/// is a secret, declared per vendor event (AD-35): semicolon-separated <code>&lt;event&gt;</code>
+/// entries, where <code>&lt;event&gt;</code> is the leading words of the row's <code>Description</code>
+/// under <parameter>VENDORCONFIGSOURCE</parameter>. Measured on <code>ocupilot-ci</code>:
+/// <code>%SYS.Task.Config.AuthPassSet</code> writes the Task Manager mail password, Base64-encoded,
+/// on the two value lines of a "Modify Task Config.MailAuthPassword" row, which has no
+/// <code>&lt;key&gt; modified:</code> header.</p>
+Parameter VENDORCONFIGSECRETS = "Modify Task Config.MailAuthPassword";
+
+/// <p>The vendor event every <parameter>VENDORCONFIGSECRETS</parameter> entry is a row of.</p>
+Parameter VENDORCONFIGSOURCE = "%System/%System/ConfigurationChange";
+
 /// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter>,
-/// <parameter>VENDORSYSTEMSECRETS</parameter> and <parameter>VENDORSETTINGSECRETS</parameter>) in the
-/// <code>EventData</code> of every row of <var>pRows</var>, an audit record read's rows.</p>
+/// <parameter>VENDORSYSTEMSECRETS</parameter>, <parameter>VENDORSETTINGSECRETS</parameter> and
+/// <parameter>VENDORCONFIGSECRETS</parameter>) in the <code>EventData</code> of every row of
+/// <var>pRows</var>, an audit record read's rows. A row of the fourth family has every
+/// <code>Old value</code> and <code>New value</code> line masked, so a set, a change and a clear all
+/// read masked; a line the vendor left empty stays empty.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Screen.Read</class> calls it on every
 /// <parameter>RECORDENDPOINT</parameter> answer before it projects a row, so the Logs audit screen and
 /// <code>logs.audit.read</code> read the same masked rows. A row of another event, or a value a
@@ -163,6 +178,10 @@ ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
     While tIterator.%GetNext(.tIndex, .tRow) {
         If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
         If tRow.%GetTypeOf("EventData") '= "string" Continue
+        If ..ConfigSecret(tRow) {
+            Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), "", 1), "string")
+            Continue
+        }
         Set tSettings = ..SettingKeys(tRow)
         If tSettings '= "" Do tRow.%Set("EventData", ..MaskedSettingData(tRow.%Get("EventData"), tSettings), "string")
         Set tKeys = ..SecretKeys(tRow)
@@ -179,17 +198,35 @@ ClassMethod SecretKeys(pRow As %DynamicObject) As %List
     Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
     Set tDeclared = $Select(tSource = ..#VENDORSECRETSOURCE: ..#VENDORSECRETS, tSource = ..#VENDORSYSTEMSOURCE: ..#VENDORSYSTEMSECRETS, 1: "")
     If tDeclared = "" Quit ""
-    Set tDescription = pRow.%Get("Description")
-    Set (tKeys, tMatched) = ""
-    For tI = 1:1:$Length(tDeclared, ";") {
-        Set tEntry = $Piece(tDeclared, ";", tI)
+    Set tEntry = ..DeclaredEntry(pRow.%Get("Description"), tDeclared)
+    If tEntry = "" Quit ""
+    Quit $ListFromString($Piece(tEntry, "=", 2), ":")
+}
+
+/// <p>The entry of <var>pDeclared</var>, a semicolon-separated list of
+/// <code>&lt;event&gt;[=&lt;keys&gt;]</code> entries, whose <code>&lt;event&gt;</code> the
+/// <var>pDescription</var> begins with, as whole words, or <code>""</code>. The longest event wins.</p>
+ClassMethod DeclaredEntry(pDescription As %String, pDeclared As %String) As %String [ Private ]
+{
+    Set (tFound, tMatched) = ""
+    For tI = 1:1:$Length(pDeclared, ";") {
+        Set tEntry = $Piece(pDeclared, ";", tI)
         Set tEvent = $Piece(tEntry, "=", 1)
-        If (tDescription '= tEvent) && ($Extract(tDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
+        If (pDescription '= tEvent) && ($Extract(pDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
         If $Length(tEvent) <= $Length(tMatched) Continue
         Set tMatched = tEvent
-        Set tKeys = $ListFromString($Piece(tEntry, "=", 2), ":")
+        Set tFound = tEntry
     }
-    Quit tKeys
+    Quit tFound
+}
+
+/// <p>Whether <var>pRow</var> is a row of an event <parameter>VENDORCONFIGSECRETS</parameter> declares,
+/// under <parameter>VENDORCONFIGSOURCE</parameter>.</p>
+ClassMethod ConfigSecret(pRow As %DynamicObject) As %Boolean
+{
+    Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
+    If tSource '= ..#VENDORCONFIGSOURCE Quit 0
+    Quit ..DeclaredEntry(pRow.%Get("Description"), ..#VENDORCONFIGSECRETS) '= ""
 }
 
 /// <p><var>pData</var>, a vendor row's <code>EventData</code>, with each value of a key in
@@ -197,8 +234,10 @@ ClassMethod SecretKeys(pRow As %DynamicObject) As %List
 /// the <code>New value</code> and <code>Old value</code> lines under a
 /// <code>&lt;key&gt; modified:</code> or <code>metadata.&lt;key&gt; modified:</code> line; a
 /// <code>&lt;key&gt;:</code> property line; and the member of that name in a
-/// <code>Metadata:</code> line's JSON. An empty value stays empty.</p>
-ClassMethod MaskedEventData(pData As %String, pKeys As %List) As %String
+/// <code>Metadata:</code> line's JSON. With <var>pEveryValue</var> true, every <code>Old value</code>
+/// and <code>New value</code> line is masked, header or not, and <var>pKeys</var> is not read. An empty
+/// value stays empty.</p>
+ClassMethod MaskedEventData(pData As %String, pKeys As %List, pEveryValue As %Boolean = 0) As %String
 {
     Set tBreak = $Char(13, 10)
     If pData '[ tBreak Set tBreak = $Char(10)
@@ -207,9 +246,9 @@ ClassMethod MaskedEventData(pData As %String, pKeys As %List) As %String
     For tI = 1:1:$Length(pData, tBreak) {
         Set tLine = $Piece(pData, tBreak, tI)
         Set tTrimmed = $ZStrip(tLine, "<>W")
-        If tMasking && (($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")) {
+        If (tMasking || pEveryValue) && (($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")) {
             Set tLine = ..MaskedAfter(tLine, ":")
-            Set tMasking = tMasking - 1
+            Set tMasking = $Select(tMasking > 0: tMasking - 1, 1: 0)
         } Else {
             Set tMasking = 0
             For tK = 1:1:$ListLength(pKeys) {
@@ -272,17 +311,9 @@ ClassMethod SettingKeys(pRow As %DynamicObject) As %List
 {
     Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
     If tSource '= ..#VENDORSETTINGSOURCE Quit ""
-    Set tDescription = pRow.%Get("Description")
-    Set (tKeys, tMatched) = ""
-    For tI = 1:1:$Length(..#VENDORSETTINGSECRETS, ";") {
-        Set tEntry = $Piece(..#VENDORSETTINGSECRETS, ";", tI)
-        Set tEvent = $Piece(tEntry, "=", 1)
-        If (tDescription '= tEvent) && ($Extract(tDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
-        If $Length(tEvent) <= $Length(tMatched) Continue
-        Set tMatched = tEvent
-        Set tKeys = $ListFromString($Piece(tEntry, "=", 2), ":")
-    }
-    Quit tKeys
+    Set tEntry = ..DeclaredEntry(pRow.%Get("Description"), ..#VENDORSETTINGSECRETS)
+    If tEntry = "" Quit ""
+    Quit $ListFromString($Piece(tEntry, "=", 2), ":")
 }
 
 /// <p><var>pData</var>, a vendor row's <code>EventData</code>, with the credential-named members of

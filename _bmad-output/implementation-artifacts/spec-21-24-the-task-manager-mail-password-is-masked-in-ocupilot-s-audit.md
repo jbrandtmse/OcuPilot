@@ -2,7 +2,8 @@
 title: "Story 21.24: The Task Manager mail password is masked in OcuPilot's audit read"
 type: 'bugfix'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '06d9dd2baea2b46c88501e6cb9707acb73cfc3e6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -72,6 +73,22 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-15 -- Review pass
+
+- verdicts: 11 findings -- high 0, medium 0, low 5, false 6, maybe-false 0
+- findings:
+  - `[false]` `[reject]` intent layer: spine edit and Story 21.21 files in the diff -- those are the runner's own commits `442683644` and `899265e7d` that landed after the baseline; this story edits none of them and is committed by path.
+  - `[false]` `[reject]` intent layer: `DeclaredEntry` refactor of `SecretKeys` and `SettingKeys` goes beyond a declaration -- the spec's Tasks name the extraction; the OAuth2 classes stay green.
+  - `[false]` `[reject]` intent layer: `ci-throwaway.sh` roster edit not named in the intent -- the spec's Tasks name it and `ci.test.mjs` pins it.
+  - `[false]` `[reject]` intent layer: evidence recorded, not reproduced -- the runs are in the Verification section.
+  - `[false]` `[reject]` intent layers D and C readings -- excluded by the intent; the diff implements reading A on both read surfaces.
+  - `[false]` `[reject]` verification-gap: diff beyond this story -- same cause as the first row.
+  - `[low]` `[patch]` negative controls (other event, whole-word) had no mutation evidence -- both mutated, observed red alone, reverted; lines added under Verification.
+  - `[low]` `[reject]` `tMasking` guard untested -- the guard only avoids a negative counter that the next non-value line resets; no named harm.
+  - `[low]` `[reject]` two deterministic tests live in the armed class -- the spec decides one armed class; splitting adds a class for no caller harm.
+  - `[low]` `[reject]` declaration pin is a change detector -- the spec names it as the survey's executable half.
+  - `[low]` `[reject]` restore path with a non-empty prior stored password untested -- test-hygiene only; the prior value here was empty and the restore asserts read-back.
+
 ## Design Notes
 
 **ADs:** AD-35 (vendor audit secrets masked on both paths, declared per event), AD-36 (one read for screen and tool), AD-60 (the sanitizer leaves an existing `*****` alone; `SanitizeAuditMask` pins that composition).
@@ -110,12 +127,33 @@ No proposed ledger entries.
 - `(once)` `cd ui && npm run test:tools` -- expected: green.
 - `(once)`, runner-owned: the full ObjectScript sweep, one class per call; `smoke.sh --container ocupilot-ci`; Rule 30's fresh check. No browser spec is touched, and the browser suite is left to CI.
 
+**Measured on `ocupilot-ci` (probe passwords, `MailAuthPassword` restored after each method; prior stored value empty):** the Logs audit screen's read over HTTP (200) and `logs.audit.read` through `Registry.InvokeTool` answer one "Modify Task Config.MailAuthPassword" row each, with no Base64 and no clear probe value anywhere in the answer, and `%SYS.Audit` still holds the Base64 value (`VendorCarries` >= 1):
+
+| Step | Old value line | New value line |
+| --- | --- | --- |
+| set from empty | empty | `*****` |
+| change | `*****` | `*****` |
+| clear | `*****` | empty |
+
+Both paths read identically in all three steps.
+
 **Mutations (Rule 19), each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), the reverted source reloaded:**
 
-- AC1: `VENDORCONFIGSECRETS` emptied -> `TaskMailAuditMask`'s set, change, clear and mask-alone methods go red, and the other shared-surface classes stay green.
-- AC2: the declaration pin is the survey's executable half, and the same mutation reddens it.
+- AC1 mutation: `VENDORCONFIGSECRETS` emptied (`Parameter VENDORCONFIGSECRETS = "";`) -> `TaskMailAuditMask` 5 of 5 red (run 121): `TestSettingThePasswordReadsMasked`, `TestChangingThePasswordReadsMasked`, `TestClearingThePasswordReadsMasked`, `TestTheMaskReadsTheDeclarationAlone`, `TestTheDeclarationNamesTheSurveyedSetter`. Under the same mutation `AuditVendorSecrets` (4), `OAuthResourceServerAuditMask` (3), `OAuthAuthorizationServerSecret` (9), `OAuthRegisteredClientSecret` (7), `AuthOptionsDescriptor` (10), `SanitizeAuditMask` (1) and `SecretLeak` (2) stayed green. Reverted and reloaded; all of them, `TaskMailAuditMask` (5) and `PortGate` (4) green after the revert.
+- AC2 mutation: the declaration pin is the survey's executable half, and the same mutation reddens `TestTheDeclarationNamesTheSurveyedSetter`.
+- Matrix rows "Same text, other event" and the whole-word rule: the `ConfigSecret` source check removed -> `TestTheMaskReadsTheDeclarationAlone` red alone (run 138, "the same text under another vendor event"); the `DeclaredEntry` whole-word check loosened to a bare prefix -> the same method red alone (run 139, "a description that only begins with the declared words"). Each reverted (tree identical by `git status --short` and `git diff --stat`), reloaded, `TaskMailAuditMask` (5) green. `npm run test:tools`: 2293 of 2293.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary:** `AuditPort` gains a fourth declaration family (`VENDORCONFIGSECRETS`, `VENDORCONFIGSOURCE`, `ConfigSecret`, a shared `DeclaredEntry`, and `MaskedEventData(..., pEveryValue)`), so the Task Manager mail password row reads masked on the Logs audit screen and on `logs.audit.read` for set, change and clear, while `%SYS.Audit` keeps the Base64 value (DW-2625).
+
+**Files:** `src/OcuPilot/Port/AuditPort.cls` (declaration and masking); `src/OcuPilot/Test/AuditVendorSecrets.cls` (`VendorCarries` takes an event); `src/OcuPilot/Test/TaskMailAuditMask.cls` (new, five tests); `scripts/ci-throwaway.sh` (arming roster); this spec.
+
+**Review:** 11 findings -- patches applied 1 (negative-control mutations), deferred 0, rejected 10 with reasons in the Review Triage Log. Follow-up review recommended: false (no high or medium patched).
+
+**Verification:** reload `LOADERRORS=0`; `TaskMailAuditMask` 5, the seven shared-surface classes and `PortGate` green; the mutations above; `check-objectscript.py`, its harness, `lint-docs.sh` and `ci.test.mjs` clean; `npm run test:tools` 2293 of 2293. The `(once)` runner-owned lines are left to the runner.
+
+**Residual risk:** a task deliberately named `Config.MailAuthPassword ...` has its value lines over-masked (the safe side).
+
+Status: done
 Blocking condition: none
