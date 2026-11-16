@@ -370,3 +370,8 @@
 2026-11-16T13:00:09Z	Story 21.33	story_created	spawn_at=2026-11-16T12:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md build_status=ready-for-dev eta=batch1_4.5-5h,total_8-9h
 2026-11-16T13:00:09Z	Story 21.33	ad_amended	ad=AD-9 mode=comply_first_U7 marker=[AMENDED_2026-11-16,Story_21.33,owner_answer_U-82,DW-2638] lint_spine=ok
 2026-11-16T13:00:09Z	Story 21.33	spec_validated	integration_ac=present adr_constrained_acs=AD-9,AD-15,AD-7 owned_ledger=DW-2638 filed=DW-2651(high),DW-2652(med) behaviour_changes_listed=5 model=claude-opus-5-5
+2026-11-16T13:03:33Z	Story 21.33	owner_decision	ids=U-89(AD-9_veto_confirmed),U-90(DW-2651,DW-2652_parked) condition=five_non-owner_paths_unchanged
+2026-11-16T13:23:27Z	Story 21.32	gate_step	step=full_sweep result=pass shards=20/20 head=edf36c82d
+2026-11-16T13:23:27Z	Story 21.32	smoke_complete	method=cli result=pass note=1_skipped(agentswitches:written_by_the_sweep;benign) model=claude-opus-5-5
+2026-11-16T13:23:27Z	Story 21.32	committed	sha=edf36c82d(based_on_90799012d) ci=pending runs=43875203822
+2026-11-16T13:23:27Z	Story 21.32	story_cycle	plan_to_commit_min=~200 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
