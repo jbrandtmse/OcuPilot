@@ -29,12 +29,13 @@
 /// <p><b>The two DDL mapping endpoints</b> (<code>SystemDDL</code>, <code>UserDDL</code>, Story 21.13) list the entries of
 /// <code>Config.SqlSysDatatypes</code> and <code>Config.SqlUserDatatypes</code>, each a named entry whose <code>Name</code> is the DDL type
 /// and whose <code>Value</code> is its datatype class. They also answer <code>CREATE</code> (<code>UserDDL</code> only) and
-/// <code>DELETE</code> (both). A caller's name is only ever passed to the vendor's <code>Get</code>, <code>Create</code>,
+/// <code>DELETE</code> (both). A caller's name is only ever passed to the vendor's <code>Exists</code>, <code>Get</code>, <code>Create</code>,
 /// <code>Modify</code> and <code>Delete</code>, never to its <code>List</code> query, whose <code>Names</code> argument is a pattern.
 /// A <code>GET</code> carrying <parameter>ACTIONKEY</parameter> <code>CREATE</code> is the absence read of a create: a held name is
 /// 409 <code>CONFIG.MAPPING.TAKEN</code> and a free one the 404 a create expects; an endpoint that serves no create reads plain.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
-/// <method>SendProperties</method>, <method>SendEntry</method>, <method>CreateEntry</method>, <method>DeleteEntry</method>,
+/// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
+/// <method>CreateEntry</method>, <method>DeleteEntry</method>,
 /// <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
 /// <method>PurgeCachedQueries</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
@@ -967,15 +968,20 @@ ClassMethod VendorModify(pClass As %String, pName As %String, pValue As %String)
 }
 
 /// <p>The vendor class <var>pClass</var>'s <code>Get</code> array without its comments, in <var>pProps</var>, read in
-/// <code>%SYS</code> by save and restore.</p>
-ClassMethod ReadProperties(pClass As %String, Output pProps) As %Status [ Private ]
+/// <code>%SYS</code> by save and restore: the class's own <code>Get</code>, or, when <var>pEntry</var> is given, its <code>Get</code> of that
+/// named entry.</p>
+ClassMethod ReadProperties(pClass As %String, Output pProps, pEntry As %String = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Kill pProps
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tSC = $ClassMethod(pClass, "Get", .pProps)
+        If pEntry = "" {
+            Set tSC = $ClassMethod(pClass, "Get", .pProps)
+        } Else {
+            Set tSC = $ClassMethod(pClass, "Get", pEntry, .pProps)
+        }
         If $$$ISERR(tSC) Quit
         Set tKey = ""
         For {
@@ -984,6 +990,7 @@ ClassMethod ReadProperties(pClass As %String, Output pProps) As %Status [ Privat
             Kill pProps(tKey, "Comment"), pProps(tKey, "Comments")
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
@@ -1008,28 +1015,11 @@ ClassMethod SendProperties(pClass As %String, pName As %String, ByRef pProps) As
     Quit tSC
 }
 
-/// <p>The vendor class <var>pClass</var>'s <code>Get</code> of the entry <var>pName</var> without its comments, in <var>pProps</var>, read
-/// in <code>%SYS</code> by save and restore.</p>
+/// <p>The vendor class <var>pClass</var>'s <code>Get</code> of the entry <var>pName</var> without its comments, in <var>pProps</var>, through
+/// <method>ReadProperties</method>. Overridable so a fixture can hold an entry the instance does not; production never overrides it.</p>
 ClassMethod ReadEntry(pClass As %String, pName As %String, Output pProps) As %Status [ Private ]
 {
-    Set tSC = $$$OK
-    Kill pProps
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tSC = $ClassMethod(pClass, "Get", pName, .pProps)
-        If $$$ISERR(tSC) Quit
-        Set tKey = ""
-        For {
-            Set tKey = $Order(pProps(tKey))
-            If tKey = "" Quit
-            Kill pProps(tKey, "Comment"), pProps(tKey, "Comments")
-        }
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ..ReadProperties(pClass, .pProps, pName)
 }
 
 /// <p>The vendor's <code>Modify</code> of the entry <var>pName</var> of <var>pClass</var> with every key its <code>Get</code> answers and the
@@ -1053,6 +1043,7 @@ ClassMethod SendEntry(pClass As %String, pName As %String, ByRef pProps) As %Sta
         Set $NAMESPACE = "%SYS"
         Set tSC = $ClassMethod(pClass, "Modify", pName, .pProps)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
@@ -1069,6 +1060,7 @@ ClassMethod CreateEntry(pClass As %String, pName As %String, ByRef pProps) As %S
         Set $NAMESPACE = "%SYS"
         Set tSC = $ClassMethod(pClass, "Create", pName, .pProps)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
@@ -1085,6 +1077,7 @@ ClassMethod DeleteEntry(pClass As %String, pName As %String) As %Status [ Privat
         Set $NAMESPACE = "%SYS"
         Set tSC = $ClassMethod(pClass, "Delete", pName)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
@@ -1158,8 +1151,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 }
 
 /// <p>The lines of script for the write <var>pType</var> of the named entry <var>pName</var> of <var>pEndpoint</var> with the datatype
-/// <var>pValue</var>, as a <class>%List</class>: <code>Get</code>, the key set and <code>Modify</code> for a set, <code>Create</code> for a
-/// create and <code>Delete</code> for a delete, each with the name and the datatype as string literals.</p>
+/// <var>pValue</var>, as a <class>%List</class>: <code>Get</code>, the key set and <code>Modify</code> for a set; for a create, the taken-name
+/// refusal, the key set and <code>Create</code> gated on one line by <code>Exists</code>, the port's own taken-name rule (AD-59); and
+/// <code>Delete</code> for a delete; each with the name and the datatype as string literals.</p>
 ClassMethod EntryLines(pEndpoint As %String, pType As %String, pName As %String, pValue As %String) As %List [ Private ]
 {
     Set tAdmin = "OcuPilot.Port.AdminPort"
@@ -1167,7 +1161,10 @@ ClassMethod EntryLines(pEndpoint As %String, pType As %String, pName As %String,
     Set tName = $ClassMethod(tAdmin, "Literal", pName)
     Set tSet = "Set tProps(" _ $ClassMethod(tAdmin, "Literal", ..#DATATYPEPROPERTY) _ ") = " _ $ClassMethod(tAdmin, "Literal", pValue)
     If pType = ..#TYPEDELETE Quit $ListBuild("Set tSC = ##class(" _ tClass _ ").Delete(" _ tName _ ")")
-    If pType = ..#TYPECREATE Quit $ListBuild(tSet, "Set tSC = ##class(" _ tClass _ ").Create(" _ tName _ ", .tProps)")
+    If pType = ..#TYPECREATE {
+        Set tTaken = "Set tSC = $System.Status.Error(5001, " _ $ClassMethod(tAdmin, "Literal", ##class(OcuPilot.Api.ConfigError).#REASONMAPPINGTAKEN) _ ")"
+        Quit $ListBuild(tTaken, tSet, "If '##class(" _ tClass _ ").Exists(" _ tName _ ") Set tSC = ##class(" _ tClass _ ").Create(" _ tName _ ", .tProps)")
+    }
     Quit $ListBuild("Set tSC = ##class(" _ tClass _ ").Get(" _ tName _ ", .tProps)", tSet, "Set tSC = ##class(" _ tClass _ ").Modify(" _ tName _ ", .tProps)")
 }
 

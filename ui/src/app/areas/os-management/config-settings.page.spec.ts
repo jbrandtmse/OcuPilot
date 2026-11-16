@@ -316,7 +316,7 @@ describe('the settings page', () => {
   });
 
   // Mutation (Rule 19): drop the `addOpen.set(true)` from `onOpenAdd` -> the dialog assertion goes red.
-  it('opens the New mapping dialog from the user list\u2019s primary action, and closes it on Cancel and on an applied create', async () => {
+  it('opens the New mapping dialog from the user list\u2019s primary action, and closes it on Cancel', async () => {
     const { fixture, host, actions, calls } = mount([], DDL_USER_MAPPING_LIST);
     expect(host.querySelector('app-ddl-mapping-dialog')).toBeNull();
     actions.run(DDL_USER_MAPPING_LIST, DDL_MAPPING_ADD_ACTION);
@@ -338,7 +338,7 @@ describe('the settings page', () => {
     expect(host.querySelector('[data-interop-setting-current]')?.textContent?.trim()).toBe('Current value: %Library.BigInt');
   });
 
-  it('sends the typed datatype as the one value for a DDL mapping and publishes the updated event for its entity type', async () => {
+  it('sends the typed datatype as the one value for a DDL mapping, on the screen\u2019s own action route', async () => {
     const { fixture, host, store, actions, calls } = mount([UPDATED], DDL_SYSTEM_MAPPING_LIST);
     await open(fixture, store, actions, DDL_SYSTEM_MAPPING_LIST, 'BIGINT(%1)');
     type(fixture, host, '%Library.Integer');

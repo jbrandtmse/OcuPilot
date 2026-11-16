@@ -91,6 +91,35 @@ deferred:
 - AC4. Given the default baseline, when the agent proposes each write, then create and set mint and confirm once with one audit marker and a `readBack`; each delete is refused by governance, and with its key `true` mints destructive with the delete consequence and confirms once.
 - AC5. Given these mappings configure the server's SQL DDL rather than OcuPilot's own interface, when both screens and their dialogs render, then every label, Accepts line, refusal and consequence is an English `strings.ts` value pinned equal to its `ConfigError` sentence.
 
+### Review Findings
+
+Code review 2026-11-16 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Patch] AD-59: the create script ran `Create` ungated; it now leads with the taken-name refusal and gates `Create` on `Exists` on one line (high, Rule 6) [src/OcuPilot/Port/ConfigPort.cls:EntryLines]
+- [x] [Review][Patch] AD-16: the new entry seams restored the namespace after the `Catch`, not as its first line (high, Rule 6) [src/OcuPilot/Port/ConfigPort.cls:SendEntry,CreateEntry,DeleteEntry]
+- [x] [Review][Patch] `ReadEntry` copied `ReadProperties` (Rule 2/31); `ReadProperties` takes the entry name and `ReadEntry` stays the fixture's seam over it [src/OcuPilot/Port/ConfigPort.cls:ReadProperties]
+- [x] [Review][Patch] The system list's Delete wiring had no client test; both DDL lists' typed-name Delete and consequence are pinned [ui/src/app/shell/screen-action-handler.spec.ts]
+- [x] [Review][Patch] Browser test 1 read New mapping before the page rendered [ui/browser/ddl-mappings.browser-spec.mjs]
+- [x] [Review][Patch] `Prohibited`'s CAST-absent claim was false (`Registry.CompileSignature` casts); replaced by the measurement that CAST does not read the mappings [src/OcuPilot/Kernel/Proposal/Prohibited.cls]
+- [x] [Review][Patch] The create tool's description omitted the edge-space rule [src/OcuPilot/Screen/Tool/DdlUserMappingCreate.cls]
+- [x] [Review][Patch] `ConfigPort`'s class doc omitted `Exists` and the `ReadEntry`/`CollectNamed` seams [src/OcuPilot/Port/ConfigPort.cls]
+- [x] [Review][Patch] The read-refusal test covered `LIST` only; a named read and a create's absence read are pinned refused too [src/OcuPilot/Test/DdlMappingRead.cls]
+- [x] [Review][Patch] Two page spec test names claimed assertions they do not make [ui/src/app/areas/os-management/config-settings.page.spec.ts]
+- [x] [Review][Patch] The handler's consequence comment claimed DDL is refused after any delete (measured for a user mapping only) [ui/src/app/shell/screen-action-handler.ts]
+- [x] [Review][Defer] A name starting with `[` or `;` is written to iris.cpf as a section-header or comment line [src/OcuPilot/Area/OsMgmt/ConfigSettingRules.cls:NameCode] — deferred: DW-2637 decision-pending (the fix changes `CONFIG.MAPPING.NAME`'s ruled sentence); the restart behavior is unmeasured
+- Rejected:
+  - vendor refusal of a create or delete answers 400 `CONFIG.SETTING.VALUE` -- spec-bound (Tasks, `ConfigPort`).
+  - `DATATYPEPATTERN` admits `Foo.` -- spec-bound (the measured pattern the Tasks name).
+  - a user mapping may share a system mapping's name or differ by case -- false: that override is what the user list is for, as on the classic page.
+  - AD-53 vendor audit event unmeasured -- false: measured on `ocupilot-ci`, `ConfigurationChange` rows for `Create`, `Modify` and `Delete` on both classes.
+  - AC3 held name shown above the fields -- by-design: the matrix answers a held name 409 at the Save and only bad input 422 on the field, as `ItemSave` does.
+  - `NAMEDMAXROWS` truncates silently -- already rejected at the implement review (100 and 0 rows).
+  - `Exists` swallowing errors, the read-to-write races and `Next()`'s status -- theoretical; each fix adds branches.
+  - the dialog shows nothing on a transport fault -- low: `ApiService` reports transport faults and `Session` handles installing (inference).
+  - stacked dialogs -- false: the modal's scrim blocks the row menu.
+  - an empty system list in `DdlMappingWrite`, the one-element delete loop in `DdlMappingRules` -- low, test-only.
+  - cached-query state left behind -- none: the specs touch only `ZZOCU` user mappings and `VECTOR(%1,%2)`, and CAST does not read the mappings (measured).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -186,6 +215,9 @@ deferred:
 - mutation: AC4 `osmgmt.userddlmappings.delete` `true` in `Baseline` -> `DdlMappingRead.TestTheBaselineDefaultsAndTheAgentsDispatch` red on the baseline row; reverted, byte-identical, reloaded.
 - mutation: AC5 `configMappingTaken` in `strings.ts` read "of this name" -> `ui/tools/config-settings.test.mjs` red on `REASONMAPPINGTAKEN and configMappingTaken are one published sentence`; reverted, byte-identical.
 - mutation: review patches (AD-54, AD-4, AD-39) -- `DdlUserMappingCreate` `PRECONDITIONCODES` emptied -> `DdlMappingRead` red on the declaration row; `ConfigPort.Absence` answers 404 for a held name -> `DdlMappingWrite` red on `TestACreateConfirmedAfterTheNameWasTakenIsRefusedAsAChangedTarget` and on the held-name mint row; `ModifyEntry` sends only `Datatype` and the two `LogFault` calls of create and delete removed -> `DdlMappingRules` red on the property-set row and on both log rows; `DdlMappingDialog` trims the name -> `ddl-mapping-dialog.spec.ts` red on the typed-name post. Each reverted byte-identical and reloaded.
+- (QA) `src/OcuPilot/Test/DdlMappingWrite.cls` gains `TestTheAgentsSystemMappingWritesConfirmOnceWithOneAuditMarker` (AC4 on the system list: dispatch, confirm once, audit marker, delete refused until its key is enabled, destructive card, restored); `src/OcuPilot/Test/DdlMappingRules.cls` gains the Save and mint cases for `=`, `^`, a control character, edge spaces, a 65-character name and a datatype over 256 or holding a control character (AC3). No new class, so no roster change.
+- mutation (QA): AC1 `ConfigPort.ModifyEntry` sends the fresh read's datatype (the `Set tProps(...) = pValue` line removed) -> `DdlMappingWrite` 4 of 7 red; AC2 `ConfigPort.Serves` admits `CREATE` on every endpoint -> `DdlMappingWrite.TestASystemMappingIsChangedAndDeletedByBothCallersAndRestored` red; AC3 `ConfigSettingRules.NameCode` drops the edge-space check -> `DdlMappingRules` 3 of 6 red on the new `LEADSPACE`/`TRAILSPACE` rows at the port, the mint and the Save; AC4 `osmgmt.systemddlmappings.delete` `true` in `Baseline` -> `DdlMappingWrite.TestTheAgentsSystemMappingWritesConfirmOnceWithOneAuditMarker` red alone; AC5 `configMappingDelete` reads "never maps" -> `ui/tools/config-settings.test.mjs` red. Each reverted byte-identical (`git diff --stat` empty for the file) and the source reloaded into `ocupilot-ci`.
+- mutation (review): AD-59 `EntryLines` drops the `Exists` gate -> `DdlMappingRules.TestEachWriteRendersItsVendorCallsAsAScript` red; `DESTRUCTIVE_CONSEQUENCES` drops `DdlSystemMappingList` -> `screen-action-handler.spec.ts` "registers Delete on both lists" red. Each reverted byte-identical and reloaded.
 
 ## Auto Run Result
 

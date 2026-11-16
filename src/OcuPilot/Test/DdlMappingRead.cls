@@ -175,6 +175,14 @@ Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
         Set tSC = $ClassMethod(..#SEAM, "Invoke", tEndpoint, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
         Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
         Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $IsObject(tRows), "403|%Admin_Manage:USE|0", tEndpoint _ ": a caller holding nothing is refused naming the first pair")
+        For tAction = "", "CREATE" {
+            Kill tQuery
+            Set tQuery("name") = "VARCHAR"
+            If tAction '= "" Set tQuery("action") = tAction
+            Set tSC = $ClassMethod(..#SEAM, "Invoke", tEndpoint, "GET", .tQuery, "", .tRow, .tHttp, .tFault)
+            Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
+            Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $IsObject(tRow), "403|%Admin_Manage:USE|0", tEndpoint _ ": a named read" _ $Select(tAction = "": "", 1: " for a create") _ " is refused to that caller too, answering no row")
+        }
     }
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")

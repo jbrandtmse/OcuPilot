@@ -694,7 +694,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
   // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
   [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
-  // Story 21.13: a deleted DDL mapping no longer maps its type, and DDL that names the type is refused afterwards.
+  // Story 21.13: DDL that names a deleted mapping's type no longer maps it to its datatype.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.

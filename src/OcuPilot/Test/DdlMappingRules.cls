@@ -162,12 +162,12 @@ Method TestASetSendsGetsPropertySetWithTheDatatypeChangedAndAVendorRefusalIs400(
 Method TestTheSaveRouteRefusesOnTheFieldAndSendsNothingWhenRefused()
 {
     Do ..HoldAll()
-    For tCase = $ListBuild("", "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild("ZZ*OCU", "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..Held(), "not a class", "Value|CONFIG.SETTING.VALUE"), $ListBuild("ZZ,OCU", "x y", "Name|CONFIG.MAPPING.NAME,Value|CONFIG.SETTING.VALUE") {
+    For tCase = $ListBuild("", "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild("ZZ*OCU", "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..Held(), "not a class", "Value|CONFIG.SETTING.VALUE"), $ListBuild("ZZ,OCU", "x y", "Name|CONFIG.MAPPING.NAME,Value|CONFIG.SETTING.VALUE"), $ListBuild(..NameOf("EQUALS"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..NameOf("CARET"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..NameOf("CONTROL"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..NameOf("LEADSPACE"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..NameOf("TRAILSPACE"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..NameOf("LONGNAME"), "%Library.String", "Name|CONFIG.MAPPING.NAME"), $ListBuild(..Held(), ..TypeOf("LONGTYPE"), "Value|CONFIG.SETTING.VALUE"), $ListBuild(..Held(), ..TypeOf("CONTROLTYPE"), "Value|CONFIG.SETTING.VALUE") {
         Set tFields = {"Value": ($List(tCase, 2))}
         Set tSC = $ClassMethod(..#SAVE, "Create", "", $List(tCase, 1), tFields, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tSeen = ""
         For tV = 1:1:+$Get(tViolations) Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ $List(tViolations(tV), 1) _ "|" _ $List(tViolations(tV), 2)
-        Do $$$AssertEquals(tSeen _ "|" _ $ClassMethod(..#SEAM, "Entries"), $List(tCase, 3) _ "|", "'" _ $List(tCase, 1) _ "' with '" _ $List(tCase, 2) _ "': refused on its field, nothing sent")
+        Do $$$AssertEquals(tSeen _ "|" _ $ClassMethod(..#SEAM, "Entries"), $List(tCase, 3) _ "|", "'" _ $Extract($ZStrip($List(tCase, 1), "*C"), 1, 20) _ "' with '" _ $Extract($ZStrip($List(tCase, 2), "*C"), 1, 24) _ "': refused on its field, nothing sent")
     }
     Set tSC = $ClassMethod(..#SAVE, "Create", "", ..Held(), {"Value": 5}, .tHttp, .tFault, .tViolations, .tReadBack)
     Do $$$AssertEquals($Get(tViolations) _ "|" _ $List(tViolations(1), 1) _ "|" _ $List(tViolations(1), 2), "1|Value|PORT.FIELD.SHAPE", "a datatype that is not text is a shape violation on Value")
@@ -192,7 +192,7 @@ Method TestTheMintRefusesOnTheSentenceAndAGoodCallMintsItsCard()
     Do $$$AssertTrue(tHeld '= "", "the instance holds a system mapping the mint can read")
     If tHeld = "" Quit
     Set tCreate = "OcuPilot.Screen.Tool.DdlUserMappingCreate"
-    For tCase = $ListBuild("ZZ*OCU", "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..Held(), "not a class", $Parameter(..#ERROR, "REASONSETTINGVALUE")), $ListBuild($Translate($Justify("", 65), " ", "q"), "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")) {
+    For tCase = $ListBuild("ZZ*OCU", "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..Held(), "not a class", $Parameter(..#ERROR, "REASONSETTINGVALUE")), $ListBuild($Translate($Justify("", 65), " ", "q"), "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..NameOf("EQUALS"), "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..NameOf("LEADSPACE"), "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..NameOf("CONTROL"), "%Library.String", $Parameter(..#ERROR, "REASONMAPPINGNAME")), $ListBuild(..Held(), ..TypeOf("LONGTYPE"), $Parameter(..#ERROR, "REASONSETTINGVALUE")) {
         Set tArgs = {"Name": ($List(tCase, 1))}
         Do tArgs.%Set("Value", $List(tCase, 2), "string")
         Set tSC = $ClassMethod(..#AGENT, "Mint", tCreate, $List(tCase, 1), tArgs, .tProposal, .tHttp, .tProblem)
@@ -242,8 +242,8 @@ Method TestTheMappingCodesArePublished()
     Do $$$AssertEquals($Parameter("OcuPilot.Area.OsMgmt.DdlMappingSave", "NAMEEMPTYCODE"), $Parameter(..#ERROR, "MAPPINGNAME"), "the Save's empty-name code is the name code")
 }
 
-/// <p>AD-59. A create, a set and a delete render as the vendor's own calls with the name and the datatype as string literals: <code>Create</code> with the
-/// property array, <code>Get</code>, the key and <code>Modify</code>, and <code>Delete</code>; a name or a datatype holding a quote or a control character is
+/// <p>AD-59. A create, a set and a delete render as the vendor's own calls with the name and the datatype as string literals: the taken-name refusal and
+/// <code>Create</code> with the property array gated on one line by <code>Exists</code>, <code>Get</code>, the key and <code>Modify</code>, and <code>Delete</code>; a name or a datatype holding a quote or a control character is
 /// escaped, a read renders none, and the script of a create of a system mapping, which the port does not serve, renders none.</p>
 Method TestEachWriteRendersItsVendorCallsAsAScript()
 {
@@ -251,7 +251,7 @@ Method TestEachWriteRendersItsVendorCallsAsAScript()
     Kill tQuery
     Set tQuery("name") = "ZZOCU1"
     Set tText = $ClassMethod(..#PORT, "Snippet", "UserDDL", "CREATE", .tQuery, {"Value": "%Library.String(MAXLEN=%1)"}).%Get(0).%Get("text")
-    Do $$$AssertEquals(tText, tHead _ $Char(10) _ " Set tProps(""Datatype"") = ""%Library.String(MAXLEN=%1)""" _ $Char(10) _ " Set tSC = ##class(Config.SqlUserDatatypes).Create(""ZZOCU1"", .tProps)", "a create is the property and the Create")
+    Do $$$AssertEquals(tText, tHead _ $Char(10) _ " Set tSC = $System.Status.Error(5001, """ _ $Parameter(..#ERROR, "REASONMAPPINGTAKEN") _ """)" _ $Char(10) _ " Set tProps(""Datatype"") = ""%Library.String(MAXLEN=%1)""" _ $Char(10) _ " If '##class(Config.SqlUserDatatypes).Exists(""ZZOCU1"") Set tSC = ##class(Config.SqlUserDatatypes).Create(""ZZOCU1"", .tProps)", "a create is the taken-name refusal, the property and the Create gated on a free name (AD-59)")
     Set tText = $ClassMethod(..#PORT, "Snippet", "SystemDDL", "SET", .tQuery, {"Value": "%Library.Integer"}).%Get(0).%Get("text")
     Do $$$AssertEquals(tText, tHead _ $Char(10) _ " Set tSC = ##class(Config.SqlSysDatatypes).Get(""ZZOCU1"", .tProps)" _ $Char(10) _ " Set tProps(""Datatype"") = ""%Library.Integer""" _ $Char(10) _ " Set tSC = ##class(Config.SqlSysDatatypes).Modify(""ZZOCU1"", .tProps)", "a set is Get, the one key and Modify")
     Set tText = $ClassMethod(..#PORT, "Snippet", "UserDDL", "DELETE", .tQuery, "").%Get(0).%Get("text")

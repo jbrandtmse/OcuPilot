@@ -390,6 +390,38 @@ Method TestTheAgentsConfirmWritesOnceWithOneAuditMarker()
     Do $$$AssertEquals(tPerson, "matches", "while a person's Save is not governed and still creates")
 }
 
+/// <p><b>AC4.</b> The agent's calls on a system mapping through governance: the set is dispatched under the baseline and its confirm changes the
+/// datatype once, read back matching, with one audit marker; the delete is refused at dispatch while its key ships off, and with its key stored enabled
+/// it mints a destructive proposal carrying the delete consequence whose confirm removes the mapping with one audit marker. The mapping is restored.</p>
+/// <p>Mutation (Rule 19): <code>osmgmt.systemddlmappings.delete</code> set <code>true</code> in <class>OcuPilot.Kernel.Governance.Baseline</class> ->
+/// the refusal assertion goes red.</p>
+Method TestTheAgentsSystemMappingWritesConfirmOnceWithOneAuditMarker()
+{
+    Set tBefore = ..Entries()
+    Set tIterator = tBefore.%Get(..#SYSTEMCLASS).%GetIterator()
+    While tIterator.%GetNext(.tHeld, .tHeldType) {
+    }
+    Set tSet = {"Name": (tHeld), "rationale": "probe", "expectedImpact": "probe"}
+    Do tSet.%Set("Value", ..#SECONDTYPE, "string")
+    Do $$$AssertEquals(..Dispatched("osmgmt.systemddlmappings.set", tSet, .tSetId, .tSetTurn) _ "|" _ (tSetId '= ""), "minted|1", "the baseline lets the system set mint a proposal")
+    Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tSetId, "", $Username, .tSetResult, .tSetHttp, .tSetCode, .tSetDetail)
+    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ ..TypeOf("SystemDDL", tHeld) _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tSetResult), "1|" _ ..#SECONDTYPE _ "|matches", "its confirm changes the datatype, read back matching: " _ $Get(tSetCode))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tSetTurn, .tSetRow) _ "|" _ $Get(tSetRow("AuditMarked")), "1|" _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "with one audit marker")
+    Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tSetId, "", $Username, .tAgain, .tHttp2, .tCode2, .tDetail2)
+    Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ ..TypeOf("SystemDDL", tHeld), "1|" _ ..#SECONDTYPE, "a second confirm is refused and changes nothing more")
+    Set tDelete = {"Name": (tHeld), "rationale": "probe", "expectedImpact": "probe"}
+    Do $$$AssertEquals(..Dispatched("osmgmt.systemddlmappings.delete", tDelete, .tNoneId, .tNoneTurn), "refused", "a system delete is refused at dispatch while its key ships off")
+    Do $$$AssertStatusOK(..EnableDeletes(), "the delete keys are stored enabled")
+    Do $$$AssertEquals(..Dispatched("osmgmt.systemddlmappings.delete", tDelete, .tDeleteId, .tDeleteTurn) _ "|" _ (tDeleteId '= ""), "minted|1", "and the same call mints")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tDeleteId, .tFound, .tValues)
+    Do $$$AssertEquals($Get(tValues("destructive")) _ "|" _ $Get(tValues("consequence")), "1|CONFIG.MAPPING.DELETE", "as a destructive proposal that carries the delete consequence")
+    Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tDeleteId, "", $Username, .tDeleteResult, .tHttp3, .tCode3, .tDetail3)
+    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tDeleteResult) _ "|" _ ..Entries().%Get(..#SYSTEMCLASS).%GetTypeOf(tHeld), "1|notFound|unassigned", "its confirm removes the mapping, read back gone: " _ $Get(tCode3))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tDeleteTurn, .tDeleteRow) _ "|" _ $Get(tDeleteRow("AuditMarked")), "1|" _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "with one audit marker")
+    Do $$$AssertStatusOK(..Restore(tBefore), "the vendor's Create brings the mapping back")
+    Do $$$AssertEquals(..Entries().%ToJSON(), tBefore.%ToJSON(), "both lists read as before the test")
+}
+
 /// <p><b>AC3, AC4.</b> A create minted for a free name and confirmed after another caller took the name is refused 409
 /// <code>PROPOSAL.TARGETCHANGED</code> and changes nothing: the mapping keeps the datatype the other caller gave it.</p>
 /// <p>Mutation (Rule 19): <code>DdlUserMappingCreate</code> declares no <code>PRECONDITIONCODES</code> -> the status assertion goes red, the confirm

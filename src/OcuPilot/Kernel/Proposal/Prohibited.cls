@@ -800,9 +800,10 @@ Parameter TYPEISQLSETTING = "isql-setting";
 /// mirroring, <parameter>UNCOVERED</parameter> otherwise.</p>
 Parameter TYPEMIRROR = "mirror";
 
-/// <p>One system or user DDL mapping (Story 21.13). AD-10 names no effect on either, and OcuPilot runs no DDL of its own (<code>CREATE</code>,
-/// <code>ALTER</code> and <code>CAST</code> are absent from the product code, measured by grep), so no mapping change reaches its own SQL
-/// (inference): a write passes the reviewed-few sweep and nothing else.</p>
+/// <p>One system or user DDL mapping (Story 21.13). AD-10 names no effect on either. OcuPilot runs no DDL of its own (<code>CREATE</code> and
+/// <code>ALTER</code> are absent from the product code), and its one <code>CAST</code> (<class>OcuPilot.Screen.Tool.Registry</class>'s compile
+/// signature) does not read the mappings (measured: <code>CAST AS INTEGER</code> answered the same with <code>INTEGER</code>'s system mapping
+/// changed and deleted), so no mapping change reaches its own SQL: a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPESYSTEMDDLMAPPING = "system-ddl-mapping";
 
 Parameter TYPEUSERDDLMAPPING = "user-ddl-mapping";

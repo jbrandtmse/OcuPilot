@@ -13205,3 +13205,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.6 plan inventory, Design Notes
 - 2026-11-16T02:27:28Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet: a later story, or Epic 22's register
+
+### DW-2637: A new DDL mapping name starting with [ or ; is written to the configuration file as a section-header or comment line
+- source: spec-21-13-ddl-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on ocupilot-ci: Create of [ZZOCUB] and ;ZZOCUC wrote lines '[ZZOCUB]=...' and ';ZZOCUC=...' under [SqlUserDatatypes] in iris.cpf; NameCode admits both. Unmeasured (inference): the next startup reads them as a section and a comment, losing the mapping. Settle by a restart of a throwaway holding one.
+- 2026-11-16T06:38:57Z status=decision-pending owner=burndown by=cr note=fix is one NameCode line plus rows, but CONFIG.MAPPING.NAME's ruled sentence must change: a strings ruling

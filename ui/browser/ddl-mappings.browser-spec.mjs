@@ -176,7 +176,8 @@ test('both screens answer their entries before anything is counted, and the syst
   const user = await signedInAt(browser, config, route('user-ddl-mappings'), VIEWPORTS.wide);
   try {
     await answered(user.page);
-    assert.equal(await user.page.$eval('.ocu-command-bar button.ocu-command-bar-primary', (node) => node.textContent.trim()), STRINGS.ddlMappingNewAction, 'the user list offers New mapping');
+    const add = await user.page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await add.evaluate((node) => node.textContent.trim()), STRINGS.ddlMappingNewAction, 'the user list offers New mapping');
   } finally {
     await user.context.close();
   }

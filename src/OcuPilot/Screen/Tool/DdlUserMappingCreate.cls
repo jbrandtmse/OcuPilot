@@ -14,7 +14,7 @@ Parameter TOOLNAME = "osmgmt.userddlmappings.create";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.DdlUserMappingList";
 
-Parameter DESCRIPTION = "Propose adding one user DDL mapping to this instance: a DDL type name and the datatype class it maps to. It changes nothing by itself: it answers a proposal the user reviews and confirms. Give the new type's name and its datatype, a class name with its parameters in parentheses if it takes any. A name this instance already holds, a name over 64 characters or holding =, comma, *, ^ or a control character, and a datatype that is not a class name are refused. The mapping applies to DDL statements that name the type afterwards.";
+Parameter DESCRIPTION = "Propose adding one user DDL mapping to this instance: a DDL type name and the datatype class it maps to. It changes nothing by itself: it answers a proposal the user reviews and confirms. Give the new type's name and its datatype, a class name with its parameters in parentheses if it takes any. A name this instance already holds, a name over 64 characters, holding =, comma, *, ^ or a control character, or with a space at either end, and a datatype that is not a class name are refused. The mapping applies to DDL statements that name the type afterwards.";
 
 Parameter ENDPOINTNAME = "UserDDL";
 
