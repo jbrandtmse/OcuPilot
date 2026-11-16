@@ -385,3 +385,5 @@
 2026-11-16T14:03:00Z	Story 21.34	committed	sha=c1a02ae13(carries_21.32_edf36c82d+feature_2ef969841+21.34) ci=pending runs=43881658467
 2026-11-16T14:03:11Z	Story 21.32	ci_resolved	story=21.32 sha=edf36c82d runs=43875203822 result=success via=rerun(gates_node22,DW-2567_occurrence,orchestrator)
 2026-11-16T14:06:20Z	Story 21.33	stage_spawned	stage=implement spawn_at=2026-11-16T14:06:20Z model=sonnet agent_name=21-33-implement-1 cycle_iteration=1 story_base=ed84aea3c scope=batch1_first
+2026-11-16T14:12:57Z	Story 21.35	story_inserted	kind=fix_forward via=owner_answer_U-90 owns=DW-2651,DW-2652 order=after_21.33(plan_after_batch1)
+2026-11-16T14:12:57Z	Story 21.33	owner_decision	id=U-89 answer=kept

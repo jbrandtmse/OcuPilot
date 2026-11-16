@@ -13361,12 +13361,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
 
 ### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
