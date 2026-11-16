@@ -100,3 +100,6 @@
 2026-11-16T00:16:17Z	Story 24.3	committed	sha=87704295e submodules= ci=pending runs=43779335677 amendments=epics.md_24.3_AC_cut,epics.md_24.15-24.19_inserted
 2026-11-16T00:16:17Z	Story 24.3	story_cycle	plan_to_commit_min=430 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-16T00:32:05Z	Story 24.4	integrate_forward_resolved	feature=b4be0c8f2 conflicts_resolved=sprint-status.yaml,EXPERIENCE.md(11_pairs_reapplied_on_theirs),ClassicPageGate,MappingDescriptor,ReadTool,ToolRoundTrip,ToolWrite method=union counts_rederived=yes count_mutations_red=6 spine=clean_merge_lint_preexisting_low verification=32_classes_green,test:tools,test:components,build pending=ConfigSettingWrite,SqlSettingWrite_need_merged_throwaway
+2026-11-16T00:33:31Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=merged_tree_config_settings_arming run=20261114T1656Z-21,22
+2026-11-16T00:34:06Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=merged_tree run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T00:34:30Z	Story 24.4	merged_tree_checked	throwaway=rebuilt ConfigSettingWrite,SqlSettingWrite=11/11 smoke=see_next
