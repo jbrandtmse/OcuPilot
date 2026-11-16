@@ -132,3 +132,6 @@
 2026-11-16T05:29:07Z	Story 24.4	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-16T05:32:08Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
 2026-11-16T05:32:08Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T05:32:08Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-1 cycle_iteration=1
+2026-11-16T05:46:06Z	Story 24.5	plan_clarification_requested	blocking=intent_gap_AD-61_rule7_work_queue_viewer spec=_bmad-output/implementation-artifacts/spec-24-5-unit-test-runner-and-work-queue-viewer.md
+2026-11-16T05:46:06Z	Story 24.5	ruling	question=work_queue_viewer_vs_AD-61 choice=park rejected=decide_A,decide_B,amend_AD-61 why=dropping_or_replacing_scope_is_owner_only_and_AD-61_cited_by_done_stories category=park inbox=U-77 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T05:46:06Z	Story 24.5	story_parked	inbox=U-77 code=none stage=plan next=24.6
