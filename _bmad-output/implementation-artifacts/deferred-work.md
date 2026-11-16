@@ -12840,6 +12840,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; same spec as the 23.13 batch 4 story red (AC1, ff913bec), whose rework restored the screen store's notify-on-change contract; a shared cause is not shown (inference)
 - 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:35Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-16T01:31:55Z occurrence=24-3-interoperability-parity note=AC1 timed out (run did not answer within 145000 ms) in CI run 43779335677 browser shard 2/5; green on the unchanged rerun
 
 ### DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the unchanged rerun
 - source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint

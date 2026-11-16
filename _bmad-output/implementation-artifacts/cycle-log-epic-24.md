@@ -111,3 +111,5 @@
 2026-11-16T01:01:31Z	Story 24.4	ruling	question=strings choice=keep_six_refusals category=veto inbox=U-67 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T01:01:31Z	Story 24.4	spec_validated	service_introducing=true integration_ac=present(InteropSessionTurn) adr_constrained_acs=AD-62,AD-36,AD-60,AD-23,AD-22 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false throwaway=ocupilot-b-ci undo_AD=to_orchestrator_at_24.20 model=claude-opus-5-5
 2026-11-16T01:01:31Z	Epic 24	split_applied	story=24-4 children=24-20,24-21,24-22,24-23 split_children_total=5 limit=6 deps_hash=needs_rerecord_reason_split
+2026-11-16T01:32:17Z	Story 24.3	ci_resolved	story=24.3 sha=87704295e runs=43779335677 failed=none via=none result=success resolved_at=next_plan first_ci=flake(analytics-mdx_AC1,rerun_green,DW-2548_occurrence)
+2026-11-16T01:32:17Z	Story 24.4	integrate_forward_pushed	merge=12f9fd65c feature=b4be0c8f2 ci=pending runs=43786811296
