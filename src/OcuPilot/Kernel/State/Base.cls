@@ -292,6 +292,17 @@ ClassMethod NamedOwnerRefused(pParentClass As %String, pExistsMethod As %String,
     Quit $$$OK
 }
 
+/// <p>The limits class a sweep of other users' rows reads its retention and queued limits from. An administrator's
+/// call (<method>CallerIsAdministrator</method>) keeps <var>pLimitsClass</var>, the class it was given. Any other
+/// caller's sweep runs the instance's own rule, so the class is the one <class>OcuPilot.Kernel.InstanceLimits</class>
+/// answers through its method <var>pSource</var>, and the class the caller passed is never read. Reach it through
+/// <code>..</code> dispatch from a subclass, which names <var>pSource</var> in one parameter.</p>
+ClassMethod InstanceLimitsClass(pLimitsClass As %String, pSource As %String) As %String [ Private ]
+{
+    If ..CallerIsAdministrator() Quit pLimitsClass
+    Quit $ClassMethod("OcuPilot.Kernel.InstanceLimits", pSource)
+}
+
 /// <p>The refusal for a public object save of a <var>pClassName</var> row: an administrator-owned
 /// or owner-checked store is saved for an administrator only. A store that is neither is saved for
 /// every caller.</p>
@@ -316,6 +327,14 @@ ClassMethod GuardedSave(pObject As %Persistent) As %Status
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedSaveAnyCaller(pObject)
+}
+
+/// <p><method>GuardedSave</method>'s unconditional save without the caller check, for a store writer that has made
+/// its own (<method>GuardedSaveOwnedPlain</method>). Never called from a route or a tool.</p>
+ClassMethod GuardedSaveAnyCaller(pObject As %Persistent) As %Status [ Private ]
+{
+    Set tSC = $$$OK
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
@@ -427,6 +446,24 @@ ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer
 /// write.</p>
 ClassMethod GuardedSaveOwned(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
 {
+    Set tSC = ..OwnedSaveRefused(pObject)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
+}
+
+/// <p><method>GuardedSaveOwned</method> for a writer that saves with no version condition, as
+/// <method>GuardedSave</method> does: the same owner checks, then the unconditional save.</p>
+ClassMethod GuardedSaveOwnedPlain(pObject As Base) As %Status [ Private ]
+{
+    Set tSC = ..OwnedSaveRefused(pObject)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedSaveAnyCaller(pObject)
+}
+
+/// <p>The owner checks <method>GuardedSaveOwned</method> and <method>GuardedSaveOwnedPlain</method> make before
+/// they escalate.</p>
+ClassMethod OwnedSaveRefused(pObject As Base) As %Status [ Private ]
+{
     Try {
         Set tSC = $$$OK
         Set tClass = pObject.%ClassName(1)
@@ -441,8 +478,7 @@ ClassMethod GuardedSaveOwned(pObject As Base, pExpected As %Integer = 0) As %Sta
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Quit tSC
-    Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
+    Quit tSC
 }
 
 /// <p>The refusal for a save of <var>pObject</var> that would change a row's owner: on an
@@ -1507,6 +1543,37 @@ ClassMethod GuardedPairsWhere(pSql As %String, pParam As %String, Output pPairs)
             Set tIndex = $Increment(pPairs)
             Set pPairs(tIndex) = tRS.%GetData(1)
             Set pPairs(tIndex, 2) = tRS.%GetData(2)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Escalated: run <var>pSql</var>, a caller literal binding exactly one parameter, and collect every column of
+/// every row the way <method>GuardedRowsNoParam</method> does: <var>pRows(n, i)</var> is column <var>i</var> of row
+/// <var>n</var>, and <var>pRows</var> the row count. Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedRowsWhere(pSql As %String, pParam As %String, Output pRows) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pRows = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedRowsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set tColumns = tRS.%GetMetadata().columns.Count()
+        While tRS.%Next() {
+            Set tIndex = $Increment(pRows)
+            For tI = 1:1:tColumns {
+                Set pRows(tIndex, tI) = tRS.%GetData(tI)
+            }
         }
     } Catch ex {
         Set tSC = ex.AsStatus()

@@ -575,14 +575,14 @@ Method AssertCredentialFindingDisablesDefinition()
 /// <p>Mutation (Rule 19): <code>Parameter OWNERWRITE</code> emptied on
 /// <class>OcuPilot.Kernel.State.Ledger</class> -> this, the victim rows test and the forged-owner test
 /// go red. The classes this class does not cover are the ones <class>OcuPilot.Test.TranscriptOwnerWrite</class>
-/// names; a later batch's class extends the union.</p>
+/// and <class>OcuPilot.Test.PrefOwnerWrite</class> name.</p>
 Method TestTheOwnerStoresAreDeclared()
 {
     Set tStores = $ListBuild("Ledger", "Propose")
     Set tOwnerRan = ##class(OcuPilot.Test.AdminStateWrite).KindsOf(..OwnerPlan("", 0, "", ""))
     Set tAdministratorRan = ##class(OcuPilot.Test.AdminStateWrite).KindsOf(..AdministratorPlan())
     Set tDeclared = ""
-    Set tAllStores = tStores _ ##class(OcuPilot.Test.TranscriptOwnerWrite).Stores()
+    Set tAllStores = tStores _ ##class(OcuPilot.Test.TranscriptOwnerWrite).Stores() _ ##class(OcuPilot.Test.PrefOwnerWrite).Stores()
     For tI = 1:1:$ListLength(tAllStores) {
         Set tDeclared = tDeclared _ $ListBuild(..#STOREPACKAGE _ $List(tAllStores, tI))
     }
@@ -591,7 +591,7 @@ Method TestTheOwnerStoresAreDeclared()
     While tRS.%Next() {
         Set tFound = tFound _ $ListBuild(tRS.%GetData(1))
     }
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tFound), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tDeclared), "the classes whose compiled OWNERWRITE is not empty are this class's two stores and the transcript stores")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tFound), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tDeclared), "the classes whose compiled OWNERWRITE is not empty are this class's two stores, the transcript stores and the preference, sharing and run stores")
     For tI = 1:1:$ListLength(tStores) {
         Set tStore = $List(tStores, tI)
         Set tClass = ..#STOREPACKAGE _ tStore

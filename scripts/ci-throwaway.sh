@@ -315,6 +315,7 @@ services:
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
       # classes: AdminStateWrite, StoreOwnerWrite, TranscriptOwnerWrite, AdminPathWrite
+      # classes: PrefOwnerWrite, ReserveSweepWrite
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire

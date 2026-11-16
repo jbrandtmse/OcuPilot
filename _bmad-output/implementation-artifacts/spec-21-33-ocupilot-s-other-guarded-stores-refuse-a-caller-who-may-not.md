@@ -2,7 +2,7 @@
 title: "Story 21.33: OcuPilot's other guarded stores refuse a caller who may not write them"
 type: 'bugfix'
 created: '2026-11-16'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '06e2aec10a5b112cfae70cc1d2f18a0ac552b8f3'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -18,13 +18,10 @@ deferred:
     evidence: "GuardedOpenId is public and opens any row of the class it is called on through the escalated frame; this story gates writes only (plan read)."
     location: 'src/OcuPilot/Kernel/State/Base.cls:424'
     severity: medium
-  - summary: >-
-      A developer can append ledger rows under its own name onto another user's turn key (Ledger.GuardedAppend and GuardedCountOverflow check pUser against the caller, not the turn's owner), consuming that turn's per-turn row cap and creating a developer-owned overflow row that blocks the victim's own overflow count.
-    evidence: |-
-      Found at review (verification-gap, inference): both writers count and number rows by TurnKey with no owner filter, and the batch 1 gate checks only the user argument. Pre-existing and outside DW-2638's rewrite-another-user's-row scope; the fix needs the turn's stored owner read through TurnKeyIdx, which Batch 2 makes available once Turn is an owner store. Recipe: GuardedAppend(victimTurnKey, caller, ...) as a non-administrator, then read the victim turn's row count.
-    location: >-
-      src/OcuPilot/Kernel/State/Ledger.cls (GuardedAppend, GuardedCountOverflow)
-    severity: medium
+  - summary: "A caller's own turn reserve still reads the turns-an-hour window and the queued limit for its own turns from the limits class it passes, so a developer who calls the store directly can lift its own hourly bound."
+    evidence: "Turn.GuardedReserve reads TURNLIMITWINDOWSECONDS and ReconcileHeld reads QUEUEDSECONDS from pLimitsClass; both act only on the caller's own rows and start records (inference: not reproduced)."
+    location: 'src/OcuPilot/Kernel/State/Turn.cls GuardedReserve, ReconcileHeld'
+    severity: low
 ---
 
 <intent-contract>
@@ -93,23 +90,23 @@ Each row runs in a child process logged in as a real principal, through `AdminSt
 
 ## Pass Scope
 
-This dispatch (pass 2) covers Batch 2 only, plus DW-2663 and DW-2665 and the Batch 2 items below. Batch 1 is done and committed. Batch 3 (`Pref`, `Sharing`, `SqlRun`, `PrefOwnerWrite`) is a later pass: write nothing for it. Finalize with `status: in-progress` and `Blocking condition: none (batch 3 remains)`.
+This dispatch (pass 3) covers Batch 3 and DW-2666, and finishes the story. Batches 1 and 2 are done and reviewed. Finalize with `status: done`, `Status: done` and `Blocking condition: none`.
 
-Pass 2 builds:
+Pass 3 builds:
 
-1. **Batch 2 as planned below.** `Turn`, `Convo`, `Step`, `Nav` and `Entry` become owner stores. `Propose.GuardedDeleteForTurn` gets its private cascade form and is no longer open. Its tests are a new class `TranscriptOwnerWrite` (do not grow `StoreOwnerWrite`).
-2. **Task 0 for these stores first.** Before any product change, reproduce a developer's write to another user's turn, conversation and entry, run it on the unfixed tree and record before and after under `## Verification` as "Task 0 (batch 2, pre-fix)". If no write lands, HALT `blocked`: `Task 0: attack did not reproduce: <evidence>`.
-3. **DW-2663.** A developer's own proposals and ledger rows on another user's turn or conversation key must not consume that turn's caps. The turn's stored owner is read through `TurnKeyIdx`.
-4. **DW-2665** (AD-9, "The install's target-key step holds the administrative role the install grants", already in the spine):
-   - `Installer.EnsureProposalTargetKeys` adds the administrative role to its own process inside a `New $ROLES` frame around the single `Propose.GuardedRebuildTargetKeys` call, as `## Design Notes` "AD amendment for the spec gate (DW-2665)" describes.
-   - `scripts/check-objectscript.py` rule 6 admits `New $ROLES` in that one method of `Installer.cls` only, with a new case in `scripts/test_check_objectscript.py`.
-   - Red before, green after: seed a keyless proposal row, run the installer step as a non-`%All` principal whose `OcuPilotAdmin` grant was added in that same process. The measurement is in the scratch directory `dw2665/` (`redbefore.txt`). Put the test in `AdminPathWrite`.
-   - Rule 19 mutation: remove the frame. Also a test that a developer calling the public step is refused (`<PROTECT>` from `Set $ROLES`, then 822 from the store).
-5. **DW-2664's pins stay green:** `AdminPathWrite` covers retention as its own user, the administrator without `%All`, and first install.
+1. **Task 0 for Pref, Sharing and SqlRun first.** Before any product change, reproduce a developer's write to another user's preference, sharing choice and SQL run on the unfixed tree. Record before and after under `## Verification` as "Task 0 (batch 3, pre-fix)". If no write lands, HALT `blocked`: `Task 0: attack did not reproduce: <evidence>`.
+2. **Batch 3 as planned below.** `Pref`, `Sharing` and `SqlRun` become owner stores. `SqlRun.GuardedReserve` sweeps through a private any-caller form. `DeleteAllGuarded`, `GuardedDeleteForUser`, `SqlRun.GuardedSweep` and `GuardedForgetUser` serve an administrator only. Tests go in a new class `PrefOwnerWrite` (do not grow the Batch 1 or 2 classes beyond what their rosters need).
+3. **DW-2666, orchestrator ruling option A, for the turn reserve sweep (`Turn.SweepAnyCaller`) and for SqlRun's reserve sweep.**
+   - For a non-administrator caller, the retention cutoff comes from the instance's own limits class, never from the caller-passed one: `OcuPilot.Kernel.Agent.Loop.LimitsClass()` for turns and `OcuPilot.Kernel.Shell.BackgroundRun.LimitsClass()` for runs. Resolve each by `$ClassMethod` on a class name held in one place; no `Kernel/State` file may name `OcuPilot.Api`, `OcuPilot.Port` or `OcuPilot.Screen`.
+   - A sweep reads each row's `State` and `EndedAt` (and the run's equivalents) from storage by SQL, never from an object the caller may hold, and its delete statement repeats the state condition. An administrator's call (the retention task) keeps the limits class it is given.
+   - Measured, code review runs 87 and 91: a limits class with no `RETENTIONSECONDS` deleted another user's just-ended turn, and a reserve with the product limits class did the same while the caller held that turn with `EndedAt` back-dated. Turn both into tests with SqlRun twins, in a new class `ReserveSweepWrite`. Each must be observed red on the unfixed tree and green after, with a Rule 19 `mutation:` line.
+   - A test that another user's genuinely expired turn (and run) is still swept by an ordinary user's reserve. `TestTheOpenPathsStillWork` stays green in both owner-write classes.
+   - Audit every other private helper reachable from an open path (the reserves, the close-time expiry `Propose.ExpireStaleAnyCaller`, `Turn.ReconcileHeld`, `SqlRun.Reconcile`, `GuardedAbandonForUser`, the credential finding's rebalance) for caller-controlled limits or a held object that decides what it writes on another user's row. Give each the same treatment, with a test and a mutation line, and list each helper examined, changed or not, with the reason, in the `## Auto Run Result`. `SqlRun.Reconcile` ends other users' lost runs with the caller's queued limit: that is one.
+4. **Finalize.** Spec `status: done`, `## Auto Run Result` with `Status: done` and `Blocking condition: none`, the Batch 3 and DW-2666 records under `## Verification`, and the new classes in `scripts/ci-throwaway.sh` as add-only edits.
 
-Orchestrator condition (U-89): the five non-owner product paths keep their behavior exactly: `Turn.GuardedAbandonForUser`, the turn reserve sweep, the background-run reserve sweep, proposal-close expiry, `Agent.GuardedClearVerification`, plus AD-9's confirm claim canceling its own stored target's siblings. `TestTheOpenPathsStillWork` stays green. An edit that would change one stops the run as `blocked` with this condition.
+Orchestrator condition (U-89): the five non-owner product paths and the claim's own-target sibling cancel keep their behavior: `Turn.GuardedAbandonForUser`, the turn reserve sweep, the background-run reserve sweep, proposal-close expiry, `Agent.GuardedClearVerification`, and AD-9's confirm claim canceling its own stored target's siblings. DW-2666's ruled scope is the only change allowed to the two reserve sweeps: a product caller passes the instance's own limits class and keeps its behavior. An edit that would change one beyond that stops the run as `blocked` with this condition.
 
-The integration net of real non-admin turns stays green: `DeveloperFloorTurn`, `TurnWire`, `TurnProviderFault`, `ExplorerSaveTurn`, `TurnContext`, `ProposalConfirm`, `Retention`, and the Batch 2 verification list.
+The integration net of real non-admin turns and runs stays green: the turn classes, `SqlRun`-related classes, the preference and sharing classes, `TestTheOpenPathsStillWork` in both owner-write classes, and `AdminPathWrite`.
 
 ## Tasks & Acceptance
 
@@ -292,6 +289,24 @@ Rejected or closed at emission (Batch 2):
   - `[low]` `[reject]` (intent-alignment) The Always line says `New $ROLES` stays in `Base.cls` - AD-9 was amended for this one method (U-82) before this pass.
   - `[low]` `[reject]` (intent-alignment) Preservation of the turn job, routes and retention is asserted by existing suites, not new tests - those suites ran green (see Verification), and the new tests pin the store surface the matrix names.
   - `[low]` `[reject]` (intent-alignment) DW-2663 and DW-2665 go beyond the intent text - they are this pass's named scope.
+
+### 2026-11-16 - Review pass (Batch 3 and DW-2666)
+
+- verdicts: 13 findings - high 0, medium 0, low 11, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The sweep deletes' repeat of state and end time is pinned by no test - the repeat is defense in depth behind the SQL read the tests pin, nothing runs between read and delete, and a seam adds a test-only entry point; stated as such under Residual. reopen_if=a sweep's row can change between its read and its delete.
+  - `[low]` `[reject]` `Turn.DeleteExpired`'s transaction and rollback are untested - a failure injection into a private escalated delete costs more than the harm, an orphaned child row the next sweep does not reach; the transaction is what keeps the turn-first order safe. reopen_if=a child delete is seen to fail.
+  - `[low]` `[reject]` The unlock on a refused `SqlRun.GuardedFinish` is unpinned - the owner of a begun run whose row is gone is the only holder, the run's job ends at once and releases it; a held-lock probe step is the cost. reopen_if=a refused finish is seen to leave a run lock held.
+  - `[low]` `[reject]` `GuardedViewForOwner`'s instance limit is invisible to every test - it reconciles only the caller's own run, so no other user's row is reachable; the edit keeps one rule for the one private reconcile.
+  - `[low]` `[reject]` `SqlRun.Reconcile`'s lost-race branch (the conditional update matching no row) has no test - it needs a seam between read and update, and the branch only re-reads the state.
+  - `[low]` `[patch]` Several Batch 3 gates have no mutation line of their own - three more observed and recorded: the three administrator gates `Pref.GuardedDeleteForUser`, `Sharing.GuardedDeleteForUser` and `SqlRun.GuardedSweep` each red alone; the owner check at the top of `Sharing.GuardedSetForUser` is shadowed by `GuardedSaveOwned` (stays green), recorded as such.
+  - `[low]` `[reject]` `PrefOwnerWrite`'s administrator leg empties the preference and sharing stores - the class is armed for a throwaway and runs one class at a time, and every test creates the rows it reads.
+  - `[low]` `[reject]` The queued-run leg seeds 3 seconds back against a 10 second limit - 7 seconds of slack, and the leg runs in about one.
+  - `[low]` `[reject]` The probe's `sweepOk` defaults to OK - the legs also assert `ok` and the stored effect, so nothing relies on it alone.
+  - `[low]` `[reject]` (intent-alignment) No test reaches a route, the Task Manager or `UserDelete` as a non-administrator - the retention, wire and real-principal turn suites that do ran green on this tree (see Verification), and the new classes pin the store surface the matrix names.
+  - `[false]` `[reject]` (intent-alignment) `SqlRun.Reconcile` is outside the five open writers - it is the run reserve's own sweep path and the Pass Scope names it.
+  - `[low]` `[reject]` (intent-alignment) The turn sweep deletes the turn row before its children, inside a transaction - the end state and the statements are the same, and it is recorded under Auto Run Result.
+  - `[false]` `[reject]` (intent-alignment) `InstanceLimits` is a constant wrapper, not configuration - the ruling names `Loop.LimitsClass()`, which is that constant.
 
 ## Design Notes
 
@@ -572,18 +587,124 @@ mutation: `Convo.LoadOrCreate`'s create branch without its caller check and savi
 mutation: `New $ROLES` alone removed from `Installer.EnsureProposalTargetKeys` -> `TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` red alone, on the role still held when the step returns (code review, run 109); reverted, `Installer.cls` byte-identical (md5 `8e24d0f6...`), reloaded.
 mutation: rule 6's method tracking made sticky once `EnsureProposalTargetKeys` is entered -> `test_new_roles_in_a_method_after_the_target_key_step_is_refused` red alone; reverted, `check-objectscript.py` byte-identical (md5 `f773d659...`).
 
+### Task 0 (batch 3, pre-fix)
+
+Run 2026-11-16 on `ocupilot-ci` against the product before any Batch 3 change (`OcuPilot.Test.PrefOwnerWrite`, run 2; raw output in the stage scratch directory, `21-33/impl3/task0-pref2.txt`). The principal is `OcuPilotPrefDev`: `%Development:USE` and the code read, no `OcuPilotAdmin`, no `%All`. Every call answered OK and the victim's rows changed as listed; the victim is a name no account has, and its rows were seeded as the suite identity. Teardown left 0 preferences, sharing rows and runs of the suite's.
+
+| Leg (developer call, one child process each) | Before | After |
+|----------|--------|-------|
+| `Pref.GuardedAdd`, `GuardedRemove`, `GuardedClear` | two favorites | one more, one fewer, none |
+| `Pref.GuardedTouch`, `GuardedTrim` | a recent screen, version 0 | version 1; removed |
+| `Pref.GuardedSetValue` | view `sort=Name`, version 0 | `evil`, version 1 |
+| `Base.GuardedSave`, `GuardedSaveIfCurrent` of a victim preference row | `sort=Name` | `evil` through each |
+| `Pref.DeleteAllGuarded`, `GuardedDeleteForUser` | four rows | none |
+| `Sharing.GuardedSetForUser` | share 0, version 1 | share 1, version 2 |
+| `Sharing.DeleteAllGuarded`, `GuardedDeleteForUser` | one row | none |
+| `SqlRun.GuardedBegin`, `GuardedFinish`, `GuardedCancel` of the victim's queued run | `queued` | `running`; `failed`; cancel flag 1 |
+| `SqlRun.GuardedReserve` for the victim, `GuardedSweep`, `GuardedForgetUser` | the victim's ended run | removed |
+| `Pref.ForgedSetValue`, `SqlRun.ForgedCancel`, and an administrator's `Pref.ForgedSetValue`: a row held with its `UserName` set to another user | stored owner the holder | stored owner the other user |
+
+### Task 0 and red-before for DW-2666
+
+Run 2026-11-16 on `ocupilot-ci` against the product before any change to the reserve sweeps (`OcuPilot.Test.ReserveSweepWrite`, run 3; raw output `21-33/impl3/dw2666-red.txt`): 7 of 11 tests red, the four control tests green.
+
+| Leg (developer's reserve) | Before | After |
+|----------|--------|-------|
+| `Turn`, limits class naming no retention | another user's turn that ended a moment ago, with its proposal | both deleted |
+| `Turn`, holding that turn with `EndedAt` back-dated, product limits class | the turn | deleted, its stored end time unchanged |
+| `SqlRun`, limits class naming no retention | a run that ended 5 seconds ago | deleted |
+| `SqlRun`, holding that run with `EndedAt` back-dated | the run | deleted |
+| `SqlRun`, limits class naming no queued limit | a run queued 3 seconds ago | `failed` |
+| `SqlRun`, holding a lost run with `Namespace` edited | stored namespace | the held edit stored |
+| `Turn.GuardedAbandonForUser` holding the victim's turn with its key set to a bystander's | no signal | abandon signal on the bystander's turn, none on the victim's |
+
+### Batch 3 and DW-2666 (post-fix)
+
+Run 2026-11-16 on `ocupilot-ci`, one class per call, after `reload.sh` (`LOADERRORS=0`). Run ids are the instance's `%UnitTest` indexes of the last run of each class after the last product edit.
+
+| Class | Tests | Result | Run |
+|-------|-------|--------|-----|
+| PrefOwnerWrite | 6 | pass | 89 |
+| ReserveSweepWrite | 11 | pass | 86 |
+| StoreOwnerWrite | 14 | pass | 87 |
+| AdminStateWrite | 7 | pass | 88 |
+| TranscriptOwnerWrite | 9 | pass | 17 |
+| AdminPathWrite | 5 | pass | 18 |
+| PrefState | 17 | pass | 7 |
+| PreferencesWire | 12 | pass | 8 |
+| AgentPick | 5 | pass | 9 |
+| AgentPickTurn | 3 | pass | 10 |
+| SqlRunStore | 14 | pass | 11 |
+| SqlBackgroundJob | 12 | pass | 12 |
+| SqlBackgroundRoutes | 9 | pass | 13 |
+| ContextBound | 15 | pass | 14 |
+| Retention | 10 | pass | 16 |
+| DeveloperFloorTurn | 1 | pass | 19 |
+| TurnWire | 15 | pass | 20 |
+| TurnProviderFault | 6 | pass | 21 |
+| ExplorerSaveTurn | 1 | pass | 22 |
+| LedgerWire | 6 | pass | 23 |
+| TurnConversation | 11 | pass | 24 |
+| TurnStore | 11 | pass | 25 |
+| TurnNavigate | 15 | pass | 26 |
+| TurnHourLimit | 9 | pass | 27 |
+| TurnLoop | 11 | pass | 28 |
+| TurnStream | 7 | pass | 29 |
+| TurnContext | 16 | pass | 30 |
+| State | 12 | pass | 37 |
+| AnalyticsMdxJob | 13 | pass | 38 |
+| AnalyticsMdxRoutes | 9 | pass | 39 |
+| TurnSanitize | 2 | pass | 40 |
+| TurnGrounding | 13 | pass | 41 |
+| SqlAgentRead | 7 | pass | 42 |
+| SqlConsoleWrite | 6 | pass | 43 |
+| Installer | 27 | pass | 81 |
+| AgentState | 13 | pass | 82 |
+| Ledger | 11 | pass | 83 |
+| ProposalConfirm | 24 | pass | 84 |
+
+`SqlBackgroundDelayed`, `SqlBackgroundUnindexed` and `SqlBackgroundUnspawned` are job helpers: the runner reports them as ran 0 test methods. `uv run scripts/check-objectscript.py` 0 problems; `uv run scripts/test_check_objectscript.py` 159 tests OK; `node --test tools/ci.test.mjs` 103 pass; `node --test tools/ci-shards.test.mjs` 33 pass.
+
+mutation: `OwnerWriteRefused` answers `$$$OK` first -> `PrefOwnerWrite.TestADeveloperIsRefusedAVictimsSettings` red alone, `ReserveSweepWrite` green (runs 44, 45); reverted, `Base.cls` byte-identical (md5 `2cdc5318...`), reloaded.
+mutation: `OwnerChangeRefused` skips the stored-versus-held owner comparison -> `PrefOwnerWrite.TestAForgedOwnerIsRefusedAndTheStoredOwnerStands` red alone (run 46); reverted, byte-identical, reloaded.
+mutation: `CallerOwns` answers 0 always -> `PrefOwnerWrite.TestADeveloperWritesItsOwnSettings` and `TestTheOpenSweepStillWorks` red (run 49), and seven `ReserveSweepWrite` run tests, each an owner path the mutation refuses; reverted, byte-identical, reloaded.
+mutation: the administrator bypass removed from `OwnerWriteRefused` -> five `PrefOwnerWrite` tests red, the suite's own `%All` seeding mint being an administrator's write (run 50); reverted, byte-identical, reloaded.
+mutation: `Parameter OWNERWRITE` emptied on `Sharing` -> `TestTheOwnerStoresAreDeclared`, `TestADeveloperIsRefusedAVictimsSettings` and `TestAForgedOwnerIsRefusedAndTheStoredOwnerStands` red (run 51); reverted, `Sharing.cls` byte-identical (md5 `6d3f02e9...`), reloaded.
+mutation: `SqlRun.GuardedReserve` calls the public `GuardedSweep` -> `PrefOwnerWrite.TestTheOpenSweepStillWorks` and `ReserveSweepWrite.TestARunReserveStillSweepsAnotherUsersExpiredRun` red, each alone in its class (runs 52, 53); reverted, `SqlRun.cls` byte-identical (md5 `feef1665...`), reloaded.
+mutation: the administrator gate removed from `Pref.DeleteAllGuarded` -> `TestADeveloperIsRefusedAVictimsSettings` red on that leg alone (run 63); the same from `SqlRun.GuardedForgetUser` -> red on that leg alone (run 64); `Pref.GuardedClear`'s owner check removed -> red on that leg alone (run 65); `Pref.GuardedAdd`'s owner check removed -> red on that leg alone (run 80); each reverted, byte-identical, reloaded.
+mutation: `Turn.SweepAnyCaller` uses the limits class a non-administrator passes -> `ReserveSweepWrite.TestAReserveWithNoRetentionLimitKeepsAnotherUsersEndedTurn` red alone (run 66); reverted, `Turn.cls` byte-identical (md5 `96a080b4...`), reloaded.
+mutation: `SqlRun.SweepAnyCaller` uses the passed limits class -> `TestARunReserveWithNoRetentionLimitKeepsAnotherUsersEndedRun` and `TestARunReserveWithNoQueuedLimitKeepsAnotherUsersQueuedRun` red (run 67); `SqlRun.GuardedReserve` uses it for its own reconcile -> the queued-limit test red alone (run 68); each reverted, byte-identical, reloaded.
+mutation: `Turn.SweepAnyCaller` reads each end time from the opened row -> `TestAReserveHoldingAnotherUsersTurnKeepsIt` red alone (run 69); `SqlRun.SweepAnyCaller` the same -> `TestARunReserveHoldingAnotherUsersRunKeepsIt` red alone (run 70); each reverted, byte-identical, reloaded.
+mutation: `Turn.GuardedReserve` makes no sweep -> `TestAReserveStillSweepsAnotherUsersExpiredTurn` red alone (run 71); `SqlRun.GuardedReserve` makes none -> `TestARunReserveStillSweepsAnotherUsersExpiredRun` and `PrefOwnerWrite.TestTheOpenSweepStillWorks` red (runs 72, 73); `Turn.DeleteExpired` leaves the turn's children -> the proposal assertion of the turn sweep test red alone (run 78); each reverted, byte-identical, reloaded.
+mutation: `SqlRun.Reconcile` saves the opened row instead of updating by SQL -> `TestARunReserveStoresNoEditFromAHeldLostRun` red alone (run 74); `Reconcile` suspects only a queued row -> `TestARunReserveStillEndsAnotherUsersLostRuns` and the held-edit test red (run 79); each reverted, byte-identical, reloaded.
+mutation: `Base.InstanceLimitsClass` ignores the administrator -> `TestAnAdministratorsSweepKeepsTheLimitsClassItIsGiven` red alone, `Retention` green (runs 75, 76); reverted, `Base.cls` byte-identical, reloaded.
+mutation: `Turn.GuardedAbandonForUser` reads each key from the opened row -> `TestAnAbandonIgnoresAHeldKey` red alone (run 77); reverted, `Turn.cls` byte-identical, reloaded.
+
+mutation: the owner check removed from the top of `Sharing.GuardedSetForUser` -> `PrefOwnerWrite` stays green (run 95), because `GuardedSaveOwned` makes the same check before it saves; the writer's own line is the earlier refusal, as in Batches 1 and 2 (code review); reverted, `Sharing.cls` byte-identical (md5 `6d3f02e9...`), reloaded.
+mutation: the administrator gate removed from `Pref.GuardedDeleteForUser`, `Sharing.GuardedDeleteForUser` and `SqlRun.GuardedSweep` -> `PrefOwnerWrite.TestADeveloperIsRefusedAVictimsSettings` red alone, on each of the three legs (the 822 and the unchanged-rows assertions; code review, run 96); reverted, `Pref.cls`, `Sharing.cls` and `SqlRun.cls` byte-identical (md5 `03d9264c...`, `6d3f02e9...`, `feef1665...`), reloaded.
+
 ## Auto Run Result
 
-Status: in-progress
-Blocking condition: none (batch 3 remains)
+Status: done
+Blocking condition: none
 
-**Pass 2 (Batch 2, DW-2663, DW-2665).** Task 0 reproduced on the unchanged product: a developer finished, stopped, reserved for, swept and deleted another user's turns, rewrote and removed their steps and directives, loaded and appended to and deleted their conversation, and spent a victim turn's caps with its own ledger rows and proposals; `Turn.ForgedProgress` stored the victim as the owner of the developer's own turn. Before and after are under "Task 0 (batch 2, pre-fix)". Batch 1 closed in pass 1; its record is above.
+**Pass 3 (Batch 3, DW-2666).** Task 0 reproduced on the unchanged product: a developer added, removed, cleared, touched, set, trimmed and deleted another user's preferences, set another user's sharing choice, and began, finished, canceled and swept another user's runs; held copies of its own rows with another owner stored that owner. Before and after are under "Task 0 (batch 3, pre-fix)". DW-2666 is red-before, green-after in the new `ReserveSweepWrite`, 7 of 11 red on the unchanged sweeps.
 
-- Summary: `Turn`, `Convo`, `Step`, `Nav` and `Entry` are owner stores (`Step` and `Nav` through the turn, `Entry` through the conversation, by `OWNERPARENT`). Every public writer checks the caller before it escalates; the sweeps, purges, `GuardedForgetStarts`, `GuardedSweepStarts` and the children's deletes by turn or conversation serve an administrator only, and `Propose.GuardedDeleteForTurn` with them. `Turn.GuardedReserve` sweeps through a private any-caller form that deletes a turn's steps, directive, proposals and signals by its own statements; `GuardedDelete` checks the owner, then does the same. `GuardedAbandonForUser` is unchanged. A ledger row or proposal on a turn or conversation key whose stored owner is another user is refused (`Base.NamedOwnerRefused`, private; no turn row means no owner, so a key that names none is accepted). `Installer.EnsureProposalTargetKeys` adds the administrative role to its own process in a `New $ROLES` frame; rule 6 admits that one method.
-- Decided in-stage: `Convo.LoadOrCreate` on a key that names no conversation keeps its old error for every caller, since the key owner is unresolved only when the row exists (`NamedOwnerRefused`); a turn writer keyed on a key that names no turn is refused for a non-administrator, as batch 1's key writers are. `Turn.GuardedFinish` releases the owner's slot lock even when the key check refuses. The tests that name the batch 3 stores are not written.
-- Files: `src/OcuPilot/Kernel/State/Base.cls`, `Turn.cls`, `Step.cls`, `Nav.cls`, `Convo.cls`, `Entry.cls`, `Propose.cls`, `Ledger.cls`; `src/OcuPilot/Install/Installer.cls`; `src/OcuPilot/Test/TranscriptOwnerWrite.cls` and `TranscriptStateWriteProbe.cls` (new), `StoreOwnerWrite.cls`, `OwnerStateWriteProbe.cls`, `AdminPathWrite.cls`, `AdminPathProbe.cls`; `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py`, `scripts/ci-throwaway.sh`.
-- The five non-owner product paths are unchanged: `TestTheOpenPathsStillWork` in `TranscriptOwnerWrite` and in `StoreOwnerWrite` run them as the developer principal and pass.
-- Verification: reload `LOADERRORS=0`; every Batch 2 class in the table above green; mutations and DW-2665's red-before and green-after under `## Verification`.
-- Residual risks (inference): the per-write owner lookup adds one escalated read per `Step`, `Nav` and `Turn` write, and a second for each saved row; not measured. `TranscriptOwnerWrite` is 698 lines against the 500-line guideline; the lock check uses an event message to the parent because a developer cannot read `^$LOCK`.
-- Review: 13 findings - 4 patched (medium 1, low 3; tests and mutation lines only, no product code), 0 deferred, 9 rejected with reasons in the triage log. Frontmatter `deferred:` item 3 (ledger rows onto another user's turn key) is fixed by DW-2663 in this pass. Follow-up review recommended: false (no high patched, one medium patched).
-- Verification after the patches: reload `LOADERRORS=0`; `TranscriptOwnerWrite` 9 (run 86), `StoreOwnerWrite` 14, `AdminPathWrite` 5; the Batch 2 integration net re-run by the lead before review (DeveloperFloorTurn, TurnWire, TurnProviderFault, ExplorerSaveTurn, TurnContext, ProposalConfirm, Retention, TurnConversation, TurnNavigate, TurnStore, Convo, TranscriptStore, ConversationRestore, TurnHourLimit, TurnLoop, AdminStateWrite, Installer, ProposalTargetKey) green; `check-objectscript` 0 problems; its harness 158 tests OK; `ci.test.mjs` 103 pass; `lint-docs` 0 problems.
+- Summary: `Pref`, `Sharing` and `SqlRun` are owner stores. Every public writer checks the caller before it escalates; `DeleteAllGuarded`, `GuardedDeleteForUser`, `SqlRun.GuardedSweep` and `GuardedForgetUser` serve an administrator only. `SqlRun.GuardedReserve` sweeps through a private any-caller form. `Base` gained `GuardedSaveOwnedPlain` (the owner checks, then the unconditional save, for `Pref`'s two create paths), `InstanceLimitsClass` and `GuardedRowsWhere`, all private.
+- DW-2666: for a caller who does not hold `OcuPilotAdmin`, the turn and run reserve sweeps and the run reconcile read the limits class the instance names (`OcuPilot.Kernel.InstanceLimits.ForTurns`/`ForRuns`, which answer `Loop.LimitsClass()` and `BackgroundRun.LimitsClass()`), never the one passed; an administrator's call keeps the class it is given. Each sweep reads state and end time by SQL, and its delete repeats both.
+- Decided in-stage: `scripts/check-objectscript.py`'s re-entry rule refuses the name `OcuPilot.Kernel.Agent` under `Kernel/State`, which `Loop` carries, so the two class names live in the new `OcuPilot.Kernel.InstanceLimits` and `Kernel/State` names that class; the checker is untouched. A refused `SqlRun.GuardedFinish` still releases the run lock, as every earlier path did.
+- Helpers examined for a caller-controlled limit or a held object that decides what is written to another user's row:
+  - `Turn.SweepAnyCaller`: changed (above).
+  - `SqlRun.GuardedReserve`'s sweep and `SqlRun.Reconcile`: changed. Reconcile read the caller's queued limit and saved the opened row; it now reads the instance's limit for a non-administrator and ends the run by one conditional `UPDATE` of state, end time and version.
+  - `SqlRun.GuardedViewForOwner`: its reconcile now takes the instance's limit for a non-administrator; the view stays a read.
+  - `Turn.GuardedAbandonForUser`: changed behavior-neutrally. It took each turn key from the opened row, which a caller may hold; it now reads the key by SQL. Its ids, signal and count are as before.
+  - `Turn.ReconcileHeld`: unchanged. It is reached only through `GuardedReserve` and `GuardedReconcile`, both owner-checked, and writes only the caller's own rows by SQL-selected ids.
+  - `Propose.ExpireStaleAnyCaller`: unchanged. It compares each row's stored `ExpiresAt` with the clock by one `UPDATE` and reads no limit and no object.
+  - `Agent.GuardedClearVerification` and `RebalanceDefaultSql`: unchanged. Both are SQL-only and take no value from a row object.
+  - `Propose.GuardedClaimAndClose`'s cancel of its own target's siblings: unchanged (Batch 1).
+- The five non-owner product paths are unchanged in effect: `TestTheOpenPathsStillWork` in `StoreOwnerWrite` and `TranscriptOwnerWrite` pass, and `PrefOwnerWrite.TestTheOpenSweepStillWorks` pins the run reserve's sweep.
+- Residual (inference): the sweep delete's repeat of state and end time cannot be separated from the read by a test, because nothing runs between them; it is defense in depth and no mutation of it is observed red. The unlock on a refused `SqlRun.GuardedFinish` is pinned by no test: a caller cannot hold a lock on a key it does not own. `TurnLoop` and the other turn classes in the net are green.
+- Files: `src/OcuPilot/Kernel/State/Base.cls`, `Turn.cls`, `Pref.cls`, `Sharing.cls`, `SqlRun.cls`; `src/OcuPilot/Kernel/InstanceLimits.cls` (new); `src/OcuPilot/Test/PrefOwnerWrite.cls`, `ReserveSweepWrite.cls` and `PrefStateWriteProbe.cls` (new), `StoreOwnerWrite.cls`; `scripts/ci-throwaway.sh`.
+- Verification: reload `LOADERRORS=0`; every Batch 3 and net class in the table above green; mutations under `## Verification`; `check-objectscript` 0 problems, its harness 159 tests OK, `ci.test.mjs` 103 pass.
+- Review: 13 findings - 1 patched (low: three mutation lines), 0 deferred, 12 rejected with reasons in the triage log. The turn sweep's turn-first delete order inside a transaction is the only change of shape to an open path; its end state is as before. Follow-up review recommended: false (no high or medium patched).
+- Verification after review: reload `LOADERRORS=0`; `ReserveSweepWrite` 11 (run 90), `PrefOwnerWrite` 6 (91), `StoreOwnerWrite` 14 (92), `TranscriptOwnerWrite` 9 (93), `AdminPathWrite` 5 (94) green on a fresh `ocupilot-ci`; `check-objectscript` 0 problems, its harness 159 tests OK, `ci.test.mjs` 103 pass, `lint-docs` 0 problems.

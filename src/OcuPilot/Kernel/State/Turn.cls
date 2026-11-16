@@ -25,6 +25,11 @@ Class OcuPilot.Kernel.State.Turn Extends OcuPilot.Kernel.State.Base
 /// expired turns <method>GuardedReserve</method> makes.</p>
 Parameter OWNERWRITE As %String = "UserName";
 
+/// <p>The <class>OcuPilot.Kernel.InstanceLimits</class> method that names the limits class the instance's own rule
+/// reads: the sweep a reserve makes uses it for any caller who does not hold the administrative resource, never the
+/// limits class that caller passed (<method>OcuPilot.Kernel.State.Base.InstanceLimitsClass</method>).</p>
+Parameter LIMITSSOURCE As %String = "ForTurns";
+
 Parameter STATEQUEUED = "queued";
 
 Parameter STATERUNNING = "running";
@@ -493,14 +498,10 @@ ClassMethod GuardedRequestStop(pKey As %String, pUser As %String, Output pFound 
 ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
-    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(UserName) = ? AND State IN ('queued', 'running') ORDER BY ID", pUser, .tIds)
+    Set tSC = ..GuardedIdsWhere("SELECT TurnKey FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(UserName) = ? AND State IN ('queued', 'running') ORDER BY ID", pUser, .tKeys)
     If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:+$Get(tIds) {
-        Set tSC = ..GuardedOpenId(tIds(tI), .tRow)
-        If $$$ISERR(tSC) Quit
-        Set tKey = tRow.TurnKey
-        Set tRow = ""
-        Set tSC = ..GuardedTurnSignalSet(tKey, "abandon", 1)
+    For tI = 1:1:+$Get(tKeys) {
+        Set tSC = ..GuardedTurnSignalSet(tKeys(tI), "abandon", 1)
         If $$$ISERR(tSC) Quit
         Set pCount = pCount + 1
     }
@@ -724,20 +725,48 @@ ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
 /// <p><method>GuardedSweep</method> without the caller check: the sweep <method>GuardedReserve</method>
 /// makes, which removes every user's expired terminal turns by the instance's own retention rule. It
 /// writes nothing else.</p>
+/// <p>A caller who does not hold the administrative resource sweeps by the retention of the instance's own limits
+/// class (<parameter>LIMITSSOURCE</parameter>), whatever limits class it passed. Each turn's state and end time are read
+/// from storage by one statement, never from an opened row a caller may hold, and the delete repeats both.</p>
 ClassMethod SweepAnyCaller(pLimitsClass As %String) As %Status [ Private ]
 {
-    Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tIds)
+    Set tLimits = ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE)
+    Set tSC = ..GuardedRowsNoParam("SELECT TurnKey, EndedAt FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tRows)
     If $$$ISERR(tSC) Quit tSC
-    Set tCutoff = ..NowSeconds() - $Parameter(pLimitsClass, "RETENTIONSECONDS")
-    For tI = 1:1:+$Get(tIds) {
-        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
-        If $$$ISERR(tOpenSC) Continue
-        Set tKey = tRow.TurnKey
-        Set tEnded = ..SecondsOf(..Text(tRow.EndedAt))
-        Set tRow = ""
+    Set tCutoff = ..NowSeconds() - $Parameter(tLimits, "RETENTIONSECONDS")
+    For tI = 1:1:tRows {
+        Set tEndedAt = ..Text(tRows(tI, 2))
+        Set tEnded = ..SecondsOf(tEndedAt)
         If (tEnded = "") || (tEnded > tCutoff) Continue
-        Set tSC = ..DeleteAnyCaller(tKey)
+        Set tSC = ..DeleteExpired(tRows(tI, 1), tEndedAt)
         If $$$ISERR(tSC) Quit
+    }
+    Quit tSC
+}
+
+/// <p>Delete turn <var>pKey</var> with everything <method>DeleteAnyCaller</method> removes, in one transaction, only
+/// while its row still reads a terminal state and the end time <var>pEndedAt</var> the sweep read.</p>
+ClassMethod DeleteExpired(pKey As %String, pEndedAt As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tInTx = 0
+    Try {
+        TSTART
+        Set tInTx = 1
+        Set tParams = [].%Push(pKey).%Push(pEndedAt)
+        Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ? AND State IN ('completed', 'stopped', 'abandoned', 'failed') AND %EXACT(EndedAt) = ?", .tParams, .tRows)
+        If $$$ISERR(tSC) Quit
+        If tRows {
+            Set tSC = ..DeleteChildren(pKey)
+            If $$$ISERR(tSC) Quit
+        }
+        TCOMMIT
+        Set tInTx = 0
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tInTx {
+        TROLLBACK 1
     }
     Quit tSC
 }
@@ -753,10 +782,18 @@ ClassMethod GuardedDelete(pKey As %String) As %Status
     Quit ..DeleteAnyCaller(pKey)
 }
 
-/// <p><method>GuardedDelete</method> without the caller check, for the sweeps and for a delete whose
-/// caller has made its own: the turn's steps, directive and proposals go by this class's own statements,
-/// because the children's public deletes are an administrator's.</p>
+/// <p><method>GuardedDelete</method> without the caller check, for a delete whose caller has made its own: the
+/// turn's rows, then the turn. The children's public deletes are an administrator's, so this class's own statements
+/// remove them.</p>
 ClassMethod DeleteAnyCaller(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteChildren(pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pKey)
+}
+
+/// <p>Delete the steps, the navigation directive, the proposals and the signals of turn <var>pKey</var>.</p>
+ClassMethod DeleteChildren(pKey As %String) As %Status [ Private ]
 {
     Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", pKey)
     If $$$ISERR(tSC) Quit tSC
@@ -764,9 +801,7 @@ ClassMethod DeleteAnyCaller(pKey As %String) As %Status [ Private ]
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pKey)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..GuardedTurnSignalKill(pKey)
-    If $$$ISERR(tSC) Quit tSC
-    Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pKey)
+    Quit ..GuardedTurnSignalKill(pKey)
 }
 
 /// <p>The row for <var>pKey</var>, matched exactly, or <code>$$$NULLOREF</code>.</p>
