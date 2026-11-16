@@ -13186,3 +13186,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Prohibited.cls ~1499; MirrorRefusal.TestTheVerdictIgnoresTheStoredDiffAndTheMirrorsName pins a refusal on an empty diff; Epic 24 also edits Prohibited.cls, so the sentence was left
 - 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=a reviewer or caller relies on an empty diff passing a mirror or screen-permission write
+
+### DW-2625: The Task Manager mail password may reach an audit row OcuPilot shows: %SYS.Task.Config.AuthPassSet stores it Base64-encoded through UpdateData, which writes OldValue/NewValue into a %System/%System/ConfigurationChange audit row, and AuditPort declares no mask for that event (inference: read from source, not measured)
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: high | fix-risk: low | footprint: in-epic
+- evidence: irissys/%SYS/Task/Config.cls:43-63,98-104; src/OcuPilot/Port/AuditPort.cls:131; measure one AuthPassSet on a throwaway and read the audit row
+- 2026-11-16T01:15:46Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=an AD-35 mask declaration is an AD change: owner item requested from the orchestrator; measure first
