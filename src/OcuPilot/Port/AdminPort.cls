@@ -1537,7 +1537,10 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
 }
 
 /// <p>Refresh this process's SQL compile context when it predates the instance's last SQL settings change, by the
-/// vendor's own check (<code>$$$SQLCompileCheckContext</code>). A failed check changes nothing.</p>
+/// vendor's own check (<code>$$$SQLCompileCheckContext</code>). A failed check changes nothing. Any <code>Config.SQL</code> change advances
+/// <code>^%SYS("sql","sys","contextVersion","SQLCompile")</code>, and a pooled process still on the older context fails the vendor's next
+/// class-query prepare once (DW-2646); the check reads that vendor-internal counter and calls <code>$SYSTEM.CLS.ClearContext</code>, both
+/// kept inside this port (AD-27).</p>
 ClassMethod RefreshCompileContext() [ Private ]
 {
     Try {
