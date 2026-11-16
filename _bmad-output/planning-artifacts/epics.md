@@ -9468,7 +9468,7 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
 
-[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password (with DW-2625) join this story from Story 21.19. Each waits for the owner on the record it needs; until then they are not planned.
+[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password join this story from Story 21.19. Each waits for the owner on the record it needs; until then they are not planned.
 
 As a developer-administrator,
 I want a custom resource on a classic menu item and an Operate-only dismount,
@@ -9487,7 +9487,6 @@ So that no area has a remaining gap.
 - DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
 - DW-1280: A write that fails after the claim tells the user a tool could not be answered, on a path whose own class header says confirm is not a tool (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 - DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
-- DW-2625: The Task Manager mail password may reach a ConfigurationChange audit row OcuPilot shows unmasked (inference; ledger; routed by spec_gate 2026-11-16 at Story 21.19)
 
 ### Story 21.22: CI flake hardening
 
@@ -9530,6 +9529,27 @@ So that no area has a remaining gap.
 - DW-2369: AgentNavigator reports a screen whose page code cannot load as a refusal for unsaved changes, since Story 20.29 made a failed page-chunk load reject... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 - DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 - DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+
+### Story 21.24: The Task Manager mail password is masked in OcuPilot's audit read
+
+[AMENDED 2026-11-16, orchestrator ruling U-71, fix-forward under AD-35, Rule 5] Measured on a throwaway (DW-2625): the vendor writes the Task Manager mail password, Base64-encoded, into a ConfigurationChange audit row, and OcuPilot's audit read shows it. AD-35 already requires the mask, so this is a defect fix, not an amendment.
+
+As an administrator,
+I want a secret the vendor writes into an audit row masked wherever OcuPilot shows that row,
+So that reading the audit log never exposes the Task Manager mail password.
+
+**Acceptance Criteria:**
+
+- **Given** the Task Manager mail password set, changed or cleared
+- **When** the audit screen or the agent's audit read tool reads the row
+- **Then** both the old and the new value read masked, while the audit database still holds what the vendor wrote.
+
+- **Given** the other vendor setters that write a secret into an audit row the same way
+- **When** they are searched for
+- **Then** each is masked by the same declaration or ledgered.
+
+- DW-2625: The Task Manager mail password reaches a ConfigurationChange audit row OcuPilot shows unmasked (measured; ledger; routed by orchestrator ruling U-71)
 
 ---
 
