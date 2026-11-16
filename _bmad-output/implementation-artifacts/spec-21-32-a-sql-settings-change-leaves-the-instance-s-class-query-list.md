@@ -71,6 +71,27 @@ deferred: []
 - AC2. Given the fix, when `config-settings`, `dashboard`, `ecp-settings` and `database-operations` run in that order on a fresh instance, then each is green. With the `RefreshCompileContext` call removed, `dashboard` AC2 goes red, and so does `ecp-settings` C2.
 - AC3. Given the fix, when `AdminPortCompileContext` runs, then it is green, and it goes red (500 `INTERNAL`) with the call removed.
 
+### Review Findings
+
+Code review 2026-11-16 (full-opus; four layers). Patched in this pass:
+
+- [x] [Review][Patch] `AdminPortCompileContext` header named the wrong grants (`%Admin_Secure:U`, `%DB_IRISSYS:R`) and said the version stays advanced; it needs `%Admin_Task:U` and `%DB_IRISSYS:RW`, and `%UnitTest.Manager` puts the version back at close (measured: 4 before and after a run) [low]
+- [x] [Review][Patch] The test now asserts its own precondition (the context is older than the version) and the first read's rows array [low]
+- [x] [Review][Patch] The test's `Catch` restores `$NAMESPACE` on its first line (AD-16) [low]
+- [x] [Review][Patch] `RefreshCompileContext`'s doc comment says "uncached" and is two sentences [low]
+- [x] [Review][Patch] AC1 had no line in `## Verification` [low]
+- [x] [Review][Defer] The vendor's interop editors API fails the same way after a SQL settings change, outside `AdminPort` (21.24's CI log shows `%Api.InteropEditors.v1` -428) [med] -- DW-2647 escalated
+
+Rejected:
+
+- `false`: The purge removal reopens 21.24's database failure. 21.24's CI log shows that failure as -428 on `Database.ConfigCRUD` through `AdminPort`, which the fix covers. Its interop-editors sibling is DW-2647.
+- `false`: The runtime `SQL` context goes stale too. Only the `SQLCompile` node exists under `contextVersion` (measured).
+- `false`: `PollTask` skips the check. It runs only inside the `AwaitTask` of a request that already ran the check, and it reads a task row.
+- `low`: `Template` and `ProbeAnswers` reach the vendor without the check. Neither runs a class query, so this is theoretical; it becomes real if one ever does.
+- `low`: A settings change between the check and the prepare. The window is one request, and the outcome is the pre-fix single 500.
+- `low`: The empty `Catch`. The spec requires it ("caught and ignored"). Every vendor call already needs `%SYS` access, and the check costs about 0.15 us per call (measured).
+- `low`: The AC2 browser guard depends on shard order. This duplicates the triage log; `AdminPortCompileContext` is the CI pin.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -129,6 +150,9 @@ deferred: []
 
 Recorded (2026-11-16, `ocupilot-ci`):
 
+- AC1 is a planning-time reproduction (Design Notes, Recipe C); `AdminPortCompileContext` is its pin, under AC3's mutation.
+- mutation (code review, after the test gained its precondition assertion): the same removal, reloaded -> run 7 red on the three post-change assertions only, with the precondition green; reverted (tree byte-identical), run 8 green.
+
 - mutation: removed `Do ..RefreshCompileContext()` from `InvokeLocated`, reloaded -> `AdminPortCompileContext.TestAnUpcomingTasksReadSurvivesASqlSettingsChange` went red (500 `INTERNAL`: status, 200 and rows-array assertions).
 - mutation: the same removal on a fresh instance, committed spec with the purge removed -> `dashboard` AC2 and `ecp-settings` C2 went red (`config-settings` 7/7).
 - Reverted (`git diff --stat` byte-identical), fresh rebuild: `config-settings` 7/7, `dashboard` 3/3, `ecp-settings` 5/5, `database-operations` 6/6.
@@ -152,7 +176,7 @@ Verification: `LOADERRORS=0`; `AdminPortCompileContext` 1/1, `AdminPortSync` 7/7
 
 Follow-up review recommended: false.
 
-Residual risk: `AdminPortCompileContext` leaves the context version advanced and `%SYS`'s cached queries purged, as any SQL settings save does.
+Residual risk: `AdminPortCompileContext` purges `%SYS`'s cached queries, as any SQL settings save does; the version it advances is put back by `%UnitTest.Manager` at close.
 
 Status: done
 Blocking condition: none

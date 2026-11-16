@@ -13243,3 +13243,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T10:03:05Z status=open owner=burndown by=lead note=orchestrator: product defect; fix-forward story to charter; 1.0.16 held pending owner
 - 2026-11-16T10:04:44Z status=open owner=21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list by=lead note=re-owned to Story 21.32 (fix-forward) on the orchestrator's ruling
 - 2026-11-16T10:38:45Z status=open owner=21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list by=lead note=evidence correction (21.32 plan, measured): a stale worker fails the vendor's next uncached class-query prepare ONCE and is then current, not until recycled; cause is the instance-wide SQLCompile context version advanced by any Config.SQL change, the classic page and a session included (vendor defect); reproduced without a browser 4/4
+
+### DW-2647: After a SQL settings change, the vendor's own interop editors API still fails a class-query list once in each stale web server process, and AdminPort's context refresh cannot reach that path
+- source: spec-21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: 21.24 CI log (scratch e21u/21-24/ci-b4.log, browser shard 4/5): %Api.InteropEditors.v1.impl answered 500, SQLCODE -428 'ENSPORTAL.UTILS_ENUMERATEMESSAGECLASSES' not found, two minutes after the same -428 on Database.ConfigCRUD; the 21.32 fix covers only AdminPort.InvokeLocated
+- 2026-11-16T11:20:51Z status=escalated owner=burndown by=cr note=vendor dispatch, not OcuPilot's; ties to the owner's DW-2646 vendor-report call; CI risk if config-settings shares a leg with an editor spec
