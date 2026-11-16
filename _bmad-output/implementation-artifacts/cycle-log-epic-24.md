@@ -196,3 +196,5 @@
 2026-11-16T14:18:34Z	Story 24.9	ruling	question=new_string_explorerNamespaceDiffEmptyAgent choice=keep("promote documents into another namespace") why=registry_requires_empty-agent_key_lowercase_action_phrase_pattern category=veto reversal=reword inbox=U-92 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T14:18:34Z	Story 24.9	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-16T14:18:45Z	Story 24.9	stage_spawned	stage=qa spawn_at=2026-11-16T14:18:45Z model=sonnet agent_name=24-9-environment-promote-qa-1 cycle_iteration=1
+2026-11-16T14:47:57Z	Story 24.9	qa_complete	spawn_at=2026-11-16T14:20:00Z model=sonnet tests=src/OcuPilot/Test/NamespacePromoteRoute.cls tests_added=1 mutations_demonstrated=7 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-11-16T14:47:57Z	Story 24.9	stage_spawned	stage=code-review spawn_at=2026-11-16T14:47:57Z model=opus agent_name=24-9-environment-promote-code-review-1 cycle_iteration=1
