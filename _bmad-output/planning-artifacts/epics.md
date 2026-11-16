@@ -10154,13 +10154,15 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
-- **Given** environment diff and remote instance profiles
-- **When** each runs
+[AMENDED 2026-11-16, owner answer U-45: "C: same instance only (Recommended)"] Environment diff and promote work between namespaces of this instance only; remote instance profiles are not planned and are recorded in the exclusion register. NFR-6, the PRD's single-instance rule and the spine's Deferred row stand unchanged. The story keeps its title and key.
+
+- **Given** environment diff between two namespaces of this instance
+- **When** it runs
 - **Then** it round-trips over its backing class.
 
 - **Given** remote instance profiles
-- **When** they are sequenced
-- **Then** they land **before** environment diff and promote, which depend on them.
+- **When** this story lands
+- **Then** they are recorded in the exclusion register as not planned, with the reason (no request leaves the instance, NFR-6; OcuPilot manages the instance that serves it).
 
 ### Story 24.9: Environment promote
 
@@ -10172,7 +10174,9 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
-- **Given** environment promote
+[AMENDED 2026-11-16, owner answer U-45: "C: same instance only (Recommended)"] Promote works between namespaces of this instance only.
+
+- **Given** environment promote between two namespaces of this instance
 - **When** it runs
 - **Then** it round-trips over its backing class.
 

@@ -144,3 +144,4 @@
 2026-11-16T06:07:04Z	Story 24.4	ci_red_classified	run=43810505527 workflow=.github/workflows/ci.yml class=inherited test=dashboard,database-operations,ecp-settings(browser_shard_4_after_config-settings,SQLCODE_-428_FILTER_procedures) ruling=orchestrator_inherited_signature
 2026-11-16T06:07:04Z	Story 24.4	ci_resolved	story=24.4 sha=cae31a918 runs=43810505527 failed=browser_shard_4_inherited_config-settings via=none result=failure_inherited resolved_at=next_plan first_ci=inherited
 2026-11-16T06:07:04Z	Epic 24	orchestrator_message	note=DW-2634_to_owner_not_in_any_epic24_story; config-settings_fix_lands_with_21.24
+2026-11-16T06:07:57Z	Epic 24	owner_decision_applied	id=U-45 effect=epics.md_24.8_24.9_amended_same_instance_only,remote_profiles_to_exclusion_register_in_24.8 applied_by=runner
