@@ -13219,3 +13219,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Nine InteropSessionsBy*/Related classes declare FIELDS=SessionId,...,Errors and ENDPOINTS=Sessions; an abstract session-search class would hold them once (Rule 31, weak reason: spec makes each a declaration).
 - 2026-11-16T05:16:35Z status=wontfix-accepted owner=24-4-the-agent-gains-the-harvested-tools-and-undo by=cr note=reopen_if=a session row column is added and the nine FIELDS literals must each change
+
+### DW-2634: Guarded storage methods (Kernel.State SetGuarded, Policy.GuardedApply) take OcuPilot's protected role for any caller and check no privilege, so code a %Development holder runs (e.g. the vendor web terminal) can rewrite the kill switch or governance keys without OcuPilotAdmin
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess pins the escalation; Api/Governance checks IsAdministrator above GuardedApply; end-to-end non-admin rewrite not yet run
+- 2026-11-16T06:06:00Z status=escalated owner=burndown by=harvest note=security; found at 24.6 plan; out of Epic 24 footprint (Kernel/State, AD-9); for the orchestrator and the decision sheet
