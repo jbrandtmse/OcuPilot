@@ -318,3 +318,4 @@
 2026-11-16T06:44:07Z	Story 21.30	story_created	spawn_at=2026-11-16T06:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md build_status=ready-for-dev
 2026-11-16T06:44:07Z	Story 21.30	ad_amended	ad=AD-9 marker=[AMENDED_2026-11-16,Story_21.30,owner_answer_U-79,DW-2634] mode=comply_first_U7 asked=orchestrator lint_spine=ok
 2026-11-16T06:44:07Z	Story 21.30	spec_validated	service_introducing=false integration_ac=present(end-to-end_repro_first) adr_constrained_acs=AD-9,AD-15,AD-8 owned_ledger=DW-2634(epic24) addressed=1 filed=DW-2638(high),DW-2639(low) mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T06:44:26Z	Story 21.30	stage_spawned	stage=implement spawn_at=2026-11-16T06:44:26Z model=sonnet agent_name=21-30-implement-1 cycle_iteration=1 story_base=8f0a87723
