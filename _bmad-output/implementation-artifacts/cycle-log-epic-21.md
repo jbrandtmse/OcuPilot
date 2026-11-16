@@ -295,3 +295,4 @@
 2026-11-16T02:27:38Z	Story 21.6	ruling	question=plan_intent_gap_too_large choice=split(21.6_statements+purge,21.25_rebuild+tune,21.26_stats,21.27_analyzer,21.28_alt_plans,21.29_reports) rejected=one_story,batches why=size;five_backing_shapes;owner-gated_reports category=decide policy=b9ff703e split_children=5_of_6
 2026-11-16T02:27:38Z	Story 21.6	plan_clarification_requested	condition=AD-51_entry(c1)+AD-10_OCUPILOTSQL_arm(c2) via=orchestrator status_reset=draft
 2026-11-16T02:27:38Z	Epic 21	deps_hash_rerecorded	reason=split story=21.6->21.6,21.25..21.29 note=orchestrator_rerecords
+2026-11-16T02:28:44Z	Story 21.6	story_parked	stage=re-plan reason=owner_item_U-76(c1,c2) category=park code=none note=reads_and_purges_may_plan_first(purge_also_needs_c1_PURGE_type;deferred_to_answer)
