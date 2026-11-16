@@ -321,3 +321,6 @@
 2026-11-16T06:44:26Z	Story 21.30	stage_spawned	stage=implement spawn_at=2026-11-16T06:44:26Z model=sonnet agent_name=21-30-implement-1 cycle_iteration=1 story_base=8f0a87723
 2026-11-16T06:44:47Z	Story 21.13	cr_complete	spawn_at=2026-11-16T06:46:00Z model=opus resolved=11 fixed_at_source=11 deferred=1 dismissed=11 high=2(AD-59_create_script_free-name,AD-16_catch_restore;patched) med=3 low=7 rows=31 unresolved_high_med=1(DW-2637_decision-pending) final=done cycle_iteration=1 commit=a98b9ef9c
 2026-11-16T06:46:43Z	Story 21.24	ci_resolved	story=21.24 sha=6a5bcf05f(staging/OCU-1-21.24) runs=43814889321 result=success failed=none via=none
+2026-11-16T07:24:02Z	Story 21.30	dev_complete	spawn_at=2026-11-16T06:49:00Z model=sonnet build_sha=3df69e648 baseline_revision=36946493f task0=attack_landed(run25) followup_review_recommended=false deferred=0 cycle_iteration=1 mutations=7
+2026-11-16T07:24:02Z	Story 21.30	ruling	question=QA_stage_for_urgent_security_fix choice=fold_QA_into_CR(verification-gap)+implement's_7_mutations rejected=separate_QA why=U-79_priority;Epic_24_critical_path;tests_and_mutations_present category=decide policy=b9ff703e
+2026-11-16T07:24:02Z	Story 21.30	stage_spawned	stage=code-review spawn_at=2026-11-16T07:24:02Z model=opus agent_name=21-30-code-review-1 cycle_iteration=1
