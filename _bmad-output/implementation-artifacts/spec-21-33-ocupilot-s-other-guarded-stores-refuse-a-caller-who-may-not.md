@@ -214,6 +214,13 @@ Rejected or closed at emission:
   - `[false]` `[reject]` (intent-alignment) Public saves are stricter than the owner reading - the spec and the AD-9 amendment say the public saves serve an administrator only for every OWNERWRITE store; an owner uses its store's writers.
   - `[low]` `[reject]` (intent-alignment) Turn, Conversation and Preference are not in this diff - the Pass Scope assigns them to Batches 2 and 3.
 
+### 2026-11-16 - DW-2664 (Batch 1 rework)
+
+- closed: DW-2664. Measured on `ocupilot-ci`. The retention task runs as the account that saved it, `irisowner` on the throwaway (`_SYSTEM` on `ocupilot`, read-only `SELECT`), which holds `%All`; a forced run succeeded and purged an aged ledger row. An administrator holding `OcuPilotAdmin` without `%All` passes the target-key step and the purge. A first install by a non-`%All` account failed: the grant leaves its process without the role, and `GuardedRebuildTargetKeys` refused `822` before reading, on a store with nothing to key.
+- fix: `GuardedRebuildTargetKeys` reads the keyless rows first and checks the administrator only when one needs a key. A run that writes still serves an administrator only, so no AD text changes. Decided in-stage: the escalated read now precedes the check; reads are ungated in this story.
+- residual (inference): an upgrade from a release before the target key (1.0.13 or earlier) by an account granted the role in that same install still refuses at that step; a second install passes.
+- `StoreOwnerWrite`'s rebuild leg seeded no keyless row (the `TargetRef` change recomputed the key), so it now nulls the key in a second statement and asserts it.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -389,6 +396,12 @@ mutation: the administrator bypass removed from `OwnerWriteRefused` -> seven tes
 mutation: an administrator gate added to `Propose.GuardedDeleteForTurn` -> `TestTheOpenPathsStillWork` red alone, the turn reserve's sweep (code review, run 96); reverted, `Propose.cls` byte-identical, reloaded.
 
 **Code review re-run** (2026-11-16, after the review patches, `ocupilot-ci`, one class per call, `LOADERRORS=0`): StoreOwnerWrite 14 (run 97), AdminStateWrite 7 (98), AgentState 13 (99), AgentWire 18 (77), AgentCredential 17 (79), ProposalConfirm 24 (80), ProposalRace 6 (81), ProposalWire 17 (82), DeveloperFloorTurn 1 (83), LedgerWire 6 (84), Ledger 11 (85), State 12 (86), ProposalClose 7 (87), Installer 27 (88), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
+
+**DW-2664** (2026-11-16, fresh `ocupilot-ci`, `LOADERRORS=0`): new `AdminPathWrite` (3 tests, probe `AdminPathProbe`) green (runs 1, 5); StoreOwnerWrite 14 (run 9), AdminStateWrite 7 (10), Retention 10 (11), Ledger 11 (12), Installer 27 (13), PortGate 4 (14), ProposalTargetKey 7 (15), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
+mutation: `GuardedRebuildTargetKeys` checks the administrator before it reads (Batch 1's order) -> `TestAFirstInstallWithoutAllPassesTheTargetKeyStep` red alone (run 2); reverted, `Propose.cls` byte-identical (md5 `1b6c8967...`), reloaded.
+mutation: `Ledger.GuardedPurgeBefore` also requires `%All` -> `TestAnAdministratorWithoutAllKeysProposalsAndPurgesTheLedger` red alone (run 3); reverted, `Ledger.cls` byte-identical (md5 `a0519a84...`), reloaded.
+mutation: `Ledger.GuardedPurgeBefore` refuses every caller -> `TestTheRetentionTaskPurgesTheLedgerAsItsOwnUser` and the administrator test red (run 4); reverted, byte-identical, reloaded.
+mutation: `GuardedRebuildTargetKeys` drops its administrator check -> `StoreOwnerWrite.TestADeveloperIsRefusedAVictimsLedgerAndProposalRows` red alone, the rebuild leg (run 8); reverted, `Propose.cls` byte-identical, reloaded.
 
 ## Auto Run Result
 

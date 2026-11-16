@@ -619,10 +619,13 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
 /// <p>A proposal minted before the key existed has none, and the sibling cancel in
 /// <method>GuardedClaimAndClose</method> does not find it until this has run; the index definition
 /// also changed, so the build is what removes the entries the old definition left.</p>
+/// <p>A run with a row to write serves an administrator only and refuses anyone else
+/// <code>$$$AccessDenied</code> before it writes. A run that finds none answers OK for any caller,
+/// so an install whose installer was granted <code>OcuPilotAdmin</code> by that same install, which
+/// does not change its running process, passes on an empty store.</p>
 ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
 {
     Set pChanged = 0
-    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedRowsNoParam("SELECT ID, TargetRef FROM OcuPilot_Kernel_State.Proposal WHERE TargetKey IS NULL ORDER BY ID", .tRows)
@@ -635,6 +638,10 @@ ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
             Set tKeys(tCount) = $ListBuild(tRows(tI, 1), ..TargetLockKey(tRef))
         }
         If tCount = 0 Quit
+        If '..CallerIsAdministrator() {
+            Set tSC = $$$ERROR($$$AccessDenied)
+            Quit
+        }
         Set tSC = ..GuardedBuildIndices($ListBuild("ProposalTargetIdx"))
         If $$$ISERR(tSC) Quit
         For tI = 1:1:tCount {

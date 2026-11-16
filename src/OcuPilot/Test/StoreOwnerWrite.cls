@@ -197,8 +197,9 @@ Method TestADeveloperIsRefusedAVictimsLedgerAndProposalRows()
         If '..SeedVictim(.tProposalKey, .tLedgerKey) Quit
         If tKind [ "GuardedExpireStale" Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).AgeExpiry(tProposalKey, 3600), "the victim's proposal has lapsed, so an expiry would change it")
         If tKind = "Propose.GuardedRebuildTargetKeys" {
-            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET TargetRef = ?, TargetKey = NULL WHERE %EXACT(ProposalKey) = ?", ..#TARGET, tProposalKey)
-            Do $$$AssertTrue(tRS.%SQLCODE >= 0, "the victim's proposal names a target and carries no key, so a rebuild would change it")
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET TargetRef = ? WHERE %EXACT(ProposalKey) = ?", ..#TARGET, tProposalKey)
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET TargetKey = NULL WHERE %EXACT(ProposalKey) = ?", tProposalKey)
+            Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT TargetRef || '|' || NVL(TargetKey, '') FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ProposalKey) = '" _ tProposalKey _ "'"), ..#TARGET _ "|", "the victim's proposal names a target and carries no key, so a rebuild would change it")
         }
         Set tBefore = ..VictimState()
         Set tVersion = ##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT RowVersion FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "'")
