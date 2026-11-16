@@ -66,6 +66,7 @@ const {
   CONSEQUENCE_BACKUPRUN,
   CONSEQUENCE_BACKUPFREEZE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
+  CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
@@ -1166,6 +1167,19 @@ test('Story 21.3: a setting that takes effect at the next restart states the res
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGRESTART, 'ConfigSettingSet.cls declares the code the card reads');
   for (const name of ['StartupSettingSet', 'MemorySettingSet', 'CompatibilitySettingSet']) {
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 21.13: a DDL mapping's delete states the delete sentence on the card, under the code the abstract delete tool declares, which both
+// delete tools inherit.
+// Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGMAPPINGDELETE` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.13: a DDL mapping delete states the delete sentence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGMAPPINGDELETE), STRINGS.configMappingDelete);
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGMAPPINGDELETE), 'DDL that names this type no longer maps it to this datatype.');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('DdlMappingDelete'))?.[1], CONSEQUENCE_CONFIGMAPPINGDELETE, 'DdlMappingDelete.cls declares the code the card reads');
+  for (const name of ['DdlSystemMappingDelete', 'DdlUserMappingDelete']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.DdlMappingDelete/.test(tool(name)), `${name} inherits the code`);
   }
 });
 

@@ -287,9 +287,9 @@ Method TestAnAreaHolderKeepsOsManagementAndIsRefusedTheServers()
     Set tEcpSettings = $ListFind(tRefused, "os-management/ecp-settings=%Admin_Secure:USE")
     Do $$$AssertTrue(tEcpSettings > 0, "ECP settings is refused on its own pair, %Admin_Secure:USE: " _ $ListToString(tRefused, " "))
     If tEcpSettings Set tRefused = $List(tRefused, 1, tEcpSettings - 1) _ $List(tRefused, tEcpSettings + 1, *)
-    ; Story 21.2's three Backup screens declare %DB_IRISSYS:WRITE as their own pair, which this principal
-    ; does not hold.
-    For tBackup = "backup-tasks", "backup-history", "backup-databases" {
+    ; Story 21.2's three Backup screens and Story 21.12's Mirror monitor declare %DB_IRISSYS:WRITE as their own pair, which
+    ; this principal does not hold.
+    For tBackup = "backup-tasks", "backup-history", "backup-databases", "mirror-monitor" {
         Set tBackupAt = $ListFind(tRefused, "os-management/" _ tBackup _ "=%DB_IRISSYS:WRITE")
         Do $$$AssertTrue(tBackupAt > 0, "the Backup screen " _ tBackup _ " is refused on its own pair, %DB_IRISSYS:WRITE: " _ $ListToString(tRefused, " "))
         If tBackupAt Set tRefused = $List(tRefused, 1, tBackupAt - 1) _ $List(tRefused, tBackupAt + 1, *)

@@ -349,7 +349,7 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the editor, whi
 // settings reads open and its assertion goes red; grant it `%Admin_Secure:U` -> ECP settings reads open
 // and its assertion goes red, and so does Compatibility settings'. Grant it `%DB_IRISSYS:W` -> the three Backup screens read open and their per-screen
 // assertions go red.
-test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable naming that pair, Journal settings naming %Admin_Journal:USE, ECP settings and Compatibility settings naming %Admin_Secure:USE and the three Backup screens naming %DB_IRISSYS:WRITE, and no other', async () => {
+test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable naming that pair, Journal settings naming %Admin_Journal:USE, ECP settings and Compatibility settings naming %Admin_Secure:USE and the three Backup screens and the Mirror monitor naming %DB_IRISSYS:WRITE, and no other', async () => {
   const { context, page } = await signedInAt(browser, { ...config, username: PRINCIPAL, password: PRINCIPAL_PASSWORD }, '/ocupilot/os-management/processes?ns=HSCUSTOM', VIEWPORTS.wide);
   try {
     await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaOsManagement}"]`);
@@ -378,8 +378,8 @@ test('AC5: a holder of OS management\'s pairs without the own pair sees External
     const compatibility = `${STRINGS.compatibilitySettingsLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', ECP_SETTINGS_PAIR)}`;
     assert.ok(refused.includes(compatibility), `Compatibility settings is unavailable on its own pair, ${ECP_SETTINGS_PAIR}: ${JSON.stringify(entries)}`);
     refused.splice(refused.indexOf(compatibility), 1);
-    // Story 21.2's three Backup screens declare `%DB_IRISSYS:WRITE`, which this principal does not hold.
-    for (const label of [STRINGS.backupTasksLabel, STRINGS.backupHistoryLabel, STRINGS.backupDatabasesLabel]) {
+    // Story 21.2's three Backup screens and Story 21.12's Mirror monitor declare `%DB_IRISSYS:WRITE`, which this principal does not hold.
+    for (const label of [STRINGS.backupTasksLabel, STRINGS.backupHistoryLabel, STRINGS.backupDatabasesLabel, STRINGS.mirrorMonitorLabel]) {
       const backup = `${label}: ${STRINGS.privilegeRequiresResource.replace('<resource>', BACKUP_PAIR)}`;
       assert.ok(refused.includes(backup), `${label} is unavailable on its own pair, ${BACKUP_PAIR}: ${JSON.stringify(entries)}`);
       refused.splice(refused.indexOf(backup), 1);
@@ -387,7 +387,7 @@ test('AC5: a holder of OS management\'s pairs without the own pair sees External
     assert.deepEqual(
       refused,
       [`${STRINGS.languageServersLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', OWN_PAIR)}`],
-      `apart from Journal settings, ECP settings, Compatibility settings and the Backup screens, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
+      `apart from Journal settings, ECP settings, Compatibility settings, the Backup screens and the Mirror monitor, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
     );
     assert.ok(entries.filter((entry) => !entry.disabled).length >= 9, 'while the other OS management entries stay open');
   } finally {

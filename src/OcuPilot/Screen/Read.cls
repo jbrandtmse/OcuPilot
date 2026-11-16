@@ -318,6 +318,17 @@ ClassMethod ConfigPortClass() As %String
     Quit "OcuPilot.Port.ConfigPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's mirror members, and the mirror state a banner reads, read through
+/// <method>MirrorPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.12).</p>
+Parameter SOURCEMIRROR = "mirror";
+
+/// <p>The port every <b>mirror</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod MirrorPortClass() As %String
+{
+    Quit "OcuPilot.Port.MirrorPort"
+}
+
 /// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics or its
 /// interoperability usage, read through <method>MonitorPortClass</method> behind that port's own gate,
 /// with no namespace and no criteria (AD-29, AD-36).</p>
@@ -475,7 +486,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG, ..#SOURCEMIRROR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -698,6 +709,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; The instance's startup, memory or compatibility settings (Story 21.3): no namespace and no criteria, so the cap is
             ; the whole ask; the port's gate runs before any vendor call (AD-36).
             Set tPortSC = $ClassMethod(..ConfigPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEMIRROR {
+            ; The instance's mirror members (Story 21.12): no namespace and no criteria, so the cap is the whole ask; the port's gate
+            ; runs before any vendor call (AD-36).
+            Set tPortSC = $ClassMethod(..MirrorPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
@@ -1374,7 +1393,7 @@ ClassMethod BannerKey(pDescriptor As %String, Output pRequires As %String) As %S
         Set tSource = tBanner.%Get("source")
         If '$IsObject(tSource) Quit
         Kill tQuery
-        Set tBannerPort = $Select(tSource.%Get("port") = ..#SOURCEBACKUP: ..BackupPortClass(), 1: ..PortClass())
+        Set tBannerPort = $Select(tSource.%Get("port") = ..#SOURCEBACKUP: ..BackupPortClass(), tSource.%Get("port") = ..#SOURCEMIRROR: ..MirrorPortClass(), 1: ..PortClass())
         Set tPortSC = $ClassMethod(tBannerPort, "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         If $$$ISERR(tPortSC) Quit
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit

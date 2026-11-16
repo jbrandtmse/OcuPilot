@@ -331,6 +331,8 @@ const KERNEL_REFUSALS = [
   // Story 18.40: the SSL/TLS configuration the egress row names for provider calls, whose delete, a create under its name
   // and a change to its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement either caller is answered with.
   ['PROVIDERSSL', 'sslRefusalProviderNamed'],
+  // Story 21.12: removing a mirror together with taking its databases out of mirroring, which either caller is refused before any vendor call.
+  ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

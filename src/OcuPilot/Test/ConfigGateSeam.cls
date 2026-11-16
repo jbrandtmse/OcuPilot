@@ -5,7 +5,7 @@
 /// ISQL and TSQL writes and the purge of the cached queries are recorded the same way (<method>SendNode</method>,
 /// <method>SendTsql</method>, <method>PurgeCachedQueries</method>), the stored TSQL dialect a flag set passes on is the one
 /// <method>HoldDialect</method> names, and <method>PurgeFails</method> makes the purge answer an error. <method>WriteThrough</method> makes
-/// <method>SendProperties</method> make its call after recording it. Nothing else differs from the shipped port.</p>
+/// <method>SendProperties</method> make its call after recording it; the DDL mapping entry calls (<method>SendEntry</method>, <method>CreateEntry</method>, <method>DeleteEntry</method>) are recorded and made through alike, and <method>HoldEntry</method> makes a named entry read as held. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ConfigGateSeam Extends OcuPilot.Port.ConfigPort
 {
@@ -19,7 +19,7 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough
+    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough
 }
 
 /// <p>Make <method>StoredDialect</method> answer <var>pDialect</var> (possibly empty) until <method>Reset</method>.</p>
@@ -93,6 +93,105 @@ ClassMethod SendProperties(pClass As %String, pName As %String, ByRef pProps) As
     If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
     If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pClass, pName, .pProps)
     Quit $$$OK
+}
+
+/// <p>The entry calls <method>SendEntry</method>, <method>CreateEntry</method> and <method>DeleteEntry</method> recorded, as
+/// <code>operation|class|name|datatype</code> (the datatype is empty for a delete), comma-joined.</p>
+ClassMethod Entries() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotConfigEntries(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ ^||OcuPilotConfigEntries(tI)
+    }
+    Quit tOut
+}
+
+/// <p>The property keys the last recorded <method>SendEntry</method> was given, comma-joined, or <code>""</code> when none was recorded.</p>
+ClassMethod SentEntryKeys() As %String
+{
+    Quit $Get(^||OcuPilotConfigEntryKeys)
+}
+
+ClassMethod SendEntry(pClass As %String, pName As %String, ByRef pProps) As %Status [ Private ]
+{
+    Set tKeys = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pProps(tKey))
+        If tKey = "" Quit
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Set ^||OcuPilotConfigEntryKeys = tKeys
+    Set ^||OcuPilotConfigEntries($Increment(^||OcuPilotConfigEntries)) = "MODIFY|" _ pClass _ "|" _ pName _ "|" _ $Get(pProps("Datatype"))
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pClass, pName, .pProps)
+    Quit $$$OK
+}
+
+ClassMethod CreateEntry(pClass As %String, pName As %String, ByRef pProps) As %Status [ Private ]
+{
+    Set ^||OcuPilotConfigEntries($Increment(^||OcuPilotConfigEntries)) = "CREATE|" _ pClass _ "|" _ pName _ "|" _ $Get(pProps("Datatype"))
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pClass, pName, .pProps)
+    Quit $$$OK
+}
+
+ClassMethod DeleteEntry(pClass As %String, pName As %String) As %Status [ Private ]
+{
+    Set ^||OcuPilotConfigEntries($Increment(^||OcuPilotConfigEntries)) = "DELETE|" _ pClass _ "|" _ pName _ "|"
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pClass, pName)
+    Quit $$$OK
+}
+
+/// <p>Make a read of the named entry <var>pName</var> answer a row holding the datatype <var>pDatatype</var> until <method>Reset</method>,
+/// whether or not the instance holds it, so a test sees the refusals and the calls of an entry it never creates.</p>
+ClassMethod HoldEntry(pName As %String, pDatatype As %String, pExtraKey As %String = "")
+{
+    Set ^||OcuPilotConfigHeld(pName) = pDatatype
+    If pExtraKey '= "" Set ^||OcuPilotConfigHeldExtra(pName) = pExtraKey
+}
+
+/// <p>The codes <method>LogFault</method> was given since <method>Reset</method>, comma-joined; the raw status is still logged as shipped.</p>
+ClassMethod Faults() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotConfigFaults(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ ^||OcuPilotConfigFaults(tI)
+    }
+    Quit tOut
+}
+
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set ^||OcuPilotConfigFaults($Increment(^||OcuPilotConfigFaults)) = pCode _ "|" _ $Select($$$ISERR(pStatus): "error", 1: "ok")
+    Do ##super(pMessage, pStatus, pCode)
+}
+
+ClassMethod CollectNamed(pClass As %String, pName As %String, ByRef pData) As %Status [ Private ]
+{
+    If (pName '= "") && $Data(^||OcuPilotConfigHeld(pName)) {
+        Set pData(pName) = $ListBuild(^||OcuPilotConfigHeld(pName), ..DatatypeLimits(), 0, 0, 0)
+        Quit $$$OK
+    }
+    Quit ##super(pClass, pName, .pData)
+}
+
+ClassMethod ReadEntry(pClass As %String, pName As %String, Output pProps) As %Status [ Private ]
+{
+    If $Data(^||OcuPilotConfigHeld(pName)) {
+        Kill pProps
+        Set pProps("Datatype") = ^||OcuPilotConfigHeld(pName)
+        If $Get(^||OcuPilotConfigHeldExtra(pName)) '= "" Set pProps(^||OcuPilotConfigHeldExtra(pName)) = "kept"
+        Quit $$$OK
+    }
+    Quit ##super(pClass, pName, .pProps)
 }
 
 ClassMethod StoredDialect() As %String

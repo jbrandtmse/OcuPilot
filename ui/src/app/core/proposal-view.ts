@@ -412,6 +412,8 @@ export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGPURGE = 'CONFIG.SETTING.PURGE';
+/** Story 21.13: a DDL mapping's deletion; one published sentence. */
+export const CONSEQUENCE_CONFIGMAPPINGDELETE = 'CONFIG.MAPPING.DELETE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -536,6 +538,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_CONFIGSETTINGRESTART) return STRINGS.encryptionStartupRestart;
   // Story 21.4: a SQL setting whose change purges the cached queries, published once.
   if (code === CONSEQUENCE_CONFIGSETTINGPURGE) return STRINGS.configSettingPurge;
+  if (code === CONSEQUENCE_CONFIGMAPPINGDELETE) return STRINGS.configMappingDelete;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;

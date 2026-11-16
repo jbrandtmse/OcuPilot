@@ -275,7 +275,12 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.sqlsettings.set": true,
   "osmgmt.sqlshellsettings.set": true,
   "osmgmt.tsqlsettings.set": true,
-  "osmgmt.isqlsettings.set": true
+  "osmgmt.isqlsettings.set": true,
+  "osmgmt.systemddlmappings.set": true,
+  "osmgmt.systemddlmappings.delete": false,
+  "osmgmt.userddlmappings.create": true,
+  "osmgmt.userddlmappings.set": true,
+  "osmgmt.userddlmappings.delete": false
 }
 }
 

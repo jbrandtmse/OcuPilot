@@ -326,9 +326,7 @@ ClassMethod RecordMarking(pMarked As %Boolean) As %Status
     Set tSC = $$$OK
     Try {
         If ..WritesMarked() = ''pMarked Quit
-        Kill tValues
-        Set tValues("writesMarked") = ''pMarked
-        Set tSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues)
+        Set tSC = ##class(OcuPilot.Kernel.State.Switch).GuardedRecordWritesMarked(''pMarked)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

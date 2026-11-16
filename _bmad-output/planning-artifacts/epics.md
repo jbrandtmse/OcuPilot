@@ -9259,6 +9259,8 @@ So that the last of the Explorer's data surfaces exists.
 
 ### Story 21.6: The SQL tuning track
 
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] The plan inventoried 10 leaves against the instance. This story keeps the statement index and its details (freeze, unfreeze, clear statistics, clear plan error, clean stale) and the cached-query purge for a namespace, a table or one query; index rebuild and tune table move to Story 21.25, runtime statistics to Story 21.26, the index analyzer and its advice to Story 21.27, alternate show plans to Story 21.28 and the troubleshooting reports to Story 21.29, each planned after this story in that order. The first criterion is split verbatim across them by leaf; the second across this story, 21.26, 21.27 and 21.28, each adding its own read, and the workflow stays read-only.
+
 As a developer diagnosing a slow query,
 I want the statement index, tune table, index analyzer, runtime statistics and alternate plans,
 So that performance work has a home.
@@ -9429,6 +9431,10 @@ So that the last of the Explorer's data surfaces exists.
 
 [AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
 
+[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password each need an architecture record no owner answer covers; they move to Story 21.21 and wait for the owner. This story builds the rest.
+
+[AMENDED 2026-11-16, owner answer U-70, "A: all three + mask (Recommended)", Rule 5] The three records are written; resource export and import, a task's output file and the Task Manager mail password return to this story. The audit mask is Story 21.24's.
+
 As a developer-administrator,
 I want the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy,
 So that no area has a remaining gap.
@@ -9465,6 +9471,10 @@ So that no area has a remaining gap.
 [AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
 
 [AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
+
+[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password join this story from Story 21.19. Each waits for the owner on the record it needs; until then they are not planned.
+
+[AMENDED 2026-11-16, owner answers U-70 and U-74, Rule 5] Those three return to Story 21.19 (U-70). The custom resource on a classic menu item is built with its AD-44 and AD-64 records (U-74).
 
 As a developer-administrator,
 I want a custom resource on a classic menu item and an Operate-only dismount,
@@ -9526,6 +9536,131 @@ So that no area has a remaining gap.
 - DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 - DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 
+
+### Story 21.24: The Task Manager mail password is masked in OcuPilot's audit read
+
+[AMENDED 2026-11-16, orchestrator ruling U-71, fix-forward under AD-35, Rule 5] Measured on a throwaway (DW-2625): the vendor writes the Task Manager mail password, Base64-encoded, into a ConfigurationChange audit row, and OcuPilot's audit read shows it. AD-35 already requires the mask, so this is a defect fix, not an amendment.
+
+As an administrator,
+I want a secret the vendor writes into an audit row masked wherever OcuPilot shows that row,
+So that reading the audit log never exposes the Task Manager mail password.
+
+**Acceptance Criteria:**
+
+- **Given** the Task Manager mail password set, changed or cleared
+- **When** the audit screen or the agent's audit read tool reads the row
+- **Then** both the old and the new value read masked, while the audit database still holds what the vendor wrote.
+
+- **Given** the other vendor setters that write a secret into an audit row the same way
+- **When** they are searched for
+- **Then** each is masked by the same declaration or ledgered.
+
+- DW-2625: The Task Manager mail password reaches a ConfigurationChange audit row OcuPilot shows unmasked (measured; ledger; routed by orchestrator ruling U-71)
+
+
+### Story 21.25: Index rebuild and tune table
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want to rebuild a table's indices and tune a table,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** index rebuild and tune table
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 21.26: Runtime statistics
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want runtime statistics,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** runtime statistics
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.27: The index analyzer and its advice
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want the index analyzer and its advice,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the index analyzer with its advice
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.28: Alternate show plans
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want alternate show plans,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** alternate show plans
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.29: Troubleshooting reports
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want the troubleshooting reports,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the troubleshooting reports
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+
+### Story 21.30: OcuPilot's guarded storage refuses a caller that is not an administrator
+
+[AMENDED 2026-11-16, owner answer U-79, "A: fix story now (Recommended)", fix-forward, Rule 5] DW-2634 (filed in Epic 24's ledger at Story 24.6's plan): `Kernel.State` `SetGuarded` and `Policy.GuardedApply` take OcuPilot's protected role for any caller and check no privilege of their own, so code a `%Development` holder runs directly can rewrite the kill switch or a governance key without being an OcuPilot administrator. Ordered straight after Story 21.24.
+
+As an administrator,
+I want OcuPilot's protected state written only by an OcuPilot administrator, whatever path the code runs on,
+So that the kill switch and governance keys cannot be rewritten by someone who only holds development rights.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code calls the guarded storage methods to rewrite the kill switch or a governance key
+- **Then** the attack is reproduced end to end first and its result recorded; if it fails end to end, the story reports back before anything is built.
+
+- **Given** the attack reproduced
+- **When** the fix lands
+- **Then** the same call is refused and changes nothing, an OcuPilot administrator's write still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
+
+- DW-2634: Guarded storage methods take OcuPilot's protected role for any caller and check no privilege (Epic 24's ledger; routed by owner answer U-79)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
@@ -9542,7 +9677,7 @@ So that a future decision to build one is made against evidence rather than agai
 
 - **Given** the 56 excluded rows
 - **When** they are recorded
-- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
 
 - **Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 - **When** the register is read

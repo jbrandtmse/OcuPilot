@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-16-2026 10:51'
+last_updated: '11-16-2026 11:06 UTC'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -395,19 +395,26 @@ development_status:
   21-4-nls-locales-and-sql-settings: done
   21-5-globals-and-the-data-tools: ready-for-dev
   21-6-the-sql-tuning-track: backlog
-  21-10-the-remaining-leaves-across-the-six-areas: backlog
-  21-12-mirroring: ready-for-dev
-  21-13-ddl-mappings: ready-for-dev
+  21-10-the-remaining-leaves-across-the-six-areas: ready-for-dev
+  21-12-mirroring: done
+  21-13-ddl-mappings: done
   21-14-nls-configured-defaults-and-locale-definitions: ready-for-dev
   21-15-locale-and-table-import: ready-for-dev
   21-16-custom-locales: ready-for-dev
   21-17-global-export-and-import: ready-for-dev
   21-18-global-find-and-replace: ready-for-dev
-  21-19-shell-advisor-permission-and-task-leaves: backlog
+  21-19-shell-advisor-permission-and-task-leaves: ready-for-dev
   21-20-os-management-and-log-leaves: ready-for-dev
-  21-21-leaves-that-wait-on-the-owner: backlog
-  21-22-ci-flake-hardening: backlog
+  21-21-leaves-that-wait-on-the-owner: ready-for-dev
+  21-22-ci-flake-hardening: ready-for-dev
   21-23-test-hygiene-and-contended-client-fixes: backlog
+  21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
+  21-25-index-rebuild-and-tune-table: backlog
+  21-26-runtime-statistics: backlog
+  21-27-the-index-analyzer-and-its-advice: backlog
+  21-28-alternate-show-plans: backlog
+  21-29-troubleshooting-reports: backlog
+  21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done
   epic-21-retrospective: optional
 
   epic-22: done
