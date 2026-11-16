@@ -3,7 +3,7 @@
 /// <code>%Ens_MessageContent:USE</code> runs a real turn job against the armed <code>turnprobe</code> row. The turn calls
 /// <code>interop_sessions_bysource</code> for a session this class plants, then <code>interop_message_body</code> for that session's
 /// header: the first answers its row inside the <code>&lt;ocupilot-data&gt;</code> frame the model reads, and the second is refused
-/// <code>AUTH.NOPRIVILEGE</code> naming the content pair, and records no view. The turn completes.</p>
+/// <code>AUTH.NOPRIVILEGE</code> naming the content pair. The turn completes.</p>
 /// <p>The principal is <class>OcuPilot.Test.TurnWireFixture</class>'s, holding that fixture's
 /// <method>OcuPilot.Test.TurnWireFixture.Resources</method>(0) and a second role granting the viewer's pair, read back before the test
 /// runs. It needs both <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> armed; after the method no probe

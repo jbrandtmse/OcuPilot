@@ -3,7 +3,8 @@
 /// its canonical name with kind <code>read</code> and advertised under its wire name; a call through the dispatcher asks the governance
 /// gate once, with kind <code>read</code>, before any pair check, and answers the port's rows; a missing pair is refused
 /// <code>AUTH.NOPRIVILEGE</code> by name before the port is reached, the content pair on the detail and body reads in particular; an
-/// argument the schema refuses is refused <code>TOOL.ARGUMENTS</code>; the cap reports <code>truncated</code>; and a body read records
+/// argument the schema refuses is refused <code>TOOL.ARGUMENTS</code>; each window argument is passed on; the default row bounds are the
+/// described ones; the cap reports <code>truncated</code>; and a body read records
 /// one <code>ViewContents</code>.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropSessionRead</class> needs, and the vendor's audit event
 /// <code>%Ensemble/%Message/ViewContents</code> enabled with auditing on (the throwaway's default). The headers and the one body it stores
@@ -246,7 +247,9 @@ Method TestEachArgumentChangesWhatIsRead()
     Do $$$AssertTrue((tText [ ("""SessionId"":""" _ tS1 _ """")) && (tText [ ("""SessionId"":""" _ tS3 _ """")), "bystatus with two words: both the Error and the Discarded session: " _ $Extract(tText, 1, 300))
     Set tText = ..Ask("interop_sessions_byclass", {"className": (tSource), "match": "target"}, .tContent, .tIsError)
     Do $$$AssertEquals(tIsError _ "|" _ tContent.rows.%Size(), "0|0", "byclass match target: a name that is only a source finds nothing")
-    Set tText = ..Ask("interop_sessions_bysource", {"source": (tSource), "hours": 2}, .tContent, .tIsError)
+    Set tInput = {"source": (tSource), "hours": 2}
+    Do tInput.%Set("endDateTime", $ClassMethod(..#FIXTURE, "WindowEnd", ..PreparedIds), "string")
+    Set tText = ..Ask("interop_sessions_bysource", tInput, .tContent, .tIsError)
     Do $$$AssertEquals(tIsError _ "|" _ tContent.rows.%Size() _ "|" _ tContent.rows.%Get(0).SessionId, "0|1|" _ tS1, "bysource hours 2: the three-hour session is outside the window")
     Set tText = ..Ask("interop_sessions_bysource", {"source": (tSource)}, .tContent, .tIsError)
     Do $$$AssertEquals(tIsError _ "|" _ tContent.rows.%Size(), "0|2", "bysource with no hours: the default day holds both")
@@ -254,6 +257,34 @@ Method TestEachArgumentChangesWhatIsRead()
     Do tInput.%Set("endDateTime", $ClassMethod(tFixture, "LocalSecond", $List(..PreparedIds, 3)), "string")
     Set tText = ..Ask("interop_sessions_bysource", tInput, .tContent, .tIsError)
     Do $$$AssertEquals(tIsError _ "|" _ tContent.rows.%Size() _ "|" _ tContent.rows.%Get(0).SessionId, "0|1|" _ tS2, "bysource endDateTime: the window ends at the three-hour header")
+    Set tInput = {"session": (tS1)}
+    Do tInput.%Set("endDateTime", $ClassMethod(tFixture, "LocalSecond", tS1), "string")
+    Set tText = ..Ask("interop_session_timeline", tInput, .tContent, .tIsError)
+    Do $$$AssertEquals(tIsError _ "|" _ tContent.rows.%Size() _ "|" _ tContent.rows.%Get(0).ID, "0|1|" _ tS1, "session.timeline endDateTime: to the first header")
+    Set tS2Text = """SessionId"":""" _ tS2 _ """"
+    For tCase = "interop_sessions_bytime|{}", "interop_sessions_bystatus|{""status"":[""Completed""]}", "interop_sessions_bytarget|{""target"":""%MOp""}", "interop_sessions_bybodyclass|{""bodyClass"":""Ens.StringResponse""}", "interop_sessions_byclass|{""className"":""%MSvc""}" {
+        Set tWire = $Piece(tCase, "|", 1)
+        Set tInput = ##class(%DynamicAbstractObject).%FromJSON($Replace($Piece(tCase, "|", 2), "%M", ..PreparedMarker))
+        Do tInput.%Set("hours", 2, "number")
+        Do tInput.%Set("maxRows", 100, "number")
+        Do tInput.%Set("endDateTime", $ClassMethod(..#FIXTURE, "WindowEnd", ..PreparedIds), "string")
+        Set tText = ..Ask(tWire, tInput, .tContent, .tIsError)
+        Do $$$AssertTrue('tIsError && (tText '[ tS2Text), tWire _ " hours 2: the three-hour session is outside the window: " _ $Extract(tText, 1, 300))
+        Do tInput.%Set("hours", 1, "number")
+        Do tInput.%Set("maxRows", $Select(tWire = "interop_sessions_byclass": 100, 1: 500), "number")
+        Do tInput.%Set("endDateTime", $ClassMethod(tFixture, "LocalSecond", tS2), "string")
+        Set tText = ..Ask(tWire, tInput, .tContent, .tIsError)
+        Do $$$AssertTrue('tIsError && (tText [ tS2Text), tWire _ " endDateTime: a window ending at the three-hour header holds its session: " _ $Extract(tText, 1, 300))
+    }
+}
+
+/// <p>A call that names no <code>maxRows</code> reads the tool's default: 50, and 20 for the class search; and never more than the caller's
+/// context cap.</p>
+Method TestTheDefaultRowsAreTheDescribedOnes()
+{
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.InteropSessionsBySource", "RowLimit", {}, 1000), 50, "a search reads 50 rows by default")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.InteropSessionsByClass", "RowLimit", {}, 1000), 20, "the class search reads 20 by default")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.InteropSessionsBySource", "RowLimit", {"maxRows": 400}, 30), 30, "and no call reads more than the context cap")
 }
 
 /// <p>The cap reports itself: a search whose cap is one and that finds two sessions answers one row and <code>truncated</code> true, and

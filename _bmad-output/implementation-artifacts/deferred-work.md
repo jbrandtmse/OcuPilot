@@ -13194,3 +13194,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.10 plan leaf inventory; owner answer U-65 A
 - 2026-11-15T23:02:00Z status=by-design owner=21-21-leaves-that-wait-on-the-owner by=owner note=owner answer U-65 (A): by design
+
+### DW-2629: A port criterion refusal reaches the model as a bare PORT.VALIDATION code and the tool step as 'That tool could not be answered on this instance.'
+- source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: InteropPort.RefuseCriterion builds no detail.violations, so Dispatch.ErrorContent sends {code} alone; Api.Error.ReasonForToolCode has no PORT.VALIDATION branch and falls back to REASONTOOLUNAVAILABLE. Pre-existing for interop.messages.read; Story 24.4 adds six paths to it.
+- 2026-11-16T05:16:35Z status=decision-pending owner=burndown by=cr note=string:'One of the values the agent sent was refused.' for the step; plus detail.violations {field} per AD-39
+
+### DW-2630: Session searches GROUP BY every header in a window of up to 720 hours before TOP applies; the cost on a large header table is unmeasured
+- source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: (inference) ListSessions aggregates the whole ID range; byclass match any ORs three columns. Settle: time a 720-hour interop.sessions.bytime on a namespace holding ~1M headers.
+- 2026-11-16T05:16:35Z status=escalated owner=burndown by=cr note=unverified (maybe-false); measure before deciding a narrower default or a time bound
+
+### DW-2631: Session tool descriptions: three omit the per-header alternative, Step reads as the place in the session though it numbers the rows answered, detail names no rule-log tool
+- source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: byclass, bysupersession and related name no interop.messages.read or interop.session.headers (spec Design Notes Descriptions); ListSessionMessages numbers Step after errorsOnly and the time bounds.
+- 2026-11-16T05:16:35Z status=decision-pending owner=burndown by=cr note=string:append 'for one header per row use interop.session.headers.'; 'Step numbers the rows answered'; name 24.21's rule-log tool on detail
+
+### DW-2632: interop.message.detail fails whole when the body is not text, dropping the 23 header rows it read
+- source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: InteropMessageDetail.Fetch returns the contents read's 409 INTEROP.MESSAGE.CONTENTS; interop.messageheader.read still answers the header.
+- 2026-11-16T05:16:35Z status=wontfix-accepted owner=24-4-the-agent-gains-the-harvested-tools-and-undo by=cr note=reopen_if=a turn transcript where the agent cannot get a header because its body is binary
+
+### DW-2633: The nine session search tools each repeat the same FIELDS and ENDPOINTS literals instead of an intermediate base
+- source: spec-24-4-the-agent-gains-the-harvested-tools-and-undo.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Nine InteropSessionsBy*/Related classes declare FIELDS=SessionId,...,Errors and ENDPOINTS=Sessions; an abstract session-search class would hold them once (Rule 31, weak reason: spec makes each a declaration).
+- 2026-11-16T05:16:35Z status=wontfix-accepted owner=24-4-the-agent-gains-the-harvested-tools-and-undo by=cr note=reopen_if=a session row column is added and the nine FIELDS literals must each change

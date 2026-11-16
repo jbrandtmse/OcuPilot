@@ -187,6 +187,24 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24/` unless abs
 - AC4 (integration, Rule 1): Given an armed principal holding `MESSAGEPAIRS` and not `%Ens_MessageContent:USE`, and a real turn job on the stub provider, when the turn calls `interop_sessions_bysource` and then `interop_message_body`, then the first step carries the planted session's row inside `<ocupilot-data>`, and the second is refused `AUTH.NOPRIVILEGE` naming the content pair. The turn completes.
 - AC5: Given the shared rosters, when the suites run on a fresh throwaway in either order, then `ReadTool`, `ToolRoundTrip`, `ToolEmit`, `InteropFloor` and `ToolsFind` are green, and removing any one new row reddens its test alone.
 
+### Review Findings
+
+Code review 2026-11-15 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). High 0, medium 5, low 7, rejected 9.
+
+- [x] [Review][Patch] [med] Two-hour window legs depended on no foreign header in the last two hours (the lower ID bound) — the fixture now brackets one window with two session-less headers stored around H3, and every two-hour leg in `InteropSessionRead`, `InteropSessionTools` and `InteropSessionRoute` ends at `WindowEnd`.
+- [x] [Review][Patch] [med] The body-class searches (`bodyclass`, `class` with `match` body) were asserted with "contains" — exact `AssertEquals` on the ordered sessions.
+- [x] [Review][Patch] [med] `hours` and `endDateTime` carries of `bytime`, `bystatus`, `bytarget`, `bybodyclass`, `byclass` and the timeline's `endDateTime` were unpinned — two legs per tool and a timeline leg in `TestEachArgumentChangesWhatIsRead`.
+- [x] [Review][Patch] [low] The default row bounds (50, and 20 for `byclass`) were unpinned — `TestTheDefaultRowsAreTheDescribedOnes`.
+- [x] [Review][Patch] [low] The route's zero-view checks had no in-test control — `ViewControl` after each.
+- [x] [Review][Patch] [low] `SESSIONMESSAGESSQL` copied `TRACESQL` (Rule 31) — removed; `ListSessionMessages` reads `TRACESQL` without its `ORDER BY`.
+- [x] [Review][Patch] [low] Stale doc claims in `InteropInspect` (subclasses declare "nothing else"), `InteropSessionTurn` ("records no view"), `InteropSessionRoute` (`HOSTILE`, "six other reads") and `InteropSessionRead` (a header with no session id) — corrected.
+- [x] [Review][Defer] [med] A port criterion refusal reaches the model as a bare `PORT.VALIDATION` and the tool step as "That tool could not be answered on this instance." — DW-2629, decision-pending (string).
+- [x] [Review][Defer] [med, unverified] A 720-hour session search aggregates the whole window before `TOP` — DW-2630, escalated.
+- [x] [Review][Defer] [low] Three descriptions omit the per-header alternative; `Step` numbers the rows answered; `detail` names no rule-log tool — DW-2631, decision-pending (string).
+- [x] [Review][Defer] [low] `interop.message.detail` drops the header rows when the body is not text — DW-2632, wontfix-accepted.
+- [x] [Review][Defer] [low] Nine search tools repeat the `FIELDS`/`ENDPOINTS` literals — DW-2633, wontfix-accepted.
+- Rejected: Proposed strings' "reach the agent and the tool step" is wrong and the code right (AD-39: a tool result renders the code; `Dispatch.cls` is out of bounds); the six reasons live in the port fault's `reason`, read today only by a direct port caller, and the sentence is the lead's to correct · session rows take each column's minimum and the lowest status (the harvested grouped query, the matrix's columns) · `enum` on `status`/`match` (the matrix specifies `PORT.VALIDATION`) · detail reads the body when `maxRows` is 23 or less (already rejected) · an over-long `superSession`'s sentence (the schema bounds it; no screen) · a comma inside a status item, a null `TimeCreated`, a non-object port answer (theoretical) · Auto Run Result's "six strings" and file list (spec text) · descriptor roster edits and the spine's missing session clauses (already ruled) · the arming line's missing comment (cosmetic).
+
 ## Spec Change Log
 
 - 2026-11-15, runner spec gate (unattended rulings, one veto item): (1) the `Proposed split` is applied in `epics.md`: 24.4 keeps the fourteen session and message tools; Stories 24.20 (undo, criterion word for word), 24.21, 24.22 and 24.23 are inserted after 24.19. (2) The six `Proposed strings` are kept as written. (3) The spine is not edited in this run: the AD-62 item 19 and AD-36 lines wait as proposed lines for the owner's attended architecture update; the `Proposed AD` for undo goes to the orchestrator when 24.20 is planned (a new AD is never written by a runner). (4) The edits to rosters and counts shared with Epic 21 append this story's members only (orchestrator ruling A); `origin/OCU-1-epic21` has none of this story's files changed against feature at this gate.
@@ -293,7 +311,7 @@ Add-only: `scripts/ci-throwaway.sh`'s two `# classes:` lines.
 
 **Governance keys:** none. All fourteen are reads.
 
-**Proposed strings (veto item).** No screen string is added. The new port refusal reasons reach the agent and the tool step:
+**Proposed strings (veto item).** No screen string is added. The new port refusal reasons are the port fault's `reason` (a direct port caller reads it; a tool result carries the code only, AD-39, and the gap is DW-2629):
 
 - `hours`: "hours must be a whole number from 1 to 720."
 - `endDateTime`: "endDateTime must be a local date and time, written YYYY-MM-DD HH:MM:SS."
@@ -424,6 +442,22 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - AC5: one `InteropFloor` row removed → that test alone.
   - mutation: `interop.sessions.related` removed from `OPERATORTOOLS` -> `TestTheToolsEachPrincipalHoldsAreItsRoster` reddens alone (operator and administrator); reverted, recompiled.
   - mutation: `interop.sessions.byid:TOOL.ARGUMENTS` removed from `REFUSEEMPTY` -> `ToolRoundTrip` reddens alone; the `ToolEmit` branch's class test made false -> `TestEveryLiveToolRequiresItsScreensPairs` reddens alone for the fourteen; reverted, recompiled.
+
+**QA (real route, armed).** `src/OcuPilot/Test/InteropSessionRoute.cls` (QA, new; armed `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER`, listed in both `# classes:` lines of `scripts/ci-throwaway.sh`): a real least-privileged principal runs a real turn job per test; no gate seam stands in. `node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropSessionRoute` -> 6 tests, green. Mutations, each reverted byte-identically and recompiled:
+
+- mutation: `Sessions` dropped from `MESSAGEPAIRS` in `InteropPort.Pairs` -> `TestAHolderOfTheMenuPairAloneIsRefusedAllFourteen` (with four others) reddens.
+- mutation: the `AuditViewMessage` call in `AuditViewHere` removed -> `TestAContentHolderReadsABodyAndItsDetail` reddens alone.
+- mutation: `ListSessions` binds the window's lower ID bound as `0` -> `TestTheWindowTheCapAndAbsenceHoldOverTheRoute` reddens alone.
+- mutation: `InteropInspect.View`'s own row cut disabled -> `TestTheWindowTheCapAndAbsenceHoldOverTheRoute` reddens alone. Binding `SQLMAX` in place of the cap in the port alone reddens nothing at the route, since the tool cuts to its cap too; `InteropSessionRead` pins the port's cap.
+- mutation: `InteropInspect` `MAXHOURS` 720 -> 9999 -> `TestTheBoundsAndRefusalsHoldOverTheRoute` reddens alone.
+- mutation: `Sanitize.Neutralize` returns its input -> `TestASessionsHostileTextReachesTheModelCleaned` reddens alone.
+
+**Code review (patched tests).** On `ocupilot-b-ci`, each reverted byte-identically and the tree reloaded:
+
+- mutation: the `bodyclass` fragment and its bound value removed from `ListSessions` -> `InteropSessionRead.TestEachKindAnswersItsSessions` reddens alone (run 842).
+- mutation: the `hours` carry removed from `InteropSessionsByStatus` -> `InteropSessionTools.TestEachArgumentChangesWhatIsRead` reddens alone (run 843).
+- mutation: `InteropSessionsByClass` `DEFAULTROWS` 20 -> 500 -> `InteropSessionTools.TestTheDefaultRowsAreTheDescribedOnes` reddens alone (run 844).
+- After the reverts: `InteropSessionRead` 8/8, `InteropSessionTools` 8/8, `InteropSessionRoute` 6/6, `InteropSessionTurn` 1/1 green.
 
 ## Auto Run Result
 

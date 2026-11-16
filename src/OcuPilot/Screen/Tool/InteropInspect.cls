@@ -2,7 +2,8 @@
 /// reads one or two endpoints of <class>OcuPilot.Port.InteropPort</class> in the turn's namespace and answers
 /// <code>{fields, rows, truncated}</code>. A subclass declares <parameter>TOOLNAME</parameter>,
 /// <parameter>DESCRIPTION</parameter>, <parameter>ENDPOINTS</parameter>, <parameter>FIELDS</parameter>, its input schema and its
-/// <method>Query</method>; nothing else.</p>
+/// <method>Query</method>; one with narrower bounds also declares its own row and hour parameters, and one that reads two endpoints or
+/// shapes the rows overrides <method>Fetch</method>.</p>
 /// <p><b>The privilege pairs are the port's.</b> <method>PrivilegePairs</method> is the union of the pairs
 /// <method>OcuPilot.Port.InteropPort.Pairs</method> answers for each endpoint, so the dispatcher refuses a caller who lacks one by name
 /// before the port is reached, and the port's own gate still decides whether the read may run (AD-8, AD-29).</p>

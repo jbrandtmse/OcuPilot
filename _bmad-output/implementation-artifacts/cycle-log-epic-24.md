@@ -121,3 +121,10 @@
 2026-11-16T04:35:10Z	Story 24.4	stage_spawned	stage=qa spawn_at=2026-11-16T04:35:10Z model=sonnet agent_name=24-4-the-agent-gains-the-harvested-tools-and-undo-qa-1 cycle_iteration=1
 2026-11-16T04:58:44Z	Story 24.4	qa_complete	spawn_at=2026-11-16T04:36:00Z model=sonnet tests=src/OcuPilot/Test/InteropSessionRoute.cls tests_added=1 mutations_demonstrated=6 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-11-16T04:58:44Z	Story 24.4	stage_spawned	stage=code-review spawn_at=2026-11-16T04:58:44Z model=opus agent_name=24-4-the-agent-gains-the-harvested-tools-and-undo-code-review-1 cycle_iteration=1
+2026-11-16T05:24:56Z	Story 24.4	cr_complete	spawn_at=2026-11-16T04:59:00Z model=opus resolved=7 fixed_at_source=7 by_design=0 wontfix=2 routed=0 escalated=1 decision_pending=2 deferred=5 dismissed=9 high=0 med=5 low=7 rows=12 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
+2026-11-16T05:24:56Z	Story 24.4	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2632,DW-2633 to_decision_sheet=DW-2629,DW-2630,DW-2631 model=claude-opus-5-5
+2026-11-16T05:24:56Z	Epic 24	orchestrator_ruling	question=staging_shard4_red ruling=A_epic21_fixes_config-settings_in_21.24 hold_24.3_staging_merge=yes integrate_after_21.24 inherited_signature=config-settings_earlier_same_leg+SQLCODE-428_FILTER_procedure
+2026-11-16T05:24:56Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.4 run=20261114T1656Z-21,22
+2026-11-16T05:25:38Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.4 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T05:27:20Z	Story 24.4	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+InteropSessionTurn_real_turn+InteropSessionRoute_real_principals_on_fresh_throwaway model=claude-opus-5-5
+2026-11-16T05:27:20Z	Story 24.4	fresh_check	env=recipe tests=10_classes result=pass order=forward,reverse classes_tests=92

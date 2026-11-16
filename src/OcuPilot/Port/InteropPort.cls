@@ -4431,7 +4431,8 @@ ClassMethod ListMessages(pNamespace As %String, ByRef pQuery, pMax As %Integer, 
 
 /// <p>The two statements of the session trace (Story 20.30), each top-level (<method>SqlRows</method> takes no nested
 /// <code>TOP</code>): the session of one header, and that session's headers in <code>ID</code> order with the columns
-/// <method>MessageRow</method> builds a search row from. The second binds the cap first, then the session.</p>
+/// <method>MessageRow</method> builds a search row from. The second binds the cap first, then the session;
+/// <method>ListSessionMessages</method> reads it too, its <code>ORDER BY</code> moved after the bounds it adds.</p>
 Parameter TRACESESSIONSQL = "SELECT SessionId FROM Ens.MessageHeader WHERE ID = ?";
 
 Parameter TRACESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE SessionId = ? ORDER BY ID";
@@ -4489,10 +4490,6 @@ Parameter SESSIONKEYSQL = "SELECT TOP 1 ssi.SuperSession FROM Ens.SuperSessionIn
 Parameter SUMMARYSQL = "SELECT COUNT(*), SUM(IsError), MIN(TimeCreated), MAX(TimeCreated) FROM Ens.MessageHeader WHERE SessionId = ?";
 
 Parameter SUMMARYROOTSQL = "SELECT TOP 1 MessageBodyClassName FROM Ens.MessageHeader WHERE SessionId = ? ORDER BY ID";
-
-/// <p>The head of the statement that lists one session's headers: the columns <method>MessageRow</method> builds a search row from. A fixed
-/// fragment is added for each bound the call gives, and <code>ORDER BY ID</code>.</p>
-Parameter SESSIONMESSAGESSQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE SessionId = ?";
 
 /// <p>The window of a session search as ID bounds: <var>pLower</var> and <var>pUpper</var>, the first header created at or after the
 /// window's start and the last created at or before its end, as <method>ListMessages</method> finds them, both <code>""</code> when
@@ -4730,7 +4727,8 @@ ClassMethod ListSessionMessages(pNamespace As %String, ByRef pQuery, pMax As %In
     Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
     Set tSession = $Get(pQuery("session"))
     If '$Match(tSession, "^[0-9]{1,19}$") Quit ..RefuseCriterion("session", .pHttpStatus, .pFault)
-    Set tSql = ..#SESSIONMESSAGESSQL
+    ; The session trace's statement without its ORDER BY: a fixed fragment is added for each bound the call gives, then the order.
+    Set tSql = $Piece(..#TRACESQL, " ORDER BY ", 1)
     Kill tArgs
     Set tArgs = 2
     Set tArgs(1) = tTop

@@ -72,6 +72,10 @@ ClassMethod Store(pSource As %String, pTarget As %String, pBodyClass As %String,
 /// <code>&lt;m&gt;Op</code>, <code>Ens.StringResponse</code>, Completed, three hours ago, its own session (S2), under <code>K</code>. H4:
 /// <code>&lt;m&gt;Other</code> to <code>&lt;m&gt;Op</code>, <code>Ens.StringRequest</code>, Discarded, ten minutes ago, its own session (S3), under no key.
 /// H5: <code>&lt;m&gt;Bare</code> to <code>&lt;m&gt;Op</code>, no body class, thirty seconds ago, in no session.</p>
+/// <p>Two more headers in no session bound the window <method>WindowEnd</method> names: <code>&lt;m&gt;Low</code>, stored after H3 and
+/// before H1, made at that window's first second, and <code>&lt;m&gt;High</code>, stored last, made at its last millisecond. A two-hour
+/// window ending at <method>WindowEnd</method> is therefore cut, by ID, at those two whatever else the namespace holds, so H3 is outside
+/// it and H1, H2 and H4 inside.</p>
 ClassMethod Plant(pMarker As %String, Output pIds As %List) As %Status
 {
     Set pIds = ""
@@ -83,16 +87,38 @@ ClassMethod Plant(pMarker As %String, Output pIds As %List) As %Status
         }
         Set tKey = pMarker _ "K"
         Set tH3 = ..Store(pMarker _ "Svc", pMarker _ "Op", "Ens.StringResponse", 9, 10800, "", 1, tKey)
+        Set tLow = ..Store(pMarker _ "Low", pMarker _ "Op", "", 9, 7800)
         Set tH1 = ..Store(pMarker _ "Svc", pMarker _ "Proc", "Ens.StringRequest", 9, 3600, "", 1, tKey)
         Set tH2 = ..Store(pMarker _ "Proc", pMarker _ "Op", "Ens.StringResponse", 8, 3500, tH1, 0, "", "OcuPilot probe error " _ pMarker)
         Set tH4 = ..Store(pMarker _ "Other", pMarker _ "Op", "Ens.StringRequest", 4, 600, "", 1)
         Set tH5 = ..Store(pMarker _ "Bare", pMarker _ "Op", "", 9, 30)
-        If '(tH1 && tH2 && tH3 && tH4 && tH5) Set tSC = $$$ERROR($$$GeneralError, "a fixture header could not be stored")
+        Set tHigh = ..Store(pMarker _ "High", pMarker _ "Op", "", 9, 600)
+        If '(tH1 && tH2 && tH3 && tH4 && tH5 && tLow && tHigh) Set tSC = $$$ERROR($$$GeneralError, "a fixture header could not be stored")
         Set pIds = $ListBuild(tH1, tH2, tH3, tH4, tH5)
+        If $$$ISERR(tSC) Quit
+        Set tEnd = $Extract($ClassMethod(..#FIXTURE, "StoredCreated", tH4), 1, 19)
+        If '..Restamp(tLow, ..Shift(tEnd, -7200) _ ".000") || '..Restamp(tHigh, tEnd _ ".999") Set tSC = $$$ERROR($$$GeneralError, "a window bound could not be stamped")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Set header <var>pId</var>'s creation and processing time to the UTC stamp <var>pUtc</var> (<code>YYYY-MM-DD HH:MM:SS.mmm</code>);
+/// 1 when it is saved.</p>
+ClassMethod Restamp(pId As %Integer, pUtc As %String) As %Boolean
+{
+    Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+    If '$IsObject(tHeader) Quit 0
+    Set tHeader.TimeCreated = pUtc
+    Set tHeader.TimeProcessed = pUtc
+    Quit $$$ISOK(tHeader.%Save())
+}
+
+/// <p>The local second the fixture's two-hour window ends at: H4's, given the fixture's ids <var>pIds</var> (<method>Plant</method>).</p>
+ClassMethod WindowEnd(pIds As %List) As %String
+{
+    Quit $ClassMethod(..#FIXTURE, "LocalSecond", $List(pIds, 4))
 }
 
 /// <p>How many headers whose source begins with <var>pMarker</var> are stored.</p>
@@ -169,7 +195,7 @@ Method TestEachKindAnswersItsSessions()
     Set tM = ..PreparedMarker
     Set tS1 = ..Session(1), tS2 = ..Session(3), tS3 = ..Session(4)
     Kill tQ
-    Set tQ("kind") = "source", tQ("source") = tM _ "Svc", tQ("hours") = 2
+    Set tQ("kind") = "source", tQ("source") = tM _ "Svc", tQ("hours") = 2, tQ("endDateTime") = ..WindowEnd(..PreparedIds)
     Do $$$AssertEquals(..Found(.tQ, .tHttp, , .tRows), tS1, "a source over two hours finds the hour-old session alone")
     Do $$$AssertEquals(tHttp, 200, "and answers 200")
     Kill tQ
@@ -180,10 +206,9 @@ Method TestEachKindAnswersItsSessions()
     Do $$$AssertEquals(..Found(.tQ), tS1, "a target finds its session")
     Kill tQ
     Set tQ("kind") = "bodyclass", tQ("bodyClass") = "Ens.StringResponse"
-    Set tFound = ..Found(.tQ, , , .tBodyRows)
-    Do $$$AssertTrue(($Length(tFound, ",") >= 2) && ((tFound [ tS1) && (tFound [ tS2)), "a body class finds the sessions that carry it: " _ tFound)
+    Do $$$AssertEquals(..Found(.tQ), tS1 _ "," _ tS2, "a body class finds exactly the sessions that carry it, newest first")
     Kill tQ
-    Set tQ("kind") = "status", tQ("status") = "Error,Discarded", tQ("hours") = 2
+    Set tQ("kind") = "status", tQ("status") = "Error,Discarded", tQ("hours") = 2, tQ("endDateTime") = ..WindowEnd(..PreparedIds)
     Do $$$AssertEquals(..Found(.tQ, , , .tStatusRows), tS3 _ "," _ tS1, "a status list finds the sessions holding a header in either word, newest first")
     Set tFirst = tStatusRows.%Get(0)
     Do $$$AssertEquals(tFirst.SessionId _ "|" _ tFirst.Source _ "|" _ tFirst.Target _ "|" _ tFirst.BodyClass _ "|" _ tFirst.Status, tS3 _ "|" _ tM _ "Other|" _ tM _ "Op|Ens.StringRequest|Discarded", "the row carries the session, the names and the status word")
@@ -212,12 +237,11 @@ Method TestAClassNameIsMatchedWhereItIsAsked()
     Set tQ("match") = "target"
     Do $$$AssertEquals(..Found(.tQ), "none", "target finds none, since nothing is targeted at it")
     Kill tQ
-    Set tQ("kind") = "class", tQ("className") = tM _ "Op", tQ("match") = "target", tQ("hours") = 2
+    Set tQ("kind") = "class", tQ("className") = tM _ "Op", tQ("match") = "target", tQ("hours") = 2, tQ("endDateTime") = ..WindowEnd(..PreparedIds)
     Do $$$AssertEquals(..Found(.tQ), tS3 _ "," _ tS1, "target finds the sessions a header was addressed to it in, over two hours")
     Kill tQ
     Set tQ("kind") = "class", tQ("className") = "Ens.StringResponse", tQ("match") = "body"
-    Set tFound = ..Found(.tQ)
-    Do $$$AssertTrue((tFound [ ..Session(1)) && (tFound [ ..Session(3)), "body finds the sessions that carry the body class: " _ tFound)
+    Do $$$AssertEquals(..Found(.tQ), tS1 _ "," _ tS2, "body finds exactly the sessions that carry the body class")
     Set tQ("match") = "source"
     Do $$$AssertEquals(..Found(.tQ), "none", "and source finds none")
     For tCase = "className|not a class!", "className|", "match|nowhere" {
@@ -337,8 +361,7 @@ Method TestTheCapCutsAndAMalformedCriterionIsRefused()
 }
 
 /// <p>The summary of a session is one row of its counts, its first and last time as local time, the seconds between them and its first
-/// header's body class; a session no header holds, and a session with a header and no session id, read as no rows; and a session that is
-/// not digits is refused by name.</p>
+/// header's body class; a session no header holds reads as no rows; and a session that is not digits is refused by name.</p>
 Method TestTheSummaryIsOneRow()
 {
     Set tS1 = ..Session(1)
