@@ -350,3 +350,7 @@
 2026-11-16T10:38:54Z	Story 21.32	story_created	spawn_at=2026-11-16T10:08:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list.md build_status=ready-for-dev
 2026-11-16T10:38:54Z	Story 21.32	ad_amended	ad=AD-2 mode=comply_first_U7 marker=[AMENDED_2026-11-16,Story_21.32_spec_gate,orchestrator_ruling_DW-2646] lint_spine=ok
 2026-11-16T10:38:54Z	Story 21.32	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-2,AD-27 owned_ledger=DW-2646 addressed=1 repro=no_browser_4/4 mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T10:39:25Z	Story 21.30	ci_resolved	story=21.30 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.12	ci_resolved	story=21.12 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.13	ci_resolved	story=21.13 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.32	stage_spawned	stage=implement spawn_at=2026-11-16T10:39:25Z model=sonnet agent_name=21-32-implement-1 cycle_iteration=1 story_base=bfa1aaca4
