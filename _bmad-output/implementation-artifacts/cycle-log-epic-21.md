@@ -398,3 +398,4 @@
 2026-11-16T15:59:18Z	Story 21.33	gate_step	step=sweep_stopped_at_shard1 reason=DW-2664_must_settle_in_batch1_head(orchestrator) note=sweep_reruns_after
 2026-11-16T16:27:30Z	Story 21.33	gate_step	step=DW-2664_settled fix=a7e5d04fa(rebuild_checks_admin_only_when_writing) measured=retention_task_as_irisowner_pass;admin_without_%All_pass;first_install_without_%All_failed->fixed new_test=AdminPathWrite(3) mutations=4 open=DW-2665(inference)
 2026-11-16T16:28:51Z	Story 21.33	gate_step	step=gates_stopped reason=DW-2665_fix_in_batch1(orchestrator)
+2026-11-16T16:38:17Z	Story 21.33	gate_step	step=DW-2665_red_before(822,row_keyless) fix=needs_AD-9_text asked=orchestrator(A_allow_text+rule6_widen|B_release_note) meanwhile=fresh_check+sweep_on_46f695b40(dir_gate3)
