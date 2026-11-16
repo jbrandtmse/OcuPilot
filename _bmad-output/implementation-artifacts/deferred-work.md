@@ -13374,3 +13374,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
 - evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
 - 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun
+
+### DW-2662: AD-9's 21.33 list of open writes omits a confirm's claim cancelling every user's live proposals on its target (AD-34); a %Development holder can mint its own proposal on any target through the store and claim it to cancel other users' live proposals there
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
+- 2026-11-16T15:42:19Z status=decision-pending owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=orchestrator: amend AD-9 open-write list (claim sibling cancel) or rule otherwise
+- 2026-11-16T15:45:12Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=AD-9's open writes now name the claim's sibling cancel on its own stored target (comply first, U7; orchestrator told); the review bound the claim target to the stored TargetRef
+
+### DW-2663: Propose.GuardedMint, Ledger.GuardedAppend and GuardedCountOverflow check only the user argument, so a developer can write its own rows onto another user's turn or conversation key: a proposal counts against that turn's guided-workflow write cap (Dispatch via GuardedCountForTurn) and ledger rows consume its per-turn row cap
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference, not reproduced): GuardedCountForTurn and the ledger's TurnKey counts have no owner filter; the fix needs the turn's stored owner by TurnKeyIdx, which Batch 2 makes an owner store. Same root as the spec's third deferred: item.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: check the turn and conversation owner in these writers
+
+### DW-2664: Ledger.GuardedPurgeBefore and Propose.GuardedRebuildTargetKeys now need OcuPilotAdmin in the calling process; the retention task's run-as user and an install by a non-%All administrator (EnsureGrant does not change the running process) are not pinned to hold it
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference): Installer runs EnsureGrant then EnsureProposalTargetKeys in one process; EnsureRetentionTask sets no RunAsUser; Retention and Installer suites run as %All. Batches 2-3 gate more retention calls.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite

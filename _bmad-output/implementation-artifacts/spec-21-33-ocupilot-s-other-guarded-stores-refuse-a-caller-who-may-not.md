@@ -159,6 +159,40 @@ Batch 1 carve-out: `Turn.GuardedDelete` (reached by every user's turn reserve sw
 - Given each batch, when the existing real-principal turn suites run (`DeveloperFloorTurn`, `TurnWire`, `TurnProviderFault`, `ExplorerSaveTurn`, `LedgerWire`, `TurnConversation`), then they stay green. This is the turn's own writes as a non-administrator.
 - Given `OwnerWriteRefused` mutated to answer `$$$OK`, when the owner test classes run, then only their refusal tests go red.
 
+### Review Findings
+
+Code review, Batch 1 (2026-11-16, HEAD `be4f8d61f`, full-opus tier: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [ ] [Review][Decision] A confirm's claim cancels other users' live proposals, and AD-9's list of open writes leaves that out (high). Measured on `ocupilot-ci` as a `%Development` principal. Minting its own proposal on a victim's target and claiming it left the victim's proposal `canceled`/`sibling`. The code follows AD-34, so the gap is the AD text: add "a confirm's claim canceling every user's live proposals on its own proposal's target (AD-34)" to the open writes, or rule otherwise. DW-2662, for the orchestrator.
+- [x] [Review][Patch] A claim canceled siblings of whatever target the caller passed, not its own row's (high, measured) [Propose.cls GuardedClaimAndClose]. A non-administrator's target must now equal the stored `TargetRef`; `TestAClaimCancelsOnlyItsOwnTargetsSiblings`.
+- [x] [Review][Patch] An administrator's save could change a row's owner, against AD-9's "a save cannot change it" (high) [Base.cls GuardedSaveOwned, GuardedSave, GuardedSaveIfCurrent]. Every caller now goes through `OwnerChangeRefused`; administrator legs added to the forged-owner test.
+- [x] [Review][Patch] Three victim legs could not fail on "rows unchanged" because nothing they would write was seeded (medium) [StoreOwnerWrite.cls]. The tests now seed a lapsed proposal and a keyless targeted one.
+- [x] [Review][Patch] The cleared-verification test expected the marker on the suite's own definition, not on the instance's lowest-id enabled one (medium, hermeticity) [StoreOwnerWrite.cls].
+- [x] [Review][Patch] `StoreOwnerWrite.OnAfterAllTests` copied `AdminStateWrite`'s (medium, Rule 31) [AdminStateWrite.cls]. Both now use `RemovePrincipals`.
+- [x] [Review][Patch] Stale or missing mutation lines (low). The `OwnerWriteRefused`, forged-owner and clear-verification lines were corrected; five were added.
+- [x] [Review][Patch] Doc comments that said something false (low): `GuardedExpireStale`, `Propose`'s `OWNERWRITE`, `GuardedSetVerification`, `GuardedDeleteForTurn`.
+- [x] [Review][Patch] `SetDefaultGuarded` and the SQL rebalance write the marker two ways (low, Rule 31). Converting `SetDefaultGuarded` to SQL broke `AgentWire` (run 75), because the default route projects the row it holds. The reason is now stated at `RebalanceDefaultSql`.
+- [x] [Review][Defer] A developer's own proposals and ledger rows on another user's turn or conversation key use up that turn's caps (medium, inference). DW-2663, Batch 2.
+- [x] [Review][Defer] The ledger purge and the target-key rebuild need `OcuPilotAdmin` in-process. Neither the retention task's run-as user nor a first install by a non-`%All` administrator is pinned to hold it (medium, inference). DW-2664, Batch 2.
+- [x] [Review][Defer] `Propose.GuardedDeleteForTurn` lets any caller delete any user's proposals (medium, measured). By design under the Pass Scope carve-out; Batch 2 gates it before merge.
+
+Rejected or closed at emission:
+
+- low, wontfix-accepted: `StoreOwnerWrite` is 932 lines. The split is not mechanical, because a helper parent with no tests changes the runner's class roster (inference). reopen_if=Batch 2's `TranscriptOwnerWrite` needs the same helpers.
+- low, wontfix-accepted: `GuardedStoredOwnerById` reads by id beside `GuardedStoredValue` by key. It is private, and its class and property come from `OWNERWRITE`. reopen_if=a third stored-value reader appears.
+- low, wontfix-accepted: an owner name in another letter case stores rows that `%EXACT` reads miss. They are only the caller's own rows. reopen_if=a product caller passes a name other than `$Username`.
+- low, wontfix-accepted: `OpenKinds` is a literal roster. reopen_if=Batch 2 leaves an open write that `TestTheOpenPathsStillWork` does not reach.
+- low, wontfix-theoretical: a claim or read-back on a vanished key now fails 822, and the confirm turns that into a 500. Real only if a live proposal is deleted between the confirm's read and its claim.
+- low, wontfix-theoretical: `GuardedTargetHold` lets any caller hold a target's lock. A plain `LOCK` on that name needs no database privilege (inference).
+- low, wontfix-theoretical: a caller-compiled subclass, or any object's save set, runs inside `Base`'s escalated save. This needs code-write in the install namespace, which already allows editing `Base`.
+- low, wontfix-theoretical: `RefreshMark` can adopt the version a concurrent credential finding wrote. Real only if a finding on that definition lands between an administrator's save and the refresh, and the object is then saved again.
+- low, wontfix-theoretical: the credential finding's flags commit before its rebalance. The baseline saved before rebalancing too.
+- low: five Agent writers' own `AdminWriteRefused` line is shadowed by the public save's. The behavior is pinned.
+- low: `AgentFields` omits columns the probe never edits.
+- low: the open-path and administrator tests change other users' rows by the product's own rule, on a throwaway.
+- low: commit `4334486d8`'s message claims more than the code did. The message is history.
+- false: "the credential finding writes more than the flags and marker". `UpdatedAt` and `RowVersion` are stated in the spec's Batch 1 text.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -335,10 +369,10 @@ Run 2026-11-16 on `ocupilot-ci`, one class per call, after `reload.sh` (`LOADERR
 | `Propose.GuardedClose` and `GuardedCloseLiveForConvo` | the developer's proposal canceled and the victim's lapsed one `expired` |
 | `Agent.GuardedClearVerification` | `Enabled` 0, `ConnectionVerified` 0, the marker moved off the cleared default |
 
-mutation: `OwnerWriteRefused` answers `$$$OK` first -> `TestADeveloperIsRefusedAVictimsLedgerAndProposalRows` red alone (run 44); reverted, `Base.cls` byte-identical (md5 `d1976db3...`), reloaded.
+mutation: `OwnerWriteRefused` answers `$$$OK` first -> `TestADeveloperIsRefusedAVictimsLedgerAndProposalRows` (every ledger and proposal owner leg, the lapsed-proposal expiry included), `TestADeveloperIsRefusedACountOntoAVictimsOverflowRow` and the empty-name leg of `TestTheOwnerComparisonIgnoresCaseAndRefusesAnEmptyName` red, each a refusal test (code review, run 91); reverted, `Base.cls` byte-identical, reloaded.
 mutation: `Agent` `ADMINWRITE` = 0 -> `StoreOwnerWrite.TestADeveloperIsRefusedTheAgentDefinitionWrites` red alone (run 46) and `AdminStateWrite.TestTheAdministratorStoresAreDeclared` red alone (run 47); reverted, `Agent.cls` byte-identical (md5 `45757393...`), reloaded.
-mutation: `GuardedClearVerification` saves through `GuardedUpdate` again -> `TestAClearedVerificationStoresNoHeldEdit` and `TestTheOpenPathsStillWork` red (run 48); reverted, byte-identical, reloaded.
-mutation: `GuardedSaveOwned` skips the stored-versus-held comparison -> `TestAForgedOwnerIsRefusedAndTheStoredOwnerStands` red alone (run 49); reverted, `Base.cls` byte-identical, reloaded.
+mutation: `GuardedClearVerification` opens the row, clears the flags and saves it through `GuardedSaveIfCurrentAnyCaller` -> `TestAClearedVerificationStoresNoHeldEdit` red alone, on the held edit (code review, run 93); reverted, `Agent.cls` byte-identical, reloaded.
+mutation: `OwnerChangeRefused` skips the stored-versus-held comparison -> `TestAForgedOwnerIsRefusedAndTheStoredOwnerStands` red alone, developer and administrator legs (code review, run 90); reverted, `Base.cls` byte-identical, reloaded.
 mutation: `PublicSaveRefused` answers `$$$OK` -> the two live-proposal tests and the agent definition test red (run 50); reverted, byte-identical, reloaded.
 mutation: `Ledger` `OWNERWRITE` emptied -> `TestTheOwnerStoresAreDeclared`, the victim rows test and the forged-owner test red (run 51); reverted, `Ledger.cls` byte-identical (md5 `a0519a84...`), reloaded.
 mutation: the held-owner `OwnerWriteRefused` call removed from `GuardedSaveOwned` -> `TestADeveloperIsRefusedACountOntoAVictimsOverflowRow` red alone (run 55); reverted, `Base.cls` byte-identical (md5 `d1976db3...`), reloaded.
@@ -348,6 +382,13 @@ mutation: the administrator gate removed from `Ledger.GuardedPurgeBefore` -> `Te
 mutation: `Propose.GuardedClose` calls the public `GuardedExpireStale("")` instead of `ExpireStaleAnyCaller` -> `TestADeveloperWritesItsOwnProposalAndLedgerRows` and `TestTheOpenPathsStillWork` red (run 59), the two tests that close as a non-administrator; reverted, `Propose.cls` byte-identical (md5 `cd2739bc...`), reloaded.
 mutation: `RefreshMark` drops the `RowVersion` copy -> `StoreOwnerWrite` stays green (run 60); `AgentCredential.TestAnUnreachableRungIsRefusedBeforeTheShapeCheck` red alone (run 61); reverted, `Agent.cls` byte-identical (md5 `45757393...`), reloaded.
 mutation: `KeyOwnerRefused` answers `$$$OK` for a key that names no row -> `TestAFinalizeOfAKeyThatNamesNoRowIsRefusedForAStranger` red alone (run 62); reverted, `Base.cls` byte-identical, reloaded.
+mutation: the stored-target check removed from `Propose.GuardedClaimAndClose` -> `TestAClaimCancelsOnlyItsOwnTargetsSiblings` red alone (code review, run 89); reverted, `Propose.cls` byte-identical, reloaded.
+mutation: `RebalanceDefaultSql` clears the marker with `''` -> `TestAClearedVerificationStoresNoHeldEdit` red alone, on the object-layer read of the cleared marker (code review, run 92); reverted, `Agent.cls` byte-identical, reloaded.
+mutation: `Propose.GuardedClose` expires only the caller's lapsed proposals (`ExpireStaleAnyCaller(pUser)`) -> `TestTheOpenPathsStillWork` red alone, path 4 (code review, run 94); reverted, `Propose.cls` byte-identical, reloaded.
+mutation: the administrator bypass removed from `OwnerWriteRefused` -> seven tests red, `TestAnAdministratorWritesAVictimsRowsAndTheDefinitions` among them, each at the suite identity's own seeding mint, which is an administrator's write (code review, run 95); reverted, `Base.cls` byte-identical, reloaded.
+mutation: an administrator gate added to `Propose.GuardedDeleteForTurn` -> `TestTheOpenPathsStillWork` red alone, the turn reserve's sweep (code review, run 96); reverted, `Propose.cls` byte-identical, reloaded.
+
+**Code review re-run** (2026-11-16, after the review patches, `ocupilot-ci`, one class per call, `LOADERRORS=0`): StoreOwnerWrite 14 (run 97), AdminStateWrite 7 (98), AgentState 13 (99), AgentWire 18 (77), AgentCredential 17 (79), ProposalConfirm 24 (80), ProposalRace 6 (81), ProposalWire 17 (82), DeveloperFloorTurn 1 (83), LedgerWire 6 (84), Ledger 11 (85), State 12 (86), ProposalClose 7 (87), Installer 27 (88), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
 
 ## Auto Run Result
 

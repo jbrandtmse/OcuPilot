@@ -20,13 +20,14 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// opened row's instructions in memory and holds it across the call;
 /// <code>Ledger.ForgedOverflow</code> opens ledger row <code>id</code>, sets its
 /// <code>UserName</code> to <code>heldUser</code> in memory and holds it across
-/// <code>GuardedCountOverflow</code> for <code>user</code>; <code>Turn.GuardedAbandonForUser</code>,
+/// <code>GuardedCountOverflow</code> for <code>user</code>; <code>Ledger.ForgedSave</code> opens it the
+/// same way and saves it through <code>Base.GuardedSave</code>; <code>Turn.GuardedAbandonForUser</code>,
 /// <code>Turn.GuardedReserve</code> and <code>SqlRun.GuardedReserve</code> are the open paths the
 /// stores keep for every caller; <code>Read.Agent</code> answers the definitions the principal
 /// reads.</p>
 ClassMethod Kinds() As %List
 {
-    Quit $ListBuild("Agent.GuardedCreate", "Agent.GuardedUpdate", "Agent.GuardedDeleteId", "Agent.SetDefaultGuarded", "Agent.GuardedSetVerification", "Agent.GuardedMarkCredentialCreated", "Agent.GuardedRebalanceDefault", "Agent.GuardedClearVerification", "Agent.BaseSave", "Agent.BaseSaveIfCurrent", "Propose.GuardedMint", "Propose.EditSave", "Propose.GuardedClose", "Propose.GuardedClaimAndClose", "Propose.GuardedDeleteForUser", "Propose.GuardedRecordReadBack", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Ledger.ForgedOverflow", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Read.Agent")
+    Quit $ListBuild("Agent.GuardedCreate", "Agent.GuardedUpdate", "Agent.GuardedDeleteId", "Agent.SetDefaultGuarded", "Agent.GuardedSetVerification", "Agent.GuardedMarkCredentialCreated", "Agent.GuardedRebalanceDefault", "Agent.GuardedClearVerification", "Agent.BaseSave", "Agent.BaseSaveIfCurrent", "Propose.GuardedMint", "Propose.EditSave", "Propose.GuardedClose", "Propose.GuardedClaimAndClose", "Propose.GuardedDeleteForUser", "Propose.GuardedRecordReadBack", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Ledger.ForgedOverflow", "Ledger.ForgedSave", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Read.Agent")
 }
 
 /// <p>Run one step of the plan: the guarded call its <code>kind</code> names, with the arguments the
@@ -141,6 +142,13 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             If $$$ISOK(tSC) {
                 Set tRow.UserName = pStep.%Get("heldUser")
                 Set tSC = $ClassMethod(tLedger, "GuardedCountOverflow", pStep.%Get("turnKey"), pStep.%Get("user"), "", .tDropped)
+            }
+            Set tRow = ""
+        } ElseIf tKind = "Ledger.ForgedSave" {
+            Set tSC = $ClassMethod(tLedger, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            If $$$ISOK(tSC) {
+                Set tRow.UserName = pStep.%Get("heldUser")
+                Set tSC = ..SaveThroughBase(tRow, 1)
             }
             Set tRow = ""
         } ElseIf tKind = "Turn.GuardedAbandonForUser" {

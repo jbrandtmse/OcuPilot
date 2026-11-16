@@ -288,11 +288,13 @@ ClassMethod PublicSaveRefused(pClassName As %String) As %Status [ Private ]
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
 /// through the escalated frame. An instance of an administrator-owned or owner-checked store
 /// (<parameter>ADMINWRITE</parameter>, <parameter>OWNERWRITE</parameter>) is saved for an
-/// administrator only.</p>
+/// administrator only, and never with an owner other than the stored one
+/// (<method>OwnerChangeRefused</method>).</p>
 ClassMethod GuardedSave(pObject As %Persistent) As %Status
 {
     Try {
         Set tSC = ..PublicSaveRefused(pObject.%ClassName(1))
+        If $$$ISOK(tSC) Set tSC = ..OwnerChangeRefused(pObject)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -333,6 +335,7 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
 {
     Try {
         Set tSC = ..PublicSaveRefused(pObject.%ClassName(1))
+        If $$$ISOK(tSC) Set tSC = ..OwnerChangeRefused(pObject)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -399,24 +402,24 @@ ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer
 }
 
 /// <p><method>GuardedSaveIfCurrent</method>'s conditional write for a store's own writers on an
-/// <parameter>OWNERWRITE</parameter> class: for a caller who does not hold
-/// <parameter>ADMINRESOURCE</parameter>, a row that exists must still carry the owner-carrying value
-/// storage holds, and that owner must be the caller (<method>OwnerWriteRefused</method>), so a save
-/// never changes an owner and never writes another user's row. Refused with
-/// <code>$$$AccessDenied</code> before any escalated write.</p>
+/// <parameter>OWNERWRITE</parameter> class: a stored row must still carry the owner-carrying value
+/// storage holds, for every caller (<method>OwnerChangeRefused</method>); and for a caller who does
+/// not hold <parameter>ADMINRESOURCE</parameter>, a row with an id must be stored and its owner must
+/// be the caller (<method>OwnerWriteRefused</method>), so a save never changes an owner and never
+/// writes another user's row. Refused with <code>$$$AccessDenied</code> before any escalated
+/// write.</p>
 ClassMethod GuardedSaveOwned(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
 {
     Try {
         Set tSC = $$$OK
         Set tClass = pObject.%ClassName(1)
         Set tProperty = $Parameter(tClass, "OWNERWRITE")
-        If tProperty '= "" && '..CallerIsAdministrator() {
-            Set tHeld = $Property(pObject, tProperty)
-            If pObject.%Id() '= "" {
-                Set tSC = ..GuardedStoredOwnerById(tClass, tProperty, pObject.%Id(), .tStored, .tFound)
-                If $$$ISOK(tSC) && ('tFound || (tStored '= tHeld)) Set tSC = $$$ERROR($$$AccessDenied)
+        If tProperty '= "" {
+            Set tSC = ..OwnerChangeRefused(pObject, .tFound)
+            If $$$ISOK(tSC) && '..CallerIsAdministrator() {
+                If (pObject.%Id() '= "") && 'tFound Set tSC = $$$ERROR($$$AccessDenied)
+                If $$$ISOK(tSC) Set tSC = ..OwnerWriteRefused(tClass, $Property(pObject, tProperty))
             }
-            If $$$ISOK(tSC) Set tSC = ..OwnerWriteRefused(tClass, tHeld)
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -425,9 +428,26 @@ ClassMethod GuardedSaveOwned(pObject As Base, pExpected As %Integer = 0) As %Sta
     Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
 }
 
+/// <p>The refusal for a save of <var>pObject</var> that would change a row's owner: on an
+/// <parameter>OWNERWRITE</parameter> class, <code>$$$AccessDenied</code> when the row is stored and
+/// its owner-carrying value differs from the one <var>pObject</var> holds, whoever the caller is
+/// (AD-9: a save cannot change a row's owner). <var>pFound</var> answers whether the row is
+/// stored; a new object, or a class that declares no owner, answers <code>$$$OK</code>.</p>
+ClassMethod OwnerChangeRefused(pObject As %Persistent, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set pFound = 0
+    Set tClass = pObject.%ClassName(1)
+    Set tProperty = $Parameter(tClass, "OWNERWRITE")
+    If (tProperty = "") || (pObject.%Id() = "") Quit $$$OK
+    Set tSC = ..GuardedStoredOwnerById(tClass, tProperty, pObject.%Id(), .tStored, .pFound)
+    If $$$ISERR(tSC) Quit tSC
+    If pFound && (tStored '= $Property(pObject, tProperty)) Quit $$$ERROR($$$AccessDenied)
+    Quit $$$OK
+}
+
 /// <p>Whether row <var>pId</var> of <var>pClassName</var> exists and, when it does, the stored value
 /// of its property <var>pProperty</var>, read in one escalated frame by global reads. The class and
-/// the property come from the class dictionary through <method>GuardedSaveOwned</method>, never from a
+/// the property come from the class dictionary through <method>OwnerChangeRefused</method>, never from a
 /// caller's text.</p>
 ClassMethod GuardedStoredOwnerById(pClassName As %String, pProperty As %String, pId As %String, Output pValue As %String, Output pFound As %Boolean) As %Status [ Private ]
 {

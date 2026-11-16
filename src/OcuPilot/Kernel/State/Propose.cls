@@ -21,7 +21,9 @@ Class OcuPilot.Kernel.State.Propose Extends OcuPilot.Kernel.State.Base [ SqlTabl
 
 /// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>):
 /// a writer refuses a caller who neither owns the row nor holds the administrative resource, and the
-/// writes across users are an administrator's, except the expiry of lapsed rows a close makes.</p>
+/// writes across users are an administrator's, except the expiry of lapsed rows a close makes, the
+/// sibling cancel a claim makes (<method>GuardedClaimAndClose</method>), and, until the turn store is
+/// gated, <method>GuardedDeleteForTurn</method>.</p>
 Parameter OWNERWRITE As %String = "UserName";
 
 /// <p>A proposal awaiting the user's decision: the only state a claim admits.</p>
@@ -524,7 +526,10 @@ ClassMethod GuardedTargetRelease(pKey As %String) As %Status
 /// <property>TargetKey</property> of either spelling, and is closed only when its
 /// <property>TargetRef</property> is exactly one of the two.</p>
 /// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
-/// sibling left live would offer a decision against a diff that is already stale.</p>
+/// sibling left live would offer a decision against a diff that is already stale. For a caller who
+/// does not hold the administrative resource, <var>pTargetRef</var> must be the claimed row's stored
+/// <property>TargetRef</property>, or the claim is refused <code>$$$AccessDenied</code> and writes
+/// nothing, so a claim cancels only the siblings of the target its own row names.</p>
 /// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
 /// <var>pTerminal</var> -- projected, so a row past its expiry reads <code>expired</code> -- which
 /// is what the loser is refused with. It is never retried.</p>
@@ -542,6 +547,15 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         }
         Set tSC = ..KeyOwnerRefused("ProposalKeyIdxExists", pProposalKey)
         If $$$ISERR(tSC) Quit
+        If '..CallerIsAdministrator() {
+            Set tSC = ..GuardedStoredValue("ProposalKeyIdxExists", pProposalKey, "TargetRef", .tStoredRef, .tFound)
+            If $$$ISERR(tSC) Quit
+            If tStoredRef = $Char(0) Set tStoredRef = ""
+            If 'tFound || (tStoredRef '= pTargetRef) {
+                Set tSC = $$$ERROR($$$AccessDenied)
+                Quit
+            }
+        }
         ; AD-34. Confirms of one scoped target are serialized here, and not by the rows' own locks.
         ; IRIS's default isolation is READ UNCOMMITTED, so the sibling update below reads a rival
         ; claim's uncommitted State = 'confirmed', matches nothing and asks for no lock -- without
@@ -699,8 +713,9 @@ ClassMethod GuardedCloseLiveForUser(pUser As %String, pReason As %String, Output
 /// <method>RowValues</method> already projects for it (DW-1209). The confirm path does not need it,
 /// because <method>OcuPilot.Kernel.Proposal.Write.Claim</method> refuses a row past its window before
 /// the claim is reached. <var>pUser</var> names the caller's own rows; <code>""</code> flips every
-/// user's stale rows and is an administrator's. The three close paths expire every user's stale rows
-/// by the same rule through <method>ExpireStaleAnyCaller</method>.</p>
+/// user's stale rows and is an administrator's. The close by key and the close by conversation expire
+/// every user's stale rows, and the close by user its own, through
+/// <method>ExpireStaleAnyCaller</method>.</p>
 ClassMethod GuardedExpireStale(pUser As %String = "") As %Status
 {
     If pUser = "" {
@@ -833,9 +848,10 @@ ClassMethod GuardedCountForTurn(pTurnKey As %String, Output pCount As %Integer) 
     Quit $$$OK
 }
 
-/// <p>Delete every proposal of turn <var>pTurnKey</var>. A test's cleanup, never a lifecycle rule:
-/// a proposal outlives its turn's job by construction (AD-6), and the retention sweep over these
-/// rows is Story 5.3's.</p>
+/// <p>Delete every proposal of turn <var>pTurnKey</var>. A proposal outlives its turn's job by
+/// construction (AD-6); this runs when the turn row itself is deleted
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>, which a turn reserve's sweep of expired
+/// turns reaches for every caller). Open to every caller until the turn store is gated.</p>
 ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 {
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey)

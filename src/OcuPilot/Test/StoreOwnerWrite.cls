@@ -92,32 +92,20 @@ Method OnBeforeAllTests() As %Status
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.StoreOwnerWrite creates and deletes users and roles and writes OcuPilot's stores on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Set ..PreparedPassword = "OcuPilotOwner" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
-    Set tCases = $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U", 0), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U", 1))
-    Quit ##class(OcuPilot.Test.AdminStateWrite).EnsurePrincipals(..PreparedPassword, tCases)
+    Quit ##class(OcuPilot.Test.AdminStateWrite).EnsurePrincipals(..PreparedPassword, ..Principals())
 }
 
 /// <p>Remove the two principals and their roles; a failing status when any survives.</p>
 Method OnAfterAllTests() As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        For tUser = ..#DEVUSER, ..#ADMINUSER {
-            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-        }
-        For tRole = ..#DEVROLE, ..#ADMINROLE {
-            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-        }
-        If ##class(Security.Users).Exists(..#DEVUSER) || ##class(Security.Users).Exists(..#ADMINUSER) || ##class(Security.Roles).Exists(..#DEVROLE) || ##class(Security.Roles).Exists(..#ADMINROLE) {
-            Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.StoreOwnerWrite left a throwaway principal on the instance"))
-        }
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
-    }
-    Quit tSC
+    Quit ##class(OcuPilot.Test.AdminStateWrite).RemovePrincipals(..Principals(), "OcuPilot.Test.StoreOwnerWrite")
+}
+
+/// <p>The developer and the administrator, as <method>OcuPilot.Test.AdminStateWrite.EnsurePrincipals</method>
+/// takes them.</p>
+ClassMethod Principals() As %List
+{
+    Quit $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U", 0), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U", 1))
 }
 
 Method OnBeforeOneTest() As %Status
@@ -171,15 +159,14 @@ Method TestADeveloperIsRefusedTheAgentDefinitionWrites()
 /// is accepted, <code>ConnectionVerified</code> and <code>Enabled</code> read 0, the default marker moves
 /// to the enabled definition and the cleared marker reads <code>""</code> through the object layer, no
 /// other field changes, and the held edit is not stored.</p>
-/// <p>Mutation (Rule 19): <code>GuardedClearVerification</code> saves through
-/// <code>GuardedUpdate</code> again -> this and the credential-finding leg of
-/// <method>TestTheOpenPathsStillWork</method> go red.</p>
+/// <p>Mutation (Rule 19): <code>GuardedClearVerification</code> opens the row, clears the flags and
+/// saves it without a caller check -> this goes red on the held edit alone.</p>
 Method TestAClearedVerificationStoresNoHeldEdit()
 {
     Set tTarget = ..SeedDefinitions(0)
     If tTarget = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(tTarget), "the target carries the default marker")
-    Set tOther = ##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE Name = '" _ ..#AGENTPREFIX _ "Other'")
+    Set tOther = ##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE Enabled = 1 AND ID <> " _ tTarget _ " ORDER BY ID")
     Set tFields = ..AgentFields(tTarget)
     Set tBefore = ..AgentState()
     Set tStep = {"kind": "Agent.GuardedClearVerification", "id": (tTarget), "holdEditedRow": 1, "instructions": (..#REWRITTEN)}
@@ -188,7 +175,7 @@ Method TestAClearedVerificationStoresNoHeldEdit()
     Set tAfter = ..AgentState()
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Agent.GuardedClearVerification ok=1 code=", "the observation is recorded for a developer: " _ ..Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT Enabled || '|' || ConnectionVerified FROM OcuPilot_Kernel_State.Agent WHERE ID = " _ tTarget), "0|0", "the definition serves no turn")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'"), tOther, "and the default marker moved to the enabled definition")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'"), tOther, "and the default marker moved to the lowest-id enabled definition")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tTarget, .tRow), "the cleared definition opens")
     Do $$$AssertEquals($IsObject(tRow) && (tRow.DefaultMark = ""), 1, "and its cleared marker reads as empty through the object layer")
     Set tRow = ""
@@ -200,13 +187,19 @@ Method TestAClearedVerificationStoresNoHeldEdit()
 /// <code>822</code> and the victim's rows read, versions included, as they did. The all-users expiry is
 /// an administrator's, so it is refused too.</p>
 /// <p>Mutation (Rule 19): <code>OwnerWriteRefused</code> answers <code>$$$OK</code> first -> this goes
-/// red, and no other test of the class does.</p>
+/// red, and so do the overflow-count and empty-name refusals; no owner, administrator or open-path test
+/// does.</p>
 Method TestADeveloperIsRefusedAVictimsLedgerAndProposalRows()
 {
     Set tKinds = ..VictimKinds() _ $ListBuild("Propose.GuardedExpireStale.All")
     For tI = 1:1:$ListLength(tKinds) {
         Set tKind = $List(tKinds, tI)
         If '..SeedVictim(.tProposalKey, .tLedgerKey) Quit
+        If tKind [ "GuardedExpireStale" Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).AgeExpiry(tProposalKey, 3600), "the victim's proposal has lapsed, so an expiry would change it")
+        If tKind = "Propose.GuardedRebuildTargetKeys" {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET TargetRef = ?, TargetKey = NULL WHERE %EXACT(ProposalKey) = ?", ..#TARGET, tProposalKey)
+            Do $$$AssertTrue(tRS.%SQLCODE >= 0, "the victim's proposal names a target and carries no key, so a rebuild would change it")
+        }
         Set tBefore = ..VictimState()
         Set tVersion = ##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT RowVersion FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "'")
         Set tStep = {"kind": (tKind), "user": (..#VICTIM), "turnKey": (..#VICTIMTURN), "convKey": (..#VICTIMCONV), "target": "", "key": (tProposalKey), "version": (tVersion), "reason": "you", "iso": (##class(OcuPilot.Kernel.State.Turn).IsoOfSeconds(##class(OcuPilot.Kernel.State.Turn).NowSeconds() + 60))}
@@ -362,9 +355,10 @@ ClassMethod ProposalId(pKey As %String) As %String
 /// memory, holds it, and counts an overflow call for itself on that turn: the save would store a row the
 /// developer has made its own. It is refused <code>822</code> and the stored owner is still the victim.
 /// The other way round, the developer's own row held with the victim's name is refused too and stays the
-/// developer's.</p>
-/// <p>Mutation (Rule 19): <code>GuardedSaveOwned</code> skips the stored-versus-held owner comparison ->
-/// the first leg goes red.</p>
+/// developer's. An administrator may write the victim's row but not change its owner: the same held
+/// edit through the writer and through <code>Base.GuardedSave</code> is refused.</p>
+/// <p>Mutation (Rule 19): <code>OwnerChangeRefused</code> skips the stored-versus-held owner comparison ->
+/// this test goes red.</p>
 Method TestAForgedOwnerIsRefusedAndTheStoredOwnerStands()
 {
     If '..SeedVictim(.tProposalKey, .tLedgerKey) Quit
@@ -380,7 +374,31 @@ Method TestAForgedOwnerIsRefusedAndTheStoredOwnerStands()
     Do ..AssertPrincipal(tRun)
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "the victim's row held as the developer's is refused 822: " _ ..DetailOf(tRun, 1))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedOverflow ok=0 code=822", "the developer's row held as the victim's is refused 822: " _ ..DetailOf(tRun, 2))
+    Set tPlan = [{"kind": "Ledger.ForgedOverflow", "id": (tVictimRow), "turnKey": (..#VICTIMTURN), "heldUser": (..#ADMINUSER), "user": (..#ADMINUSER)}, {"kind": "Ledger.ForgedSave", "id": (tVictimRow), "heldUser": (..#ADMINUSER)}]
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#ADMINUSER, tPlan, ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#ADMINUSER, 1)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "an administrator's writer save of the victim's row held under another owner is refused 822: " _ ..DetailOf(tRun, 1))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedSave ok=0 code=822", "and so is its public save: " _ ..DetailOf(tRun, 2))
     Do $$$AssertEquals(..OverflowState(), tBefore, "the stored owners, counts and versions are as they were; before " _ tBefore _ " after " _ ..OverflowState())
+}
+
+/// <p>A developer claims its own proposal, which names no target, passing the target of a victim's live
+/// proposal: the claim would cancel the victim's proposal as its sibling. It is refused <code>822</code>,
+/// the victim's proposal is still live and the developer's is not claimed.</p>
+/// <p>Mutation (Rule 19): the stored-target check removed from <code>GuardedClaimAndClose</code> -> this
+/// goes red.</p>
+Method TestAClaimCancelsOnlyItsOwnTargetsSiblings()
+{
+    If '..SeedOwn(.tOwnKey, .tCloseKey, .tLedgerKey) Quit
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedMinimal(..#VICTIM, "", ..#VICTIMTURN, ..#TARGET, .tVictimKey)
+    Do $$$AssertStatusOK(tSC, "a live proposal of the victim names the target")
+    If $$$ISERR(tSC) Quit
+    Set tStep = {"kind": "Propose.GuardedClaimAndClose", "key": (tOwnKey), "version": (##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "RowVersion")), "target": (..#TARGET)}
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
+    Do ..AssertPrincipal(tRun)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Propose.GuardedClaimAndClose ok=0 code=822", "the claim naming another target is refused 822: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tVictimKey, "State"), "live", "the victim's proposal is still live")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "State") _ "|" _ ##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "Burned"), "live|0", "and the developer's is not claimed")
 }
 
 /// <p>A developer counts an overflow call for itself onto the turn key of a victim's stored overflow
@@ -874,7 +892,7 @@ ClassMethod AgentFields(pId As %String) As %String
 ClassMethod VictimState() As %String
 {
     Set tText = ""
-    Set tQueries = $ListBuild("SELECT ProposalKey, State, ClosedReason, Burned, ReadBack, RowVersion FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "' ORDER BY ProposalKey", "SELECT LedgerKey, Status, Code, Name, Dropped, RowVersion FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "' ORDER BY LedgerKey")
+    Set tQueries = $ListBuild("SELECT ProposalKey, State, ClosedReason, Burned, ReadBack, TargetKey, RowVersion FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "' ORDER BY ProposalKey", "SELECT LedgerKey, Status, Code, Name, Dropped, RowVersion FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "' ORDER BY LedgerKey")
     For tI = 1:1:$ListLength(tQueries) {
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, $List(tQueries, tI))
         Set tText = tText _ "["

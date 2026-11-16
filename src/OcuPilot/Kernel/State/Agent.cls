@@ -306,10 +306,9 @@ ClassMethod GuardedClearVerification(pId As %String) As %Status
 
 /// <p>Record that Test connection succeeded against definition <var>pId</var> as it is stored:
 /// set <property>ConnectionVerified</property>, leaving every other field as it was.</p>
-/// <p>The mirror of <method>GuardedClearVerification</method>, and written the same way -- open,
-/// snapshot the security fields, set the flag, save through <method>GuardedUpdate</method> -- so
-/// the timestamp and the default rebalance stay where every other write puts them and no field
-/// reads as changed.</p>
+/// <p>It opens the row, snapshots the security fields, sets the flag and saves through
+/// <method>GuardedUpdate</method>, so the timestamp and the default rebalance stay where every other
+/// write puts them and no field reads as changed.</p>
 /// <p><b>It never touches <property>Enabled</property>.</b> Enabling is a separate act the
 /// operator takes, which the enable rule then permits
 /// (<method>OcuPilot.Kernel.AgentRules.Validate</method>).</p>
@@ -712,7 +711,10 @@ ClassMethod GuardedRebalanceDefault() As %Status
 /// without a row object. The marker is cleared by <code>NULL</code>, which the object layer reads
 /// back as <code>""</code>; a SQL <code>''</code> would read back as <code>$Char(0)</code>. Each
 /// marker write raises the row's <property>RowVersion</property> and sets its
-/// <property>UpdatedAt</property>, and the clear precedes the set, in one transaction.</p>
+/// <property>UpdatedAt</property>, and the clear precedes the set, in one transaction.
+/// <method>SetDefaultGuarded</method>, an administrator's write, keeps <method>MarkRow</method>'s
+/// object-layer write: <method>OcuPilot.Api.Definitions</method>' default route projects the row it
+/// holds across that call, and the object write is what updates it.</p>
 ClassMethod RebalanceDefaultSql() As %Status [ Private ]
 {
     Set tSC = $$$OK

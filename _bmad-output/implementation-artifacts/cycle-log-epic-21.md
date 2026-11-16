@@ -391,3 +391,5 @@
 2026-11-16T15:15:34Z	Story 21.33	dev_complete	spawn_at=2026-11-16T14:05:00Z model=sonnet build_sha=4334486d8 scope=batch1 task0=attack_landed(admin_confirm_sent_EVIL) five_paths=unchanged(TestTheOpenPathsStillWork) review=12(5_patched_tests,1_deferred,6_rejected) cycle_iteration=1
 2026-11-16T15:15:34Z	Story 21.33	ruling	question=ship_batch1_alone choice=yes(CR,fresh_check,sweep,smoke,push_batch1_head;batches_2-3_follow) rejected=wait_for_all_batches why=closes_privilege_escalation_now;batches_independent category=decide policy=b9ff703e
 2026-11-16T15:15:34Z	Story 21.33	stage_spawned	stage=code-review spawn_at=2026-11-16T15:15:34Z model=opus agent_name=21-33-code-review-b1 cycle_iteration=1
+2026-11-16T15:46:36Z	Story 21.33	cr_complete	scope=batch1 model=opus resolved=9 deferred=3(DW-2662_AD-9_text,DW-2663,DW-2664) dismissed=15 high=2(claim_target_bound,owner_immutable;patched)+1(DW-2662_AD_text) med=6 low=18 five_paths=unchanged commit=be4f8d61f
+2026-11-16T15:46:36Z	Story 21.33	ad_amended	ad=AD-9 change=open_writes_4->5(claim_sibling_cancel,AD-34) mode=comply_first_U7

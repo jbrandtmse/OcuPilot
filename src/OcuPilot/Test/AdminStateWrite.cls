@@ -77,25 +77,7 @@ Method OnBeforeAllTests() As %Status
 /// <p>Remove the two principals and their roles; a failing status when any survives.</p>
 Method OnAfterAllTests() As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        For tUser = ..#DEVUSER, ..#ADMINUSER {
-            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-        }
-        For tRole = ..#DEVROLE, ..#ADMINROLE {
-            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-        }
-        If ##class(Security.Users).Exists(..#DEVUSER) || ##class(Security.Users).Exists(..#ADMINUSER) || ##class(Security.Roles).Exists(..#DEVROLE) || ##class(Security.Roles).Exists(..#ADMINROLE) {
-            Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.AdminStateWrite left a throwaway principal on the instance"))
-        }
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
-    }
-    Quit tSC
+    Quit ..RemovePrincipals(..DefaultCases(), "OcuPilot.Test.AdminStateWrite")
 }
 
 /// <p>Record what the four stores hold, then leave the baseline every test starts from: no hold, no
@@ -652,6 +634,31 @@ ClassMethod LegText(pRun As %DynamicObject, pIndex As %Integer) As %String
 ClassMethod DefaultCases() As %List
 {
     Quit $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U", 0), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U", 1))
+}
+
+/// <p>Delete each account and role <var>pCases</var> names (as <method>EnsurePrincipals</method> takes
+/// them) and answer a failing status, naming <var>pSuite</var>, when any survives.</p>
+ClassMethod RemovePrincipals(pCases As %List, pSuite As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tLeft = 0
+        For tI = 1:1:$ListLength(pCases) {
+            Set tUser = $List($List(pCases, tI), 1)
+            Set tRole = $List($List(pCases, tI), 2)
+            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
+            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
+            If ##class(Security.Users).Exists(tUser) || ##class(Security.Roles).Exists(tRole) Set tLeft = 1
+        }
+        If tLeft Set tSC = $$$ERROR($$$GeneralError, pSuite _ " left a throwaway principal on the instance")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+    }
+    Quit tSC
 }
 
 /// <p>Create each throwaway role and the account that holds it, then read the grants back. A case
