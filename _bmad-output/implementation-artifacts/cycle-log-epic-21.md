@@ -257,3 +257,4 @@
 2026-11-16T01:02:48Z	Story 21.19	stage_spawned	stage=plan spawn_at=2026-11-16T01:02:48Z model=opus agent_name=21-19-shell-advisor-permission-and-task-leaves-plan-1 cycle_iteration=1
 2026-11-16T01:10:35Z	Story 21.12	cr_complete	spawn_at=2026-11-16T00:53:30Z model=opus resolved=8 fixed_at_source=8 routed=0 deferred=5 dismissed=15 high=0 med=2 low=11 rows=33 unresolved_high_med=2(DW-2620,DW-2621_decision-pending_burndown) clarifications=0 closing_sections_present=true final=done cycle_iteration=1
 2026-11-16T01:10:35Z	Story 21.12	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=3(DW-2622..2624_wontfix-accepted) filed_by_cr=DW-2620,DW-2621(decision-pending,epic-close_sheet) filed_by_lead=DW-2619(open,burndown)
+2026-11-16T01:15:23Z	Story 21.12	fresh_check	env=recipe(rebuilt_01:10Z) tests=23_classes+language-servers,mirror-monitor_specs result=pass order=forward,reverse note=first_class_pass_used_short_names(runner_EMPTY),rerun_qualified
