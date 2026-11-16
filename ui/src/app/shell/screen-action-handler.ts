@@ -164,6 +164,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SqlShellSettingList',
   'OcuPilot.Screen.Descriptor.TsqlSettingList',
   'OcuPilot.Screen.Descriptor.IsqlSettingList',
+  // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -500,6 +503,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.TsqlSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
+  // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -697,6 +703,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
   // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
   [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
+  // Story 21.13: DDL that names a deleted mapping's type no longer maps it to its datatype.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
@@ -787,6 +796,9 @@ const TYPED_NAME_ROWS: Readonly<
   [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
   // Story 20.34: a build types the cube's logical name, which the Cube manager's name column shows.
   [ANALYTICS_CUBE_MANAGER]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 21.13: a DDL mapping is keyed by its name, which its Delete types.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.2: a delete types the term list's name and a remove the entry's key.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },

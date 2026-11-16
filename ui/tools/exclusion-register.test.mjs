@@ -303,7 +303,7 @@ test('every row names a gate kind from the Gate kinds table', () => {
   assert.deepEqual(problems, [], `${REGISTER_PATH}: kind not in the Gate kinds table (${[...register.kinds].join(', ')}): ${problems.join('; ')}`);
 });
 
-test('a license, edition or platform gate names a runnable check, and what slot B read on which day', () => {
+test('a license, edition or platform gate names a runnable check, and what slot A or slot B read on which day', () => {
   const problems = [];
   const checked = new Set();
   for (const row of registerRows(parseRegister())) {
@@ -311,12 +311,24 @@ test('a license, edition or platform gate names a runnable check, and what slot 
     checked.add(row.kind);
     if (!/`[^`]+` (returns|is)\b/.test(row.tell)) problems.push(`${row.id}: no backticked check followed by what it returns`);
     if (!/evaluates it/i.test(row.tell)) problems.push(`${row.id}: does not say where the vendor evaluates it`);
-    if (!/slot B read \S+/i.test(row.tell)) problems.push(`${row.id}: does not say what slot B read`);
+    if (!/slot [AB] read \S+/i.test(row.tell)) problems.push(`${row.id}: does not say what slot A or slot B read`);
     if (!ISO_DATE_RE.test(row.tell)) problems.push(`${row.id}: no observation date`);
   }
   assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
   // Floor: a kind that no row carries any more would otherwise pass this test over an empty set.
   assert.deepEqual(sorted(checked), ['edition', 'license', 'platform'], `${REGISTER_PATH}: no row carries one of the kinds this test checks; read [${sorted(checked).join(', ')}]`);
+});
+
+test('each license-gated mirroring row names the mirroring license and the vendor check that reads it', () => {
+  const group = parseRegister().groups.find((candidate) => candidate.heading === 'License-gated mirroring');
+  assert.ok(group !== undefined, `${REGISTER_PATH}: no 'License-gated mirroring' group`);
+  const problems = [];
+  for (const row of group.rows) {
+    if (!/allows mirroring/i.test(row.gate)) problems.push(`${row.id}: the gate does not name the license that allows mirroring`);
+    if (!/NoMirror\(\)/.test(row.tell)) problems.push(`${row.id}: the check is not $System.License.NoMirror()`);
+  }
+  assert.deepEqual(group.rows.map((row) => row.id).sort(), ['SA-45', 'SA-46', 'SA-47', 'SA-48', 'SA-49', 'SO-17'], `${REGISTER_PATH}: the group's rows`);
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
 });
 
 test('a deprecation gate names the deprecated feature and the owner decision that clears it', () => {

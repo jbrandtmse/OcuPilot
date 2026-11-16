@@ -2,7 +2,8 @@
 title: 'Story 21.12: Mirroring'
 type: 'feature'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '187a5d77ab1ea372129a30bde8e94a52011845e0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -101,9 +102,62 @@ The owner chose option A, quoted: "A: monitor + refusal (Recommended)". This sto
 - AC4. Given a `mirror` target whose payload sets `DeleteDB` or `DeleteDBs`, when the agent's confirm or the screen action's gate asks the set, then it is refused 403 `PROHIBITED.MIRRORDATABASES` with its sentence and nothing is written; any other `mirror` write is refused `PROHIBITED.UNCOVERED`; Guardrails lists the new code.
 - AC5. Given the register, catalog and extract, when `exclusion-register.test.mjs` runs, then SA-45..SA-49 and SO-17 each have a row in the license-gated mirroring group whose gate names the mirroring license.
 
+### Review Findings
+
+Code review 2026-11-15, full-opus, four layers. 0 decision-needed, 8 patch (applied), 5 defer (ledgered), 15 rejected.
+
+- [x] [Review][Patch] `State.MirrorName` was always empty on an async member (the vendor `MirrorName()` answers only on a failover member) and no test reached the member branch -- `MirrorNames` seam, `GetMirrorNames()` off a failover member, fixture arms a name, armed test asserts it [src/OcuPilot/Port/MirrorPort.cls]
+- [x] [Review][Patch] `MemberRows` ignored a failed fetch (`Next()` without status) and closed its result set only after leaving `%SYS` -- `Next(.tSC)` and an explicit close in `%SYS` [src/OcuPilot/Port/MirrorPort.cls]
+- [x] [Review][Patch] The vendor-query test's "answers no rows" could not fail -- it now asserts the query ran and refused [src/OcuPilot/Test/MirrorRead.cls]
+- [x] [Review][Patch] The fixture's two latency values were identical, so a column swap stayed green -- `DatabaseLatency` now `Behind N` [src/OcuPilot/Test/MirrorPortFixture.cls]
+- [x] [Review][Patch] `MirrorRefusal` called `DeleteDBs` a database list; both vendor flags are booleans -- method and doc reworded [src/OcuPilot/Test/MirrorRefusal.cls]
+- [x] [Review][Patch] `RefusalCopy`'s names-no-caller roster lacked `MIRRORDATABASES` [src/OcuPilot/Test/RefusalCopy.cls]
+- [x] [Review][Patch] The six re-tiered catalog rows kept Co-pilot tool `write-confirm`, where every other P4 row reads `none` [feature-catalog.md:351-355,390]
+- [x] [Review][Patch] SA-22's note said every other mirror page is Stage 5, but SA-43, SA-44 and SO-15 are Stage 4 [extract-stages.md:130]
+- [x] [Review][Defer] SA-43 and SA-44 have no story after U-39 [extract-stages.md:462-463] -- deferred: DW-2620, decision-pending (owner)
+- [x] [Review][Defer] An async member tracking several mirrors may list one mirror's members (inference) [src/OcuPilot/Port/MirrorPort.cls] -- deferred: DW-2621, decision-pending, human=measure on a licensed async member
+- [x] [Review][Defer] Twelfth port copy of `Deny`/`Refuse`/`Fail` (Rule 31, low) -- deferred: DW-2622 wontfix-accepted
+- [x] [Review][Defer] Twelfth per-source block in `Registry.ReadProblem` (Rule 31, low; spec held the file add-only) -- deferred: DW-2623 wontfix-accepted
+- [x] [Review][Defer] `Prohibits`' doc says an empty diff prohibits nothing; the mirror and screen-permission arms ignore the diff (contended file) -- deferred: DW-2624 wontfix-accepted
+
+**Rejected:**
+
+- false: `Invoke` checks the body before `Serves` -- the documented contract (500 for a body) and `BackupPort`'s order.
+- false: `{"DeleteDBs":["DB1"]}` should be `MIRRORDATABASES` -- both vendor flags are `%Boolean` (`SYS/Mirror.cls:1178,1195`), an array is not true, and the spec sends anything not true to `UNCOVERED`; both codes refuse (AD-10 holds).
+- false: `prd.md` keeps "removing a mirror together with its databases" -- AD-10's own heading uses those words.
+- false: register intro and gate cells contradict -- the cells are owner-ruled strings (U-53) and the spec required an add-only paragraph.
+- low: text flags such as `"2"` read `UNCOVERED` while ObjectScript reads them true -- both refuse; real only when a mirror write is built, which replaces the arm.
+- low: membership could change between `IsMember()` and the query -- a 500 on a transient, not reachable here.
+- low: the registry accepts a mirror banner endpoint the port does not serve, and has no `%DB_IRISSYS:READ` rule for `mirror` -- same as `backup` and `config`; the descriptor is pinned by `MirrorRead`.
+- low: the read tool cannot tell unlicensed from not-a-member -- zero rows answers the membership prompt; the tool's shape is shared by every screen.
+- low: the tool leg of AC1 compares two empty counts -- the mirror branch of `Read.Execute` is pinned by the fixture tests; the tool path is shared.
+- low: `MirrorRead` switches to `%SYS` around `%OpenId` without a try -- a compiled-query open does not throw in practice.
+- low: `MirrorGate.Steps` would error on a fault with no detail -- the test still goes red.
+- low: the register's gate check names only `NoMirror()` and not membership or the mirror service -- owner-ruled cells (U-53).
+- low: Story 22.1's "56 excluded rows" and Epic 21's "165 rows" are stale -- already DW-2619.
+- low: the spec's intent block still reads "Not planned" -- the fix edits the spec under review, whose intent is frozen.
+- low: QA's note that `MirrorName` was asserted -- superseded by the first patch above.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-15 — Review pass
+
+- verdicts: 12 findings — high 0, medium 1, low 3, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The real `MemberRows`, the five-field list against the vendor query's row specification and `State.MirrorName` ran in no test (the fixture replaced them) — patched: `MirrorRead.TestTheVendorQueryCarriesTheFieldsAndTheReadRestoresTheNamespace` and a `MirrorName` assertion; both mutations seen red and reverted.
+  - `[low]` `[patch]` AC5's "gate names the mirroring license" had no assertion — patched: `exclusion-register.test.mjs` pins the group's six rows, the license wording and the `NoMirror()` check; the SO-17 gate reworded -> red, reverted.
+  - `[low]` `[reject]` `TestTheLiveStateIsTheInstancesOwn` compares two empty row counts on a non-member — the `FieldsJson` comparison beside it observes the tool and the state assertion observes the screen; no fix worth its guard.
+  - `[low]` `[reject]` The browser spec's member branch waits for an empty banner at once — the branch cannot run on Community, and the banner is asserted after the rows are drawn.
+  - `[false]` `[reject]` The `MirrorRead` doc comment names a different AC3 mutation than the spec — both are valid, and the spec's line is the recorded one.
+  - `[false]` `[reject]` Refusal exercised through the predicate, the gate and a seeded confirm, not a real mirror-removal producer — no mirror write is built by the owner's answer U-39; both callers' paths are covered.
+  - `[false]` `[reject]` No mirrored-database rows in the monitor — the named limit in Design Notes, ruled with the story.
+  - `[false]` `[reject]` `%DB_IRISSYS:WRITE` as the screen's own pair on a read-only screen — ruled stricter pair (veto U-53).
+  - `[false]` `[reject]` AD-22 and AD-29 constraints met vacuously — no mirror write exists; the refusal is the kernel half.
+  - `[false]` `[reject]` Wider PRD, catalog and EXPERIENCE.md edits — ruled at the spec gate (U-52), forced by the register test.
+  - `[false]` `[reject]` Vendor query never runs on a member in any test — no runtime here can be one; the fixture holds the row shape, and the new test pins the query's columns.
+  - `[false]` `[reject]` Epics narrowing only in Epic 22's line — Story 21.12's own criteria already carry the narrowing.
 
 ## Design Notes
 
@@ -137,6 +191,21 @@ The owner chose option A, quoted: "A: monitor + refusal (Recommended)". This sto
 
 **Ledger inbox:** none. **Contended paths:** `origin/OCU-1-epic24` has changed none of the files named here (checked 2026-11-15); Epic 22 is done. Shared registration files take add-only rows.
 
+**Task 0, measured on `ocupilot-ci` (2026-11-15):**
+
+- `NormalizePage("%CSP.UI.Portal.Mirror.Monitor")` answers `%CSP.UI.Portal.Mirror.Monitor`, with or without the URL form; that is the descriptor's `classicPage`. `IsMember()` 0, `NoMirror()` 1, `MirrorName()` empty.
+- Through the screen route, a principal holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` only is refused 403 `AUTH.NOPRIVILEGE` naming `%DB_IRISSYS:WRITE` (the screen's own pair), and a principal holding those and `%DB_IRISSYS:WRITE` reads 200 with the unlicensed banner and no rows. The screen route needs all three pairs, so the port ran under the three, never under the two; that the vendor calls need no more than the port's two pairs is an inference (`IsMember()`, `NoMirror()` and `MirrorName()` are accessors, and the member query is not run on a non-member). Both principals and their roles were created and deleted in the same probe.
+
+**Decided in-stage:**
+
+- `MirrorPort` copies `BackupPort`'s `Deny`, `Refuse` and `Fail` (private there, three short methods): a shared base would couple a read-only port to a write port's `Admit`.
+- The mirror read has no read label: the screen has no confusable sibling, and `ReadDescriptions` requires a label only for a confusable group.
+- The Role column reuses `userRoleField` ("Role"): `strings.ts` holds one key per value. "Role" is therefore not added to Fixed strings, whose row names it as reused.
+- `RowFor` shapes a member row from the vendor's column values, so the fixture's rows pass through the builder the instance's rows do.
+- `exclusion-register.test.mjs` read "slot B read" for every license, edition and platform gate; it reads "slot A or slot B" now, since the mirroring rows were read on slot A (`ocupilot`, read only).
+- Counts and the catalog Co-pilot tool column: the six catalog rows keep `write-confirm`; the extract's Stage 5 rows carry the grammar of the existing group. Totals recomputed from rows: Stage 4 159 rows, S 60 / M 79 / L 20, custom endpoints 152; Stage 5 62 rows, S 11 / M 29 / L 22, custom endpoints 38; catalog P3 158, P4 62; all five stages unchanged at 357, 118 / 179 / 60, 202.
+- Left unchanged for the runner: `epics.md` counts that still read the old totals ("Epic 21's 165 rows", "the 56 excluded rows" in Story 22.1, "Stages 2-6" custom endpoints 167), the research summaries ("56 rows"), and `reconcile-catalog.md`.
+
 **Runner and orchestrator rulings at the spec gate (2026-11-15):**
 
 - Strings and the screen's own `%DB_IRISSYS:WRITE` pair: kept as planned (veto U-53).
@@ -166,7 +235,40 @@ The owner chose option A, quoted: "A: monitor + refusal (Recommended)". This sto
 - AC4: the arm stops reading `DeleteDBs` -> `Prohibited`'s mirror test red; the arm removed -> its code assertions red.
 - AC5: the SO-17 row removed from the register -> `exclusion-register.test.mjs` red.
 
+**Mutations run (Rule 19), each applied, observed red, reverted (checksum identical), the reverted source reloaded into `ocupilot-ci`:**
+
+- mutation: AC1, `MirrorPort.State` answers `NotMember` whatever `NoMirror()` reads -> `MirrorRead` red (`TestTheLiveStateIsTheInstancesOwn` and `TestEachArmedStateAnswersItsRowsAndBanner`); the descriptor's `Unlicensed` case removed, mirror and bundle rebuilt and redeployed -> `mirror-monitor.browser-spec.mjs` red.
+- mutation: AC2, `FIELDS` renames `CurrentStatus` to `Status` -> `MirrorRead.TestTheVendorQueryCarriesTheFieldsAndTheReadRestoresTheNamespace` red; `MemberRows` drops its namespace restore -> the same method red; `FIELDS` drops `CurrentStatus` -> `MirrorRead.TestEachArmedStateAnswersItsRowsAndBanner` red; `Read.Execute` asks the mirror port for the cap rather than the cap plus one -> `TestARowCountPastTheCapReportsTruncation` red.
+- mutation: AC3, `PAIRS` loses `%DB_IRISSYS:READ` -> `PortGate.TestEveryPortEvaluatesItsDeclaredGate` red; the descriptor's `ownPrivileges` emptied -> `MirrorRead.TestTheScreenDeclaresItsPagePairsAndSource` red; `ReadProblem`'s mirror arm admits any endpoint -> `MirrorRead.TestTheMirrorSourceRefusals` red.
+- mutation: AC4, `MIRRORDATABASEFIELDS` without `DeleteDBs` -> `Prohibited.TestAMirrorRemovalWithItsDatabasesIsRefusedAndEveryOtherMirrorWriteIsUncovered` red; the `Mirror` call removed from the arm -> the same method red.
+- mutation: AC5, the SO-17 row removed from the register -> `exclusion-register.test.mjs` red (the catalog and extract-position tests); the SO-17 gate reworded to a sharding license -> the license-gated mirroring wording test red.
+
+**Verified (loop), on `ocupilot-ci`:** `reload.sh` `LOADERRORS=0`; `MirrorRead` 7, `Prohibited` 16, `PortGate` 4 and the 22 shared-surface classes above green; `check-objectscript.py` 0 problems, `test_check_objectscript.py` 152 OK, `lint-docs.sh` 0 issues; `node --test` over the four files and `npm run test:tools` (2292) green; `npm run build` and `npm run test:components` (3469) green; `mirror-monitor`, `language-servers` and `guardrails` browser specs green on the redeployed bundle.
+
+**QA additions (QA), on `ocupilot-ci`:**
+
+- `src/OcuPilot/Test/MirrorGate.cls` (QA, armed by `OCUPILOT_ALLOW_PRINCIPALS`, roster line added in `scripts/ci-throwaway.sh`), `src/OcuPilot/Test/MirrorProbe.cls` (QA, its principals' fixture) and `src/OcuPilot/Test/MirrorRefusal.cls` (QA, live-safe). The gate class runs `MirrorPort` itself, unfixtured, as a real principal holding only `%Admin_Operate:USE` and `%DB_IRISSYS:READ` (both endpoints read, 200), as ones missing either pair (403 naming it), and reads the screen over HTTP as the two-pair holder (403 naming `%DB_IRISSYS:WRITE`) and the three-pair holder (200, live banner). The refusal class pins the flag spellings, null, empty, array and object values, non-object payloads, and independence from the stored diff and the mirror's name.
+- mutation: AC1, `MirrorPort.State` ignores `NoMirror()` -> `MirrorGate` red (two tests).
+- mutation: AC2, `RowFor` blanks `CurrentStatus` -> `MirrorRead.TestEachArmedStateAnswersItsRowsAndBanner` red.
+- mutation: AC3, `PAIRS` loses `%DB_IRISSYS:READ` -> `MirrorGate.TestEachMissingPortPairIsRefusedByNameOnEveryEndpoint` red; the descriptor's write pair and `ownPrivileges` removed -> `MirrorGate.TestTheScreenNamesItsOwnWritePairToTheTwoPairHolder` red.
+- mutation: AC4, the arm's `true` comparison drops its case folding -> `MirrorRefusal.TestEachSpellingOfASetFlagIsRefusedWithItsCodeAndNoOtherIs` red.
+- mutation: AC5, the SA-47 row removed from the register -> `exclusion-register.test.mjs` red (three tests).
+- Each mutation reverted by restoring the saved source (checksum equal), reloaded into `ocupilot-ci`; `MirrorRead` 8, `Prohibited` 16, `MirrorGate` 3 and `MirrorRefusal` 4 green after; `ci.test.mjs` and `exclusion-register.test.mjs` 120 green; `check-objectscript.py` 0 problems.
+
+**Code review additions, on `ocupilot-ci`:**
+
+- mutation: `State` calls `$System.Mirror.MirrorName()` directly instead of `MirrorNames` -> `MirrorRead.TestEachArmedStateAnswersItsRowsAndBanner` red; `MemberRows` quits OK before the vendor query -> `MirrorRead.TestTheVendorQueryCarriesTheFieldsAndTheReadRestoresTheNamespace` red; `ReasonFor` answers a literal naming the agent for `MIRRORDATABASES` -> `RefusalCopy.TestEachKernelRefusalIsItsParameterAndNamesNoCaller` red. Each reverted (checksum equal) and reloaded.
+- After: `LOADERRORS=0`; `MirrorRead` 8, `MirrorRefusal` 4, `RefusalCopy` 8, `PortGate` 4, `MirrorGate` 3, `Prohibited` 16 green; `check-objectscript.py` 0, `lint-docs.sh` 0, `npm run test:tools` 2293 green.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Mirror monitor (`MirrorPort`, `MirrorMonitor` at OS management position 33, `mirror` read source and banner port) and the kernel refusal `PROHIBITED.MIRRORDATABASES` (`mirror` entity type, payload-only arm; every other mirror write `UNCOVERED`), per owner answer U-39. Register: six license-gated mirroring rows; catalog SA-45..SA-49 and SO-17 to P4; extract Stage 4 to Stage 5 with totals re-derived; Story 22.1's line gains "license-gated mirroring". Client strings, EXPERIENCE.md, generated screens and 20 shared-surface tests updated; new `MirrorRead`, fixtures, `Prohibited` method and `mirror-monitor.browser-spec.mjs`.
+
+**Review.** 12 findings: 1 medium and 1 low patched (real-query columns, namespace restore and `MirrorName` test; register wording test), 2 lows and 8 false rejected with reasons in the triage log, none deferred. Follow-up review recommended: false (one medium patched).
+
+**Verification.** `(loop)` on `ocupilot-ci`: `LOADERRORS=0`; `MirrorRead` 8, `Prohibited`, `PortGate` and the shared-surface classes green; `check-objectscript.py` 0 problems; `lint-docs.sh` 0; `exclusion-register.test.mjs` 17 green; `npm run test:tools`, `npm run build`, `npm run test:components` and the three browser specs green before the patch. The review patch re-ran `MirrorRead` and the register test only.
+
+**Residual risks.** The port's query on a real mirror member and the least-privileged probe through the port alone are not runnable here (inference, noted in Design Notes). Left to the runner: the full ObjectScript sweep, the AD-29 Binds proposal beside DW-2559, and the stale "56 excluded rows" and "165 rows" wording in `epics.md` and the research summaries.

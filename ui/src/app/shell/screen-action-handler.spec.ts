@@ -2655,3 +2655,22 @@ describe('the Allowed directories list\u2019s own route (Story 18.46)', () => {
     expect(calls[0].path).toBe(`/api/ocupilot/screens/${WEB_APPS.toolIdentifier}/action`);
   });
 });
+
+/** Story 21.13 (AD-53, AD-56): both DDL mapping lists' Delete types the mapping's name under the published delete consequence. */
+describe('the DDL mapping lists\u2019 Delete (Story 21.13)', () => {
+  const DDL_LISTS = ['OcuPilot.Screen.Descriptor.DdlSystemMappingList', 'OcuPilot.Screen.Descriptor.DdlUserMappingList'] as const;
+
+  it('registers Delete on both lists, typing the mapping\u2019s name under the delete consequence', () => {
+    // Mutation (Rule 19): drop a list's entry from `DESTRUCTIVE_CONSEQUENCES` -> its consequence assertion goes red;
+    // drop it from `SCREEN_ACTION_DESCRIPTORS` -> its registration assertion goes red.
+    for (const descriptor of DDL_LISTS) {
+      const { actions, handler, store, calls } = mount(undefined, descriptor);
+      expect(actions.has(descriptor, 'delete')).toBe(true);
+      handler.startFor(descriptor, 'delete', 'VARCHAR(%1)', { Name: 'VARCHAR(%1)', Value: '%Library.String(MAXLEN=%1)' }, store);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.name).toBe('VARCHAR(%1)');
+      expect(handler.pending()?.consequence).toBe(STRINGS.configMappingDelete);
+      expect(calls).toHaveLength(0);
+    }
+  });
+});

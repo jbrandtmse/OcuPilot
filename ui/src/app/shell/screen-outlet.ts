@@ -173,6 +173,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.TsqlSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.13: System and User DDL mappings, on the same page, which adds New mapping to the user list.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),

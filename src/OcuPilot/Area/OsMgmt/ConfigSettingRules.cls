@@ -13,6 +13,10 @@ Class OcuPilot.Area.OsMgmt.ConfigSettingRules Extends %RegisteredObject
 /// <p>The write type this class judges.</p>
 Parameter SET = "SET";
 
+/// <p>What a datatype of a DDL mapping looks like: an optional <code>%</code>, a class name, and the parameters in parentheses when it takes
+/// any, as every system mapping's datatype does on this build.</p>
+Parameter DATATYPEPATTERN = "^%?[A-Za-z][A-Za-z0-9.]*(\(.*\))?$";
+
 /// <p>The longest whole number the rules read: a longer one is out of every range a setting declares.</p>
 Parameter MAXDIGITS As INTEGER = 15;
 
@@ -37,6 +41,10 @@ ClassMethod ValueHolds(pLimits As %List, pValue As %String) As %Boolean
     If tKind = "boolean" Quit (pValue = "0") || (pValue = "1")
     If tKind = "choice" Quit ''$ListFind($ListGet(pLimits, 4), pValue)
     If tKind = "blocksizes" Quit ..BlockSizesHold(pValue)
+    If tKind = "datatype" {
+        If ($Length(pValue) < 1) || ($Length(pValue) > $ListGet(pLimits, 5)) Quit 0
+        Quit ($ZStrip(pValue, "*C") = pValue) && $Match(pValue, ..#DATATYPEPATTERN)
+    }
     If tKind = "text" {
         If $Length(pValue) > $ListGet(pLimits, 5) Quit 0
         Quit ($ZStrip(pValue, "*C") = pValue)
@@ -47,6 +55,30 @@ ClassMethod ValueHolds(pLimits As %List, pValue As %String) As %Boolean
     If +pValue < $ListGet(pLimits, 2) Quit 0
     If ($ListGet(pLimits, 3) '= "") && (+pValue > $ListGet(pLimits, 3)) Quit 0
     Quit 1
+}
+
+/// <p>The code of the refusal a name <var>pName</var> meets as the name of a new DDL mapping, or <code>""</code>: 1 to
+/// <parameter>OcuPilot.Port.ConfigPort.NAMEMAXLEN</parameter> characters, none of <code>=</code>, comma, <code>*</code> or <code>^</code>
+/// (the characters of the vendor's list pattern and of a configuration line), no control character and no space at either end is
+/// <code>CONFIG.MAPPING.NAME</code>.</p>
+ClassMethod NameCode(pName As %String) As %String
+{
+    If ($Length(pName) < 1) || ($Length(pName) > ##class(OcuPilot.Port.ConfigPort).#NAMEMAXLEN) Quit ##class(OcuPilot.Api.ConfigError).#MAPPINGNAME
+    If $ZStrip(pName, "*C") '= pName Quit ##class(OcuPilot.Api.ConfigError).#MAPPINGNAME
+    If (pName [ "=") || (pName [ ",") || (pName [ "*") || (pName [ "^") Quit ##class(OcuPilot.Api.ConfigError).#MAPPINGNAME
+    If $ZStrip(pName, "<>W") '= pName Quit ##class(OcuPilot.Api.ConfigError).#MAPPINGNAME
+    Quit ""
+}
+
+/// <p>The code of the refusal the create of a user DDL mapping named <var>pName</var> with the datatype <var>pValue</var> meets, or
+/// <code>""</code> when it may run: the name first (<method>NameCode</method>), then the datatype
+/// (<code>CONFIG.SETTING.VALUE</code>).</p>
+ClassMethod CreateCode(pName As %String, pValue As %String) As %String
+{
+    Set tCode = ..NameCode(pName)
+    If tCode '= "" Quit tCode
+    If '..ValueHolds(##class(OcuPilot.Port.ConfigPort).DatatypeLimits(), pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+    Quit ""
 }
 
 /// <p>Whether <var>pValue</var> is a comma-separated list of distinct database block sizes the instance offers, which
@@ -64,7 +96,8 @@ ClassMethod BlockSizesHold(pValue As %String) As %Boolean
     Quit ($ListLength(tSeen) = $Length(pValue, ",")) && $ListFind(tSeen, ##class(OcuPilot.Port.ConfigPort).#BLOCKSIZEREQUIRED)
 }
 
-/// <p>The agent's arguments refused by the set's rules against the setting's own row, before anything is stored (AD-55):
+/// <p>The agent's arguments refused by the set's rules against the setting's own row, before anything is stored (AD-55); for a tool that
+/// creates its target, by <method>CreateCode</method> over its name and its <code>Value</code> alone:
 /// the row is read through the tool's own port and <method>Code</method> asks the question for the <code>Value</code>
 /// <var>pArgs</var> carries. A setting the port reports absent is its own refusal sentence; any other failed read is an
 /// error status. <var>pProblem</var> is the sentence, or <code>""</code> when the set may run.</p>
@@ -73,6 +106,12 @@ ClassMethod WriteProblem(pToolClass As %String, pIdValue As %String, pArgs As %D
     Set pProblem = ""
     Set tSC = $$$OK
     Try {
+        If $ClassMethod(pToolClass, "Creates") {
+            Set tCreateValue = $Select($IsObject(pArgs) && (pArgs.%GetTypeOf("Value") = "string"): pArgs.%Get("Value"), 1: "")
+            Set tCreateCode = ..CreateCode(pIdValue, tCreateValue)
+            If tCreateCode '= "" Set pProblem = ##class(OcuPilot.Api.ConfigError).ReasonFor(tCreateCode)
+            Quit
+        }
         Kill tQuery
         Set tQuery($ClassMethod(pToolClass, "ReadIdParam")) = pIdValue
         Set tEndpoint = $ClassMethod(pToolClass, "Endpoint")

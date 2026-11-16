@@ -1047,7 +1047,9 @@ export const SOURCE_DEVTOOL = 'devtool';
 export const SOURCE_BACKUP = 'backup';
 /** The instance's startup, memory and compatibility settings read through `OcuPilot.Port.ConfigPort` (AD-29, AD-36, Story 21.3). */
 export const SOURCE_CONFIG = 'config';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG];
+/** The instance's mirror members, and the mirror state a banner reads, through `OcuPilot.Port.MirrorPort` (AD-29, AD-36, Story 21.12). */
+export const SOURCE_MIRROR = 'mirror';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1232,6 +1234,22 @@ export function configEndpoints() {
 
 /** The one request type a `config` source declares. */
 export const CONFIG_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.MirrorPort` declares the endpoint a `mirror` read names. */
+export const MIRROR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'MirrorPort.cls');
+
+let mirrorEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.MirrorPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function mirrorEndpoints() {
+  if (mirrorEndpointsCache === undefined) {
+    mirrorEndpointsCache = parseInteropEndpoints(readFileSync(MIRROR_PORT_SOURCE, 'utf8'));
+  }
+  return mirrorEndpointsCache;
+}
+
+/** The one request type a `mirror` source declares. */
+export const MIRROR_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1498,8 +1516,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}' or '${SOURCE_CONFIG}', ` +
-      'the eighteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}' or '${SOURCE_MIRROR}', ` +
+      'the nineteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1694,6 +1712,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a config source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A mirror source lists the instance's mirror members through `OcuPilot.Port.MirrorPort`, which answers its endpoint whole behind its own
+  // gate (AD-29, AD-36, Story 21.12): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per parent,
+  // under a fixed query or in parts.
+  if (source.port === SOURCE_MIRROR) {
+    const endpoints = mirrorEndpoints();
+    if (endpoints === null) return `${MIRROR_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the mirror port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== MIRROR_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a mirror source, which lists the instance's mirror members (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a mirror source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
@@ -2071,8 +2106,8 @@ export function bannerProblem(declaration) {
   if (!isObject(source)) return 'banner.source is not an object naming its port, endpoint and type';
   const sourceKeysFault = unknownKeyProblem('banner.source', source, ['port', 'endpoint', 'type']);
   if (sourceKeysFault !== null) return sourceKeysFault;
-  if (source.port !== 'admin' && source.port !== SOURCE_BACKUP) {
-    return `banner.source.port '${shown(source.port)}' is not 'admin' or 'backup', the two ports a banner reads (AD-2)`;
+  if (source.port !== 'admin' && source.port !== SOURCE_BACKUP && source.port !== SOURCE_MIRROR) {
+    return `banner.source.port '${shown(source.port)}' is not 'admin', 'backup' or 'mirror', the three ports a banner reads (AD-2)`;
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
     return `banner.source.endpoint '${shown(source.endpoint)}' is not a package-relative endpoint name`;
@@ -4007,7 +4042,7 @@ export interface ReadDeclaration {
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
 export interface BannerSource {
-  readonly port: 'admin' | 'backup';
+  readonly port: 'admin' | 'backup' | 'mirror';
   readonly endpoint: string;
   readonly type: 'GET';
 }

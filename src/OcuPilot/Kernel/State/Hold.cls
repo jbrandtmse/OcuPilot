@@ -13,6 +13,10 @@
 Class OcuPilot.Kernel.State.Hold Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers refuse a caller who does not hold the administrative resource.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The user the agent is switched off for. Unique, so one user carries at most one hold.</p>
 /// <p>The length is <class>Security.Users</class>'s own <code>Name</code> length on this build, so
 /// a name the instance accepts is a name this column holds.</p>
@@ -80,7 +84,8 @@ ClassMethod GuardedIdForUser(pUserName As %String, Output pId As %String) As %St
 ClassMethod GuardedCreate(pUserName As %String, pReason As %String, Output pId As %String) As %Status
 {
     Set pId = ""
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tRow = ..%New()
         Set tRow.UserName = pUserName
@@ -104,6 +109,8 @@ ClassMethod GuardedCreate(pUserName As %String, pReason As %String, Output pId A
 /// into a 404.</p>
 ClassMethod GuardedDeleteId(pId As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Hold WHERE ID = ?", pId)
 }
 
@@ -152,6 +159,8 @@ ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String
 /// <p>Remove every hold, so a test that wrote one leaves none behind.</p>
 ClassMethod DeleteAllGuarded() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Hold")
 }
 

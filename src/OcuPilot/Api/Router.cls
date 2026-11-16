@@ -276,6 +276,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/term-lists" Method="POST" Call="AnalyticsTermListCreate"/>
   <Route Url="/analytics/term-list-entries" Method="POST" Call="AnalyticsTermListEntryCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
+  <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
@@ -1968,6 +1969,13 @@ ClassMethod AnalyticsTermListEntryCreate() As %Status
 ClassMethod InteropPartnerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.PartnerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DdlMappingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DdlMappingSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

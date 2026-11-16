@@ -243,3 +243,138 @@
 2026-11-15T23:33:41Z	Story 21.20	ruling	question=strings,keys_on,no_own_process_cancel_rule,alerts_in_os_mgmt choice=keep rejected=destructive_keys,AD-10_arm why=reversible;no_unattended_AD_change category=veto inbox=U-66 policy=b9ff703e reversal=name_which
 2026-11-15T23:33:41Z	Story 21.20	spec_validated	service_introducing=true(Harvest.Alerts) integration_ac=present adr_constrained_acs=AD-21,AD-22,AD-23,AD-29,AD-36,AD-51,AD-53 owned_ledger=DW-1562,DW-1856,DW-2479 addressed=2 declined=1(DW-1856_to_owner) mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
 2026-11-15T23:51:42Z	Story 21.4	ci_resolved	story=21.4 sha=290709847 runs=43773475655 result=success failed=none via=none resolved_at=next_plan
+2026-11-15T23:51:58Z	Story 21.12	stage_spawned	stage=implement spawn_at=2026-11-15T23:51:58Z model=sonnet agent_name=21-12-mirroring-implement-1 cycle_iteration=1 story_base=29d5b8d8e
+2026-11-16T00:43:15Z	Story 21.12	dev_complete	spawn_at=2026-11-15T23:55:00Z model=sonnet build_sha=bcdac6676 baseline_revision=187a5d77a story_base=187a5d77a review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 note=stale_planning_counts_ledgered_DW-2619;AD-29_Binds_proposal_beside_DW-2559
+2026-11-16T00:43:15Z	Story 21.12	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-16T00:43:15Z	Story 21.12	stage_spawned	stage=qa spawn_at=2026-11-16T00:43:15Z model=sonnet agent_name=21-12-mirroring-qa-1 cycle_iteration=1
+2026-11-16T00:43:35Z	Story 21.10	stage_spawned	stage=plan spawn_at=2026-11-16T00:43:35Z model=opus agent_name=21-10-the-remaining-leaves-across-the-six-areas-plan-2 cycle_iteration=2
+2026-11-16T00:52:52Z	Story 21.12	qa_complete	spawn_at=2026-11-16T00:44:30Z model=sonnet tests=src/OcuPilot/Test/MirrorGate.cls(3,armed_PRINCIPALS),MirrorRefusal.cls(4),MirrorProbe.cls(fixture) tests_added=7 mutations_demonstrated=6 first_run_failures=0 clarifications=0 note=non-empty_DeleteDBs_array_refused_UNCOVERED(pinned)
+2026-11-16T00:52:52Z	Story 21.12	stage_spawned	stage=code-review spawn_at=2026-11-16T00:52:52Z model=opus agent_name=21-12-mirroring-code-review-1 cycle_iteration=1
+2026-11-16T01:02:38Z	Story 21.10	ruling	question=E1_seven_read-only_fields,E2_destructive_key_off,E3_unmasked_export_file,E4_delete_checked_key_off,strings choice=keep rejected=settable_fields(needs_AD-10_arm),masked_export why=stricter_or_classic_parity category=veto inbox=U-68 policy=b9ff703e reversal=name_which
+2026-11-16T01:02:38Z	Story 21.10	ad_amended	ad=AD-10 bullet=KMIP marker=[AMENDED_2026-11-15,Story_21.10_spec_gate,owner_answer_U-30,DW-2431,Rule_20] lint_spine=ok(pre-existing_low_{id})
+2026-11-16T01:02:38Z	Story 21.10	story_created	spawn_at=2026-11-16T00:45:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-10-the-remaining-leaves-across-the-six-areas.md build_status=ready-for-dev cycle_iteration=2
+2026-11-16T01:02:38Z	Story 21.10	spec_validated	service_introducing=true(PhoneProviderPort) integration_ac=present adr_constrained_acs=AD-10,AD-21,AD-35,AD-29,AD-53 owned_ledger=DW-2431,DW-2457 addressed=2 declined=0 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-16T01:02:48Z	Story 21.19	stage_spawned	stage=plan spawn_at=2026-11-16T01:02:48Z model=opus agent_name=21-19-shell-advisor-permission-and-task-leaves-plan-1 cycle_iteration=1
+2026-11-16T01:10:35Z	Story 21.12	cr_complete	spawn_at=2026-11-16T00:53:30Z model=opus resolved=8 fixed_at_source=8 routed=0 deferred=5 dismissed=15 high=0 med=2 low=11 rows=33 unresolved_high_med=2(DW-2620,DW-2621_decision-pending_burndown) clarifications=0 closing_sections_present=true final=done cycle_iteration=1
+2026-11-16T01:10:35Z	Story 21.12	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=3(DW-2622..2624_wontfix-accepted) filed_by_cr=DW-2620,DW-2621(decision-pending,epic-close_sheet) filed_by_lead=DW-2619(open,burndown)
+2026-11-16T01:15:23Z	Story 21.12	fresh_check	env=recipe(rebuilt_01:10Z) tests=23_classes+language-servers,mirror-monitor_specs result=pass order=forward,reverse note=first_class_pass_used_short_names(runner_EMPTY),rerun_qualified
+2026-11-16T01:16:38Z	Story 21.19	ruling	question=batch4_needs_AD-51,AD-21,AD-35_records choice=move_batch4_to_21.21(owner-gated),build_batches_1-3 rejected=halt_story,write_records why=no_owner_answer;no_unattended_AD category=decide policy=b9ff703e
+2026-11-16T01:16:38Z	Story 21.19	ruling	question=strings,40_vendor_sentences,named_limits(no_per-item_links,no_%-class_copy) choice=keep rejected=reword why=classic_parity category=veto inbox=U-69 policy=b9ff703e reversal=name_which
+2026-11-16T01:16:38Z	Story 21.19	story_created	spawn_at=2026-11-16T00:58:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-19-shell-advisor-permission-and-task-leaves.md build_status=blocked->ready-for-dev(narrowed) oversized=true
+2026-11-16T01:16:38Z	Story 21.19	spec_validated	service_introducing=true(AdvisorPort) integration_ac=present adr_constrained_acs=AD-5,AD-6,AD-15,AD-21,AD-29,AD-35,AD-52,AD-53,AD-56 owned_ledger=DW-2372,DW-2471 addressed=2 declined=0 filed=DW-2625(high,decision-pending,21.21) mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T01:21:58Z	Story 21.21	gate_step	step=DW-2625_measurement result=exposure_confirmed env=ocupilot-ci(between_sweep_shards_1_and_2) evidence=scratchpad/e21u/21-19/dw2625-result.txt restored=MailAuthPassword_empty
+2026-11-16T01:22:20Z	Story 21.21	stage_spawned	stage=plan spawn_at=2026-11-16T01:22:20Z model=opus agent_name=21-21-leaves-that-wait-on-the-owner-plan-1 cycle_iteration=1
+2026-11-16T01:23:11Z	Story 21.12	ruling	question=21.12_sweep_vs_U-71_fix-forward choice=pause_after_shard2,build_21.24,one_sweep_for_both rejected=two_sweeps why=orchestrator_U-71(boundary>1h);21.24_on_top_of_21.12 category=decide policy=b9ff703e
+2026-11-16T01:23:34Z	Story 21.24	story_inserted	kind=fix_forward via=orchestrator_ruling_U-71 owns=DW-2625 position=after_21.23 note=deps_hash_rerecord_reason=fix_forward(orchestrator)
+2026-11-16T01:23:34Z	Story 21.24	stage_spawned	stage=plan spawn_at=2026-11-16T01:23:34Z model=opus agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-plan-1 cycle_iteration=1
+2026-11-16T01:30:58Z	Story 21.24	story_created	spawn_at=2026-11-16T01:25:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit.md build_status=ready-for-dev
+2026-11-16T01:30:58Z	Story 21.24	spec_validated	service_introducing=false integration_ac=present(screen+tool_measured) adr_constrained_acs=AD-35,AD-36,AD-60 owned_ledger=DW-2625 addressed=1 declined=0 survey=1_setter_declared,0_to_ledger mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-16T01:30:59Z	Story 21.24	stage_spawned	stage=implement spawn_at=2026-11-16T01:30:59Z model=sonnet agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-implement-1 cycle_iteration=1 story_base=b59f85c49
+2026-11-16T01:33:41Z	Story 21.21	ad_amended	ad=AD-27 case=Story_21.21_dismount_protected_set marker=[AMENDED_2026-11-16,Story_21.21_spec_gate,owner_answer_U-65,DW-1850,Rule_20] lint_spine=ok(pre-existing_low)
+2026-11-16T01:33:41Z	Story 21.21	ruling	question=SH-27_needs_AD-44,AD-64_records choice=hold_batch5,ask_orchestrator(U-65_scope) rejected=write_records_unasked,assign-only_B why=owner_answer_named_AD-44_write;records_contradict_AD-64 category=park_partial policy=b9ff703e
+2026-11-16T01:33:41Z	Story 21.21	ruling	question=DW-1280_sentence,22.1_group_line,COOP_ship_condition,strings choice=keep rejected=new_sentence why=reuse;add-only;measured_gate category=veto inbox=U-73 policy=b9ff703e
+2026-11-16T01:33:41Z	Story 21.21	story_created	spawn_at=2026-11-16T01:24:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-21-leaves-that-wait-on-the-owner.md build_status=blocked->ready-for-dev(batch5_held)
+2026-11-16T01:33:41Z	Story 21.21	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-10,AD-27,AD-16,AD-44,AD-63 owned_ledger=DW-1850,DW-1280,DW-2348 addressed=3 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T01:41:09Z	Story 21.22	stage_spawned	stage=plan spawn_at=2026-11-16T01:41:09Z model=opus agent_name=21-22-ci-flake-hardening-plan-1 cycle_iteration=1
+2026-11-16T01:42:40Z	Story 21.21	runner_reported	item=U-74(orchestrator,parked) scope=SH-27_batch5 note=U-65_does_not_cover_A;batches_1-4_proceed
+2026-11-16T01:49:59Z	Story 21.24	dev_complete	spawn_at=2026-11-16T01:29:00Z model=sonnet build_sha=37538ee8a baseline_revision=06d9dd2ba story_base=06d9dd2ba review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 note=mutations:decl_emptied_5/5_red(run121),shared_surfaces_green
+2026-11-16T01:49:59Z	Story 21.24	ruling	question=QA_stage_for_urgent_fix-forward choice=fold_QA_into_CR(verification-gap_layer)+implement's_3_mutations rejected=separate_QA_stage why=U-71_urgency;tests_and_mutations_already_present;one_test_class category=decide policy=b9ff703e
+2026-11-16T01:49:59Z	Story 21.24	stage_spawned	stage=code-review spawn_at=2026-11-16T01:49:59Z model=opus agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-code-review-1 cycle_iteration=1
+2026-11-16T01:59:23Z	Story 21.22	story_created	spawn_at=2026-11-16T01:41:30Z model=opus path=_bmad-output/implementation-artifacts/spec-21-22-ci-flake-hardening.md build_status=ready-for-dev oversized=true
+2026-11-16T01:59:23Z	Story 21.22	spec_validated	service_introducing=false integration_ac=n/a(test-only) adr_constrained_acs=none owned_ledger=10 addressed=10(2_resolved,1_measure,5_diagnose+wontfix,2_first_slice) declined=0 asked_orchestrator=ci-throwaway.sh(epic24),ci.yml(shared) mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T02:09:51Z	Story 21.24	cr_complete	spawn_at=2026-11-16T01:50:30Z model=opus resolved=9 fixed_at_source=9 routed=0 deferred=2 dismissed=2 high=1(wrapped_Base64_continuation_lines_leaked,patched) med=3 low=7 rows=23 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done cycle_iteration=1 mutations=3(runs_142-144)
+2026-11-16T02:09:51Z	Story 21.24	ledger_adjudicated	owned=1 resolved=1(DW-2625_by_21.24) filed=DW-2626(AD-35_text,burndown,orchestrator) occurrence=DW-1645(localized_labels)
+2026-11-16T02:12:41Z	Story 21.24	ruling	question=release_1.0.16_route choice=b(staging_from_feature_b4be0c8f2+21.24_only,b706fb831) rejected=a(combined_with_21.12) why=clean_apply;no_21.12_risk;owner_release category=decide policy=b9ff703e via=orchestrator_priority
+2026-11-16T02:12:42Z	Story 21.24	gate_step	step=fresh_check+sweep env=ocupilot-ci_rebuilt_from_.worktrees/epic-21-s2124 started=2026-11-16T02:12:41Z
+2026-11-16T02:14:42Z	Story 21.19	owner_decision	id=U-70 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: all three + mask (Recommended)"
+2026-11-16T02:14:42Z	Story 21.19	ad_amended	ads=AD-51(Story_21.19_case),AD-21(consumers+TM-17_case),AD-35(mail_password_row) marker=[AMENDED_2026-11-16,Story_21.19,owner_answer_U-70] lint_spine=ok note=batch4_returns_to_21.19;closes_DW-2626_text_gap
+2026-11-16T02:14:42Z	Story 21.21	owner_decision	id=U-74 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: amend and build (Recommended)"
+2026-11-16T02:14:42Z	Story 21.21	ad_amended	ads=AD-44(custom_resource_set_clear),AD-64(rule2) marker=[AMENDED_2026-11-16,Story_21.21,owner_answer_U-74] lint_spine=ok note=AD-10_OCUPILOTSCREEN_arm_asked_of_orchestrator
+2026-11-16T02:14:55Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T02:14:55Z model=opus agent_name=21-6-the-sql-tuning-track-plan-1 cycle_iteration=1
+2026-11-16T02:15:21Z	Story 21.21	ad_amended	ad=AD-10 arm=OCUPILOTSCREEN marker=[AMENDED_2026-11-16,Story_21.21_spec_gate,owner_answer_U-74;ruling_U-75,Rule_20] lint_spine=ok note=batch5_unheld
+2026-11-16T02:27:38Z	Story 21.6	ruling	question=plan_intent_gap_too_large choice=split(21.6_statements+purge,21.25_rebuild+tune,21.26_stats,21.27_analyzer,21.28_alt_plans,21.29_reports) rejected=one_story,batches why=size;five_backing_shapes;owner-gated_reports category=decide policy=b9ff703e split_children=5_of_6
+2026-11-16T02:27:38Z	Story 21.6	plan_clarification_requested	condition=AD-51_entry(c1)+AD-10_OCUPILOTSQL_arm(c2) via=orchestrator status_reset=draft
+2026-11-16T02:27:38Z	Epic 21	deps_hash_rerecorded	reason=split story=21.6->21.6,21.25..21.29 note=orchestrator_rerecords
+2026-11-16T02:28:44Z	Story 21.6	story_parked	stage=re-plan reason=owner_item_U-76(c1,c2) category=park code=none note=reads_and_purges_may_plan_first(purge_also_needs_c1_PURGE_type;deferred_to_answer)
+2026-11-16T04:09:48Z	Story 21.24	gate_step	step=full_sweep result=pass shards=20/20 env=staging_tree(b706fb831) failed=0
+2026-11-16T04:09:48Z	Story 21.24	smoke_complete	method=cli result=pass iterations=1 defects_caught=1(review:wrapped_continuation_lines) evidence=smoke.sh_PASSED+fresh_check_9_classes model=claude-opus-5-5
+2026-11-16T04:09:48Z	Story 21.24	committed	sha=b706fb831(staging/OCU-1-21.24,from_feature_b4be0c8f2) epic_branch_shas=37538ee8a,f3b81e542 ci=pending runs=43802365008
+2026-11-16T04:09:48Z	Story 21.24	story_cycle	plan_to_commit_min=~170 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
+2026-11-16T04:10:45Z	Story 21.13	stage_spawned	stage=implement spawn_at=2026-11-16T04:10:45Z model=sonnet agent_name=21-13-ddl-mappings-implement-1 cycle_iteration=1 story_base=351eb9da7
+2026-11-16T04:48:06Z	Story 21.24	ci_red_classified	run=43802365008 class=flake(orchestrator) jobs=browser_shard_4/5(database-operations_seed_INTERNAL,DW-2627),gates_node22(client_suite_hung,DW-2567) action=orchestrator_rerun_--failed
+2026-11-16T06:10:14Z	Story 21.24	ci_red_classified	run=43802365008 job=browser_shard_4/5 class=story_hygiene(orchestrator_reclassified_DW-2627) cause=config-settings_SaveMAC_session_restore_left_cached-query_state(fresh_instance) fix=after-hook_purge_all_namespaces evidence=fresh_pairs_red_x3,fixed_7/7+6/6_x2,mutation_0/6
+2026-11-16T06:10:14Z	Story 21.24	committed	sha=6a5bcf05f(staging/OCU-1-21.24,ff_from_b4be0c8f2) ci=pending runs=43814889321 note=sweep_skipped_by_orchestrator(test-only)
+2026-11-16T06:14:04Z	Story 21.12	gate_step	step=defect_fix item=MirrorPort_missing_Snippet(found_by_21.13_implement,DraftRegistry) fix=bbae181c5 verified=DraftRegistry,MirrorRead,PortGate_green
+2026-11-16T06:14:11Z	Story 21.13	dev_complete	spawn_at=2026-11-16T04:11:00Z model=sonnet build_sha=9ca39bb68 baseline_revision=4d4cd1b4d story_base=4d4cd1b4d review_loop_iteration=0 followup_review_recommended=false deferred=1(DraftRegistry_red_from_21.12,fixed_bbae181c5) cycle_iteration=1
+2026-11-16T06:14:11Z	Story 21.13	stage_spawned	stage=qa spawn_at=2026-11-16T06:14:11Z model=sonnet agent_name=21-13-ddl-mappings-qa-1 cycle_iteration=1
+2026-11-16T06:20:19Z	Story 21.13	qa_complete	spawn_at=2026-11-16T06:38:00Z model=sonnet tests=DdlMappingWrite(+1),DdlMappingRules(+matrix_rows) tests_added=2 mutations_demonstrated=5 first_run_failures=0 clarifications=0
+2026-11-16T06:20:19Z	Story 21.13	stage_spawned	stage=code-review spawn_at=2026-11-16T06:20:19Z model=opus agent_name=21-13-ddl-mappings-code-review-1 cycle_iteration=1
+2026-11-16T06:30:32Z	Story 21.6	owner_decision	id=U-76 via=inbox(relayed) by=owner answer=A quote="A: allow both (Recommended)"
+2026-11-16T06:30:32Z	Story 21.6	ad_amended	ads=AD-51(Story_21.6_case),AD-10(OcuPilot_statements_arm) marker=[AMENDED_2026-11-16,Story_21.6,owner_answer_U-76] lint_spine=ok note=re-plan_next
+2026-11-16T06:30:32Z	Story 21.6	story_unparked	via=inbox story_base=none
+2026-11-16T06:30:32Z	Story 21.21	owner_decision	id=U-75 by=owner answer=keep quote="Keep (Recommended)"
+2026-11-16T06:30:32Z	Story 21.30	story_inserted	kind=fix_forward via=owner_answer_U-79 owns=DW-2634(epic24_ledger) order=after_21.24,before_21.12_21.13 note=deps_hash_rerecord_reason=fix_forward
+2026-11-16T06:30:38Z	Story 21.30	stage_spawned	stage=plan spawn_at=2026-11-16T06:30:38Z model=opus agent_name=21-30-plan-1 cycle_iteration=1
+2026-11-16T06:44:07Z	Story 21.30	story_created	spawn_at=2026-11-16T06:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md build_status=ready-for-dev
+2026-11-16T06:44:07Z	Story 21.30	ad_amended	ad=AD-9 marker=[AMENDED_2026-11-16,Story_21.30,owner_answer_U-79,DW-2634] mode=comply_first_U7 asked=orchestrator lint_spine=ok
+2026-11-16T06:44:07Z	Story 21.30	spec_validated	service_introducing=false integration_ac=present(end-to-end_repro_first) adr_constrained_acs=AD-9,AD-15,AD-8 owned_ledger=DW-2634(epic24) addressed=1 filed=DW-2638(high),DW-2639(low) mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T06:44:26Z	Story 21.30	stage_spawned	stage=implement spawn_at=2026-11-16T06:44:26Z model=sonnet agent_name=21-30-implement-1 cycle_iteration=1 story_base=8f0a87723
+2026-11-16T06:44:47Z	Story 21.13	cr_complete	spawn_at=2026-11-16T06:46:00Z model=opus resolved=11 fixed_at_source=11 deferred=1 dismissed=11 high=2(AD-59_create_script_free-name,AD-16_catch_restore;patched) med=3 low=7 rows=31 unresolved_high_med=1(DW-2637_decision-pending) final=done cycle_iteration=1 commit=a98b9ef9c
+2026-11-16T06:46:43Z	Story 21.24	ci_resolved	story=21.24 sha=6a5bcf05f(staging/OCU-1-21.24) runs=43814889321 result=success failed=none via=none
+2026-11-16T07:24:02Z	Story 21.30	dev_complete	spawn_at=2026-11-16T06:49:00Z model=sonnet build_sha=3df69e648 baseline_revision=36946493f task0=attack_landed(run25) followup_review_recommended=false deferred=0 cycle_iteration=1 mutations=7
+2026-11-16T07:24:02Z	Story 21.30	ruling	question=QA_stage_for_urgent_security_fix choice=fold_QA_into_CR(verification-gap)+implement's_7_mutations rejected=separate_QA why=U-79_priority;Epic_24_critical_path;tests_and_mutations_present category=decide policy=b9ff703e
+2026-11-16T07:24:02Z	Story 21.30	stage_spawned	stage=code-review spawn_at=2026-11-16T07:24:02Z model=opus agent_name=21-30-code-review-1 cycle_iteration=1
+2026-11-16T07:43:26Z	Story 21.30	cr_complete	spawn_at=2026-11-16T07:25:00Z model=opus resolved=7 fixed_at_source=7 deferred=0 dismissed=10 high=2(GuardedStoredValue_arbitrary_SQL,GuardedRecordWritesMarked_held_row;patched) med=1 low=14 rows=27 unresolved_high_med=0 caller_condition_U-81=met final=done cycle_iteration=1 commit=07a3a989f
+2026-11-16T07:45:33Z	Epic 21	integrate_forward	from=feature_48e3593a3 to=90799012d conflicts=1(ci-throwaway.sh_roster,union) checks=ci.test.mjs_103
+2026-11-16T07:45:48Z	Epic 21	gate_step	step=fresh_check+full_sweep stories=21.12,21.13,21.30 head=af5b8b8b3 started=2026-11-16T07:45:48Z dir=e21u/b3
+2026-11-16T07:46:01Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T07:46:01Z model=opus agent_name=21-6-plan-2 cycle_iteration=2
+2026-11-16T08:05:10Z	Story 21.6	story_created	spawn_at=2026-11-16T07:42:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md build_status=ready-for-dev cycle_iteration=2
+2026-11-16T08:05:10Z	Story 21.6	ruling	question=strings,cached-query_entity,keys,Clean_target choice=keep;AD-51_wording_corrected_at_origin(Clean_takes_no_argument) rejected=drop_clean why=vendor_call_shape category=veto inbox=U-83 policy=b9ff703e
+2026-11-16T08:05:10Z	Story 21.6	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-51,AD-10,AD-29,AD-53 owned_ledger=none mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T08:08:11Z	Story 21.25	stage_spawned	stage=plan spawn_at=2026-11-16T08:08:11Z model=opus agent_name=21-25-plan-1 cycle_iteration=1
+2026-11-16T08:20:18Z	Story 21.25	ruling	question=split_fixed_statistics choice=split(21.31_fixed_table_statistics) rejected=one_story why=size;separate_setter_shape category=decide policy=b9ff703e split_children=6_of_6(21.6_family)
+2026-11-16T08:20:18Z	Story 21.25	plan_clarification_requested	condition=AD_records(AD-51_21.25_case,AD-10_OCUPILOTTABLE_arm,AD-7_synchronous_named_limit) via=orchestrator status=blocked
+2026-11-16T08:20:50Z	Story 21.25	story_parked	stage=plan reason=owner_item_U-84(21.25,21.31) also_waits=21.6_merge category=park code=none
+2026-11-16T10:03:05Z	Story 21.4	defect_found	id=DW-2646 severity=high via=DW-2627_reopen cause=per-process_state_in_CSP_workers_after_UI_SQL_setting_change evidence=b3/proof(A,B,C,D1,D2,E,F,G,H,I,K,L,M,Q)
+2026-11-16T10:04:42Z	Story 21.30	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.30	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.30	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:42Z	Story 21.12	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.12	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.12	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:42Z	Story 21.13	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.13	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.13	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:44Z	Story 21.32	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2646
+2026-11-16T10:05:29Z	Story 21.32	stage_spawned	stage=plan spawn_at=2026-11-16T10:05:29Z model=opus agent_name=21-32-plan-1 cycle_iteration=1 note=throwaway_writes_allowed_for_reproduction
+2026-11-16T10:38:54Z	Story 21.32	story_created	spawn_at=2026-11-16T10:08:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list.md build_status=ready-for-dev
+2026-11-16T10:38:54Z	Story 21.32	ad_amended	ad=AD-2 mode=comply_first_U7 marker=[AMENDED_2026-11-16,Story_21.32_spec_gate,orchestrator_ruling_DW-2646] lint_spine=ok
+2026-11-16T10:38:54Z	Story 21.32	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-2,AD-27 owned_ledger=DW-2646 addressed=1 repro=no_browser_4/4 mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-16T10:39:25Z	Story 21.30	ci_resolved	story=21.30 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.12	ci_resolved	story=21.12 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.13	ci_resolved	story=21.13 sha=90799012d runs=43845475577 result=success failed=none via=none
+2026-11-16T10:39:25Z	Story 21.32	stage_spawned	stage=implement spawn_at=2026-11-16T10:39:25Z model=sonnet agent_name=21-32-implement-1 cycle_iteration=1 story_base=bfa1aaca4
+2026-11-16T10:40:57Z	Story 21.32	ad_reverted	ad=AD-2 via=orchestrator_ruling note=AD-27_already_covers_vendor_internals_in_port;record_in_AdminPort_doc_and_Design_Notes
+2026-11-16T11:05:11Z	Story 21.32	dev_complete	spawn_at=2026-11-16T10:40:00Z model=sonnet build_sha=a9d6b4a18 followup_review_recommended=false deferred=0 cycle_iteration=1 chain=7/7,3/3,5/5,6/6_fresh mutation=dashboard+ecp_red note=doc_comment_AD-27_c9150cd11
+2026-11-16T11:05:11Z	Story 21.32	ruling	question=QA_stage choice=fold_QA_into_CR rejected=separate_QA why=fix-forward_priority;repro_test+mutation_present category=decide policy=b9ff703e
+2026-11-16T11:05:11Z	Story 21.32	stage_spawned	stage=code-review spawn_at=2026-11-16T11:05:11Z model=opus agent_name=21-32-code-review-1 cycle_iteration=1
+2026-11-16T11:24:25Z	Story 21.32	cr_complete	spawn_at=2026-11-16T11:05:00Z model=opus resolved=6 deferred=1(DW-2647_interop-editors_vendor_-428,burndown) dismissed=9 high=0 med=1 low=6 rows=22 unresolved_high_med=0 final=done cycle_iteration=1 cost=0.15us/call commit=edf36c82d
+2026-11-16T11:24:35Z	Story 21.32	gate_step	step=fresh_check+full_sweep head=4574c0f6a started=2026-11-16T11:24:35Z dir=e21u/21-32/gate
+2026-11-16T11:30:51Z	Story 21.32	fresh_check	env=recipe(rebuilt_11:2xZ) classes=6_green chain_forward=config-settings(6/7,cold_signin_flake_DW-2649)->dashboard_3/3->ecp-settings_5/5->database-operations_6/6 reverse=all_green result=pass(chain_proven)
+2026-11-16T12:43:38Z	Story 21.33	story_inserted	kind=fix_forward via=owner_answer_U-82 owns=DW-2638 order=after_21.32
+2026-11-16T12:43:38Z	Epic 21	owner_decision	ids=U-85(A:wait_for_21.32),U-82(A),U-81(kept),U-84(A),U-83(kept),vendor_report(hold:DW-2646,DW-2647) via=inbox(relayed)
+2026-11-16T12:44:14Z	Story 21.25	owner_decision	id=U-84 by=owner answer=A
+2026-11-16T12:44:14Z	Story 21.25	ad_amended	ads=AD-51(Story_21.25_case),AD-10(OCUPILOTTABLE_arm),AD-7(rebuild+tune_in_request) marker=[AMENDED_2026-11-16,Story_21.25,owner_answer_U-84] lint_spine=ok
+2026-11-16T12:44:14Z	Story 21.25	story_unparked	via=inbox note=implements_after_21.6_merge;21.31_shares_records
+2026-11-16T12:44:47Z	Story 21.33	stage_spawned	stage=plan spawn_at=2026-11-16T12:44:47Z model=opus agent_name=21-33-plan-1 cycle_iteration=1
+2026-11-16T13:00:09Z	Story 21.33	story_created	spawn_at=2026-11-16T12:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md build_status=ready-for-dev eta=batch1_4.5-5h,total_8-9h
+2026-11-16T13:00:09Z	Story 21.33	ad_amended	ad=AD-9 mode=comply_first_U7 marker=[AMENDED_2026-11-16,Story_21.33,owner_answer_U-82,DW-2638] lint_spine=ok
+2026-11-16T13:00:09Z	Story 21.33	spec_validated	integration_ac=present adr_constrained_acs=AD-9,AD-15,AD-7 owned_ledger=DW-2638 filed=DW-2651(high),DW-2652(med) behaviour_changes_listed=5 model=claude-opus-5-5
+2026-11-16T13:03:33Z	Story 21.33	owner_decision	ids=U-89(AD-9_veto_confirmed),U-90(DW-2651,DW-2652_parked) condition=five_non-owner_paths_unchanged
+2026-11-16T13:23:27Z	Story 21.32	gate_step	step=full_sweep result=pass shards=20/20 head=edf36c82d
+2026-11-16T13:23:27Z	Story 21.32	smoke_complete	method=cli result=pass note=1_skipped(agentswitches:written_by_the_sweep;benign) model=claude-opus-5-5
+2026-11-16T13:23:27Z	Story 21.32	committed	sha=edf36c82d(based_on_90799012d) ci=pending runs=43875203822
+2026-11-16T13:23:27Z	Story 21.32	story_cycle	plan_to_commit_min=~200 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
+2026-11-16T13:25:55Z	Story 21.34	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2650(orchestrator_ledger) priority=before_21.33
+2026-11-16T13:29:06Z	Story 21.34	gate_step	step=reproduction result=red env=fresh(epic21+feature_2ef969841) evidence=backup_3/3_then_interop-editors_22/23(AC2_#6220,<NOTOPEN>CompileDTL+30_pid2228) nullprobe=0_missing(58/66/88;pid2228_gone)
+2026-11-16T13:29:06Z	Story 21.34	stage_spawned	stage=plan+implement spawn_at=2026-11-16T13:29:06Z model=sonnet agent_name=21-34-build-1 cycle_iteration=1 note=urgent;plan+implement_in_one_pass(decide)

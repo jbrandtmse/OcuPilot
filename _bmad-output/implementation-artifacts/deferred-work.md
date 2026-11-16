@@ -7365,6 +7365,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T08:39:51Z status=routed owner=range-end-cleanup by=merge_gate note=orchestrator ruling at Epic 12 resume: AD-35 names the gap at origin (English captions only; localized instance unmeasured); fix is a post-release story matching on message-dictionary keys
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=AD-35 names the gap; post-release match on message-dictionary keys; untestable without a localized instance
 - 2026-09-30T03:32:47Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29; reopen_if=OcuPilot supports an instance whose audit messages are localized
+- 2026-11-16T02:04:31Z occurrence=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=cr note=the Task Config.MailAuthPassword row's description and Old value/New value captions are %SECURITY.Audit messages too; ocupilot-ci holds de, fr, ja and other translations of them (measured); a localized row passes unmasked (inference)
 
 ### DW-1646: An agent-confirmed update of a registered client whose authorization server is down reports applied with no registration-not-updated notice; only the screen Save surfaces registrationNotUpdated
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -12991,6 +12992,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T12:59:32Z occurrence=21-2-backup note=run_43713431335_staging_df4cf73f0:_gates_node_22.22.3_client_suite_hung_to_the_job_timeout_(25_min),_node_24_and_26_green;_second_occurrence_in_11_h;_unchanged_rerun
 - 2026-11-15T22:56:37Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T04:48:03Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357531;client_suite_hang_cancelled;unchanged_rerun
+- 2026-11-16T07:51:21Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43819841054(staging-24.3-feb6b71c7)job133140150868_node24.15.0_client_suite_cancelled_at_25min;rerun_by_epic-runner-24
 
 ### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13261,6 +13263,69 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: DevToolRead.cls:71,304 and NamespaceDiffRead.cls Column/AssertRefused; sharing needs a non-test base class for both suites
 - 2026-11-16T09:53:25Z status=wontfix-accepted owner=24-8-remote-instance-profiles-and-environment-diff by=cr note=reopen_if=a third devtool test class copies Column or AssertRefused
+### DW-2619: Planning counts are stale after 21.12 moved six mirroring rows to Stage 5: epics.md says Epic 21 carries 165 rows (lines ~973, ~9179) and Story 22.1 says 56 excluded rows (~9543); Epic 24 also adds register rows, so re-derive both from the extract and register at the epic close
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep '165 rows\|56 excluded' epics.md after bcdac6676
+- 2026-11-16T00:43:15Z status=open owner=burndown by=spec_gate note=re-derive at close; contended with Epic 24 register rows
+
+### DW-2620: SA-43 and SA-44, the mirror database writes, stay P3 Stage 4 rows with no story after U-39 moved the other mirroring writes to the register
+- source: spec-21-12-mirroring.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: extract-stages.md:462-463 and feature-catalog.md:349-350 keep both P3 in Stage 4; epics.md Story 21.12 narrows to the monitor and refusal; no other story or register row names them; the spec only noted them for the runner
+- 2026-11-16T01:06:19Z status=decision-pending owner=burndown by=cr note=owner: build them later, or add them to the license-gated mirroring register group
+
+### DW-2621: On an async member tracking several mirrors, MemberStatusList with an empty name may list only one mirror's members, where the classic page switches to MirrorTrackedByAsyncMember (inference)
+- source: spec-21-12-mirroring.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: MirrorPort.MemberRows runs MemberStatusList(""); irissys/%CSP/UI/Portal/Mirror/Monitor.cls ~1240 uses MirrorTrackedByAsyncMember when NumberOfMirrorSet>1; no runtime here can be a member, so unmeasured
+- 2026-11-16T01:06:19Z status=decision-pending owner=burndown by=cr note=human=measure on a licensed async member tracking two mirrors
+
+### DW-2622: MirrorPort is the twelfth port with its own copy of Deny, Refuse and Fail instead of a shared helper class (Rule 31)
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: the same three private methods in Analytics, Atelier, Backup, Config, DevTool, DocDb, Harvest, Interop, ScreenAccess, Sql, SqlActivity and Mirror ports; the spec's reason rules out a base class, not a helper
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=a port's copy of Deny, Refuse or Fail diverges from the others in its wire fault
+
+### DW-2623: Registry.ReadProblem's mirror block is the twelfth near-identical per-source block (endpoint in ENDPOINTS, LIST only, no rowGet/forEach/query/parts) (Rule 31)
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Registry.cls carries the same block for path, background, docdb, sqlactivity, backup, config, mirror, monitor, devtool and more (lines ~1250-1495); the spec held shared registration files to add-only edits
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=one of the per-source blocks in ReadProblem drifts from the others in what it refuses
+
+### DW-2624: Prohibited.Prohibits' doc comment says a diff naming nothing leaves nothing prohibited, but the screen-permission and mirror arms judge without the diff
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls ~1499; MirrorRefusal.TestTheVerdictIgnoresTheStoredDiffAndTheMirrorsName pins a refusal on an empty diff; Epic 24 also edits Prohibited.cls, so the sentence was left
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=a reviewer or caller relies on an empty diff passing a mirror or screen-permission write
+
+### DW-2625: The Task Manager mail password may reach an audit row OcuPilot shows: %SYS.Task.Config.AuthPassSet stores it Base64-encoded through UpdateData, which writes OldValue/NewValue into a %System/%System/ConfigurationChange audit row, and AuditPort declares no mask for that event (inference: read from source, not measured)
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: high | fix-risk: low | footprint: in-epic
+- evidence: irissys/%SYS/Task/Config.cls:43-63,98-104; src/OcuPilot/Port/AuditPort.cls:131; measure one AuthPassSet on a throwaway and read the audit row
+- 2026-11-16T01:15:46Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=an AD-35 mask declaration is an AD change: owner item requested from the orchestrator; measure first
+- 2026-11-16T01:21:58Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=lead note=MEASURED on ocupilot-ci 2026-11-16T01:4xZ (no longer inference): ConfigurationChange enabled (fresh install); %SYS.Task.Config.AuthPassSet(probe) wrote a 'Modify Task Config.MailAuthPassword' row with New value = Base64(probe); GET /api/ocupilot/screens/logs.audit/read?events=ConfigurationChange answered 200 with that row unmasked (RAW_HAS_B64=1, no mask); the restoring write's row carries it as Old value; owner item U-70; audit code unchanged
+- 2026-11-16T01:22:05Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=lead note=measurement time is 2026-11-16T01:21Z (the previous line's 01:4xZ is wrong)
+- 2026-11-16T01:23:34Z status=open owner=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=lead note=re-owned to Story 21.24 on orchestrator ruling U-71 (fix under AD-35, not an amendment)
+
+### DW-2626: AD-35 lists the vendor events whose audit secrets are masked and says any other is a new declaration there, but the Task Manager mail password row (%System/%System/ConfigurationChange, Modify Task Config.MailAuthPassword) that Story 21.24 declared is not in it
+- source: spec-21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-35 ends 'This covers only the named events; a vendor secret found in any other event is a new declaration here'; grep finds no MailAuthPassword or ConfigurationChange in the spine; AuditPort.VENDORCONFIGSECRETS declares it; the spec forbids a spine edit under ruling U-71
+- 2026-11-16T02:04:31Z status=escalated owner=burndown by=cr note=human=owner: add a one-sentence sixth declaration to AD-35, or record ruling U-71 there as the reason none is needed
+
+### DW-2628: Frozen-plan export and import (EX-45) and query history (EX-43) are owned by no story after the 21.6 split
+- source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.6 plan inventory, Design Notes
+- 2026-11-16T02:27:28Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet: a later story, or Epic 22's register
+
+### DW-2637: A new DDL mapping name starting with [ or ; is written to the configuration file as a section-header or comment line
+- source: spec-21-13-ddl-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on ocupilot-ci: Create of [ZZOCUB] and ;ZZOCUC wrote lines '[ZZOCUB]=...' and ';ZZOCUC=...' under [SqlUserDatatypes] in iris.cpf; NameCode admits both. Unmeasured (inference): the next startup reads them as a section and a comment, losing the mapping. Settle by a restart of a throwaway holding one.
+- 2026-11-16T06:38:57Z status=decision-pending owner=burndown by=cr note=fix is one NameCode line plus rows, but CONFIG.MAPPING.NAME's ruled sentence must change: a strings ruling
+
+### DW-2638: Kernel.State stores outside Story 21.30's four still escalate any caller's public guarded write: Agent definitions (instructions, provider, credential name) and other users' Ledger, Propose, Turn, Convo and Pref rows
+- source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: Base.GuardedSave/GuardedSaveIfCurrent escalate any object; ProviderPort.cls:187 writes Agent.GuardedClearVerification during a turn, so admin-gating Agent is not a one-line change (21.30 plan, code read)
+- 2026-11-16T06:43:58Z status=decision-pending owner=burndown by=spec_gate note=security: orchestrator/owner to decide scope (sibling of DW-2634)
+- 2026-11-16T12:43:38Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=re-owned to Story 21.33 on owner answer U-82 (A)
+
+### DW-2639: Switch.GuardedRecordWritesMarked admits any caller, so a %Development holder can set the observed marking fact and hide or show the unmarked-writes banner (AD-15)
+- source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.30 plan: the confirm executor, screen actions and restraint read record it as the calling user
+- 2026-11-16T06:43:58Z status=wontfix-accepted owner=burndown by=spec_gate note=reopen_if the banner ever makes a positive claim; the named AD-9 exception
 ### DW-2627: flake: three consecutive browser specs in CI shard 4/5 (dashboard AC2, database-operations all 6, ecp-settings C2) failed inside one minute while the instance answered a probe seed with 500 INTERNAL; every later spec in the shard passed
 - source: ci run 43786811296 (OCU-1-epic24 staging 12f9fd65c) | severity: low | fix-risk: medium | footprint: the CI throwaway instance; ui/browser
 - evidence: 01:38:16-01:39:06Z window; OCUPROBE184BO seed answered {code:INTERNAL}; the instance error log of that leg was not captured
@@ -13316,3 +13381,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-9-environment-promote.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: StepsProblem and ConfirmProblem's plan re-read are pinned; a refusal only the confirm sees needs a database mapping change between mint and confirm
 - 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a confirmed promote writes a step whose package maps outside the target's routines database
+### DW-2640: Two SQL table leaves are owned by no story after the 21.6 and 21.25 splits: drop item and the Indices tab's map-status toggle
+- source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.25 plan inventory
+- 2026-11-16T08:20:18Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet with DW-2628
+
+### DW-2646: After a SQL setting is changed and changed back on OcuPilot's SQL settings screen, the web server processes start failing the vendor admin API's class-query lists (Task Manager Upcoming tasks; earlier the database create) with SQLCODE -428 'Stored Procedure ... not found' until those processes are recycled
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: fresh ocupilot-ci, 2026-11-16: config-settings->dashboard red 2/3 (A purge, B route, D1/D2/Q SaveMAC test alone, 4 repros); dashboard alone 3/3; session-only Modify flip then dashboard 3/3 (E); OcuPilot set 1 / set 1+0 / set1+read+set0 / dashboard-first by direct REST calls all 3/3 (F,H,I,M, one sample each); in the broken state a new process's %PrepareClassQuery(%SYS.Task,UpcomingTasksFilter,2) succeeds, %SYS purge and allNamespace purge do not clear it, terminating the 7 CSP worker processes does (3/3). Mechanism inside the vendor's per-process SQL compile context (inference)
+- 2026-11-16T10:03:05Z status=open owner=burndown by=lead note=orchestrator: product defect; fix-forward story to charter; 1.0.16 held pending owner
+- 2026-11-16T10:04:44Z status=open owner=21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list by=lead note=re-owned to Story 21.32 (fix-forward) on the orchestrator's ruling
+- 2026-11-16T10:38:45Z status=open owner=21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list by=lead note=evidence correction (21.32 plan, measured): a stale worker fails the vendor's next uncached class-query prepare ONCE and is then current, not until recycled; cause is the instance-wide SQLCompile context version advanced by any Config.SQL change, the classic page and a session included (vendor defect); reproduced without a browser 4/4
+- 2026-11-16T12:43:36Z status=open owner=21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list by=orchestrator note=owner_hold: vendor report not filed with InterSystems (owner, 'Hold, as usual', 2026-11-16); the OcuPilot fix proceeds in 21.32
+
+### DW-2647: After a SQL settings change, the vendor's own interop editors API still fails a class-query list once in each stale web server process, and AdminPort's context refresh cannot reach that path
+- source: spec-21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: 21.24 CI log (scratch e21u/21-24/ci-b4.log, browser shard 4/5): %Api.InteropEditors.v1.impl answered 500, SQLCODE -428 'ENSPORTAL.UTILS_ENUMERATEMESSAGECLASSES' not found, two minutes after the same -428 on Database.ConfigCRUD; the 21.32 fix covers only AdminPort.InvokeLocated
+- 2026-11-16T11:20:51Z status=escalated owner=burndown by=cr note=vendor dispatch, not OcuPilot's; ties to the owner's DW-2646 vendor-report call; CI risk if config-settings shares a leg with an editor spec
+- 2026-11-16T12:43:36Z status=decision-pending owner=burndown by=orchestrator note=owner_hold: not reported to InterSystems (owner, 'Hold, as usual', 2026-11-16)
+
+### DW-2649: flake: config-settings.browser-spec.mjs 'each of the seven screens answers its rows' timed out waiting for #ocu-signin-user (30000 ms) as the first browser test on a just-rebuilt throwaway; the same spec passed 7/7 in the reverse run minutes later
+- source: cycle-log-epic-21.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: e21u/21-32/gate/fresh/specs-forward.log, 2026-11-16T11:27Z, fresh rebuild
+- 2026-11-16T11:30:51Z status=routed owner=21-22-ci-flake-hardening by=lead note=cold first sign-in on a fresh instance; same family as the page-load hangs in DW-2544/2549/2566
+
+### DW-2651: The install-owned stores (WebApp, Stamp, Version, Demo) and the screen-access store (Access) still take any caller's public guarded write; WebApp.GuardedRecord drives what Installer.Uninstall deletes (code read, not reproduced)
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: 21.33 plan code read
+- 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
+
+### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 21.33 plan code read
+- 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
+- 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
+
+### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
+- source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
+- evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
+- 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun

@@ -314,6 +314,7 @@ services:
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
+      # classes: AdminStateWrite
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
@@ -594,6 +595,8 @@ services:
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
       # The backup gate class signs in as probe principals holding the backup port's read pairs and its write pairs (Story 21.2).
       # classes: BackupWriteGate
+      # The mirror gate class signs in as probe principals holding the mirror port's two pairs and the Mirror monitor's third, and as ones each missing a port pair (Story 21.12).
+      # classes: MirrorGate
       # The term list editor classes (Story 24.2) turn analytics on in USER and write marker-named term lists there: the edit class drives the port's six
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
@@ -886,8 +889,9 @@ services:
       # instance's pending-restart flag, so the flag stays set on the throwaway; the class restores every setting it changed on
       # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
       # and purges the cached queries of every namespace once (Story 21.4). TaskMailAuditMask sets, changes and clears the Task Manager
-      # mail password to probe values and restores the stored one after every method (Story 21.24).
-      # classes: ConfigSettingWrite, SqlSettingWrite, TaskMailAuditMask
+      # mail password to probe values and restores the stored one after every method (Story 21.24). DdlMappingWrite creates, changes and
+      # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable

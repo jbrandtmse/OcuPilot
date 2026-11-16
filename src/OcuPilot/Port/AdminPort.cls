@@ -1,3 +1,5 @@
+Include %msql
+
 /// <p>The port to the instance's own administration API (AD-2, AD-26, AD-27). <b>This is the
 /// only class in the tree that names an <code>%Api.Admin.*</code> class</b>, and it names them
 /// only through the parameters below, so a vendor change has a blast radius of one file.</p>
@@ -1278,6 +1280,7 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
     Set pLocation = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Do ..RefreshCompileContext()
     Try {
         ; AD-21's sixth case (Story 18.7): a key file reaches the vendor only as a path a port resolved.
         If '..#PATHRESOLVED && ..NamesKeyFile(pEndpoint, .pQuery, pBody) {
@@ -1531,6 +1534,20 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         Set tSC = $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
     }
     Quit tSC
+}
+
+/// <p>Refresh this process's SQL compile context when it predates the instance's last SQL settings change, by the
+/// vendor's own check (<code>$$$SQLCompileCheckContext</code>); a failed check changes nothing. A pooled process still on
+/// an older context fails the vendor's next uncached class-query prepare once (DW-2646), and the counter the check reads
+/// (<code>^%SYS("sql","sys","contextVersion","SQLCompile")</code>) and the <code>$SYSTEM.CLS.ClearContext</code> it calls
+/// are vendor internals kept inside this port (AD-27).</p>
+ClassMethod RefreshCompileContext() [ Private ]
+{
+    Try {
+        $$$SQLCompileCheckContext
+    } Catch {
+    }
+    Quit
 }
 
 /// <p>The answer of the composed read <var>pType</var> (<parameter>COMPOSEDREADS</parameter>) over the
