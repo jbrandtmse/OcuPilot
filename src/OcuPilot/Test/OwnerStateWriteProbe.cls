@@ -27,7 +27,7 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// reads.</p>
 ClassMethod Kinds() As %List
 {
-    Quit $ListBuild("Agent.GuardedCreate", "Agent.GuardedUpdate", "Agent.GuardedDeleteId", "Agent.SetDefaultGuarded", "Agent.GuardedSetVerification", "Agent.GuardedMarkCredentialCreated", "Agent.GuardedRebalanceDefault", "Agent.GuardedClearVerification", "Agent.BaseSave", "Agent.BaseSaveIfCurrent", "Propose.GuardedMint", "Propose.EditSave", "Propose.GuardedClose", "Propose.GuardedClaimAndClose", "Propose.GuardedDeleteForUser", "Propose.GuardedRecordReadBack", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Ledger.ForgedOverflow", "Ledger.ForgedSave", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Read.Agent")
+    Quit $ListBuild("Agent.GuardedCreate", "Agent.GuardedUpdate", "Agent.GuardedDeleteId", "Agent.SetDefaultGuarded", "Agent.GuardedSetVerification", "Agent.GuardedMarkCredentialCreated", "Agent.GuardedRebalanceDefault", "Agent.GuardedClearVerification", "Agent.BaseSave", "Agent.BaseSaveIfCurrent", "Propose.GuardedMint", "Propose.EditSave", "Propose.GuardedClose", "Propose.GuardedClaimAndClose", "Propose.GuardedDeleteForUser", "Propose.GuardedRecordReadBack", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Propose.GuardedDeleteForTurn", "Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Ledger.ForgedOverflow", "Ledger.ForgedSave", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Read.Agent")
 }
 
 /// <p>Run one step of the plan: the guarded call its <code>kind</code> names, with the arguments the
@@ -116,6 +116,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         } ElseIf tKind = "Propose.GuardedClaimAndClose" {
             Set tSC = $ClassMethod(tPropose, "GuardedClaimAndClose", pStep.%Get("key"), pStep.%Get("version"), pStep.%Get("target"), .tWon, .tTerminal)
             Do tLeg.%Set("won", +$Get(tWon), "number")
+        } ElseIf tKind = "Propose.GuardedDeleteForTurn" {
+            Set tSC = $ClassMethod(tPropose, "GuardedDeleteForTurn", pStep.%Get("turnKey"))
         } ElseIf tKind = "Propose.GuardedDeleteForUser" {
             Set tSC = $ClassMethod(tPropose, "GuardedDeleteForUser", pStep.%Get("user"))
         } ElseIf tKind = "Propose.GuardedRecordReadBack" {

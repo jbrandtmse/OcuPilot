@@ -275,6 +275,23 @@ ClassMethod KeyOwnerRefused(pExistsMethod As %String, pKey As %String) As %Statu
     Quit ..OwnerWriteRefused(tClass, tOwner)
 }
 
+/// <p>The refusal for a write that names a row of another store by the unique key <var>pKey</var>
+/// (<var>pParentClass</var>'s <var>pExistsMethod</var>, <code>&lt;index&gt;Exists</code>), such as the turn
+/// or conversation a ledger row or proposal is minted on: <code>$$$OK</code> for an administrator, for an
+/// empty key and for a key that names no row of that store, and <code>$$$AccessDenied</code> (vendor
+/// <code>ERROR #822</code>) when the row exists and its stored owner is not the caller, or cannot be read.
+/// The owner is read from storage by <method>GuardedStoredValue</method>, never from the caller. Reach it
+/// through <code>..</code> dispatch from a subclass.</p>
+ClassMethod NamedOwnerRefused(pParentClass As %String, pExistsMethod As %String, pKey As %String) As %Status [ Private ]
+{
+    If pKey = "" Quit $$$OK
+    If ..CallerIsAdministrator() Quit $$$OK
+    Set tSC = $ClassMethod(pParentClass, "GuardedStoredValue", pExistsMethod, pKey, $Parameter(pParentClass, "OWNERWRITE"), .tOwner, .tFound)
+    If $$$ISERR(tSC) Quit $$$ERROR($$$AccessDenied)
+    If tFound && '..CallerOwns(tOwner) Quit $$$ERROR($$$AccessDenied)
+    Quit $$$OK
+}
+
 /// <p>The refusal for a public object save of a <var>pClassName</var> row: an administrator-owned
 /// or owner-checked store is saved for an administrator only. A store that is neither is saved for
 /// every caller.</p>

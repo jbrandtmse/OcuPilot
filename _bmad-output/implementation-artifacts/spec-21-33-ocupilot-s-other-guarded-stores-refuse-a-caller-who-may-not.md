@@ -3,7 +3,7 @@ title: "Story 21.33: OcuPilot's other guarded stores refuse a caller who may not
 type: 'bugfix'
 created: '2026-11-16'
 status: 'in-progress'
-baseline_revision: '49e9b7e439afe8f1eba1404c7964495291f69c38'
+baseline_revision: '06e2aec10a5b112cfae70cc1d2f18a0ac552b8f3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -93,9 +93,23 @@ Each row runs in a child process logged in as a real principal, through `AdminSt
 
 ## Pass Scope
 
-This dispatch covers Task 0 and Batch 1 only (the `Base` mechanism, Agent, Propose, Ledger). Batches 2 and 3 are a later pass: write nothing for them, add no `OWNERWRITE` to Turn, Convo, Step, Nav, Entry, Pref, Sharing or SqlRun, and leave `TranscriptOwnerWrite` and `PrefOwnerWrite` unwritten. Task 0 covers the agent definition, one proposal (lead leg: an administrator's live proposal edited by the developer, then confirmed by the administrator, which runs the edited arguments) and one ledger row; its turn, conversation and preference legs belong to the later pass. Finalize with `status: in-progress`. The orchestrator's condition: the five non-owner product paths in Design Notes keep their behavior exactly, each shown by a test that still passes; an edit that would change one stops the run as `blocked`.
+This dispatch (pass 2) covers Batch 2 only, plus DW-2663 and DW-2665 and the Batch 2 items below. Batch 1 is done and committed. Batch 3 (`Pref`, `Sharing`, `SqlRun`, `PrefOwnerWrite`) is a later pass: write nothing for it. Finalize with `status: in-progress` and `Blocking condition: none (batch 3 remains)`.
 
-Batch 1 carve-out: `Turn.GuardedDelete` (reached by every user's turn reserve sweep) calls `Propose.GuardedDeleteForTurn`, and batch 1 does not touch `Turn`. So in this pass `Propose.GuardedDeleteForTurn` stays open and unchanged, and batch 2 gates it together with the private reserve cascade. `Ledger.GuardedDeleteForTurn` has no product caller and is gated now. Any other Batch 1 gate that would break one of the five paths through an untouched class stays open the same way, listed here; if none can, the run stops `blocked`.
+Pass 2 builds:
+
+1. **Batch 2 as planned below.** `Turn`, `Convo`, `Step`, `Nav` and `Entry` become owner stores. `Propose.GuardedDeleteForTurn` gets its private cascade form and is no longer open. Its tests are a new class `TranscriptOwnerWrite` (do not grow `StoreOwnerWrite`).
+2. **Task 0 for these stores first.** Before any product change, reproduce a developer's write to another user's turn, conversation and entry, run it on the unfixed tree and record before and after under `## Verification` as "Task 0 (batch 2, pre-fix)". If no write lands, HALT `blocked`: `Task 0: attack did not reproduce: <evidence>`.
+3. **DW-2663.** A developer's own proposals and ledger rows on another user's turn or conversation key must not consume that turn's caps. The turn's stored owner is read through `TurnKeyIdx`.
+4. **DW-2665** (AD-9, "The install's target-key step holds the administrative role the install grants", already in the spine):
+   - `Installer.EnsureProposalTargetKeys` adds the administrative role to its own process inside a `New $ROLES` frame around the single `Propose.GuardedRebuildTargetKeys` call, as `## Design Notes` "AD amendment for the spec gate (DW-2665)" describes.
+   - `scripts/check-objectscript.py` rule 6 admits `New $ROLES` in that one method of `Installer.cls` only, with a new case in `scripts/test_check_objectscript.py`.
+   - Red before, green after: seed a keyless proposal row, run the installer step as a non-`%All` principal whose `OcuPilotAdmin` grant was added in that same process. The measurement is in the scratch directory `dw2665/` (`redbefore.txt`). Put the test in `AdminPathWrite`.
+   - Rule 19 mutation: remove the frame. Also a test that a developer calling the public step is refused (`<PROTECT>` from `Set $ROLES`, then 822 from the store).
+5. **DW-2664's pins stay green:** `AdminPathWrite` covers retention as its own user, the administrator without `%All`, and first install.
+
+Orchestrator condition (U-89): the five non-owner product paths keep their behavior exactly: `Turn.GuardedAbandonForUser`, the turn reserve sweep, the background-run reserve sweep, proposal-close expiry, `Agent.GuardedClearVerification`, plus AD-9's confirm claim canceling its own stored target's siblings. `TestTheOpenPathsStillWork` stays green. An edit that would change one stops the run as `blocked` with this condition.
+
+The integration net of real non-admin turns stays green: `DeveloperFloorTurn`, `TurnWire`, `TurnProviderFault`, `ExplorerSaveTurn`, `TurnContext`, `ProposalConfirm`, `Retention`, and the Batch 2 verification list.
 
 ## Tasks & Acceptance
 
@@ -151,6 +165,13 @@ Batch 1 carve-out: `Turn.GuardedDelete` (reached by every user's turn reserve sw
 - `CallerOwns` legs: an owner write with the developer's name in a different case is accepted; an owner write with `""` as the user is refused 822. Mutation: `CallerOwns` compares with `=` -> the case leg goes red.
 - `Ledger.GuardedFinalize` on a key that names no row: 822 for the developer, OK for the administrator.
 - Four more `mutation:` lines, each observed red alone and reverted (byte-identical, reloaded): remove the administrator gate in `Ledger.GuardedPurgeBefore`; `CallerOwns` always 0; a close writer calls the public `GuardedExpireStale("")` instead of the private any-caller expiry; `RefreshMark` drops the `RowVersion` copy.
+
+**Review patches (pass 2, Batch 2 tests and mutation lines; no product change expected).** Open items:
+
+- `Turn.GuardedFinish` refusal: add a leg to `TranscriptOwnerWrite` (with a probe step reporting whether the owner's turn slot lock is held, as `TurnFixture` reads held locks). The developer reserves and begins its own turn, the suite deletes that turn row, the developer calls `GuardedFinish(key, itself)`: it answers 822 and the slot is no longer held. Also assert that an owner's turn writer on a key that names no turn is refused. Mutations: delete the unlock on refusal (or `CallerOwns(pUser)` to `0`) -> that leg alone red; `KeyOwnerRefused` accepting a missing row -> the missing-key leg red.
+- `TranscriptOwnerWrite.VictimState`'s proposal query must also read proposals by the victim conversation key (`OR %EXACT(ConvKey) = <the conversation>`), so the conversation-key mint leg's unchanged-rows assertion can observe a write.
+- Mutation lines to record (apply, observe red, revert byte-identical, reload): the administrator bypass removed from `OwnerWriteRefused` -> `TestAnAdministratorWritesAVictimsTranscriptAndSweeps` red; the `NamedOwnerRefused` call removed from `Ledger.GuardedCountOverflow`; the turn-key `NamedOwnerRefused` call removed from `Propose.GuardedMint`. Each must redden a DW-2663 leg alone, or the leg is added.
+- The Batch 1 `mutation:` line for `GuardedRebuildTargetKeys` checking the administrator before it reads names a test the install-step frame now keeps green. Replace that line at its origin with what is observed today (which test goes red alone for the mutation, and the combined mutation `AdminPathWrite`'s doc comment names, run once).
 
 **Acceptance Criteria:**
 
@@ -220,6 +241,24 @@ Rejected or closed at emission:
 - fix: `GuardedRebuildTargetKeys` reads the keyless rows first and checks the administrator only when one needs a key. A run that writes still serves an administrator only, so no AD text changes. Decided in-stage: the escalated read now precedes the check; reads are ungated in this story.
 - residual (inference): an upgrade from a release before the target key (1.0.13 or earlier) by an account granted the role in that same install still refuses at that step; a second install passes.
 - `StoreOwnerWrite`'s rebuild leg seeded no keyless row (the `TargetRef` change recomputed the key), so it now nulls the key in a second statement and asserts it.
+
+### 2026-11-16 - Review pass (Batch 2)
+
+- verdicts: 13 findings - high 0, medium 1, low 12, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `Turn.GuardedFinish`'s refusal and the unlock on it, and the missing-key refusal of the turn writers, were run by no test - added `TestARefusedFinishReleasesTheOwnersSlot` and `TestAnOwnerWriterOnAKeyThatNamesNoTurnIsRefused`; mutations recorded (unlock removed, `CallerOwns` to 0, missing row accepted).
+  - `[low]` `[patch]` `VictimState` could not see a proposal minted on a victim conversation key, so that leg's unchanged-rows assertion could not fail - the query now reads by `ConvKey`; the leg alone reddens when the conversation-key check is removed.
+  - `[low]` `[patch]` The Batch 1 mutation line for `GuardedRebuildTargetKeys` named a test the install-step frame now keeps green - replaced at its origin with the observed result and the combined mutation.
+  - `[low]` `[patch]` No `mutation:` line for the administrator row of `TranscriptOwnerWrite` or the DW-2663 checks in `GuardedCountOverflow` and `GuardedMint` - five lines added, each observed red and reverted.
+  - `[low]` `[reject]` The `Convo.LoadOrCreate` leg's rows-unchanged assertion cannot fail (the load branch writes no row) - the 822 assertion pins it, and it has its own mutation line.
+  - `[low]` `[reject]` `TestTheOpenPathsStillWork` and the administrator test depend on the instance-wide sweep - one class at a time on a throwaway, as the open sweep must be tested on the instance's own rows.
+  - `[low]` `[reject]` `tUnescalated` is set and never read - removing it leaves an empty Catch; a direct correction with no everyday harm.
+  - `[low]` `[reject]` Rule 6's method allowance could outlast the method into a following non-method member - needs a new member added after `EnsureProposalTargetKeys` that also uses `New $ROLES`; the fix adds a guard.
+  - `[low]` `[reject]` The Code Map says no product code calls `Propose.GuardedDeleteForTurn`, but `Install/Smoke` does - its status is ignored and the next call deletes the proposals itself; the fix edits the spec.
+  - `[low]` `[reject]` (intent-alignment) The forged-owner leg covers `Turn` and not `Convo` - the matrix asks one store per batch, and `OwnerChangeRefused` is the one shared check.
+  - `[low]` `[reject]` (intent-alignment) The Always line says `New $ROLES` stays in `Base.cls` - AD-9 was amended for this one method (U-82) before this pass.
+  - `[low]` `[reject]` (intent-alignment) Preservation of the turn job, routes and retention is asserted by existing suites, not new tests - those suites ran green (see Verification), and the new tests pin the store surface the matrix names.
+  - `[low]` `[reject]` (intent-alignment) DW-2663 and DW-2665 go beyond the intent text - they are this pass's named scope.
 
 ## Design Notes
 
@@ -410,23 +449,104 @@ mutation: an administrator gate added to `Propose.GuardedDeleteForTurn` -> `Test
 **Code review re-run** (2026-11-16, after the review patches, `ocupilot-ci`, one class per call, `LOADERRORS=0`): StoreOwnerWrite 14 (run 97), AdminStateWrite 7 (98), AgentState 13 (99), AgentWire 18 (77), AgentCredential 17 (79), ProposalConfirm 24 (80), ProposalRace 6 (81), ProposalWire 17 (82), DeveloperFloorTurn 1 (83), LedgerWire 6 (84), Ledger 11 (85), State 12 (86), ProposalClose 7 (87), Installer 27 (88), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
 
 **DW-2664** (2026-11-16, fresh `ocupilot-ci`, `LOADERRORS=0`): new `AdminPathWrite` (3 tests, probe `AdminPathProbe`) green (runs 1, 5); StoreOwnerWrite 14 (run 9), AdminStateWrite 7 (10), Retention 10 (11), Ledger 11 (12), Installer 27 (13), PortGate 4 (14), ProposalTargetKey 7 (15), all green; `check-objectscript` 0 problems, its harness OK, `ci.test.mjs` 103 pass.
-mutation: `GuardedRebuildTargetKeys` checks the administrator before it reads (Batch 1's order) -> `TestAFirstInstallWithoutAllPassesTheTargetKeyStep` red alone (run 2); reverted, `Propose.cls` byte-identical (md5 `1b6c8967...`), reloaded.
+mutation: `GuardedRebuildTargetKeys` checks the administrator before it reads -> `AdminPathWrite.TestADeveloperCallingTheTargetKeyStepIsRefused` red alone, on its empty-store leg, because the install-step frame keeps the first-install and upgrade tests green (run 81); reverted, `Propose.cls` byte-identical (md5 `3357c68c...`), reloaded.
+mutation: that check made before the read and the frame removed from `Installer.EnsureProposalTargetKeys` together -> `TestAFirstInstallWithoutAllPassesTheTargetKeyStep`, `TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` and the developer's empty-store leg red (run 82); reverted, `Propose.cls` and `Installer.cls` byte-identical (md5 `3357c68c...`, `183d1f52...`), reloaded.
 mutation: `Ledger.GuardedPurgeBefore` also requires `%All` -> `TestAnAdministratorWithoutAllKeysProposalsAndPurgesTheLedger` red alone (run 3); reverted, `Ledger.cls` byte-identical (md5 `a0519a84...`), reloaded.
 mutation: `Ledger.GuardedPurgeBefore` refuses every caller -> `TestTheRetentionTaskPurgesTheLedgerAsItsOwnUser` and the administrator test red (run 4); reverted, byte-identical, reloaded.
 mutation: `GuardedRebuildTargetKeys` drops its administrator check -> `StoreOwnerWrite.TestADeveloperIsRefusedAVictimsLedgerAndProposalRows` red alone, the rebuild leg (run 8); reverted, `Propose.cls` byte-identical, reloaded.
 
+### Task 0 (batch 2, pre-fix)
+
+Run 2026-11-16 on `ocupilot-ci` against the product before any Batch 2 change (`OcuPilot.Test.TranscriptOwnerWrite`, run 2; raw output in the stage scratch directory, `21-33/impl2/task0-run2.txt`). The principal is `OcuPilotTranscriptDev`: `%Development:USE` and the code read, no `OcuPilotAdmin`, no `%All`. Every call answered OK and the victim's rows changed as listed; the victim is a name no account has, and its rows were seeded as the suite identity. Teardown left 0 turns, conversations, proposals and ledger rows of the suite's.
+
+| Leg (developer call, one child process each) | Before | After |
+|----------|--------|-------|
+| `Turn.GuardedFinish` | running, reply empty, version 1 | completed, reply `a reply`, version 2 |
+| `Turn.GuardedBegin` of a queued turn, `GuardedReconcile`, `GuardedProgress`, `GuardedAddDropped` | turn row as seeded | turn row changed (state, counts, version) |
+| `Turn.GuardedRequestStop`, `GuardedRenew` | no stop signal, renewed 1 | stop signal 1, renewed raised |
+| `Turn.GuardedReserve` for the victim | 3 victim turns | a fourth queued turn |
+| `Turn.GuardedForgetStarts`, `GuardedSweepStarts` | one old start record | none |
+| `Turn.GuardedSweep` | an expired turn with a step, a directive and a proposal | all removed |
+| `Turn.GuardedDelete` of the running turn | turn, 2 steps, a directive, a proposal, signals | all removed |
+| `Step.GuardedUpdate` | step 2 `running`, version 1 | `ok`, summary `updated`, version 2 |
+| `Step.GuardedAppend`, `GuardedSnapshotText`, `GuardedFinishTool`, `GuardedDeleteForTurn` | steps as seeded | a step added, rewritten or removed |
+| `Nav.GuardedRequest`, `GuardedSettle`, `GuardedDeleteForTurn` | directive unsettled | rewritten, settled `opened`, or removed |
+| `Convo.AppendEntry` through the victim's conversation opened by id | 1 entry | 2 entries |
+| `Convo.LoadOrCreate` of the victim's conversation | not loaded | loaded, exclusively locked (no row changed) |
+| `Convo.GuardedDelete` | conversation and entry | both removed |
+| `Convo.GuardedPurgeEmpty`, `Entry.GuardedAppend`, `GuardedDeleteForConvo`, `GuardedPurge` | rows as seeded | removed or added |
+| `Propose.GuardedDeleteForTurn` | the running turn's proposal | removed |
+| `Turn.ForgedProgress` and `Turn.ForgedSave`: the developer's own turn held with its `UserName` set to the victim | stored owner the developer | stored owner the victim |
+| Ledger row appended, overflow row counted and proposal minted by the developer on the victim's turn key; proposal minted on the victim's conversation key | no row | each stored (the turn's caps spent) |
+
+### Batch 2 (post-fix)
+
+Run 2026-11-16 on `ocupilot-ci`, one class per call, after `reload.sh` (`LOADERRORS=0`). Run ids are the instance's `%UnitTest` indexes of the final run of each class after the last product edit.
+
+| Class | Tests | Result | Run |
+|-------|-------|--------|-----|
+| TranscriptOwnerWrite | 9 | pass | 83 |
+| StoreOwnerWrite | 14 | pass | 84 |
+| AdminPathWrite | 5 | pass | 85 |
+| AdminStateWrite | 7 | pass | 25 |
+| TurnStore | 11 | pass | 7 |
+| TurnWire | 15 | pass | 6 |
+| TurnConversation | 11 | pass | 8 |
+| TurnNavigate | 15 | pass | 9 |
+| TurnHourLimit | 9 | pass | 11 |
+| TurnLoop | 11 | pass | 12 |
+| TurnStream | 7 | pass | 29 |
+| Convo | 7 | pass | 13 |
+| TranscriptStore | 5 | pass | 14 |
+| ConversationRestore | 4 | pass | 15 |
+| DeveloperFloorTurn | 1 | pass | 5 |
+| Retention | 10 | pass | 16 |
+| TurnProviderFault | 6 | pass | 17 |
+| ExplorerSaveTurn | 1 | pass | 18 |
+| TurnContext | 16 | pass | 19 |
+| ProposalConfirm | 24 | pass | 20 |
+| ProposalClose | 7 | pass | 30 |
+| ProposalWire | 17 | pass | 28 |
+| Ledger | 11 | pass | 27 |
+| LedgerWire | 6 | pass | 21 |
+| TranscriptsWire | 7 | pass | 22 |
+| Installer | 27 | pass | 26 |
+
+`NavSettleJob` is the job helper `TurnNavigate` starts, not a test class: the runner reports it as ran 0 test methods. `uv run scripts/check-objectscript.py` 0 problems; `uv run scripts/test_check_objectscript.py` 158 tests OK; `node --test tools/ci.test.mjs` 103 pass.
+
+**DW-2665.** Red before, green after (`AdminPathWrite`): the frame removed from `Installer.EnsureProposalTargetKeys` (run 40) -> `TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` red alone, the step refused 822 and the proposal keyless; with the frame, green (runs 24, 47). The developer's public call is refused: IRIS answers its own `Set $ROLES` with `<PROTECT>` and the store answers 822 (`TestADeveloperCallingTheTargetKeyStepIsRefused`); an account holding `%DB_IRISSYS:RW` is admitted the same addition. DW-2664's three tests stay green.
+
+mutation: `OwnerWriteRefused` answers `$$$OK` first -> `TestADeveloperIsRefusedAVictimsTranscript` red alone, 18 owner-write legs (run 31); reverted, `Base.cls` byte-identical (md5 `a02d5f6b...`), reloaded.
+mutation: `OwnerChangeRefused` skips the stored-versus-held owner comparison -> `TestAForgedOwnerIsRefusedAndTheStoredOwnerStands` red alone, the administrator legs (run 32); reverted, `Base.cls` byte-identical, reloaded.
+mutation: `Turn.GuardedReserve` calls the public `GuardedSweep` -> `TestTheOpenPathsStillWork` red alone (run 33); reverted, `Turn.cls` byte-identical (md5 `6b66f554...`), reloaded.
+mutation: `Parameter OWNERWRITE` emptied on `Step` -> `TestADeveloperIsRefusedAVictimsTranscript` and `TestTheOwnerStoresAreDeclared` red (run 34); reverted, `Step.cls` byte-identical (md5 `aa0935d9...`), reloaded.
+mutation: the turn-owner check removed from `Ledger.GuardedAppend` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its append leg alone (run 35); reverted, `Ledger.cls` byte-identical (md5 `6a6e1a01...`), reloaded.
+mutation: the conversation-owner check removed from `Propose.GuardedMint` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its conversation-key leg alone (run 36); reverted, `Propose.cls` byte-identical (md5 `3357c68c...`), reloaded.
+mutation: the owner check removed from the load branch of `Convo.LoadOrCreate` -> `TestADeveloperIsRefusedAVictimsTranscript` red on its `Convo.LoadOrCreate` leg alone (run 37); reverted, `Convo.cls` byte-identical (md5 `5f3fd930...`), reloaded.
+mutation: the administrator gate removed from `Propose.GuardedDeleteForTurn` -> `TranscriptOwnerWrite.TestADeveloperIsRefusedAVictimsTranscript` (run 38) and `StoreOwnerWrite.TestADeveloperIsRefusedAVictimsLedgerAndProposalRows` (run 39) red, each on that leg alone; reverted, `Propose.cls` byte-identical, reloaded.
+mutation: an administrator gate added to `Turn.GuardedAbandonForUser` -> `TestTheOpenPathsStillWork` red alone (run 43); reverted, `Turn.cls` byte-identical, reloaded.
+mutation: `CallerOwns` answers 0 always -> `TestADeveloperWritesItsOwnTurnAndConversation`, `TestTheOpenPathsStillWork` and `TestADeveloperCannotSpendAVictimsTurnCaps` red (run 44), each an owner or open path that the mutation refuses; reverted, `Base.cls` byte-identical, reloaded.
+mutation: the `New $ROLES` frame and its `Set $ROLES` removed from `Installer.EnsureProposalTargetKeys` -> `TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` red alone (run 40); reverted, `Installer.cls` byte-identical (md5 `183d1f52...`), reloaded.
+mutation: `Propose.GuardedRebuildTargetKeys` drops its administrator check -> `TestADeveloperCallingTheTargetKeyStepIsRefused` red alone (run 41); reverted, `Propose.cls` byte-identical, reloaded.
+mutation: the slot release removed from `Turn.GuardedFinish`'s refusal, and separately `CallerOwns(pUser)` there made `0` -> `TestARefusedFinishReleasesTheOwnersSlot` red alone, on the held leg (runs 74, 75); reverted, `Turn.cls` byte-identical (md5 `6b66f554...`), reloaded.
+mutation: `KeyOwnerRefused` answers `$$$OK` for a key that names no row -> `TestAnOwnerWriterOnAKeyThatNamesNoTurnIsRefused` (three legs) and the finish leg of `TestARefusedFinishReleasesTheOwnersSlot` red, which deletes its turn row first (run 76); reverted, `Base.cls` byte-identical (md5 `a02d5f6b...`), reloaded.
+mutation: the administrator bypass removed from `OwnerWriteRefused` -> five tests red at `SeedVictim`, whose mint as the suite's `%All` identity is an administrator's write, `TestAnAdministratorWritesAVictimsTranscriptAndSweeps` among them (run 77); reverted, `Base.cls` byte-identical (md5 `a02d5f6b...`), reloaded.
+mutation: the `NamedOwnerRefused` call removed from `Ledger.GuardedCountOverflow` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its overflow leg alone, the 822 and the unchanged-rows assertions (run 78); reverted, `Ledger.cls` byte-identical (md5 `6a6e1a01...`), reloaded.
+mutation: the turn-key `NamedOwnerRefused` call removed from `Propose.GuardedMint` -> `TestADeveloperCannotSpendAVictimsTurnCaps` red on its turn-key mint leg alone (run 79); with the conversation-key call removed instead, red on its conversation-key leg alone, the unchanged-rows assertion included, because `VictimState` now reads proposals by the conversation key (run 80); each reverted, `Propose.cls` byte-identical (md5 `3357c68c...`), reloaded.
+mutation: rule 6 admits `New $ROLES` in every method of `Installer.cls` -> `test_new_roles_in_another_installer_method_is_refused` red alone; reverted, `check-objectscript.py` byte-identical (md5 `f773d659...`).
+
 ## Auto Run Result
 
 Status: in-progress
-Blocking condition: none (batches 2 and 3 remain)
+Blocking condition: none (batch 3 remains)
 
-**Task 0.** Reproduced on the unchanged product, `ocupilot-ci`, as a real `%Development` principal with no `OcuPilotAdmin`: the developer rewrote an administrator's live proposal through `Base.GuardedSave` and `GuardedSaveIfCurrent`, and the administrator's confirm then sent the edited arguments (Description `EVIL`). The agent definition was rewritten, created, deleted, marked and set default; a victim's proposal and ledger row were minted, closed, finalized and deleted. Before and after are under "Task 0 (pre-fix)". The turn, conversation and preference legs are Batches 2 and 3.
+**Pass 2 (Batch 2, DW-2663, DW-2665).** Task 0 reproduced on the unchanged product: a developer finished, stopped, reserved for, swept and deleted another user's turns, rewrote and removed their steps and directives, loaded and appended to and deleted their conversation, and spent a victim turn's caps with its own ledger rows and proposals; `Turn.ForgedProgress` stored the victim as the owner of the developer's own turn. Before and after are under "Task 0 (batch 2, pre-fix)". Batch 1 closed in pass 1; its record is above.
 
-**Batch 1 done; Batches 2 and 3 open.**
-
-- Summary: `Base` gains `OWNERWRITE`, `OWNERPARENT`, `OWNERPARENTINDEX`, `CallerOwns`, `OwnerWriteRefused`, and private `GuardedSaveOwned` and key and stored-owner helpers; the public saves serve an administrator only for an owner store. Agent is administrator-owned with `GuardedClearVerification` open by one `UPDATE` plus a SQL-only rebalance. Propose and Ledger are owner stores; cross-user deletes, purge, rebuild and the all-users expiry serve an administrator; the close writers expire lapsed proposals through a private any-caller expiry. `Propose.GuardedDeleteForTurn` stays open until Batch 2 (Pass Scope carve-out).
-- Files: `src/OcuPilot/Kernel/State/Base.cls`, `Agent.cls`, `Propose.cls`, `Ledger.cls`; `src/OcuPilot/Test/AdminStateWrite.cls`, `AdminStateWriteProbe.cls`, `OwnerStateWriteProbe.cls` (new), `StoreOwnerWrite.cls` (new, 13 tests); `scripts/ci-throwaway.sh` (roster union).
-- The five non-owner product paths are unchanged; `TestTheOpenPathsStillWork` runs all five as the developer principal and also passes on the unfixed tree.
-- Review: 12 findings - 5 patched (tests and mutation lines only, none changed product code), 1 deferred (ledger rows onto another user's turn key), 6 rejected with reasons in the triage log. Patched by verdict: medium 3, low 2. Follow-up review recommended: false (the patches added tests and mutation runs, and the product diff did not change after review).
-- Verification: reload `LOADERRORS=0`; every Batch 1 class in the Verification table green (final runs), re-run by the lead after the patches: StoreOwnerWrite 13 (run 65), AdminStateWrite 7, DeveloperFloorTurn 1, TurnWire 15, AgentCredential 17, Retention 10, ProposalConfirm 24; `check-objectscript` 0 problems; `ci.test.mjs` 103 pass; `lint-docs` 0 issues. Mutations: see `## Verification`; the fifth (public sweep in the turn reserve) belongs to Batch 2.
-- Residual risks: the confirm leg of Task 0 runs under the suite's own identity because confirm needs the proposal's owner; `RefreshMark`'s version copy is pinned by `AgentCredential` only; `StoreOwnerWrite.cls` is 914 lines against the 500-line guideline.
+- Summary: `Turn`, `Convo`, `Step`, `Nav` and `Entry` are owner stores (`Step` and `Nav` through the turn, `Entry` through the conversation, by `OWNERPARENT`). Every public writer checks the caller before it escalates; the sweeps, purges, `GuardedForgetStarts`, `GuardedSweepStarts` and the children's deletes by turn or conversation serve an administrator only, and `Propose.GuardedDeleteForTurn` with them. `Turn.GuardedReserve` sweeps through a private any-caller form that deletes a turn's steps, directive, proposals and signals by its own statements; `GuardedDelete` checks the owner, then does the same. `GuardedAbandonForUser` is unchanged. A ledger row or proposal on a turn or conversation key whose stored owner is another user is refused (`Base.NamedOwnerRefused`, private; no turn row means no owner, so a key that names none is accepted). `Installer.EnsureProposalTargetKeys` adds the administrative role to its own process in a `New $ROLES` frame; rule 6 admits that one method.
+- Decided in-stage: `Convo.LoadOrCreate` on a key that names no conversation keeps its old error for every caller, since the key owner is unresolved only when the row exists (`NamedOwnerRefused`); a turn writer keyed on a key that names no turn is refused for a non-administrator, as batch 1's key writers are. `Turn.GuardedFinish` releases the owner's slot lock even when the key check refuses. The tests that name the batch 3 stores are not written.
+- Files: `src/OcuPilot/Kernel/State/Base.cls`, `Turn.cls`, `Step.cls`, `Nav.cls`, `Convo.cls`, `Entry.cls`, `Propose.cls`, `Ledger.cls`; `src/OcuPilot/Install/Installer.cls`; `src/OcuPilot/Test/TranscriptOwnerWrite.cls` and `TranscriptStateWriteProbe.cls` (new), `StoreOwnerWrite.cls`, `OwnerStateWriteProbe.cls`, `AdminPathWrite.cls`, `AdminPathProbe.cls`; `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py`, `scripts/ci-throwaway.sh`.
+- The five non-owner product paths are unchanged: `TestTheOpenPathsStillWork` in `TranscriptOwnerWrite` and in `StoreOwnerWrite` run them as the developer principal and pass.
+- Verification: reload `LOADERRORS=0`; every Batch 2 class in the table above green; mutations and DW-2665's red-before and green-after under `## Verification`.
+- Residual risks (inference): the per-write owner lookup adds one escalated read per `Step`, `Nav` and `Turn` write, and a second for each saved row; not measured. `TranscriptOwnerWrite` is 698 lines against the 500-line guideline; the lock check uses an event message to the parent because a developer cannot read `^$LOCK`.
+- Review: 13 findings - 4 patched (medium 1, low 3; tests and mutation lines only, no product code), 0 deferred, 9 rejected with reasons in the triage log. Frontmatter `deferred:` item 3 (ledger rows onto another user's turn key) is fixed by DW-2663 in this pass. Follow-up review recommended: false (no high patched, one medium patched).
+- Verification after the patches: reload `LOADERRORS=0`; `TranscriptOwnerWrite` 9 (run 86), `StoreOwnerWrite` 14, `AdminPathWrite` 5; the Batch 2 integration net re-run by the lead before review (DeveloperFloorTurn, TurnWire, TurnProviderFault, ExplorerSaveTurn, TurnContext, ProposalConfirm, Retention, TurnConversation, TurnNavigate, TurnStore, Convo, TranscriptStore, ConversationRestore, TurnHourLimit, TurnLoop, AdminStateWrite, Installer, ProposalTargetKey) green; `check-objectscript` 0 problems; its harness 158 tests OK; `ci.test.mjs` 103 pass; `lint-docs` 0 problems.

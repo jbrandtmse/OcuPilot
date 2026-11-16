@@ -18,6 +18,16 @@
 Class OcuPilot.Kernel.State.Nav Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>), owned
+/// through its turn: <property>TurnKey</property> names the turn, and the turn's stored owner is the
+/// directive's. A writer refuses a caller who neither owns that turn nor holds the administrative
+/// resource; <method>GuardedDeleteForTurn</method> is an administrator's.</p>
+Parameter OWNERWRITE As %String = "TurnKey";
+
+Parameter OWNERPARENT As %String = "OcuPilot.Kernel.State.Turn";
+
+Parameter OWNERPARENTINDEX As %String = "TurnKeyIdx";
+
 /// <p>The turn this directive belongs to.</p>
 Property TurnKey As %String(MAXLEN = 64);
 
@@ -66,7 +76,8 @@ Index NavTurnKeyIdx On TurnKey [ Unique ];
 /// (see the class header); its outcome, code and settled time are cleared.</p>
 ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String, pEntityId As %String, pCriterion As %String = "", pCriteria As %DynamicObject = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ? AND %EXACT(Kind) = 'announce'", pKey, pSeq, .tIds)
         If $$$ISERR(tSC) Quit
@@ -92,7 +103,7 @@ ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String,
         Set tRow.Outcome = ""
         Set tRow.Code = ""
         Set tRow.SettledAt = ""
-        Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
+        Set tSC = ..GuardedSaveOwned(tRow, tExpected)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -141,6 +152,8 @@ ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRou
 ClassMethod GuardedSettle(pKey As %String, pSeq As %Integer, pOutcome As %String, pCode As %String, Output pClaimed As %Boolean) As %Status
 {
     Set pClaimed = 0
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(tRow) Quit $$$OK
@@ -151,7 +164,7 @@ ClassMethod GuardedSettle(pKey As %String, pSeq As %Integer, pOutcome As %String
     Set tRow.Outcome = pOutcome
     Set tRow.Code = pCode
     Set tRow.SettledAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     If $$$ISERR(tSC) {
         ; A racing writer won first (GuardedSaveIfCurrent's own stale-save refusal): the loser is
@@ -167,6 +180,7 @@ ClassMethod GuardedSettle(pKey As %String, pSeq As %Integer, pOutcome As %String
 /// <method>OcuPilot.Kernel.State.Turn.GuardedDelete</method> alongside the turn's steps.</p>
 ClassMethod GuardedDeleteForTurn(pKey As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Nav WHERE %EXACT(TurnKey) = ?", pKey)
 }
 

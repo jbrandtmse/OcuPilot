@@ -15,6 +15,11 @@
 Class OcuPilot.Kernel.State.Convo Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>): a
+/// writer refuses a caller who neither owns the conversation nor holds the administrative resource, and
+/// <method>GuardedPurgeEmpty</method> is an administrator's.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
 /// <p>The user who created this conversation, as <code>$USERNAME</code> read it. A weak reference
 /// (AD-37).</p>
 Property UserName As %String(MAXLEN = 160);
@@ -57,7 +62,8 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
     Set tConvo = $$$NULLOREF
     Try {
         If pId '= "" {
-            Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pId, .tIds)
+            Set tSC = ..NamedOwnerRefused($ClassName(), "ConvKeyIdxExists", pId)
+            If $$$ISOK(tSC) Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pId, .tIds)
             If $$$ISERR(tSC) {
                 Set pStatus = tSC
                 Quit
@@ -68,11 +74,16 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
             }
             Set tRowId = tIds(1)
         } Else {
+            Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+            If $$$ISERR(tSC) {
+                Set pStatus = tSC
+                Quit
+            }
             Set tRow = ..%New()
             Set tRow.ConvKey = ..NewKey()
             Set tRow.UserName = pUser
             Set tRow.CreatedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-            Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+            Set tSC = ..GuardedSaveOwned(tRow, 0)
             If $$$ISERR(tSC) {
                 Set pStatus = tSC
                 Quit
@@ -215,6 +226,7 @@ ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String
 ClassMethod GuardedPurgeEmpty(pCutoff As %String, Output pRemoved As %Integer) As %Status
 {
     Set pRemoved = 0
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tParams = []
     Do tParams.%Push(pCutoff, "string")
     Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(CreatedAt) < ? AND NOT EXISTS (SELECT e.ID FROM OcuPilot_Kernel_State.Entry e WHERE e.ConvoKey = OcuPilot_Kernel_State.Convo.ConvKey)", .tParams, .pRemoved)
@@ -303,7 +315,9 @@ ClassMethod NewKey() As %String [ Private ]
 /// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>).</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedDeleteForConvo(pKey)
+    Set tSC = ..KeyOwnerRefused("ConvKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pKey)
     If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey)
 }

@@ -574,22 +574,24 @@ Method AssertCredentialFindingDisablesDefinition()
 /// <method>OcuPilot.Test.AdminStateWrite.BaseSurface</method>.</p>
 /// <p>Mutation (Rule 19): <code>Parameter OWNERWRITE</code> emptied on
 /// <class>OcuPilot.Kernel.State.Ledger</class> -> this, the victim rows test and the forged-owner test
-/// go red.</p>
+/// go red. The classes this class does not cover are the ones <class>OcuPilot.Test.TranscriptOwnerWrite</class>
+/// names; a later batch's class extends the union.</p>
 Method TestTheOwnerStoresAreDeclared()
 {
     Set tStores = $ListBuild("Ledger", "Propose")
     Set tOwnerRan = ..PlanKinds(..OwnerPlan("", 0, "", ""))
     Set tAdministratorRan = ..PlanKinds(..AdministratorPlan())
     Set tDeclared = ""
-    For tI = 1:1:$ListLength(tStores) {
-        Set tDeclared = tDeclared _ $Select(tDeclared = "": "", 1: ",") _ ..#STOREPACKAGE _ $List(tStores, tI)
+    Set tAllStores = tStores _ ##class(OcuPilot.Test.TranscriptOwnerWrite).Stores()
+    For tI = 1:1:$ListLength(tAllStores) {
+        Set tDeclared = tDeclared _ $ListBuild(..#STOREPACKAGE _ $List(tAllStores, tI))
     }
     Set tFound = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT parent FROM %Dictionary.CompiledParameter WHERE Name = 'OWNERWRITE' AND _Default IS NOT NULL AND _Default <> '' ORDER BY parent")
     While tRS.%Next() {
-        Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tRS.%GetData(1)
+        Set tFound = tFound _ $ListBuild(tRS.%GetData(1))
     }
-    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled OWNERWRITE is not empty are the two stores")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tFound), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tDeclared), "the classes whose compiled OWNERWRITE is not empty are this class's two stores and the transcript stores")
     For tI = 1:1:$ListLength(tStores) {
         Set tStore = $List(tStores, tI)
         Set tClass = ..#STOREPACKAGE _ tStore
@@ -609,7 +611,6 @@ Method TestTheOwnerStoresAreDeclared()
     Set tHandled = ""
     Set tAll = ..VictimKinds() _ tOwnerRan _ tAdministratorRan _ ..OpenKinds() _ ..AgentWriteKinds()
     For tI = 1:1:$ListLength(tAll) {
-        If $List(tAll, tI) = "Propose.GuardedDeleteForTurn" Continue
         If '$ClassMethod(..#PROBE, "Handles", $List(tAll, tI)) Set tHandled = tHandled _ " " _ $List(tAll, tI)
     }
     Do $$$AssertEquals(tHandled, "", "every step the tests name is one the probe runs")
@@ -628,7 +629,7 @@ Method AssertCalled(pStore As %String, pMethods As %List, pKinds As %List, pMess
 /// <p>The steps a stranger is refused on another user's rows, one child process each.</p>
 ClassMethod VictimKinds() As %List
 {
-    Quit $ListBuild("Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Propose.GuardedMint", "Propose.GuardedRecordReadBack", "Propose.GuardedClaimAndClose", "Propose.GuardedClose", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Propose.GuardedDeleteForUser")
+    Quit $ListBuild("Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Propose.GuardedDeleteForTurn", "Propose.GuardedMint", "Propose.GuardedRecordReadBack", "Propose.GuardedClaimAndClose", "Propose.GuardedClose", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Propose.GuardedDeleteForUser")
 }
 
 /// <p>The steps the owner of the rows makes, in the order <method>OwnerPlan</method> runs them.</p>
@@ -641,7 +642,7 @@ ClassMethod OwnerKinds() As %List
 /// <method>AdministratorPlan</method> runs them.</p>
 ClassMethod AdministratorKinds() As %List
 {
-    Quit $ListBuild("Propose.GuardedRebuildTargetKeys", "Ledger.GuardedPurgeBefore", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Propose.GuardedDeleteForUser")
+    Quit $ListBuild("Propose.GuardedRebuildTargetKeys", "Ledger.GuardedPurgeBefore", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Propose.GuardedDeleteForTurn", "Propose.GuardedDeleteForUser")
 }
 
 /// <p>The plan the developer runs against its own rows: one step for each of
@@ -695,12 +696,10 @@ ClassMethod PlanKinds(pPlan As %DynamicArray) As %List
     Quit tKinds
 }
 
-/// <p>The open writes the open-path test reaches. <code>Propose.GuardedDeleteForTurn</code> is reached
-/// through the turn reserve's sweep, which removes the proposal minted on the swept turn; it stays open
-/// until the turn store's own gate.</p>
+/// <p>The open writes the open-path test reaches.</p>
 ClassMethod OpenKinds() As %List
 {
-    Quit $ListBuild("Agent.GuardedClearVerification", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Propose.GuardedDeleteForTurn")
+    Quit $ListBuild("Agent.GuardedClearVerification", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve")
 }
 
 /// <p>The agent definition writers a developer is refused; the administrator roster test reads them.</p>
@@ -727,13 +726,12 @@ ClassMethod OwnerWrites(pStore As %String) As %List
 ClassMethod AdministratorWrites(pStore As %String) As %List
 {
     If pStore = "Ledger" Quit $ListBuild("GuardedDeleteForTurn", "GuardedDeleteForUser", "GuardedPurgeBefore")
-    Quit $ListBuild("GuardedRebuildTargetKeys", "GuardedDeleteForUser")
+    Quit $ListBuild("GuardedRebuildTargetKeys", "GuardedDeleteForTurn", "GuardedDeleteForUser")
 }
 
 /// <p>The writes <var>pStore</var> leaves open to every caller.</p>
 ClassMethod OpenWrites(pStore As %String) As %List
 {
-    If pStore = "Propose" Quit $ListBuild("GuardedDeleteForTurn")
     Quit ""
 }
 

@@ -25,7 +25,8 @@ Class OcuPilot.Kernel.State.Ledger Extends OcuPilot.Kernel.State.Base
 
 /// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>):
 /// a writer refuses a caller who neither owns the row nor holds the administrative resource, and the
-/// deletes and the purge across users are an administrator's.</p>
+/// deletes and the purge across users are an administrator's. A row appended on a turn key that names
+/// another user's turn is refused, so a caller cannot spend that turn's row cap.</p>
 Parameter OWNERWRITE As %String = "UserName";
 
 /// <p>The kind a provider-call row carries.</p>
@@ -242,6 +243,7 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
     Set pStored = 0
     Set pLedgerKey = ""
     Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey)
     If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND Seq > 0", pTurnKey, .tCount)
@@ -333,6 +335,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
 {
     Set pDropped = 0
     Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey)
     If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND Seq = ?", pTurnKey, ..#OVERFLOWSEQ, .tRow)
