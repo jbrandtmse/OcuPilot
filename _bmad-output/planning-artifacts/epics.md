@@ -970,7 +970,7 @@ Nothing is scheduled. Each excluded row is picked up only when demand appears an
 
 Split from Epic 21 on 2026-11-14 so that a second slot runs it beside Epic 21: interoperability parity, the analytics editors, the developer tools, and the agent's 28 harvested tools with undo.
 
-**FRs covered:** FR-80, the share of Epic 21's 165 rows those four stories carry
+**FRs covered:** FR-80, the share of Epic 21's 164 rows those four stories carry
 
 ---
 

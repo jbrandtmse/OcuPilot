@@ -13239,3 +13239,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Epic 21 block text, not Epic 24's to edit; U-45 C applied in 24.8
 - 2026-11-16T09:07:35Z status=escalated owner=burndown by=harvest note=for the orchestrator: Epic 21's planning text
+- 2026-11-16T09:53:25Z occurrence=24-8-remote-instance-profiles-and-environment-diff note=also epics.md:955 (165 rows, M 79) and :9179 (165 rows) in Epic 21's blocks; :973 (Epic 24) re-derived to 164
+
+### DW-2642: Compare namespaces' target hint tells the agent to spell the namespace as osmgmt.namespaces.read answers it, a tool the developer floor does not hold
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ExplorerNamespaceDiff.cls target hint; DeveloperFloor.TOOLS holds shell.namespaces.read, not osmgmt.namespaces.read (that screen needs %Admin_Manage:USE)
+- 2026-11-16T09:53:24Z status=decision-pending owner=burndown by=cr note=string:The namespace to compare this one with, spelled as shell.namespaces.read answers its name.
+
+### DW-2643: Compare namespaces on an instance with no other namespace to choose shows the length rule 'Name the other namespace: 1 to 64 characters.' instead of saying there is none
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dev-tool.page.ts noTargetChoice renders STRINGS.explorerTargetReason when targetOptions is empty
+- 2026-11-16T09:53:25Z status=decision-pending owner=burndown by=cr note=string:There is no other namespace here to compare with.
+
+### DW-2644: NamespaceDiffRoute's too-many legs rely on the pinned image's Ens*.cls and HS.*.cls class counts in USER and HSCUSTOM
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the route has no MaxDocuments seam; NamespaceDiffRead pins the cap in both namespaces hermetically through DevToolPortFixture
+- 2026-11-16T09:53:25Z status=wontfix-accepted owner=24-8-remote-instance-profiles-and-environment-diff by=cr note=reopen_if=a NamespaceDiffRoute too-many leg answers 200 after an image or mapping change
+
+### DW-2645: NamespaceDiffRead repeats DevToolRead's Column and AssertRefused test helpers
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: DevToolRead.cls:71,304 and NamespaceDiffRead.cls Column/AssertRefused; sharing needs a non-test base class for both suites
+- 2026-11-16T09:53:25Z status=wontfix-accepted owner=24-8-remote-instance-profiles-and-environment-diff by=cr note=reopen_if=a third devtool test class copies Column or AssertRefused

@@ -1,10 +1,10 @@
-/// <p>Story 24.8's pair of probe packages, <method>MakePair</method> and <method>RemovePair</method>, follow the same
-/// rules for the package <code>OcuProbe248</code>.</p>
 /// <p>Story 24.1's probe documents: the classes <code>OcuProbe241.Alpha</code> (saved, not compiled),
 /// <code>OcuProbe241.Beta</code> (compiled, so its generated routine exists) and <code>OcuProbe241.Gamma</code>
 /// (a compiled unit-test class), the routine <code>OcuProbe241Mac.mac</code> and the include file
 /// <code>OcuProbe241Inc.inc</code>, created in a namespace by the tests that count and hash them and removed by
 /// <method>Remove</method>, which names only these.</p>
+/// <p>Story 24.8's pair of probe packages, <method>MakePair</method> and <method>RemovePair</method>, follow the same
+/// rules for the package <code>OcuProbe248</code>.</p>
 Class OcuPilot.Test.DevToolProbe Extends %RegisteredObject
 {
 
@@ -97,22 +97,29 @@ ClassMethod RoutineLines(pName As %String, Output pLines) As %Status
 /// that survives.</p>
 ClassMethod Remove(pNamespace As %String = "USER") As %Status
 {
+    Quit ..RemoveDocuments(pNamespace, ..#PACKAGE, ..#ROUTINES)
+}
+
+/// <p>Remove the package <var>pPackage</var> and the comma-separated routines <var>pRoutines</var> from
+/// <var>pNamespace</var>, the classes' generated routines with them, and report any that survives.</p>
+ClassMethod RemoveDocuments(pNamespace As %String, pPackage As %String, pRoutines As %String) As %Status [ Private ]
+{
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
-        For tI = 1:1:$Length(..#ROUTINES, ",") {
-            Set tName = $Piece(..#ROUTINES, ",", tI)
+        Do $System.OBJ.DeletePackage(pPackage, "-d")
+        For tI = 1:1:$Length(pRoutines, ",") {
+            Set tName = $Piece(pRoutines, ",", tI)
             If ##class(%RoutineMgr).Exists(tName) Do ##class(%RoutineMgr).Delete(tName)
         }
         Set tLeft = ""
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PACKAGE _ ".")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", pPackage _ ".")
         While tRS.%Next() {
             Set tLeft = tLeft _ " " _ tRS.%GetData(1)
         }
-        For tI = 1:1:$Length(..#ROUTINES, ",") {
-            If ##class(%RoutineMgr).Exists($Piece(..#ROUTINES, ",", tI)) Set tLeft = tLeft _ " " _ $Piece(..#ROUTINES, ",", tI)
+        For tI = 1:1:$Length(pRoutines, ",") {
+            If ##class(%RoutineMgr).Exists($Piece(pRoutines, ",", tI)) Set tLeft = tLeft _ " " _ $Piece(pRoutines, ",", tI)
         }
         Set $NAMESPACE = tOrigNS
         If tLeft '= "" Set tSC = $$$ERROR($$$GeneralError, "probe documents survive in " _ pNamespace _ ":" _ tLeft)
@@ -139,15 +146,15 @@ ClassMethod PairText(pClass As %String, pMethod As %String) As %String
 /// <p>Save the <code>OcuProbe248</code> documents in two namespaces: <code>Same</code> (identical) and
 /// <code>Changed</code> (a different method in each) in both, <code>OnlyHere</code> and the routine
 /// <code>OcuProbe248Mac.mac</code> in <var>pHere</var> only, and <code>OnlyThere</code> in <var>pThere</var> only.
-/// None is compiled. The second namespace's documents are saved a second after the first's, so a document held alike
-/// carries two different times.</p>
+/// None is compiled. The second namespace's documents are saved a tenth of a second after the first's, so a document
+/// held alike carries two different times (the instance keeps a document's time to below the second).</p>
 ClassMethod MakePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         For tSide = 1, 2 {
-            If tSide = 2 Hang 1.1
+            If tSide = 2 Hang 0.1
             Set tNamespace = $Select(tSide = 1: pHere, 1: pThere)
             Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(tNamespace, ..#PAIRPACKAGE _ ".Same", ..PairText("Same", "One"))
             If $$$ISERR(tSC) Quit
@@ -177,24 +184,9 @@ ClassMethod MakePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") 
 ClassMethod RemovePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
 {
     Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        For tNamespace = pHere, pThere {
-            Set $NAMESPACE = tNamespace
-            Do $System.OBJ.DeletePackage(..#PAIRPACKAGE, "-d")
-            If ##class(%RoutineMgr).Exists(..#PAIRROUTINE) Do ##class(%RoutineMgr).Delete(..#PAIRROUTINE)
-            Set tLeft = ""
-            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PAIRPACKAGE _ ".")
-            While tRS.%Next() {
-                Set tLeft = tLeft _ " " _ tRS.%GetData(1)
-            }
-            If ##class(%RoutineMgr).Exists(..#PAIRROUTINE) Set tLeft = tLeft _ " " _ ..#PAIRROUTINE
-            Set $NAMESPACE = tOrigNS
-            If tLeft '= "" Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "probe documents survive in " _ tNamespace _ ":" _ tLeft))
-        }
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ex.AsStatus()
+    For tNamespace = pHere, pThere {
+        Set tRemoveSC = ..RemoveDocuments(tNamespace, ..#PAIRPACKAGE, ..#PAIRROUTINE)
+        If $$$ISERR(tRemoveSC) Set tSC = $$$ADDSC(tSC, tRemoveSC)
     }
     Quit tSC
 }

@@ -212,6 +212,42 @@ The screen's namespace is USER and `target` is HSCUSTOM. Every row is observed o
 - **AC4 (Integration).** Given `explorer.namespacediff.read` called through tool dispatch with the Diff row's arguments, when it answers, then its rows equal the route's. Given the Compare namespaces screen on the redeployed bundle, when a person runs the Diff search, then the browser shows the three changes.
 - **AC5.** Given remote instance profiles, when this story lands, then the exclusion register holds DT-11 as not planned, with the reason (no request leaves the instance, NFR-6; OcuPilot manages the instance that serves it). The catalog marks DT-11 P4, and `exclusion-register.test.mjs` passes.
 
+### Review Findings
+
+Code review 2026-11-16 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 10 patch, 5 deferred to the ledger, 13 rejected.
+
+- [x] [Review][Patch] `RemovePair` repeated `Remove`'s delete-and-report body (Rule 31, medium) -- both now call `RemoveDocuments` [src/OcuPilot/Test/DevToolProbe.cls]
+- [x] [Review][Patch] Nothing pinned that a hash or metrics refusal stays `{count, max}` without `detail.namespace` (medium) -- the too-many test asserts the exact `detail` JSON [src/OcuPilot/Test/DevToolRead.cls:378]
+- [x] [Review][Patch] Catalog count summary still read DT 10/1 and totals 164/56 under a heading that says it matches the catalog (medium) [_bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/extract-catalog.md:429,431]
+- [x] [Review][Patch] `MakePair` waited 1.1 s on a premise of second-resolution times; the instance keeps sub-second times, so it waits 0.1 s and says so [src/OcuPilot/Test/DevToolProbe.cls]
+- [x] [Review][Patch] The probe class header put 24.8's "same rules" paragraph before the rules it refers to [src/OcuPilot/Test/DevToolProbe.cls:1]
+- [x] [Review][Patch] Port header named steps 1 and 4 for the second body's pairs (step 5) and "like step 3" for the evaluation (step 1) [src/OcuPilot/Port/DevToolPort.cls:15,31]
+- [x] [Review][Patch] The area-tools assertion message still said thirty-three reads [src/OcuPilot/Test/ExplorerDescriptor.cls:161]
+- [x] [Review][Patch] Epic 24's block still counted Epic 21's 165 rows [_bmad-output/planning-artifacts/epics.md:973]
+- [x] [Review][Patch] Route `detail` assertions were skipped when `detail` was absent -- its presence is now asserted [src/OcuPilot/Test/NamespaceDiffRoute.cls]
+- [x] [Review][Patch] Route test header said `Ens*.cls` exceeds the cap "in USER alone"; it exceeds it in both, and USER is counted first [src/OcuPilot/Test/NamespaceDiffRoute.cls]
+- [x] [Review][Defer] Target hint names `osmgmt.namespaces.read`, which the developer floor does not hold [src/OcuPilot/Screen/Descriptor/ExplorerNamespaceDiff.cls:56] -- deferred: DW-2642, decision-pending (string)
+- [x] [Review][Defer] The no-other-namespace hint reads as a length rule [ui/src/app/areas/system-explorer/dev-tool.page.ts] -- deferred: DW-2643, decision-pending (string)
+- [x] [Review][Defer] Route too-many legs rely on the image's `Ens*` and `HS.*` class counts [src/OcuPilot/Test/NamespaceDiffRoute.cls] -- deferred: DW-2644, wontfix-accepted
+- [x] [Review][Defer] `NamespaceDiffRead` repeats `DevToolRead`'s `Column` and `AssertRefused` [src/OcuPilot/Test/NamespaceDiffRead.cls] -- deferred: DW-2645, wontfix-accepted
+- [x] [Review][Defer] Epic 21's blocks still say 165 rows (`epics.md:955`, `:9179`) -- deferred: occurrence on DW-2641
+
+Rejected:
+
+- `low`: the Triage Log row says the `epics.md:957` item was "filed in `deferred:`" and the Auto Run Result predates QA's class -- the fix edits the spec; the item is DW-2641.
+- `low`: an agent arrival with a spec and no target reads nothing -- the tool refuses a missing target the same way; the select's default is a person's convenience.
+- `low`: switching the scope to the sent target re-reads into the port's same-namespace refusal -- the refusal says exactly what to do, and a guard adds a scope branch.
+- `low`: an arrival naming an unlisted or lower-case target shows the first option -- rejected in implement's triage; unchanged.
+- `low`: Search before the scope has loaded does nothing -- transient at shell start.
+- `low`: the five refusal tests make probe documents they do not need -- 0.5 s in all after the wait was shortened.
+- `low`: DT-11's catalog row keeps co-pilot `read` -- the spec scopes that row's edit to its tier and evidence, the extract carries no co-pilot column, and nothing reads it.
+- `low`: the read row departs from the proposed string -- AD-36 caps `read.row` at 40 characters; recorded in Design Notes.
+- `low`: the recorder changed although the Code Map said "reused unchanged" -- additive, disclosed in Design Notes.
+- `false`: a name differing only in case across namespaces makes two rows -- the spec keys a document by its name, as the sibling does.
+- `false`: the `maxRows` cut follows `$Order` collation, not the client's sort -- document names are never canonical numbers, so the cut is code-point order and `truncated` says it was cut.
+- `false`: an empty document name raises `<SUBSCRIPT>` -- the body's names come from the routine manager's dialog query, which never answers one.
+- `false`: the stale deferral is tracked nowhere -- DW-2641 holds it.
+
 ## Spec Change Log
 
 - 2026-11-16, runner spec gate (unattended rulings, one veto item): (1) the diff compares documents only in this story; the two per-namespace domains it leaves out stay in Epic 24: interoperability default settings are compared by Story 24.15 on its own read (ledger DW-2636, an acceptance bullet in 24.15's block), and mappings go to the Epic 24 burn-down (DW-2635); the frontmatter `deferred:` list was harvested at this gate and emptied. Instance-wide domains (web applications, configuration) cannot differ between two namespaces of one instance. (2) The `Proposed strings` are kept as written. (3) The catalog, stage-extract and `epics.md` stage-table edits are Rule 5 tier-1 amendments applied by this story and reported; the totals Epic 21 also re-derives resolve as unions at integrate-forward (orchestrator ruling A).
@@ -378,6 +414,19 @@ Observed on `ocupilot-b-ci` (each file restored byte for byte, checked with `cmp
 - mutation: AC4, the descriptor's endpoint set to `DocumentHashes` -> ten tests of `NamespaceDiffRead`, the read-tool test among them, and all three tests of `namespace-diff.browser-spec.mjs` red.
 - mutation: AC5, the DT-11 register row removed -> two tests of `exclusion-register.test.mjs` red.
 - mutation: client, `target` left out of `search()` -> two cases of `dev-tool.page.spec.ts` red; this namespace offered in `targetOptions` -> two cases red; the hint's `length === 0` condition made false -> the no-other-namespace case red.
+
+**QA additions (QA).** Real-principal and real-route evidence for AC1 (Cut), AC2, AC3 and AC4, observed on `ocupilot-b-ci`:
+
+- `src/OcuPilot/Test/NamespaceDiffRoute.cls` (QA), armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER` and listed under both in `scripts/ci-throwaway.sh`. It signs in as a principal holding `%Development:USE` and `HSCUSTOM`'s database pairs but not `%DB_USER:READ`, then as one holding both. The scope namespace's refusal comes from the shell (`NS.DENIED`, naming `%DB_USER:READ`), the target's from the port (`AUTH.NOPRIVILEGE`, the same pair); a hash read of `HSCUSTOM` is the control. Every refusal row, the document cap in each namespace and the read tool run as those principals.
+- `src/OcuPilot/Test/NamespaceDiffRead.cls`: `TestThePortBoundsItsOwnRows` (QA), because the screen's read trims rows itself and cannot see the port's bound.
+- mutation: AC3, `EvaluateRequired` of the target's pairs skipped -> `TestEachNamespacePassesItsOwnGateAtTheRoute` and `TestTheReadToolAnswersAsThePrincipalMayRead` red.
+- mutation: AC2, the same-namespace check made inert -> `TestEveryRefusalIsAnsweredAtTheRoute` and `TestTheReadToolAnswersAsThePrincipalMayRead` red.
+- mutation: AC2, the target's document cap made inert -> `TestEveryRefusalIsAnsweredAtTheRoute` red.
+- mutation: AC1, `DiffRows` drops its `pMax` test -> `TestThePortBoundsItsOwnRows` red alone (the route's cap test stays green, since the shared read trims too).
+- mutation: AC1, `Screen.Read` reads its truncation as 0 -> `TestACapAndAnIdenticalDocumentAtTheRoute` red.
+- mutation: AC4, the descriptor's endpoint set to `DocumentHashes` -> all four tests of `NamespaceDiffRoute` red.
+- Each file restored byte for byte (`cmp`, then `git status` shows only the QA files), the tree reloaded with `LOADERRORS=0`, and both classes green after (17 tests).
+- mutation (code review): `RefuseTooMany` given `tNamespace` for every endpoint -> `DevToolRead.TestTooManyDocumentsAreRefusedBeforeAnyBody` red alone (run 817); restored byte for byte (`cmp`), green after (run 818).
 
 ## Auto Run Result
 

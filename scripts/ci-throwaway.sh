@@ -603,6 +603,8 @@ services:
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
       # over HTTP as those principals and drives the row actions and the confirm route.
       # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals, InteropStartupWire
+      # The namespace comparison's route class (Story 24.8) signs in as principals holding one namespace's database pairs or both, and runs turns as them.
+      # classes: NamespaceDiffRoute
       # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
       # class is armed by the database variable too.
       # classes: CompileWithoutInterop
@@ -755,6 +757,7 @@ services:
       # classes: InteropEditorSaveTurn
       # classes: AnalyticsMdxReadTurn
       # classes: InteropSessionTurn, InteropSessionRoute
+      # classes: NamespaceDiffRoute
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

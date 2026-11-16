@@ -16,7 +16,7 @@
 /// <li>For <parameter>ENDPOINTNAMESPACEDIFF</parameter> only, the other namespace the query's
 /// <parameter>TARGETKEY</parameter> names: its shape, then that it is not the first namespace (compared in
 /// upper case), then its <method>OcuPilot.Port.AtelierPort.NamespacePairs</method>, refused 400
-/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 3 otherwise.</li>
+/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 1 otherwise.</li>
 /// <li>The row cap, and the generated choice.</li>
 /// <li>The spec's shape: each comma-separated part is one name with <code>*</code> and <code>?</code>
 /// wildcards, and spaces around a part are dropped.</li>
@@ -28,7 +28,7 @@
 /// the one that exceeded the cap.</li>
 /// </ol>
 /// <p>Only then does it call the harvest port with the pair set of steps 1 and 3 together, and for a namespace
-/// diff a second time with steps 1 and 4. It sends a body only the query keys it built itself:
+/// diff a second time with steps 1 and 5. It sends a body only the query keys it built itself:
 /// <code>spec</code>, <code>namespace</code>, <code>includeGenerated</code> and, for code metrics,
 /// <code>topN</code>; it never sends <code>allowWide</code>. No <code>OcuPilot.*</code> class is called while
 /// the namespace is switched.</p>

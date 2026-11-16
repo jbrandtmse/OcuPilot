@@ -324,6 +324,29 @@ Method TestTooManyDocumentsInEitherNamespaceAreRefusedBeforeAnyBody()
     Do $$$AssertStatusOK(..Run(..#HERE, ..#SPEC), "at a cap equal to the count the read answers")
 }
 
+/// <p>The port itself bounds a diff's rows (AC1, Cut): asked for <code>maxRows</code> 2, 3 and 4 over the four differing documents it
+/// answers that many rows, the first ones in document order, and without the key it answers all four. The screen's read asks for one row
+/// more than it shows and trims the rest, so only a call to the port can see this bound.</p>
+/// <p>Mutation: drop the <code>pMax</code> test in <method>OcuPilot.Port.DevToolPort.DiffRows</method> -&gt; every call answers four
+/// rows and this goes red.</p>
+Method TestThePortBoundsItsOwnRows()
+{
+    Do ..MakeProbe()
+    For tMax = 2, 3, 4, "" {
+        Kill tCriteria
+        Set tCriteria("namespace") = ..#HERE
+        Set tCriteria("target") = ..#THERE
+        Set tCriteria("spec") = ..#SPEC
+        If tMax '= "" Set tCriteria("maxRows") = tMax
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Invoke", "NamespaceDiff", "LIST", .tCriteria, "", .tRows, .tHttp, .tFault), "the port answers for maxRows '" _ tMax _ "'")
+        If '$IsObject(tRows) Continue
+        Set tWant = $Select(tMax = "": 4, 1: tMax)
+        Do $$$AssertEquals(tRows.%Size(), tWant, "maxRows '" _ tMax _ "' answers " _ tWant _ " rows")
+        Set tFirst = $Piece("OcuProbe248.Changed.cls,OcuProbe248.OnlyHere.cls,OcuProbe248.OnlyThere.cls,OcuProbe248Mac.mac", ",", 1, tWant)
+        Do $$$AssertEquals(..Column(tRows, "Document"), tFirst, "the first of them in document order")
+    }
+}
+
 /// <p>Integration (AC4): <code>explorer.namespacediff.read</code>, dispatched as the agent does with the Diff row's
 /// arguments, answers the rows the screen's read answered, and refuses the same namespace with the screen's code.</p>
 /// <p>Mutation: point the descriptor's source endpoint at <code>DocumentHashes</code> -&gt; the rows differ and this goes red.</p>

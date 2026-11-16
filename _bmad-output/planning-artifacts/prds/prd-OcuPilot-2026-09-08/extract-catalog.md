@@ -426,9 +426,9 @@ Mixed rows (GET + write) are shown as "GET yes / write no".
 | 10. System Explorer and data browser | EX | — (EX-01 → (a)) | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | IO | — (IO-01 → (h)) | 0 | 1 | 28 | 69 | 20 | 118 |
 | 12. Analytics | AN | — (AN-01 → (h)) | 0 | 1 | 9 | 7 | 7 | 24 |
-| 13. Developer tools and sibling-tool equivalents | DT | — | 0 | 0 | 1 | 10 | 1 | 12 |
+| 13. Developer tools and sibling-tool equivalents | DT | — | 0 | 0 | 1 | 9 | 2 | 12 |
 | 14. Packaging, deployment and submission | PK | (i) | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | | | **119** | **62** | **137** | **164** | **56** | **538** |
+| **All sections** | | | **119** | **62** | **137** | **163** | **57** | **538** |
 
 ### Rows per PRD area per tier (after the mapping in section 2)
 
