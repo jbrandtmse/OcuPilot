@@ -388,3 +388,6 @@
 2026-11-16T14:12:57Z	Story 21.35	story_inserted	kind=fix_forward via=owner_answer_U-90 owns=DW-2651,DW-2652 order=after_21.33(plan_after_batch1)
 2026-11-16T14:12:57Z	Story 21.33	owner_decision	id=U-89 answer=kept
 2026-11-16T14:43:02Z	Story 21.34	ci_resolved	story=21.34(+21.32,+feature_2ef969841) sha=c1a02ae13 runs=43881658467 result=success failed=none via=none
+2026-11-16T15:15:34Z	Story 21.33	dev_complete	spawn_at=2026-11-16T14:05:00Z model=sonnet build_sha=4334486d8 scope=batch1 task0=attack_landed(admin_confirm_sent_EVIL) five_paths=unchanged(TestTheOpenPathsStillWork) review=12(5_patched_tests,1_deferred,6_rejected) cycle_iteration=1
+2026-11-16T15:15:34Z	Story 21.33	ruling	question=ship_batch1_alone choice=yes(CR,fresh_check,sweep,smoke,push_batch1_head;batches_2-3_follow) rejected=wait_for_all_batches why=closes_privilege_escalation_now;batches_independent category=decide policy=b9ff703e
+2026-11-16T15:15:34Z	Story 21.33	stage_spawned	stage=code-review spawn_at=2026-11-16T15:15:34Z model=opus agent_name=21-33-code-review-b1 cycle_iteration=1
