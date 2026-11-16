@@ -302,3 +302,5 @@
 2026-11-16T04:09:48Z	Story 21.24	story_cycle	plan_to_commit_min=~170 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
 2026-11-16T04:10:45Z	Story 21.13	stage_spawned	stage=implement spawn_at=2026-11-16T04:10:45Z model=sonnet agent_name=21-13-ddl-mappings-implement-1 cycle_iteration=1 story_base=351eb9da7
 2026-11-16T04:48:06Z	Story 21.24	ci_red_classified	run=43802365008 class=flake(orchestrator) jobs=browser_shard_4/5(database-operations_seed_INTERNAL,DW-2627),gates_node22(client_suite_hung,DW-2567) action=orchestrator_rerun_--failed
+2026-11-16T06:10:14Z	Story 21.24	ci_red_classified	run=43802365008 job=browser_shard_4/5 class=story_hygiene(orchestrator_reclassified_DW-2627) cause=config-settings_SaveMAC_session_restore_left_cached-query_state(fresh_instance) fix=after-hook_purge_all_namespaces evidence=fresh_pairs_red_x3,fixed_7/7+6/6_x2,mutation_0/6
+2026-11-16T06:10:14Z	Story 21.24	committed	sha=6a5bcf05f(staging/OCU-1-21.24,ff_from_b4be0c8f2) ci=pending runs=43814889321 note=sweep_skipped_by_orchestrator(test-only)
