@@ -13391,3 +13391,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Code read (inference): Installer runs EnsureGrant then EnsureProposalTargetKeys in one process; EnsureRetentionTask sets no RunAsUser; Retention and Installer suites run as %All. Batches 2-3 gate more retention calls.
 - 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite
 - 2026-11-16T16:24:29Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=measured on ocupilot-ci: retention task runs as its saving account (irisowner, %All) and purges; OcuPilotAdmin without %All passes rebuild and purge; first install by a non-%All account was refused 822 at EnsureProposalTargetKeys, fixed by checking the administrator only when a row needs a key; pinned by OcuPilot.Test.AdminPathWrite
+
+### DW-2665: An upgrade from a release before the proposal target key (1.0.13 or earlier), run by an account granted OcuPilotAdmin in that same install, would be refused at the target-key step (the grant does not reach the running process); a second install passes (inference, not measured)
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
+- 2026-11-16T16:27:30Z status=decision-pending owner=burndown by=lead note=orchestrator: release-note line or a fix in Batch 2
