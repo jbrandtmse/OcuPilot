@@ -413,3 +413,7 @@
 2026-11-16T18:58:23Z	Story 21.33	stage_spawned	stage=implement scope=batch2 spawn_at=2026-11-16T18:58:23Z model=sonnet agent_name=21-33-implement-b2 cycle_iteration=2 story_base=187dee479
 2026-11-16T19:06:30Z	Epic 21	owner_decision	ids=U-73(keep),U-93(keep),U-96(keep),U-97(keep) via=inbox(relayed)
 2026-11-16T19:06:30Z	Story 21.33	ci_red_classified	run=43933412899 job=gates_node24 test=ci.test.mjs_DW-2123_budget class=flake(DW-2565) action=orchestrator_rerun note=batch1_merges_via_staging/OCU-1-21.33b1_2a542f893
+2026-11-16T20:46:46Z	Story 21.33	dev_complete	scope=batch2 build_sha=d30e55097 task0=28_legs_landed dw2665=red(run40)->green;rule6_one_method;developer_<PROTECT>+822 dw2663=fixed five_paths=unchanged review=13(4_patched_tests) cycle_iteration=2
+2026-11-16T20:46:46Z	Epic 21	integrate_forward	from=feature_ebb3e85d8(2a542f893) to=627c176c4 conflicts=1(stamp)
+2026-11-16T20:46:46Z	Story 21.33	ruling	question=gate_batches_2_and_3_together choice=yes(one_fresh_check+sweep+head_after_batch3) rejected=separate_heads why=no_release_cut_between(orchestrator);saves_a_sweep category=decide policy=b9ff703e
+2026-11-16T20:46:46Z	Story 21.33	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-16T20:46:46Z model=opus agent_name=21-33-code-review-b2 cycle_iteration=2
