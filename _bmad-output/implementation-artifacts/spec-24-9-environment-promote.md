@@ -2,7 +2,9 @@
 title: 'Story 24.9: Environment promote (between two namespaces of this instance, documents only)'
 type: 'feature'
 created: '2026-11-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '386935b3077b1f4ff495ee660c1dbf2be2ec6106'
+baseline_commit: '386935b3077b1f4ff495ee660c1dbf2be2ec6106'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -263,9 +265,66 @@ Record each answer under Design Notes:
 - **AC4 (Integration).** Given the Compare namespaces screen on the redeployed bundle, when a person checks two rows and confirms Promote, then the browser shows the review, the typed-name confirmation and the outcome, and the target holds the source's text.
 - **AC5 (Integration).** Given `explorer.namespacediff.promote` through tool dispatch with its key enabled, when the person confirms its proposal, then the target holds the source's text. With the key at its shipped value, governance refuses the call.
 
+### Review Findings
+
+Code review 2026-11-16 (four layers, full-opus). 0 decision-needed, 9 patch (all applied), 6 deferred to the ledger, 14 rejected.
+
+- [x] [Review][Patch] (high, AD-59) The script did not mirror the write: a create had no free-name check, a missing routine was saved empty over its copy (`%Routine.%OpenId` answers an object for a missing routine), every line ran after a failure and the compiles ran regardless, and long routine lines were cut at 32,000 characters [DevToolPort.cls `Snippet`, new `FreeCheck`]. Now one first line, a stop at the first failed or refused copy, creates gated on the taken-name rule from the stored payload's `Steps`, a missing routine refused, compiles only after every copy.
+- [x] [Review][Patch] (med, DW-2656) An empty target version reached the write loop [DevToolPort.cls `Preflight`] -- refused 409 `EXPLORER.PROMOTE.STALE` before any write.
+- [x] [Review][Patch] (med, DW-2655) The preflight's refusals were reached by no test [new Test/NamespacePromoteEdges.cls, DevToolPortFixture.cls `SetForge`, `ReadSource`/`ReadVersion` overrides].
+- [x] [Review][Patch] (med, Rule 19) The route's "left alone" assertion compared a read with itself [NamespacePromoteRoute.cls `TestEachNamespacePassesItsOwnGateAndOnlyAWriterPromotes`] -- the hashes are captured before the promote.
+- [x] [Review][Patch] (med) A routine save and an include file create were never promoted by a test [NamespacePromoteEdges `TestARoutineIsReplacedAndAnIncludeFileAdded`].
+- [x] [Review][Patch] (med) The agent's confirm re-read and the set's shape were never made to refuse [NamespacePromoteEdges `TestTheConfirmReadsThePlanAgain`].
+- [x] [Review][Patch] (low) A text read failure in the preflight left no status, fault or log [DevToolPort.cls `Preflight`] -- 500 `INTERNAL` through `Fail`; `ReadSource` also reads a routine only when `%Routine.Exists` says it is held.
+- [x] [Review][Patch] (low) The tool's, descriptor's and port's 100-document caps were held equal by nothing [NamespacePromoteEdges `TestThePromoteCapIsTheSourceCodeAPIsOwn`].
+- [x] [Review][Patch] (low) `NamespacePromote.cls` was 503 lines against the task's 500 -- the script test moved to `NamespacePromoteEdges` (466 lines).
+- [x] [Review][Defer] (low) "Promoted 1 documents" has no singular [dev-tool.store.ts `promoteStatus`] -- deferred: DW-2658, a new string (decision-pending).
+- [x] [Review][Defer] (low) `DevToolPort.Literal` and `FreeCheck` copy `AtelierPort`'s private ones, which the spec keeps read-only -- deferred: DW-2659.
+- [x] [Review][Defer] (low) No `generated=yes` `.int` step is promoted by a test -- deferred: DW-2660.
+- [x] [Review][Defer] (low) The confirm's fence call itself is not mutation-pinned -- deferred: DW-2661.
+- [x] [Review][Defer] (low) `ReadVersion` still reads through the Atelier document read; a wrong version is a 409 stop -- deferred: DW-2657 (annotated).
+- [x] [Review][Defer] (low) A person's action without `Reviewed` is not held to a review -- deferred: DW-2653 confirmed `wontfix-accepted` (the dry run needs it optional; a caller holding WRITE can save directly).
+
+Copy noted (Rules 2, 31): `DevToolPort.ReadSource` repeats `Kernel.Utils.DocumentLines` because it runs with the namespace switched, where `USER` does not see `OcuPilot.*` classes (observed on `ocupilot-b-ci`); a drift fails safe as `STALE`.
+
+Rejected:
+
+- (false) a step longer than 256 characters reaches `Snippet` -- the mint's `SetProblem` and the port refuse such a name first.
+- (low, spec-bound) the storage guard compares names, not bodies -- Always states the name rule and the reason sentence claims no more.
+- (low, spec-bound) a mapped document in the target is not fenced for a person -- Design Notes; the instance still checks its database's resource.
+- (low) an exception after a write skips the audit row -- every write and compile is a status-returning port call; a guard adds a branch for no reachable case.
+- (low) the audit row omits `errors` -- AD-15 records what changed, and the compile's errors are on the screen.
+- (low) a target class whose name differs only in case stops a create mid-promote -- rare, and a documented no-rollback stop.
+- (low) the page's invitation is chosen by `hasTarget` -- only Compare namespaces has a target field.
+- (low) a refused later promote leaves the earlier status line -- the handler's outcome dialog shows the refusal.
+- (low) own-code tests leave `OcuPilot.Port.DevToolPort.cls` in `USER` if the kernel guard regresses -- the red names it; cleanup would delete OcuPilot code.
+- (low) several matrix legs have no mutation line -- Rule 19 asks one per AC, and each AC has one.
+- (low) stale assertion messages in `ExplorerDescriptor` and `Governance` -- contended rosters; message text only.
+- (low) `NamespacePromoteRoute.cls` is 543 lines -- the rule is "roughly 500".
+- (low) the agent's stored-text check depends on compile lines -- the browser spec pins them.
+- (low) the triage log cites `deferred:` entries -- they were harvested as DW-2653 to DW-2657; the fix edits the spec.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-16 - Review pass
+
+- verdicts: 13 findings - high 0, medium 3, low 10, false 0, maybe-false 0 (the intent auditor's three divergences are rows 11 to 13)
+- findings:
+  - `[medium]` `[patch]` the routines' compile is never asserted after a successful promote -- added `TestAPromoteCompilesEachKindWithTheImportsFlags` over the recorder (it now logs each compile's documents and flag set); mutation: the routines' compile left out of `Promote` went red.
+  - `[medium]` `[patch]` `TestTheCompileFlagsAreTheImportsOwn` never ran the promote -- replaced by the same recorder test, which pins `cuk` on both compiles.
+  - `[medium]` `[patch]` the storage test's "nothing written, a document beside it included" was untested -- the test now promotes a create sorted before the storage class and asserts it is absent afterwards.
+  - `[low]` `[patch]` the plural review line was never produced -- `TestTheReviewCountsTheDocumentsLeftAlone` covers none, one and three; mutation: the count's replacement dropped went red.
+  - `[low]` `[patch]` the `tContent` half of an agent assertion could not fail -- dropped; the stored proposal and ledger half stays.
+  - `[low]` `[patch]` `TestAReviewedPromote...` read the compile state in whatever namespace the run used -- reads it in the other namespace through `CompiledIn`.
+  - `[low]` `[reject]` several matrix legs lack their own mutation line -- Rule 19 asks one demonstrated mutation per AC, and each AC has one.
+  - `[low]` `[defer]` the preflight's hash, not-found, size and header refusals are unreached -- recorded under `deferred:`.
+  - `[low]` `[defer]` an empty target version refuses mid-promote instead of before any write -- recorded under `deferred:`.
+  - `[low]` `[reject]` the audit row of a stopped promote is untested -- the write path is the one the Promote test pins; no user-reachable failure.
+  - `[low]` `[reject]` (intent auditor) the person's action without `Reviewed` is not refused by the instance -- the spec makes `Reviewed` optional (`SCREENOPTIONAL`) and the first `deferred:` line records it.
+  - `[low]` `[reject]` (intent auditor) the script form is not gated like the write -- AD-59 and the spec define it as a copy script for a person to run, not a write path.
+  - `[low]` `[reject]` (intent auditor) the descriptor id kind and the empty-state keys changed with the read -- the spec's Code Map names both edits.
 
 ## Design Notes
 
@@ -398,6 +457,27 @@ Add-only:
   - Count: "Choose 1 to 100 documents to promote."
 - Tool `DESCRIPTION` (agent-facing): "Propose promoting classes and routines from the route's namespace into `target`, another namespace of this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Read `explorer.namespacediff.read` first with the same `target`, `spec` and `generated`. Name in `Documents` only rows whose Change is 'Only in this namespace' or 'Content differs', at most 100. Each is written into the target, replacing its copy, then compiled. Nothing is deleted. There is no rollback, so say so in the rationale. A document whose name begins with OcuPilot or %, and %SYS, are refused. If either namespace changes before the user confirms, the proposal is refused."
 
+**Implementation record (implement pass).**
+
+Task 0, on `ocupilot-b-ci`:
+
+- (a) `EntityRef.NormalizedId("class", "OcuProbe248Mac.mac,OcuProbe248.Changed.cls")` answers the sorted set and `Key("class", ...)` builds the ref. `Prohibited.Prohibits` refuses a set holding an `OcuPilot*` name with `PROHIBITED.OCUPILOTCODE` and permits another, under the new tool's name too (`NamespacePromoteAgent`).
+- (b) `OcuPilot.Port.DevToolPort.cls` is held by `HSCUSTOM` and not by `USER`; the Own code row uses it, source `HSCUSTOM`, target `USER`.
+- (c) A class text read in `USER` through `Class` `LIST` saves into `HSCUSTOM` through `SAVE` with the target's `modified`, and a `.mac` creates through `CREATE`; both read back with the source's hash.
+
+Decided in this pass:
+
+- `Steps` is `[{Document, Change}]` for the chosen documents only; `Warnings` counts every document only in the other namespace, so it does not depend on the choice. The review line for the warnings is left out when there are none.
+- The write compares `reviewed`, else `planHash`, with the plan derived now, and an absent value is `EXPLORER.PROMOTE.STALE`. `PortQuery` maps the payload's `Reviewed` and `PlanHash` to those two keys.
+- The preflight reads each text the way the plan's hash read it (`ReadSource`: `%Compiler.UDL.TextServices` for a class, `%Routine` for the rest) and requires the source's hash to equal the step's `Hash` and, for a save, the other copy's to equal `OtherHash`, else `STALE`. The `AtelierPort` document read is used only for the other copy's version. Reason: in a process whose two hash bodies had just run, the Atelier read of the first namespace answered the second namespace's text once, so the promote wrote the other copy back unchanged and reported Replaced.
+- Compile covers `.cls` in one call and `.mac` and `.int` in one; an `.inc` is written and not compiled.
+- Added `DevToolPort.COMPOSEDTYPES` (`NamespaceDiff/PROMOTE`), which `Prohibited` and `ToolWrite` read for a bodyless write.
+- `ExplorerNamespaceDiff`'s descriptor became write-capable, so the registry requires `table.emptyAgentKey` and an empty `emptyNextKey`. **Veto item, a string the Proposed strings do not list:** `explorerNamespaceDiffEmptyAgent`, "promote documents into another namespace", published in EXPERIENCE.md's Fixed strings. The page keeps its own invitation by reading `explorerNamespaceDiffInvite` when `emptyNextKey` is empty.
+- `ScreenActionHandler` gains a third add-only entry beside the two the Code Map names: `DESTRUCTIVE_CONSEQUENCES` for `promote`, the sentence the dialog states.
+- `app-dev-tool-page` is added to `_components.scss`'s list of hosts that fill their parent. Without it the table frame collapsed and the rows could not be clicked (Code metrics and Document hashes had the same defect).
+- The page draws the status line and the output pane from `lastOutput()` when the handler's progress for `promote` finishes; the handler clears the checks of an applied one.
+- The audit row is `ConfigChange`, verb `promote`, target type `namespace` and the other namespace's name, effects the first namespace, the counts and the documents written.
+
 ## Verification
 
 **Shared surfaces:**
@@ -431,9 +511,43 @@ The implement stage greps `ui/browser`, `ui/tools`, `ui/src` specs and `src/OcuP
 - AC4: the descriptor's `multiSelect.action` is renamed. Expected red: the browser spec.
 - AC5: the baseline line is set to `true`. Expected red: the Agent test's governance leg and `GovernanceBaseline`.
 
+**Recorded mutations (Rule 19), applied on `ocupilot-b-ci` and restored byte for byte, the tree recompiled each time:**
+
+- mutation: `Promote` skips the `CREATE` steps -> `NamespacePromote.TestAReviewedPromoteWritesCompilesAndLeavesTheRest` and `TestAFailedSaveStopsThePromoteAndUndoesNothing` went red (AC1).
+- mutation: the `Reviewed` comparison made inert -> `NamespacePromote.TestAStaleReviewWritesNothing` went red and `NamespacePromoteAgent` stayed green (AC2).
+- mutation: not-a-step lookup, `WritePairs` evaluation and the storage guard each made inert -> `TestANameThatIsNotAStepRefusesTheWholeRequest`, `TestACallerWithoutWriteOnTheOtherNamespaceIsRefused` and `TestAClassThatWouldLoseItsStorageIsRefused` went red (AC2); the mint's OcuPilot check removed -> `NamespacePromoteAgent.TestADocumentOfOcuPilotsOwnIsRefusedAtTheMintAndByTheKernel` went red.
+- mutation: the stop removed from `Promote` -> `TestAFailedSaveStopsThePromoteAndUndoesNothing` went red (AC3).
+- mutation: `multiSelect`'s `eligible` and `ineligibleKey` left out of the descriptor, mirror regenerated, bundle rebuilt and redeployed -> `namespace-promote.browser-spec.mjs` went red on the unavailable-checkbox leg (AC4).
+- mutation: `"explorer.namespacediff.promote"` set to `true` in the baseline -> `NamespacePromoteAgent` (both tests) and `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` went red (AC5).
+- mutation: the routines' compile left out of `Promote` (`For tKind = 1`) -> `NamespacePromote.TestAPromoteCompilesEachKindWithTheImportsFlags` went red (AC1); the count's replacement dropped from `ExplorerNamespacePromote.StateDiff` -> `NamespacePromoteAgent.TestTheReviewCountsTheDocumentsLeftAlone` went red. Both restored byte for byte (`cmp`).
+- Client unit mutations, each red in `dev-tool.page.spec.ts` alone: Promote registered for every dev-tool screen; `Reviewed` left out of `confirmReviewed`'s values; the stopped branch of `promoteStatus` dropped; `generated` left out of the values `onPromote` sends.
+
+**QA (real route and tool dispatch, as least-privileged principals).** `(QA)` `src/OcuPilot/Test/NamespacePromoteRoute.cls` (6 tests, armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER`, roster in `scripts/ci-throwaway.sh`); green on `ocupilot-b-ci`. Mutations, each restored byte for byte (`cmp`) and the tree recompiled:
+
+- mutation: `ExplorerNamespacePromote.ArgumentPairs` answers no pair -> `NamespacePromoteRoute.TestEachNamespacePassesItsOwnGateAndOnlyAWriterPromotes` and `TestTheAgentsCallIsRefusedWithoutItsKeyAndWithoutTheWritePair` went red (AC2, AC5).
+- mutation: `Promote` skips the `CREATE` steps -> `TestEachNamespacePassesItsOwnGateAndOnlyAWriterPromotes` and `TestTheAgentsPromoteIsConfirmedOverHTTPAndASourceChangeRefusesIt` went red (AC1, AC5).
+- mutation: the `Reviewed` comparison made inert -> `TestAChangeInEitherNamespaceAfterTheReviewRefusesTheAction` went red (AC2).
+- mutation: the not-a-step lookup made inert -> `TestEveryPlanRefusalIsAnsweredAtTheRoute` went red (AC2).
+- mutation: the storage guard's comparison made inert -> `TestAStorageLossAndAnOwnClassAreRefusedAtTheRoute` went red (AC2).
+- mutation: `"explorer.namespacediff.promote"` set to `true` in the baseline -> `TestTheAgentsCallIsRefusedWithoutItsKeyAndWithoutTheWritePair` went red (AC5).
+- mutation: `PlanHash` taken out of `FINGERPRINTSUBJECT` -> `TestTheAgentsPromoteIsConfirmedOverHTTPAndASourceChangeRefusesIt` went red (AC5, the source-side change).
+
+**Code review (applied on `ocupilot-b-ci`, restored byte for byte, `git diff --stat` unchanged, the tree reloaded each time):**
+
+- mutation: the storage guard checked inside the write loop instead of before it -> `NamespacePromote.TestAClassThatWouldLoseItsStorageIsRefused` went red on the class beside it (AC2, whole-promote property).
+- mutation: the empty-version refusal dropped from `Preflight` -> `NamespacePromoteEdges.TestEachPreflightRefusalWritesNothing` went red; the source-hash comparison made inert -> the same test went red.
+- mutation: a create's script line rendered without its free-name check -> `NamespacePromoteEdges.TestTheScriptStopsAtATakenNameAndAMissingSource` went red (AD-59).
+- mutation: `ExplorerNamespacePromote.ConfirmProblem` answers no problem -> `NamespacePromoteEdges.TestTheConfirmReadsThePlanAgain` went red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned in one pass (halt after planning). Veto items for the runner's spec gate: the proposed strings, the proposed spine clauses (AD-51, AD-52, AD-15, AD-22), the own `ConfigChange` audit choice, and the storage guard taken without its override. The ledger inbox for this story was empty.
+**Change.** Environment promote between two namespaces of this instance: `DevToolPort` serves `PLAN` and `PROMOTE` on the `NamespaceDiff` endpoint (plan and hash, allow-list, freshness, preflight with the storage guard, ordered saves and creates through `AtelierPort`, stop at the first failure, one compile per kind, own `ConfigChange`); the new `explorer.namespacediff.promote` tool and its mint, with its governance key shipped `false`; the Compare namespaces screen's checked rows, dry run and typed-name confirmation; strings, rosters and the mirror. One string the spec did not list was added (veto item, Design Notes).
+
+**Review.** Two layers: 6 patches (3 medium, 3 low, all tests), 2 deferred, 5 rejected; the table is in the Review Triage Log. Patched counts by verdict: medium 3, low 3. `followup_review_recommended: false`: no high and fewer than two medium patched in product code (the three mediums were test gaps).
+
+**Verification.** After the patches: reload `LOADERRORS=0`; `NamespacePromote` (14 tests) and `NamespacePromoteAgent` (6) green; before them, `NamespaceDiffRead`, `ExplorerDescriptor`, `check-objectscript` (0 problems), `lint-docs`, the `DevToolPort` grep (no match), `npm run build`, `test:tools` (2293), `test:components` (3493) and both browser specs green on the redeployed bundle. The full ObjectScript sweep, `ci-runner.mjs --container ocupilot-b-ci --shard k/17` for k = 1 to 17, ran after the last patch: all 17 shards green, 0 failed, 0 probe leftovers.
+
+**Residual risks.** The deferred items; the Atelier document read's wrong-namespace answer, cause not found; the storage test's whole-promote property has no recorded mutation.

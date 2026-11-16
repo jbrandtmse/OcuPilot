@@ -690,6 +690,16 @@ const DEVTOOL_REFUSALS = [
   ['CHANGEONLYHERE', 'explorerChangeOnlyHere'],
   ['CHANGEONLYTHERE', 'explorerChangeOnlyThere'],
   ['CHANGEDIFFERS', 'explorerChangeDiffers'],
+  // Story 24.9: a promote's five refusals and the four outcomes it answers each document.
+  ['REASONNOTASTEP', 'explorerPromoteNotAStepReason'],
+  ['REASONSTALE', 'explorerPromoteStaleReason'],
+  ['REASONSYSTEM', 'explorerPromoteSystemReason'],
+  ['REASONSTORAGE', 'explorerPromoteStorageReason'],
+  ['REASONDOCUMENTS', 'explorerPromoteDocumentsReason'],
+  ['OUTCOMEREPLACED', 'explorerPromoteReplaced'],
+  ['OUTCOMEADDED', 'explorerPromoteAdded'],
+  ['OUTCOMEFAILED', 'explorerPromoteFailed'],
+  ['OUTCOMENOTATTEMPTED', 'explorerPromoteNotAttempted'],
 ];
 
 test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
@@ -698,6 +708,23 @@ test("Story 24.1: each of Code metrics' and Document hashes' argument refusals i
   for (const [parameter, key] of DEVTOOL_REFUSALS) {
     const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
     assert.notEqual(server, null, `DevToolPort.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
+});
+
+/** Story 24.9's promote tool, which declares the two lines its review counts the documents left alone with. */
+const PROMOTE_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerNamespacePromote.cls');
+
+test("Story 24.9: the promote's two review lines are one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REVIEWWARNINGONE in ExplorerNamespacePromote.cls -> this goes red naming both.
+  const source = readFileSync(PROMOTE_TOOL, 'utf8');
+  for (const [parameter, key] of [
+    ['REVIEWWARNING', 'explorerPromoteWarning'],
+    ['REVIEWWARNINGONE', 'explorerPromoteWarningOne'],
+  ]) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `ExplorerNamespacePromote.cls declares ${parameter}`);
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   }

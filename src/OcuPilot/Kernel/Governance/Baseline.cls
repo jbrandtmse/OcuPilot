@@ -217,6 +217,7 @@ XData Keys [ MimeType = application/json ]
   "explorer.sqldata.save": false,
   "explorer.docdb.create": true,
   "explorer.docdb.delete": false,
+  "explorer.namespacediff.promote": false,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,

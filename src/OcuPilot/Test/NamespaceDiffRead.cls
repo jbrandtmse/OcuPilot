@@ -117,14 +117,16 @@ Method HashesIn(pNamespace As %String, pSpec As %String, Output pHash, Output pM
 
 /// <p>The screen is declared as the story says: a validating, listed System Explorer list at position 16 gated on
 /// <code>%Development:USE</code> alone, read through the devtool port's <code>NamespaceDiff</code>, with the other
-/// namespace, the pattern and the generated choice as its criteria, three prompts and no classic page.</p>
+/// namespace, the pattern and the generated choice as its criteria, three prompts, no classic page and one action,
+/// <code>promote</code>, over the checked rows that its read calls promotable.</p>
 Method TestTheScreenIsDeclaredAsTheStorySays()
 {
     Set tSC = $ClassMethod(..#DIFF, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the declaration parses")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration) _ ##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration) _ ##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "the declaration, its read and its criteria validate")
-    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.area _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind, "system-explorer/namespace-diff|16|system-explorer|namespace|none", "route, position, area, scope and id")
+    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.area _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind, "system-explorer/namespace-diff|16|system-explorer|namespace|single", "route, position, area, scope and id")
+    Do $$$AssertEquals($ClassMethod(..#DIFF, "RowActionIds") _ "|" _ tDeclaration.multiSelect.%ToJSON(), $ListBuild("promote") _ "|{""action"":""promote"",""eligible"":""Promotable"",""max"":100,""ineligibleKey"":""explorerPromoteIneligible""}", "its one action is promote, over the checked rows that are promotable")
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Development"",""permission"":""USE""}]", "gated on %Development:USE alone")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint, "devtool|NamespaceDiff", "read through the devtool port's NamespaceDiff")
     Do $$$AssertEquals($ClassMethod(..#DIFF, "ClassicPage"), "", "no classic page")
@@ -147,6 +149,7 @@ Method TestTheDiffListsEachDifferenceAndNotTheSameDocument()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(..Column(tResult.rows, "Document"), "OcuProbe248.Changed.cls,OcuProbe248.OnlyHere.cls,OcuProbe248.OnlyThere.cls,OcuProbe248Mac.mac", "four rows in Document order, and Same is not one")
     Do $$$AssertEquals(..Column(tResult.rows, "Change"), "Content differs,Only in this namespace,Only in the other namespace,Only in this namespace", "each change reads as the story says")
+    Do $$$AssertEquals(..Column(tResult.rows, "Promotable"), "1,1,0,1", "every row is promotable but the one only in the other namespace")
     Do $$$AssertEquals(tResult.truncated, 0, "not truncated")
     Set tChanged = tResult.rows.%Get(0)
     Do $$$AssertTrue((tChanged.%Get("Hash") '= "") && (tChanged.%Get("OtherHash") '= "") && (tChanged.%Get("Hash") '= tChanged.%Get("OtherHash")), "Changed carries two non-empty, unequal hashes")

@@ -12993,6 +12993,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:37Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T04:48:03Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357531;client_suite_hang_cancelled;unchanged_rerun
 - 2026-11-16T07:51:21Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43819841054(staging-24.3-feb6b71c7)job133140150868_node24.15.0_client_suite_cancelled_at_25min;rerun_by_epic-runner-24
+- 2026-11-16T13:52:02Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43875203822(OCU-1-epic21-edf36c82d)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
+- 2026-11-16T16:17:56Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43897913630(OCU-1-epic24-e34cedcd7)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
 
 ### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13227,6 +13229,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-6-the-command-and-class-method-consoles.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess pins the escalation; Api/Governance checks IsAdministrator above GuardedApply; end-to-end non-admin rewrite not yet run
 - 2026-11-16T06:06:00Z status=escalated owner=burndown by=harvest note=security; found at 24.6 plan; out of Epic 24 footprint (Kernel/State, AD-9); for the orchestrator and the decision sheet
+- 2026-11-16T12:01:42Z status=resolved-by:21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a owner=21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a by=orchestrator note=U-79_A;reproduced_e2e_then_fixed_in_21.30(3df69e648,07a3a989f);feature_90799012d_run43850988016_green
 
 ### DW-2635: Environment diff does not yet compare two namespaces' global, routine and package mappings (catalog DT-09)
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13333,6 +13336,54 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
 
+### DW-2653: A person's promote action that omits Reviewed is not held to the plan-hash compare; the client always sends it and the agent's confirm is held by PlanHash
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: Story 20.41 rejected the same shape by design (Reviewed optional per AD-56; spec-20-41 Review Findings)
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a caller other than the client reaches the promote action
+- 2026-11-16T15:08:47Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=confirmed at cr: dry run needs Reviewed optional; caller already holds WRITE; reopen_if=a caller other than the client reaches the action
+
+### DW-2654: After a confirmed promote the outcome dialog lists the compile lines only; per-document outcomes are on the page's output pane
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a person reports missing per-document outcomes in the dialog
+
+### DW-2655: Promote preflight refusals (changed hash, missing source, over-long text, wrong header line) are reached by no test
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; needs a seam over ReadSource or a plan/preflight race
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review (Rule 19)
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=NamespacePromoteEdges.TestEachPreflightRefusalWritesNothing over a ReadSource/ReadVersion forge; mutation red
+
+### DW-2656: A target document whose version read answers no document object leaves an empty version, so its save is refused inside the write loop after earlier documents were written, not before any write
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; promote has no rollback
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review: move the check into the preflight
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=Preflight refuses an empty version 409 STALE before any write; pinned and mutation-red in NamespacePromoteEdges
+
+### DW-2657: The Atelier source-code document read answered another namespace's text once, in a web process whose hash bodies had just run in two namespaces (observed on ocupilot-b-ci, cause not found); promote reads through its own ReadSource
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: spec-24-9 deferred list; one observation, no reproduction (inference that other Atelier reads after a namespace switch are exposed)
+- 2026-11-16T14:18:23Z status=routed owner=burndown by=harvest note=AtelierPort readers after namespace switches may be exposed; reproduce before fixing
+- 2026-11-16T15:08:48Z status=routed owner=burndown by=cr note=cr: ReadSource sound (re-hash refuses wrong text); ReadVersion still reads via Atelier, a wrong version stops at a 409
+
+### DW-2658: Compare namespaces' promote status reads 'Promoted 1 documents' for one document: the two status lines have no singular
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dev-tool.store.ts promoteStatus fills explorerPromoteDone/DoneErrors with n=1; the project adds a singular at 1 (Story 19.18)
+- 2026-11-16T15:08:57Z status=decision-pending owner=burndown by=cr note=string:Promoted 1 document to the other namespace and compiled it. / Promoted 1 document to the other namespace; the compile reported errors.
+
+### DW-2659: DevToolPort copies AtelierPort's private Literal and the create script's free-name check, because AtelierPort.cls is read-only for 24.9
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.Literal and FreeCheck repeat AtelierPort.Literal and FreeCheck (both Private); the spec's Code Map makes AtelierPort read-only
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a story edits AtelierPort.cls: make Literal and FreeCheck reachable and delete DevToolPort's copies
+
+### DW-2660: No promote test covers a generated .int step (generated=yes), whose ReadSource header must equal the hash body's
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: routine save, .inc create and .mac create are pinned (NamespacePromoteEdges); a mismatch refuses the step as stale, never writes
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a promote with generated=yes is refused as stale with neither namespace changed
+
+### DW-2661: The agent's confirm-time fence call (ConfirmProblem to StepsProblem) is not mutation-pinned: no fixture makes AgentProblem refuse only at confirm
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: StepsProblem and ConfirmProblem's plan re-read are pinned; a refusal only the confirm sees needs a database mapping change between mint and confirm
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a confirmed promote writes a step whose package maps outside the target's routines database
 ### DW-2640: Two SQL table leaves are owned by no story after the 21.6 and 21.25 splits: drop item and the Indices tab's map-status toggle
 - source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.25 plan inventory
@@ -13398,3 +13449,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T16:27:30Z status=decision-pending owner=burndown by=lead note=orchestrator: release-note line or a fix in Batch 2
 - 2026-11-16T16:28:51Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=fix in Batch 1 (orchestrator): run the installer/start-path target-key rebuild under the protected role; measure with a seeded keyless row
 - 2026-11-16T16:38:50Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=Batch 2 (ruling): A's design; AD-9 text at Batch 2's spec gate citing U-82 and DW-2665 (owner veto item); no release cut until Batch 2 is on feature
+### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
+- source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
+- evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
+- 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
+- 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes

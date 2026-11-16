@@ -458,6 +458,7 @@ XData Coverage
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>
 <tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
 <tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>
 <tool name="interop.productions.restart" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRestartConfirms"/>

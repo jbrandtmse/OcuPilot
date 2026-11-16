@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
 import { capNoticePhrase } from '../../core/count-phrase';
 import { isBannerFault } from '../../core/fault';
+import { checkedSetReason, checkedSetTarget } from '../../core/multi-select';
 import { NavigationService } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
@@ -12,10 +13,13 @@ import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
+import { rowKey } from '../../core/table-model';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
+import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { createSearchRead } from './code-search.store';
-import { DevToolState, GENERATED_PARAM, SPEC_PARAM, TARGET_PARAM } from './dev-tool.store';
+import { DevToolState, GENERATED_PARAM, PROMOTE_ACTION, SPEC_PARAM, TARGET_PARAM, promoteLines, promoteOutputOf, promoteStatus } from './dev-tool.store';
 
 /** The screen this page renders and the store its read writes. */
 interface DevToolView {
@@ -51,12 +55,18 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
  * more documents than one read covers, or one that is not a pattern), in place of the rows, with Retry. The
  * rows themselves are the generic table's, drawn from the descriptor's columns.
  *
+ * **Promote acts on the checked rows** (Story 24.9), where the descriptor declares it: it reviews the checked set through the
+ * handler's dry run, with the other namespace, the pattern and the generated choice the screen was last searched with, and
+ * confirms by typing the other namespace's name. The answer's status line and per-document output pane render under the form
+ * (`data-explorer-write`, as the Classes list's do), and an applied promote clears the checks; the list re-reads by its own
+ * change event.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
  */
 @Component({
   selector: 'app-dev-tool-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable],
+  imports: [DataTable, ScreenActionDialogs],
   template: `<section class="ocu-list-page" [attr.aria-busy]="busy">
     @if (view; as current) {
       <form class="ocu-criteria-form" data-ocu-devtool="form" (submit)="onSearch($event)">
@@ -99,6 +109,17 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
         </div>
       </form>
       <p class="ocu-explorer-status" role="status" data-ocu-devtool="status">{{ statusLine }}</p>
+      @if (hasPromote) {
+        <p class="ocu-explorer-status" role="status" data-explorer-write="status">{{ promoteStatusLine }}</p>
+        @if (hasPromoteOutput) {
+          <pre
+            class="ocu-source-text ocu-explorer-output"
+            tabindex="0"
+            data-explorer-write="output"
+            [attr.aria-label]="STRINGS.explorerOutputLabel"
+          >{{ promoteOutputText }}</pre>
+        }
+      }
       @if (showFault) {
         <div class="ocu-data-table-refusal" role="alert" data-ocu-devtool="fault">
           <span class="ocu-data-table-refusal-message">{{ refusalText }}</span>
@@ -113,6 +134,9 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
       @if (showTable) {
         <app-data-table [screen]="current.screen" [store]="current.store" (focusFilter)="onFocusFilter()" />
       }
+      @if (hasPromote) {
+        <app-screen-action-dialogs [descriptor]="current.screen.descriptor" />
+      }
     }
   </section>`,
 })
@@ -125,6 +149,9 @@ export class DevToolPage {
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
 
+  /** What reviews, sends and answers a promote. */
+  private readonly handler = inject(ScreenActionHandler);
+
   /** An agent navigation's hand-off. Optional, so a spec that needs none provides none. */
   private readonly arrivals = inject(ScreenArrivals, { optional: true });
 
@@ -136,6 +163,12 @@ export class DevToolPage {
 
   /** Bumped by the state, the store and the refresh framework, so the page re-renders under `OnPush`. */
   private readonly generation = signal(0);
+
+  /** The status line and output pane the last promote left, or its dry run's refusal. */
+  private readonly promoted = signal<{ readonly status: string; readonly lines: readonly string[] }>({ status: '', lines: [] });
+
+  /** When the promote last taken was sent, so one answer is taken once. */
+  private promoteTaken = 0;
 
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
@@ -160,6 +193,16 @@ export class DevToolPage {
       this.refresh.bind(screen, this.boundRead(screen));
       void this.refresh.readNow();
     });
+    const stopPromote = screen.rowActions.some((action) => action.id === PROMOTE_ACTION)
+      ? this.actions.register(screen.descriptor, PROMOTE_ACTION, () => void this.onPromote(screen, store))
+      : null;
+    if (stopPromote !== null) {
+      effect(() => {
+        const progress = this.handler.progress();
+        if (progress === null || progress.descriptor !== screen.descriptor || progress.actionId !== PROMOTE_ACTION || progress.state !== 'finished') return;
+        untracked(() => this.takePromoted(progress.since.getTime()));
+      });
+    }
     const stopArrivals =
       this.arrivals?.subscribe(() => {
         const next = this.arrivals?.take(screen.route) ?? null;
@@ -171,6 +214,9 @@ export class DevToolPage {
 
     inject(DestroyRef).onDestroy(() => {
       stopRefreshAction();
+      stopPromote?.();
+      // The handler is the app's, so a dialog left open would outlive the page it was opened on.
+      if (this.handler.pending()?.descriptor === screen.descriptor) this.handler.cancelPending();
       stopArrivals?.();
       stopState();
       stopStore();
@@ -205,6 +251,26 @@ export class DevToolPage {
   protected get generatedLabel(): string {
     const field = this.criterion(GENERATED_PARAM);
     return field === undefined ? '' : stringFor(field.labelKey);
+  }
+
+  /** Whether this screen declares Promote, which draws the status line and the output pane. */
+  protected get hasPromote(): boolean {
+    return this.view?.screen.rowActions.some((action) => action.id === PROMOTE_ACTION) === true;
+  }
+
+  protected get promoteStatusLine(): string {
+    this.generation();
+    return this.promoted().status;
+  }
+
+  protected get hasPromoteOutput(): boolean {
+    this.generation();
+    return this.promoted().lines.length > 0;
+  }
+
+  protected get promoteOutputText(): string {
+    this.generation();
+    return this.promoted().lines.join('\n');
   }
 
   protected get hasTarget(): boolean {
@@ -263,7 +329,9 @@ export class DevToolPage {
   /** The invitation shown until a search has been sent: the screen's own, the descriptor's next-step sentence. */
   protected get inviteText(): string {
     const key = this.view?.screen.table?.emptyNextKey ?? '';
-    return key === '' ? '' : stringFor(key);
+    // A screen that offers a write names the agent in its empty state, so its invitation is the page's own.
+    if (key === '') return this.hasTarget ? STRINGS.explorerNamespaceDiffInvite : '';
+    return stringFor(key);
   }
 
   protected get showInvite(): boolean {
@@ -310,6 +378,42 @@ export class DevToolPage {
 
   protected onRetry(): void {
     this.readNow();
+  }
+
+  /**
+   * Promote the checked rows: the checked documents as one set, reviewed with the other namespace, the pattern and the generated
+   * choice the screen was last searched with, and confirmed by typing the other namespace's name. Nothing opens over another
+   * dialog, and a dry run the instance refuses is the status line.
+   */
+  private async onPromote(screen: ScreenDeclaration, store: ScreenStore): Promise<void> {
+    const sent = this.state.criteria();
+    const checked = store.checked();
+    if (sent === null || checkedSetReason(screen, checked.size) !== '' || this.handler.pending() !== null) return;
+    const names: string[] = [];
+    for (const row of store.data()) {
+      const key = rowKey(row, screen);
+      if (checked.has(key)) names.push(key);
+    }
+    for (const key of checked) if (!names.includes(key)) names.push(key);
+    const target = String(sent[TARGET_PARAM] ?? '');
+    const values = { [TARGET_PARAM]: target, [SPEC_PARAM]: String(sent[SPEC_PARAM] ?? ''), [GENERATED_PARAM]: String(sent[GENERATED_PARAM] ?? '') };
+    const sink: ActionSink = {
+      setRefusal: (reason) => {
+        this.promoted.set({ status: reason, lines: [] });
+        this.bump();
+      },
+    };
+    await this.handler.startDryRun(screen.descriptor, PROMOTE_ACTION, checkedSetTarget(screen, names), values, sink, target);
+  }
+
+  /** Take the answer of the promote sent at `since` once: its status line and output. The handler clears the checks of an applied one. */
+  private takePromoted(since: number): void {
+    if (since === this.promoteTaken) return;
+    this.promoteTaken = since;
+    const output = promoteOutputOf(this.handler.lastOutput());
+    if (output === null) return;
+    this.promoted.set({ status: promoteStatus(output), lines: promoteLines(output) });
+    this.bump();
   }
 
   protected onFocusFilter(): void {

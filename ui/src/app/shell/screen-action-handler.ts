@@ -408,6 +408,10 @@ export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessage
 export const MESSAGE_RESEND = 'resend';
 export const MESSAGE_EDIT_RESEND = 'editresend';
 
+/** Story 24.9: Compare namespaces, whose Promote is reviewed by a dry run and confirmed by typing the other namespace's name. */
+export const EXPLORER_NAMESPACE_DIFF = 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff';
+export const NAMESPACE_PROMOTE = 'promote';
+
 /** The value a reviewed action carries beside its own: the digest of the review it was confirmed from (AD-53). */
 const REVIEWED_VALUE = 'Reviewed';
 
@@ -420,6 +424,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
   // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
+  // Story 24.9: Compare namespaces' Promote lists the steps and the documents left alone before it is confirmed.
+  [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
 };
 
 /**
@@ -430,6 +436,7 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast' | 'dry-run'>>>> = {
   [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: 'dry-run' },
+  [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: 'dry-run' },
 };
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
@@ -705,6 +712,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
+  // Story 24.9: a promote writes each document over the other namespace's copy, and nothing is undone.
+  [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: STRINGS.explorerPromoteConsequence },
 };
 
 /**

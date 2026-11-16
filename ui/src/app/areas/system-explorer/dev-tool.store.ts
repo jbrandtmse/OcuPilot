@@ -12,7 +12,9 @@
  */
 
 import type { ScreenArrival } from '../../core/screen-arrival';
+import { STRINGS } from '../../core/strings';
 import { SentSearchState } from './code-search.store';
+import { fillPlaceholders } from './code-list.store';
 
 /** The two criteria every screen declares, and the other namespace Compare namespaces adds. */
 export const SPEC_PARAM = 'spec';
@@ -94,4 +96,59 @@ export class DevToolState extends SentSearchState {
     this.send(null);
     return false;
   }
+}
+
+/** The action Compare namespaces declares over its checked rows (Story 24.9). */
+export const PROMOTE_ACTION = 'promote';
+
+/** One document a promote answered: its name, what became of it, and the reason a failed one gives. */
+export interface PromotedDocument {
+  readonly document: string;
+  readonly outcome: string;
+  readonly reason: string;
+}
+
+/** What a promote's `output` carries (AD-39's fifth exception): each document's outcome, the compile's lines and whether it stopped. */
+export interface PromoteOutput {
+  readonly documents: readonly PromotedDocument[];
+  readonly lines: readonly string[];
+  readonly errors: boolean;
+  readonly stopped: boolean;
+}
+
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/** The promote answer `output` holds, or `null` for an answer that is not one. */
+export function promoteOutputOf(output: unknown): PromoteOutput | null {
+  if (output === null || typeof output !== 'object') return null;
+  const record = output as Record<string, unknown>;
+  if (!Array.isArray(record['documents'])) return null;
+  const documents = (record['documents'] as readonly unknown[]).map((entry) => {
+    const document = entry !== null && typeof entry === 'object' ? (entry as Record<string, unknown>) : {};
+    return { document: text(document['Document']), outcome: text(document['Outcome']), reason: text(document['Reason']) };
+  });
+  const lines = Array.isArray(record['lines']) ? (record['lines'] as readonly unknown[]).filter((line): line is string => typeof line === 'string') : [];
+  return { documents, lines, errors: record['errors'] === true, stopped: record['stopped'] === true };
+}
+
+/** The documents a promote wrote: those answered replaced or added. */
+function writtenCount(output: PromoteOutput): number {
+  return output.documents.filter((entry) => entry.outcome === STRINGS.explorerPromoteReplaced || entry.outcome === STRINGS.explorerPromoteAdded).length;
+}
+
+/** The status line a promote leaves: the document it stopped at, the compile's errors, or the count it wrote. */
+export function promoteStatus(output: PromoteOutput): string {
+  if (output.stopped) {
+    const failed = output.documents.find((entry) => entry.outcome === STRINGS.explorerPromoteFailed);
+    return fillPlaceholders(STRINGS.explorerPromoteStopped, { document: failed?.document ?? '' });
+  }
+  return fillPlaceholders(output.errors ? STRINGS.explorerPromoteDoneErrors : STRINGS.explorerPromoteDone, { n: writtenCount(output) });
+}
+
+/** The output pane's lines: each document's outcome and, for a failed one, its reason, then the compile's console lines. */
+export function promoteLines(output: PromoteOutput): readonly string[] {
+  const documents = output.documents.map((entry) => `${entry.outcome}: ${entry.document}${entry.reason === '' ? '' : ` -- ${entry.reason}`}`);
+  return [...documents, ...output.lines];
 }

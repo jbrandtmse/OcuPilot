@@ -4966,6 +4966,42 @@ export const STRINGS = {
   explorerNamespaceDiffPrompt2: 'What does this namespace hold that the other one lacks?',
   /** EXPERIENCE.md:594 */
   explorerNamespaceDiffPrompt3: 'Has this package drifted from the other namespace?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffEmptyAgent: 'promote documents into another namespace',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteAction: 'Promote',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteIneligible: 'A document only in the other namespace is never promoted or deleted.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteConsequence: 'Each listed document is written into the other namespace, replacing its copy there, and compiled. Nothing there is deleted. There is no rollback: a document written before a failure stays written, and the text it replaced is not kept.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteWarning: '<n> documents only in the other namespace stay as they are.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteWarningOne: '1 document only in the other namespace stays as it is.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteReplaced: 'Replaced',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteAdded: 'Added',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteFailed: 'Failed',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteNotAttempted: 'Not attempted',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDone: 'Promoted <n> documents to the other namespace and compiled them.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDoneErrors: 'Promoted <n> documents to the other namespace; the compile reported errors.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStopped: 'Promote stopped at <document>. The documents written before it stay written.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteNotAStepReason: 'Choose documents the plan lists as only in this namespace or as differing.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStaleReason: 'The namespaces changed after this plan was shown, so nothing was written. Compare them again and review the new plan.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteSystemReason: 'Promote works between two namespaces other than %SYS and never writes a document whose name begins with %.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStorageReason: 'A class here lacks a storage definition its copy in the other namespace has, so nothing was written: compiling it there would change how its stored data is read.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDocumentsReason: 'Choose 1 to 100 documents to promote.',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse

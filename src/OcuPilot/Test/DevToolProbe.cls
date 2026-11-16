@@ -4,7 +4,8 @@
 /// <code>OcuProbe241Inc.inc</code>, created in a namespace by the tests that count and hash them and removed by
 /// <method>Remove</method>, which names only these.</p>
 /// <p>Story 24.8's pair of probe packages, <method>MakePair</method> and <method>RemovePair</method>, follow the same
-/// rules for the package <code>OcuProbe248</code>.</p>
+/// rules for the package <code>OcuProbe248</code>, and Story 24.9's <method>MakeStoragePair</method> and
+/// <method>RemoveStoragePair</method> for <code>OcuProbe249</code>.</p>
 Class OcuPilot.Test.DevToolProbe Extends %RegisteredObject
 {
 
@@ -186,6 +187,47 @@ ClassMethod RemovePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM"
     Set tSC = $$$OK
     For tNamespace = pHere, pThere {
         Set tRemoveSC = ..RemoveDocuments(tNamespace, ..#PAIRPACKAGE, ..#PAIRROUTINE)
+        If $$$ISERR(tRemoveSC) Set tSC = $$$ADDSC(tSC, tRemoveSC)
+    }
+    Quit tSC
+}
+
+/// <p>The package <method>MakeStoragePair</method> saves.</p>
+Parameter STORAGEPACKAGE = "OcuProbe249";
+
+/// <p>The persistent class <method>MakeStoragePair</method> saves in both namespaces, without its <code>.cls</code>.</p>
+Parameter STORAGECLASS = "OcuProbe249.Stored";
+
+/// <p>Save the persistent class <code>OcuProbe249.Stored</code> in two namespaces: not compiled, so with no storage
+/// definition, in <var>pHere</var>, and compiled, so with its <code>Storage</code> definition, in <var>pThere</var>.</p>
+ClassMethod MakeStoragePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCRLF = $Char(13, 10)
+        Set tText = "Class " _ ..#STORAGECLASS _ " Extends %Persistent" _ tCRLF _ "{" _ tCRLF _ tCRLF _ "Property Name As %String;" _ tCRLF _ tCRLF _ "}" _ tCRLF
+        For tNamespace = pHere, pThere {
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(tNamespace, ..#STORAGECLASS, tText)
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = pThere
+        Set tSC = $System.OBJ.Compile(..#STORAGECLASS, "ck-d")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove <code>OcuProbe249.Stored</code> from <var>pHere</var> and <var>pThere</var> and report any that survives.</p>
+ClassMethod RemoveStoragePair(pHere As %String = "USER", pThere As %String = "HSCUSTOM") As %Status
+{
+    Set tSC = $$$OK
+    For tNamespace = pHere, pThere {
+        Set tRemoveSC = ..RemoveDocuments(tNamespace, ..#STORAGEPACKAGE, "")
         If $$$ISERR(tRemoveSC) Set tSC = $$$ADDSC(tSC, tRemoveSC)
     }
     Quit tSC
