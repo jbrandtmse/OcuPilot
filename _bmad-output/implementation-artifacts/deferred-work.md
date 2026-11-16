@@ -13397,3 +13397,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
 - 2026-11-16T16:27:30Z status=decision-pending owner=burndown by=lead note=orchestrator: release-note line or a fix in Batch 2
 - 2026-11-16T16:28:51Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=fix in Batch 1 (orchestrator): run the installer/start-path target-key rebuild under the protected role; measure with a seeded keyless row
+- 2026-11-16T16:38:50Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=Batch 2 (ruling): A's design; AD-9 text at Batch 2's spec gate citing U-82 and DW-2665 (owner veto item); no release cut until Batch 2 is on feature
