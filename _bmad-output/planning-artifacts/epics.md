@@ -9741,6 +9741,28 @@ So that the next request served by that process, a DTL compile among them, still
 
 - DW-2650: A backup action closes a pooled web process's null device, breaking a later DTL compile in that process (orchestrator's ledger; routed by orchestrator ruling)
 
+
+### Story 21.35: OcuPilot's install records and other users' state answer only to their callers
+
+[AMENDED 2026-11-16, owner answer U-90, "A", fix-forward, Rule 5] DW-2651 and DW-2652 (found at Story 21.33's plan): the install-owned stores (web applications, stamps, versions, demo records) and the screen-access store still take any caller's public guarded write, and `Base`'s public reads let a `%Development` holder read another user's turns, conversations, proposals and ledger rows. Ordered after Story 21.33.
+
+As an administrator,
+I want OcuPilot's install records written only by the install and its administrators, and each user's state read only by that user or an administrator,
+So that code run with development rights can neither steer an uninstall nor read another user's work.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code writes an install-owned or screen-access row, or reads another user's turn, conversation, proposal or ledger row
+- **Then** each is reproduced end to end first and recorded; if none lands, the story reports back before anything is built.
+
+- **Given** the fix
+- **When** an install, an upgrade and an uninstall run, and the same writes and reads are tried
+- **Then** the install path completes unchanged, the writes and reads are refused and change nothing, and a Rule 19 mutation that removes each check turns its pinning test red.
+
+- DW-2651: The install-owned stores and screen access still take any caller's public guarded write (ledger; routed by owner answer U-90)
+- DW-2652: Base's public reads let a %Development holder read another user's turns, conversations, proposals and ledger rows (ledger; routed by owner answer U-90)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand

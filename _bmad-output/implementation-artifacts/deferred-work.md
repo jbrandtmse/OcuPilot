@@ -13412,12 +13412,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
 
 ### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
@@ -13429,3 +13431,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
 - 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
 - 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+### DW-2662: AD-9's 21.33 list of open writes omits a confirm's claim cancelling every user's live proposals on its target (AD-34); a %Development holder can mint its own proposal on any target through the store and claim it to cancel other users' live proposals there
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
+- 2026-11-16T15:42:19Z status=decision-pending owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=orchestrator: amend AD-9 open-write list (claim sibling cancel) or rule otherwise
+- 2026-11-16T15:45:12Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=AD-9's open writes now name the claim's sibling cancel on its own stored target (comply first, U7; orchestrator told); the review bound the claim target to the stored TargetRef
+
+### DW-2663: Propose.GuardedMint, Ledger.GuardedAppend and GuardedCountOverflow check only the user argument, so a developer can write its own rows onto another user's turn or conversation key: a proposal counts against that turn's guided-workflow write cap (Dispatch via GuardedCountForTurn) and ledger rows consume its per-turn row cap
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference, not reproduced): GuardedCountForTurn and the ledger's TurnKey counts have no owner filter; the fix needs the turn's stored owner by TurnKeyIdx, which Batch 2 makes an owner store. Same root as the spec's third deferred: item.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: check the turn and conversation owner in these writers
+
+### DW-2664: Ledger.GuardedPurgeBefore and Propose.GuardedRebuildTargetKeys now need OcuPilotAdmin in the calling process; the retention task's run-as user and an install by a non-%All administrator (EnsureGrant does not change the running process) are not pinned to hold it
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference): Installer runs EnsureGrant then EnsureProposalTargetKeys in one process; EnsureRetentionTask sets no RunAsUser; Retention and Installer suites run as %All. Batches 2-3 gate more retention calls.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite
+- 2026-11-16T16:24:29Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=measured on ocupilot-ci: retention task runs as its saving account (irisowner, %All) and purges; OcuPilotAdmin without %All passes rebuild and purge; first install by a non-%All account was refused 822 at EnsureProposalTargetKeys, fixed by checking the administrator only when a row needs a key; pinned by OcuPilot.Test.AdminPathWrite
