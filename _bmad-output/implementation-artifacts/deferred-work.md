@@ -13234,3 +13234,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AD-62: InteropPort is the only reader of interoperability configuration; its default-settings read is built by Story 24.15
 - 2026-11-16T06:26:31Z status=routed owner=24-15-credentials-default-settings-and-schedules by=harvest note=ruled at 24.8 spec gate: 24.15 compares its read per namespace
+
+### DW-2641: epics.md Epic 21 implementation notes (about line 957) still say DT-11 lands before DT-09 and DT-10; after U-45 DT-11 is not planned and DT-09/DT-10 are same-instance
+- source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Epic 21 block text, not Epic 24's to edit; U-45 C applied in 24.8
+- 2026-11-16T09:07:35Z status=escalated owner=burndown by=harvest note=for the orchestrator: Epic 21's planning text

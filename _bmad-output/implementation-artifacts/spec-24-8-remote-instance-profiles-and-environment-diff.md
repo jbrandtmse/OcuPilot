@@ -4,18 +4,12 @@ type: 'feature'
 created: '2026-11-16'
 status: 'done'
 baseline_revision: 'afad7c84244352652d116556b8b8814faac3483a'
+baseline_commit: 'afad7c84244352652d116556b8b8814faac3483a'
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
 warnings: ['oversized', 'multiple-goals']
-deferred:
-  - summary: >-
-      Epic 21's story block in epics.md still says DT-11 lands before DT-09 and DT-10, which Story 24.8 made untrue.
-    evidence: |-
-      epics.md:957 reads "DT-11 lands before DT-09 and DT-10"; DT-11 is now excluded (owner answer U-45) and DT-09 and DT-10 no longer depend on it.
-    location: >-
-      _bmad-output/planning-artifacts/epics.md:957
-    severity: low
+deferred: []
 ---
 
 <intent-contract>
