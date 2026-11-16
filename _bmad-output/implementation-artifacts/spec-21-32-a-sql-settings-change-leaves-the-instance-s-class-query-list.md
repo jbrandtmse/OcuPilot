@@ -2,8 +2,8 @@
 title: "Story 21.32: A SQL settings change leaves the instance's class-query lists working"
 type: 'bugfix'
 created: '2026-11-16'
-status: 'ready-for-dev'
-baseline_revision: 'cd09bf07000f111651d388ff77afb8de70303f3e'
+status: 'done'
+baseline_revision: 'd6b5aa2750abe8c93745ded5e1ca597c2c4fc3ee'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -75,9 +75,19 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-16 -- Review pass
+
+- verdicts: 5 findings -- high 0, medium 0, low 3, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The check-throws path of `RefreshCompileContext` has no test -- inducing a throw in a vendor macro needs a seam the change does not add; the guard is a three-line `Try`/`Catch`, and no user-reachable failure is shown.
+  - `[low]` `[reject]` The browser guard for AC2 depends on `config-settings` running before its readers in one shard -- the in-process `AdminPortCompileContext` test is the self-contained pin and is run in every CI leg; shard assignment is outside this story.
+  - `[low]` `[reject]` No assertion that a current context is left alone -- an unconditional discard only costs a recompile; the fix would add a second synthetic state to the test.
+  - `[false]` `[reject]` The new test purges `%SYS` cached queries, which the intent forbids -- the intent forbids it as a product-side mask; the test uses it as setup to force the compile and its header says so.
+  - `[false]` `[reject]` The unit test's staleness is synthetic and the real-surface evidence is prose -- the spec prescribes the version bump as the stand-in for another process, and the browser chain (AC2) ran on fresh instances with the recorded mutation.
+
 ## Design Notes
 
-**Governing ADs:** AD-2 (port behavior; amendment below), AD-27 (the vendor dependency stays in the port), AD-4 (the complete property set; unchanged), AD-7 (the write stays in the confirm or action request), AD-9 (no `JOB`), AD-16 (the test's `%SYS` purge uses save and restore). Inbox: DW-2646 is addressed by every task. Consumed-by and Consumes: no new service or module, so neither applies.
+**Governing ADs:** AD-2 (port behavior), AD-27 (the vendor dependency stays in the port), AD-4 (the complete property set; unchanged), AD-7 (the write stays in the confirm or action request), AD-9 (no `JOB`), AD-16 (the test's `%SYS` purge uses save and restore). Inbox: DW-2646 is addressed by every task. Consumed-by and Consumes: no new service or module, so neither applies.
 
 **Experiments** (fresh rebuilds of `ocupilot-ci`; scripts and logs in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/21-32/`):
 
@@ -98,7 +108,7 @@ deferred: []
 
 **Decided in-stage:** a new test class rather than a method on `AdminPortSync`, whose header promises reads only, while this test advances a vendor counter and purges `%SYS`'s cached queries. The class is not armed: both effects are what any SQL settings save does. If `Include %msql` collides at compile in `AdminPort` or a fixture subclass, write the macro's one-line expansion and name the macro in the doc comment.
 
-**AD amendment for the spec gate (AD-2, veto window, proposed):** "**A stale SQL compile context is refreshed before each call** [AMENDED 2026-11-16, Story 21.32 spec gate, Rule 20] (DW-2646): a `Config.SQL` change anywhere advances the instance's compile context version, and a pooled process holding an older context fails the vendor's next uncached class-query prepare (`%PrepareClassQuery(...,2)`) once with SQLCODE -428. `AdminPort` runs the vendor's `$$$SQLCompileCheckContext` before every call. It reads an internal vendor counter (`%msql.inc`) and calls an internal method (`$SYSTEM.CLS.ClearContext`); both stay in this port, as AD-27 requires."
+**No AD amendment** (orchestrator ruling 2026-11-16): AD-27 covers it. `AdminPort` reads an internal vendor counter (`%msql.inc`) and calls an internal method (`$SYSTEM.CLS.ClearContext`), and both stay in the port.
 
 ## Verification
 
@@ -117,9 +127,32 @@ deferred: []
 
 - AC2 and AC3: remove `Do ..RefreshCompileContext()`, rebuild fresh, and run the chain: `dashboard` and `ecp-settings` go red. `AdminPortCompileContext` goes red after a reload. Revert, check that `git status --short` and `git diff --stat` are unchanged, then reload.
 
-**Runner ruling at the spec gate (2026-11-16):** validated. The AD-2 amendment above is written into the spine (comply first under U7; the orchestrator is told). DW-2646's evidence is corrected in the ledger (one failure per stale worker). The vendor defect report is the owner's call, routed through the orchestrator.
+Recorded (2026-11-16, `ocupilot-ci`):
+
+- mutation: removed `Do ..RefreshCompileContext()` from `InvokeLocated`, reloaded -> `AdminPortCompileContext.TestAnUpcomingTasksReadSurvivesASqlSettingsChange` went red (500 `INTERNAL`: status, 200 and rows-array assertions).
+- mutation: the same removal on a fresh instance, committed spec with the purge removed -> `dashboard` AC2 and `ecp-settings` C2 went red (`config-settings` 7/7).
+- Reverted (`git diff --stat` byte-identical), fresh rebuild: `config-settings` 7/7, `dashboard` 3/3, `ecp-settings` 5/5, `database-operations` 6/6.
+
+**Runner ruling at the spec gate (2026-11-16):** validated. No AD amendment is written (see Design Notes). DW-2646's evidence is corrected in the ledger (one failure per stale worker). The vendor defect report is the owner's call, routed through the orchestrator.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Summary: `AdminPort.InvokeLocated` now runs the vendor's `$$$SQLCompileCheckContext` before every vendor call (new private `RefreshCompileContext`, empty `Catch`), so a stale pooled-worker context is discarded before the class-query prepare sets its option. The test-side cached-query purge is removed from the `config-settings` spec.
+
+Files changed:
+
+- `src/OcuPilot/Port/AdminPort.cls` -- `Include %msql`, `RefreshCompileContext`, and its call in `InvokeLocated`.
+- `src/OcuPilot/Test/AdminPortCompileContext.cls` -- new test: an Upcoming tasks read after the version advances and `%SYS` is purged answers 200 with rows.
+- `ui/browser/config-settings.browser-spec.mjs` -- `purgeCachedQueries`, its call, its assertion and the header sentence removed.
+- This spec -- design-note correction (no AD amendment), mutation lines, triage log.
+
+Review: 0 patches, 0 deferred, 5 rejected with reasons in the triage log (3 low, 2 false).
+
+Verification: `LOADERRORS=0`; `AdminPortCompileContext` 1/1, `AdminPortSync` 7/7, `TaskLists` 7/7, `PortGate` 4/4; `check-objectscript` and its harness, `lint-docs`, `ci.test.mjs` 103/103, `npm run test:tools` 2294/2294. Fresh chain on the fixed tree: `config-settings` 7/7, `dashboard` 3/3, `ecp-settings` 5/5, `database-operations` 6/6. Mutation (call removed) turned `AdminPortCompileContext`, `dashboard` AC2 and `ecp-settings` C2 red; reverted and confirmed byte-identical.
+
+Follow-up review recommended: false.
+
+Residual risk: `AdminPortCompileContext` leaves the context version advanced and `%SYS`'s cached queries purged, as any SQL settings save does.
+
+Status: done
 Blocking condition: none

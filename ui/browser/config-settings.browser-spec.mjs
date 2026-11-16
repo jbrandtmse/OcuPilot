@@ -10,8 +10,7 @@
  * Set value unavailable.
  *
  * **It changes one compatibility setting and one SQL setting** through the shipped screens, so it runs on a throwaway only; the `after` hook puts
- * `LineRecall` and `SaveMAC` back to the values it found, whatever the tests answered, then purges every namespace's cached queries,
- * because an out-of-band `Config.SQL` restore leaves cached-query state that breaks later routes on a fresh instance (inference).
+ * `LineRecall` and `SaveMAC` back to the values it found, whatever the tests answered.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/config-settings.browser-spec.mjs` (after `npm run build` and the bundle copied into the throwaway).
@@ -69,15 +68,6 @@ function storedSql(name) {
     `Write "OCU-SQLGET-START:"_$Get(p("${name}"))_":OCU-SQLGET-END",!`,
   ]);
   return { value: markerValue(output, 'SQLGET'), output };
-}
-
-/** Purge the cached queries of every namespace, answering the status of the purge. */
-function purgeCachedQueries() {
-  const output = runIris(config.container, [
-    'Set $NAMESPACE="%SYS"',
-    'Write "OCU-PURGE-START:"_$System.Status.IsOK($SYSTEM.SQL.PurgeQueries({"allNamespace":1}))_":OCU-PURGE-END",!',
-  ]);
-  return { value: markerValue(output, 'PURGE'), output };
 }
 
 /** Put `SaveMAC` back to `value`, answering the status of the write. */
@@ -150,15 +140,13 @@ before(async () => {
 after(async () => {
   try {
     if (touched && /-ci$/.test(config.container)) {
-      // Both restores and the purge run before any is asserted, so a failed first one cannot leave the rest undone.
+      // Both restores run before either is asserted, so a failed first one cannot leave the second setting changed.
       const put = restore(found);
       const putSql = restoreSql(foundSql);
-      const purge = purgeCachedQueries();
       assert.equal(put.value, '1', `${NAME} is put back to ${found}: ${put.output}`);
       assert.equal(stored(NAME).value, found, `and reads ${found} again`);
       assert.equal(putSql.value, '1', `${SQL_NAME} is put back to ${foundSql}: ${putSql.output}`);
       assert.equal(storedSql(SQL_NAME).value, foundSql, `and reads ${foundSql} again`);
-      assert.equal(purge.value, '1', `every namespace's cached queries are purged: ${purge.output}`);
     }
   } finally {
     if (browser !== null) await browser.close();
