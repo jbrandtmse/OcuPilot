@@ -366,3 +366,4 @@
 2026-11-16T12:44:14Z	Story 21.25	owner_decision	id=U-84 by=owner answer=A
 2026-11-16T12:44:14Z	Story 21.25	ad_amended	ads=AD-51(Story_21.25_case),AD-10(OCUPILOTTABLE_arm),AD-7(rebuild+tune_in_request) marker=[AMENDED_2026-11-16,Story_21.25,owner_answer_U-84] lint_spine=ok
 2026-11-16T12:44:14Z	Story 21.25	story_unparked	via=inbox note=implements_after_21.6_merge;21.31_shares_records
+2026-11-16T12:44:47Z	Story 21.33	stage_spawned	stage=plan spawn_at=2026-11-16T12:44:47Z model=opus agent_name=21-33-plan-1 cycle_iteration=1
