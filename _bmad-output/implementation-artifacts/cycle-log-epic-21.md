@@ -387,3 +387,4 @@
 2026-11-16T14:06:20Z	Story 21.33	stage_spawned	stage=implement spawn_at=2026-11-16T14:06:20Z model=sonnet agent_name=21-33-implement-1 cycle_iteration=1 story_base=ed84aea3c scope=batch1_first
 2026-11-16T14:12:57Z	Story 21.35	story_inserted	kind=fix_forward via=owner_answer_U-90 owns=DW-2651,DW-2652 order=after_21.33(plan_after_batch1)
 2026-11-16T14:12:57Z	Story 21.33	owner_decision	id=U-89 answer=kept
+2026-11-16T14:43:02Z	Story 21.34	ci_resolved	story=21.34(+21.32,+feature_2ef969841) sha=c1a02ae13 runs=43881658467 result=success failed=none via=none
