@@ -320,3 +320,4 @@
 2026-11-16T06:44:07Z	Story 21.30	spec_validated	service_introducing=false integration_ac=present(end-to-end_repro_first) adr_constrained_acs=AD-9,AD-15,AD-8 owned_ledger=DW-2634(epic24) addressed=1 filed=DW-2638(high),DW-2639(low) mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-16T06:44:26Z	Story 21.30	stage_spawned	stage=implement spawn_at=2026-11-16T06:44:26Z model=sonnet agent_name=21-30-implement-1 cycle_iteration=1 story_base=8f0a87723
 2026-11-16T06:44:47Z	Story 21.13	cr_complete	spawn_at=2026-11-16T06:46:00Z model=opus resolved=11 fixed_at_source=11 deferred=1 dismissed=11 high=2(AD-59_create_script_free-name,AD-16_catch_restore;patched) med=3 low=7 rows=31 unresolved_high_med=1(DW-2637_decision-pending) final=done cycle_iteration=1 commit=a98b9ef9c
+2026-11-16T06:46:43Z	Story 21.24	ci_resolved	story=21.24 sha=6a5bcf05f(staging/OCU-1-21.24) runs=43814889321 result=success failed=none via=none
