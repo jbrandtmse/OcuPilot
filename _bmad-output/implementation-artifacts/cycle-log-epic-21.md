@@ -397,3 +397,4 @@
 2026-11-16T15:59:18Z	Story 21.33	fresh_check	scope=batch1 classes=17_green specs=3_green_fwd+rev result=pass
 2026-11-16T15:59:18Z	Story 21.33	gate_step	step=sweep_stopped_at_shard1 reason=DW-2664_must_settle_in_batch1_head(orchestrator) note=sweep_reruns_after
 2026-11-16T16:27:30Z	Story 21.33	gate_step	step=DW-2664_settled fix=a7e5d04fa(rebuild_checks_admin_only_when_writing) measured=retention_task_as_irisowner_pass;admin_without_%All_pass;first_install_without_%All_failed->fixed new_test=AdminPathWrite(3) mutations=4 open=DW-2665(inference)
+2026-11-16T16:28:51Z	Story 21.33	gate_step	step=gates_stopped reason=DW-2665_fix_in_batch1(orchestrator)
