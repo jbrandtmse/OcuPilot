@@ -424,3 +424,4 @@
 2026-11-16T22:47:50Z	Story 21.33	stage_spawned	stage=code-review scope=batch3 spawn_at=2026-11-16T22:47:50Z model=opus agent_name=21-33-code-review-b3 cycle_iteration=3
 2026-11-16T22:51:28Z	Story 21.33	gate_step	step=txn_static_check scope=Turn.DeleteExpired result=pass body=SQL_DELETEs(Turn,Step,Nav,Proposal)+Kill_^OcuPilotTurnSignal no_JOB no_Event no_external_IO
 2026-11-16T23:24:37Z	Story 21.33	cr_complete	scope=batch3 model=opus resolved=8 high=0 med=5(GuardedViewForOwner_ended_others_lost_run;GuardedBegin_lock_before_owner;admin_sweep_test;...) deferred=1(DW-2667,burndown) txn=rollback_measured;no_JOB/Event/IO(static) five_paths=unchanged final=done commit=570a6d212
+2026-11-16T23:24:49Z	Story 21.33	gate_step	step=fresh_check+full_sweep scope=batches2+3 head=570a6d212 started=2026-11-16T23:24:49Z dir=e21u/21-33/gate4
