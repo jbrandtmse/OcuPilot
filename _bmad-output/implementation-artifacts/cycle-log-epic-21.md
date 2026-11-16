@@ -358,3 +358,4 @@
 2026-11-16T11:05:11Z	Story 21.32	dev_complete	spawn_at=2026-11-16T10:40:00Z model=sonnet build_sha=a9d6b4a18 followup_review_recommended=false deferred=0 cycle_iteration=1 chain=7/7,3/3,5/5,6/6_fresh mutation=dashboard+ecp_red note=doc_comment_AD-27_c9150cd11
 2026-11-16T11:05:11Z	Story 21.32	ruling	question=QA_stage choice=fold_QA_into_CR rejected=separate_QA why=fix-forward_priority;repro_test+mutation_present category=decide policy=b9ff703e
 2026-11-16T11:05:11Z	Story 21.32	stage_spawned	stage=code-review spawn_at=2026-11-16T11:05:11Z model=opus agent_name=21-32-code-review-1 cycle_iteration=1
+2026-11-16T11:24:25Z	Story 21.32	cr_complete	spawn_at=2026-11-16T11:05:00Z model=opus resolved=6 deferred=1(DW-2647_interop-editors_vendor_-428,burndown) dismissed=9 high=0 med=1 low=6 rows=22 unresolved_high_med=0 final=done cycle_iteration=1 cost=0.15us/call commit=edf36c82d
