@@ -210,3 +210,8 @@
 2026-11-16T15:35:24Z	Story 24.9	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-16T15:36:37Z	Story 24.5	story_unparked	via=inbox id=U-86 effect=re-plan(people_only:no_agent_run_tool;off_by_default_gate_for_people;confirm_with_consequence) spec_status=draft
 2026-11-16T15:36:37Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T15:36:37Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-3 cycle_iteration=3 story_base=94374df3b
+2026-11-16T16:05:12Z	Story 24.5	story_created	spawn_at=2026-11-16T15:37:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-5-unit-test-runner-and-work-queue-viewer.md build_status=ready-for-dev epic_context=reused cycle_iteration=3
+2026-11-16T16:05:12Z	Story 24.5	orchestrator_ruling	subject=spine_AD-22_AD-53_and_contended_files answer=write_AD-22_narrow_and_AD-53_citing_U-86(veto_for_owner_filed_by_orchestrator),proceed_additive_Prohibited_own_arm,ScreenAction_one_block
+2026-11-16T16:05:12Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-10(paragraph),AD-22(PERSONGATE_exception),AD-53(fifth_unadvertised_tool) lint=preexisting_low_only proposed_kept=AD-29_binds,AD-61,AD-7
+2026-11-16T16:05:12Z	Story 24.5	ruling	question=strings_gate_refusals choice=keep rejected=none why=owner_answer_U-86_shape_plain_language category=veto reversal=reword_or_regate inbox=U-95 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T16:05:12Z	Story 24.5	stage_spawned	stage=implement spawn_at=2026-11-16T16:05:12Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-implement-1 cycle_iteration=3
