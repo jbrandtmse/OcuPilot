@@ -215,3 +215,14 @@
 2026-11-16T16:05:12Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-10(paragraph),AD-22(PERSONGATE_exception),AD-53(fifth_unadvertised_tool) lint=preexisting_low_only proposed_kept=AD-29_binds,AD-61,AD-7
 2026-11-16T16:05:12Z	Story 24.5	ruling	question=strings_gate_refusals choice=keep rejected=none why=owner_answer_U-86_shape_plain_language category=veto reversal=reword_or_regate inbox=U-95 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T16:05:12Z	Story 24.5	stage_spawned	stage=implement spawn_at=2026-11-16T16:05:12Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-implement-1 cycle_iteration=3
+2026-11-16T16:28:46Z	Story 24.9	ci_result	sha=e34cedcd7 run=43897913630 attempt=2 result=success attempt1=gates_node22_cancelled(DW-2567_hang,orchestrator_rerun)
+2026-11-16T16:28:50Z	Story 24.9	merged_to_feature	feature=e34cedcd7(fast-forward) by=orchestrator
+2026-11-16T19:19:39Z		owner_decision	id=U-87 Story_24.9 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-92 Story_24.9 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-94 Story_24.5 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-95 Story_24.5 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T20:39:55Z	Epic 24	orchestrator_note	feature_green=2a542f893 run=43942954432 carries=21.33_batch1(Kernel/State/Base,Agent/Propose/Ledger_stores_owner-or-admin) bookkeeping=ebb3e85d8 action=integrate_before_24.5_code_head,rerun_store-writing_classes
+2026-11-16T22:48:35Z	Story 24.5	dev_complete	spawn_at=2026-11-16T16:05:00Z model=sonnet build_sha=984a3c6e0(finalized_by_runner_after_string_ruling) baseline_revision=792ddf914 review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green cycle_iteration=3 clarification=two_forced_strings(ruled_keep_U-98) note=orphaned_impl_subagent_resumed_and_overlapped;sweep_rerun_after
+2026-11-16T22:48:35Z	Story 24.5	ruling	question=forced_strings(third_prompt,agent_phrase) choice=keep why=plain_language_registry_requires category=veto reversal=reword inbox=U-98 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T22:48:35Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-53(named_audit_gap_measured_Task0_item6)
+2026-11-16T22:48:35Z	Story 24.5	stage_spawned	stage=qa spawn_at=2026-11-16T22:48:35Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-qa-1 cycle_iteration=3
