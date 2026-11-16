@@ -13272,6 +13272,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: Story 20.41 rejected the same shape by design (Reviewed optional per AD-56; spec-20-41 Review Findings)
 - 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a caller other than the client reaches the promote action
+- 2026-11-16T15:08:47Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=confirmed at cr: dry run needs Reviewed optional; caller already holds WRITE; reopen_if=a caller other than the client reaches the action
 
 ### DW-2654: After a confirmed promote the outcome dialog lists the compile lines only; per-document outcomes are on the page's output pane
 - source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
@@ -13282,13 +13283,36 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: spec-24-9 deferred list; needs a seam over ReadSource or a plan/preflight race
 - 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review (Rule 19)
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=NamespacePromoteEdges.TestEachPreflightRefusalWritesNothing over a ReadSource/ReadVersion forge; mutation red
 
 ### DW-2656: A target document whose version read answers no document object leaves an empty version, so its save is refused inside the write loop after earlier documents were written, not before any write
 - source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: spec-24-9 deferred list; promote has no rollback
 - 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review: move the check into the preflight
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=Preflight refuses an empty version 409 STALE before any write; pinned and mutation-red in NamespacePromoteEdges
 
 ### DW-2657: The Atelier source-code document read answered another namespace's text once, in a web process whose hash bodies had just run in two namespaces (observed on ocupilot-b-ci, cause not found); promote reads through its own ReadSource
 - source: spec-24-9-environment-promote.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: spec-24-9 deferred list; one observation, no reproduction (inference that other Atelier reads after a namespace switch are exposed)
 - 2026-11-16T14:18:23Z status=routed owner=burndown by=harvest note=AtelierPort readers after namespace switches may be exposed; reproduce before fixing
+- 2026-11-16T15:08:48Z status=routed owner=burndown by=cr note=cr: ReadSource sound (re-hash refuses wrong text); ReadVersion still reads via Atelier, a wrong version stops at a 409
+
+### DW-2658: Compare namespaces' promote status reads 'Promoted 1 documents' for one document: the two status lines have no singular
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dev-tool.store.ts promoteStatus fills explorerPromoteDone/DoneErrors with n=1; the project adds a singular at 1 (Story 19.18)
+- 2026-11-16T15:08:57Z status=decision-pending owner=burndown by=cr note=string:Promoted 1 document to the other namespace and compiled it. / Promoted 1 document to the other namespace; the compile reported errors.
+
+### DW-2659: DevToolPort copies AtelierPort's private Literal and the create script's free-name check, because AtelierPort.cls is read-only for 24.9
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.Literal and FreeCheck repeat AtelierPort.Literal and FreeCheck (both Private); the spec's Code Map makes AtelierPort read-only
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a story edits AtelierPort.cls: make Literal and FreeCheck reachable and delete DevToolPort's copies
+
+### DW-2660: No promote test covers a generated .int step (generated=yes), whose ReadSource header must equal the hash body's
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: routine save, .inc create and .mac create are pinned (NamespacePromoteEdges); a mismatch refuses the step as stale, never writes
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a promote with generated=yes is refused as stale with neither namespace changed
+
+### DW-2661: The agent's confirm-time fence call (ConfirmProblem to StepsProblem) is not mutation-pinned: no fixture makes AgentProblem refuse only at confirm
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: StepsProblem and ConfirmProblem's plan re-read are pinned; a refusal only the confirm sees needs a database mapping change between mint and confirm
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a confirmed promote writes a step whose package maps outside the target's routines database

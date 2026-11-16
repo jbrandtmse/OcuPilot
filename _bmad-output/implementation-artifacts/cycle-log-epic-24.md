@@ -198,3 +198,5 @@
 2026-11-16T14:18:45Z	Story 24.9	stage_spawned	stage=qa spawn_at=2026-11-16T14:18:45Z model=sonnet agent_name=24-9-environment-promote-qa-1 cycle_iteration=1
 2026-11-16T14:47:57Z	Story 24.9	qa_complete	spawn_at=2026-11-16T14:20:00Z model=sonnet tests=src/OcuPilot/Test/NamespacePromoteRoute.cls tests_added=1 mutations_demonstrated=7 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-11-16T14:47:57Z	Story 24.9	stage_spawned	stage=code-review spawn_at=2026-11-16T14:47:57Z model=opus agent_name=24-9-environment-promote-code-review-1 cycle_iteration=1
+2026-11-16T15:17:41Z	Story 24.9	cr_complete	spawn_at=2026-11-16T14:48:00Z model=opus resolved=9 fixed_at_source=9 high_fixed=AD-59_snippet_mirrors_promote wontfix=3 decision_pending=1(DW-2658) ledger_resolved=DW-2655,DW-2656 confirmed=DW-2653 annotated=DW-2657 dismissed=14 high=1 med=5 low=23 rows=29 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
+2026-11-16T15:17:41Z	Story 24.9	ledger_adjudicated	owned=2 resolved=2(DW-2655,DW-2656) reowned=0 terminal=DW-2653 born_terminal=DW-2659,DW-2660,DW-2661 to_decision_sheet=DW-2658 model=claude-opus-5-5

@@ -843,8 +843,9 @@ ClassMethod Promote(pNamespace As %String, pTarget As %String, pChosen As %Dynam
 /// <p>Read every chosen step's text before anything is written, into <code>^||OcuPilotDevToolPromote</code>: the
 /// document's text in <var>pNamespace</var> and, for a step that replaces a document, the version of its copy in
 /// <var>pTarget</var>. Each text is read as the plan's hash read it (<method>ReadSource</method>) and must hash to the
-/// plan's, the source's to <code>Hash</code> and the other copy's to <code>OtherHash</code>, else the promote is 409
-/// <parameter>CODESTALE</parameter>, so what is written is what the plan showed. A document the instance keeps no source
+/// plan's, the source's to <code>Hash</code> and the other copy's to <code>OtherHash</code>, and the other copy's version
+/// must be read, else the promote is 409 <parameter>CODESTALE</parameter>, so what is written is what the plan showed and
+/// no save is sent without its version. A text that cannot be read is 500 <code>INTERNAL</code>, logged. A document the instance keeps no source
 /// for is 404 <code>PORT.NOTFOUND</code>; a text longer than one save takes is 400
 /// <parameter>OcuPilot.Api.AtelierError.SAVETOOLARGE</parameter>; a text whose first line does not name its document is 422
 /// <parameter>OcuPilot.Api.AtelierError.SAVEHEADER</parameter>; each with <code>detail.document</code>. Then the storage
@@ -859,7 +860,10 @@ ClassMethod Preflight(pNamespace As %String, pTarget As %String, pChosen As %Dyn
         Set tDetail = {}
         Do tDetail.%Set("document", tName, "string")
         Set tSC = ..ReadSource(pNamespace, tName, .tText, .tHash, .tAvailable)
-        If $$$ISERR(tSC) Quit
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("the promote could not read a document's text", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
         If 'tAvailable {
             Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, .pHttpStatus, .pFault, tDetail)
             Quit
@@ -880,7 +884,10 @@ ClassMethod Preflight(pNamespace As %String, pTarget As %String, pChosen As %Dyn
         Set ^||OcuPilotDevToolPromote(tI, "storage") = ..StorageNames(tText)
         If tStep.%Get("Change") '= ..#CHANGEDIFFERS Continue
         Set tSC = ..ReadSource(pTarget, tName, .tOtherText, .tOtherHash, .tOtherAvailable)
-        If $$$ISERR(tSC) Quit
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("the promote could not read a document's text", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
         If 'tOtherAvailable {
             Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, .pHttpStatus, .pFault, tDetail)
             Quit
@@ -891,6 +898,10 @@ ClassMethod Preflight(pNamespace As %String, pTarget As %String, pChosen As %Dyn
         }
         Set tSC = ..ReadVersion(pTarget, tName, .tVersion, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+        If tVersion = "" {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTALE, ..#REASONSTALE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
         Set ^||OcuPilotDevToolPromote(tI, "version") = tVersion
         Set ^||OcuPilotDevToolPromote(tI, "otherStorage") = ..StorageNames(tOtherText)
     }
@@ -940,7 +951,7 @@ ClassMethod ReadSource(pNamespace As %String, pName As %String, Output pText As 
             Set pAvailable = 1
         } Else {
             Set $NAMESPACE = pNamespace
-            Set tRoutine = ##class(%Routine).%OpenId(pName)
+            Set tRoutine = $Select(##class(%Routine).Exists(pName): ##class(%Routine).%OpenId(pName), 1: "")
             If $IsObject(tRoutine) {
                 Set tAttributes = $Select(tExt = "mac": "", 1: "Type=" _ $ZConvert(tExt, "U"))
                 If tRoutine.Generated Set tAttributes = tAttributes _ $Select(tAttributes = "": "", 1: ",") _ "Generated"
@@ -1047,20 +1058,32 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     Quit ""
 }
 
-/// <p>A promote as a script (AD-59): one line for each document of <parameter>DOCUMENTSKEY</parameter>, in the order its
-/// names sort in, that copies the document's text from the namespace <parameter>NAMESPACEKEY</parameter> names to the one
+/// <p>A promote as a script (AD-59), mirroring <method>Promote</method>'s writes: a first line that starts the script as
+/// succeeding, then one line for each document of <parameter>DOCUMENTSKEY</parameter>, in the order its names sort in, that
+/// copies the document's text from the namespace <parameter>NAMESPACEKEY</parameter> names to the one
 /// <parameter>TARGETKEY</parameter> names, then one <code>$System.OBJ.CompileList</code> with
 /// <parameter>OcuPilot.Port.AtelierPort.IMPORTCOMPILEFLAGS</parameter> for the classes and one for the routines, in the
 /// other namespace. A class is copied with <code>%Compiler.UDL.TextServices</code>, a routine line by line with
-/// <code>%Routine</code>. Every value is rendered as a string literal, so nothing the query carries runs as code, and
-/// no line opens a block it does not close, so the script runs the same as a method body and pasted line by line into a
-/// terminal. It copies what the namespace holds when it runs, and it does not check the plan. A script longer than
+/// <code>%Routine</code>; a routine the first namespace does not hold is reported and nothing is written over its copy.
+/// A document the stored payload's <code>Steps</code> (<var>pContext</var><code>.payload</code>) lists as only in the
+/// first namespace is a create, written only while its name is free in the other namespace (<method>FreeCheck</method>).
+/// As the write does, the script stops at the first copy that fails or is refused, and compiles only when every copy
+/// succeeded. Every value is rendered as a string literal, so nothing the query carries runs as code, and no line opens a
+/// block it does not close, so the script runs the same as a method body and pasted line by line into a terminal. It
+/// copies what the namespace holds when it runs, and it does not check the plan. A script longer than
 /// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tSource = $Get(pQuery(..#NAMESPACEKEY))
     Set tTarget = $Get(pQuery(..#TARGETKEY))
+    Kill tCreate
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") && (pContext.%Get("payload").%GetTypeOf("Steps") = "array") {
+        Set tIterator = pContext.%Get("payload").%Get("Steps").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPlanned) {
+            If $IsObject(tPlanned) && (tPlanned.%Get("Change") = ..#CHANGEONLYHERE) Set tCreate("n" _ tPlanned.%Get("Document")) = ""
+        }
+    }
     Kill tSorted
     For tI = 1:1:$Length($Get(pQuery(..#DOCUMENTSKEY)), ",") {
         Set tName = $Piece($Get(pQuery(..#DOCUMENTSKEY)), ",", tI)
@@ -1073,27 +1096,55 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     For {
         Set tKey = $Order(tSorted(tKey), 1, tName)
         If tKey = "" Quit
+        Set tTaken = " Set tOK = 0 Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(tName _ " is taken: this namespace holds it or another document of its name, so nothing was created.") _ "))"
         If ..Extension(tName) = "cls" {
             Set tBase = $Extract(tName, 1, *-4)
-            Set tText = tText _ $Select(tText = "": "", 1: $Char(10)) _ " Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString(" _ ..Literal(tSource) _ ", " _ ..Literal(tBase) _ ", .tText) Set:$System.Status.IsOK(tSC) tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ ..Literal(tTarget) _ ", " _ ..Literal(tBase) _ ", tText) Do $System.Status.DisplayError(tSC)"
+            Set tCopy = "Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString(" _ ..Literal(tSource) _ ", " _ ..Literal(tBase) _ ", .tText) Set:$System.Status.IsOK(tSC) tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ ..Literal(tTarget) _ ", " _ ..Literal(tBase) _ ", tText) Set tOK = $System.Status.IsOK(tSC) Do $System.Status.DisplayError(tSC)"
+            If $Data(tCreate(tKey)) {
+                Set tText = tText _ $Char(10) _ " If tOK { Set $NAMESPACE = " _ ..Literal(tTarget) _ " If '(" _ ..FreeCheck(tName) _ ") {" _ tTaken _ " } Else { " _ tCopy _ " } }"
+            } Else {
+                Set tText = tText _ $Char(10) _ " If tOK { " _ tCopy _ " }"
+            }
             Set tClasses = tClasses _ $Select(tClasses = "": "", 1: ",") _ tName
         } Else {
-            Set tText = tText _ $Select(tText = "": "", 1: $Char(10)) _ " Set $NAMESPACE = " _ ..Literal(tSource) _ " Kill tLine Set tRead = ##class(%Routine).%OpenId(" _ ..Literal(tName) _ ") If $IsObject(tRead) { Do tRead.Rewind() While 'tRead.AtEnd { Set tRow = tRead.ReadLine() Set tLine($Increment(tLine)) = tRow } } Set tRead = """" Set $NAMESPACE = " _ ..Literal(tTarget) _ " Set tWrite = ##class(%Routine).%New(" _ ..Literal(tName) _ ") Do tWrite.Clear() For tI = 1:1:$Get(tLine) { Do tWrite.WriteLine(tLine(tI)) } Set tSC = tWrite.Save() Do $System.Status.DisplayError(tSC)"
+            Set tStepLine = " If tOK { Set $NAMESPACE = " _ ..Literal(tSource) _ " Kill tLine Set tFound = ##class(%Routine).Exists(" _ ..Literal(tName) _ ") Set tRead = $Select(tFound: ##class(%Routine).%OpenId(" _ ..Literal(tName) _ "), 1: """") If tFound { Do tRead.Rewind() While 'tRead.AtEnd { Set tLength = 3641144 Set tRow = tRead.ReadLine(.tLength) Set tLine($Increment(tLine)) = tRow } } Set tRead = """" Set $NAMESPACE = " _ ..Literal(tTarget)
+            Set tStepLine = tStepLine _ " If 'tFound { Set tOK = 0 Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(tName _ ": " _ ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE) _ ")) }"
+            If $Data(tCreate(tKey)) Set tStepLine = tStepLine _ " If tFound, '(" _ ..FreeCheck(tName) _ ") {" _ tTaken _ " }"
+            Set tStepLine = tStepLine _ " If tOK { Set tWrite = ##class(%Routine).%New(" _ ..Literal(tName) _ ") Do tWrite.Clear() For tI = 1:1:$Get(tLine) { Do tWrite.WriteLine(tLine(tI)) } Set tSC = tWrite.Save() Set tOK = $System.Status.IsOK(tSC) Do $System.Status.DisplayError(tSC) } }"
+            Set tText = tText _ $Char(10) _ tStepLine
             If ..Extension(tName) '= "inc" Set tRoutines = tRoutines _ $Select(tRoutines = "": "", 1: ",") _ tName
         }
         If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit
     }
     If tText = "" Quit []
-    Set tText = tText _ $Char(10) _ " Set $NAMESPACE = " _ ..Literal(tTarget)
+    Set tText = " Set tOK = 1" _ tText
     For tNames = tClasses, tRoutines {
         If tNames = "" Continue
-        Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(##class(OcuPilot.Port.AtelierPort).#IMPORTCOMPILEFLAGS) _ ") Do $System.Status.DisplayError(tSC)"
+        Set tText = tText _ $Char(10) _ " If tOK { Set $NAMESPACE = " _ ..Literal(tTarget) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(##class(OcuPilot.Port.AtelierPort).#IMPORTCOMPILEFLAGS) _ ") Do $System.Status.DisplayError(tSC) }"
     }
     If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit []
     Set tStep = {}
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
     Quit [(tStep)]
+}
+
+/// <p>The expression a create's script line reads as true while nothing in the current namespace holds a document that
+/// takes <var>pName</var>: the taken-name rule <class>OcuPilot.Port.AtelierPort</class>'s create applies, rendered as its
+/// own create script renders it. For a class, no class of that name in any letter case; for an include file, no document
+/// of exactly that name; for a routine or intermediate routine, no routine of its base name of a type in
+/// <parameter>OcuPilot.Port.AtelierPort.TAKINGROUTINETYPES</parameter>.</p>
+ClassMethod FreeCheck(pName As %String) As %String [ Private ]
+{
+    Set tBase = $Piece(pName, ".", 1, $Length(pName, ".") - 1)
+    If ..Extension(pName) = "cls" Quit "'$Data(^rINDEXCLASS(" _ ..Literal($ZConvert(tBase, "U")) _ "))"
+    If ..Extension(pName) = "inc" Quit "'##class(%RoutineMgr).Exists(" _ ..Literal(pName) _ ")"
+    Set tTypes = ##class(OcuPilot.Port.AtelierPort).#TAKINGROUTINETYPES
+    Set tCheck = ""
+    For tI = 1:1:$Length(tTypes, ",") {
+        Set tCheck = tCheck _ $Select(tCheck = "": "", 1: " || ") _ "##class(%RoutineMgr).Exists(" _ ..Literal(tBase _ "." _ $Piece(tTypes, ",", tI)) _ ")"
+    }
+    Quit "'(" _ tCheck _ ")"
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a

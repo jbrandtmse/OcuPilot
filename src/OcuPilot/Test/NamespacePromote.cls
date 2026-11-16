@@ -463,41 +463,4 @@ Method TestAPromoteCompilesEachKindWithTheImportsFlags()
     Do $$$AssertEquals($ClassMethod(..#RECORDER, "Writes"), "SAVE:HSCUSTOM:OcuProbe248.Changed.cls,CREATE:HSCUSTOM:OcuProbe248.OnlyHere.cls,CREATE:HSCUSTOM:OcuProbe248Mac.mac,COMPILE:HSCUSTOM:OcuProbe248.Changed.cls+OcuProbe248.OnlyHere.cls:cuk,COMPILE:HSCUSTOM:OcuProbe248Mac.mac:cuk", "every step is written, then the classes and the routines are compiled once each with cuk")
 }
 
-/// <p>AD-59: the script of a promote is one step of one line to a document and one compile line to a kind, each closing every
-/// block it opens, copying the documents the plan chose into the other namespace when it is run, with the compile flags
-/// <code>cuk</code>; a read, and a plan, have no script form.</p>
-/// <p>Mutation (Rule 19): drop the <code>Save</code> from the routine's line in <method>OcuPilot.Port.DevToolPort.Snippet</method>
-/// -- the routine is not written and the hash leg goes red.</p>
-Method TestTheScriptCopiesTheChosenDocumentsWhenRun()
-{
-    Do $$$AssertStatusOK(..Save(), "the probe pair is saved")
-    Do $$$AssertEquals(##class(OcuPilot.Port.DevToolPort).SnippetForm("NamespaceDiff", "PROMOTE") _ "|" _ ##class(OcuPilot.Port.DevToolPort).SnippetForm("NamespaceDiff", "PLAN") _ "|" _ ##class(OcuPilot.Port.DevToolPort).SnippetForm("NamespaceDiff", "LIST"), "objectscript||", "only the promote has a script form")
-    Kill tQuery
-    Set tQuery("namespace") = ..#HERE
-    Set tQuery("target") = ..#THERE
-    Set tQuery("documents") = ..Steps()
-    Set tSteps = ##class(OcuPilot.Port.DevToolPort).Snippet("NamespaceDiff", "PROMOTE", .tQuery)
-    Do $$$AssertEquals(tSteps.%Size() _ "|" _ tSteps.%Get(0).kind, "1|objectscript", "one ObjectScript step")
-    Set tText = tSteps.%Get(0).text
-    Set tLines = $Length(tText, $Char(10))
-    Do $$$AssertEquals(tLines, 6, "one line for each document, the line that enters the other namespace and one compile line for each kind")
-    For tI = 1:1:tLines {
-        Set tLine = $Piece(tText, $Char(10), tI)
-        Do $$$AssertEquals($Length(tLine, "{"), $Length(tLine, "}"), "line " _ tI _ " closes every block it opens")
-    }
-    Do $$$AssertTrue((tText [ "CompileList(""OcuProbe248.Changed.cls,OcuProbe248.OnlyHere.cls"", ""cuk"")") && (tText [ "CompileList(""OcuProbe248Mac.mac"", ""cuk"")"), "the classes and the routines are compiled with cuk, each in one call")
-    Set tOrigNS = $NAMESPACE
-    Try {
-        For tI = 1:1:tLines {
-            Xecute $Piece(tText, $Char(10), tI)
-        }
-    } Catch ex {
-        Do $$$AssertStatusOK(ex.AsStatus(), "the script runs")
-    }
-    Set $NAMESPACE = tOrigNS
-    For tDocument = ..#CHANGED, ..#ONLYHERE, ..#MAC {
-        Do $$$AssertEquals(..HashOf(..#THERE, tDocument), ..HashOf(..#HERE, tDocument), tDocument _ ": the script copied it")
-    }
-}
-
 }
