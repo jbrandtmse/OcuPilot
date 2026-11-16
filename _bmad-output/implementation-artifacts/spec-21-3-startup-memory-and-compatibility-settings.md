@@ -2,12 +2,21 @@
 title: 'Story 21.3: Startup, memory and compatibility settings'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3f8933beaeae27122b6ef465043c3433403fe414'
+baseline_commit: '3f8933beaeae27122b6ef465043c3433403fe414'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The reused interop setting dialog tells the person to leave the field empty to clear the value for every non-boolean setting, which is wrong for integer and choice settings.
+    evidence: |-
+      config-settings.page.ts opens InteropItemSettingDialog unedited; an empty value for an integer or choice setting is refused 400 CONFIG.SETTING.VALUE. A fix needs a dialog input or a new string, and the dialog is an Epic 24 file.
+    location: >-
+      ui/src/app/areas/interoperability/interop-item-setting-dialog.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -105,30 +114,101 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 - AC3. Given a read-only row, when either caller sets it, then it is refused before any vendor call, and the screen offers no Set value on it.
 - AC4. Given the default baseline, when the agent proposes any of the three sets, then it mints, and the confirm writes once with one audit marker and a `readBack`. With the key `false` the governance gate refuses it.
 
+### Review Findings
+
+- [x] [Review] HIGH (AD-35): `Config.Startup.PasswordHash` holds the instance password's hash, salt, work factor and algorithm, and is listed, sent to the agent and settable. Runner ruling (veto U-49): add it to `ConfigPort.EXCLUDED`, so it is never listed, read, minted or set by either caller; pin it with a test that it appears in no read, no tool answer and no set path, and correct the Design Notes sentence that says it holds only hash parameters.
+- [x] [Review] DW-2589: `WebServerName` and `WebServerProtocol` join `ConfigPort.READONLY` (runner ruling, veto U-49), refused at both callers like the four network settings; update the read-only roster test and its mutation line.
+- [x] [Review] Fix Pack: the `config` read source's shape-rule cases (see `## Fix Pack`).
+
+Code review 2026-11-15 (first review; four layers, full-opus).
+
+- [x] [Review][Decision] HIGH: `PasswordHash` is listed, readable by the agent and settable as plain text -- `Config.Startup.PasswordHash` is "hash,salt,workFactor,algorithm" of the instance password (`irissys/Config/Startup.cls:113-121`), not hash parameters as Design Notes say. Its value reaches the table, the read tool (and so the provider), the card, the ledger and the audit unredacted, and a set replaces the predefined accounts' password at the next restart (inference from the vendor description). AD-35 and Conventions › Secrets. The fix is a stricter, credential-handling posture (veto window), escalated to the runner. Recommended: add `PasswordHash` to `ConfigPort.EXCLUDED`.
+- [x] [Review][Defer] `WebServerName` and `WebServerProtocol` stay settable, though either can cut OcuPilot off at the next restart as the four read-only network keys can [`src/OcuPilot/Port/ConfigPort.cls:89`] -- deferred: decision-pending (stricter posture, beyond veto U-47's four keys); recommended: add both to `READONLY`.
+- [x] [Review][Patch] `MaxIRISTempSizeAtStart`'s vendor source states its effect at restart, but it read `Restart` false (AC2) [`src/OcuPilot/Port/ConfigPort.cls:96`] -- added to `RESTARTSTARTUP`; the Design Notes sentence "every other Startup setting has no vendor source" is wrong for it (`irissys/Config/Startup.cls:106-108`).
+- [x] [Review][Patch] Mint-success tests assumed the instance does not already hold the probe value (Rule 19 hermeticity) [`ConfigSettingRead`, `ConfigSettingRules`, `ConfigSettingMint`] -- `ConfigSettingRead.Unlike` picks a value the setting does not hold.
+- [x] [Review][Patch] The armed `Restore` stopped at the first failing class, and a failed `Snapshot` read went unnoticed [`src/OcuPilot/Test/ConfigSettingWrite.cls`] -- each class restores on its own; `OnBeforeOneTest` refuses to run when a class could not be read.
+- [x] [Review][Patch] The armed refusal rows sent `DefaultPort` 1973 and `TempDirectory` `x` to the shipped port [`src/OcuPilot/Test/ConfigSettingWrite.cls`] -- each now sends the value it already holds, so a regressed guard writes nothing new.
+- [x] [Review][Patch] The matrix's "a person's Set value is not governed" had no test -- `TestTheAgentsConfirmWritesOnceWithOneAuditMarker` sets it through the screen with the key disabled.
+- [x] [Review][Patch] Unpinned: the minimum-only `Accepts` line (`errlog` "A whole number of at least 10."), the write gate's read pairs (a caller holding nothing), the control-character and digit-cap value rules, `ReasonForToolCode`'s `CONFIG.` dispatch, and the page's refusal with no field (the shape the port answers).
+- [x] [Review][Patch] Fix Pack: the `config` read-source shape rules (`Registry.ReadProblem`, `screen-mirror.mjs` `readProblem`: an endpoint outside `ENDPOINTS`, a type other than `LIST`, a declared `rowGet`) have no case on either side (the `backup` sibling neither).
+- Rejected: `ConfigSettingMint` untracked (false: the runner commits QA's file); `DEFAULTMAXLEN` 255 advertised (false: the compiled property carries `%Library.String`'s `MAXLEN` 50, and a 255 mutation left `Accepts` at 50); the restart test fails on a re-run (false: Task 0 measured each `errlog` change adds a reason); `VendorRefuses` doc (false); the mint's circular startup assertion (`ConfigSettingRead` pins the literal); `PathProperties` swallows errors (the roster literal covers it); the matrix's mint 404 and the "no Set value" task text (fixes edit the spec; AC3 kept, see Decisions); missing mutation lines for the gate and vendor rows (one per AC is recorded); every vendor refusal answered `CONFIG.SETTING.VALUE` (Design Notes ruling); the tool descriptions' "Accepts column" wording (the read carries the field).
+- Deferred (ledger): negative `SystemPerformanceDailyReportsOn` refused (Design Notes' minimum 0); choice settings typed as free text (the dialog is reused as is); a restart pending from an earlier change is not shown; the `Restart` column's success disc; the snippet's `Comment` subnodes and unchecked `Get`; a body on a read answered 500; `Rows`' gate outside its `Try`; a concurrent external change lost between the read and the full-set `Modify`.
+
+Code review 2026-11-15 (re-review of rework 1; four layers, full-opus). All three open items confirmed closed; no high, no medium.
+
+- [x] [Review][Patch] The corpus case "so are Memory and Compatibility" declared only Memory [`src/OcuPilot/Test/ConfigSettingRead.cls:60`] -- renamed "so is Memory"; Compatibility is admitted by the all-screens registry and mirror checks.
+- [x] [Review][Patch] `READONLY`'s comment stated as fact that changing any of the six network settings cuts OcuPilot off, measured only for the port [`src/OcuPilot/Port/ConfigPort.cls:88`] -- "would" is now "could".
+- Rejected: `PasswordHash` re-sent in the full-set `Modify` (false as a leak: the spec's AD-4 ruling re-sends excluded keys as read, and the value stays in the port's local array; a vendor refusal cannot quote a value its own `Get` answered; the vendor's `ConfigurationChange` audit lists only changed keys, measured on `ocupilot-ci`); the stale first-review Defer line, the U-49 ruling and "four never-set" in Design Notes (fixes edit the spec; DW-2589 closes at the runner's adjudication); a missing endpoint or type answers differently on the two engines (false: the generic `typeof`/`ENDPOINT_RE` check refuses it before any port arm); the per-port corpus runner copied from `DevToolRead` (it follows the established pattern of eight per-port siblings; unifying them is not a two-way door); the `backup` source's missing cases (Story 21.2's, outside this Fix Pack); Verification line order and the class header not naming `Cases` (cosmetic); `DeclarationJson` failing or a missing row erroring the test (fails loudly, which is correct).
+
+## Fix Pack
+
+- Add cases for the `config` read source's shape rules on both sides: an endpoint outside `ConfigPort.ENDPOINTS`, a type other than `LIST`, and a declared `rowGet`, each expecting its sentence, in a descriptor `XData Cases` corpus (as `MetricsDescriptor` does) and in `ui/tools/screen-mirror.test.mjs`; record one mutation.
+
 ## Spec Change Log
+
+- 2026-11-15, rework 1 (lead): re-opened after the first review for a HIGH (PasswordHash) and the two runner rulings that answer it.
 
 ## Review Triage Log
 
+### 2026-11-15 - Review pass
+
+- verdicts: 12 findings - high 0, medium 1, low 5, false 3, maybe-false 0 (3 rejected by rule or scope)
+- findings:
+  - `[medium]` `patch` Truncation of a capped config read is not pinned (AD-36) - fixed: `ConfigSettingRead` asserts a read capped at five answers five rows with `truncated` 1, the port's `maxRows` stops at three and refuses 0, x, -1 and 1.5; mutation observed red.
+  - `[low]` `patch` The `SCREENEMPTY` declaration (a text setting may be cleared) is not pinned - fixed: the same test asserts `ScreenActionEmptyNames` and `ScreenActionValueNames` for each tool; mutation observed red.
+  - `[low]` `patch` `Accepts` for a text setting is never observed - fixed: `SystemMode` reads `text|Text of up to 32 characters.`. The minimum-only branch has no setting on this build to read (inference), so it stays unpinned.
+  - `[low]` `patch` The unknown-setting mint assertion compared nothing about the sentence - fixed in `ConfigSettingRules` and `ConfigSettingWrite`: the mint reads the target first and answers the sibling mints' sentence ("'X' is not present on this instance", as `BackupWrite` pins); the port's own `CONFIG.SETTING.NOTFOUND` is pinned by the rules rows.
+  - `[low]` `patch` Page-spec mutations for the dialog and Save halves of AC2 were claimed in comments and not recorded - both applied, each red, reverted byte-identical; recorded in Verification.
+  - `[low]` `reject` Browser spec's fixed 500 ms wait before asserting no dialog opened - a negative check has no signal to wait on; the press is synchronous and the dialog opens in the same task, so the wait only widens the window.
+  - `[low]` `reject` Four page-spec tests carry no mutation line - each asserts a specific value; the reviewer did not call them unfalsifiable.
+  - `[false]` `reject` An armed assertion that `PendingRestart` is unchanged after `history` is not measured - the armed class ran green on `ocupilot-ci` with that assertion, which is the measurement.
+  - `[low]` `reject` Stale text in the intent contract's Always bullet and the proposed AD-4 paragraph - the fix is an edit to this spec's read-only contract; the runner ruling under Design Notes supersedes it.
+  - `[low]` `defer` The reused `InteropItemSettingDialog` shows "Leave it empty to clear the value." under every non-boolean field, which misleads on integer and choice settings (an empty value is refused 400 `CONFIG.SETTING.VALUE`) - the file belongs to Epic 24's tree and the spec forbids an interop-file edit; recorded in `deferred:`.
+  - `[low]` `reject` Intent-alignment: the Save answer's restart sentence is a client banner, as the route's answer carries no consequence - the spec's own client task is the banner, and the browser and component specs observe it at the surface.
+  - `[low]` `reject` Intent-alignment: a read-only row's Set value is drawn disabled with a reason, not hidden - the registered-reason convention every other screen uses; the action cannot open the dialog (browser spec).
+
+### 2026-11-15 - Review pass (rework 1, follow-up)
+
+- verdicts: 5 findings - high 0, medium 0, low 1, false 0, maybe-false 0 (4 rejected by rule or scope)
+- findings:
+  - `[low]` `patch` The rework edited the Startup read row inside `<intent-contract>` (read-only) - fixed: the row is restored byte-identical to the baseline; the two new read-only keys and the `PasswordHash` exclusion are carried by Design Notes and pinned by `ConfigSettingRules`, `ConfigSettingRead` and `ConfigSettingMint`.
+  - `[low]` `reject` The refusals of `WebServerName`, `WebServerProtocol` and `PasswordHash` are asked of the port seam and the mint, never of the shipped port or the armed class - the seam runs the shipped code path with the vendor call recorded and not made; the shipped port would write into the throwaway's password and web server settings (stated in the test and mutation lines).
+  - `[low]` `reject` The `EXCLUDED` doc comment says a set re-sends the excluded key as the vendor's `Get` answered it, against the contract's one-key `Modify` - the runner's AD-4 ruling under Design Notes (measured: a full-set `Modify` changes only the named key) supersedes the contract text.
+  - `[low]` `reject` The mint's "'PasswordHash' is not present on this instance" sentence is pinned though the contract names no sentence - it is the sibling mints' sentence for an absent target, as `BackupWrite` pins.
+  - `[low]` `reject` The read-source shape cases sit on the registry and mirror layer, not the API - the Fix Pack names exactly that layer for the sibling `backup` gap.
+
 ## Design Notes
 
-**Governing ADs:** AD-4 (merge; the named exception below), AD-21 (no path is set), AD-22 (keys; a person's write is not governed), AD-29 (`ConfigPort`'s gate), AD-36 (bounded reads), AD-52, AD-53, AD-55, AD-56 (declared values), AD-58 (read-back), AD-6, AD-34, AD-15 (proposal, transition, audit), AD-14 (change event), AD-5, AD-44 (descriptors, classic keys), AD-16, AD-59 (namespace, `Snippet`), AD-10 (covered types, no new predicate), AD-39 (vendor text normalized), AD-35 (no secret field exists in these classes; `PasswordHash` holds hash parameters, not a password).
+**Governing ADs:** AD-4 (merge; the named exception below), AD-21 (no path is set), AD-22 (keys; a person's write is not governed), AD-29 (`ConfigPort`'s gate), AD-36 (bounded reads), AD-52, AD-53, AD-55, AD-56 (declared values), AD-58 (read-back), AD-6, AD-34, AD-15 (proposal, transition, audit), AD-14 (change event), AD-5, AD-44 (descriptors, classic keys), AD-16, AD-59 (namespace, `Snippet`), AD-10 (covered types, no new predicate), AD-39 (vendor text normalized), AD-35 (`Config.Startup.PasswordHash` holds the instance password's hash, salt, work factor and algorithm, so it is in `ConfigPort.EXCLUDED`: no read lists it and no get, set or mint names it).
 
 **Restart: the vendor's source for each setting.**
 
 - Memory (`Config.config`): `Config.config.NoRestartOnActivate(Name)`, called at read time, the source the classic `ValueEditor` uses (`:338-342`). Measured on slot A: `errlog`, `routines`, `globals*kb`, `gmheap` and `jrnbufs` need a restart; `bbsiz`, `history`, `locksiz` and `MaxServers` do not. Measured on `ocupilot-ci`: an `errlog` change makes `Config.CPF.PendingRestart` name `config`/`errlog`, so the method and the instance agree for that row.
 - Startup (`Config.Startup`): `WebServer` (CPF reference `RACS_WebServer`: "A restart is required for this setting to take effect."), `ErrorPurge` (`RACS_ErrorPurge`: "the change is applied the next time you restart"), `DefaultPort` (the classic Memory and Startup page's restart message, `MemoryStartup.cls:380-383`).
 - Compatibility (`Config.Miscellaneous`): `NullSubscripts` (`ValueEditor.cls:22-24`, `RESTARTREQUIREDLIST`).
-- Every other Startup and Compatibility setting has no vendor source: each one's CPF reference page (`RACS_<Name>`, all read at plan time) says nothing about a restart, and `ExtendedDatabaseSize`'s page is not published. That silence does not show the setting applies at once (inference). `PendingRestart` does not report Startup or Compatibility changes: `NullSubscripts`, `DefaultPort`, `ErrorPurge` and `SystemMode` changes added no reason to it (measured on `ocupilot-ci`). So the product states a restart only where a source above states one.
+- `MaxIRISTempSizeAtStart` states a restart from its own vendor property description (`irissys/Config/Startup.cls:106-108`). Every other Startup and Compatibility setting has no vendor source: each one's CPF reference page (`RACS_<Name>`, all read at plan time) says nothing about a restart, and `ExtendedDatabaseSize`'s page is not published. That silence does not show the setting applies at once (inference). `PendingRestart` does not report Startup or Compatibility changes: `NullSubscripts`, `DefaultPort`, `ErrorPurge` and `SystemMode` changes added no reason to it (measured on `ocupilot-ci`). So the product states a restart only where a source above states one.
 
 **Decided in-stage:**
 
 - No Memory and Startup form. Its settings are rows here: `globals4kb`..`globals64kb`, `routines` and `bbsiz` in Memory settings, and `SystemMode` and `DefaultPort` in Startup settings. Each row is one setting, which the classic table hid only because the form owned it. `Config.WinStartup` auto-start is Windows-only, and this build is Linux, so it is not built (a named limit). The memory and startup tools declare `MemoryStartup` among their `CLASSICPAGES`, so a custom resource on that page still binds (AD-44).
 - No harvest. `ExecuteMCPv2.REST.SystemConfig` reads a fixed eleven-key subset of `Config.config`, cannot write `Config.Startup` or `Config.Miscellaneous`, and passes caller-named keys to `Modify` unvalidated. Twenty lines of the port's own `Get`/`Modify` replace it. This is Rule 2's "a copy reads better" case, with nothing copied.
-- Exclusions, as the classic table excludes them: `EnableLongStrings`, `OsType`, `Platform`, `PageSizeAlt`, `ZaMode`, `globals2kb` (always 0), `pijdir`, `wijdir` (Journal settings shows `wijdir`), and `EnsembleAutoStart` where the instance is not an interoperability one. The classic exclusions of `DefaultPort`, `bbsiz`, `globals*kb` and `routines` are dropped, because no form owns them here.
-- `ReadOnly` rows: every `%Library.SysPath` property (`ConsoleFile`, `VMSConsoleTerminal`, `TempDirectory`, `WebServerURLPrefix`) and the path-valued strings `LibPath`, `Path`, `PythonPath` and `PythonRuntimeLibrary` (AD-21: shown, never set, as a license server's `KeyDirectory` is). Also `DefaultPort`, `DefaultPortBindAddress`, `WebServer` and `WebServerPort`, because changing one cuts OcuPilot off at the next restart: the web gateway reaches the instance through the default superserver (`Prohibited.cls`'s `SERVINGSUPERSERVER` premise), and the private web server serves OcuPilot on this build (measured: `httpd ... Listen 52773` in `ocupilot-ci`). This follows the Superserver screen's `SystemDefault`: shown here and never changed here, with no new predicate. This is stricter than the classic page, so it is a veto item for the runner.
+- Exclusions, as the classic table excludes them: `EnableLongStrings`, `OsType`, `Platform`, `PageSizeAlt`, `ZaMode`, `globals2kb` (always 0), `pijdir`, `wijdir` (Journal settings shows `wijdir`), `PasswordHash` (AD-35), and `EnsembleAutoStart` where the instance is not an interoperability one. The classic exclusions of `DefaultPort`, `bbsiz`, `globals*kb` and `routines` are dropped, because no form owns them here.
+- `ReadOnly` rows: every `%Library.SysPath` property (`ConsoleFile`, `VMSConsoleTerminal`, `TempDirectory`, `WebServerURLPrefix`) and the path-valued strings `LibPath`, `Path`, `PythonPath` and `PythonRuntimeLibrary` (AD-21: shown, never set, as a license server's `KeyDirectory` is). Also `DefaultPort`, `DefaultPortBindAddress`, `WebServer`, `WebServerName`, `WebServerPort` and `WebServerProtocol`, because changing one cuts OcuPilot off at the next restart: the web gateway reaches the instance through the default superserver (`Prohibited.cls`'s `SERVINGSUPERSERVER` premise), and the private web server serves OcuPilot on this build (measured: `httpd ... Listen 52773` in `ocupilot-ci`). This follows the Superserver screen's `SystemDefault`: shown here and never changed here, with no new predicate. This is stricter than the classic page, so it is a veto item for the runner.
 - Value rules beyond the dictionary: `bbsiz` -1 or 256-2147483647; `routines` 0 or 36-65536 (`MemoryStartup.cls:117-119`); `DBSizesAllowed` a comma list of 4096, 8192, 16384, 32768 and 65536 that holds 8192, each `CheckBlockSizeAvailable` (`ValueEditor.cls:226-256`); `ListFormat` 0 or 1 (`ValueEditor.cls:409-414`); `%Library.Boolean` 0 or 1. Everything else follows `MINVAL`, `MAXVAL`, `VALUELIST` and `MAXLEN`, and the vendor's own validation stays the last word.
 - The armed restart test writes `errlog` for real and restores it. That leaves the throwaway's pending-restart flag set, because no restore clears it (measured; Story 18.21 measured the same). No test reads the flag except `EcpProbe` and `EncryptionProbe` snapshots, which compare before and after inside one test. The dev instance never runs it (armed).
 - Governance keys `true` (see Always).
+- **Batch 1 choices.**
+  - A set re-sends the complete `Get` array, the excluded and read-only keys as read (measured: a full-array `Modify` with one key changed changes only that key), after the rules judge the value. This is the runner's AD-4 ruling; the Always text's one-key `Modify` is superseded by it.
+  - An integer property that declares no `MINVAL` has a lower bound of 0 (stricter than the dictionary; the vendor's own check holds `gmheap` and `locksiz`, the two that declare only a maximum, to it). `bbsiz` -1 and `routines` 0 are accepted beside their ranges, and their `Accepts` line states the range alone ("A whole number from 256 to 2147483647."), because the ruled strings hold no sentence for a range plus one value.
+  - A vendor `Modify` refusal of a value the rules passed is answered 400 `CONFIG.SETTING.VALUE`, with the raw status logged (AD-39); no such refusal was found among the settings measured, so a test seam feeds it.
+  - The restart consequence is read from the fresh row's `Restart` through the port. The row action route's answer carries no consequence (no route does); the client shows the restart sentence from the row's `Restart`.
+  - Three read tools and a confusable group "Configuration settings" carry the screens' `read.label`; Compatibility's own pair is `%Admin_Secure:USE`, so a holder of OS management's pairs without it sees Compatibility settings unavailable.
+  - String keys the descriptors name, for batch 2 to add to `strings.ts` and EXPERIENCE.md: `startupSettingsLabel`, `memorySettingsLabel`, `compatibilitySettingsLabel`, `aboutStartupSetting`, `aboutMemorySetting`, `aboutCompatibilitySetting`, `configSettingsEmpty`, `startupSettingsEmptyAgent`, `memorySettingsEmptyAgent`, `compatibilitySettingsEmptyAgent` and `<startup|memory|compatibility>SettingsPrompt1` to `3`. `OcuPilot.Api.ConfigError`'s `REASON*` and `ACCEPTS*` parameters hold the other ruled sentences, to be pinned equal to their `strings.ts` keys.
+- **Task 0, measured on `ocupilot-ci` before code (batch 1).**
+  - Classic keys from `%SYS.Portal.Resources.NormalizePage`: `%CSP.UI.Portal.Config.Startup`, `%CSP.UI.Portal.Config.Memory`, `%CSP.UI.Portal.Config.Compatibility`, `%CSP.UI.Portal.MemoryStartup` and `%CSP.UI.Portal.Config.ValueEditor`, each answered as spelled and none carrying a custom resource on this instance. The descriptors' `classicPage` names the first three, and the tools' `CLASSICPAGES` add `%CSP.UI.Portal.MemoryStartup` (memory and startup) and `%CSP.UI.Portal.Config.ValueEditor` (all three).
+  - A `Modify` of `Config.Startup`, `Config.config` and `Config.Miscellaneous` by a caller holding only `%Admin_Manage:USE` and `%DB_IRISSYS:READ` fails `<PROTECT>` on `^SYS("CONFIG",...)` in each class; the same caller with `%DB_IRISSYS:WRITE` succeeds. So the write pairs add `%DB_IRISSYS:WRITE` (no longer an inference).
+  - A full-set `Modify` (every key `Get` answers, 35, 41 and 33 keys, one changed) changed exactly that key in each class and added no pending-restart reason for any other key (AD-4 comply holds; the one-key exception is not needed). An `errlog` change 500 to 501 made `Config.CPF.PendingRestart` answer one reason, `config`/`errlog` old 500 new 501; restoring it added a second reason and cleared none. A `SystemMode` set to `TEST` changed `$SYSTEM.Version.SystemMode()` from empty to `TEST`, and restoring it read empty again. `NullSubscripts` added no reason.
+  - `SYS.Database.CheckBlockSizeAvailable` answers 0 for 4096 and 1 for 8192, 16384, 32768 and 65536 on this build. The vendor's own `IsValid` refuses a negative `gmheap` and `locksiz` and passes `ListFormat` 5, `routines` 5 and `bbsiz` 100 (so those three are judged by the rules beyond the dictionary).
 - Pairs: reads `%Admin_Manage:USE` and `%DB_IRISSYS:READ` (the classic `RESOURCE`, in `%SYS`); Compatibility adds its own `%Admin_Secure:USE` (classic menu); writes add `%DB_IRISSYS:WRITE`, unless Task 0 measures otherwise (inference from every `Config.*` write in Epics 16 and 18). Stricter is allowed, looser is not.
 - The client reuses `InteropItemSettingDialog` by import rather than moving it. Moving it would edit an Epic 24 file, and a second dialog would copy it (Rule 31).
 
@@ -173,12 +253,42 @@ All rows are observed through the OcuPilot API on `ocupilot-ci`: the screen read
 
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), and the reverted source reloaded:**
 
-- AC1: `ConfigPort.Rows` drops the `Restart` member, then sends the whole `Get` array on a set -> `ConfigSettingRead` red, then `ConfigSettingWrite`'s other-keys-unchanged assertion red.
-- AC2: `ConfigSettingSet.Consequence` answers nothing -> `ConfigSettingWrite`'s restart test red; the client mapping removed -> `proposal-view.test.mjs` red.
-- AC3: `DefaultPort` removed from the read-only set -> `ConfigSettingRules` red.
-- AC4: `osmgmt.startupsettings.set` set `false` -> `ConfigSettingRead`'s governance test red.
+- AC1: `ConfigPort.BuildRow` drops the `Restart` member -> `ConfigSettingRead` red; `VendorModify` sends the one key alone -> `ConfigSettingRules`' key-list assertion red; `SendProperties` sends no `Modify` -> `ConfigSettingWrite`'s value assertions red (all three observed red and reverted, batch 1).
+- AC2: `ConfigSettingSet.Consequence` answers nothing -> `ConfigSettingWrite`'s restart test red (observed, batch 1); the client mapping removed -> `proposal-view.test.mjs` red; one word of a `ConfigError` sentence changed -> `config-settings.test.mjs` red (both observed, batch 2); the page's dialog statement without the restart sentence, and the page's banner after a Save without it -> `config-settings.page.spec.ts` red, one test each (observed). A capped read that loses its extra row (`Screen/Read.cls` asks the port for the cap alone) -> `ConfigSettingRead`'s truncation assertion red; `SCREENEMPTY` emptied -> its empty-names assertion red (observed).
+- AC3: `DefaultPort` removed from the read-only set -> `ConfigSettingRules` and `ConfigSettingRead` red (observed, batch 1; never against `ConfigSettingWrite`, which would write it); the page's `set` registration drops its `reason` -> `config-settings.page.spec.ts` and the browser spec's read-only test red (observed after rebuild and redeploy, batch 2).
+- AC4: `osmgmt.startupsettings.set` set `false` -> `ConfigSettingRead`'s governance test red; `osmgmt.compatibilitysettings.set` set `false` -> `ConfigSettingWrite`'s dispatch assertions red (observed, batch 1).
+
+**QA (Rule 19), on `ocupilot-ci`, each applied, observed red, reverted (`git status --short` and `git diff --stat` identical) and reloaded:**
+
+- (QA) `src/OcuPilot/Test/ConfigSettingMint.cls` (live-safe, four tests): the rules matrix asked at the mint, every read-only row refused at the port seam and the mint, each restart statement against its source, and the route's pairs.
+- mutation: `ConfigSettingRules.WriteProblem` sets no problem for a refused code (AC1) -> `ConfigSettingMint` red, two tests.
+- mutation: `ConfigPort.RESTARTCOMPATIBILITY` emptied (AC2) -> `ConfigSettingMint` red, the value editor's list and the `NullSubscripts` card.
+- mutation: `ConfigPort.READONLY` loses `WebServerName` (AC3) -> `ConfigSettingMint` red, the roster, port and mint refusals, and `ConfigSettingRead`'s read-only assertion red; run against the seam only.
+- mutation: `osmgmt.memorysettings.set` `false` in `Baseline` (AC4) -> `ConfigSettingRead` red, baseline and minted assertions.
+- mutation: `CompatibilitySettingList` drops `%Admin_Secure:USE` from `privileges` -> `ConfigSettingMint` route-pair test red.
+- The armed `ConfigSettingWrite` ran green with `OCUPILOT_ALLOW_CONFIG_SETTINGS=1`, four tests; `ConfigSettingRules` six and `ConfigSettingRead` eight green.
+
+**Code review (Rule 19), on `ocupilot-ci`, each applied, observed red, reverted (`git status --short` and `git diff --stat` identical) and reloaded:**
+
+- mutation: `RESTARTSTARTUP` without `MaxIRISTempSizeAtStart` (AC2) -> `ConfigSettingRead` red, "and no other startup setting states a restart".
+- mutation: `AcceptsOf`'s minimum-only branch removed -> `ConfigSettingRead` red, the `errlog` Accepts assertion.
+- mutation: `WRITEPAIRS` reduced to `%DB_IRISSYS:WRITE` -> `ConfigSettingRead` red, the hold-nothing write row.
+- mutation: `ValueHolds`' text branch answers 1 -> `ConfigSettingRules` red, the control-character assertion.
+- mutation: the page's `else this.refusal.set(...)` sets `''` -> `config-settings.page.spec.ts` red, the no-field refusal test.
+- mutation: `ConfigPort.EXCLUDED` loses `PasswordHash` (AD-35) -> `ConfigSettingRules` red (the matrix row and `TestPasswordHashIsInNoReadAndNoGetAndNoSetAndNoMint`) and `ConfigSettingRead` red (the exclusion roster and the absent-name loop).
+- mutation: `Registry.ReadProblem`'s config arm admits any endpoint -> `ConfigSettingRead.TestTheConfigSourceRefusals` red, the endpoint case; the same arm of `readProblem` in `screen-mirror.mjs` -> `screen-mirror.test.mjs`'s config case red.
+- After rework 1: `ConfigSettingRead` 9, `ConfigSettingRules` 7, `ConfigSettingMint` 4 and armed `ConfigSettingWrite` 4 green; `screen-mirror.test.mjs` 80 green.
+- After review: `ConfigSettingRead` 8, `ConfigSettingRules` 6, `ConfigSettingMint` 4, armed `ConfigSettingWrite` 4, `TeardownGuard` 4, `Descriptor` 60 green; `config-settings.page.spec.ts` 10 green; `check-objectscript.py` 0 problems.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**This pass (rework 1).** `PasswordHash` is in `ConfigPort.EXCLUDED`: no read lists it, no get, set or mint names it (404 `CONFIG.SETTING.NOTFOUND`, nothing sent), and the Design Notes AD-35 sentence now states what it holds. `WebServerName` and `WebServerProtocol` joined `ConfigPort.READONLY`, refused at both callers. The `config` read source's shape rules have a shared `Cases` corpus in `ConfigSettingRead` and a mirror test in `screen-mirror.test.mjs`. No new user-facing string. One comment word changed in `Kernel/Proposal/Prohibited.cls`.
+
+**Review.** 5 findings: 1 low patched (the rework's edit to the intent contract's Startup read row, restored), 4 rejected with reasons in the Review Triage Log. Follow-up review recommended: false (no high patched).
+
+**Verification.** `ConfigSettingRead` 9, `ConfigSettingRules` 7, `ConfigSettingMint` 4 and armed `ConfigSettingWrite` 4 green on `ocupilot-ci` after a reload (`LOADERRORS=0`); `test:tools` 2287 pass; `check-objectscript.py` 0 problems; `lint-docs.sh` clean. The Rule 19 mutations for the exclusion, the read-only roster and the shape rules are recorded in Verification, each observed red and reverted.
+
+**Residual risk.** The full ObjectScript sweep, `smoke.sh` and Rule 30's fresh check are the runner's.

@@ -75,6 +75,9 @@ const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor
 /** Stories 20.7 and 20.8: the one page the rule, BPL and DTL editor screens, the Schema viewer and the Configuration diagram share, each descriptor naming this loader. */
 const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/interop-editor.page').then((m) => m.InteropEditorPage);
 
+/** Stories 21.3 and 21.4: the one page the Startup, Memory, Compatibility, SQL, SQL Shell, TSQL and ISQL settings share, each descriptor naming this loader. */
+const CONFIG_SETTINGS_PAGE: PageLoader = () => import('../areas/os-management/config-settings.page').then((m) => m.ConfigSettingsPage);
+
 /** Story 20.9: a message's Contents tab, the detail page drawing its rows as one block of text. */
 const INTEROP_MESSAGE_CONTENTS_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-contents.page').then((m) => m.InteropMessageContentsPage);
 const INTEROP_MESSAGE_TRACE_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-trace.page').then((m) => m.InteropMessageTracePage);
@@ -161,6 +164,15 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
   'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.
+  'OcuPilot.Screen.Descriptor.StartupSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.MemorySettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, on the same page.
+  'OcuPilot.Screen.Descriptor.SqlSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.TsqlSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),

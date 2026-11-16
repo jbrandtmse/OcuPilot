@@ -138,6 +138,13 @@ XData Elsewhere
 <screen name="BackupDatabaseList"/>
 <screen name="BackupHistoryList"/>
 <screen name="BackupTaskList"/>
+<screen name="CompatibilitySettingList"/>
+<screen name="SqlSettingList"/>
+<screen name="SqlShellSettingList"/>
+<screen name="TsqlSettingList"/>
+<screen name="IsqlSettingList"/>
+<screen name="MemorySettingList"/>
+<screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsFolderItemList"/>

@@ -9225,6 +9225,8 @@ So that instance tuning is possible here.
 
 ### Story 21.4: NLS locales and SQL settings
 
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] This story keeps the SQL, TSQL and ISQL settings (with the SQL Shell settings) and the English-interface criterion. The DDL-mapping settings moved to Story 21.13, the NLS configured defaults and the locale definitions editor to Story 21.14, and locale and table import to Story 21.15, each planned next in that order; the first criterion is split verbatim across the four.
+
 As an operator,
 I want locales, collation and the SQL settings,
 So that a localized instance is configurable.
@@ -9241,6 +9243,8 @@ So that a localized instance is configurable.
 
 ### Story 21.5: Globals and the data tools
 
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] This story keeps the global list, view, edit and kill. Export and import moved to Story 21.17 and find and replace to Story 21.18, each planned next in that order; the criterion is split verbatim across the three.
+
 As a developer,
 I want globals listed, viewed, edited, killed, exported and imported,
 So that the last of the Explorer's data surfaces exists.
@@ -9250,6 +9254,8 @@ So that the last of the Explorer's data surfaces exists.
 - **Given** the global list, view, edit, kill, export and import, and find and replace
 - **When** each runs
 - **Then** it round-trips, every write a confirmed proposal and every kill destructive by name.
+
+- DW-2607: The shipped System Explorer import judges global self-protection by name only; the protected-global arm covers imported .GBL documents too (ledger; routed by harvest 2026-11-15)
 
 ### Story 21.6: The SQL tuning track
 
@@ -9269,6 +9275,8 @@ So that performance work has a home.
 
 ### Story 21.10: The remaining leaves across the six areas
 
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] The plan inventoried 21 leaves against the instance (the second criterion, met at the plan). This story keeps the security settings leaves (system-wide security parameters, mobile phone providers, audit log export) and the owner-decided KMIP journal refusal (DW-2431); the shell, advisor, permission and task leaves moved to Story 21.19, the OS management and log leaves to Story 21.20, the leaves that wait on the owner to Story 21.21, the CI flake entries to Story 21.22 and the test-hygiene entries to Story 21.23, each planned after this story in that order. The first criterion is split verbatim across them by leaf.
+
 As a developer-administrator,
 I want the last classic-portal leaves in the areas OcuPilot already owns,
 So that no area has a remaining gap.
@@ -9282,30 +9290,241 @@ So that no area has a remaining gap.
 - **Given** any leaf whose backing class was never inventoried
 - **When** it is picked up
 - **Then** the class is identified against the instance first, and that is the story's first task.
-- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by merge_gate 2026-10-06)
-- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by merge_gate 2026-10-06)
-- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by merge_gate 2026-10-06)
-- DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descript... (ledger; routed by range-end sweep 2026-11-14)
-- DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5 (ledger; routed by range-end sweep 2026-11-14)
-- DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun (ledger; routed by range-end sweep 2026-11-14)
+- DW-2431: AD-10's KMIP arm does not judge journal encryption; the owner-approved refusal sentence is added (ledger; routed by owner answer U-30, 2026-11-15)
+- DW-2457: A write tool whose target is longer than Propose.TARGETREFMAX (2,200 characters), such as an explorer compile or delete of up to 100 long document... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 
 ### Story 21.12: Mirroring
 
 [AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.2, whose mirroring criteria it carries verbatim; it is planned next after Story 21.2.
 
+[AMENDED 2026-11-15, owner answer U-39, "A: monitor + refusal (Recommended)", Rule 5] This story keeps the mirror monitor and the prohibited-removal refusal. The mirroring writes (create, edit for failover and async members, join, and member and database actions) move to Epic 22's license-gated group as rows in its exclusion register, because this project's Community license allows no mirroring and a join needs a second instance.
+
 As an operator,
-I want the mirroring set,
-So that the highest-consequence operations are reachable.
+I want the mirror monitor and OcuPilot's refusal of the prohibited removal,
+So that the highest-consequence mirroring operation is guarded and the mirror's state is visible.
 
 **Acceptance Criteria:**
 
-- **Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
-- **When** each runs
-- **Then** it round-trips.
+- **Given** the mirror monitor
+- **When** it runs
+- **Then** it reads the instance's mirror state, including not being a member.
 
-- **Given** these are the most destructive operations OcuPilot has ever exposed
-- **When** the prohibited set is revisited
-- **Then** every mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- **Given** removing a mirror with the option that takes its databases out of mirroring (AD-10)
+- **When** either caller asks for it
+- **Then** it is refused, with its code named at this story's spec gate.
+
+- **Given** the mirroring writes this story no longer builds
+- **When** the exclusion register is read
+- **Then** each has a row in its license-gated group naming the license it needs.
+
+### Story 21.13: DDL mappings
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose DDL-mapping criterion it carries verbatim; it is planned next after Story 21.4.
+
+As an operator,
+I want the SQL DDL mappings,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the DDL-mapping settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.14: NLS configured defaults and locale definitions
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose NLS configured-defaults and locale-definitions criterion it carries verbatim; it is planned next after Story 21.13.
+
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] This story keeps the NLS configured defaults and the locale list with its validate, install and delete actions; Copy, the locale properties editor and Load table moved to Story 21.16, planned after Story 21.15. The first criterion is split verbatim across the two.
+
+As an operator,
+I want the NLS configured defaults and the locale definitions,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the NLS configured defaults and the locale definitions editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.15: Locale and table import
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose locale and table import criterion it carries verbatim; it is planned next after Story 21.14.
+
+As an operator,
+I want locale and table import,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** locale and table import
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+- DW-2606: Locale export (catalog SA-27, with the classic page's file browse) joins this story (ledger; routed by owner answer U-58, 2026-11-15)
+
+### Story 21.16: Custom locales
+
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.14, whose locale-definitions-editor criterion it carries verbatim for copying a locale, its properties editor and loading a locale's table; it is planned next after Story 21.15.
+
+As an operator,
+I want to copy a locale, edit a custom locale's properties and load a locale's tables,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the locale definitions editor's copy, properties and table-load actions
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+
+### Story 21.17: Global export and import
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose export and import criterion it carries verbatim; it is planned next after Story 21.5.
+
+As a developer,
+I want globals exported and imported,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** global export and import
+- **When** each runs
+- **Then** it round-trips, every write a confirmed proposal.
+
+- DW-2608: Importing over an existing global refuses as changed because its version reads as the current time (ledger; routed by harvest 2026-11-15)
+
+### Story 21.18: Global find and replace
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose find-and-replace criterion it carries verbatim; it is planned next after Story 21.17.
+
+As a developer,
+I want find and replace across a global's values,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** find and replace
+- **When** it runs
+- **Then** it round-trips, every write a confirmed proposal.
+
+
+### Story 21.19: Shell, advisor, permission and task leaves
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- DW-2372: A create form's first hand-off to an editor in another page module shows the form's Saved status while that editor's page code loads (Story 20.29) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2471: A 200 answer that is not a screen read's shape leaves a read-state screen with no alert: screen-read.ts classifies it server-fault, ApiService... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.20: OS management and log leaves
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want canceling a running query, the transactions view and the system alerts state and reset,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** canceling a running query, the transactions view and the system alerts state and reset
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-2479: LogSourcePort.LocalFromUtc's conversion direction cannot be falsified on the UTC test instances, as DW-1783 found for the agent ledger (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.21: Leaves that wait on the owner
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+[AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
+
+As a developer-administrator,
+I want a custom resource on a classic menu item and an Operate-only dismount,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** a custom resource on a classic menu item and the Operate-only dismount
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- **Given** security escalation, Contact WRC, diagnostic reports and Web Gateway management
+- **When** the exclusion register is read
+- **Then** each has a not-planned row with its reason: OcuPilot's own token's roles, a send to the vendor (NFR-6), and no backing class.
+
+- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-1280: A write that fails after the claim tells the user a tool could not be answered, on a path whose own class header says confirm is not a tool (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.22: CI flake hardening
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want the routed CI flakes fixed at their cause,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the routed flake entries
+- **When** each is worked
+- **Then** its test waits on the system's own readiness signal or is fixed at its cause, and the entry is closed with the evidence.
+
+- DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descript... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5 (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2544: flake: stream-reply.browser-spec.mjs (c) to (f) timed out (Navigation timeout of 30000 ms with one request in flight; a 60000 ms wait) in CI browser... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2553: flake: SslSecret.TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither ('a wrong password is refused on its field') failed in CI... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.23: Test hygiene and contended client fixes
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want the routed test-hygiene and small client entries closed,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the routed test-hygiene and client entries
+- **When** each is worked
+- **Then** it is fixed, or closed with its reason, without changing a product behavior its story ruled.
+
+- DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/ (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2459: check-objectscript.py has no rule for a Parameter whose value is a {...} expression naming a project class the class neither extends nor declares... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2499: Rule 31: the Area screen-editor Rules classes repeat Problem's violation sentence (29 files), Taken's probe (12) and HandleForm's read (30),... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2369: AgentNavigator reports a screen whose page code cannot load as a refusal for unsaved changes, since Story 20.29 made a failed page-chunk load reject... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 
 ---
 

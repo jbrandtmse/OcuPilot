@@ -180,6 +180,15 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.3: the three settings screens' Set value, which opens the page's dialog.
+  'OcuPilot.Screen.Descriptor.StartupSettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.MemorySettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.4: the four SQL settings screens' Set value, which opens the same page's dialog.
+  'OcuPilot.Screen.Descriptor.SqlSettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.TsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
   // Story 24.2: Term lists' New term list opens the dialog that creates a list, its Edit term list the dialog that changes one and its Delete removes one;

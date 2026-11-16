@@ -120,13 +120,18 @@
 /// <p><code>backup-task</code> is one backup task of the instance, keyed by its name, kept exactly (AD-13, Story 21.2); the instance's database
 /// writes, which a freeze and a thaw act on, are the literal <code>SYSTEM</code> under it. <code>backup-database</code> is one database on the
 /// backup database list, keyed by its name without regard to case. Each is instance-scoped.</p>
+/// <p><code>startup-setting</code>, <code>memory-setting</code> and <code>compatibility-setting</code> are one setting of the instance's startup,
+/// memory and compatibility configuration, keyed by its name, kept exactly (AD-13, Story 21.3). Each is instance-scoped and has no
+/// <code>IDRULES</code> row. <code>sql-setting</code>, <code>sql-shell-setting</code>, <code>tsql-setting</code> and
+/// <code>isql-setting</code> are one setting of the instance's SQL configuration, the SQL Shell's defaults and the TSQL and ISQL
+/// compatibility settings, under the same rules (Story 21.4).</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,backup-task,backup-database";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

@@ -391,12 +391,23 @@ development_status:
   epic-21: in-progress
   21-1-the-harvest-seam: done
   21-2-backup: done
-  21-3-startup-memory-and-compatibility-settings: ready-for-dev
-  21-4-nls-locales-and-sql-settings: backlog
-  21-5-globals-and-the-data-tools: backlog
+  21-3-startup-memory-and-compatibility-settings: done
+  21-4-nls-locales-and-sql-settings: done
+  21-5-globals-and-the-data-tools: ready-for-dev
   21-6-the-sql-tuning-track: backlog
   21-10-the-remaining-leaves-across-the-six-areas: backlog
-  21-12-mirroring: backlog
+  21-12-mirroring: ready-for-dev
+  21-13-ddl-mappings: ready-for-dev
+  21-14-nls-configured-defaults-and-locale-definitions: ready-for-dev
+  21-15-locale-and-table-import: ready-for-dev
+  21-16-custom-locales: ready-for-dev
+  21-17-global-export-and-import: ready-for-dev
+  21-18-global-find-and-replace: ready-for-dev
+  21-19-shell-advisor-permission-and-task-leaves: backlog
+  21-20-os-management-and-log-leaves: ready-for-dev
+  21-21-leaves-that-wait-on-the-owner: backlog
+  21-22-ci-flake-hardening: backlog
+  21-23-test-hygiene-and-contended-client-fixes: backlog
   epic-21-retrospective: optional
 
   epic-22: done

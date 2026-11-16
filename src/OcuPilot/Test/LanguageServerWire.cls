@@ -294,6 +294,10 @@ Method TestAnAreaHolderKeepsOsManagementAndIsRefusedTheServers()
         Do $$$AssertTrue(tBackupAt > 0, "the Backup screen " _ tBackup _ " is refused on its own pair, %DB_IRISSYS:WRITE: " _ $ListToString(tRefused, " "))
         If tBackupAt Set tRefused = $List(tRefused, 1, tBackupAt - 1) _ $List(tRefused, tBackupAt + 1, *)
     }
+    ; Story 21.3's Compatibility settings declares %Admin_Secure:USE as its own pair, which this principal does not hold.
+    Set tCompat = $ListFind(tRefused, "os-management/compatibility-settings=%Admin_Secure:USE")
+    Do $$$AssertTrue(tCompat > 0, "Compatibility settings is refused on its own pair, %Admin_Secure:USE: " _ $ListToString(tRefused, " "))
+    If tCompat Set tRefused = $List(tRefused, 1, tCompat - 1) _ $List(tRefused, tCompat + 1, *)
     Do $$$AssertEquals($ListToString(tRefused, " "), "os-management/language-servers=" _ ..#OWNPAIR, "only External language servers is refused, on its own pair, beside the screens that declare one of their own")
     Do $$$AssertTrue(tOpen > 0, "and every other listed OS management screen is open")
     For tRead = "osmgmt.languageservers/read?maxRows=5", "osmgmt.languageserveractivity/read?maxRows=5&name=" _ ##class(%CSP.Page).EscapeURL(..#PROBE) {

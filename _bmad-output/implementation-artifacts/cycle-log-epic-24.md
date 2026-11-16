@@ -99,3 +99,4 @@
 2026-11-16T00:14:27Z	Story 24.3	fresh_check	env=recipe tests=19_classes+8_specs result=pass order=forward,reverse classes_tests=237 browser=57/57_together,reverse_singly_green components=3469
 2026-11-16T00:16:17Z	Story 24.3	committed	sha=87704295e submodules= ci=pending runs=43779335677 amendments=epics.md_24.3_AC_cut,epics.md_24.15-24.19_inserted
 2026-11-16T00:16:17Z	Story 24.3	story_cycle	plan_to_commit_min=430 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-16T00:32:05Z	Story 24.4	integrate_forward_resolved	feature=b4be0c8f2 conflicts_resolved=sprint-status.yaml,EXPERIENCE.md(11_pairs_reapplied_on_theirs),ClassicPageGate,MappingDescriptor,ReadTool,ToolRoundTrip,ToolWrite method=union counts_rederived=yes count_mutations_red=6 spine=clean_merge_lint_preexisting_low verification=32_classes_green,test:tools,test:components,build pending=ConfigSettingWrite,SqlSettingWrite_need_merged_throwaway

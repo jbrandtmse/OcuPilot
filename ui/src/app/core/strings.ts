@@ -8030,6 +8030,114 @@ export const STRINGS = {
   backupDatabasesPrompt2: 'Is this database on the backup list?',
   /** EXPERIENCE.md:604 */
   backupDatabasesPrompt3: 'Why is a database missing from the backup list?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsLabel: 'Startup settings',
+  /** EXPERIENCE.md:604 */
+  memorySettingsLabel: 'Memory settings',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsLabel: 'Compatibility settings',
+  /** EXPERIENCE.md:604 */
+  aboutStartupSetting: 'Startup setting',
+  /** EXPERIENCE.md:604 */
+  aboutMemorySetting: 'Memory setting',
+  /** EXPERIENCE.md:604 */
+  aboutCompatibilitySetting: 'Compatibility setting',
+  /** EXPERIENCE.md:604 */
+  configSettingsEmpty: 'No settings to show.',
+  /** EXPERIENCE.md:604 */
+  startupSettingsEmptyAgent: 'change a startup setting',
+  /** EXPERIENCE.md:604 */
+  memorySettingsEmptyAgent: 'change a memory setting',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsEmptyAgent: 'change a compatibility setting',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt1: 'Which startup settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt2: 'What does ShutdownTimeout control?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt3: 'Explain the job and process start and halt settings.',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt1: 'How much memory goes to the database cache for each block size?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt2: 'Which memory settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt3: 'What do gmheap and locksiz control?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt1: 'What does NullSubscripts change?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt2: 'Which compatibility settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt3: 'What does the Undefined setting do?',
+  /** EXPERIENCE.md:604 */
+  configRefusalNotFound: 'There is no setting with that name.',
+  /** EXPERIENCE.md:604 */
+  configRefusalReadOnly: 'This setting is shown here and never changed here.',
+  /** EXPERIENCE.md:604 */
+  configRefusalValue: 'This setting does not accept that value.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBoolean: '0 (off) or 1 (on).',
+  /** EXPERIENCE.md:604 */
+  configAcceptsRange: 'A whole number from %1 to %2.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsMinimum: 'A whole number of at least %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsChoice: 'One of %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsText: 'Text of up to %1 characters.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBlockSizes: 'Block sizes from 4096, 8192, 16384, 32768 and 65536, separated by commas; 8192 is required.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsReadOnly: 'Shown here and never changed here.',
+  /** EXPERIENCE.md:604 */
+  configSettingPurge: 'Changing this setting purges the cached queries in every namespace.',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsLabel: 'SQL settings',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsLabel: 'SQL Shell settings',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsLabel: 'TSQL settings',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsLabel: 'ISQL settings',
+  /** EXPERIENCE.md:604 */
+  aboutSqlSetting: 'SQL setting',
+  /** EXPERIENCE.md:604 */
+  aboutSqlShellSetting: 'SQL Shell setting',
+  /** EXPERIENCE.md:604 */
+  aboutTsqlSetting: 'TSQL setting',
+  /** EXPERIENCE.md:604 */
+  aboutIsqlSetting: 'ISQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsEmptyAgent: 'change a SQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsEmptyAgent: 'change a SQL Shell setting',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsEmptyAgent: 'change a TSQL setting',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsEmptyAgent: 'change an ISQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt1: 'Which SQL settings purge the cached queries when they change?',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt2: 'What does LockThreshold control?',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt3: 'Which SQL settings are shown and never changed here?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt1: 'Which settings does the SQL Shell start with?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt2: 'What does the SQL Shell\'s SelectMode change?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt3: 'What does ExecuteMode do in the SQL Shell?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt1: 'Which TSQL dialect does this instance use?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt2: 'What does ANSI_NULLS change for TSQL?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt3: 'What does QUOTED_IDENTIFIER control?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt1: 'What does DELIMIDENT change?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt2: 'What does RESERVEDWORDPREFIX do?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt3: 'Which ISQL settings are on?',
 } as const;
 
 /**
