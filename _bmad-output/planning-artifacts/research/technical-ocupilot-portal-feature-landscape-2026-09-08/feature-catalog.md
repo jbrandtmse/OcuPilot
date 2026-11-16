@@ -33,9 +33,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | 10. System Explorer and data browser | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | 0 | 1 | 28 | 69 | 20 | 118 |
 | 12. Analytics | 0 | 1 | 9 | 7 | 7 | 24 |
-| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 9 | 2 | 12 |
+| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 8 | 3 | 12 |
 | 14. Packaging, deployment and submission | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | **119** | **62** | **137** | **157** | **63** | **538** |
+| **All sections** | **119** | **62** | **137** | **156** | **64** | **538** |
 
 **SMP leaf coverage** (leaves covered / leaves in digest): System Administration 90/90 (54 Configuration incl. 3 Sharding and 6 Mirror, 30 Security, 2 Licensing, 4 Encryption); System Operation 36/36; System Explorer 11/11; Analytics 18/18 (13 DeepSee + 5 Text Analytics); Interoperability 68/68 live and 76/76 in source (the 8 non-rendered leaves are P4 rows IO-78..IO-81 and IO-90). Distinct write actions on P0/P1/P2 pages have their own rows; P4 pages are one row per page or per group as noted in Gaps.
 
@@ -451,7 +451,7 @@ This catalog turns the thirteen research digests and two verification files of t
 | EX-54 | Print catalog / print query results | %CSP.UI.Portal.SQL.PrintTable / PrintQuery | none (browser print) | — | — | P3 | S | none | smp-explorer-analytics-home Print row |
 | EX-55 | FileMan mapping wizard | %CSP.UI.Portal.FileMan | custom(%FileMan.File, background FileMan) | — | — | P4 | L | none | smp-explorer-analytics-home FileMan row — excluded: VA-specific legacy wizard |
 | EX-56 | WebStress tool | %WebStress.Portal.Home | none | — | — | P4 | L | none | smp-explorer-analytics-home WebStress row — excluded: WebStress |
-| EX-57 | UnitTest Portal (results browser) | %UnitTest.Portal.Home | none (see DT-03 runner) | — | — | P4 | M | none | smp-explorer-analytics-home UnitTest Portal row — excluded: UnitTest Portal |
+| EX-57 | UnitTest Portal (results browser) | %UnitTest.Portal.Home | none (see DT-02 runner) | — | — | P4 | M | none | smp-explorer-analytics-home UnitTest Portal row — excluded: UnitTest Portal |
 | EX-58 | Data browser: connection status / disconnect | new | none | table-editor main.js handleConnectionStatus | — | P4 | S | none | harvest-table-editor Connection status row — excluded: not applicable when served from the same IRIS instance |
 
 ## 11. Interoperability (IO)
@@ -612,7 +612,7 @@ This catalog turns the thirteen research digests and two verification files of t
 |---|---|---|---|---|---|---|---|---|---|
 | DT-01 | DocDB data browser: databases list / create / drop; documents insert / get / update / delete; find; properties and indexes | new (SMP has only the security app list, WA-11) | official-REST /api/docdb/v1/:ns (needs %Service_DocDB) | execute-mcp data docdb.ts | iris_docdb_manage; iris_docdb_document; iris_docdb_find; iris_docdb_property | P2 | M | write-confirm | api-coverage %Api.DocDB row; harvest-execute-mcp data tools |
 | DT-02 | Unit test runner (run %UnitTest by package / class / method; results from %UnitTest.Result) | new (UnitTest Portal excluded, EX-57) | official-REST atelier POST /:ns/work + GET /work/:id (async) | execute-mcp dev execute.ts | iris_execute_tests | P3 | M | write-confirm | harvest-execute-mcp iris_execute_tests |
-| DT-03 | Async work queue viewer (queued Atelier work items; cancel) | new | official-REST atelier GET/DELETE /:ns/work/:id | — | iris_execute_tests | P3 | S | read | api-coverage Atelier v1 routes |
+| DT-03 | Async work queue viewer (queued Atelier work items; cancel) | new | official-REST atelier GET/DELETE /:ns/work/:id | — | iris_execute_tests | P4 | S | read | api-coverage Atelier v1 routes — excluded: the instance-wide work queue records no owner, a poll consumes another client's result, and nothing lists the queue; the unit-test runner keeps its own run record (owner answer U-77, 2026-11-16) |
 | DT-04 | Web terminal (Atelier v7 /%SYS/terminal WebSocket) | new (community WebTerminal prior art) | official-REST atelier GET /%SYS/terminal | — | — | P3 | L | none | api-coverage v7 delta; contest-field WebTerminal row |
 | DT-05 | Execute ObjectScript command console (output capture with 32768-char ceiling) | new | custom(ExecuteMCPv2.REST.Command pattern) | execute-mcp Command:Execute | iris_execute_command | P3 | M | write-confirm | harvest-execute-mcp iris_execute_command |
 | DT-06 | Execute class method (typed args, ByRef/Output markers) | new | custom(ExecuteMCPv2.REST.Command ClassMethod) | execute-mcp Command:ClassMethod; Utils.InvokeWithArgs | iris_execute_classmethod | P3 | M | write-confirm | harvest-execute-mcp iris_execute_classmethod |
@@ -684,6 +684,7 @@ This catalog turns the thirteen research digests and two verification files of t
 - **SS-29 Superservers at P2** per the explicit list, although it sits under Security in the SMP.
 - **SA-01 / SA-02 External language servers at P1** per the tier rule, ahead of all other System Administration remainder rows.
 - **DT-11 remote instance profiles at P4** (owner answer U-45): environment diff and promote (DT-09, DT-10) compare namespaces of this instance.
+- **DT-03 async work queue viewer at P4** (owner answer U-77): the unit-test runner (DT-02) shows its own run record instead.
 
 ## Gaps
 

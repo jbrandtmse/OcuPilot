@@ -1306,7 +1306,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A fourth unadvertised tool** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `security.alloweddirectories.update` is never the agent's (AD-21), its key ships disabled, and its one caller is `POST /allowed-directories`, so it declares no `SCREENACTIONS`; its `SecurityChange` row leaves no named gap.
 
-  **A fifth unadvertised tool** [AMENDED 2026-11-16, Story 24.5 spec gate, owner answer U-86: "A", Rule 20]: `explorer.unittests.run` (Story 24.5) is a person's alone under AD-10's run-code exception; its key ships `false` and is asked by the screen action route (AD-22), and it has no mint, no proposal card and no copy-out draft.
+  **A fifth unadvertised tool** [AMENDED 2026-11-16, Story 24.5 spec gate, owner answer U-86: "A", Rule 20]: `explorer.unittests.run` (Story 24.5) is a person's alone under AD-10's run-code exception; its key ships `false` and is asked by the screen action route (AD-22), and it has no mint, no proposal card and no copy-out draft. Named audit gap: a run records no vendor audit event (measured on `ocupilot-b-ci` with auditing on, Story 24.5 Task 0).
 
   **A registered screen action may carry its registrant's reason** [AMENDED 2026-10-12, Story 18.46 spec gate, Rule 20] (`ScreenActions`), drawn on every surface as a self-protection reason is.
 

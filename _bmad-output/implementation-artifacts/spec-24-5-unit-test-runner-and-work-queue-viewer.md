@@ -2,9 +2,10 @@
 title: 'Story 24.5: Unit-test runner and its run record'
 type: 'feature'
 created: '2026-11-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '792ddf914f60d529fbbc48a92f5227c0fb092a14'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred: []
@@ -247,9 +248,40 @@ In every refusal row the recorder records no body call, and the root global and 
 
 ## Review Triage Log
 
+### 2026-11-16 - Review pass
+
+- verdicts: 17 findings - high 0, medium 3, low 11, false 3, maybe-false 0
+- findings (verification-gap, then intent-alignment):
+  - `[false]` `reject` Preview with the key off is not tested - a public preview of this two-value action answers 400 at the values check before the key ask, and `/dryrun` is 404 (the tool declares no `DRYRUN`); a test through the route cannot reach the ask, and an attempt answered 400 (observed).
+  - `[medium]` `patch` The run body's `CountResults` fallback has no test - `UnitTestRecord` gained a test that builds a run in the test's own namespace and asserts the four counts; mutation recorded.
+  - `[medium]` `patch` The "existing directory is left alone" row used the manager directory itself - the row now uses the install directory; mutation recorded.
+  - `[medium]` `patch` Browser spec test 3 relied on test 2's stored key - it stores the key itself.
+  - `[low]` `patch` The `ResolveWire` dotted-name leg could never resolve - removed; the lookup by tool name is the separate `Resolve` leg.
+  - `[low]` `reject` `RunSnippet` is unreachable - the draft roster requires the form for every registered write; the tool is unadvertised.
+  - `[low]` `reject` The root guard is textual and `^|ns|UnitTestRoot` is another spelling - the spec admits the token in one file; the one-file rule is held by review.
+  - `[low]` `reject` Harvest identity is a hash, not a comparison with the sibling - the sibling lives outside the repository; the hash pins the copy.
+  - `[low]` `patch` The `shell.tools.find` leg had no positive control - it now asserts the read tool is found for the same words.
+  - `[low]` `reject` ObjectScript tests reach the recorder, not the real body - by spec: no ObjectScript test starts a `%UnitTest` run; the browser spec runs the real body.
+  - `[false]` `reject` The preview paths are covered by construction only - same evidence as the first row.
+  - `[low]` `reject` The `PERSONONLY` arm is a backstop no shipped registry triggers - by spec (AC5 asks it of a fixture registry).
+  - `[false]` `reject` `..` methods run while the namespace is switched - checked on the instance: `USER` and `%SYS` hold no OcuPilot class and the run works from `USER`, because the already loaded routine answers; no OcuPilot class is named.
+  - `[low]` `reject` A copy-out script form exists - the draft roster demands it; nothing mints it.
+  - `[low]` `reject` The confirmation is client-only - AD-53: the dialog is the review.
+  - `[low]` `reject` Harvest identity by hash - same as above.
+  - `[low]` `reject` The runs screen hosts the Run form beside its read - by spec.
+
 ## Design Notes
 
 **Owner answer U-86 (2026-11-16, "A"):** the runner is built with a named AD-10 exception for a test class's own code: off by default, people only, every run confirmed with its consequence named. The DW-2634 fix (Story 21.30) is on feature. Stories 24.6 and 24.7 carry the same answer (U-78 A) and reuse this gate.
+
+### Task 0 (measured), on `ocupilot-b-ci`, 2026-11-16
+
+1. **Colon-form run in `USER`.** With the root set to `$System.Util.ManagerDirectory()`, `RunTest(":OcuProbe245.Mixed", "/noload/nodelete/norecursive")` returned an OK status and recorded run 1; the root was empty before and killed after; `ls /usr/irissys/mgr` was identical before and after (36 entries, same names).
+2. **Under `HarvestPort`'s capture, from `HSCUSTOM`, switched to `USER`.** `BeginCapture` and `EndCapture` both answered OK, the namespace read `HSCUSTOM` again afterwards, the capture returned 9 lines, and the run landed (run 2).
+3. **Least-privileged principal.** A user holding only a role of `%Development:USE`, `%DB_USER:RW`, `%DB_ENSLIB:R`, `%DB_IRISLIB:R` and `%DB_HSCUSTOM:R` (the last so that OcuPilot's own code can run) reads `%UnitTest_Result` through `%ExecDirect` with privilege checks on: refused -99 "not privileged for the operation". Through `%ExecDirectNoPriv` after the port's gate it reads (count 3, max 3), and `DevToolPort` ran a class and listed the runs as that user (200). The record reads and the failed-count query therefore use `%ExecDirectNoPriv`.
+4. **Lock.** The same principal took `Lock +^CacheTemp.OcuPilotUnitTestRun:0` (`$Test` 1).
+5. **Duration.** The probe run's recorded `Duration` was 0.0006 to 0.0007 s and the whole call under 0.003 s.
+6. **Vendor audit event.** `AuditEnabled` is 1 on the throwaway and the audit log was recording `%System/%Security/*` events during the window. A run in `USER` between two timestamps recorded 0 new `%SYS.Audit` rows. A run leaves no vendor audit event on this instance's enabled event set, so Unit tests' Run is a named audit gap. The spine was not edited.
 
 ### The gate chosen, and why
 
@@ -260,6 +292,26 @@ In every refusal row the recorder records no body call, and the root global and 
   - Alternatives rejected: AD-64's per-screen pairs lower or raise a requirement but cannot ship a screen closed. A new `Security.Resources` resource would need an installer change and a role grant: more parts, and a privilege change in the veto window.
 - **"Gated like the vendor terminal"** (measured from source and on `ocupilot-b-ci`): the vendor's web terminal asks only `%Development:USE`, and `%Service_Terminal` is enabled. The runner asks that pair, the namespace pairs and WRITE on the routines database, behind a key that is off by default. It is stricter, never looser.
 - The kill switch and enforced read-only still do not gate it (AD-53). The governance preset does, through the key, as it does for the allow-list.
+
+### Decided in-stage (24.5 implement), each reversible
+
+- The root global is reached by an extended reference (`^|ns|UnitTestRoot`), so the run switches no namespace for it and the literal `^UnitTestRoot` appears only in `DevToolPort`.
+- The run body counts through `UnitTestRun.CountResults` (`%ExecDirectNoPriv`, after the port's gate) when `ParseTestResults` answers its `error` member; for a principal that holds `%Development:USE` and the database pairs but no SQL privilege the harvested method alone answers 0 and 0.
+- `STATE` and `RUN` of `UnitTestRun` both ask `WritePairs`, so a caller short of WRITE is refused by name at the fresh read, before the Run.
+- `explorer.unittests.run` declares `FINGERPRINTSUBJECT` with `Busy` added and `PRECONDITIONFIELD` `Busy`: the registration guard requires the precondition field inside the subject. `PRECONDITIONCODES` names the production and busy refusals.
+- A body that records no run renders `{run: 0}`; `DevToolPort` turns that into 500 `EXPLORER.UNITTEST.NORESULT`, logged, because `HarvestPort` answers any failed render as `INTERNAL`.
+- `ExplorerUnitTests` is archetype `list` with a single id, and declares no `rowTarget`: a `rowTarget` is refused on a `list (server criteria)` archetype and on a screen that pairs a child, and `ExplorerUnitTestRun`'s `parentScope` already links the name cell to the methods list.
+- `SnippetForm`/`Snippet` answer one `objectscript` (a class or method) or `comment` (a package) step for the run, because `DraftRegistry` demands a form of every registered write; no draft is ever minted for it.
+- The package cap fixture lowers `MaxTestClasses` to 0 (not 1): the probe package holds one test class, so the matrix's Run package row keeps its one class.
+- `PortGate`'s roster lists the two harvested classes as `<body>`.
+- Test seam: `UnitTestTool.Run` (the shipped tool with the recording port), `UnitTestTool.Registry`, `UnitTestActionFixture` and `UnitTestPersonOnlySet`; `DevToolHarvestRecorder` refuses to run the unit-test body unless an answer is armed, so no test starts a run.
+- The harvested-identity test (`UnitTestRecord`) hashes each method's code; the one comment the rename table touched is not code.
+
+### Unspecified strings the screen mirror forced (Clarification Needed)
+
+- A third suggested prompt on both screens, "How many tests passed in the newest run?" (the mirror requires at least three; the spec lists two).
+- The runs list's agent phrase "explain why a test failed" (a write-capable descriptor must declare one).
+- The methods list reuses the existing `tableReadOnlyEmptyNext` (mechanical), so it adds no sentence.
 
 ### Governing ADs
 
@@ -284,6 +336,8 @@ In every refusal row the recorder records no body call, and the root global and 
 - **The screen does not draw Run off before a click.** The off sentence arrives at Confirm, on the surface every refusal uses. Reversible: a later story may read the verdict as the allow-list screen does.
 - **`entityType` is `class` with a literal target,** as the SQL console declares. No new entity type.
 - **No copy-out draft:** a person-only tool mints nothing.
+
+- **Decided in this pass (reversible):** `scripts/check-objectscript.py` admits `^UnitTestRoot` in `src/OcuPilot/Port/DevToolPort.cls` only, and lists `OcuPilot.Port.Harvest.UnitTestRun` among the harvested bodies `DevToolPort` alone may name (`HARVEST_CALLERS`); the harness gains one case for that file and one for any other. `Test/ToolEmit.cls` gains one branch for `ExplorerUnitTestRun` (screen pairs alone, as the promote's), because its generic write branch expects the tool's own write pair, which this tool does not declare. The Prohibited code-list comment now reads forty.
 
 ### Integration ACs, Consumed-by and Consumes
 
@@ -361,18 +415,30 @@ Written at the spec gate on 2026-11-16, citing owner answer U-86: the AD-10 para
 - `(loop)` `uv run scripts/check-objectscript.py && uv run scripts/test_check_objectscript.py` -- expected: clean.
 - `(once)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --shard k/17`, for k = 1..17, one call each -- expected: green. The full browser suite is left to CI.
 
-**Mutations (Rule 19), one per AC:**
+**Mutations (Rule 19), one per AC:** each applied on `ocupilot-b-ci` (ObjectScript recompiled with the whole tree; the client rebuilt), observed red, reverted byte-identically (`cmp` against a saved copy) and the tree reloaded.
 
-- AC1: skip the root restore → the browser spec's root assertion goes red.
-- AC2: drop the `Status=0` filter on `Failure` → `UnitTestRecord`'s failure-text test goes red.
-- AC3: move the production check after `RunBody` → `UnitTestRunGate`'s Production test goes red.
-- AC4: remove the `PERSONGATE` ask from `ScreenAction.Run` → `UnitTestRunGate`'s switched-off test goes red, because the recorder records a call.
-- AC5: set `ADVERTISED 1` on the tool → `UnitTestPersonOnly`'s list test goes red. Remove the `PERSONONLY` arm → its fixture-registry test goes red.
-- AC6: send on Run without the dialog → the `dev-tool.page` spec's Cancel case goes red.
-- AC7: change one harvested line → the harvested-identity test goes red.
-- AC8: leave DT-03 at P3 → `exclusion-register.test.mjs` goes red.
+- `mutation:` AC1: `DevToolPort.RootEnd` made to quit before the restore -> `unit-tests.browser-spec.mjs` "AC1 and AC2" red: "USER's root global ends as it began", actual `1|/durable/iris/mgr/`, expected `0|`.
+- `mutation:` AC2: the `ta.Status = 0` filter dropped from the failure-text statement in `DevToolPort.Record` -> `UnitTestRecord.TestTheMethodsListCarriesEachResultAndTheFailureText` red: "the failed one carries its two failed assertions and not the passed one".
+- `mutation:` AC3: the production refusal in `DevToolPort.UnitTest` made unreachable (`If 0`) -> `UnitTestRunGate.TestEveryRefusalRowAnswersItsStatusAndCodeAndRecordsNoCall` red on both Production rows (status and code, and a body call recorded).
+- `mutation:` AC4: the `PERSONGATE` ask in `ScreenAction.Run` made unreachable (`If 0`) -> `UnitTestRunGate.TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun` red: not refused as switched off, and a read and a body call reached the port.
+- `mutation:` AC5: `ADVERTISED 1` on `ExplorerUnitTestRun` -> `UnitTestPersonOnly` 3 of 4 red (the list test, the unadvertised assertion and the shipped-registry assertion). The `PERSONONLY` arm's reach test made `&& 0` -> `TestAToolTheAgentCanReachCannotRunTheTests` red: "the tool, listed as advertised, is refused".
+- `mutation:` AC6: `onAskRun` calls `onProceed()` instead of opening the dialog -> `dev-tool.page.spec.ts` 3 of 24 red, the dialog-and-Cancel case first ("expected undefined to be 'Run these tests?'").
+- `mutation:` AC7: `Abstract = 0` changed to `Abstract = 1` in the harvested `BuildTestSpec` -> `UnitTestRecord.TestTheHarvestedMethodsAreTheSiblingsUnchanged` red: "BuildTestSpec is the sibling's, line for line".
+- `mutation:` AC1 (the root left alone when it names an existing directory): `RootBegin` made to set the manager directory always (`If 0 && pHad`) -> `UnitTestRunGate.TestTheRootGlobalIsSetOnlyWhenNeededAndPutBackAsItWas` red on the install-directory row ("the root while it ran, from '/usr/irissys/'").
+- `mutation:` AC2 (the run body's fallback counts): `CountResults` passed count taken from status 0 -> `UnitTestRecord.TestTheRunBodysFallbackCountsAreRightForARunAndForOneMethod` red on the failing-method and passing-method legs.
+- `mutation:` AC8: DT-03's catalog tier set back to P3 -> `exclusion-register.test.mjs` 2 of 17 red ("the register holds exactly the catalog P4 rows", "the extract's Stage 5 rows are the catalog's P4 rows").
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The unit-test runner (`explorer.unittests.run`, person-only through `PERSONGATE`, key shipped `false`), its run record (two screens and read tools over `%UnitTest_Result`), the `PROHIBITED.PERSONONLY` arm, the client's confirmed Run, and DT-03 moved to the exclusion register with the counts re-derived. The diff since the baseline is the change.
+
+**Review.** Two layers, 17 findings: patches 5 (3 medium, 2 low), rejected 12 with reasons in the log, nothing deferred. Follow-up review recommended: **true** (three medium patches; the patched tests were seen red by mutation and have had no second reviewer).
+
+**Verified on `ocupilot-b-ci`.** The `(once)` sweep, shards 1 to 17, all green (shard 14 re-run after the criterion-hint fix); the new classes `UnitTestRunGate` 7, `UnitTestPersonOnly` 4, `UnitTestRecord` 6; `npm run build`, `test:tools` 2,296, `test:components` 3,509; the browser spec 4 of 4; `check-objectscript.py` 0 problems, its harness and `lint-docs.sh` clean. Mutations are under Verification.
+
+**Task 0 item 6.** With auditing on, a run recorded no vendor audit event, so Unit tests' Run is a named audit gap for AD-53 (the runner adds the sentence).
+
+**Strings (runner ruling, veto U-98).** Both kept as written. The third suggested prompt "How many tests passed in the newest run?" and the runs list's agent phrase "explain why a test failed" are new text. The methods list reuses `tableReadOnlyEmptyNext`. Accepting them means committing the tree as it stands; replacing them is two edits in `ui/src/app/core/strings.ts` and the `EXPERIENCE.md` Fixed strings line, then `node tools/screen-mirror.mjs`.

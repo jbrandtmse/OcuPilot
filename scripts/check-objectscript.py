@@ -9,6 +9,8 @@ prose into one checker.
    Includes any `IRIS_*` environment variable and the vendor's `%Atelier` package (a
    forbidden-token guard standing in for a coupling `OcuPilot.Kernel.Utils` never had to
    drop — see that story's Design Notes).
+   The vendor's `^UnitTestRoot` is the one admitted token, in `src/OcuPilot/Port/DevToolPort.cls`
+   only, where a unit-test run sets and restores it (Story 24.5).
 
 2. **Naming.** No `%` or `_` in a declared class or property name; no `_` in a declared
    class parameter or method name (`.claude/rules/objectscript-basics.md` — the `%` ban is
@@ -239,6 +241,10 @@ FORBIDDEN_LITERALS = (
 )
 ENV_VAR_RE = re.compile(r"\bIRIS_[A-Z0-9_]*\b")
 
+# The vendor's own root global, which `%UnitTest.Manager` reads and which is never renamed. It is
+# admitted in one file only: the unit-test port sets it for a run and puts it back (Story 24.5).
+VENDOR_ROOT_ADMITTED = {"^UnitTestRoot": "src/OcuPilot/Port/DevToolPort.cls"}
+
 # --- ObjectScript declaration shapes --------------------------------------------------
 
 # The class declaration, with the `Extends` clause the cap in check_naming needs to tell a
@@ -323,6 +329,8 @@ def check_rename_tokens(problems: list[str]) -> None:
         rel = p.relative_to(ROOT).as_posix()
         for token in FORBIDDEN_LITERALS:
             if token not in text:
+                continue
+            if VENDOR_ROOT_ADMITTED.get(token) == rel:
                 continue
             for i, line in enumerate(text.splitlines(), start=1):
                 if token in line:
@@ -755,6 +763,7 @@ HARVEST_CALLERS = {
     "OcuPilot.Port.Harvest.Monitor": "src/OcuPilot/Port/BackupPort.cls",
     "OcuPilot.Port.Harvest.Loc": "src/OcuPilot/Port/DevToolPort.cls",
     "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.UnitTestRun": "src/OcuPilot/Port/DevToolPort.cls",
 }
 
 

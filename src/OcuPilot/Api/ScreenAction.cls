@@ -9,6 +9,9 @@
 /// a person pressing a row action has expressed the intent directly (AD-6, AD-15, AD-49), this
 /// <b>is</b> the human write an agent marker exists to be distinguished from, and FR-20 publishes
 /// that all screens continue to work with the agent disabled.</p>
+/// <p><b>A tool that declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter> is asked its governance key
+/// here</b> (AD-10's run-code exception, AD-22): after the screen's pairs and before the hold, the fresh read and the write,
+/// for a preview as for the write, refusing 403 with the tool's code while the key is off.</p>
 /// <p><b>User-originated by construction.</b> It is not a tool, is not in the registry, and is
 /// reached only by an authenticated browser request -- the same barrier AD-40 puts in front of
 /// confirm, arrived at the other way round.</p>
@@ -308,6 +311,21 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         If tRefused {
             Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
             Quit
+        }
+
+        ; AD-10, AD-22 (Story 24.5): a tool that runs code as the person declares PERSONGATE, and its governance key is asked here,
+        ; for a preview as for the write, before the hold and the fresh read.
+        Set tPersonGate = $Parameter(pToolClass, "PERSONGATE")
+        If tPersonGate '= "" {
+            Set tDecideSC = ##class(OcuPilot.Kernel.Governance.Gate).Decide($Parameter(pToolClass, "TOOLNAME"), pTool.%Get("kind"), ..CallerUsername(), $Select($IsObject(pValues): pValues, 1: {}), .tDecision)
+            If $$$ISERR(tDecideSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDecideSC))
+                Quit
+            }
+            If 'tDecision("allowed") {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.AtelierError).ReasonFor(tPersonGate), tPersonGate)
+                Quit
+            }
         }
 
         ; AD-34, AD-53: a write holds its target from the fresh read through the port write, as a

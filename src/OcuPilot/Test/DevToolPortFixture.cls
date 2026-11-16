@@ -2,7 +2,7 @@
 /// <class>OcuPilot.Test.DevToolRead</class> runs the port's real order of checks against the live instance:
 /// <method>GateClass</method> answers an armed class, <method>HarvestPortClass</method> answers
 /// <class>OcuPilot.Test.DevToolHarvestRecorder</class>, <method>AtelierPortClass</method> an armed class (the real one when
-/// none is armed), <method>MaxDocuments</method> an armed number and <method>LogFault</method> writes to
+/// none is armed), <method>MaxDocuments</method>, <method>MaxTestClasses</method> and <method>LockName</method> an armed value and <method>LogFault</method> writes to
 /// <code>^||OcuPilotDevToolFixture</code>, where <method>LogCount</method> counts the lines. A promote's preflight reads
 /// go through the port's own <method>ReadSource</method> and <method>ReadVersion</method>, whose answer for one armed
 /// document (<method>SetForge</method>) is then altered.</p>
@@ -43,10 +43,34 @@ ClassMethod SetMaxDocuments(pMax As %Integer)
     Set ^||OcuPilotDevToolFixture("max") = pMax
 }
 
+/// <p>Answer <method>MaxTestClasses</method> with <var>pMax</var>.</p>
+ClassMethod SetMaxTestClasses(pMax As %Integer)
+{
+    Set ^||OcuPilotDevToolFixture("maxclasses") = pMax
+}
+
+/// <p>Answer <method>LockName</method> with <var>pName</var>, so a test never takes the run lock a real run does.</p>
+ClassMethod SetLockName(pName As %String)
+{
+    Set ^||OcuPilotDevToolFixture("lock") = pName
+}
+
 /// <p>How many lines <method>LogFault</method> was asked to write.</p>
 ClassMethod LogCount() As %Integer
 {
     Quit +$Get(^||OcuPilotDevToolFixture("log"))
+}
+
+/// <p>How many times <method>Invoke</method> was asked since <method>Clear</method>.</p>
+ClassMethod Invokes() As %Integer
+{
+    Quit +$Get(^||OcuPilotDevToolFixture("invokes"))
+}
+
+ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tCount = $Increment(^||OcuPilotDevToolFixture("invokes"))
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
 }
 
 ClassMethod GateClass() As %String
@@ -90,6 +114,18 @@ ClassMethod ReadVersion(pNamespace As %String, pName As %String, Output pVersion
 ClassMethod MaxDocuments() As %Integer
 {
     If $Data(^||OcuPilotDevToolFixture("max")) Quit ^||OcuPilotDevToolFixture("max")
+    Quit ##super()
+}
+
+ClassMethod MaxTestClasses() As %Integer
+{
+    If $Data(^||OcuPilotDevToolFixture("maxclasses")) Quit ^||OcuPilotDevToolFixture("maxclasses")
+    Quit ##super()
+}
+
+ClassMethod LockName() As %String
+{
+    If $Data(^||OcuPilotDevToolFixture("lock")) Quit ^||OcuPilotDevToolFixture("lock")
     Quit ##super()
 }
 

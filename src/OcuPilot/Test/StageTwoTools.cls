@@ -203,6 +203,8 @@ XData Elsewhere
 <screen name="ExplorerSqlViewFields"/>
 <screen name="ExplorerSqlViewStatements"/>
 <screen name="ExplorerSqlViews"/>
+<screen name="ExplorerUnitTestRun"/>
+<screen name="ExplorerUnitTests"/>
 <screen name="Home"/>
 <screen name="InteropBusinessPartnerList"/>
 <screen name="InteropItemClassTab"/>

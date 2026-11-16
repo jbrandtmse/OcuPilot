@@ -5002,6 +5002,60 @@ export const STRINGS = {
   explorerPromoteStorageReason: 'A class here lacks a storage definition its copy in the other namespace has, so nothing was written: compiling it there would change how its stored data is read.',
   /** EXPERIENCE.md:594 */
   explorerPromoteDocumentsReason: 'Choose 1 to 100 documents to promote.',
+  // Story 24.5: Unit tests -- the Run form, its warning dialog, the seven refusals and the person-only sentence, the two lists' columns
+  // and the runs list's empty state, prompts and agent phrase.
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsLabel: 'Unit tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestRunLabel: 'Unit test run',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunAction: 'Run tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsTestsLabel: 'Tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsLevelPackage: 'Package',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunTitle: 'Run these tests?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunConsequence: 'The tests\' own code runs as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestOffReason: 'Running unit tests is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsShapeReason: 'Name a package, a class, or Class:Method with letters, digits and dots.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestNotFoundReason: 'No compiled test class matches in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestTooManyReason: 'This package holds more test classes than one run takes.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestProductionReason: 'These tests include a production test, which stops the running production. OcuPilot does not run production tests.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestBusyReason: 'Another unit-test run is in progress. Try again when it ends.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestOwnCodeReason: 'OcuPilot does not run its own tests.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestNoResultReason: 'The run recorded no results.',
+  /** EXPERIENCE.md:594 */
+  personOnlyRefusal: 'This runs code with the rights of whoever starts it, so it is started from its own screen alone.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnDuration: 'Duration',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnMethods: 'Methods',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnFailure: 'Failure',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPassed: 'Passed',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsSkipped: 'Skipped',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsEmpty: 'No unit-test runs are recorded in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt1: 'Which tests failed in the newest run?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt2: 'How long did the newest run take?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt3: 'How many tests passed in the newest run?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsEmptyAgent: 'explain why a test failed',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse

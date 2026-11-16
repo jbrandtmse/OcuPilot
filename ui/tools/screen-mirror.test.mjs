@@ -1594,6 +1594,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewFields',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
+      'OcuPilot.Screen.Descriptor.ExplorerUnitTestRun',
+      'OcuPilot.Screen.Descriptor.ExplorerUnitTests',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',

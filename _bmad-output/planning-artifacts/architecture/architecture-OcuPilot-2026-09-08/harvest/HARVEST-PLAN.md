@@ -103,7 +103,7 @@ Every name below must be absent from OcuPilot's source. The four per-repo maps c
 | Web paths | `/csp/<ns>/sa-static/`, `/api/executemcp/v2`, `/iris-couch/`, `/iris-couch/_utils/` | `/ocupilot`, `/api/ocupilot` |
 | Roles | `SessionAgent_ReadOnly`, `IRISCouch_Admin` | OcuPilot's own |
 | Audit sources | `SessionAgent`, `IRISCouch` | OcuPilot's own |
-| Globals | `^SessionAgent*`, `^SessionAgenC88B*`, `^IRISCouch*`, `^UnitTestRoot`, `^ExecuteMCPv2*` | `^OcuPilot*`, in the protected database (AD-9) |
+| Globals | `^SessionAgent*`, `^SessionAgenC88B*`, `^IRISCouch*`, `^UnitTestRoot`, `^ExecuteMCPv2*` | `^OcuPilot*`, in the protected database (AD-9); `^UnitTestRoot` is the vendor's own root, never renamed, and only `DevToolPort` names it |
 | SQL schemas | `SessionAgent_Chat`, `_Audit`, `_Search`, `_Config` | OcuPilot's own |
 | Credentials | `SessionAgentOpenAI` / `Anthropic` / `Gemini` | OcuPilot's own |
 | Tasks | `SessionAgent.Purge*`, `SessionAgent.UserVocabularyDecay` | OcuPilot's own |
