@@ -15,7 +15,7 @@ import { STRINGS, stringFor } from '../../core/strings';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
 import { createSearchRead } from './code-search.store';
-import { DevToolState, GENERATED_PARAM, SPEC_PARAM } from './dev-tool.store';
+import { DevToolState, GENERATED_PARAM, SPEC_PARAM, TARGET_PARAM } from './dev-tool.store';
 
 /** The screen this page renders and the store its read writes. */
 interface DevToolView {
@@ -26,17 +26,21 @@ interface DevToolView {
 /** One `DevToolState` per screen store, so a return to the screen finds the last search. */
 const HELD = new WeakMap<ScreenStore, DevToolState>();
 
-function heldFor(store: ScreenStore | null): DevToolState {
+function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
   const known = store === null ? undefined : HELD.get(store);
   if (known !== undefined) return known;
-  const state = new DevToolState();
+  const state = new DevToolState(targeted);
   if (store !== null) HELD.set(store, state);
   return state;
 }
 
 /**
- * System Explorer's Code metrics and Document hashes (Story 24.1): a form -- the documents a pattern names
- * and whether generated routines count -- above the rows the instance answers through the developer-tool port.
+ * System Explorer's Code metrics, Document hashes and Compare namespaces (Stories 24.1 and 24.8): a form -- the
+ * documents a pattern names, whether generated routines count and, where the descriptor declares `target`, the
+ * other namespace to compare with -- above the rows the instance answers through the developer-tool port.
+ *
+ * **The other namespace is a select** of the instance's namespaces other than this one, first in the form and
+ * defaulting to the first of them; with none to choose, the screen says so and sends nothing.
  *
  * **The rows are the screen's.** The read binds through the refresh framework, so the panel's screen context
  * and the read tool see the same rows, and the framework re-runs the last search when a class or routine in this
@@ -57,6 +61,16 @@ function heldFor(store: ScreenStore | null): DevToolState {
     @if (view; as current) {
       <form class="ocu-criteria-form" data-ocu-devtool="form" (submit)="onSearch($event)">
         <div class="ocu-criteria-fields">
+          @if (hasTarget) {
+            <div class="ocu-criteria-field">
+              <label class="ocu-criteria-label" for="ocu-devtool-target">{{ targetLabel }}</label>
+              <select class="ocu-criteria-select" id="ocu-devtool-target" data-ocu-devtool="target" (change)="onTarget($event)">
+                @for (name of targetOptions; track name) {
+                  <option [value]="name" [selected]="name === targetValue">{{ name }}</option>
+                }
+              </select>
+            </div>
+          }
           <div class="ocu-criteria-field">
             <label class="ocu-criteria-label" for="ocu-devtool-spec">{{ specLabel }}</label>
             <input
@@ -73,6 +87,9 @@ function heldFor(store: ScreenStore | null): DevToolState {
           </div>
         </div>
         <p class="ocu-criteria-hint">{{ specHint }}</p>
+        @if (noTargetChoice) {
+          <p class="ocu-criteria-hint" role="status" data-ocu-devtool="no-target">{{ STRINGS.explorerTargetReason }}</p>
+        }
         <div class="ocu-criteria-controls">
           <button type="submit" class="ocu-button-primary" data-ocu-devtool="submit">{{ STRINGS.auditCriteriaSearch }}</button>
           <label class="ocu-criteria-marker">
@@ -129,7 +146,7 @@ export class DevToolPage {
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.view = { screen, store };
-    this.state = heldFor(store);
+    this.state = heldFor(store, screen.read.criteria?.fields.some((field) => field.param === TARGET_PARAM) === true);
     this.refresh.bind(screen, this.boundRead(screen));
 
     const arrival = this.arrivals?.take(screen.route) ?? null;
@@ -190,6 +207,33 @@ export class DevToolPage {
     return field === undefined ? '' : stringFor(field.labelKey);
   }
 
+  protected get hasTarget(): boolean {
+    return this.state.hasTarget();
+  }
+
+  protected get targetLabel(): string {
+    const field = this.criterion(TARGET_PARAM);
+    return field === undefined ? '' : stringFor(field.labelKey);
+  }
+
+  /** The instance's namespaces other than this one, which the other-namespace select offers. */
+  protected get targetOptions(): readonly string[] {
+    this.generation();
+    const current = this.scope.namespace().toUpperCase();
+    return this.scope.namespaces().map((entry) => entry.name).filter((name) => name.toUpperCase() !== current);
+  }
+
+  /** The chosen other namespace while the select still offers it, else the first the select offers. */
+  protected get targetValue(): string {
+    this.generation();
+    const options = this.targetOptions;
+    return options.includes(this.state.target()) ? this.state.target() : (options[0] ?? '');
+  }
+
+  protected get noTargetChoice(): boolean {
+    return this.hasTarget && this.scope.loaded() && this.targetOptions.length === 0;
+  }
+
   protected get specValue(): string {
     this.generation();
     return this.state.spec();
@@ -245,6 +289,10 @@ export class DevToolPage {
     this.state.setSpec((event.target as HTMLInputElement).value);
   }
 
+  protected onTarget(event: Event): void {
+    this.state.setTarget((event.target as HTMLSelectElement).value);
+  }
+
   protected onGenerated(event: Event): void {
     this.state.setIncludeGenerated((event.target as HTMLInputElement).checked);
   }
@@ -253,7 +301,9 @@ export class DevToolPage {
   protected onSearch(event: Event): void {
     event.preventDefault();
     const screen = this.view?.screen;
-    if (screen === undefined || !this.state.search()) return;
+    if (screen === undefined) return;
+    if (this.hasTarget) this.state.setTarget(this.targetValue);
+    if (!this.state.search()) return;
     this.refresh.bind(screen, this.boundRead(screen));
     void this.refresh.readNow();
   }

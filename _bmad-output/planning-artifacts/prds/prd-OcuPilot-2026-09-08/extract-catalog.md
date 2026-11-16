@@ -405,7 +405,7 @@ Mixed rows (GET + write) are shown as "GET yes / write no".
 - **EX-15 SQL DML/DDL guard at P2** although the agent SQL tool it protects is P0: the P0 read tools use catalog SELECTs only; the free-form SQL console is P2.
 - **SS-29 Superservers at P2** per the explicit list, although it sits under Security in the SMP.
 - **SA-01 / SA-02 External language servers at P1** per the tier rule, ahead of all other System Administration remainder rows.
-- **DT-11 remote instance profiles at P3** (single-instance product) rather than P4, because DT-09/DT-10 depend on it.
+- **DT-11 remote instance profiles at P4** (owner answer U-45): environment diff and promote (DT-09, DT-10) compare namespaces of this instance.
 
 ## 5. Count summary
 
@@ -426,9 +426,9 @@ Mixed rows (GET + write) are shown as "GET yes / write no".
 | 10. System Explorer and data browser | EX | — (EX-01 → (a)) | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | IO | — (IO-01 → (h)) | 0 | 1 | 28 | 69 | 20 | 118 |
 | 12. Analytics | AN | — (AN-01 → (h)) | 0 | 1 | 9 | 7 | 7 | 24 |
-| 13. Developer tools and sibling-tool equivalents | DT | — | 0 | 0 | 1 | 10 | 1 | 12 |
+| 13. Developer tools and sibling-tool equivalents | DT | — | 0 | 0 | 1 | 9 | 2 | 12 |
 | 14. Packaging, deployment and submission | PK | (i) | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | | | **119** | **62** | **137** | **164** | **56** | **538** |
+| **All sections** | | | **119** | **62** | **137** | **163** | **57** | **538** |
 
 ### Rows per PRD area per tier (after the mapping in section 2)
 

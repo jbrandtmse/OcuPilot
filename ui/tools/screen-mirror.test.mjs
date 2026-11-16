@@ -1567,6 +1567,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics',
       'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes',
       'OcuPilot.Screen.Descriptor.ExplorerMacro',
+      'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineList',
       'OcuPilot.Screen.Descriptor.ExplorerSearch',

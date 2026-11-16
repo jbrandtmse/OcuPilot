@@ -224,6 +224,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSearch': () => import('../areas/system-explorer/code-search.page').then((m) => m.CodeSearchPage),
   'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerCompare': () => import('../areas/system-explorer/code-compare.page').then((m) => m.CodeComparePage),
   'OcuPilot.Screen.Descriptor.ExplorerMacro': () => import('../areas/system-explorer/macro-lookup.page').then((m) => m.MacroLookupPage),
   // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
@@ -239,6 +240,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': () => import('../areas/system-explorer/docdb-list.page').then((m) => m.DocDbListPage),
   // Story 18.34: the REST API explorer, the list with its create dialog.
   'OcuPilot.Screen.Descriptor.RestApiList': () => import('../areas/web-applications/rest-api-list.page').then((m) => m.RestApiListPage),
+  // Story 24.3: Productions, the list with its Start with the instance and Shutdown group dialogs.
+  'OcuPilot.Screen.Descriptor.InteropProductionList': () => import('../areas/interoperability/interop-production-list.page').then((m) => m.InteropProductionListPage),
   // Story 20.3: Production items, the list with its add dialog.
   'OcuPilot.Screen.Descriptor.InteropItemList': () => import('../areas/interoperability/interop-item-list.page').then((m) => m.InteropItemListPage),
   // Story 20.22: Item settings, the list with its Set value dialog.

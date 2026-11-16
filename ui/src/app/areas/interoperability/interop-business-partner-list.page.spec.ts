@@ -19,13 +19,12 @@ import {
   INTEROP_PARTNER_EDIT_ACTION,
   InteropBusinessPartnerListPage,
 } from './interop-business-partner-list.page';
-import { INTEROP_PARTNER_VALUE_FIELDS } from './interop-business-partner.store';
 
 /**
  * The Business partners page (Story 20.26). The shared list page is replaced by an empty stand-in, so only this page's own wiring
  * runs: the two actions it registers after the shell's handler, the New business partner dialog that posts to the namespace the
- * shell is scoped to, the Edit dialog it opens over the selected row with the name read-only, the request each Edit sends -- all
- * thirteen values, an empty one included, and never the name -- a refusal kept in the dialog, the change event an applied change
+ * shell is scoped to, the Edit dialog it opens over the selected row with the name read-only, the request each Edit sends -- only
+ * the values the person changed, an empty one included, and never the name -- a refusal kept in the dialog, the change event an applied change
  * publishes, and the Remove the handler's construction registers, which types the partner's name. The handler, the stores and the
  * bus are real; only the server's answers are stubbed.
  */
@@ -187,8 +186,7 @@ describe('the Business partners page', () => {
     expect((host.querySelector('[data-interop-partner-field="AlternativeNotes"]') as HTMLTextAreaElement).value).toBe('a\nb');
   });
 
-  it('sends all thirteen values and never the name, an emptied one included, closes on an applied change and publishes the updated event', async () => {
-    // Mutation (Rule 19): drop `PrimaryPhone` from the values the Edit sends -> the request lacks it and this goes red.
+  it('sends only the values the person changed and never the name, an emptied one included, closes on an applied change and publishes the updated event', async () => {
     const { fixture, host, store, actions, calls, events } = mount([UPDATED]);
     await openEdit(fixture, store, actions, 'Acme');
     typeInto(fixture, host, 'PrimaryPhone', '');
@@ -199,12 +197,20 @@ describe('the Business partners page', () => {
     expect(calls[0].path).toBe(`/api/ocupilot/screens/${LIST.toolIdentifier}/action`);
     const sent = JSON.parse(calls[0].body) as { action: string; id: string; values: Record<string, string> };
     expect([sent.action, sent.id]).toEqual(['edit', 'Acme']);
-    expect(Object.keys(sent.values).sort()).toEqual([...INTEROP_PARTNER_VALUE_FIELDS].sort());
-    expect(sent.values['PrimaryPhone']).toBe('');
-    expect(sent.values['AlternativeTitle']).toBe('Lead');
-    expect(sent.values['Description']).toBe('A supplier');
+    expect(sent.values).toEqual({ PrimaryPhone: '', AlternativeTitle: 'Lead' });
+    expect(Object.keys(sent.values)).not.toContain('Name');
     expect(host.querySelector('app-interop-business-partner-dialog')).toBeNull();
     expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['business-partner/updated']);
+  });
+
+  it('closes a dialog that changed nothing without sending or publishing anything', async () => {
+    const { fixture, host, store, actions, calls, events } = mount([]);
+    await openEdit(fixture, store, actions, 'Acme');
+    confirmDialog(host);
+    await settle(fixture);
+    expect(calls).toHaveLength(0);
+    expect(events).toEqual([]);
+    expect(host.querySelector('app-interop-business-partner-dialog')).toBeNull();
   });
 
   // Mutation (Rule 19): drop `(cancelled)="onCloseEdit()"` from the page's template -> the dialog stays and this goes red.

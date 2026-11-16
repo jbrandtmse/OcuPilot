@@ -9,7 +9,10 @@
 /// callers of <class>OcuPilot.Screen.Tool.InteropProductionStart</class> and its four siblings
 /// (AD-53): Start is sent at once, and each of the others states what it does and waits in a warning
 /// dialog first. An action that does not fit the row's state is refused by its own named code before
-/// any vendor call.</p>
+/// any vendor call. Start with the instance and Shutdown group (Story 24.3) open a dialog and are the callers of
+/// <class>OcuPilot.Screen.Tool.InteropProductionAutoStart</class> and
+/// <class>OcuPilot.Screen.Tool.InteropProductionShutdownGroup</class>; the columns Starts with the instance, Startup priority and
+/// Shutdown group show what they set.</p>
 /// <p><b>Its pairs</b> are the classic menu's <code>%Ens_Portal:USE</code> and, as its own,
 /// <code>EnsPortal.Productions</code>'s <code>%Ens_ProductionConfig:READ</code>; the five tools add
 /// <code>%Ens_ProductionRun:USE</code> and WRITE on the namespace's globals database, which the port
@@ -36,8 +39,8 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "start", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}, {"id": "restart", "selfProtection": ""}, {"id": "update", "selfProtection": ""}, {"id": "recover", "selfProtection": ""}],
-  "context": {"fields": ["Name", "Status", "LastStartTime", "LastStopTime"], "secretFields": []},
+  "rowActions": [{"id": "start", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}, {"id": "restart", "selfProtection": ""}, {"id": "update", "selfProtection": ""}, {"id": "recover", "selfProtection": ""}, {"id": "autostart", "selfProtection": ""}, {"id": "shutdowngroup", "selfProtection": ""}],
+  "context": {"fields": ["Name", "Status", "LastStartTime", "LastStopTime", "AutoStart", "StartupPriority", "ShutdownGroup"], "secretFields": []},
   "emptyStateKey": "interopProductionsEmpty",
   "commandAliases": ["productions", "production control", "start production", "stop production"],
   "suggestedPrompts": [
@@ -51,9 +54,9 @@ XData Declaration
   "read": {
     "row": "production",
     "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"},
-    "fields": ["Name", "Status", "LastStartTime", "LastStopTime"],
+    "fields": ["Name", "Status", "LastStartTime", "LastStopTime", "AutoStart", "StartupPriority", "ShutdownGroup"],
     "filter": ["Name", "Status"],
-    "sort": {"fields": ["Name", "Status", "LastStartTime", "LastStopTime"], "default": "Name", "direction": "asc"},
+    "sort": {"fields": ["Name", "Status", "LastStartTime", "LastStopTime", "AutoStart", "StartupPriority", "ShutdownGroup"], "default": "Name", "direction": "asc"},
     "paging": "cap"
   },
   "table": {
@@ -61,7 +64,10 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "status"},
       {"field": "LastStartTime", "labelKey": "interopProductionColumnLastStarted", "kind": "text"},
-      {"field": "LastStopTime", "labelKey": "interopProductionColumnLastStopped", "kind": "text"}
+      {"field": "LastStopTime", "labelKey": "interopProductionColumnLastStopped", "kind": "text"},
+      {"field": "AutoStart", "labelKey": "interopProductionColumnAutoStart", "kind": "text"},
+      {"field": "StartupPriority", "labelKey": "interopProductionColumnStartupPriority", "kind": "text"},
+      {"field": "ShutdownGroup", "labelKey": "interopProductionColumnShutdownGroup", "kind": "text"}
     ],
     "emptyNextKey": "",
     "emptyAgentKey": "interopProductionsEmptyAgent"

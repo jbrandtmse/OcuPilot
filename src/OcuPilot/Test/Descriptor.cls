@@ -215,12 +215,13 @@ XData ReadShapes
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
 <screen name="ExplorerCodeMetrics" filter="" sort="Documents,Lines" kinds="Documents:name,Lines:number,Code:number,CodePercent:number,SourceCode:number,TestCode:number,Comments:number,CommentPercent:number,Blank:number,BlankPercent:number"/>
 <screen name="ExplorerDocumentHashes" filter="Document,Hash" sort="Document,Modified" kinds="Document:name,Hash:text,Modified:text"/>
+<screen name="ExplorerNamespaceDiff" filter="Document,Change" sort="Document,Modified" kinds="Document:name,Change:text,Modified:text,OtherModified:text"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
 <screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>
 <screen name="InteropUsageVolumeTab" filter="Namespace,Type" sort="Namespace,Type,Volume" kinds="Namespace:name,Type:text,Volume:number"/>
 <screen name="InteropUsageImpactTab" filter="Database" sort="Database,DataCreated" kinds="Database:name,DataCreated:number"/>
-<screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>
+<screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime,AutoStart,StartupPriority,ShutdownGroup" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text,AutoStart:text,StartupPriority:text,ShutdownGroup:text"/>
 <screen name="InteropProcessList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropTransformList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropRuleList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>

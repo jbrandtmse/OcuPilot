@@ -379,6 +379,9 @@ export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
 export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
 export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
 export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
+/** Story 24.3: a production's auto-start replacing the one set before, and its shutdown group. */
+export const CONSEQUENCE_INTEROPAUTOSTART = 'INTEROP.AUTOSTART';
+export const CONSEQUENCE_INTEROPSHUTDOWNGROUP = 'INTEROP.SHUTDOWNGROUP';
 /** Story 20.3: an item write's pending-update sentence, and a removal's. */
 export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
 export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
@@ -568,6 +571,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
   if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
   if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
+  // Story 24.3: the auto-start replacement's and the shutdown group's sentences, each published once.
+  if (code === CONSEQUENCE_INTEROPAUTOSTART) return STRINGS.interopAutoStartConsequence;
+  if (code === CONSEQUENCE_INTEROPSHUTDOWNGROUP) return STRINGS.interopShutdownGroupConsequence;
   // Story 20.3: an item write's pending-update sentence and a removal's, each published once.
   if (code === CONSEQUENCE_INTEROPITEMPENDING) return STRINGS.interopItemPendingConsequence;
   if (code === CONSEQUENCE_INTEROPITEMREMOVE) return STRINGS.interopItemRemoveConsequence;

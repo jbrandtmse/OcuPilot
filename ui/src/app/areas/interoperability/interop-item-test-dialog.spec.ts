@@ -249,6 +249,16 @@ describe('the Send test dialog (Story 20.6)', () => {
     expect(host.querySelector('[data-interop-test-result] pre')).toBeNull();
   });
 
+  it('announces the end of a test through a status region it keeps mounted', () => {
+    const region = host.querySelector('[data-interop-test-announce]') as HTMLElement;
+    expect(region?.getAttribute('role')).toBe('status');
+    expect(region.textContent?.trim()).toBe('');
+    fixture.componentInstance.answer.set({ status: 'done', sessionId: '41', responseClass: 'Ens.StringResponse', lines: [], errors: false });
+    fixture.detectChanges();
+    expect(host.querySelector('[data-interop-test-announce]')).toBe(region);
+    expect(region.textContent?.trim()).toBe(STRINGS.interopTestDone.replace('<session>', '41').replace('<class>', 'Ens.StringResponse'));
+  });
+
   // Mutation (Rule 19): build the link from `responseClass` in place of `sessionId` -> the href leg goes red; drop the digits check from
   // `hasTraceLink` -> the no-session leg goes red.
   it('Story 20.30: an answer that names a session links to its trace in the tab\'s namespace, and follows it in the app on a plain click', async () => {

@@ -83,6 +83,7 @@ XData Titles
 "explorerDocDbListLabel": "Document databases",
 "explorerDocumentHashesLabel": "Document hashes",
 "explorerMacroLabel": "Macros",
+"explorerNamespaceDiffLabel": "Compare namespaces",
 "explorerRoutineEditorLabel": "Edit routine",
 "explorerRoutineListLabel": "Routines",
 "explorerSqlDataLabel": "Data browser",

@@ -272,6 +272,24 @@ ClassMethod PartnerText(pName As %String) As %String
     Quit tText
 }
 
+/// <p>The probe partner <var>pName</var>'s primary email, or <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 24.3).</p>
+ClassMethod PartnerEmail(pName As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
+        If $IsObject(tPartner) Set tText = $Select($IsObject(tPartner.PrimaryContact): tPartner.PrimaryContact.Email, 1: "")
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
+}
+
 /// <p>Everything the lookup and partner reads must leave alone, as one SHA-256: the whole of <code>^Ens.LookupTable</code>
 /// (stamps included) and <code>^Ens.Config.BusinessPartnerD</code>.</p>
 ClassMethod Snapshot() As %String

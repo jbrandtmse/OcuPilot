@@ -4,7 +4,7 @@
 /// a partner, add one under the new name, change the Business partner setting of each item that names the old one, then remove it.
 /// A call carrying any argument beyond the thirteen fields is refused before any port call.</p>
 /// <p>Two callers reach it: the partners list's row action Edit through <class>OcuPilot.Api.ScreenAction</class>, whose dialog sends
-/// every field and may send an empty one, and the agent's proposal and confirmation. It is a merge over the partner's fresh read, so
+/// the fields it changed and may send an empty one, and the agent's proposal and confirmation. It is a merge over the partner's fresh read, so
 /// its card shows one row for each field it moves and its read-back compares the thirteen fields
 /// (<parameter>READBACKFIELDS</parameter>). <code>NamedBy</code> is part of the read and no part of the merge, the fingerprint or
 /// the read-back: items that start or stop naming the partner do not close the proposal.</p>
@@ -28,10 +28,14 @@ Parameter CHANGEACTION = "updated";
 
 Parameter SCREENACTIONS = "edit";
 
-/// <p>The dialog sends the thirteen fields as this tool's values, each of which may be empty (AD-56 (ii)); the name is the target.</p>
+/// <p>The dialog's values are among the thirteen fields, each of which may be empty (AD-56 (ii)); the name is the target.</p>
 Parameter SCREENVALUES = "edit=Description:PrimaryContact:PrimaryTitle:PrimaryEmail:PrimaryPhone:PrimaryMobile:PrimaryNotes:AlternativeContact:AlternativeTitle:AlternativeEmail:AlternativePhone:AlternativeMobile:AlternativeNotes";
 
 Parameter SCREENEMPTY = "edit=Description:PrimaryContact:PrimaryTitle:PrimaryEmail:PrimaryPhone:PrimaryMobile:PrimaryNotes:AlternativeContact:AlternativeTitle:AlternativeEmail:AlternativePhone:AlternativeMobile:AlternativeNotes";
+
+/// <p>The dialog sends the fields it changed and no other: a value left out keeps what the partner holds, so a change made elsewhere to
+/// another field since the list was read is kept (AD-4, AD-56).</p>
+Parameter SCREENOPTIONAL = "edit=Description:PrimaryContact:PrimaryTitle:PrimaryEmail:PrimaryPhone:PrimaryMobile:PrimaryNotes:AlternativeContact:AlternativeTitle:AlternativeEmail:AlternativePhone:AlternativeMobile:AlternativeNotes";
 
 /// <p>What the read-back compares (AD-58).</p>
 Parameter READBACKFIELDS = "Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes";

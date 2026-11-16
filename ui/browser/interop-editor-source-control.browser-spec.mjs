@@ -36,15 +36,12 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import {
   SCREEN_FRAME_SELECTOR,
   answered as screenAnswered,
-  armMessageCounters,
   editorShows as screenShows,
+  shellAt as sharedShellAt,
   snackbarWhere as editorSnackbarWhere,
   until,
-  watchEditorTraffic,
 } from './interop-editor-spec.mjs';
-import { waitForMapAnswered } from './namespace-features.mjs';
-import { signedInAt } from './panel-spec.mjs';
-import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
+import { assertThrowaway } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,7 +55,6 @@ const SC = 'OcuPilot.Test.SourceControlProbe';
 const PROBES = 'OcuPilot.Test.InteropEditorProbe';
 const RULE = { class: `${PACKAGE}.Rule`, listRoute: 'interoperability/rules' };
 const TRANSFORM = { class: `${PACKAGE}.Transform`, listRoute: 'interoperability/transforms' };
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 const MENU_BUTTON = 'interop-source-control-menu button';
 const MENU_ITEM = '.mat-mdc-menu-panel .mat-mdc-menu-item';
 const QUESTION = 'OcuPilot probe asks: proceed?';
@@ -236,16 +232,10 @@ function watchSourceControlRequests(page) {
 }
 
 /** A fresh signed-in context at `url`, with the observers armed before the first request, so nothing the screen draws goes unseen. */
-async function shellAt(url) {
-  const observers = {};
-  const { context, page } = await signedInAt(browser, config, url, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
-    observers.traffic = watchEditorTraffic(opened);
+const shellAt = (url) =>
+  sharedShellAt(browser, config, url, async (opened, observers) => {
     observers.requests = watchSourceControlRequests(opened);
-    observers.messages = await armMessageCounters(opened);
   });
-  await waitForMapAnswered(page, config.navigationTimeoutMs);
-  return { context, page, ...observers };
-}
 
 /** The editor screen for `kind`'s probe class, as the list's name cell builds its address. */
 const screenUrl = (kind) => `/ocupilot/${kind.listRoute}/document/${encodeEntityId(`${kind.class}.cls`)}?ns=${NAMESPACE}`;

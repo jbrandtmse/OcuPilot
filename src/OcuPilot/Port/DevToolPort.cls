@@ -1,5 +1,5 @@
-/// <p>The port to the developer-tool bodies that count a namespace's lines and hash its documents
-/// (AD-23, AD-29): the only caller of <class>OcuPilot.Port.Harvest.Loc</class> and
+/// <p>The port to the developer-tool bodies that count a namespace's lines, hash its documents and compare two
+/// namespaces' documents (AD-23, AD-29): the only caller of <class>OcuPilot.Port.Harvest.Loc</class> and
 /// <class>OcuPilot.Port.Harvest.EnvSync</class>, through <class>OcuPilot.Port.HarvestPort</class>.
 /// Nothing here issues an HTTP request, and nothing here names a class of the source code API.</p>
 /// <p>The bodies refuse a bad request in a way the harvest port answers as an internal fault, and
@@ -12,21 +12,29 @@
 /// checked.</li>
 /// <li><method>OcuPilot.Port.AtelierPort.NamespacePairs</method>, refused 400 <code>PORT.VALIDATION</code>
 /// when it answers <code>""</code> and evaluated like step 1 otherwise.</li>
-/// <li>The endpoint and the request type, the row cap, and the generated choice.</li>
+/// <li>The endpoint and the request type.</li>
+/// <li>For <parameter>ENDPOINTNAMESPACEDIFF</parameter> only, the other namespace the query's
+/// <parameter>TARGETKEY</parameter> names: its shape, then that it is not the first namespace (compared in
+/// upper case), then its <method>OcuPilot.Port.AtelierPort.NamespacePairs</method>, refused 400
+/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 1 otherwise.</li>
+/// <li>The row cap, and the generated choice.</li>
 /// <li>The spec's shape: each comma-separated part is one name with <code>*</code> and <code>?</code>
 /// wildcards, and spaces around a part are dropped.</li>
 /// <li>The wide-spec rule: a part that is a bare <code>*</code> is 400 <parameter>OcuPilot.Api.AtelierError.SPECWIDE</parameter>.</li>
 /// <li>The document count: the documents the spec matches in the namespace, counted with the query the
 /// bodies list with, above <method>MaxDocuments</method> is 400
 /// <parameter>OcuPilot.Api.AtelierError.SPECTOOMANY</parameter> with <code>detail.count</code> and
-/// <code>detail.max</code>.</li>
+/// <code>detail.max</code>. A namespace diff counts each namespace and adds <code>detail.namespace</code>,
+/// the one that exceeded the cap.</li>
 /// </ol>
-/// <p>Only then does it call the harvest port with the pair set of steps 1 and 3 together. It sends a body
-/// only the query keys it built itself: <code>spec</code>, <code>namespace</code>,
-/// <code>includeGenerated</code> and, for code metrics, <code>topN</code>; it never sends
-/// <code>allowWide</code>. No <code>OcuPilot.*</code> class is called while the namespace is switched.</p>
-/// <p><b>Its answers</b> are lists of rows: <parameter>ENDPOINTCODEMETRICS</parameter> one row of totals, and
-/// <parameter>ENDPOINTDOCUMENTHASHES</parameter> one row for each document, in the body's order.</p>
+/// <p>Only then does it call the harvest port with the pair set of steps 1 and 3 together, and for a namespace
+/// diff a second time with steps 1 and 5. It sends a body only the query keys it built itself:
+/// <code>spec</code>, <code>namespace</code>, <code>includeGenerated</code> and, for code metrics,
+/// <code>topN</code>; it never sends <code>allowWide</code>. No <code>OcuPilot.*</code> class is called while
+/// the namespace is switched.</p>
+/// <p><b>Its answers</b> are lists of rows: <parameter>ENDPOINTCODEMETRICS</parameter> one row of totals,
+/// <parameter>ENDPOINTDOCUMENTHASHES</parameter> one row for each document, in the body's order, and
+/// <parameter>ENDPOINTNAMESPACEDIFF</parameter> one row for each document that is not the same in both namespaces.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>HarvestPortClass</method>,
 /// <method>MaxDocuments</method> and <method>LogFault</method>. Production overrides none.</p>
 Class OcuPilot.Port.DevToolPort Extends %RegisteredObject
@@ -54,11 +62,17 @@ Parameter ENDPOINTCODEMETRICS = "CodeMetrics";
 /// <p>The endpoint answering a content hash for each of a namespace's documents.</p>
 Parameter ENDPOINTDOCUMENTHASHES = "DocumentHashes";
 
+/// <p>The endpoint answering a row for each document that differs between two namespaces of this instance.</p>
+Parameter ENDPOINTNAMESPACEDIFF = "NamespaceDiff";
+
 /// <p>The one request type this port serves: a list.</p>
 Parameter TYPELIST = "LIST";
 
 /// <p>The query key naming the namespace a call runs in.</p>
 Parameter NAMESPACEKEY = "namespace";
+
+/// <p>The query key naming the namespace a namespace diff compares the first one with.</p>
+Parameter TARGETKEY = "target";
 
 /// <p>The query key naming the documents.</p>
 Parameter SPECKEY = "spec";
@@ -93,6 +107,18 @@ Parameter REASONSPECSHAPE = "Name documents with letters, digits, %, dots, * and
 
 Parameter REASONGENERATED = "generated must be yes or no.";
 
+Parameter REASONTARGETSHAPE = "Name the namespace to compare with.";
+
+Parameter REASONTARGETSAME = "Choose a namespace other than this one to compare with.";
+
+/// <p>What a namespace diff's <code>Change</code> reads for a document in the first namespace alone, in the other
+/// alone, and in both with different content.</p>
+Parameter CHANGEONLYHERE = "Only in this namespace";
+
+Parameter CHANGEONLYTHERE = "Only in the other namespace";
+
+Parameter CHANGEDIFFERS = "Content differs";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -124,23 +150,27 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <p>The endpoints this port serves, as a list.</p>
 ClassMethod Endpoints() As %List
 {
-    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES)
+    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES, ..#ENDPOINTNAMESPACEDIFF)
 }
 
 /// <p>Serve <var>pEndpoint</var> for request type <parameter>TYPELIST</parameter>, after this class's
 /// header's gate.</p>
 /// <p><var>pQuery</var> carries <parameter>SPECKEY</parameter>, <parameter>GENERATEDKEY</parameter>
 /// (optional, <code>no</code> when absent), <parameter>NAMESPACEKEY</parameter> (optional: the request's
-/// scope when absent) and <parameter>MAXROWSKEY</parameter> (optional, a whole number above zero, the
-/// most rows a hash list answers). <var>pBody</var> is not read.</p>
+/// scope when absent), <parameter>MAXROWSKEY</parameter> (optional, a whole number above zero, the
+/// most rows a hash or diff list answers) and, for <parameter>ENDPOINTNAMESPACEDIFF</parameter>,
+/// <parameter>TARGETKEY</parameter>. <var>pBody</var> is not read.</p>
 /// <p>On success, at 200, <var>pResult</var> is an array of rows: for
 /// <parameter>ENDPOINTCODEMETRICS</parameter> one <code>{Documents, Lines, Code, CodePercent, SourceCode,
 /// TestCode, Comments, CommentPercent, Blank, BlankPercent}</code>, and for
 /// <parameter>ENDPOINTDOCUMENTHASHES</parameter> <code>{Document, Hash, Modified}</code> for each document,
-/// <code>Hash</code> the SHA-256 of its text in hex.</p>
+/// <code>Hash</code> the SHA-256 of its text in hex, and for <parameter>ENDPOINTNAMESPACEDIFF</parameter>
+/// <code>{Document, Change, Hash, OtherHash, Modified, OtherModified}</code> for each document that is in one
+/// namespace only or whose hashes differ (the other namespace's fields <code>""</code> for a document it lacks),
+/// in <code>Document</code> order, at most the row cap of them.</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
 /// <var>pFault</var> the wire fault: 403 <code>AUTH.NOPRIVILEGE</code> with
-/// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, a cap, a spec or a
+/// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, a target, a cap, a spec or a
 /// generated value of the wrong shape, or a namespace whose databases cannot be resolved; 400
 /// <parameter>OcuPilot.Api.AtelierError.SPECWIDE</parameter> and
 /// <parameter>OcuPilot.Api.AtelierError.SPECTOOMANY</parameter>; 501 <code>PORT.NOTIMPLEMENTED</code> for
@@ -182,6 +212,29 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
+        Set tDiff = (pEndpoint = ..#ENDPOINTNAMESPACEDIFF)
+        Set tTarget = ""
+        Set tTargetPairs = ""
+        If tDiff {
+            Set tTarget = $Get(pQuery(..#TARGETKEY))
+            If '$Match(tTarget, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTARGETSHAPE, .pHttpStatus, .pFault)
+                Quit
+            }
+            If $ZConvert(tTarget, "U") = $ZConvert(tNamespace, "U") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTARGETSAME, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tTargetPairs = ##class(OcuPilot.Port.AtelierPort).NamespacePairs(tTarget)
+            If tTargetPairs = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+                Quit
+            }
+            If '$ClassMethod(..GateClass(), "EvaluateRequired", tTargetPairs, .tFailedPair) {
+                Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
+                Quit
+            }
+        }
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
         If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONMAXROWS, .pHttpStatus, .pFault)
@@ -213,34 +266,69 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tLimit = ..MaxDocuments()
         If tCount > tLimit {
-            Set tDetail = {}
-            Do tDetail.%Set("count", tCount, "number")
-            Do tDetail.%Set("max", tLimit, "number")
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SPECTOOMANY, ##class(OcuPilot.Api.AtelierError).#REASONSPECTOOMANY, .pHttpStatus, .pFault, tDetail)
+            Set tSC = ..RefuseTooMany(tCount, tLimit, $Select(tDiff: tNamespace, 1: ""), .pHttpStatus, .pFault)
             Quit
+        }
+        If tDiff {
+            Set tCountSC = ..CountDocuments(tTarget, tSpec, tIncludeGenerated, .tTargetCount)
+            If $$$ISERR(tCountSC) {
+                Set tSC = ..Fail(pEndpoint _ " could not count the documents it reads", tCountSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            If tTargetCount > tLimit {
+                Set tSC = ..RefuseTooMany(tTargetCount, tLimit, tTarget, .pHttpStatus, .pFault)
+                Quit
+            }
         }
 
-        Kill tQuery
-        Set tQuery("spec") = tSpec
-        Set tQuery("namespace") = tNamespace
-        Set tQuery("includeGenerated") = tIncludeGenerated
         Set tMetrics = (pEndpoint = ..#ENDPOINTCODEMETRICS)
-        If tMetrics Set tQuery("topN") = 1
-        Set tAllPairs = tPairs _ tNamespacePairs
-        Set tHarvestSC = $ClassMethod(..HarvestPortClass(), "Invoke", $Select(tMetrics: ..#HANDLERLOC, 1: ..#HANDLERHASH), $Select(tMetrics: ..#METHODLOC, 1: ..#METHODHASH), tAllPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
-        If $$$ISERR(tHarvestSC) {
-            Set pHttpStatus = tHttp
-            Set pFault = tFault
-            Set tSC = tHarvestSC
-            Quit
+        Set tSC = ..RunBody(tMetrics, tSpec, tNamespace, tIncludeGenerated, tPairs _ tNamespacePairs, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tDiff {
+            Set tSC = ..RunBody(0, tSpec, tTarget, tIncludeGenerated, tPairs _ tTargetPairs, .tOtherAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set pResult = ..DiffRows(tAnswer, tOtherAnswer, tMax)
+        } Else {
+            Set pResult = $Select(tMetrics: ..MetricsRows(tAnswer), 1: ..HashRows(tAnswer, tMax))
         }
-        Set pResult = $Select(tMetrics: ..MetricsRows(tAnswer), 1: ..HashRows(tAnswer, tMax))
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>Run the line-count body when <var>pMetrics</var>, the hash body otherwise, in <var>pNamespace</var> over
+/// <var>pSpec</var> through the harvest port with <var>pPairs</var>, sending only the keys this port builds.
+/// <var>pAnswer</var> is the body's result; on failure <var>pHttpStatus</var> and <var>pFault</var> are the
+/// harvest port's.</p>
+ClassMethod RunBody(pMetrics As %Boolean, pSpec As %String, pNamespace As %String, pIncludeGenerated As %Boolean, pPairs As %List, Output pAnswer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill tQuery
+    Set tQuery("spec") = pSpec
+    Set tQuery("namespace") = pNamespace
+    Set tQuery("includeGenerated") = pIncludeGenerated
+    If pMetrics Set tQuery("topN") = 1
+    Set tSC = $ClassMethod(..HarvestPortClass(), "Invoke", $Select(pMetrics: ..#HANDLERLOC, 1: ..#HANDLERHASH), $Select(pMetrics: ..#METHODLOC, 1: ..#METHODHASH), pPairs, .tQuery, "", .pAnswer, .tHttp, .tFault, .tConsole)
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If $$$ISERR(tSC) {
+        Set pHttpStatus = tHttp
+        Set pFault = tFault
+    }
+    Quit tSC
+}
+
+/// <p>The too-many-documents refusal for <var>pCount</var> documents over <var>pLimit</var>, with
+/// <code>detail.namespace</code> naming <var>pNamespace</var> when that is not <code>""</code>.</p>
+ClassMethod RefuseTooMany(pCount As %Integer, pLimit As %Integer, pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {}
+    Do tDetail.%Set("count", pCount, "number")
+    Do tDetail.%Set("max", pLimit, "number")
+    If pNamespace '= "" Do tDetail.%Set("namespace", pNamespace, "string")
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SPECTOOMANY, ##class(OcuPilot.Api.AtelierError).#REASONSPECTOOMANY, .pHttpStatus, .pFault, tDetail)
 }
 
 /// <p>The reason <var>pSpec</var> is refused, or <code>""</code> when it is read: <code>"wide"</code> for a
@@ -332,6 +420,49 @@ ClassMethod HashRows(pAnswer As %DynamicObject, pMax As %Integer) As %DynamicArr
         Do tRow.%Set("Document", tDocument.%Get("name"), "string")
         Do tRow.%Set("Hash", tDocument.%Get("hash"), "string")
         Do tRow.%Set("Modified", tDocument.%Get("timestamp"), "string")
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
+/// <p>One <code>{Document, Change, Hash, OtherHash, Modified, OtherModified}</code> row for each document that
+/// <var>pHere</var> and <var>pThere</var>, two hash bodies' results, do not hold alike: a document is keyed by its
+/// name, equal hashes are the same whatever their times, and the rows are in <code>Document</code> order, at most
+/// <var>pMax</var> of them when that is above zero. A document only in <var>pThere</var> is reported, never a
+/// deletion signal.</p>
+ClassMethod DiffRows(pHere As %DynamicObject, pThere As %DynamicObject, pMax As %Integer) As %DynamicArray [ Private ]
+{
+    Kill tHere, tThere, tNames
+    For tSide = 1, 2 {
+        Set tIterator = $Select(tSide = 1: pHere, 1: pThere).%Get("documents").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tDocument) {
+            Set tName = tDocument.%Get("name")
+            Set tNames(tName) = ""
+            If tSide = 1 Set tHere(tName) = $ListBuild(tDocument.%Get("hash"), tDocument.%Get("timestamp"))
+            If tSide = 2 Set tThere(tName) = $ListBuild(tDocument.%Get("hash"), tDocument.%Get("timestamp"))
+        }
+    }
+    Set tRows = []
+    Set tName = ""
+    For {
+        Set tName = $Order(tNames(tName))
+        If tName = "" Quit
+        If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+        Set tHas = $Data(tHere(tName))
+        Set tOther = $Data(tThere(tName))
+        If tHas && tOther {
+            If $List(tHere(tName), 1) = $List(tThere(tName), 1) Continue
+            Set tChange = ..#CHANGEDIFFERS
+        } Else {
+            Set tChange = $Select(tHas: ..#CHANGEONLYHERE, 1: ..#CHANGEONLYTHERE)
+        }
+        Set tRow = {}
+        Do tRow.%Set("Document", tName, "string")
+        Do tRow.%Set("Change", tChange, "string")
+        Do tRow.%Set("Hash", $Select(tHas: $List(tHere(tName), 1), 1: ""), "string")
+        Do tRow.%Set("OtherHash", $Select(tOther: $List(tThere(tName), 1), 1: ""), "string")
+        Do tRow.%Set("Modified", $Select(tHas: $List(tHere(tName), 2), 1: ""), "string")
+        Do tRow.%Set("OtherModified", $Select(tOther: $List(tThere(tName), 2), 1: ""), "string")
         Do tRows.%Push(tRow)
     }
     Quit tRows
