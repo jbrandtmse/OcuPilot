@@ -296,3 +296,7 @@
 2026-11-16T02:27:38Z	Story 21.6	plan_clarification_requested	condition=AD-51_entry(c1)+AD-10_OCUPILOTSQL_arm(c2) via=orchestrator status_reset=draft
 2026-11-16T02:27:38Z	Epic 21	deps_hash_rerecorded	reason=split story=21.6->21.6,21.25..21.29 note=orchestrator_rerecords
 2026-11-16T02:28:44Z	Story 21.6	story_parked	stage=re-plan reason=owner_item_U-76(c1,c2) category=park code=none note=reads_and_purges_may_plan_first(purge_also_needs_c1_PURGE_type;deferred_to_answer)
+2026-11-16T04:09:48Z	Story 21.24	gate_step	step=full_sweep result=pass shards=20/20 env=staging_tree(b706fb831) failed=0
+2026-11-16T04:09:48Z	Story 21.24	smoke_complete	method=cli result=pass iterations=1 defects_caught=1(review:wrapped_continuation_lines) evidence=smoke.sh_PASSED+fresh_check_9_classes model=claude-opus-5-5
+2026-11-16T04:09:48Z	Story 21.24	committed	sha=b706fb831(staging/OCU-1-21.24,from_feature_b4be0c8f2) epic_branch_shas=37538ee8a,f3b81e542 ci=pending runs=43802365008
+2026-11-16T04:09:48Z	Story 21.24	story_cycle	plan_to_commit_min=~170 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
