@@ -6,9 +6,9 @@
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit of 1,000
 /// parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>SETTINGRESTART</parameter> and <parameter>SETTINGPURGE</parameter> are not refusals: each is the consequence
-/// code the proposal card, the dialog and the Save of a setting that takes effect only at the next restart, or that purges the
-/// cached queries when it changes, carry.</p>
+/// <p><parameter>SETTINGRESTART</parameter>, <parameter>SETTINGPURGE</parameter> and <parameter>MAPPINGDELETE</parameter> are not refusals: each is the consequence
+/// code the proposal card, the dialog and the Save of a setting that takes effect only at the next restart, that purges the
+/// cached queries when it changes, or of a delete of a DDL mapping, carry.</p>
 Class OcuPilot.Api.ConfigError Extends %RegisteredObject
 {
 
@@ -37,6 +37,21 @@ Parameter SETTINGPURGE = "CONFIG.SETTING.PURGE";
 
 Parameter REASONSETTINGPURGE = "Changing this setting purges the cached queries in every namespace.";
 
+/// <p>409: a create names a user DDL mapping the instance already holds (Story 21.13).</p>
+Parameter MAPPINGTAKEN = "CONFIG.MAPPING.TAKEN";
+
+Parameter REASONMAPPINGTAKEN = "This instance already holds a user DDL mapping of that name.";
+
+/// <p>400: a create names a DDL type the vendor's own limits or the characters the instance's pattern syntax uses rule out.</p>
+Parameter MAPPINGNAME = "CONFIG.MAPPING.NAME";
+
+Parameter REASONMAPPINGNAME = "A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.";
+
+/// <p>The consequence code of a delete of a DDL mapping.</p>
+Parameter MAPPINGDELETE = "CONFIG.MAPPING.DELETE";
+
+Parameter REASONMAPPINGDELETE = "DDL that names this type no longer maps it to this datatype.";
+
 /// <p>What a row's <code>Accepts</code> reads, one sentence per kind. <code>%1</code> and <code>%2</code> are replaced
 /// by <method>Accepting</method>.</p>
 Parameter ACCEPTSBOOLEAN = "0 (off) or 1 (on).";
@@ -53,6 +68,8 @@ Parameter ACCEPTSBLOCKSIZES = "Block sizes from 4096, 8192, 16384, 32768 and 655
 
 Parameter ACCEPTSREADONLY = "Shown here and never changed here.";
 
+Parameter ACCEPTSDATATYPE = "A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters.";
+
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not declare.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
@@ -61,15 +78,20 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
     If pCode = ..#SETTINGRESTART Quit ..#REASONSETTINGRESTART
     If pCode = ..#SETTINGPURGE Quit ..#REASONSETTINGPURGE
+    If pCode = ..#MAPPINGTAKEN Quit ..#REASONMAPPINGTAKEN
+    If pCode = ..#MAPPINGNAME Quit ..#REASONMAPPINGNAME
+    If pCode = ..#MAPPINGDELETE Quit ..#REASONMAPPINGDELETE
     Quit ""
 }
 
-/// <p>The HTTP status <var>pCode</var> is answered with: 404, 409 or 400, and 0 for a code that is no refusal.</p>
+/// <p>The HTTP status <var>pCode</var> is answered with: 404, 409 or 400, and 0 for a code that is no refusal (a consequence code is none).</p>
 ClassMethod HttpStatusFor(pCode As %String) As %Integer
 {
     If pCode = ..#SETTINGNOTFOUND Quit 404
     If pCode = ..#SETTINGREADONLY Quit 409
+    If pCode = ..#MAPPINGTAKEN Quit 409
     If pCode = ..#SETTINGVALUE Quit 400
+    If pCode = ..#MAPPINGNAME Quit 400
     Quit 0
 }
 

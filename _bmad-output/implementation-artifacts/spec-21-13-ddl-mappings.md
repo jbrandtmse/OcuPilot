@@ -2,12 +2,20 @@
 title: 'Story 21.13: DDL mappings'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '4d4cd1b4de5041c441700fdc67a65b9b9e75fe9d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      DraftRegistry.TestEveryPortThatDefinesInvokeDefinesASnippet is red because OcuPilot.Port.MirrorPort (Story 21.12) defines Invoke and no Snippet.
+    evidence: |-
+      ci-runner reports 1 of 9 failed on ocupilot-ci at this story's base plus its edits; grep shows no Snippet method in src/OcuPilot/Port/MirrorPort.cls. This story does not touch MirrorPort.
+    location: >-
+      src/OcuPilot/Port/MirrorPort.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -87,6 +95,28 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-15 -- Review pass
+
+- verdicts: 15 findings -- high 0, medium 5, low 10, false 0, maybe-false 0
+- findings:
+  - `[medium]` `patch` browser spec's Set value and Delete test depended on the previous test's mapping -- the test now seeds its own mapping through the vendor before the screen loads; passes alone and in order.
+  - `[medium]` `patch` nothing pinned a name taken between mint and confirm -- `PRECONDITIONCODES` declaration asserted in `DdlMappingRead`, and `TestACreateConfirmedAfterTheNameWasTakenIsRefusedAsAChangedTarget` added (409 `PROPOSAL.TARGETCHANGED`); the confirm answers that code without the parameter too, so the declaration row carries the parameter and the confirm test carries the behavior.
+  - `[medium]` `patch` agent refusals asserted as "refused" only -- held name now pinned to `CONFIG.MAPPING.TAKEN`, absent set and delete to the mint's own "is not present on this instance" sentence.
+  - `[medium]` `patch` AD-4's complete-set claim could not fail on a one-key entry -- the seam holds an entry with a second key and the set must send both.
+  - `[medium]` `patch` `LogFault` of create and delete unasserted -- the seam records the codes and `DdlMappingRules` asserts them for create and delete.
+  - `[low]` `patch` user-list read compared two empty results -- `DdlMappingWrite` reads `DdlUserMappingList` after the create and asserts the row's datatype.
+  - `[low]` `patch` dialog spec's trim mutation could not redden -- the spec types a padded name and asserts it is posted as typed.
+  - `[low]` `patch` `DdlMappingRules` rows relied on `ZZOCU1` being absent -- rows and cases use a per-job name.
+  - `[low]` `patch` comment claimed a read-back the live-safe test does not make -- the claim removed.
+  - `[low]` `patch` intent audit: the agent's set had no audit-marker assertion -- `TestTheAgentsConfirmWritesOnceWithOneAuditMarker` now mints, confirms and asserts the marker for the set.
+  - `[low]` `reject` named-read cap `NAMEDMAXROWS` unexercised -- reaching 5000 rows needs a vendor-list seam that does not exist; the instance holds 100 and 0; wontfix-accepted, reopen if a named family lists past a few hundred rows.
+  - `[low]` `reject` a held name that also breaks the name rule answers 409 at the port and 422 at the Save (inference) -- the vendor creates only names the rules admit, so a held malformed name needs a row made outside OcuPilot; not worth a guard.
+  - `[low]` `reject` agent-facing tool descriptions, one port 400 reason and one diff sentence sit outside the ruled list -- none is shown on a screen, matching every sibling tool; the screen strings are exactly the ruled list.
+  - `[low]` `reject` matrix counts (100 and 0) are not asserted as literals -- by design: counts derive from the instance (Rule 30).
+  - `[low]` `reject` the browser spec writes only the user list -- the spec's task names user-list writes; system writes are pinned by `DdlMappingWrite` at the route.
+  - intent audit readings R1a, R2a, R3a, R4a, R5a, R6a, R7a were reported as implemented and need no action.
+
+
 ## Design Notes
 
 **Governing ADs:** AD-4 (a set sends `Get`'s complete set, measured as `Datatype` alone), AD-6, AD-10 (two covered types, no predicate), AD-13 (names with spaces and parentheses travel percent-encoded in one segment), AD-14, AD-15, AD-16, AD-21 (no path; no caller value reaches a `List` pattern), AD-22 (create and set `true`, deletes `false`), AD-29, AD-34, AD-35 (no field holds a credential), AD-36, AD-39, AD-44, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59.
@@ -106,6 +136,24 @@ deferred: []
 
 - **System mappings writable (recommended) or read-only.** The runner's brief calls the system mappings read-only. The AC ("round-trips over its backing class"), catalog row SA-33 ("edit / delete", write-confirm) and the classic page all offer edit and delete, and no self-protection reason is known, so this plan keeps them, behind a destructive delete whose key ships `false`. Read-only would drop SA-33's writes, which is owner scope (U5); it would remove `DdlSystemMappingSet`, `DdlSystemMappingDelete` and two baseline keys.
 - **Strings** (reuse: "Name", "Set value", "Delete", 21.3's refusal sentences): titles "System DDL mappings" · "User DDL mappings"; entity nouns "system DDL mapping" · "user DDL mapping"; column "Datatype"; action "New mapping"; dialog title "New DDL mapping"; field labels "Name" · "Datatype"; empty states "No system DDL mappings." · "No user DDL mappings."; empty-agent phrases "change a system DDL mapping" · "add a user DDL mapping"; `ACCEPTSDATATYPE` "A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters."; `CONFIG.MAPPING.TAKEN` "This instance already holds a user DDL mapping of that name."; `CONFIG.MAPPING.NAME` "A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end."; `CONFIG.MAPPING.DELETE` (both lists' delete consequence, final wording after Task 0 (f)) "DDL that names this type no longer maps it to this datatype."; prompts "Which DDL type maps to %Library.String?" · "What does VARCHAR map to?" · "Which user DDL mappings does this instance have?" · "How do I map a new DDL type to a class?".
+
+**Task 0, measured on `ocupilot-ci` before code (batch 1), each probe restored (100 system and 0 user mappings read again afterwards):**
+
+- (a) A caller holding only `%Admin_Manage:USE` and `%DB_IRISSYS:READ` fails `<PROTECT>` on `^SYS("CONFIG","IRIS","SqlUserDatatypes"|"SqlSysDatatypes",<name>)` for `Create`, `Modify` and `Delete` of each class; the same caller with `%DB_IRISSYS:WRITE` succeeds at all six. The write pairs are the read pairs plus `%DB_IRISSYS:WRITE`, as `ConfigPort` already has them.
+- (b) None of the six adds a `Config.CPF.PendingRestart` reason (`PendingRestart` read 0 before and after). `Restart` is false on both lists.
+- (c) Vendor answers: `Create` of a held name `#419 ... already exists`; a name holding `=`, `,`, `*`, `^`, a control character or an edge space is created without complaint, as is a 64-character name, so only OcuPilot's `NameCode` holds them out; a 65-character name `#7201 ... longer than MAXLEN allowed of 64`; an empty datatype `#5659 required` / `#7202 length less than MINLEN`, on `Create` and on `Modify`; a datatype naming no class is stored (`Nonexistent.NoSuchClass` read back), so only the datatype pattern holds it out; `Delete` of an absent name `#420 ... does not exist`, as is `Get` of an absent or differently cased name. `Get` answers the `Datatype` key alone and the `List` query's `Comments` column is empty.
+- (d) A system mapping deleted (`BIGINT(%1)`) and restored by `Config.SqlSysDatatypes.Create` reads back `%Library.BigInt`, and the count returns to 100.
+- (e) With `VARCHAR(%1)` changed to `%Library.String(MAXLEN=%1,TRUNCATE=1)`, `smoke.sh --container ocupilot-ci` read 50 executed, 50 passed, and `ConfigSettingRead` ran green; the mapping was restored.
+- (f) In `USER`, `CREATE TABLE SQLUser.ZZOCUF (id INT, c ZZMAPF)` with a user mapping `ZZMAPF` to `%Library.Integer` creates the table with `c` typed `%Library.Integer`; after the mapping's delete the same statement answers SQLCODE -400, `Class 'User.ZZMAPF' ... does not exist`. The delete sentence stands as ruled.
+
+**Decided in-stage:**
+
+- The create tool's fresh read is the port's `GET` carrying `action=CREATE` (`ConfigPort.ACTIONKEY`), so a held name answers 409 `CONFIG.MAPPING.TAKEN` at the mint, the confirm's re-read (`PRECONDITIONCODES`) and the Save, and a free one the 404 a create expects; an endpoint that serves no create reads the same query plain. The create's read-back uses the set tool's read (`READBACKTOOL`).
+- A user mapping's create payload is the datatype alone (`PermittedCreateFields` `Value`); the name is the target's id.
+- Strings must be unique values, and the spec supplies four prompts for two screens that each need three: the user list names the system list's second and third prompt keys beside its own first. No string was added beyond the spec's list.
+- `ConfigSettingSet` gained `NameDescription` and `ValueDescription` hooks and requires `Value` only where its field list has it, so the delete tools (no field) reuse its schema; `ConfigGateSeam` gained the three entry seams and `HoldEntry`.
+- Epic 24's committed edits to `Baseline`, `Prohibited`, `EXPERIENCE.md`, `strings.ts`, `ci-throwaway.sh` and the screen handler files are integration unions; every edit here is an added row or an appended name in an existing list (the covered-types parameter, the guard chain and the permitted-field line in `Prohibited`, the `TYPES` line in `EntityType`), which a merge may need to re-spell. There is no Epic 22 branch or worktree.
+- `DraftRegistry.TestEveryPortThatDefinesInvokeDefinesASnippet` is red on `OcuPilot.Port.MirrorPort` (Story 21.12) and is not caused by this story.
 
 **Integration ACs:** the two endpoints are consumed in this story by their descriptors, five write tools and the Save route (AD-53's two callers); AC1-AC4 observe them through the API and the browser. **Consumed-by:** none known. **Consumes:** Story 21.3/21.4's `ConfigPort`, rules, error, set tool and page; Story 20.26's no-parent `ItemSave`; `Screen.Gate`, `Kernel.Fault`, `Screen/Tool/Write`.
 
@@ -132,9 +180,22 @@ deferred: []
 
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted byte-identical and the reverted source reloaded, then recorded here by the implement stage as `mutation: <change> -> <test red>`:** AC1 `SendEntry` sends the fresh read's datatype instead of the new one; AC2 `Serves` admits `CREATE` on `SystemDDL`; AC3 `Collect` reads a named row through `List(name)`, or the name rule admits `*`; AC4 `osmgmt.userddlmappings.delete` `true` in `Baseline`; AC5 one word of `CONFIG.MAPPING.TAKEN` changed in `strings.ts`.
 
+- mutation: AC1 `ConfigPort.ModifyEntry` sends the fresh read's datatype and not the new one (the `Set tProps("Datatype")` line removed) -> `DdlMappingRules` red on `TestASetSendsGetsPropertySetWithTheDatatypeChangedAndAVendorRefusalIs400` and on the set rows of `TestEveryMatrixRowIsAnsweredOnItsCodeAndSendsNothingWhenRefused`; reverted, byte-identical, reloaded.
+- mutation: AC2 `ConfigPort.Serves` admits `CREATE` on `SystemDDL` -> `DdlMappingRead` red on `TestOnlyTheUserMappingsServeCreateAndNoOtherEndpointServesEither` and `TestANamedReadComparesTheNameExactlyAndNeverPassesItToTheListPattern`; reverted, byte-identical, reloaded.
+- mutation: AC3 `ConfigSettingRules.NameCode` admits `*` -> `DdlMappingRules` red on the `ZZ*OCU` row, on the mint refusal and on the Save route's refusal; and `CollectNamed` passes the caller's name to the `List` query -> `DdlMappingRead.TestANamedReadComparesTheNameExactlyAndNeverPassesItToTheListPattern` red on the wildcard, prefix and case rows; each reverted, byte-identical, reloaded.
+- mutation: AC4 `osmgmt.userddlmappings.delete` `true` in `Baseline` -> `DdlMappingRead.TestTheBaselineDefaultsAndTheAgentsDispatch` red on the baseline row; reverted, byte-identical, reloaded.
+- mutation: AC5 `configMappingTaken` in `strings.ts` read "of this name" -> `ui/tools/config-settings.test.mjs` red on `REASONMAPPINGTAKEN and configMappingTaken are one published sentence`; reverted, byte-identical.
+- mutation: review patches (AD-54, AD-4, AD-39) -- `DdlUserMappingCreate` `PRECONDITIONCODES` emptied -> `DdlMappingRead` red on the declaration row; `ConfigPort.Absence` answers 404 for a held name -> `DdlMappingWrite` red on `TestACreateConfirmedAfterTheNameWasTakenIsRefusedAsAChangedTarget` and on the held-name mint row; `ModifyEntry` sends only `Datatype` and the two `LogFault` calls of create and delete removed -> `DdlMappingRules` red on the property-set row and on both log rows; `DdlMappingDialog` trims the name -> `ddl-mapping-dialog.spec.ts` red on the typed-name post. Each reverted byte-identical and reloaded.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Plan pass: spec written from read-only probes on slot A (`ocupilot`); nothing ran against `ocupilot-ci`. One question escalated for the spec gate (system mappings writable, recommended, or read-only as the brief says) and the new strings listed under Design Notes.
+**Implemented.** `ConfigPort` gains the named-entry endpoints `SystemDDL` and `UserDDL` with `CREATE` (user only) and `DELETE`, behind the `SendEntry`, `CreateEntry` and `DeleteEntry` seams. Rules, error codes, five tools, two descriptors at OS management positions 34 and 35, the no-parent Save route `POST /config/ddl-mappings`, the registration rows (deletes ship off), and the client lists, the New mapping dialog, strings and EXPERIENCE.md rows. Task 0 probes are under Design Notes.
+
+**Review.** Two layers: 5 medium and 5 low findings patched in this pass, 5 low rejected with reasons (triage log); no high. The one deferred item is a red outside this story: `DraftRegistry` fails because `MirrorPort` (Story 21.12) has no `Snippet`. Follow-up review recommended: false.
+
+**Verified on `ocupilot-ci`.** `DdlMappingRead` 6, `DdlMappingRules` 6, `DdlMappingWrite` 6 (armed), `ConfigSettingRead`, `ConfigSettingMint`, `SqlSettingRead` and `PortGate` green; the rest of the `(loop)` class set was green on the implement pass (run before the review patches, which touched only test classes, `ConfigGateSeam` and the browser and dialog specs). `check-objectscript` 0 problems, `lint-docs` clean, `client-lint` clean, `npm run build` green, components 3478/3478, `test:tools` 2294/2294, `ddl-mappings` and `language-servers` browser specs green (the Set value test also alone). Mutations are in Verification. The runner's full sweep, `smoke.sh` and fresh check remain.
+
+**Residual.** Epic 24 has committed edits to some shared registration files; this story's edits there are added rows, so a merge may need to re-spell them.

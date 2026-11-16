@@ -1,5 +1,5 @@
 /**
- * Stories 21.3 and 21.4's setting sentences, held to the one published copy (AD-29, AD-39).
+ * Stories 21.3, 21.4 and 21.13's setting sentences, held to the one published copy (AD-29, AD-39).
  *
  * Each `REASON*` and `ACCEPTS*` parameter of `OcuPilot.Api.ConfigError` is one published sentence on three surfaces: the server sends it, the
  * client's strings table holds it, and EXPERIENCE.md's Fixed strings publish it. The restart consequence is the reused
@@ -34,6 +34,10 @@ const SENTENCES = [
   ['ACCEPTSTEXT', 'configAcceptsText'],
   ['ACCEPTSBLOCKSIZES', 'configAcceptsBlockSizes'],
   ['ACCEPTSREADONLY', 'configAcceptsReadOnly'],
+  ['ACCEPTSDATATYPE', 'configAcceptsDatatype'],
+  ['REASONMAPPINGTAKEN', 'configMappingTaken'],
+  ['REASONMAPPINGNAME', 'configMappingName'],
+  ['REASONMAPPINGDELETE', 'configMappingDelete'],
 ];
 
 function stringValue(key) {
@@ -50,7 +54,7 @@ function classParameter(file, parameter) {
 }
 
 // Mutation (Rule 19): change one word of REASONSETTINGREADONLY in ConfigError.cls -> this goes red naming both.
-test('Story 21.3: each setting sentence is one published sentence on the server, the strings table and Fixed strings', () => {
+test('Stories 21.3 and 21.13: each setting sentence is one published sentence on the server, the strings table and Fixed strings', () => {
   const experience = readFileSync(EXPERIENCE, 'utf8');
   for (const [parameter, key] of SENTENCES) {
     const server = classParameter(ERROR, parameter);

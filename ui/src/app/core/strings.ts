@@ -8114,6 +8114,44 @@ export const STRINGS = {
   mirrorMonitorPrompt3: 'Is any mirror member behind on journal transfer or dejournaling?',
   /** EXPERIENCE.md:604 */
   mirrorRefusalDatabases: 'Removing a mirror together with taking its databases out of mirroring is not available here.',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsLabel: 'System DDL mappings',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsLabel: 'User DDL mappings',
+  /** EXPERIENCE.md:604 */
+  aboutSystemDdlMapping: 'system DDL mapping',
+  /** EXPERIENCE.md:604 */
+  aboutUserDdlMapping: 'user DDL mapping',
+  /** EXPERIENCE.md:604 */
+  ddlMappingColumnDatatype: 'Datatype',
+  /** EXPERIENCE.md:604 */
+  ddlMappingNewAction: 'New mapping',
+  /** EXPERIENCE.md:604 */
+  ddlMappingDialogTitle: 'New DDL mapping',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsEmpty: 'No system DDL mappings.',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsEmpty: 'No user DDL mappings.',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsEmptyAgent: 'change a system DDL mapping',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsEmptyAgent: 'add a user DDL mapping',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt1: 'Which DDL type maps to %Library.String?',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt2: 'What does VARCHAR map to?',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt3: 'How do I map a new DDL type to a class?',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsPrompt1: 'Which user DDL mappings does this instance have?',
+  /** EXPERIENCE.md:604 */
+  configAcceptsDatatype: 'A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters.',
+  /** EXPERIENCE.md:604 */
+  configMappingTaken: 'This instance already holds a user DDL mapping of that name.',
+  /** EXPERIENCE.md:604 */
+  configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
+  /** EXPERIENCE.md:604 */
+  configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
 } as const;
 
 /**

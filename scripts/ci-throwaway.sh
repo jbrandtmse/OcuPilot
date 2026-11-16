@@ -874,8 +874,9 @@ services:
       # instance's pending-restart flag, so the flag stays set on the throwaway; the class restores every setting it changed on
       # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
       # and purges the cached queries of every namespace once (Story 21.4). TaskMailAuditMask sets, changes and clears the Task Manager
-      # mail password to probe values and restores the stored one after every method (Story 21.24).
-      # classes: ConfigSettingWrite, SqlSettingWrite, TaskMailAuditMask
+      # mail password to probe values and restores the stored one after every method (Story 21.24). DdlMappingWrite creates, changes and
+      # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable

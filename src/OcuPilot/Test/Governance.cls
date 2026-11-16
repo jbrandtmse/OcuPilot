@@ -60,6 +60,10 @@ Parameter CUBEDISABLED = "analytics.cubemanager.build";
 /// <p>Story 21.2's five backup writes, each of which ships disabled (AD-22): a backup run, a freeze, a thaw and a change of the backup database list.</p>
 Parameter BACKUPDISABLED = "osmgmt.backuptasks.run,osmgmt.backuptasks.freeze,osmgmt.backuptasks.thaw,osmgmt.backupdatabases.add,osmgmt.backupdatabases.remove";
 
+/// <p>Story 21.13's two DDL mapping deletes, which ship disabled (AD-22): each removes a mapping OcuPilot cannot restore. The create and the
+/// two sets ship enabled.</p>
+Parameter DDLMAPPINGDISABLED = "osmgmt.systemddlmappings.delete,osmgmt.userddlmappings.delete";
+
 /// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
 /// other four term list writes ship enabled.</p>
 Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
@@ -192,6 +196,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
@@ -201,7 +206,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete and the lookup table import disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete, the lookup table import and the two DDL mapping deletes disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

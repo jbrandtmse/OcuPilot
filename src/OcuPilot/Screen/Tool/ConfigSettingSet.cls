@@ -88,12 +88,24 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tSchema = ##super(pDescriptor)
     If '$IsObject(tSchema) || (tSchema.%GetTypeOf("properties") '= "object") Quit tSchema
     Set tProperties = tSchema.%Get("properties")
-    If tProperties.%GetTypeOf(..IdArgument()) = "object" Do tProperties.%Get(..IdArgument()).%Set("description", "The setting, named exactly as this screen's list reports it. A setting the list does not report, and one the list marks as shown and never changed, are refused.", "string")
+    If tProperties.%GetTypeOf(..IdArgument()) = "object" Do tProperties.%Get(..IdArgument()).%Set("description", ..NameDescription(), "string")
     If tProperties.%GetTypeOf(..#ARGUMENT) = "object" {
-        Do tProperties.%Get(..#ARGUMENT).%Set("description", "The new value, as text, in the form the setting's Accepts line states: a boolean setting takes 1 or 0. A value the setting does not accept is refused.", "string")
+        Do tProperties.%Get(..#ARGUMENT).%Set("description", ..ValueDescription(), "string")
+        If tSchema.%GetTypeOf("required") = "array" Do tSchema.%Get("required").%Push(..#ARGUMENT)
     }
-    If tSchema.%GetTypeOf("required") = "array" Do tSchema.%Get("required").%Push(..#ARGUMENT)
     Quit tSchema
+}
+
+/// <p>What the schema says of the name that identifies the target.</p>
+ClassMethod NameDescription() As %String
+{
+    Quit "The setting, named exactly as this screen's list reports it. A setting the list does not report, and one the list marks as shown and never changed, are refused."
+}
+
+/// <p>What the schema says of the one value.</p>
+ClassMethod ValueDescription() As %String
+{
+    Quit "The new value, as text, in the form the setting's Accepts line states: a boolean setting takes 1 or 0. A value the setting does not accept is refused."
 }
 
 /// <p>No state rows: a merge's card shows the value it moves (<method>OcuPilot.Kernel.Proposal.Mint.Merge</method>), and

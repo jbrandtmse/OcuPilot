@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -566,7 +566,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "sql-shell-setting",
   "tsql-setting",
   "isql-setting",
-  "mirror"
+  "mirror",
+  "system-ddl-mapping",
+  "user-ddl-mapping"
 ];
 
 /**
@@ -7525,6 +7527,282 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DdlSystemMappingList",
+    "route": "os-management/system-ddl-mappings",
+    "area": "os-management",
+    "labelKey": "systemDdlMappingsLabel",
+    "sideBarPosition": 34,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "system-ddl-mapping",
+    "entityLabelKey": "aboutSystemDdlMapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "systemDdlMappingsEmpty",
+    "commandAliases": [
+      "system ddl mappings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemDdlMappingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.SQLDataTypes",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "system DDL mapping",
+      "label": "The instance's system DDL mappings, each a DDL type name and the datatype class it maps to. The user DDL mappings are in osmgmt.userddlmappings.",
+      "source": {
+        "port": "config",
+        "endpoint": "SystemDDL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "ddlMappingColumnDatatype",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "systemDdlMappingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.systemddlmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DdlUserMappingList",
+    "route": "os-management/user-ddl-mappings",
+    "area": "os-management",
+    "labelKey": "userDdlMappingsLabel",
+    "sideBarPosition": 35,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "user-ddl-mapping",
+    "entityLabelKey": "aboutUserDdlMapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "userDdlMappingsEmpty",
+    "commandAliases": [
+      "user ddl mappings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "userDdlMappingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemDdlMappingsPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.SQLDataTypes",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "user DDL mapping",
+      "label": "The instance's user DDL mappings, each a DDL type name and the datatype class it maps to. The system DDL mappings are in osmgmt.systemddlmappings.",
+      "source": {
+        "port": "config",
+        "endpoint": "UserDDL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "ddlMappingColumnDatatype",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "userDdlMappingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.userddlmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DeviceForm",

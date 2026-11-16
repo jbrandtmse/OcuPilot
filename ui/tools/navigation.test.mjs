@@ -257,6 +257,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/isql-settings',
       // Story 21.12: the Mirror monitor, the thirty-third.
       'os-management/mirror-monitor',
+      // Story 21.13: System and User DDL mappings, the thirty-fourth and thirty-fifth.
+      'os-management/system-ddl-mappings',
+      'os-management/user-ddl-mappings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -531,6 +534,9 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/isql-settings',
       // Story 21.12: the thirty-third.
       'os-management/mirror-monitor',
+      // Story 21.13: the thirty-fourth and thirty-fifth.
+      'os-management/system-ddl-mappings',
+      'os-management/user-ddl-mappings',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

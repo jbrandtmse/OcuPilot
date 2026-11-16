@@ -11,8 +11,9 @@ import { reasonForField } from '../../core/violations';
 import { ListPage } from '../../shell/list-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { BOOLEAN_TYPE, InteropItemSettingDialog } from '../interoperability/interop-item-setting-dialog';
+import { DdlMappingDialog } from './ddl-mapping-dialog';
 
-/** The descriptors this one page serves (Stories 21.3 and 21.4). */
+/** The descriptors this one page serves (Stories 21.3, 21.4 and 21.13). */
 export const STARTUP_SETTING_LIST = 'OcuPilot.Screen.Descriptor.StartupSettingList';
 export const MEMORY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.MemorySettingList';
 export const COMPATIBILITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.CompatibilitySettingList';
@@ -20,6 +21,8 @@ export const SQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SqlSettingList';
 export const SQL_SHELL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SqlShellSettingList';
 export const TSQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.TsqlSettingList';
 export const ISQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.IsqlSettingList';
+export const DDL_SYSTEM_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlSystemMappingList';
+export const DDL_USER_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlUserMappingList';
 
 const SERVED_LISTS: readonly string[] = [
   STARTUP_SETTING_LIST,
@@ -29,10 +32,15 @@ const SERVED_LISTS: readonly string[] = [
   SQL_SHELL_SETTING_LIST,
   TSQL_SETTING_LIST,
   ISQL_SETTING_LIST,
+  DDL_SYSTEM_MAPPING_LIST,
+  DDL_USER_MAPPING_LIST,
 ];
 
 /** The declared row action Set value, which this page's dialog sends. */
 export const CONFIG_SET_ACTION = 'set';
+
+/** The declared primary action New mapping, which only the user DDL mappings list carries and this page registers (Story 21.13). */
+export const DDL_MAPPING_ADD_ACTION = 'add';
 
 /** The value the dialog sends beside the setting's name, under the name the tools declare (AD-56). */
 export const CONFIG_VALUE = 'Value';
@@ -54,7 +62,7 @@ function text(value: unknown): string {
 }
 
 /**
- * Startup, Memory, Compatibility, SQL, SQL Shell, TSQL and ISQL settings (Stories 21.3 and 21.4, AD-5, AD-53): the shared list page over each
+ * Startup, Memory, Compatibility, SQL, SQL Shell, TSQL, ISQL and DDL mapping settings (Stories 21.3, 21.4 and 21.13, AD-5, AD-53): the shared list page over each
  * descriptor's declared table, and over it the Set value dialog.
  *
  * **One page serves the descriptors**, which differ only in the settings they read; it resolves its screen from the URL, as the list page
@@ -67,11 +75,15 @@ function text(value: unknown): string {
  * with `Value` as its one value, an empty one allowed. A refusal stays in the dialog, on the value's field where the instance names it. After
  * an applied change on a row whose `Restart` is true, the page states the restart sentence above the list; after one that changed the value of a
  * row whose `Purges` is true, it states the purge sentence there.
+ *
+ * **New mapping is the user DDL mappings list's primary action**, registered by this page on that screen alone: it opens `DdlMappingDialog`, which
+ * posts to the Save route and publishes the create. The system list has none, as the classic page offers no create of a system mapping. A DDL
+ * mapping row is never shown and never changed in any other way than its datatype, so its Set value is the dialog above with the row's `Accepts` line.
  */
 @Component({
   selector: 'app-config-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ListPage, InteropItemSettingDialog],
+  imports: [ListPage, InteropItemSettingDialog, DdlMappingDialog],
   // The height chain every page host carries, so the list's viewport keeps its height.
   styles: `
     :host {
@@ -88,6 +100,9 @@ function text(value: unknown): string {
       <p class="ocu-banner" role="status" data-config-setting-purge>{{ note }}</p>
     }
     <app-list-page />
+    @if (adding) {
+      <app-ddl-mapping-dialog (added)="onCloseAdd()" (cancelled)="onCloseAdd()" />
+    }
     @if (openTarget; as target) {
       <app-interop-item-setting-dialog
         [name]="target.name"
@@ -132,6 +147,9 @@ export class ConfigSettingsPage {
   /** The purge sentence stated after an applied change that purged the cached queries, or `''`. */
   protected readonly purgeNote = signal('');
 
+  /** Whether the New mapping dialog is open. */
+  private readonly addOpen = signal(false);
+
   protected get shownRestart(): string {
     return this.restartNote();
   }
@@ -142,6 +160,10 @@ export class ConfigSettingsPage {
 
   protected get openTarget(): SettingTarget | null {
     return this.target();
+  }
+
+  protected get adding(): boolean {
+    return this.addOpen();
   }
 
   constructor() {
@@ -155,7 +177,11 @@ export class ConfigSettingsPage {
       () => this.onOpen(),
       () => (this.selectedRow()?.['ReadOnly'] === true ? STRINGS.configRefusalReadOnly : '')
     );
-    inject(DestroyRef).onDestroy(stop);
+    const stopAdd = this.screen.descriptor === DDL_USER_MAPPING_LIST ? this.actions.register(this.screen.descriptor, DDL_MAPPING_ADD_ACTION, () => this.onOpenAdd()) : (): void => undefined;
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      stopAdd();
+    });
   }
 
   private serves(descriptor: string): boolean {
@@ -194,6 +220,16 @@ export class ConfigSettingsPage {
       purges,
       statement: row['Restart'] === true ? `${accepts} ${STRINGS.encryptionStartupRestart}` : purges ? `${accepts} ${STRINGS.configSettingPurge}` : accepts,
     });
+  }
+
+  /** Open the New mapping dialog, never over a dialog of the handler's or the Set value one. */
+  protected onOpenAdd(): void {
+    if (this.addOpen() || this.target() !== null || this.handler.pending() !== null) return;
+    this.addOpen.set(true);
+  }
+
+  protected onCloseAdd(): void {
+    this.addOpen.set(false);
   }
 
   protected onClose(): void {

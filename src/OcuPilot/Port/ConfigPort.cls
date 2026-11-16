@@ -26,8 +26,16 @@
 /// (<parameter>TSQLROSTER</parameter>). No caller value names a node or a method. A row is <code>Purges</code> when a change
 /// of it purges the cached queries of every namespace (<parameter>PURGESQL</parameter>); the set tool purges them once a write
 /// that changed it has read OK (<method>PurgeAfterSet</method>).</p>
+/// <p><b>The two DDL mapping endpoints</b> (<code>SystemDDL</code>, <code>UserDDL</code>, Story 21.13) list the entries of
+/// <code>Config.SqlSysDatatypes</code> and <code>Config.SqlUserDatatypes</code>, each a named entry whose <code>Name</code> is the DDL type
+/// and whose <code>Value</code> is its datatype class. They also answer <code>CREATE</code> (<code>UserDDL</code> only) and
+/// <code>DELETE</code> (both). A caller's name is only ever passed to the vendor's <code>Get</code>, <code>Create</code>,
+/// <code>Modify</code> and <code>Delete</code>, never to its <code>List</code> query, whose <code>Names</code> argument is a pattern.
+/// A <code>GET</code> carrying <parameter>ACTIONKEY</parameter> <code>CREATE</code> is the absence read of a create: a held name is
+/// 409 <code>CONFIG.MAPPING.TAKEN</code> and a free one the 404 a create expects; an endpoint that serves no create reads plain.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
-/// <method>SendProperties</method>, <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
+/// <method>SendProperties</method>, <method>SendEntry</method>, <method>CreateEntry</method>, <method>DeleteEntry</method>,
+/// <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
 /// <method>PurgeCachedQueries</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
 /// return.</p>
@@ -51,7 +59,7 @@ Parameter COMPATIBILITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -67,6 +75,10 @@ Parameter TSQLENDPOINT = "TSQL";
 
 Parameter ISQLENDPOINT = "ISQL";
 
+Parameter SYSTEMDDLENDPOINT = "SystemDDL";
+
+Parameter USERDDLENDPOINT = "UserDDL";
+
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
 
@@ -75,6 +87,22 @@ Parameter MEMORYCLASS = "Config.config";
 Parameter COMPATIBILITYCLASS = "Config.Miscellaneous";
 
 Parameter SQLCLASS = "Config.SQL";
+
+Parameter SYSTEMDDLCLASS = "Config.SqlSysDatatypes";
+
+Parameter USERDDLCLASS = "Config.SqlUserDatatypes";
+
+/// <p>The property of a DDL mapping entry that holds its datatype class, which a row shows as its <code>Value</code>.</p>
+Parameter DATATYPEPROPERTY = "Datatype";
+
+/// <p>The most characters a DDL type name and a datatype hold, as the vendor's own properties declare them (<code>Config.CommonProperties.Name</code>,
+/// <code>Config.SqlUserDatatypes.Datatype</code>).</p>
+Parameter NAMEMAXLEN As INTEGER = 64;
+
+Parameter DATATYPEMAXLEN As INTEGER = 256;
+
+/// <p>The most entries a named list reads.</p>
+Parameter NAMEDMAXROWS As INTEGER = 5000;
 
 /// <p>The <code>Config.SQL</code> settings a caller may set: the classic SQL page's offered keys less
 /// <code>DefaultSchema</code>. Every other key is listed and never changed here; a key a later build adds is read only until it
@@ -113,8 +141,15 @@ Parameter TYPEGET = "GET";
 
 Parameter TYPESET = "SET";
 
+Parameter TYPECREATE = "CREATE";
+
+Parameter TYPEDELETE = "DELETE";
+
 /// <p>The write request types.</p>
-Parameter WRITETYPES = "SET";
+Parameter WRITETYPES = "SET,CREATE,DELETE";
+
+/// <p>The query key a <code>GET</code> carries to ask for the absence read of a create (<code>CREATE</code> is its only value).</p>
+Parameter ACTIONKEY = "action";
 
 /// <p>The query keys: the setting named, and the rows a list is read for.</p>
 Parameter NAMEKEY = "name";
@@ -165,6 +200,8 @@ Parameter REASONMAXROWS = "maxRows must be a whole number above zero.";
 
 Parameter REASONBODY = "a set takes the new value as text in Value.";
 
+Parameter REASONCREATEBODY = "a create takes the datatype as text in Value.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in process;
 /// production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -191,10 +228,13 @@ ClassMethod IsWrite(pType As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#WRITETYPES), pType)
 }
 
-/// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>: every endpoint answers all three.</p>
+/// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>: every endpoint answers <code>LIST</code>, <code>GET</code> and
+/// <code>SET</code>; <code>CREATE</code> only the user DDL mappings, and <code>DELETE</code> only the two DDL mappings.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind($ListFromString(..#ENDPOINTS), pEndpoint) Quit 0
+    If pType = ..#TYPECREATE Quit pEndpoint = ..#USERDDLENDPOINT
+    If pType = ..#TYPEDELETE Quit ..IsNamed(pEndpoint)
     Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPESET)
 }
 
@@ -206,7 +246,15 @@ ClassMethod VendorClass(pEndpoint As %String) As %String
     If pEndpoint = ..#MEMORYENDPOINT Quit ..#MEMORYCLASS
     If pEndpoint = ..#COMPATIBILITYENDPOINT Quit ..#COMPATIBILITYCLASS
     If pEndpoint = ..#SQLENDPOINT Quit ..#SQLCLASS
+    If pEndpoint = ..#SYSTEMDDLENDPOINT Quit ..#SYSTEMDDLCLASS
+    If pEndpoint = ..#USERDDLENDPOINT Quit ..#USERDDLCLASS
     Quit ""
+}
+
+/// <p>Whether <var>pEndpoint</var> lists named entries, each read by the vendor's <code>Get</code> of its name: the two DDL mappings.</p>
+ClassMethod IsNamed(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#SYSTEMDDLENDPOINT) || (pEndpoint = ..#USERDDLENDPOINT)
 }
 
 /// <p>Whether <var>pEndpoint</var> has no backing class and is listed from a fixed roster: the SQL Shell, TSQL and ISQL
@@ -218,8 +266,9 @@ ClassMethod IsRoster(pEndpoint As %String) As %Boolean
 
 /// <p>Serve <var>pEndpoint</var> for request type <var>pType</var>, after the gate.</p>
 /// <p>A read answers <var>pResult</var> as an array of rows (<code>LIST</code>) or as one row (<code>GET</code>); a
-/// <code>SET</code> answers <code>{Name, Value}</code>. A <code>LIST</code> and a <code>GET</code> take no body; a
-/// <code>SET</code> takes the object whose <code>Value</code> is the new value as text.</p>
+/// <code>SET</code> and a <code>CREATE</code> answer <code>{Name, Value}</code> and a <code>DELETE</code> <code>{Name}</code>. A
+/// <code>LIST</code>, a <code>GET</code> and a <code>DELETE</code> take no body; a <code>SET</code> and a <code>CREATE</code> take the
+/// object whose <code>Value</code> is the new value, or the new mapping's datatype, as text.</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
 /// <var>pFault</var> the wire fault: 403 <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>; 501
 /// <code>PORT.NOTIMPLEMENTED</code> for another endpoint or type; 400 <code>PORT.VALIDATION</code> for a cap or a body
@@ -242,11 +291,23 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..SetValue(pEndpoint, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
+        If pType = ..#TYPECREATE {
+            Set tSC = ..CreateValue(pEndpoint, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If $IsObject(pBody) || (pBody '= "") {
             Set tSC = ..Fail(pEndpoint _ " " _ pType _ " was given a caller body, and it takes none", $$$ERROR($$$GeneralError, "a settings read takes no body"), .pHttpStatus, .pFault)
             Quit
         }
+        If pType = ..#TYPEDELETE {
+            Set tSC = ..DeleteValue(pEndpoint, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If pType = ..#TYPEGET {
+            If ($Get(pQuery(..#ACTIONKEY)) = ..#TYPECREATE) && ..Serves(pEndpoint, ..#TYPECREATE) {
+                Set tSC = ..Absence(pEndpoint, $Get(pQuery(..#NAMEKEY)), .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
             Set tSC = ..Row(pEndpoint, $Get(pQuery(..#NAMEKEY)), .pResult, .pHttpStatus, .pFault)
             Quit
         }
@@ -326,6 +387,18 @@ ClassMethod Row(pEndpoint As %String, pName As %String, Output pRow As %DynamicO
     Quit $$$OK
 }
 
+/// <p>The absence read of a create of <var>pName</var> on <var>pEndpoint</var>: a name the endpoint holds is 409
+/// <code>CONFIG.MAPPING.TAKEN</code>, and a free one the 404 <code>CONFIG.SETTING.NOTFOUND</code> a create expects.</p>
+ClassMethod Absence(pEndpoint As %String, pName As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pRow = ""
+    If pName = "" Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Set tSC = ..Row(pEndpoint, pName, .pRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRow = ""
+    Quit ..Refused(##class(OcuPilot.Api.ConfigError).#MAPPINGTAKEN, .pHttpStatus, .pFault)
+}
+
 /// <p>The rows of <var>pEndpoint</var>'s class in <var>pRows</var>, or, when <var>pName</var> is given, that
 /// setting's row alone when the class lists it. <code>Get</code> and the limits are read in <code>%SYS</code>, where no
 /// product class is visible, so the rows are built after the namespace is restored.</p>
@@ -343,6 +416,11 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
         }
         Set tClass = ..VendorClass(pEndpoint)
         If tClass = "" Quit
+        If ..IsNamed(pEndpoint) {
+            Set $NAMESPACE = "%SYS"
+            Set tSC = ..CollectNamed(tClass, pName, .tData)
+            Quit
+        }
         Set $NAMESPACE = "%SYS"
         Kill tProps
         Set tSC = $ClassMethod(tClass, "Get", .tProps)
@@ -369,6 +447,39 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
         Do pRows.%Push(..BuildRow(tKey, tData(tKey)))
     }
     Quit $$$OK
+}
+
+/// <p>The entries of the named class <var>pClass</var> into <var>pData</var>, in the shape <method>BuildRow</method> reads: all of them
+/// through the vendor's <code>List</code> query with <code>*</code>, at most <parameter>NAMEDMAXROWS</parameter>, or, when
+/// <var>pName</var> is given, that one entry through <code>Exists</code> and <code>Get</code>, which compare the name exactly. A name
+/// is never passed to <code>List</code>, whose <code>Names</code> argument is a pattern. In <code>%SYS</code>.</p>
+ClassMethod CollectNamed(pClass As %String, pName As %String, ByRef pData) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tLimits = ..DatatypeLimits()
+    If pName '= "" {
+        If '$ClassMethod(pClass, "Exists", pName) Quit $$$OK
+        Kill tProps
+        Set tSC = $ClassMethod(pClass, "Get", pName, .tProps)
+        If $$$ISERR(tSC) Quit tSC
+        Set pData(pName) = $ListBuild($Get(tProps(..#DATATYPEPROPERTY)), tLimits, 0, 0, 0)
+        Quit $$$OK
+    }
+    Set tResult = ##class(%ResultSet).%New(pClass _ ":List")
+    Set tSC = tResult.Execute("*")
+    If $$$ISERR(tSC) Quit tSC
+    Set tCount = 0
+    While tResult.Next() {
+        If $Increment(tCount) > ..#NAMEDMAXROWS Quit
+        Set pData(tResult.Get("Name")) = $ListBuild(tResult.Get(..#DATATYPEPROPERTY), tLimits, 0, 0, 0)
+    }
+    Quit $$$OK
+}
+
+/// <p>The limits of a DDL mapping's datatype, in <method>Limits</method>'s shape: kind <code>datatype</code> and its longest length.</p>
+ClassMethod DatatypeLimits() As %List
+{
+    Quit $ListBuild("datatype", "", "", "", ..#DATATYPEMAXLEN, "")
 }
 
 /// <p>The row of the setting <var>pName</var> from <var>pData</var>, <code>$ListBuild(value, limits, readOnly,
@@ -402,6 +513,7 @@ ClassMethod Limits(pEndpoint As %String, pName As %String) As %List
 {
     Set tLimits = ""
     If ..IsRoster(pEndpoint) Quit ..EntryLimits(..RosterEntry(pEndpoint, pName))
+    If ..IsNamed(pEndpoint) Quit ..DatatypeLimits()
     Set tClass = ..VendorClass(pEndpoint)
     If tClass = "" Quit ""
     Set tOrigNS = $NAMESPACE
@@ -452,6 +564,7 @@ ClassMethod AcceptsOf(pLimits As %List) As %String
     Set tKind = $ListGet(pLimits, 1)
     If tKind = "boolean" Quit ##class(OcuPilot.Api.ConfigError).#ACCEPTSBOOLEAN
     If tKind = "blocksizes" Quit ##class(OcuPilot.Api.ConfigError).#ACCEPTSBLOCKSIZES
+    If tKind = "datatype" Quit ##class(OcuPilot.Api.ConfigError).#ACCEPTSDATATYPE
     If tKind = "choice" Quit ##class(OcuPilot.Api.ConfigError).Accepting(##class(OcuPilot.Api.ConfigError).#ACCEPTSCHOICE, $ListToString($ListGet(pLimits, 4), ", "))
     If tKind = "text" Quit ##class(OcuPilot.Api.ConfigError).Accepting(##class(OcuPilot.Api.ConfigError).#ACCEPTSTEXT, $ListGet(pLimits, 5))
     If tKind = "integer" {
@@ -530,6 +643,60 @@ ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstra
     Quit $$$OK
 }
 
+/// <p>Create the named entry <var>pQuery</var> names with the datatype <var>pBody</var>'s <code>Value</code> carries, on a user DDL
+/// mapping endpoint: a name the endpoint holds is 409 <code>CONFIG.MAPPING.TAKEN</code>; then
+/// <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class> judge the name and the datatype
+/// (<code>CONFIG.MAPPING.NAME</code>, <code>CONFIG.SETTING.VALUE</code>), and the entry is created through
+/// <method>CreateEntry</method>. Answers <code>{Name, Value}</code>.</p>
+ClassMethod CreateValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCREATEBODY, .pHttpStatus, .pFault)
+    }
+    If tName '= "" {
+        Set tSC = ..Collect(pEndpoint, tName, .tOne)
+        If $$$ISERR(tSC) Quit ..Fail("the mapping could not be read", tSC, .pHttpStatus, .pFault)
+        If tOne.%Size() > 0 Quit ..Refused(##class(OcuPilot.Api.ConfigError).#MAPPINGTAKEN, .pHttpStatus, .pFault)
+    }
+    Set tValue = pBody.%Get("Value")
+    Set tCode = ##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).CreateCode(tName, tValue)
+    If tCode '= "" Quit ..Refused(tCode, .pHttpStatus, .pFault)
+    Kill tProps
+    Set tProps(..#DATATYPEPROPERTY) = tValue
+    Set tVendor = ..CreateEntry(..VendorClass(pEndpoint), tName, .tProps)
+    If $$$ISERR(tVendor) {
+        Do ..LogFault("the mapping " _ tName _ " was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
+        Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Name", tName, "string")
+    Do pResult.%Set("Value", tValue, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Delete the named entry <var>pQuery</var> names: an entry the endpoint does not hold is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>; otherwise it is deleted through <method>DeleteEntry</method>, and a vendor refusal is logged
+/// and 400 <code>CONFIG.SETTING.VALUE</code>. Answers <code>{Name}</code>.</p>
+ClassMethod DeleteValue(pEndpoint As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    Set tSC = ..Row(pEndpoint, tName, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tVendor = ..DeleteEntry(..VendorClass(pEndpoint), tName)
+    If $$$ISERR(tVendor) {
+        Do ..LogFault("the mapping " _ tName _ " was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
+        Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Name", tName, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
 /// <p>The write of the setting <var>pName</var> of <var>pEndpoint</var> to the value <var>pValue</var>, as its family makes it.</p>
 ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As %Status [ Private ]
 {
@@ -538,6 +705,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
         Quit ..SendTsql(pName, $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect), pValue)
     }
     If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
+    If ..IsNamed(pEndpoint) Quit ..ModifyEntry(..VendorClass(pEndpoint), pName, pValue)
     Quit ..VendorModify(..VendorClass(pEndpoint), pName, pValue)
 }
 
@@ -840,6 +1008,89 @@ ClassMethod SendProperties(pClass As %String, pName As %String, ByRef pProps) As
     Quit tSC
 }
 
+/// <p>The vendor class <var>pClass</var>'s <code>Get</code> of the entry <var>pName</var> without its comments, in <var>pProps</var>, read
+/// in <code>%SYS</code> by save and restore.</p>
+ClassMethod ReadEntry(pClass As %String, pName As %String, Output pProps) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pProps
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(pClass, "Get", pName, .pProps)
+        If $$$ISERR(tSC) Quit
+        Set tKey = ""
+        For {
+            Set tKey = $Order(pProps(tKey))
+            If tKey = "" Quit
+            Kill pProps(tKey, "Comment"), pProps(tKey, "Comments")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The vendor's <code>Modify</code> of the entry <var>pName</var> of <var>pClass</var> with every key its <code>Get</code> answers and the
+/// datatype set to <var>pValue</var> (AD-4).</p>
+ClassMethod ModifyEntry(pClass As %String, pName As %String, pValue As %String) As %Status [ Private ]
+{
+    Set tSC = ..ReadEntry(pClass, pName, .tProps)
+    If $$$ISERR(tSC) Quit tSC
+    Set tProps(..#DATATYPEPROPERTY) = pValue
+    Quit ..SendEntry(pClass, pName, .tProps)
+}
+
+/// <p>The one call that changes an existing entry: the vendor's <code>Modify</code> of the entry <var>pName</var> of <var>pClass</var> with
+/// the complete property set <var>pProps</var>, in <code>%SYS</code> by save and restore. Overridable so a fixture can record the set or
+/// feed a vendor refusal; production never overrides it.</p>
+ClassMethod SendEntry(pClass As %String, pName As %String, ByRef pProps) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(pClass, "Modify", pName, .pProps)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The one call that creates an entry: the vendor's <code>Create</code> of <var>pName</var> on <var>pClass</var> with the properties
+/// <var>pProps</var>, in <code>%SYS</code> by save and restore. Overridable like <method>SendEntry</method>; production never overrides it.</p>
+ClassMethod CreateEntry(pClass As %String, pName As %String, ByRef pProps) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(pClass, "Create", pName, .pProps)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The one call that deletes an entry: the vendor's <code>Delete</code> of <var>pName</var> on <var>pClass</var>, in <code>%SYS</code> by
+/// save and restore. Overridable like <method>SendEntry</method>; production never overrides it.</p>
+ClassMethod DeleteEntry(pClass As %String, pName As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(pClass, "Delete", pName)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>The 403 the gate answers, <code>AUTH.NOPRIVILEGE</code> with the pair in <code>detail.failedPair</code> (AD-8,
 /// AD-39).</p>
 ClassMethod Deny(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -892,6 +1143,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tAdmin = "OcuPilot.Port.AdminPort"
     Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
+    If ..IsNamed(pEndpoint) Quit [($ClassMethod(tAdmin, "ObjectScriptStep", ..EntryLines(pEndpoint, pType, tName, tValue)))]
     If ..IsRoster(pEndpoint) {
         Set tEntry = ..RosterEntry(pEndpoint, tName)
         If (tEntry = "") || '$List(tEntry, 5) Quit []
@@ -903,6 +1155,20 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tLines = tLines _ $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", tValue))
     Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ tClass _ ").Modify(.tProps)")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+}
+
+/// <p>The lines of script for the write <var>pType</var> of the named entry <var>pName</var> of <var>pEndpoint</var> with the datatype
+/// <var>pValue</var>, as a <class>%List</class>: <code>Get</code>, the key set and <code>Modify</code> for a set, <code>Create</code> for a
+/// create and <code>Delete</code> for a delete, each with the name and the datatype as string literals.</p>
+ClassMethod EntryLines(pEndpoint As %String, pType As %String, pName As %String, pValue As %String) As %List [ Private ]
+{
+    Set tAdmin = "OcuPilot.Port.AdminPort"
+    Set tClass = ..VendorClass(pEndpoint)
+    Set tName = $ClassMethod(tAdmin, "Literal", pName)
+    Set tSet = "Set tProps(" _ $ClassMethod(tAdmin, "Literal", ..#DATATYPEPROPERTY) _ ") = " _ $ClassMethod(tAdmin, "Literal", pValue)
+    If pType = ..#TYPEDELETE Quit $ListBuild("Set tSC = ##class(" _ tClass _ ").Delete(" _ tName _ ")")
+    If pType = ..#TYPECREATE Quit $ListBuild(tSet, "Set tSC = ##class(" _ tClass _ ").Create(" _ tName _ ", .tProps)")
+    Quit $ListBuild("Set tSC = ##class(" _ tClass _ ").Get(" _ tName _ ", .tProps)", tSet, "Set tSC = ##class(" _ tClass _ ").Modify(" _ tName _ ", .tProps)")
 }
 
 /// <p>The line of script that sets the roster entry <var>pEntry</var> of <var>pEndpoint</var> to <var>pValue</var>.</p>
