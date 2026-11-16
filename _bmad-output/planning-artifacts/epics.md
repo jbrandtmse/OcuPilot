@@ -9720,6 +9720,27 @@ So that code run with development rights cannot rewrite agent definitions or oth
 
 - DW-2638: Kernel.State stores outside Story 21.30's four still escalate any caller's public guarded write (ledger; routed by owner answer U-82)
 
+
+### Story 21.34: A backup action leaves the web process's null device open
+
+[AMENDED 2026-11-16, orchestrator ruling on DW-2650, fix-forward, Rule 5] On feature, interop-editors failed with `<NOTOPEN>CompileDTL` after backup ran earlier in the same browser leg. Story 21.2's `BackupPort.SuspendCall` opens and closes the null device whenever it is not the current device, so in a pooled web process that already held it open, the close shut the process's own device (DW-2395's mechanism, fixed for `LogSourcePort` in Story 18.38).
+
+As an operator,
+I want a backup action to leave the web process as it found it,
+So that the next request served by that process, a DTL compile among them, still works.
+
+**Acceptance Criteria:**
+
+- **Given** a fresh instance
+- **When** the backup screen's actions run and then the interop editors compile a DTL
+- **Then** the failure is reproduced first, with a count of web processes missing their null device.
+
+- **Given** the fix
+- **When** the same sequence runs
+- **Then** every process keeps its null device, the caller's current device is restored on every path, the device check is shared with `LogSourcePort` rather than copied, and a Rule 19 mutation that removes the held-device check turns the device-state test red.
+
+- DW-2650: A backup action closes a pooled web process's null device, breaking a later DTL compile in that process (orchestrator's ledger; routed by orchestrator ruling)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand

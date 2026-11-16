@@ -375,3 +375,4 @@
 2026-11-16T13:23:27Z	Story 21.32	smoke_complete	method=cli result=pass note=1_skipped(agentswitches:written_by_the_sweep;benign) model=claude-opus-5-5
 2026-11-16T13:23:27Z	Story 21.32	committed	sha=edf36c82d(based_on_90799012d) ci=pending runs=43875203822
 2026-11-16T13:23:27Z	Story 21.32	story_cycle	plan_to_commit_min=~200 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
+2026-11-16T13:25:55Z	Story 21.34	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2650(orchestrator_ledger) priority=before_21.33
