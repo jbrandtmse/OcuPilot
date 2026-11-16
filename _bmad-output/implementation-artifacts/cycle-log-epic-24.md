@@ -103,3 +103,5 @@
 2026-11-16T00:33:31Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=merged_tree_config_settings_arming run=20261114T1656Z-21,22
 2026-11-16T00:34:06Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=merged_tree run=20261114T1656Z-21,22 started_by=runner-24
 2026-11-16T00:34:30Z	Story 24.4	merged_tree_checked	throwaway=rebuilt ConfigSettingWrite,SqlSettingWrite=11/11 smoke=see_next
+2026-11-16T00:39:36Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
+2026-11-16T00:39:36Z	Story 24.4	stage_spawned	stage=plan spawn_at=2026-11-16T00:39:36Z model=opus agent_name=24-4-the-agent-gains-the-harvested-tools-and-undo-plan-1 cycle_iteration=1
