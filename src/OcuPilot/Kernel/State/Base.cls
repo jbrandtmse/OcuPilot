@@ -488,17 +488,22 @@ ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Stat
 /// generated <code>Exists</code> method named by <var>pExistsMethod</var>, then the property's generated
 /// <code>GetStored</code> -- and never through SQL. Invoke as
 /// <code>##class(&lt;ConcreteSubclass&gt;).GuardedStoredValue(...)</code>. <var>pExistsMethod</var> and
-/// <var>pProperty</var> are literals the subclass names, never a caller's text.</p>
+/// <var>pProperty</var> are literals the subclass names, never a caller's text: unless
+/// <var>pExistsMethod</var> is <code>&lt;index&gt;Exists</code> for an index of the class and
+/// <var>pProperty</var> is a property of it, the call answers <code>$$$AccessDenied</code> before the
+/// escalation and runs nothing.</p>
 ClassMethod GuardedStoredValue(pExistsMethod As %String, pKey As %String, pProperty As %String, Output pValue As %String, Output pFound As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pValue = ""
     Set pFound = 0
+    Set tClass = ..%ClassName(1)
+    If '$Match(pExistsMethod, "^[A-Za-z][A-Za-z0-9]*Exists$") || '$Match(pProperty, "^[A-Za-z][A-Za-z0-9]*$") Quit $$$ERROR($$$AccessDenied)
+    If '##class(%Dictionary.CompiledIndex).%ExistsId(tClass _ "||" _ $Extract(pExistsMethod, 1, *-6)) || '##class(%Dictionary.CompiledProperty).%ExistsId(tClass _ "||" _ pProperty) Quit $$$ERROR($$$AccessDenied)
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
-        Set tClass = ..%ClassName(1)
         Set tId = ""
         If '$ClassMethod(tClass, pExistsMethod, pKey, .tId) Quit
         Set pFound = 1

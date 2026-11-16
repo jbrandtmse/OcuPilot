@@ -103,6 +103,32 @@ deferred:
 - Given a non-administrator confirm, screen action or restraint read, when it records the marking observation, then `writesMarked` is stored.
 - Given `AdminWriteRefused` mutated to return `$$$OK`, when `AdminStateWrite` runs, then only its refusal tests go red.
 
+### Review Findings
+
+Code review of `3df69e648` (2026-11-16). Every write was measured as the developer principal on `ocupilot-ci`.
+
+- [x] [Review][Patch] (high) `Base.GuardedStoredValue` is public and ran the caller's `pExistsMethod` by `$ClassMethod` inside the escalated frame, private methods included. The developer principal rewrote the kill switch through `GuardedStoredValue("GuardedExecuteOneParam", "UPDATE ...SwitchState SET KillSwitch = 1 ...")`, version unchanged (run 87, both legs `ok=1`). It now answers `$$$AccessDenied` before escalating unless the names are `<index>Exists` for a compiled index of the class and a compiled property. The kill-switch test carries two bypass legs. [src/OcuPilot/Kernel/State/Base.cls:492]
+- [x] [Review][Patch] (high) `Switch.GuardedRecordWritesMarked` saved the whole row object, and `%OpenId` hands back the caller's held, edited copy. The developer principal held the row with its kill switch changed and called `Event.RecordMarking`, which stored the kill switch (run 88). An existing row is now written by one `UPDATE` of `WritesMarked`, `UpdatedAt` and `RowVersion`. The marking test holds an edited row across the call. This also closes the Rule 31 near-copy of `SetGuarded`. [src/OcuPilot/Kernel/State/Switch.cls:224]
+- [x] [Review][Patch] (medium) The roster test read each store's own methods only, so a public method inherited from `Base` went unseen; that is how the first finding passed. `Base`'s public class methods now equal `BaseSurface`'s declared reads and refused saves. [src/OcuPilot/Test/AdminStateWrite.cls:276]
+- [x] [Review][Patch] (low) The kill-switch test took `PlanKinds("switch")` by index; it now loops like the other two. [src/OcuPilot/Test/AdminStateWrite.cls:145]
+- [x] [Review][Patch] (low) The probe ran its plan after a failed login, as the suite's `%All` identity. It now signals `error` and runs no step. [src/OcuPilot/Test/AdminStateWriteProbe.cls:15]
+- [x] [Review][Patch] (low) `OnAfterOneTest` discarded the status of the per-user row's delete; it is asserted now. [src/OcuPilot/Test/AdminStateWrite.cls:124]
+- [x] [Review][Patch] (low) AC5's mutation line predated the seventh test; re-run as run 90 and rewritten under Verification.
+- Correction: the Code Map's "Other public methods (... `GuardedStoredValue` ...) write no store row" and the earlier triage's "Private helpers ... reachable only from Base or a subclass" were false before this pass (run 87). Both are true of the patched tree.
+
+Rejected:
+
+- (low) `GuardedRecordWritesMarked` stores any value, so a developer can hide the unmarked-writes banner. This is the spec's named exception, ledgered as DW-2639; narrowing it edits the intent.
+- (low) `SetGuarded` still accepts a `writesMarked` value. Only an administrator reaches it now, and the route writes back the value it read.
+- (low) `Convo.cls:169`, `Audit/Ledger.cls` and `Screen/Gate.cls` keep their own `OcuPilotAdmin:USE` checks. Their predicate is the same; nobody meets a divergence unless the permission changes.
+- (low) `RunAs` copies the run-as harness of about 20 sibling classes. The stated reason (a different probe class) is weak, but unifying them is not a direct correction.
+- (low) The class is 683 lines against the roughly 500-line guideline; unchanged from the earlier triage.
+- (low) The real administrator drives 2 of the 11 refused writes. Every writer makes the same `AdminWriteRefused($ClassName())` call, so a writer-specific false refusal is theoretical.
+- (low) A timed-out probe child can signal late into the next test's wait. It needs a run over 120 seconds; the fix adds a branch.
+- (low) `OnBeforeOneTest` or `EnsurePrincipals` failing midway skips the restore or leaves the two principals. It is unlikely on a throwaway, and the fix adds branches.
+- (low) The early check in `Switch.SetGuarded`, `Egress.SetGuarded`, `Hold.GuardedCreate` and `Policy.GuardedApply` cannot be told apart by a test, because their saves refuse too. The spec requires them, and they keep the read escalation behind the check.
+- (low) AC4's callers are not driven as non-administrators. Every one reaches the writer through `RecordMarking`, which the matrix row names and the test drives.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -165,7 +191,7 @@ deferred:
 **Mutations (Rule 19).** Apply each one, observe red, revert, confirm the tree is identical with `git status --short` and `git diff --stat`, then reload.
 
 - `AdminWriteRefused` returns `$$$OK` -> the three developer tests go red; the administrator, marking and roster tests stay green.
-  - mutation: `AdminWriteRefused` answers `$$$OK` first -> run 64: 3 of 6 red (the kill-switch, hold and egress-and-policy developer tests); administrator, marking and roster tests green; reverted, reloaded, run 69 green.
+  - mutation: `AdminWriteRefused` answers `$$$OK` first -> run 90: 3 of 7 red (the kill-switch, hold and egress-and-policy developer tests); the administrator, marking, roster and per-user tests green; reverted (md5 identical), reloaded.
 - The check is removed from the public `GuardedSaveIfCurrent` alone -> the bypass legs of the kill-switch test go red alone.
   - mutation: `GuardedSaveIfCurrent`'s `AdminWriteRefused` line replaced by `Set tSC = $$$OK` -> 1 of 6 red, `TestADeveloperIsRefusedTheKillSwitchAndTheBypass`, on the `Base.GuardedSaveIfCurrent` leg; reverted, reloaded.
 - The check is removed from `Hold.GuardedDeleteId` alone -> the hold-delete leg goes red alone.
@@ -178,6 +204,13 @@ deferred:
   - mutation: `CallerIsAdministrator` reads `$System.Security.Check("%All", "USE")` -> run 83: 1 of 7 red, `TestAnAdministratorWritesTheKillSwitchAndAKey`, alone; reverted from a saved copy (md5 identical), reloaded.
 - `AdminWriteRefused` refuses a class that does not declare `ADMINWRITE`.
   - mutation: the not-`ADMINWRITE` branch answers `$$$AccessDenied` -> run 84: 1 of 7 red, `TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned`, alone; reverted (md5 identical), reloaded, run 85 green.
+
+- `GuardedStoredValue` runs the caller's method name unchecked (the pre-review `Base`).
+  - mutation: the two name checks absent -> run 87: 1 of 7 red, `TestADeveloperIsRefusedTheKillSwitchAndTheBypass`, on both `Base.GuardedStoredValue` legs and the switch reads; patched, run 89 green.
+- `GuardedRecordWritesMarked` saves the row object (the pre-review `Switch`).
+  - mutation: the pre-review writer restored -> run 88: 1 of 7 red, `TestAnyCallerRecordsTheMarkingObservation` ("every other switch field is as it was"); restored, reloaded, run 89 green.
+- A public class method added to `Base` and not declared.
+  - mutation: `GuardedMutationProbe()` added -> run 92: 1 of 7 red, `TestTheAdministratorStoresAreDeclared`, alone; reverted (md5 and diff stat identical), reloaded, run 93 green.
 
 Each mutation was reverted by restoring the saved copy; `git status --short` and `git diff` hashes matched the pre-mutation values, and `LOADERRORS=0` followed each reload.
 

@@ -121,7 +121,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
-    Do ##class(OcuPilot.Kernel.State.Pref).GuardedDeleteForUser(..#DEVUSER)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedDeleteForUser(..#DEVUSER), "the developer's per-user row is removed")
     Kill tState, tRows
     Merge tState = ..FoundState
     Set tSC = ..Put(.tState)
@@ -135,7 +135,8 @@ Method OnAfterOneTest() As %Status
 
 /// <p>A developer -- <code>%Development:USE</code>, no <code>OcuPilotAdmin</code> -- calls the kill
 /// switch's writers, then opens the switch row with the public <code>GuardedOpenId</code> and saves it
-/// through <code>Base</code>'s two public saves. Each is refused <code>822</code>; the control, a direct
+/// through <code>Base</code>'s two public saves, and hands the inherited <code>GuardedStoredValue</code>
+/// a method that is not an index lookup. Each is refused <code>822</code>; the control, a direct
 /// <code>UPDATE</code> of the table, is refused by the database itself; and the row reads, version
 /// included, as it did.</p>
 /// <p>Mutations (Rule 19): <method>OcuPilot.Kernel.State.Base.AdminWriteRefused</method> answers
@@ -149,11 +150,14 @@ Method TestADeveloperIsRefusedTheKillSwitchAndTheBypass()
     Set tContext = {"switchId": (tId)}
     Set tSteps = []
     Do tSteps.%Push({"kind": "Sql.UpdateSwitch"})
-    Set tKinds = ..PlanKinds("switch")
-    Do tSteps.%Push(..StepFor($List(tKinds, 1), tContext))
     Do tSteps.%Push({"kind": "Base.GuardedSave", "id": (tId)})
     Do tSteps.%Push({"kind": "Base.GuardedSaveIfCurrent", "id": (tId)})
-    Do tSteps.%Push(..StepFor($List(tKinds, 2), tContext))
+    Do tSteps.%Push({"kind": "Base.GuardedStoredValue", "method": "GuardedExecuteOneParam", "key": "UPDATE OcuPilot_Kernel_State.SwitchState SET KillSwitch = 1 WHERE ID = ? OR ID > 0", "property": "KillSwitch"})
+    Do tSteps.%Push({"kind": "Base.GuardedStoredValue", "method": "%DeleteId", "key": (tId), "property": "KillSwitch"})
+    Set tKinds = ..PlanKinds("switch")
+    For tI = 1:1:$ListLength(tKinds) {
+        Do tSteps.%Push(..StepFor($List(tKinds, tI), tContext))
+    }
     Set tRun = ..RunAs(..#DEVUSER, ..WithReads(tSteps))
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Do ..AssertDeveloperLegs(tRun)
@@ -226,8 +230,9 @@ Method TestAnAdministratorWritesTheKillSwitchAndAKey()
 }
 
 /// <p>A developer's caller -- the confirm executor, a screen action, the restraint read -- records
-/// the observed marking fact through <code>Event.RecordMarking</code>: <code>writesMarked</code> is
-/// stored and every other switch field stays as it was.</p>
+/// the observed marking fact through <code>Event.RecordMarking</code> while holding the switch row
+/// with its kill switch changed in memory: <code>writesMarked</code> is stored and every other switch
+/// field stays as it was.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Audit.Event.RecordMarking</method> goes back to
 /// <method>OcuPilot.Kernel.State.Switch.SetGuarded</method> -> this goes red alone.</p>
 Method TestAnyCallerRecordsTheMarkingObservation()
@@ -237,7 +242,7 @@ Method TestAnyCallerRecordsTheMarkingObservation()
     Set tOtherBefore = ..Stored(tOthers)
     Set tMarkedBefore = ..Stored("SELECT WritesMarked FROM OcuPilot_Kernel_State.SwitchState ORDER BY ID")
     Do $$$AssertEquals(tMarkedBefore, 1, "the marking fact starts as the default")
-    Set tPlan = [{"kind": "Event.RecordMarking", "marked": 0}]
+    Set tPlan = [{"kind": "Event.RecordMarking", "marked": 0, "holdEditedRow": 1, "id": (..SwitchId())}]
     Set tRun = ..RunAs(..#DEVUSER, tPlan)
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Set tLeg = ..Leg(tRun, 1)
@@ -270,7 +275,8 @@ Method TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned()
 /// and each one's own public class methods are exactly its declared reads, refused writes and open
 /// writes. Every refused write is a step the probe runs, and the three refusal tests call them through
 /// <method>PlanKinds</method>; <code>GuardedRecordWritesMarked</code> is the one write open to every
-/// caller.</p>
+/// caller. <code>Base</code>'s own public class methods, which the four inherit, are exactly
+/// <method>BaseSurface</method>'s two halves, and each of its saves is a step the probe runs.</p>
 /// <p>Mutation (Rule 19): <code>Parameter ADMINWRITE = 1</code> removed from
 /// <class>OcuPilot.Kernel.State.Policy</class> -> this and the egress and policy test go red.</p>
 Method TestTheAdministratorStoresAreDeclared()
@@ -311,6 +317,25 @@ Method TestTheAdministratorStoresAreDeclared()
             Do $$$AssertTrue($ClassMethod(..#PROBE, "Handles", tKind), tKind _ " is a write the probe calls")
         }
     }
+    Set tPublic = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.MethodDefinition WHERE parent = 'OcuPilot.Kernel.State.Base' AND ClassMethod = 1 AND Private = 0")
+    While tRS.%Next() {
+        Set tPublic = tPublic _ $ListBuild(tRS.%GetData(1))
+    }
+    Do $$$AssertEquals(..SortedJoin(tPublic), ..SortedJoin(..BaseSurface(0) _ ..BaseSurface(1)), "Base's public class methods are its declared reads and helpers and its refused saves")
+    Set tWrites = ..BaseSurface(1)
+    For tJ = 1:1:$ListLength(tWrites) {
+        Do $$$AssertTrue($ClassMethod(..#PROBE, "Handles", "Base." _ $List(tWrites, tJ)), "Base." _ $List(tWrites, tJ) _ " is a save the probe calls")
+    }
+}
+
+/// <p><code>Base</code>'s public class methods: with <var>pWrites</var> 1, the saves that refuse an
+/// administrator-owned store's object to a caller who is not an administrator; with 0, the methods that
+/// write no row of those stores.</p>
+ClassMethod BaseSurface(pWrites As %Boolean) As %List
+{
+    If pWrites Quit $ListBuild("GuardedSave", "GuardedSaveIfCurrent")
+    Quit $ListBuild("AdminWriteRefused", "BoundedWhere", "CallerIsAdministrator", "GuardedExistsId", "GuardedOpenId", "GuardedProbeGet", "GuardedProbeSet", "GuardedRolesSnapshot", "GuardedRolesSnapshotThenThrow", "GuardedSslConfigRead", "GuardedStoredValue", "GuardedUserAbsent", "GuardedUserEnabled", "IsCapBusy", "IsDuplicateKey", "IsLockConflict", "IsStaleSave")
 }
 
 /// <p>The writes the refusal test <var>pTest</var> (<code>switch</code>, <code>hold</code> or

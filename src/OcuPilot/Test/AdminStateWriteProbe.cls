@@ -9,7 +9,7 @@ Class OcuPilot.Test.AdminStateWriteProbe Extends %RegisteredObject
 
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, roles, holdsAdmin, holdsDevelopment, steps}</code> to process <var>pParent</var>, or
-/// <code>{error}</code> when something raised. A step is <code>{kind, ...}</code> and its answer is
+/// <code>{error}</code> when the login did not take (no step runs) or something raised. A step is <code>{kind, ...}</code> and its answer is
 /// <code>{kind, ok, code, text}</code> plus what the kind adds (<method>Handles</method> lists the
 /// kinds).</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
@@ -21,6 +21,10 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
         Do tOut.%Set("roles", $Roles)
         Do tOut.%Set("holdsAdmin", ''$System.Security.Check($Parameter("OcuPilot.Kernel.State.Base", "ADMINRESOURCE"), "USE"), "boolean")
         Do tOut.%Set("holdsDevelopment", ''$System.Security.Check("%Development", "USE"), "boolean")
+        If 'tOut.%Get("loggedIn") || ($Username '= pUsername) {
+            Do tOut.%Set("error", "the login as " _ pUsername _ " did not take; no step ran")
+            Quit
+        }
         Set tSteps = []
         Set tIterator = ##class(%DynamicArray).%FromJSON(pPlan).%GetIterator()
         While tIterator.%GetNext(.tIndex, .tStep) {
@@ -36,13 +40,17 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
 /// <p>Whether <var>pKind</var> is a step <method>Step</method> runs.</p>
 ClassMethod Handles(pKind As %String) As %Boolean
 {
-    Quit $ListFind($ListBuild("Switch.SetGuarded", "Switch.DeleteGuarded", "Hold.GuardedCreate", "Hold.GuardedDeleteId", "Hold.DeleteAllGuarded", "Egress.SetGuarded", "Egress.DeleteGuarded", "Policy.GuardedApply", "Policy.DeleteAllGuarded", "Base.GuardedSave", "Base.GuardedSaveIfCurrent", "Event.RecordMarking", "Sql.UpdateSwitch", "Pref.GuardedSetValue", "Read.Switch", "Read.Holds", "Read.Egress", "Read.Policy"), pKind) > 0
+    Quit $ListFind($ListBuild("Switch.SetGuarded", "Switch.DeleteGuarded", "Hold.GuardedCreate", "Hold.GuardedDeleteId", "Hold.DeleteAllGuarded", "Egress.SetGuarded", "Egress.DeleteGuarded", "Policy.GuardedApply", "Policy.DeleteAllGuarded", "Base.GuardedSave", "Base.GuardedSaveIfCurrent", "Base.GuardedStoredValue", "Event.RecordMarking", "Sql.UpdateSwitch", "Pref.GuardedSetValue", "Read.Switch", "Read.Holds", "Read.Egress", "Read.Policy"), pKind) > 0
 }
 
 /// <p>Run one step of the plan: the guarded call its <code>kind</code> names, with the arguments
 /// the step carries. <code>Base.GuardedSave</code> and <code>Base.GuardedSaveIfCurrent</code> open the
 /// switch row <code>id</code> names with the public <code>GuardedOpenId</code>, change it, and save
-/// it through the public save; <code>Pref.GuardedSetValue</code> writes a per-user row, a store that is not administrator-owned; <code>Sql.UpdateSwitch</code> is the control, a direct
+/// it through the public save; <code>Base.GuardedStoredValue</code> passes the step's <code>method</code>,
+/// <code>key</code> and <code>property</code> to the switch store's inherited read;
+/// <code>Event.RecordMarking</code> with <code>holdEditedRow</code> first opens the switch row
+/// <code>id</code> names and changes its kill switch in memory, and holds it across the call;
+/// <code>Pref.GuardedSetValue</code> writes a per-user row, a store that is not administrator-owned; <code>Sql.UpdateSwitch</code> is the control, a direct
 /// <code>UPDATE</code> that answers its <code>sqlcode</code>; the <code>Read.*</code> kinds answer what
 /// the principal reads from a store in <code>state</code>.</p>
 ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
@@ -88,8 +96,15 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
                 }
             }
             Set tRow = ""
+        } ElseIf tKind = "Base.GuardedStoredValue" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Switch).GuardedStoredValue(pStep.%Get("method"), pStep.%Get("key"), pStep.%Get("property"), .tValue, .tFound)
         } ElseIf tKind = "Event.RecordMarking" {
-            Set tSC = ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(pStep.%Get("marked"))
+            If pStep.%Get("holdEditedRow") {
+                Set tSC = ##class(OcuPilot.Kernel.State.Switch).GuardedOpenId(pStep.%Get("id"), .tRow)
+                If $$$ISOK(tSC) Set tRow.KillSwitch = 'tRow.KillSwitch, tRow.KillSwitchReason = "changed on a held row"
+            }
+            If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(pStep.%Get("marked"))
+            Set tRow = ""
         } ElseIf tKind = "Sql.UpdateSwitch" {
             Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.SwitchState SET KillSwitch = 1")
             Do tLeg.%Set("sqlcode", +tRS.%SQLCODE, "number")

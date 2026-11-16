@@ -218,21 +218,27 @@ ClassMethod DeleteGuarded() As %Status
 /// on the instance's one row, creating it when there is none, and nothing else on it.
 /// <b>Any caller may write it</b>: the parties that observe the fact -- install, the confirm executor,
 /// a screen action, the restraint read -- are usually not administrators, and the fact is observed,
-/// never operator-set. The write is conditional on the version read a line below, like
-/// <method>SetGuarded</method>'s.</p>
+/// never operator-set. An existing row is changed by one <code>UPDATE</code> of those two columns
+/// that also raises its version, never by saving an object, so a switch value the caller changed on a
+/// row object it holds is not written.</p>
 ClassMethod GuardedRecordWritesMarked(pMarked As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
-        If '$IsObject(tRow) Set tRow = ..%New()
-        Set tRow.Singleton = 1
-        Set tVersion = +tRow.RowVersion
-        Set tRow.WritesMarked = ''pMarked
-        Set tRow.UpdatedAt = ..Timestamp()
-        Set tSC = ..GuardedSaveIfCurrentAnyCaller(tRow, tVersion)
+        If '$IsObject(tRow) {
+            Set tRow = ..%New()
+            Set tRow.Singleton = 1
+            Set tRow.WritesMarked = ''pMarked
+            Set tRow.UpdatedAt = ..Timestamp()
+            Set tSC = ..GuardedSaveIfCurrentAnyCaller(tRow, 0)
+            Set tRow = ""
+            Quit
+        }
+        Set tParams = [(''pMarked), (..Timestamp()), (tRow.%Id())]
         Set tRow = ""
+        Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.SwitchState SET WritesMarked = ?, UpdatedAt = ?, RowVersion = COALESCE(RowVersion, 0) + 1 WHERE ID = ?", .tParams, .tCount)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
