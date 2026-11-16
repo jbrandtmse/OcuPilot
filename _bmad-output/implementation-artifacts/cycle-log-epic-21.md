@@ -411,3 +411,5 @@
 2026-11-16T18:58:17Z	Story 21.33	ad_amended	ad=AD-9 batch=2 item=DW-2665(installer_target-key_frame) marker=[AMENDED_2026-11-16,Story_21.33_Batch_2_spec_gate,owner_answer_U-82,DW-2665] note=owner_veto_item_filed_by_orchestrator
 2026-11-16T18:58:17Z	Epic 21	integrate_forward	from=feature_8074a73c5 to=386d388be conflicts=1(sprint-status_stamp) checks=ci.test.mjs_103
 2026-11-16T18:58:23Z	Story 21.33	stage_spawned	stage=implement scope=batch2 spawn_at=2026-11-16T18:58:23Z model=sonnet agent_name=21-33-implement-b2 cycle_iteration=2 story_base=187dee479
+2026-11-16T19:06:30Z	Epic 21	owner_decision	ids=U-73(keep),U-93(keep),U-96(keep),U-97(keep) via=inbox(relayed)
+2026-11-16T19:06:30Z	Story 21.33	ci_red_classified	run=43933412899 job=gates_node24 test=ci.test.mjs_DW-2123_budget class=flake(DW-2565) action=orchestrator_rerun note=batch1_merges_via_staging/OCU-1-21.33b1_2a542f893
