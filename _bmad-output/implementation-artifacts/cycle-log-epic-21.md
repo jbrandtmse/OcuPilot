@@ -334,3 +334,4 @@
 2026-11-16T08:08:11Z	Story 21.25	stage_spawned	stage=plan spawn_at=2026-11-16T08:08:11Z model=opus agent_name=21-25-plan-1 cycle_iteration=1
 2026-11-16T08:20:18Z	Story 21.25	ruling	question=split_fixed_statistics choice=split(21.31_fixed_table_statistics) rejected=one_story why=size;separate_setter_shape category=decide policy=b9ff703e split_children=6_of_6(21.6_family)
 2026-11-16T08:20:18Z	Story 21.25	plan_clarification_requested	condition=AD_records(AD-51_21.25_case,AD-10_OCUPILOTTABLE_arm,AD-7_synchronous_named_limit) via=orchestrator status=blocked
+2026-11-16T08:20:50Z	Story 21.25	story_parked	stage=plan reason=owner_item_U-84(21.25,21.31) also_waits=21.6_merge category=park code=none
