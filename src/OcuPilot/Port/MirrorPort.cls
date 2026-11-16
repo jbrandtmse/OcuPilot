@@ -6,12 +6,13 @@
 /// <code>detail.failedPair</code>.</p>
 /// <p><b>Endpoints.</b> <parameter>STATEENDPOINT</parameter> answers one object for <code>GET</code>:
 /// <code>{State, MirrorName}</code>, <code>State</code> being <code>Failover</code> or <code>Async</code> on a member, otherwise
-/// <code>Unlicensed</code> when the license does not allow mirroring and <code>NotMember</code> when it does.
+/// <code>Unlicensed</code> when the license does not allow mirroring and <code>NotMember</code> when it does; <code>MirrorName</code> is
+/// <method>MirrorNames</method> on a member and empty otherwise.
 /// <parameter>MEMBERSENDPOINT</parameter> answers rows for <code>LIST</code>: <code>{MemberName, CurrentRole, CurrentStatus,
 /// JournalLatency, DatabaseLatency}</code>, and answers none, without calling the vendor, on an instance that is not a member,
 /// where the vendor query refuses. Every other endpoint and request type is refused as not implemented.</p>
-/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>, <method>Membership</method> and
-/// <method>MemberRows</method>. Production overrides none of them.</p>
+/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>, <method>Membership</method>,
+/// <method>MirrorNames</method> and <method>MemberRows</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
 /// return.</p>
 Class OcuPilot.Port.MirrorPort Extends %RegisteredObject
@@ -82,9 +83,19 @@ ClassMethod Membership(Output pMember As %Integer, Output pNoMirror As %Boolean)
     Set pNoMirror = ''$System.License.NoMirror()
 }
 
+/// <p>The name of the mirror a member belongs to, or the names of the mirrors an async member tracks, comma-separated:
+/// <code>$System.Mirror.MirrorName()</code> on a failover member, <code>$System.Mirror.GetMirrorNames()</code> otherwise, since the vendor's
+/// <code>MirrorName()</code> answers empty on any member but a failover one. Called only on a member. Overridable so a fixture can arm a
+/// name; production never overrides it.</p>
+ClassMethod MirrorNames(pMember As %Integer) As %String
+{
+    If pMember = 1 Quit $System.Mirror.MirrorName() _ ""
+    Quit $ListToString($System.Mirror.GetMirrorNames(), ",")
+}
+
 /// <p>The member rows of this instance's mirror in <var>pRows</var>, at most <var>pMax</var> of them, each
 /// <code>{MemberName, CurrentRole, CurrentStatus, JournalLatency, DatabaseLatency}</code> as text, from the vendor's
-/// <code>SYS.Mirror:MemberStatusList</code> run in <code>%SYS</code>. Called only on a member. Overridable so a fixture can arm
+/// <code>SYS.Mirror:MemberStatusList</code> run and closed in <code>%SYS</code>; a failed fetch fails the read. Called only on a member. Overridable so a fixture can arm
 /// rows; production never overrides it.</p>
 ClassMethod MemberRows(pMax As %Integer, Output pRows As %DynamicArray) As %Status
 {
@@ -94,13 +105,15 @@ ClassMethod MemberRows(pMax As %Integer, Output pRows As %DynamicArray) As %Stat
         Set $NAMESPACE = "%SYS"
         Set tRS = ##class(%ResultSet).%New("SYS.Mirror:MemberStatusList")
         Set tSC = tRS.Execute("")
-        While $$$ISOK(tSC) && (pRows.%Size() < pMax) && tRS.Next() {
+        While $$$ISOK(tSC) && (pRows.%Size() < pMax) && tRS.Next(.tSC) {
             Set tValues = ""
             For tI = 1:1:$Length(..#FIELDS, ",") Set tValues = tValues _ $ListBuild(tRS.Get($Piece(..#FIELDS, ",", tI)))
             Do pRows.%Push(..RowFor(tValues))
         }
+        Do tRS.Close()
     } Catch ex {
         Set tSC = ex.AsStatus()
+        If $IsObject($Get(tRS)) Do tRS.Close()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tSC
@@ -216,15 +229,15 @@ ClassMethod Listing(pMax As %Integer, Output pRows As %DynamicArray, Output pHtt
     Quit $$$OK
 }
 
-/// <p>The mirror state in <var>pState</var>: <code>{State, MirrorName}</code>, <code>MirrorName</code> empty on an instance
-/// that is not a member.</p>
+/// <p>The mirror state in <var>pState</var>: <code>{State, MirrorName}</code>, <code>MirrorName</code> <method>MirrorNames</method> on a
+/// member and empty on an instance that is not one.</p>
 ClassMethod State(Output pState As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Do ..Membership(.tMember, .tNoMirror)
     Set tState = $Select(tMember = 1: ..#STATEFAILOVER, tMember = 2: ..#STATEASYNC, tNoMirror: ..#STATEUNLICENSED, 1: ..#STATENOTMEMBER)
     Set pState = {}
     Do pState.%Set("State", tState, "string")
-    Do pState.%Set("MirrorName", $Select((tMember = 1) || (tMember = 2): $System.Mirror.MirrorName() _ "", 1: ""), "string")
+    Do pState.%Set("MirrorName", $Select((tMember = 1) || (tMember = 2): ..MirrorNames(tMember), 1: ""), "string")
     Set pHttpStatus = 200
     Quit $$$OK
 }

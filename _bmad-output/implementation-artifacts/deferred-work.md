@@ -13161,3 +13161,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: grep '165 rows\|56 excluded' epics.md after bcdac6676
 - 2026-11-16T00:43:15Z status=open owner=burndown by=spec_gate note=re-derive at close; contended with Epic 24 register rows
+
+### DW-2620: SA-43 and SA-44, the mirror database writes, stay P3 Stage 4 rows with no story after U-39 moved the other mirroring writes to the register
+- source: spec-21-12-mirroring.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: extract-stages.md:462-463 and feature-catalog.md:349-350 keep both P3 in Stage 4; epics.md Story 21.12 narrows to the monitor and refusal; no other story or register row names them; the spec only noted them for the runner
+- 2026-11-16T01:06:19Z status=decision-pending owner=burndown by=cr note=owner: build them later, or add them to the license-gated mirroring register group
+
+### DW-2621: On an async member tracking several mirrors, MemberStatusList with an empty name may list only one mirror's members, where the classic page switches to MirrorTrackedByAsyncMember (inference)
+- source: spec-21-12-mirroring.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: MirrorPort.MemberRows runs MemberStatusList(""); irissys/%CSP/UI/Portal/Mirror/Monitor.cls ~1240 uses MirrorTrackedByAsyncMember when NumberOfMirrorSet>1; no runtime here can be a member, so unmeasured
+- 2026-11-16T01:06:19Z status=decision-pending owner=burndown by=cr note=human=measure on a licensed async member tracking two mirrors
+
+### DW-2622: MirrorPort is the twelfth port with its own copy of Deny, Refuse and Fail instead of a shared helper class (Rule 31)
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: the same three private methods in Analytics, Atelier, Backup, Config, DevTool, DocDb, Harvest, Interop, ScreenAccess, Sql, SqlActivity and Mirror ports; the spec's reason rules out a base class, not a helper
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=a port's copy of Deny, Refuse or Fail diverges from the others in its wire fault
+
+### DW-2623: Registry.ReadProblem's mirror block is the twelfth near-identical per-source block (endpoint in ENDPOINTS, LIST only, no rowGet/forEach/query/parts) (Rule 31)
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Registry.cls carries the same block for path, background, docdb, sqlactivity, backup, config, mirror, monitor, devtool and more (lines ~1250-1495); the spec held shared registration files to add-only edits
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=one of the per-source blocks in ReadProblem drifts from the others in what it refuses
+
+### DW-2624: Prohibited.Prohibits' doc comment says a diff naming nothing leaves nothing prohibited, but the screen-permission and mirror arms judge without the diff
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls ~1499; MirrorRefusal.TestTheVerdictIgnoresTheStoredDiffAndTheMirrorsName pins a refusal on an empty diff; Epic 24 also edits Prohibited.cls, so the sentence was left
+- 2026-11-16T01:06:19Z status=wontfix-accepted owner=21-12-mirroring by=cr note=reopen_if=a reviewer or caller relies on an empty diff passing a mirror or screen-permission write

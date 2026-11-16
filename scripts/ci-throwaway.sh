@@ -593,6 +593,8 @@ services:
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
       # The backup gate class signs in as probe principals holding the backup port's read pairs and its write pairs (Story 21.2).
       # classes: BackupWriteGate
+      # The mirror gate class signs in as probe principals holding the mirror port's two pairs and the Mirror monitor's third, and as ones each missing a port pair (Story 21.12).
+      # classes: MirrorGate
       # The term list editor classes (Story 24.2) turn analytics on in USER and write marker-named term lists there: the edit class drives the port's six
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.

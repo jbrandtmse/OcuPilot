@@ -85,7 +85,7 @@ Method TestTheLiveStateIsTheInstancesOwn()
 }
 
 /// <p>The vendor query the port reads, unfixtured: its row specification lists each of the port's five fields, and a read on an
-/// instance that is no member leaves the caller's namespace as it was and answers no rows.</p>
+/// instance that is no member runs the query, which refuses, leaves the caller's namespace as it was and answers no rows.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Port.MirrorPort</class>'s <code>FIELDS</code> renames <code>CurrentStatus</code> to
 /// <code>Status</code> -> the row-specification assertion goes red; <code>MemberRows</code> drops its namespace restore -> the
 /// namespace assertion goes red.</p>
@@ -108,6 +108,7 @@ Method TestTheVendorQueryCarriesTheFieldsAndTheReadRestoresTheNamespace()
     Do $$$AssertEquals(tMissing, "", "each field the port reads is a column of that query")
     If +$System.Mirror.IsMember() '= 0 Quit
     Set tSC = $ClassMethod(..#PORT, "MemberRows", 10, .tRows)
+    Do $$$AssertStatusNotOK(tSC, "the vendor query itself ran and refused an instance that is no member")
     Do $$$AssertEquals($NAMESPACE, tOrigNS, "the read leaves the caller's namespace as it was")
     Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size(), 1: -1), 0, "and, on an instance that is no member, answers no rows")
 }
@@ -118,7 +119,7 @@ ClassMethod FieldsJson() As %String
     Quit ##class(%DynamicArray).%FromJSON("[""" _ $Replace(..#FIELDS, ",", """,""") _ """]").%ToJSON()
 }
 
-/// <p><b>AC2.</b> A failover and an async member answer their state and their three rows with the five fields and no banner; a licensed
+/// <p><b>AC2.</b> A failover and an async member answer their state, their mirror's name and their three rows with the five fields and no banner; a licensed
 /// instance that is no member answers <code>NotMember</code> with no rows, and neither a non-member nor an unlicensed instance reaches
 /// the vendor's member query.</p>
 /// <p>Mutation (Rule 19): the row builder of <class>OcuPilot.Port.MirrorPort</class> drops <code>CurrentStatus</code> -> the field
@@ -130,7 +131,7 @@ Method TestEachArmedStateAnswersItsRowsAndBanner()
         Do $ClassMethod(..#SEAM, "Arm", $List(tCase, 1), $List(tCase, 2), 3)
         Kill tQuery
         Set tSC = $ClassMethod(..#SEAM, "Invoke", "State", "GET", .tQuery, "", .tState, .tHttp, .tFault)
-        Do $$$AssertEquals(tState.%Get("State"), $List(tCase, 4), $List(tCase, 4) _ ": the state")
+        Do $$$AssertEquals(tState.%Get("State") _ "|" _ tState.%Get("MirrorName"), $List(tCase, 4) _ "|" _ $Select($List(tCase, 1) = 0: "", 1: $Parameter(..#SEAM, "ARMEDNAME")), $List(tCase, 4) _ ": the state, and the mirror's name on a member only")
         Set tResult = ..Read(..#READER)
         Do $$$AssertTrue($IsObject(tResult), $List(tCase, 4) _ ": the screen's read answers")
         If '$IsObject(tResult) Continue
@@ -141,7 +142,7 @@ Method TestEachArmedStateAnswersItsRowsAndBanner()
             Set tFields = ""
             For tI = 1:1:5 Set tFields = tFields _ $Select(tRow.%IsDefined($Piece(..#FIELDS, ",", tI)): 1, 1: 0)
             Do $$$AssertEquals(tFields, "11111", $List(tCase, 4) _ ": each row carries the five fields")
-            Do $$$AssertEquals(tRow.%Get("MemberName") _ "|" _ tRow.%Get("CurrentRole") _ "|" _ tRow.%Get("CurrentStatus") _ "|" _ tRow.%Get("JournalLatency") _ "|" _ tRow.%Get("DatabaseLatency"), "Member1|Primary|Active|Caught up 1|Caught up 1", $List(tCase, 4) _ ": and each field holds the vendor's value")
+            Do $$$AssertEquals(tRow.%Get("MemberName") _ "|" _ tRow.%Get("CurrentRole") _ "|" _ tRow.%Get("CurrentStatus") _ "|" _ tRow.%Get("JournalLatency") _ "|" _ tRow.%Get("DatabaseLatency"), "Member1|Primary|Active|Caught up 1|Behind 1", $List(tCase, 4) _ ": and each field holds the vendor's value")
         }
     }
 }

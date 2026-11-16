@@ -127,7 +127,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | SA-19 | Database properties edit | settings | admin-v2 GET/PUT /database, PUT /database-dir | L | 748-line SMP page. |
 | SA-20 | Create database wizard | wizard | admin-v2 POST /database-dir + PUT /database | L | 1058-line SMP wizard; SYS.Database.CreateDatabase. |
 | SA-21 | Delete database wizard | wizard | admin-v2 DELETE /database, DELETE /database-dir | L | 436-line wizard listing dependent namespaces and apps. |
-| SA-22 | Enable mirror service | action | admin-v2 PUT /security/service | S | Reuses the P0 service editor (PM-16); the mirror monitor is Stage 4 and the other mirror pages are Stage 5. |
+| SA-22 | Enable mirror service | action | admin-v2 PUT /security/service | S | Reuses the P0 service editor (PM-16); the mirror monitor is Stage 4, and the create, edit, join and member and database action pages are Stage 5. |
 
 **9. System Operation, remainder (SO)** — 8 rows (S 6 / M 1 / L 1)
 
