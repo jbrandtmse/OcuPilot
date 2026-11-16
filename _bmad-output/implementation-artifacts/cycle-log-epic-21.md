@@ -276,3 +276,4 @@
 2026-11-16T01:33:41Z	Story 21.21	story_created	spawn_at=2026-11-16T01:24:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-21-leaves-that-wait-on-the-owner.md build_status=blocked->ready-for-dev(batch5_held)
 2026-11-16T01:33:41Z	Story 21.21	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-10,AD-27,AD-16,AD-44,AD-63 owned_ledger=DW-1850,DW-1280,DW-2348 addressed=3 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-16T01:41:09Z	Story 21.22	stage_spawned	stage=plan spawn_at=2026-11-16T01:41:09Z model=opus agent_name=21-22-ci-flake-hardening-plan-1 cycle_iteration=1
+2026-11-16T01:42:40Z	Story 21.21	runner_reported	item=U-74(orchestrator,parked) scope=SH-27_batch5 note=U-65_does_not_cover_A;batches_1-4_proceed
