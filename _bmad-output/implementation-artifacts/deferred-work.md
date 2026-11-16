@@ -7365,6 +7365,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T08:39:51Z status=routed owner=range-end-cleanup by=merge_gate note=orchestrator ruling at Epic 12 resume: AD-35 names the gap at origin (English captions only; localized instance unmeasured); fix is a post-release story matching on message-dictionary keys
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=AD-35 names the gap; post-release match on message-dictionary keys; untestable without a localized instance
 - 2026-09-30T03:32:47Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29; reopen_if=OcuPilot supports an instance whose audit messages are localized
+- 2026-11-16T02:04:31Z occurrence=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=cr note=the Task Config.MailAuthPassword row's description and Old value/New value captions are %SECURITY.Audit messages too; ocupilot-ci holds de, fr, ja and other translations of them (measured); a localized row passes unmasked (inference)
 
 ### DW-1646: An agent-confirmed update of a registered client whose authorization server is down reports applied with no registration-not-updated notice; only the screen Save surfaces registrationNotUpdated
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -13194,3 +13195,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T01:21:58Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=lead note=MEASURED on ocupilot-ci 2026-11-16T01:4xZ (no longer inference): ConfigurationChange enabled (fresh install); %SYS.Task.Config.AuthPassSet(probe) wrote a 'Modify Task Config.MailAuthPassword' row with New value = Base64(probe); GET /api/ocupilot/screens/logs.audit/read?events=ConfigurationChange answered 200 with that row unmasked (RAW_HAS_B64=1, no mask); the restoring write's row carries it as Old value; owner item U-70; audit code unchanged
 - 2026-11-16T01:22:05Z status=decision-pending owner=21-21-leaves-that-wait-on-the-owner by=lead note=measurement time is 2026-11-16T01:21Z (the previous line's 01:4xZ is wrong)
 - 2026-11-16T01:23:34Z status=open owner=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=lead note=re-owned to Story 21.24 on orchestrator ruling U-71 (fix under AD-35, not an amendment)
+
+### DW-2626: AD-35 lists the vendor events whose audit secrets are masked and says any other is a new declaration there, but the Task Manager mail password row (%System/%System/ConfigurationChange, Modify Task Config.MailAuthPassword) that Story 21.24 declared is not in it
+- source: spec-21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-35 ends 'This covers only the named events; a vendor secret found in any other event is a new declaration here'; grep finds no MailAuthPassword or ConfigurationChange in the spine; AuditPort.VENDORCONFIGSECRETS declares it; the spec forbids a spine edit under ruling U-71
+- 2026-11-16T02:04:31Z status=escalated owner=burndown by=cr note=human=owner: add a one-sentence sixth declaration to AD-35, or record ruling U-71 there as the reason none is needed

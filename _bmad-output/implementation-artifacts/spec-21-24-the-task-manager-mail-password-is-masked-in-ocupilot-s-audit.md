@@ -69,6 +69,25 @@ deferred: []
 - Given the survey below, when the vendor's other `OldValue`/`NewValue` audit writers are checked, then the one setter of this shape is declared and none is left to ledger.
 - DW-2625: closed by the two criteria above.
 
+### Review Findings
+
+Code review 2026-11-16, four layers (blind, edge-case, verification-gap, acceptance), full-opus tier. Fix-risk on each.
+
+- [x] [Review][Patch] HIGH: a mail password over 57 bytes leaked its tail. The vendor's `Base64Encode` breaks a value at 76 characters with CRLF, and only the labeled line was masked; measured on both read paths (run 142). Every-value mode now drops the lines a value continues onto. Fix-risk low: header mode is unchanged [src/OcuPilot/Port/AuditPort.cls:MaskedEventData]
+- [x] [Review][Patch] MED: no test held a wrapped value, and the whole-value `[` check cannot see one once JSON escapes the CRLF. `SECONDPROBE` is now 70 bytes, a synthetic wrapped row is added, and the answer check tests each line of each value. Fix-risk low [src/OcuPilot/Test/TaskMailAuditMask.cls:AssertAnswer]
+- [x] [Review][Patch] LOW: the preparatory `Arm` statuses and `ReadScreen`'s status were discarded; both are now asserted. Fix-risk low [src/OcuPilot/Test/TaskMailAuditMask.cls]
+- [x] [Review][Patch] LOW: Verification claimed "no clear probe value anywhere", which the test did not check; the clear probes are now checked too. Fix-risk low [src/OcuPilot/Test/TaskMailAuditMask.cls]
+- [x] [Review][Patch] LOW: `MaskedEventData`'s doc said `pKeys` is not read in every-value mode, but it is; the sentence is replaced. Fix-risk low [src/OcuPilot/Port/AuditPort.cls]
+- [x] [Review][Patch] LOW: the class header left out the Task Manager history rows that `UpdateData` writes; now named. Fix-risk low [src/OcuPilot/Test/TaskMailAuditMask.cls]
+- [x] [Review][Patch] LOW: the empty-value half of AC1 and the "Other Task Config row" matrix row had no mutation line; both have been mutated and are recorded under Verification. Fix-risk low.
+- [x] [Review][Defer] MED: the row's description and value captions are localized `%SECURITY.Audit` messages, so a localized row passes unmasked (inference) [src/OcuPilot/Port/AuditPort.cls:ConfigSecret]. Deferred: pre-existing across all four families, named in AD-35; occurrence appended to DW-1645 (wontfix-accepted, reopen_if a localized instance is supported).
+- [x] [Review][Defer] MED: AD-35 says a vendor secret in any other event "is a new declaration here", but the spine does not list this row. Deferred: the spec forbids a spine edit under ruling U-71. DW-2626, escalated, owner burndown, for the owner to amend AD-35 or record U-71 there.
+
+Rejected:
+
+- `low`: `Stored()` cannot tell a failed read from an empty password, so the restore could clear a real one. The class is armed for throwaways only, and the fix adds a SQL path and a branch.
+- `false`: the test skips `Kernel.Agent.Dispatch`. AC1 names `Registry.InvokeTool`, and `ReadTool` calls it directly; `SanitizeAuditMask` pins what Dispatch's sanitizer does to `*****`.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -142,6 +161,10 @@ Both paths read identically in all three steps.
 - AC1 mutation: `VENDORCONFIGSECRETS` emptied (`Parameter VENDORCONFIGSECRETS = "";`) -> `TaskMailAuditMask` 5 of 5 red (run 121): `TestSettingThePasswordReadsMasked`, `TestChangingThePasswordReadsMasked`, `TestClearingThePasswordReadsMasked`, `TestTheMaskReadsTheDeclarationAlone`, `TestTheDeclarationNamesTheSurveyedSetter`. Under the same mutation `AuditVendorSecrets` (4), `OAuthResourceServerAuditMask` (3), `OAuthAuthorizationServerSecret` (9), `OAuthRegisteredClientSecret` (7), `AuthOptionsDescriptor` (10), `SanitizeAuditMask` (1) and `SecretLeak` (2) stayed green. Reverted and reloaded; all of them, `TaskMailAuditMask` (5) and `PortGate` (4) green after the revert.
 - AC2 mutation: the declaration pin is the survey's executable half, and the same mutation reddens `TestTheDeclarationNamesTheSurveyedSetter`.
 - Matrix rows "Same text, other event" and the whole-word rule: the `ConfigSecret` source check removed -> `TestTheMaskReadsTheDeclarationAlone` red alone (run 138, "the same text under another vendor event"); the `DeclaredEntry` whole-word check loosened to a bare prefix -> the same method red alone (run 139, "a description that only begins with the declared words"). Each reverted (tree identical by `git status --short` and `git diff --stat`), reloaded, `TaskMailAuditMask` (5) green. `npm run test:tools`: 2293 of 2293.
+- mutation: the continuation-line drop in `MaskedEventData` removed -> run 142 red: change and clear on both read paths ("carries no line of a probe value or its Base64") and the synthetic wrapped row.
+- mutation: `MaskedAfter`'s empty-value guard removed -> run 143 red: set (old value) and clear (new value) on both paths, and the two synthetic empty rows.
+- mutation: `ConfigSecret` answering true on the source alone -> run 144 red alone in `TestTheMaskReadsTheDeclarationAlone` ("another Task Config row is unchanged").
+- Code review: each mutation was reverted (`cmp` identical to the patched file), reloaded, and `TaskMailAuditMask` re-ran green (run 145, 5 tests). Also green after the patch: `AuditVendorSecrets` (4), `OAuthResourceServerAuditMask` (3), `OAuthAuthorizationServerSecret` (9), `OAuthRegisteredClientSecret` (7), `AuthOptionsDescriptor` (10), `SanitizeAuditMask` (1), `SecretLeak` (2) and `PortGate` (4). `check-objectscript.py` reports 0 problems, its harness passes, and `ci.test.mjs` passes 103 of 103.
 
 ## Auto Run Result
 

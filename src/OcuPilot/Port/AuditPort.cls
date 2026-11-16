@@ -154,8 +154,9 @@ Parameter VENDORSETTINGSOURCE = "%System/%Security/OAuth2ResourceServerChange";
 /// entries, where <code>&lt;event&gt;</code> is the leading words of the row's <code>Description</code>
 /// under <parameter>VENDORCONFIGSOURCE</parameter>. Measured on <code>ocupilot-ci</code>:
 /// <code>%SYS.Task.Config.AuthPassSet</code> writes the Task Manager mail password, Base64-encoded,
-/// on the two value lines of a "Modify Task Config.MailAuthPassword" row, which has no
-/// <code>&lt;key&gt; modified:</code> header.</p>
+/// as the <code>Old value</code> and <code>New value</code> of a "Modify Task Config.MailAuthPassword"
+/// row, which has no <code>&lt;key&gt; modified:</code> header. The encoding breaks a value longer
+/// than 76 characters onto further lines.</p>
 Parameter VENDORCONFIGSECRETS = "Modify Task Config.MailAuthPassword";
 
 /// <p>The vendor event every <parameter>VENDORCONFIGSECRETS</parameter> entry is a row of.</p>
@@ -165,8 +166,9 @@ Parameter VENDORCONFIGSOURCE = "%System/%System/ConfigurationChange";
 /// <parameter>VENDORSYSTEMSECRETS</parameter>, <parameter>VENDORSETTINGSECRETS</parameter> and
 /// <parameter>VENDORCONFIGSECRETS</parameter>) in the <code>EventData</code> of every row of
 /// <var>pRows</var>, an audit record read's rows. A row of the fourth family has every
-/// <code>Old value</code> and <code>New value</code> line masked, so a set, a change and a clear all
-/// read masked; a line the vendor left empty stays empty.</p>
+/// <code>Old value</code> and <code>New value</code> masked, the lines a long value continues onto
+/// included, so a set, a change and a clear all read masked; a value the vendor left empty stays
+/// empty.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Screen.Read</class> calls it on every
 /// <parameter>RECORDENDPOINT</parameter> answer before it projects a row, so the Logs audit screen and
 /// <code>logs.audit.read</code> read the same masked rows. A row of another event, or a value a
@@ -235,20 +237,24 @@ ClassMethod ConfigSecret(pRow As %DynamicObject) As %Boolean
 /// <code>&lt;key&gt; modified:</code> or <code>metadata.&lt;key&gt; modified:</code> line; a
 /// <code>&lt;key&gt;:</code> property line; and the member of that name in a
 /// <code>Metadata:</code> line's JSON. With <var>pEveryValue</var> true, every <code>Old value</code>
-/// and <code>New value</code> line is masked, header or not, and <var>pKeys</var> is not read. An empty
-/// value stays empty.</p>
+/// and <code>New value</code> line is masked, header or not, and each line after it up to the next one
+/// is dropped, since it continues the value. An empty value stays empty.</p>
 ClassMethod MaskedEventData(pData As %String, pKeys As %List, pEveryValue As %Boolean = 0) As %String
 {
     Set tBreak = $Char(13, 10)
     If pData '[ tBreak Set tBreak = $Char(10)
     Set tOut = ""
     Set tMasking = 0
+    Set tInValue = 0
     For tI = 1:1:$Length(pData, tBreak) {
         Set tLine = $Piece(pData, tBreak, tI)
         Set tTrimmed = $ZStrip(tLine, "<>W")
-        If (tMasking || pEveryValue) && (($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")) {
+        Set tValueLine = ($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")
+        If tInValue && 'tValueLine Continue
+        If (tMasking || pEveryValue) && tValueLine {
             Set tLine = ..MaskedAfter(tLine, ":")
             Set tMasking = $Select(tMasking > 0: tMasking - 1, 1: 0)
+            Set tInValue = pEveryValue
         } Else {
             Set tMasking = 0
             For tK = 1:1:$ListLength(pKeys) {

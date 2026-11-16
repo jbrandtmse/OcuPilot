@@ -9,7 +9,7 @@
 /// holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because
 /// it changes the instance's Task Manager mail password to probe values. It stores the value it found
 /// before the run and writes it back after every method. The rows it writes stay in the audit
-/// database.</p>
+/// database and the Task Manager history.</p>
 Class OcuPilot.Test.TaskMailAuditMask Extends %UnitTest.TestCase
 {
 
@@ -29,10 +29,11 @@ Parameter EVENT = "%System/%System/ConfigurationChange";
 /// <p>The leading words of the row's <code>Description</code>.</p>
 Parameter PREFIX = "Modify Task Config.MailAuthPassword";
 
-/// <p>The probe passwords. Neither is a real secret.</p>
+/// <p>The probe passwords. Neither is a real secret. The second is long enough that the vendor's
+/// Base64 of it runs onto a second line.</p>
 Parameter FIRSTPROBE = "OcuProbe2624PwOne";
 
-Parameter SECONDPROBE = "OcuProbe2624PwTwo";
+Parameter SECONDPROBE = "OcuProbe2624PwTwoLongEnoughToWrapTheVendorsBase64LineAtSeventySixChars";
 
 /// <p>The mail password's stored value before the run.</p>
 Property PreparedMail As %String(MAXLEN = "") [ InitialExpression = "" ];
@@ -69,9 +70,10 @@ Method TestTheDeclarationNamesTheSurveyedSetter()
     Do $$$AssertEquals($Parameter(..#PORT, "VENDORCONFIGSOURCE"), ..#EVENT, "under the vendor's configuration change event")
 }
 
-/// <p>The mask reads the declaration alone: a declared row's two value lines are masked and an empty
-/// one stays empty, while another Task Config row, the same text under another vendor event, and a
-/// description that only begins with the declared words are unchanged.</p>
+/// <p>The mask reads the declaration alone: a declared row's two values are masked, the line a long
+/// value continues onto included, and an empty one stays empty, while another Task Config row, the
+/// same text under another vendor event, and a description that only begins with the declared words
+/// are unchanged.</p>
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AuditPort.VENDORCONFIGSECRETS</parameter> --
 /// the first three assertions go red.</p>
 Method TestTheMaskReadsTheDeclarationAlone()
@@ -80,6 +82,8 @@ Method TestTheMaskReadsTheDeclarationAlone()
     Set tBoth = "  Old value: ocupilotmaskprobe001" _ tCrlf _ "  New value: ocupilotmaskprobe002"
     Set tSet = "  Old value: " _ tCrlf _ "  New value: ocupilotmaskprobe002"
     Set tClear = "  Old value: ocupilotmaskprobe001" _ tCrlf _ "  New value: "
+    Set tLong = ..Encoded(..#SECONDPROBE)
+    Set tWrapped = "  Old value: " _ tLong _ tCrlf _ "  New value: " _ tLong
     Set tMask = $Parameter(..#PORT, "MASK")
     Set tRows = []
     Do tRows.%Push($ClassMethod(..#MODEL, "Row", "%System", "%System", "ConfigurationChange", ..#PREFIX, tBoth))
@@ -88,6 +92,7 @@ Method TestTheMaskReadsTheDeclarationAlone()
     Do tRows.%Push($ClassMethod(..#MODEL, "Row", "%System", "%System", "ConfigurationChange", "Modify Task Config.MailServer", tBoth))
     Do tRows.%Push($ClassMethod(..#MODEL, "Row", "%System", "%Security", "SystemChange", ..#PREFIX, tBoth))
     Do tRows.%Push($ClassMethod(..#MODEL, "Row", "%System", "%System", "ConfigurationChange", ..#PREFIX _ "Extra", tBoth))
+    Do tRows.%Push($ClassMethod(..#MODEL, "Row", "%System", "%System", "ConfigurationChange", ..#PREFIX, tWrapped))
     Do $ClassMethod(..#PORT, "MaskVendorSecrets", tRows)
     Do $$$AssertEquals(tRows.%Get(0).%Get("EventData"), "  Old value: " _ tMask _ tCrlf _ "  New value: " _ tMask, "a declared row's two lines are masked")
     Do $$$AssertEquals(tRows.%Get(1).%Get("EventData"), "  Old value: " _ tCrlf _ "  New value: " _ tMask, "an empty old value stays empty")
@@ -95,6 +100,8 @@ Method TestTheMaskReadsTheDeclarationAlone()
     Do $$$AssertEquals(tRows.%Get(3).%Get("EventData"), tBoth, "another Task Config row is unchanged")
     Do $$$AssertEquals(tRows.%Get(4).%Get("EventData"), tBoth, "and so is the same text under another vendor event")
     Do $$$AssertEquals(tRows.%Get(5).%Get("EventData"), tBoth, "and a description that only begins with the declared words")
+    Do $$$AssertTrue(tLong [ tCrlf, "the long probe's Base64 runs onto a second line")
+    Do $$$AssertEquals(tRows.%Get(6).%Get("EventData"), "  Old value: " _ tMask _ tCrlf _ "  New value: " _ tMask, "a long value is masked with the line it continues onto")
 }
 
 /// <p>AC1, set: from an empty password, <code>AuthPassSet</code> writes a row whose old value is empty
@@ -103,13 +110,13 @@ Method TestTheMaskReadsTheDeclarationAlone()
 /// both reads carry the Base64 value and this goes red.</p>
 Method TestSettingThePasswordReadsMasked()
 {
-    Do ..Arm("")
+    Do $$$AssertStatusOK(..Arm(""), "the password starts empty")
     Set tSince = $ZDateTime($Horolog, 3)
     Set tUtcSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tNew = ..Encoded(..#FIRSTPROBE)
     Do $$$AssertStatusOK(..Arm(..#FIRSTPROBE, 0), "the password is set")
     Do $$$AssertTrue($ClassMethod(..#MODEL, "VendorCarries", tUtcSince, tNew, ..#EVENT) >= 1, "and the vendor's own row carries the Base64 value")
-    Do ..AssertRead(tSince, $ListBuild(tNew), "", $Parameter(..#PORT, "MASK"))
+    Do ..AssertRead(tSince, $ListBuild(tNew, ..#FIRSTPROBE), "", $Parameter(..#PORT, "MASK"))
 }
 
 /// <p>AC1, change: from one probe password to another, both lines are Base64 values; both reads answer
@@ -117,7 +124,7 @@ Method TestSettingThePasswordReadsMasked()
 /// <p>Mutation (Rule 19): as <method>TestSettingThePasswordReadsMasked</method>.</p>
 Method TestChangingThePasswordReadsMasked()
 {
-    Do ..Arm(..#FIRSTPROBE)
+    Do $$$AssertStatusOK(..Arm(..#FIRSTPROBE), "the password starts as the first probe")
     Set tSince = $ZDateTime($Horolog, 3)
     Set tUtcSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tOld = ..Encoded(..#FIRSTPROBE)
@@ -125,7 +132,7 @@ Method TestChangingThePasswordReadsMasked()
     Do $$$AssertStatusOK(..Arm(..#SECONDPROBE, 0), "the password is changed")
     Do $$$AssertTrue(($ClassMethod(..#MODEL, "VendorCarries", tUtcSince, tOld, ..#EVENT) >= 1) && ($ClassMethod(..#MODEL, "VendorCarries", tUtcSince, tNew, ..#EVENT) >= 1), "and the vendor's own row carries both Base64 values")
     Set tMask = $Parameter(..#PORT, "MASK")
-    Do ..AssertRead(tSince, $ListBuild(tOld, tNew), tMask, tMask)
+    Do ..AssertRead(tSince, $ListBuild(tOld, tNew, ..#FIRSTPROBE, ..#SECONDPROBE), tMask, tMask)
 }
 
 /// <p>AC1, clear: from a probe password to an empty one, the old value is a Base64 value and the new
@@ -133,23 +140,24 @@ Method TestChangingThePasswordReadsMasked()
 /// <p>Mutation (Rule 19): as <method>TestSettingThePasswordReadsMasked</method>.</p>
 Method TestClearingThePasswordReadsMasked()
 {
-    Do ..Arm(..#SECONDPROBE)
+    Do $$$AssertStatusOK(..Arm(..#SECONDPROBE), "the password starts as the second probe")
     Set tSince = $ZDateTime($Horolog, 3)
     Set tUtcSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tOld = ..Encoded(..#SECONDPROBE)
     Do $$$AssertStatusOK(..Arm("", 0), "the password is cleared")
     Do $$$AssertTrue($ClassMethod(..#MODEL, "VendorCarries", tUtcSince, tOld, ..#EVENT) >= 1, "and the vendor's own row carries the Base64 value")
-    Do ..AssertRead(tSince, $ListBuild(tOld), $Parameter(..#PORT, "MASK"), "")
+    Do ..AssertRead(tSince, $ListBuild(tOld, ..#SECONDPROBE), $Parameter(..#PORT, "MASK"), "")
 }
 
 /// <p>Assert that the audit screen's read over the wire and <code>logs.audit.read</code> each answer
-/// exactly one row of the declared event since <var>pSince</var>, carry none of the values in the list
-/// <var>pValues</var> anywhere in the answer, and read <var>pOld</var> and <var>pNew</var> on the row's
+/// exactly one row of the declared event since <var>pSince</var>, carry no line of any value in the
+/// list <var>pValues</var> anywhere in the answer, and read <var>pOld</var> and <var>pNew</var> on the row's
 /// <code>Old value</code> and <code>New value</code> lines.</p>
 Method AssertRead(pSince As %String, pValues As %List, pOld As %String, pNew As %String)
 {
     Set tPrefixes = $ListBuild(..#PREFIX)
     Set tSC = $ClassMethod(..#MODEL, "ReadScreen", "ConfigurationChange", pSince, "MailAuthPassword", tPrefixes, .tStatus, .tRaw, .tScreen)
+    Do $$$AssertStatusOK(tSC, "the audit screen's read is sent")
     Do $$$AssertEquals(tStatus, 200, "the audit screen's read answers: " _ $Extract(tRaw, 1, 200))
     Do ..AssertAnswer($Get(tScreen), tRaw, pValues, pOld, pNew, "the screen's read")
 
@@ -184,7 +192,9 @@ Method AssertAnswer(pRows, pText As %String, pValues As %List, pOld As %String, 
     Do $$$AssertEquals(tCount, 1, pWho _ " answers exactly one declared row")
     Set tPosition = 0
     While $ListNext(pValues, tPosition, tValue) {
-        Do $$$AssertEquals(pText [ tValue, 0, pWho _ " carries no Base64 value")
+        For tP = 1:1:$Length(tValue, $Char(13, 10)) {
+            Do $$$AssertEquals(pText [ $Piece(tValue, $Char(13, 10), tP), 0, pWho _ " carries no line of a probe value or its Base64")
+        }
     }
     Do $$$AssertEquals(tOld, pOld, pWho _ ": the old value line reads as expected")
     Do $$$AssertEquals(tNew, pNew, pWho _ ": the new value line reads as expected")
