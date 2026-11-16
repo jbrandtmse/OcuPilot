@@ -183,3 +183,4 @@
 2026-11-16T10:51:56Z	Story 24.9	ruling	question=AD-51_AD-52_AD-15_AD-22_clauses choice=comply_no_spine_edit_proposed_lines_in_spec rejected=amend_spine why=U7_runner_never_amends_precedent_24.2 category=veto reversal=owner_attended_update inbox=U-87 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T10:51:56Z	Story 24.9	ruling	question=promote_strictness_audit_compile choice=no_%SYS,no_%names,storage_guard_without_override,own_ConfigChange,compile_in_promote,no_rollback_stated rejected=sibling_override why=stricter_is_safe category=veto reversal=re-plan inbox=U-87 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T10:51:56Z	Story 24.9	stage_spawned	stage=implement spawn_at=2026-11-16T10:51:56Z model=sonnet agent_name=24-9-environment-promote-implement-1 cycle_iteration=1
+2026-11-16T10:52:09Z	Story 24.8	ci_result	sha=39fbcf32d run=43847172970 result=success staging_head_for=24.3,24.4,24.8
