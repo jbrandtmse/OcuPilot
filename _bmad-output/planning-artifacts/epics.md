@@ -10092,15 +10092,11 @@ So that the last two steps of the agent's growth land together.
 
 **Acceptance Criteria:**
 
-- **Given** the 28 harvested inspection and search tools
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (fourteen of the 28 harvested tools: the session and message reads) and Stories 24.20 to 24.23; the other fourteen tools and the undo criterion moved to them, undo word for word.
+
+- **Given** the fourteen harvested session and message tools (search_by_time, search_by_status, search_by_source, search_by_target, search_by_message_class, search_by_session, search_by_super_session, find_related_sessions, find_sessions_using_class, session_summary, session_timeline, message_headers, get_message_detail, get_message_body)
 - **When** they are added
 - **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
-
-- **Given** undo
-- **When** it is built
-- **Then** it captures a snapshot **before** the write and offers a one-click revert
-- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
-- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
 
 ### Story 24.5: Unit-test runner and work-queue viewer
 
@@ -10331,3 +10327,61 @@ So that the area reaches parity.
 - **Given** deployment
 - **When** it runs
 - **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
+
+### Story 24.20: Undo by snapshot and revert
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want undo by snapshot and revert,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** undo
+- **When** it is built
+- **Then** it captures a snapshot **before** the write and offers a one-click revert
+- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
+- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+### Story 24.21: The agent's harvested log, process, source and configuration tools
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested log, process, source and configuration tools,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the ten harvested tools event_log, rule_log, get_business_process_instance, get_business_process_source, list_business_process_methods, get_class_source, get_rule_source, get_production_config_item, get_queue_state and explain_error
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+### Story 24.22: The agent's harvested message body searches
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested message body searches,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the three harvested tools inspect_body_candidates, search_by_body_field and find_sessions_by_body
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+### Story 24.23: The agent's harvested vocabulary tool
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested vocabulary tool,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the harvested tool vocab_lookup
+- **When** it is added
+- **Then** it declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
