@@ -291,3 +291,4 @@
 2026-11-16T02:14:42Z	Story 21.21	owner_decision	id=U-74 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: amend and build (Recommended)"
 2026-11-16T02:14:42Z	Story 21.21	ad_amended	ads=AD-44(custom_resource_set_clear),AD-64(rule2) marker=[AMENDED_2026-11-16,Story_21.21,owner_answer_U-74] lint_spine=ok note=AD-10_OCUPILOTSCREEN_arm_asked_of_orchestrator
 2026-11-16T02:14:55Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T02:14:55Z model=opus agent_name=21-6-the-sql-tuning-track-plan-1 cycle_iteration=1
+2026-11-16T02:15:21Z	Story 21.21	ad_amended	ad=AD-10 arm=OCUPILOTSCREEN marker=[AMENDED_2026-11-16,Story_21.21_spec_gate,owner_answer_U-74;ruling_U-75,Rule_20] lint_spine=ok note=batch5_unheld
