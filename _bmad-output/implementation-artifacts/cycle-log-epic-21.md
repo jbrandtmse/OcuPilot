@@ -402,3 +402,5 @@
 2026-11-16T16:38:50Z	Story 21.33	ruling	question=DW-2665_timing choice=batch2(A_design) via=orchestrator note=no_cut_until_batch2_on_feature;batch1_head_without_it
 2026-11-16T16:50:35Z	Story 21.33	fresh_check	scope=batch1(46f695b40) classes=19_green specs=3_green_fwd+rev result=pass
 2026-11-16T16:53:32Z	Story 21.35	stage_spawned	stage=plan spawn_at=2026-11-16T16:53:32Z model=opus agent_name=21-35-plan-1 cycle_iteration=1
+2026-11-16T17:08:40Z	Story 21.35	story_created	spawn_at=2026-11-16T16:53:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md build_status=ready-for-dev eta=10-12h waits_for=21.33_done
+2026-11-16T17:08:40Z	Story 21.35	spec_validated	owned_ledger=DW-2651(batch1),DW-2652(batch2-3) ad_text=deferred_to_start(builds_on_DW-2665) asked=AD-64_screen_access(a|b|c) behaviour_changes_listed=4
