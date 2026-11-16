@@ -254,3 +254,4 @@
 2026-11-16T01:02:38Z	Story 21.10	ad_amended	ad=AD-10 bullet=KMIP marker=[AMENDED_2026-11-15,Story_21.10_spec_gate,owner_answer_U-30,DW-2431,Rule_20] lint_spine=ok(pre-existing_low_{id})
 2026-11-16T01:02:38Z	Story 21.10	story_created	spawn_at=2026-11-16T00:45:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-10-the-remaining-leaves-across-the-six-areas.md build_status=ready-for-dev cycle_iteration=2
 2026-11-16T01:02:38Z	Story 21.10	spec_validated	service_introducing=true(PhoneProviderPort) integration_ac=present adr_constrained_acs=AD-10,AD-21,AD-35,AD-29,AD-53 owned_ledger=DW-2431,DW-2457 addressed=2 declined=0 mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-16T01:02:48Z	Story 21.19	stage_spawned	stage=plan spawn_at=2026-11-16T01:02:48Z model=opus agent_name=21-19-shell-advisor-permission-and-task-leaves-plan-1 cycle_iteration=1
