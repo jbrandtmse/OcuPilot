@@ -2,7 +2,8 @@
 title: "Story 21.30: OcuPilot's guarded storage refuses a caller that is not an administrator"
 type: 'bugfix'
 created: '2026-11-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '292fd716c7d97db50be9b1c99507603344f051e1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -106,6 +107,22 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-11-16 -- Review pass
+
+- verdicts: 11 findings -- high 0, medium 1, low 4, false 6, maybe-false 0
+- findings:
+  - `[low]` `[patch]` AC3's pinning test had no `mutation:` line -- added the `%All:USE` mutation, red alone on `TestAnAdministratorWritesTheKillSwitchAndAKey` (run 83), line written under Verification and in the test's doc comment.
+  - `[medium]` `[patch]` No test showed a non-administrator still saving a store that is not administrator-owned, so an over-broad refusal in `Base` would ship green -- added `TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned` (a `Pref` row created and updated through both public saves) and its mutation (run 84 red alone).
+  - `[low]` `[patch]` Read legs compared state without asserting the read succeeded, and a failed fingerprint read compared equal to itself -- `AssertDeveloperLegs` asserts each read's `ok`, and `AssertStoresUnchanged` refuses a `failed]` reading.
+  - `[low]` `[reject]` `AdminStateWrite.cls` is about 625 lines against the roughly 500 guideline -- a split is more than a direct correction and nobody meets it in everyday use.
+  - `[false]` `[reject]` `## Auto Run Result` reads `ready-for-dev` while the frontmatter says `in-review` -- finalize writes both, and does here.
+  - `[false]` `[reject]` Routes are not exercised over HTTP by the new tests -- the existing `SwitchesWire` (run 71), `GovernanceWire` (74), `EgressSettingsWire` (77) and `ConfigGate` (75) run green against the changed stores.
+  - `[false]` `[reject]` The open writer's callers are not driven as developers -- `MarkingRestraint` (73), `ProposalConfirm` (76), `Installer` and `Demo` run green; only the gate's own surface is new.
+  - `[false]` `[reject]` `IsAdministrator` no longer goes through the overridable `Gate.HoldsPrivilege` -- grep finds no test overriding it to drive `IsAdministrator`; `ConfigGate` and `AgentWireSecurity` only mention it in comments.
+  - `[false]` `[reject]` `Installer` and `Fixture` call `Base.GuardedSave` on other classes -- those declare no `ADMINWRITE`, so they pass through; `Installer`, `Demo` and `PrefState` run green.
+  - `[low]` `[reject]` Private helpers in `Base` carry no check -- reachable only from `Base` or a subclass, and the Design Notes put code that can change the install namespace's classes outside this rule.
+  - `[false]` `[reject]` Task 0's evidence is not in the diff -- it is recorded under `## Verification`.
+
 ## Design Notes
 
 **Governing ADs:** AD-9 (escalation and its ordering rules), AD-8 (privilege checked at call time, in the caller's process), AD-30 (kill switch and read-only at the point of effect), AD-22 (governance policy store), AD-32 (egress settings), AD-15 (the marking fact), AD-10 (24.6's proposed console sentence relies on this fix).
@@ -137,16 +154,56 @@ deferred:
 - `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, and `bash scripts/lint-docs.sh _bmad-output/implementation-artifacts/spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md` -- expected: 0 problems.
 - `(once)`, owned by the runner: the full ObjectScript sweep, one class per call; `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; and Rule 30's fresh check. No browser spec is touched, so the browser suite is left to CI.
 
+**Task 0 (pre-fix), `ocupilot-ci`, unchanged product, run 25 of `OcuPilot.Test.AdminStateWrite`: the attack landed.** The child ran as `OcuPilotAdminWriteDev` (login 1), `$Roles` = `OcuPilotAdminWriteDevRole`, `OcuPilotAdmin:USE` = 0, `%Development:USE` = 1, no `%All`. The control, a direct `UPDATE OcuPilot_Kernel_State.SwitchState`, answered `SQLCODE=-99`. Each guarded call then answered OK (`ok=1`, no code), and the principal's own read-back moved:
+
+- Kill switch: `0||0|1|v1` -> `SetGuarded` -> `1|rewritten by a developer|0|1|v2` -> public `GuardedOpenId` + `Base.GuardedSave` -> `1|saved through Base.GuardedSave|0|1|v2` -> `Base.GuardedSaveIfCurrent` -> `...|v3` -> `DeleteGuarded` -> `0||0|1|v0` (row gone).
+- Holds: `ids 671` -> `GuardedCreate` -> `ids 671,672` -> `GuardedDeleteId` -> `ids 672` -> `DeleteAllGuarded` -> no ids.
+- Egress: `kept.example.invalid|8080|v1` -> `SetGuarded` -> `proxy.invalid|3128|v2` -> `DeleteGuarded` -> `|0|v0`.
+- Policy: `OcuPilotProbeKeyA=enabled;preset=full;v1` -> `GuardedApply` -> `...KeyB=disabled;preset=read-only;v2` -> `DeleteAllGuarded` -> `v0`.
+- The parent's SQL read of the four tables after each test showed the switch row, holds, settings and policy gone or rewritten. The administrator and marking tests were green; the roster test was red (no `ADMINWRITE`).
+
 **Mutations (Rule 19).** Apply each one, observe red, revert, confirm the tree is identical with `git status --short` and `git diff --stat`, then reload.
 
 - `AdminWriteRefused` returns `$$$OK` -> the three developer tests go red; the administrator, marking and roster tests stay green.
+  - mutation: `AdminWriteRefused` answers `$$$OK` first -> run 64: 3 of 6 red (the kill-switch, hold and egress-and-policy developer tests); administrator, marking and roster tests green; reverted, reloaded, run 69 green.
 - The check is removed from the public `GuardedSaveIfCurrent` alone -> the bypass legs of the kill-switch test go red alone.
+  - mutation: `GuardedSaveIfCurrent`'s `AdminWriteRefused` line replaced by `Set tSC = $$$OK` -> 1 of 6 red, `TestADeveloperIsRefusedTheKillSwitchAndTheBypass`, on the `Base.GuardedSaveIfCurrent` leg; reverted, reloaded.
 - The check is removed from `Hold.GuardedDeleteId` alone -> the hold-delete leg goes red alone.
+  - mutation: `Hold.GuardedDeleteId`'s check line deleted -> 1 of 6 red, `TestADeveloperIsRefusedTheHoldWrites`, on the `Hold.GuardedDeleteId` leg; reverted, reloaded.
 - `RecordMarking` goes back to `Switch.SetGuarded` -> the marking test goes red alone.
+  - mutation: `RecordMarking` calls `Switch.SetGuarded` with `writesMarked` -> 1 of 6 red, `TestAnyCallerRecordsTheMarkingObservation`; reverted, reloaded.
+- `Parameter ADMINWRITE = 1` set to 0 on `Policy` (the roster test's own mutation).
+  - mutation: `Policy` `ADMINWRITE` = 0 -> 2 of 6 red, `TestTheAdministratorStoresAreDeclared` and the egress-and-policy developer test; reverted, reloaded.
+- `CallerIsAdministrator` checks `%All:USE` instead (AC3).
+  - mutation: `CallerIsAdministrator` reads `$System.Security.Check("%All", "USE")` -> run 83: 1 of 7 red, `TestAnAdministratorWritesTheKillSwitchAndAKey`, alone; reverted from a saved copy (md5 identical), reloaded.
+- `AdminWriteRefused` refuses a class that does not declare `ADMINWRITE`.
+  - mutation: the not-`ADMINWRITE` branch answers `$$$AccessDenied` -> run 84: 1 of 7 red, `TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned`, alone; reverted (md5 identical), reloaded, run 85 green.
+
+Each mutation was reverted by restoring the saved copy; `git status --short` and `git diff` hashes matched the pre-mutation values, and `LOADERRORS=0` followed each reload.
+
+**After the fix, `ocupilot-ci`:** `AdminStateWrite` 6 of 6 green (run 69), then 7 of 7 (run 85) after the review pass added a seventh test. The `(loop)` classes `State`, `SwitchState`, `MarkingRestraint`, `SwitchesWire`, `Governance`, `GovernanceWire`, `EgressSettingsWire`, `Egress`, `ConfigGate`, `AgentWireSecurity` and `ProposalConfirm` are green, one class per call, as are the classes that call the changed writers or `Base`'s saves: `AgentState`, `ContextBound`, `TurnContext`, `Guardrails`, `EgressLine`, `EgressLocal`, `ProviderSslNamed`, `ProviderSslCallTime`, `ProviderSslCallers`, `ProviderPort`, `ProviderProxy`, `TurnWire`, `TurnHourLimit`, `TurnGrounding`, `TurnProviderFault`, `Version`, `UninstallGuard`, `UninstallResidue`, `Installer`, `Demo`, `DemoFaults`, `AuditEventEditor`, `AuditingScreen`, `AuditingUpdate`, `StampRetention` and `PrefState`. `uv run scripts/check-objectscript.py`: 0 problems over 2342 files; `uv run scripts/test_check_objectscript.py`: 152 tests OK; `ui/tools/ci.test.mjs` (103) and `ci-shards.test.mjs` (33) green after `AdminStateWrite` joined the `OCUPILOT_ALLOW_PRINCIPALS` roster in `scripts/ci-throwaway.sh`. Both probe users and roles read absent after the last run.
 
 **Runner ruling at the spec gate (2026-11-16):** the AD-9 amendment above is written into the spine (comply first under U7; the orchestrator is asked). Scope stays the four stores; the frontmatter deferrals are ledgered as DW-2638 (high, decision-pending for the orchestrator) and DW-2639 (low, the named exception). DW-2634 (Epic 24's ledger) is the source.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Task 0 result: the attack landed** on the unchanged product (evidence under `## Verification`, run 25).
+
+**Change.** The four administrator-owned stores (`Switch`, `Hold`, `Egress`, `Policy`) declare `ADMINWRITE = 1`. `Base.AdminWriteRefused` runs first, in the caller's process, in every public writer and in `Base`'s public `GuardedSave` and `GuardedSaveIfCurrent`, and answers `$$$AccessDenied` (822) to a caller without `OcuPilotAdmin:USE`. `Switch.GuardedRecordWritesMarked` stays open to every caller, and `Event.RecordMarking` uses it. `Api.Definitions.IsAdministrator` answers from `Base.CallerIsAdministrator`.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/State/Base.cls`: the predicate, the refusal, and the private any-caller save.
+- `src/OcuPilot/Kernel/State/Switch.cls`, `Hold.cls`, `Egress.cls`, `Policy.cls`: the parameter and the check in each writer.
+- `src/OcuPilot/Kernel/Audit/Event.cls`, `src/OcuPilot/Api/Definitions.cls`, `src/OcuPilot/Test/State.cls`: the narrow writer, the shared predicate, one doc sentence.
+- `src/OcuPilot/Test/AdminStateWrite.cls`, `AdminStateWriteProbe.cls` (new): the real-principal suite, 7 tests.
+- `scripts/ci-throwaway.sh`: the arming roster lists the new class.
+
+**Review.** 11 findings: 3 patched (1 medium, 2 low), 8 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false (one medium patched, no high).
+
+**Verification.** `AdminStateWrite` 7 of 7 (run 85); every `(loop)` class and 26 further callers green; `check-objectscript` 0 problems; `test_check_objectscript` 152 OK; `ci.test.mjs` 103 and `ci-shards.test.mjs` 33 green; `lint-docs` 0 problems; five mutations plus two review-pass mutations observed red and reverted. The `(once)` items (full sweep, smoke, fresh check) are the runner's.
+
+**Residual risk.** Code that can write the install namespace's code database can alter these classes, which the AD-9 amendment names as outside the rule.

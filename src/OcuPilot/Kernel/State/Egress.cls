@@ -22,6 +22,10 @@ Class OcuPilot.Kernel.State.Egress Extends OcuPilot.Kernel.State.Base
 /// failure OcuPilot manufactures.</p>
 Parameter DEFAULTTIMEOUT As %Integer = 90;
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers refuse a caller who does not hold the administrative resource.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The number of attempts -- the first call included -- an instance that has stored none is
 /// served. Three means at most two retries, each only on a status
 /// <class>OcuPilot.Kernel.Provider.Retry</class> declares retryable.</p>
@@ -115,7 +119,8 @@ ClassMethod Resolve(Output pSettings) As %Status
 /// line below is used, which is the same window closed one read later.</p>
 ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
@@ -153,6 +158,8 @@ ClassMethod GuardedVersion(Output pVersion As %Integer) As %Status
 /// again. Absent is never an error.</p>
 ClassMethod DeleteGuarded() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Egress")
 }
 

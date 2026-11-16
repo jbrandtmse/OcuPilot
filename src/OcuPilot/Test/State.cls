@@ -613,6 +613,9 @@ Method TestResolveGrantedUserRendersDeletedAccountAsNoLongerPresent()
 /// confirmed live by this story's QA pass for <method>TestGuardedSaveRoundTrips</method>.
 /// Only a caller who is genuinely refused without the escalation can tell the difference,
 /// and the denial user built in <method>OnBeforeOneTest</method> is that caller.</p>
+/// <p>The four administrator-owned stores (switches, holds, outbound settings, governance policy) are
+/// the exception: they refuse a caller without <code>OcuPilotAdmin</code> before escalating, which
+/// <class>OcuPilot.Test.AdminStateWrite</class> pins.</p>
 Method TestEscalationIsWhatGrantsTheDeniedUserAccess()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")

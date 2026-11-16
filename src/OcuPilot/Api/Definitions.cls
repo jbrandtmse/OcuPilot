@@ -30,9 +30,6 @@
 Class OcuPilot.Api.Definitions Extends %RegisteredObject
 {
 
-/// <p>The permission OcuPilot's administrative resource is required at.</p>
-Parameter ADMINPERMISSION = "USE";
-
 /// <p>The subsystem every definition change is logged under.</p>
 Parameter LOGSUBSYSTEM = "agent-definition";
 
@@ -1331,18 +1328,19 @@ ClassMethod SecretClass() As %String
     Quit "OcuPilot.Kernel.Secret.Ladder"
 }
 
-/// <p>Whether the calling process holds OcuPilot's administrative resource. The resource name is
-/// read from <class>OcuPilot.Kernel.State.Base</class>, which declares it once for the installer,
-/// the protected database and this gate alike.</p>
+/// <p>Whether the calling process holds OcuPilot's administrative resource. Answered by
+/// <method>OcuPilot.Kernel.State.Base.CallerIsAdministrator</method>, which declares the resource and
+/// the permission once for the installer, the protected database, this gate and the stores' own
+/// refusal alike.</p>
 ClassMethod IsAdministrator() As %Boolean
 {
-    Quit ##class(OcuPilot.Screen.Gate).HoldsPrivilege(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ..#ADMINPERMISSION)
+    Quit ##class(OcuPilot.Kernel.State.Base).CallerIsAdministrator()
 }
 
 /// <p>Refuse with the one privilege refusal (<class>OcuPilot.Kernel.Denial</class>), naming the administrative pair.</p>
 ClassMethod RenderForbidden() As %Status
 {
-    Quit ##class(OcuPilot.Kernel.Denial).Envelope(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":" _ ..#ADMINPERMISSION)
+    Quit ##class(OcuPilot.Kernel.Denial).Envelope(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":" _ ##class(OcuPilot.Kernel.State.Base).#ADMINPERMISSION)
 }
 
 /// <p>Refuse with 404 and <parameter>OcuPilot.Api.Error.AGENTNOTFOUND</parameter>. The id is not

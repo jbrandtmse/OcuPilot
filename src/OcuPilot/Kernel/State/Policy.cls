@@ -14,6 +14,10 @@
 Class OcuPilot.Kernel.State.Policy Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers refuse a caller who does not hold the administrative resource.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The name of the row holding the preset.</p>
 Parameter PRESETNAME = "preset";
 
@@ -72,7 +76,8 @@ ClassMethod GuardedAll(Output pValues, Output pVersion As %Integer) As %Status
 /// called.</p>
 ClassMethod GuardedApply(pPreset As %String, ByRef pSettings, pExpectedVersion As %Integer) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Set tInTx = 0
     Try {
         Set tSC = ..GuardedOpenOneWhere("SELECT ID FROM OcuPilot_Kernel_State.Policy WHERE %EXACT(Name) = ?", ..#PRESETNAME, .tRow)
@@ -132,6 +137,8 @@ ClassMethod GuardedApply(pPreset As %String, ByRef pSettings, pExpectedVersion A
 /// <p>Remove every row, so the baseline alone decides again. Absent is never an error.</p>
 ClassMethod DeleteAllGuarded() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Policy")
 }
 

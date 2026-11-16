@@ -15,6 +15,11 @@
 Class OcuPilot.Kernel.State.Switch Extends OcuPilot.Kernel.State.Base [ SqlTableName = SwitchState ]
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers refuse a caller who does not hold the administrative resource, except
+/// <method>GuardedRecordWritesMarked</method>.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>Whether the agent is switched off for everyone on an instance that has stored nothing.
 /// <b>Off</b>: a fresh install leaves the agent available, which is what "the kill switch is off
 /// and no switch row exists" means.</p>
@@ -164,7 +169,8 @@ ClassMethod Resolve(Output pValues) As %Status
 /// call; <code>""</code> takes the version read a line below.</p>
 ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
@@ -203,7 +209,34 @@ ClassMethod GuardedVersion(Output pVersion As %Integer) As %Status
 /// again. Absent is never an error.</p>
 ClassMethod DeleteGuarded() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.SwitchState")
+}
+
+/// <p>Record the observed marking fact (AD-15): <code>WritesMarked</code> and <code>UpdatedAt</code>
+/// on the instance's one row, creating it when there is none, and nothing else on it.
+/// <b>Any caller may write it</b>: the parties that observe the fact -- install, the confirm executor,
+/// a screen action, the restraint read -- are usually not administrators, and the fact is observed,
+/// never operator-set. The write is conditional on the version read a line below, like
+/// <method>SetGuarded</method>'s.</p>
+ClassMethod GuardedRecordWritesMarked(pMarked As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..GuardedCurrent(.tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) Set tRow = ..%New()
+        Set tRow.Singleton = 1
+        Set tVersion = +tRow.RowVersion
+        Set tRow.WritesMarked = ''pMarked
+        Set tRow.UpdatedAt = ..Timestamp()
+        Set tSC = ..GuardedSaveIfCurrentAnyCaller(tRow, tVersion)
+        Set tRow = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The one row, or <code>$$$NULLOREF</code> when the instance holds none. The lowest id wins, so

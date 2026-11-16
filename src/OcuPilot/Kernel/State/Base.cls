@@ -107,6 +107,16 @@ Parameter DBRESOURCE As %String = "%DB_OCUPILOT";
 /// (AC2).</p>
 Parameter ADMINRESOURCE As %String = "OcuPilotAdmin";
 
+/// <p>The permission <parameter>ADMINRESOURCE</parameter> is required at, for the route gate and
+/// for <method>CallerIsAdministrator</method> alike.</p>
+Parameter ADMINPERMISSION As %String = "USE";
+
+/// <p>1 on a store that holds OcuPilot's administrative state: its public writers and
+/// <method>GuardedSave</method> and <method>GuardedSaveIfCurrent</method> refuse a caller who does not
+/// hold <parameter>ADMINRESOURCE</parameter> (<method>AdminWriteRefused</method>, AD-9). Read with
+/// <code>$Parameter</code> on the class of the object being saved, never as <code>..#ADMINWRITE</code>.</p>
+Parameter ADMINWRITE As %Boolean = 0;
+
 /// <p>Global-mapping prefix pattern for OcuPilot's protected globals (AC3).</p>
 Parameter MAPPINGPATTERN As %String = "OcuPilot*";
 
@@ -178,11 +188,40 @@ Parameter BOUNDEDKEYED As %Integer = -1;
 /// an alias and a column.</p>
 Parameter BOUNDEDCOLUMNPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)?$";
 
+/// <p>Whether the calling process holds <parameter>ADMINRESOURCE</parameter> at
+/// <parameter>ADMINPERMISSION</parameter>: <code>$System.Security.Check</code>, evaluated in the
+/// calling process at the moment of the call, never cached, and never inside the escalated frame
+/// (AD-8). <method>OcuPilot.Api.Definitions.IsAdministrator</method> answers from this method, so the
+/// routes and the stores read one predicate.</p>
+ClassMethod CallerIsAdministrator() As %Boolean
+{
+    Quit ''$System.Security.Check(..#ADMINRESOURCE, ..#ADMINPERMISSION)
+}
+
+/// <p>The refusal for a write to an administrator-owned store: <code>$$$AccessDenied</code> (vendor
+/// <code>ERROR #822</code>) when the class <var>pClassName</var> declares
+/// <parameter>ADMINWRITE</parameter> and the caller does not hold the administrative resource,
+/// <code>$$$OK</code> otherwise. Called first by every public writer of such a store, before any
+/// escalation, so a refused call changes nothing.</p>
+ClassMethod AdminWriteRefused(pClassName As %String) As %Status
+{
+    If '$Parameter(pClassName, "ADMINWRITE") Quit $$$OK
+    If ..CallerIsAdministrator() Quit $$$OK
+    Quit $$$ERROR($$$AccessDenied)
+}
+
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
-/// through the escalated frame.</p>
+/// through the escalated frame. An instance of an administrator-owned store
+/// (<parameter>ADMINWRITE</parameter>) is saved for an administrator only
+/// (<method>AdminWriteRefused</method>).</p>
 ClassMethod GuardedSave(pObject As %Persistent) As %Status
 {
-    Set tSC = $$$OK
+    Try {
+        Set tSC = ..AdminWriteRefused(pObject.%ClassName(1))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
@@ -216,6 +255,21 @@ ClassMethod GuardedSave(pObject As %Persistent) As %Status
 /// existed holds no value, SQL reads that as <code>NULL</code>, and <code>NULL = 0</code> is
 /// never true -- so without it every pre-existing row would be permanently unsaveable.</p>
 ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As %Status
+{
+    Try {
+        Set tSC = ..AdminWriteRefused(pObject.%ClassName(1))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
+}
+
+/// <p><method>GuardedSaveIfCurrent</method>'s conditional write without the administrator check, for
+/// the one store writer that is open to every caller
+/// (<method>OcuPilot.Kernel.State.Switch.GuardedRecordWritesMarked</method>). Never called from a
+/// route or a tool.</p>
+ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set tInTx = 0
