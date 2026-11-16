@@ -2098,3 +2098,8 @@
 - 2026-11-16T17:00:42Z 1.0.16 merged to main 97c4114c1 (PR #19, 42/42) by the Planner; README port 0d9afba42 on feature (cancelled e34cedcd7's run 43907909325); feature run 43911764773 on 0d9afba42 is the gate
 - 2026-11-16T17:10:32Z 21.35 planned (ETA 10-12h after 21.33); ruling (b) store-level audit for screen access; veto U-97
 - 2026-11-16T17:51:22Z ci_green feature=0d9afba42 run=43911764773 (24.9 + 1.0.16 README); timings refreshed
+- 2026-11-16T18:56:20Z epic-21 21.33 Batch 1 head a7e5d04fa (on c1a02ae13) run 43933412899 pending; orchestrator staging merge with feature 8074a73c5 (tracker timestamp only conflict) pushed alone as staging/OCU-1-21.33b1 2a542f893 (worktree .worktrees/orch-stage-2133b1, orchestrator-owned)
+- 2026-11-16T19:06:18Z owner_answers keep: U-73, U-87, U-92, U-93, U-94, U-95, U-96, U-97 (resolved); 1.0.16 published on OEX (Planner verified)
+- 2026-11-16T19:47:18Z merged 21.33 Batch 1 via staging/OCU-1-21.33b1 2a542f893 (run 43934025043 green) fast-forward feature 8074a73c5->2a542f893; worktree orch-stage-2133b1 removed; branch staging/OCU-1-21.33b1 left for the owner (branch deletes are owner-only); epic run 43933412899 node24 DW-2565 occurrence rerun
+- 2026-11-16T19:57:27Z staging/OCU-1-21.33b1 deleted on origin by the Planner on the owner's word (this branch only)
+- 2026-11-16T20:27:23Z ci_green feature=2a542f893 run=43942954432 (21.33 Batch 1 + 24.9); deps_hash_rerecorded reason=fix_forward(21.35) hash=e5f82e7dc432; timings refreshed

@@ -12920,6 +12920,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-16T19:25:47Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43933412899(OCU-1-epic21-a7e5d04fa)gates_node24.15.0_2177ms;unchanged_rerun
 
 ### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
 - source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
