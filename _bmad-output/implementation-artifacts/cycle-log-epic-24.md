@@ -130,3 +130,5 @@
 2026-11-16T05:27:20Z	Story 24.4	fresh_check	env=recipe tests=10_classes result=pass order=forward,reverse classes_tests=92
 2026-11-16T05:29:07Z	Story 24.4	committed	sha=cae31a918 submodules= ci=pending runs=43810505527 amendments=epics.md_24.4_AC_cut,epics.md_24.20-24.23_inserted
 2026-11-16T05:29:07Z	Story 24.4	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-16T05:32:08Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer model=claude-opus-5-5
+2026-11-16T05:32:08Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T05:32:08Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-1 cycle_iteration=1
