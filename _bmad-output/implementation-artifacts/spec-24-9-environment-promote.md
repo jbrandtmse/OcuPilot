@@ -4,16 +4,12 @@ type: 'feature'
 created: '2026-11-16'
 status: 'done'
 baseline_revision: '386935b3077b1f4ff495ee660c1dbf2be2ec6106'
+baseline_commit: '386935b3077b1f4ff495ee660c1dbf2be2ec6106'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred:
-  - "A person's promote action that omits Reviewed is not held to a review (Story 20.41's precedent); the agent's confirm always is, by PlanHash."
-  - "The outcome dialog after a confirmed promote lists the compile lines only; each document's outcome is on the page's output pane."
-  - "The promote's preflight refusals on a changed hash, a missing source, an over-long text and a wrong header line are not reached by any test; reaching them needs a seam over ReadSource or a race between the plan and the preflight."
-  - "A target document whose version read answers no document object leaves an empty version, so its save is refused during the write loop, after earlier documents were written, instead of before any write."
-  - "The source code API's document read answered another namespace's text once, in a process whose hash bodies had just run in two namespaces; the promote reads text through its own ReadSource instead (observed, cause not found)."
+deferred: []
 ---
 
 <intent-contract>

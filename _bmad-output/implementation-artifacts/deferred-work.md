@@ -13267,3 +13267,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T02:08:21Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified(transient_instance_window); unchanged rerun
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
+
+### DW-2653: A person's promote action that omits Reviewed is not held to the plan-hash compare; the client always sends it and the agent's confirm is held by PlanHash
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: Story 20.41 rejected the same shape by design (Reviewed optional per AD-56; spec-20-41 Review Findings)
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a caller other than the client reaches the promote action
+
+### DW-2654: After a confirmed promote the outcome dialog lists the compile lines only; per-document outcomes are on the page's output pane
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a person reports missing per-document outcomes in the dialog
+
+### DW-2655: Promote preflight refusals (changed hash, missing source, over-long text, wrong header line) are reached by no test
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; needs a seam over ReadSource or a plan/preflight race
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review (Rule 19)
+
+### DW-2656: A target document whose version read answers no document object leaves an empty version, so its save is refused inside the write loop after earlier documents were written, not before any write
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; promote has no rollback
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review: move the check into the preflight
+
+### DW-2657: The Atelier source-code document read answered another namespace's text once, in a web process whose hash bodies had just run in two namespaces (observed on ocupilot-b-ci, cause not found); promote reads through its own ReadSource
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: spec-24-9 deferred list; one observation, no reproduction (inference that other Atelier reads after a namespace switch are exposed)
+- 2026-11-16T14:18:23Z status=routed owner=burndown by=harvest note=AtelierPort readers after namespace switches may be exposed; reproduce before fixing
