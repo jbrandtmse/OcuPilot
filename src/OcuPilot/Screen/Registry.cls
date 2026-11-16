@@ -976,8 +976,8 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
         Set tSource = tBanner.%Get("source")
         Set tProblem = ..UnknownKeyProblem(tSource, "banner.source", $ListBuild("port", "endpoint", "type"))
         If tProblem '= "" Quit
-        If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
-            Set tProblem = "banner.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
+        If (tSource.%GetTypeOf("port") '= "string") || ((tSource.%Get("port") '= "admin") && (tSource.%Get("port") '= ##class(OcuPilot.Screen.Read).#SOURCEBACKUP) && (tSource.%Get("port") '= ##class(OcuPilot.Screen.Read).#SOURCEMIRROR)) {
+            Set tProblem = "banner.source.port '" _ tSource.%Get("port") _ "' is not 'admin', 'backup' or 'mirror', the three ports a banner reads (AD-2)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1220,8 +1220,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', the fifteen sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS, ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL, ##class(OcuPilot.Screen.Read).#SOURCEBACKUP, ##class(OcuPilot.Screen.Read).#SOURCECONFIG, ##class(OcuPilot.Screen.Read).#SOURCEMIRROR), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKUP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCECONFIG _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMIRROR _ "', the nineteen sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1331,6 +1331,67 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If tProblem '= "" Quit
         }
+        ; A backup source lists the instance's backup tasks, its backup history or its backup database list through
+        ; OcuPilot.Port.BackupPort, which answers each endpoint whole behind its own gate (AD-29, AD-36, Story 21.2): one of
+        ; the port's list endpoints, a LIST, and nothing the port would have to issue per row, per parent, under a fixed
+        ; query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEBACKUP {
+            If '$ListFind($ListFromString(##class(OcuPilot.Port.BackupPort).#ENDPOINTS), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the backup port's list endpoints ('" _ $ListToString($ListFromString(##class(OcuPilot.Port.BackupPort).#ENDPOINTS), "', '") _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.BackupPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a backup source, which lists the instance's backup tasks, history and database list (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a backup source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A config source lists the instance's startup, memory or compatibility settings through OcuPilot.Port.ConfigPort, which
+        ; answers each endpoint whole behind its own gate (AD-29, AD-36, Story 21.3): one of the port's endpoints, a LIST, and
+        ; nothing the port would have to issue per row, per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCECONFIG {
+            If '$ListFind($ListFromString(##class(OcuPilot.Port.ConfigPort).#ENDPOINTS), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the config port's endpoints ('" _ $ListToString($ListFromString(##class(OcuPilot.Port.ConfigPort).#ENDPOINTS), "', '") _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.ConfigPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a config source, which lists the instance's startup, memory and compatibility settings (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a config source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A mirror source lists the instance's mirror members through OcuPilot.Port.MirrorPort, which answers its endpoint whole behind its
+        ; own gate (AD-29, AD-36, Story 21.12): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per
+        ; parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEMIRROR {
+            If '$ListFind($ListFromString(##class(OcuPilot.Port.MirrorPort).#ENDPOINTS), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the mirror port's endpoints ('" _ $ListToString($ListFromString(##class(OcuPilot.Port.MirrorPort).#ENDPOINTS), "', '") _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.MirrorPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a mirror source, which lists the instance's mirror members (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a mirror source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
         ; A monitor source lists the instance's Prometheus metrics or its interoperability usage
         ; through OcuPilot.Port.MonitorPort, which answers each endpoint whole behind its own gate (AD-29,
         ; AD-36, Stories 18.11 and 18.37): one of the port's endpoints, a LIST, and nothing the port
@@ -1390,6 +1451,26 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on an analytics source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A devtool source lists the developer tools' answers through OcuPilot.Port.DevToolPort, which answers each endpoint
+        ; whole behind its own gate (AD-23, AD-29, AD-36, Story 24.1): one of the port's two endpoints, a LIST, and nothing
+        ; the port would have to issue per row, per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL {
+            If '$ListFind(##class(OcuPilot.Port.DevToolPort).Endpoints(), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the devtool port's endpoints ('" _ $ListToString(##class(OcuPilot.Port.DevToolPort).Endpoints(), "', '") _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.DevToolPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a devtool source, which lists the developer tools' rows (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a devtool source, which answers its list whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit
@@ -1790,7 +1871,7 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         }
         ; AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
         Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS)
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ('tParentOnly || ('tParented && 'tSearches)) {
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL) && ('tParentOnly || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
         }

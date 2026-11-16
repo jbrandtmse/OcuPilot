@@ -47,21 +47,6 @@ const PARTNERS_ROUTE = 'interoperability/business-partners';
 const ACTION_PATH = '/api/ocupilot/screens/interop.businesspartners/action';
 const ADD_PATH = '/api/ocupilot/interop/business-partners';
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
-const VALUE_FIELDS = [
-  'Description',
-  'PrimaryContact',
-  'PrimaryTitle',
-  'PrimaryEmail',
-  'PrimaryPhone',
-  'PrimaryMobile',
-  'PrimaryNotes',
-  'AlternativeContact',
-  'AlternativeTitle',
-  'AlternativeEmail',
-  'AlternativePhone',
-  'AlternativeMobile',
-  'AlternativeNotes',
-];
 
 let browser = null;
 let created = false;
@@ -75,6 +60,11 @@ function probe(name, expression) {
 /** The stored partner `name` as `description|primary contact|primary phone|alternative notes`, `<absent>` when it is not held. */
 function stored(name) {
   return probe('PARTNER', `##class(${FIXTURE}).PartnerText("${name}")`).value;
+}
+
+/** The stored primary email of the probe partner `name`, or `<absent>`. */
+function stored_email(name) {
+  return probe('PEMAIL', `##class(${FIXTURE}).PartnerEmail("${name}")`).value;
 }
 
 /** Wait, up to ten probes, until the stored partner reads `<absent>` (`absent` true) or something else; answers the last reading. */
@@ -341,8 +331,7 @@ test('AC1, AC2: New business partner creates a partner, Edit changes its phone w
     await waitForCell(page, PARTNER, 3, '555-0222');
     const edit_sent = actions.at(-1);
     assert.deepEqual([edit_sent.action, edit_sent.id], ['edit', PARTNER], 'one edit, sent with the row key');
-    assert.deepEqual(Object.keys(edit_sent.values).sort(), [...VALUE_FIELDS].sort(), 'carrying the thirteen values and never the name');
-    assert.equal(edit_sent.values.PrimaryPhone, '555-0222', 'the changed phone among them');
+    assert.deepEqual(edit_sent.values, { PrimaryPhone: '555-0222' }, 'carrying only the value that was changed, and never the name');
     assert.equal(stored(PARTNER), 'a browser partner|Pat Browser|555-0222|line one', 'the stored phone changed and nothing else did');
 
     await rowAction(page, PARTNER, STRINGS.actionRemove);
@@ -361,6 +350,47 @@ test('AC1, AC2: New business partner creates a partner, Edit changes its phone w
     assert.deepEqual(actions.at(-1), { action: 'remove', id: PARTNER }, 'with the name once it matched');
     assert.equal(await settled(PARTNER, true), '<absent>', 'the partner is gone from the instance');
     assert.notEqual(stored(HELD), '<absent>', 'and the other partner is untouched');
+  } finally {
+    await context.close();
+    drop();
+  }
+});
+
+test('DW-2554: an Edit sends only what the person changed, so a field changed over HTTP after the list loaded keeps its new value', async () => {
+  drop();
+  arrange(HELD);
+  const { context, page } = await signedInAt(browser, config, PARTNERS_URL, VIEWPORTS.wide);
+  const actions = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) actions.push(JSON.parse(request.postData() ?? '{}'));
+  });
+  try {
+    await openList(page);
+    await rowPresent(page, HELD);
+    assert.equal(stored_email(HELD), 'pat@example.test', 'the partner holds the email the list read');
+    const status = await page.evaluate(
+      async ({ path, name }) => {
+        const pair = JSON.parse(sessionStorage.getItem('ocupilot.token-pair'));
+        const response = await fetch(`${path}?ns=USER`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${pair.accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'edit', id: name, values: { PrimaryEmail: 'elsewhere@example.test' } }),
+        });
+        return response.status;
+      },
+      { path: ACTION_PATH, name: HELD }
+    );
+    assert.equal(status, 200, 'another caller changes the email over HTTP after the list loaded');
+    assert.equal(stored_email(HELD), 'elsewhere@example.test', 'and the instance holds it');
+    await rowAction(page, HELD, STRINGS.agentPanelSecretWarningEdit);
+    await page.waitForSelector(field('PrimaryPhone'), { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval(field('PrimaryEmail'), (node) => node.value), 'pat@example.test', 'the dialog still holds the email the list read');
+    await fill(page, field('PrimaryPhone'), '555-0333');
+    await page.click('[data-interop-partner-confirm]');
+    await dialogClosed(page);
+    assert.deepEqual(actions.at(-1).values, { PrimaryPhone: '555-0333' }, 'the Edit carried only the phone');
+    assert.equal(stored_email(HELD), 'elsewhere@example.test', 'so the email changed elsewhere is kept');
+    assert.equal(stored(HELD).split('|')[2], '555-0333', 'and the phone is the one typed');
   } finally {
     await context.close();
     drop();

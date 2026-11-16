@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-14-2026 05:10'
+last_updated: '11-16-2026 13:29'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -388,23 +388,43 @@ development_status:
   20-41-item-change-of-class: done
   epic-20-retrospective: optional
 
-  epic-21: backlog
-  21-1-the-harvest-seam: backlog
-  21-2-backup-and-mirroring: backlog
-  21-3-startup-memory-and-compatibility-settings: backlog
-  21-4-nls-locales-and-sql-settings: backlog
-  21-5-globals-and-the-data-tools: backlog
-  21-6-the-sql-tuning-track: backlog
-  21-7-interoperability-parity: backlog
-  21-8-the-analytics-editors: backlog
-  21-9-developer-tools: backlog
-  21-10-the-remaining-leaves-across-the-six-areas: backlog
-  21-11-the-agent-gains-the-harvested-tools-and-undo: backlog
+  epic-21: in-progress
+  21-1-the-harvest-seam: done
+  21-2-backup: done
+  21-3-startup-memory-and-compatibility-settings: done
+  21-4-nls-locales-and-sql-settings: done
+  21-5-globals-and-the-data-tools: ready-for-dev
+  21-6-the-sql-tuning-track: ready-for-dev
+  21-10-the-remaining-leaves-across-the-six-areas: ready-for-dev
+  21-12-mirroring: done
+  21-13-ddl-mappings: done
+  21-14-nls-configured-defaults-and-locale-definitions: ready-for-dev
+  21-15-locale-and-table-import: ready-for-dev
+  21-16-custom-locales: ready-for-dev
+  21-17-global-export-and-import: ready-for-dev
+  21-18-global-find-and-replace: ready-for-dev
+  21-19-shell-advisor-permission-and-task-leaves: ready-for-dev
+  21-20-os-management-and-log-leaves: ready-for-dev
+  21-21-leaves-that-wait-on-the-owner: ready-for-dev
+  21-22-ci-flake-hardening: ready-for-dev
+  21-23-test-hygiene-and-contended-client-fixes: backlog
+  21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
+  21-25-index-rebuild-and-tune-table: ready-for-dev
+  21-26-runtime-statistics: backlog
+  21-27-the-index-analyzer-and-its-advice: backlog
+  21-28-alternate-show-plans: backlog
+  21-29-troubleshooting-reports: backlog
+  21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done
+  21-31-fixed-table-statistics: backlog
+  21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list: done
+  21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: 
+    ready-for-dev
+  21-34-a-backup-action-leaves-the-web-process-s-null-device-open: in-progress
   epic-21-retrospective: optional
 
-  epic-22: backlog
-  22-1-the-exclusion-register: backlog
-  22-2-picking-up-a-row-when-its-gate-clears: backlog
+  epic-22: done
+  22-1-the-exclusion-register: done
+  22-2-picking-up-a-row-when-its-gate-clears: done
   epic-22-retrospective: optional
 
   epic-23: done
@@ -423,6 +443,32 @@ development_status:
   23-13-the-range-end-cleanup-part-11: done
   23-14-epic-23-burn-down: done
   epic-23-retrospective: optional
+
+  epic-24: in-progress
+  24-1-developer-tools: done
+  24-2-the-analytics-editors: done
+  24-3-interoperability-parity: done
+  24-4-the-agent-gains-the-harvested-tools-and-undo: done
+  24-5-unit-test-runner-and-work-queue-viewer: backlog
+  24-6-the-command-and-class-method-consoles: backlog
+  24-7-web-terminal: backlog
+  24-8-remote-instance-profiles-and-environment-diff: done
+  24-9-environment-promote: ready-for-dev
+  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: backlog
+  24-11-listing-groups: backlog
+  24-12-quality-measures: backlog
+  24-13-analytics-settings: backlog
+  24-14-pmml-model-tester-and-dashboard-viewer: backlog
+  24-15-credentials-default-settings-and-schedules: backlog
+  24-16-purge-suspended-messages-export-and-the-archive-manager: backlog
+  24-17-managed-alerts-logs-the-system-monitor-and-workflow: backlog
+  24-18-pex-record-maps-and-hl7-authoring: backlog
+  24-19-the-registries-interface-maps-and-references-port-authority: backlog
+  24-20-undo-by-snapshot-and-revert: backlog
+  24-21-the-agent-s-harvested-log-process-source-and-configuration-t: backlog
+  24-22-the-agent-s-harvested-message-body-searches: backlog
+  24-23-the-agent-s-harvested-vocabulary-tool: backlog
+  epic-24-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"
     epic: 4

@@ -259,6 +259,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsTermListAction") {
+            ; Story 24.2: the term list editor's six writes declare WRITE on the database ^DeepSee.TermList maps to and READ on the routines
+            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            For tOwnPair = $ListBuild(tTermResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
+                If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
             ; Story 20.34: the cube build and synchronize declare WRITE on the database ^DeepSee.Fact maps to and READ on the routines
             ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
@@ -429,6 +439,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.45: the discovery tool searches the listing and reads no instance object, so it
             ; declares no pair and its arguments add none (AD-8).
             Set tExpected = ""
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropInspect") {
+            ; Story 24.4: a session or message read, gated as the port gates each endpoint it reads: the viewer's pair, and the content pair
+            ; beside it on the two reads that open a body. Its arguments add none.
+            Set tExpected = ..InspectPairs($Parameter(tTool.class, "ENDPOINTS"))
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its endpoints declare pairs")
         } Else {
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue
@@ -436,6 +451,20 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
         Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs, plus its own write permission where it has one")
         Do $$$AssertEquals(tAdded, tExpectedAdded, tTool.name _ ": and exactly the pairs its arguments add")
     }
+}
+
+/// <p>The pairs of the interoperability port's endpoints <var>pEndpoints</var> (comma-separated), in order, each pair once
+/// (Story 24.4).</p>
+ClassMethod InspectPairs(pEndpoints As %String) As %List
+{
+    Set tPairs = ""
+    For tI = 1:1:$Length(pEndpoints, ",") {
+        Set tOne = ##class(OcuPilot.Port.InteropPort).Pairs($Piece(pEndpoints, ",", tI))
+        For tJ = 1:1:$ListLength(tOne) {
+            If '$ListFind(tPairs, $List(tOne, tJ)) Set tPairs = tPairs _ $ListBuild($List(tOne, tJ))
+        }
+    }
+    Quit tPairs
 }
 
 /// <p>A namespace other than <code>$Namespace</code> whose globals database a resource other than

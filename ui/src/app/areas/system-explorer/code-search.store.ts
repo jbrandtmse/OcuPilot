@@ -81,13 +81,12 @@ export function hitLocation(hit: SearchHit): string {
   return hit.line === null ? '' : `${hit.line}`;
 }
 
-export class CodeSearchState {
-  private textValue = '';
-
-  private scopeValue = SCOPE_ALL;
-
-  private caseValue = CASE_NO;
-
+/**
+ * What a search screen that reads nothing until there is a search holds besides its form: the search
+ * last sent, the last read's refusal reason, and the one `RefreshRead` it binds. A subclass holds the
+ * form's fields and decides, in its own `search()`, what `send` records.
+ */
+export abstract class SentSearchState {
   private sentValue: ScreenReadCriteria | null = null;
 
   private cachedRead: RefreshRead | null = null;
@@ -113,6 +112,40 @@ export class CodeSearchState {
     this.refusalValue = reason;
     this.notify();
   }
+
+  /** Whether a search has been sent. */
+  searched(): boolean {
+    return this.sentValue !== null;
+  }
+
+  /** What the next read sends, or `null` while no search has been sent. */
+  criteria(): ScreenReadCriteria | null {
+    return this.sentValue === null ? null : { ...this.sentValue };
+  }
+
+  /** The one `RefreshRead` this state holds, built by `create` on first ask. */
+  readFor(create: () => RefreshRead): RefreshRead {
+    if (this.cachedRead === null) this.cachedRead = create();
+    return this.cachedRead;
+  }
+
+  /** Send `criteria` from the next read on, or nothing at all when it is `null`. */
+  protected send(criteria: ScreenReadCriteria | null): void {
+    this.sentValue = criteria;
+    this.notify();
+  }
+
+  protected notify(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+}
+
+export class CodeSearchState extends SentSearchState {
+  private textValue = '';
+
+  private scopeValue = SCOPE_ALL;
+
+  private caseValue = CASE_NO;
 
   text(): string {
     return this.textValue;
@@ -141,16 +174,10 @@ export class CodeSearchState {
     this.notify();
   }
 
-  /** Whether a search has been sent. */
-  searched(): boolean {
-    return this.sentValue !== null;
-  }
-
   /** Send the form as shown from the next read on: answers false, sending nothing, with no text. */
   search(): boolean {
     if (this.textValue.trim() === '') return false;
-    this.sentValue = { [TEXT_PARAM]: this.textValue, [SCOPE_PARAM]: this.scopeValue, [CASE_PARAM]: this.caseValue };
-    this.notify();
+    this.send({ [TEXT_PARAM]: this.textValue, [SCOPE_PARAM]: this.scopeValue, [CASE_PARAM]: this.caseValue });
     return true;
   }
 
@@ -164,33 +191,17 @@ export class CodeSearchState {
     this.scopeValue = typeof criteria[SCOPE_PARAM] === 'string' && criteria[SCOPE_PARAM] !== '' ? criteria[SCOPE_PARAM] : SCOPE_ALL;
     this.caseValue = criteria[CASE_PARAM] === CASE_YES ? CASE_YES : CASE_NO;
     if (this.search()) return true;
-    this.sentValue = null;
-    this.notify();
+    this.send(null);
     return false;
-  }
-
-  /** What the next read sends, or `null` while no search has been sent. */
-  criteria(): ScreenReadCriteria | null {
-    return this.sentValue === null ? null : { ...this.sentValue };
-  }
-
-  /** The one `RefreshRead` this state holds, built by `create` on first ask. */
-  readFor(create: () => RefreshRead): RefreshRead {
-    if (this.cachedRead === null) this.cachedRead = create();
-    return this.cachedRead;
-  }
-
-  private notify(): void {
-    for (const listener of [...this.listeners]) listener();
   }
 }
 
 /**
- * The Search screen's `RefreshRead`: no request and no rows while `state` holds no search, and the
- * declared read with the search's criteria otherwise. Each answer's refusal reason, or `''`, is
- * kept on `state` for the page to show.
+ * A search screen's `RefreshRead` (Search, Code metrics, Document hashes): no request and no rows while
+ * `state` holds no search, and the declared read with the search's criteria otherwise. Each answer's
+ * refusal reason, or `''`, is kept on `state` for the page to show.
  */
-export function createSearchRead(api: Pick<ApiService, 'requestJson'>, declaration: ScreenDeclaration, state: CodeSearchState): RefreshRead {
+export function createSearchRead(api: Pick<ApiService, 'requestJson'>, declaration: ScreenDeclaration, state: SentSearchState): RefreshRead {
   const recording: Pick<ApiService, 'requestJson'> = {
     requestJson: async <T,>(path: string, init?: ApiRequestInit): Promise<JsonResult<T>> => {
       const result = await api.requestJson<T>(path, init);

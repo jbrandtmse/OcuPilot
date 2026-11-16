@@ -331,6 +331,8 @@ const KERNEL_REFUSALS = [
   // Story 18.40: the SSL/TLS configuration the egress row names for provider calls, whose delete, a create under its name
   // and a change to its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement either caller is answered with.
   ['PROVIDERSSL', 'sslRefusalProviderNamed'],
+  // Story 21.12: removing a mirror together with taking its databases out of mirroring, which either caller is refused before any vendor call.
+  ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -656,6 +658,9 @@ const ATELIER_REFUSALS = [
   // Story 19.8: its save's column-rule and read-only refusals.
   ['REASONDATACHANGES', 'explorerSqlDataChangesReason'],
   ['REASONDATAREADONLY', 'explorerSqlDataReadOnlyReason'],
+  // Story 24.1: Code metrics' and Document hashes' wide-pattern and too-many-documents refusals.
+  ['REASONSPECWIDE', 'explorerSpecWideReason'],
+  ['REASONSPECTOOMANY', 'explorerSpecTooManyReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -667,6 +672,34 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 24.1's port, which declares the refusals of a Code metrics or Document hashes argument. */
+const DEVTOOL_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DevToolPort.cls');
+
+/** Story 24.1's three published argument refusals: `[parameter, strings.ts key]`. */
+const DEVTOOL_REFUSALS = [
+  ['REASONSPECLENGTH', 'explorerSpecLengthReason'],
+  ['REASONSPECSHAPE', 'explorerSpecShapeReason'],
+  ['REASONGENERATED', 'explorerGeneratedReason'],
+  // Story 24.8: Compare namespaces' two refusals of the other namespace.
+  ['REASONTARGETSHAPE', 'explorerTargetShapeReason'],
+  ['REASONTARGETSAME', 'explorerTargetSameReason'],
+  // Story 24.8: what a Compare namespaces row's change reads.
+  ['CHANGEONLYHERE', 'explorerChangeOnlyHere'],
+  ['CHANGEONLYTHERE', 'explorerChangeOnlyThere'],
+  ['CHANGEDIFFERS', 'explorerChangeDiffers'],
+];
+
+test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONSPECSHAPE in DevToolPort.cls -> this goes red naming both.
+  const source = readFileSync(DEVTOOL_PORT, 'utf8');
+  for (const [parameter, key] of DEVTOOL_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `DevToolPort.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   }
 });
 

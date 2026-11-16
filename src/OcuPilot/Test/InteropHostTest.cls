@@ -458,6 +458,24 @@ Method TestADocumentRequestIsSentAsItsText()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "with nothing saved or sent")
 }
 
+/// <p>AC8 (DW-2378): an HL7 message whose PID-5 holds U+0151 is parsed from a character stream, so the document the echo operation reads
+/// holds the character and no <code>?</code>. The probe's echo returns the sending application and, when the message has one, the second
+/// component of its second segment's fifth field.</p>
+Method TestAnHl7MessageKeepsACharacterPastLatin1()
+{
+    Do $$$AssertStatusOK(..Arm(), "the probe production runs with the testing service registered")
+    Set tName = "J" _ $Char(337) _ "ANE"
+    Set tText = $Parameter(..#FIXTURE, "DOCUMENTTEXT") _ $Char(13) _ "PID|1||PAT001^^^OCU^MR||DOE^" _ tName
+    Set tBody = {"action": "test", "values": {}}
+    Do tBody.%Set("id", ..RouteId($Parameter(..#FIXTURE, "ECHONAME")), "string")
+    Do tBody.values.%Set("requestClass", $Parameter(..#FIXTURE, "DOCUMENTCLASS"), "string")
+    Do tBody.values.%Set("fields", {"content": (tText)}.%ToJSON(), "string")
+    Do $ClassMethod(..#CONTROL, "CallWide", "POST", ..#SCREEN _ "/action", tBody, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the Test answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Set tOutput = $Select($IsObject(tAnswer): tAnswer.%Get("output"), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tOutput): tOutput.lines.%Get(0), 1: ""), "StringValue: echo:OCUSENDER|" _ tName, "the operation read the patient name with U+0151 in it: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+}
+
 /// <p>The probe's reply operation's answer to a string request carrying <var>pText</var>: the test output, from the person's route.</p>
 Method ReplyTo(pText As %String, Output pOutput)
 {

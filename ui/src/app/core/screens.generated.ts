@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config' | 'mirror';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -314,7 +314,7 @@ export interface ReadDeclaration {
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
 export interface BannerSource {
-  readonly port: 'admin';
+  readonly port: 'admin' | 'backup' | 'mirror';
   readonly endpoint: string;
   readonly type: 'GET';
 }
@@ -556,7 +556,19 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "cube",
   "term-list",
   "term-list-entry",
-  "folder-item"
+  "folder-item",
+  "backup-task",
+  "backup-database",
+  "startup-setting",
+  "memory-setting",
+  "compatibility-setting",
+  "sql-setting",
+  "sql-shell-setting",
+  "tsql-setting",
+  "isql-setting",
+  "mirror",
+  "system-ddl-mapping",
+  "user-ddl-mapping"
 ];
 
 /**
@@ -610,7 +622,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "superserver": "portbind",
   "docdb-application": "foldcase",
   "routine-application": "foldcase",
-  "interop-message": "integerset"
+  "interop-message": "integerset",
+  "backup-database": "foldcase"
 };
 
 /**
@@ -2965,10 +2978,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "TermList",
@@ -3058,8 +3080,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsTermListEntriesEmptyAgent"
     },
     "toolIdentifier": "analytics.termlistentries",
     "refreshDefault": 0,
@@ -3108,10 +3130,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "update",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -3191,8 +3222,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsTermListsEmptyAgent"
     },
     "toolIdentifier": "analytics.termlists",
     "refreshDefault": 0,
@@ -4326,6 +4357,639 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupDatabaseList",
+    "route": "os-management/backup-databases",
+    "area": "os-management",
+    "labelKey": "backupDatabasesLabel",
+    "sideBarPosition": 25,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "backup-database",
+    "entityLabelKey": "aboutBackupDatabase",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Database"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "add",
+        "selfProtection": ""
+      },
+      {
+        "id": "removedatabase",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Database",
+        "Directory"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupDatabasesEmpty",
+    "commandAliases": [
+      "backup database list",
+      "backup databases",
+      "add backup database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupDatabasesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupDatabasesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupDatabasesPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.mgr.utilsysbackupdatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "database on the backup list",
+      "label": "The databases the list backups cover; a list nobody defined is empty and the list backups then cover every database except IRISTEMP.",
+      "source": {
+        "port": "backup",
+        "endpoint": "Databases",
+        "type": "LIST"
+      },
+      "fields": [
+        "Database",
+        "Directory"
+      ],
+      "filter": [
+        "Database",
+        "Directory"
+      ],
+      "sort": {
+        "fields": [
+          "Database",
+          "Directory"
+        ],
+        "default": "Database",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "name"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backupDatabasesEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.backupdatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupHistoryList",
+    "route": "os-management/backup-history",
+    "area": "os-management",
+    "labelKey": "backupHistoryLabel",
+    "sideBarPosition": 24,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Time",
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupHistoryEmpty",
+    "commandAliases": [
+      "backup history",
+      "backup log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupHistoryPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupHistoryPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupHistoryPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysbackuplogs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "backup",
+      "label": "The most recent backups, newest first, at most fifty, with each one's type, status and whether it covered every database (All) or the backup list (List).",
+      "source": {
+        "port": "backup",
+        "endpoint": "History",
+        "type": "LIST"
+      },
+      "fields": [
+        "Time",
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "filter": [
+        "Type",
+        "Status",
+        "Databases",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Time",
+          "Type",
+          "Status"
+        ],
+        "default": "Time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Databases",
+          "labelKey": "databaseListLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.backuphistory",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackupTaskList",
+    "route": "os-management/backup-tasks",
+    "area": "os-management",
+    "labelKey": "backupTasksLabel",
+    "sideBarPosition": 23,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "backup-task",
+    "entityLabelKey": "aboutBackupTask",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      },
+      {
+        "id": "freeze",
+        "selfProtection": ""
+      },
+      {
+        "id": "thaw",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "LastRun",
+        "Status",
+        "Description",
+        "SystemTask",
+        "WritesFrozen"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "backupTasksEmpty",
+    "commandAliases": [
+      "backup tasks",
+      "backups",
+      "run backup",
+      "freeze writes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupTasksPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "backupTasksPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backupTasksPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysbackups",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "backup task",
+      "label": "Backup tasks, the four built-in tasks first, with when each last ran and its status; the backup history is in osmgmt.backuphistory and the backup database list in osmgmt.backupdatabases.",
+      "source": {
+        "port": "backup",
+        "endpoint": "Tasks",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "LastRun",
+        "Status",
+        "Description",
+        "SystemTask",
+        "WritesFrozen"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Status",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "LastRun",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "LastRun",
+          "labelKey": "taskColumnLastRun",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "SystemTask",
+          "labelKey": "backupColumnSystemTask",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backupTasksEmptyAgent"
+    },
+    "banner": {
+      "source": {
+        "port": "backup",
+        "endpoint": "Writes",
+        "type": "GET"
+      },
+      "field": "WriteState",
+      "cases": [
+        {
+          "equals": "Frozen",
+          "messageKey": "backupFrozenBanner",
+          "severity": "warning",
+          "action": "thaw"
+        }
+      ]
+    },
+    "toolIdentifier": "osmgmt.backuptasks",
+    "refreshDefault": 0,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.CompatibilitySettingList",
+    "route": "os-management/compatibility-settings",
+    "area": "os-management",
+    "labelKey": "compatibilitySettingsLabel",
+    "sideBarPosition": 28,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "compatibility-setting",
+    "entityLabelKey": "aboutCompatibilitySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "compatibility settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "compatibilitySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "compatibilitySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "compatibilitySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Compatibility",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "compatibility setting",
+      "label": "The instance's compatibility settings: how the language treats null subscripts, undefined variables and list format. The startup settings are in osmgmt.startupsettings and the memory settings in osmgmt.memorysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Compatibility",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "compatibilitySettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.compatibilitysettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Dashboard",
@@ -6865,6 +7529,282 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DdlSystemMappingList",
+    "route": "os-management/system-ddl-mappings",
+    "area": "os-management",
+    "labelKey": "systemDdlMappingsLabel",
+    "sideBarPosition": 34,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "system-ddl-mapping",
+    "entityLabelKey": "aboutSystemDdlMapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "systemDdlMappingsEmpty",
+    "commandAliases": [
+      "system ddl mappings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemDdlMappingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.SQLDataTypes",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "system DDL mapping",
+      "label": "The instance's system DDL mappings, each a DDL type name and the datatype class it maps to. The user DDL mappings are in osmgmt.userddlmappings.",
+      "source": {
+        "port": "config",
+        "endpoint": "SystemDDL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "ddlMappingColumnDatatype",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "systemDdlMappingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.systemddlmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DdlUserMappingList",
+    "route": "os-management/user-ddl-mappings",
+    "area": "os-management",
+    "labelKey": "userDdlMappingsLabel",
+    "sideBarPosition": 35,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "user-ddl-mapping",
+    "entityLabelKey": "aboutUserDdlMapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "userDdlMappingsEmpty",
+    "commandAliases": [
+      "user ddl mappings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "userDdlMappingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemDdlMappingsPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemDdlMappingsPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.SQLDataTypes",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "user DDL mapping",
+      "label": "The instance's user DDL mappings, each a DDL type name and the datatype class it maps to. The system DDL mappings are in osmgmt.systemddlmappings.",
+      "source": {
+        "port": "config",
+        "endpoint": "UserDDL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "ddlMappingColumnDatatype",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "userDdlMappingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.userddlmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DeviceForm",
     "route": "os-management/devices/edit",
     "area": "os-management",
@@ -8915,6 +9855,197 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCodeMetrics",
+    "route": "system-explorer/code-metrics",
+    "area": "system-explorer",
+    "labelKey": "explorerCodeMetricsLabel",
+    "sideBarPosition": 13,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Documents",
+        "Lines",
+        "Code",
+        "CodePercent",
+        "SourceCode",
+        "TestCode",
+        "Comments",
+        "CommentPercent",
+        "Blank",
+        "BlankPercent"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerDevToolEmpty",
+    "commandAliases": [
+      "code metrics",
+      "lines of code",
+      "loc"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCodeMetricsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "line totals of a document set",
+      "source": {
+        "port": "devtool",
+        "endpoint": "CodeMetrics",
+        "type": "LIST"
+      },
+      "fields": [
+        "Documents",
+        "Lines",
+        "Code",
+        "CodePercent",
+        "SourceCode",
+        "TestCode",
+        "Comments",
+        "CommentPercent",
+        "Blank",
+        "BlankPercent"
+      ],
+      "filter": [],
+      "sort": {
+        "fields": [
+          "Documents",
+          "Lines"
+        ],
+        "default": "Documents",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Documents",
+          "labelKey": "explorerDocumentsLabel",
+          "kind": "name"
+        },
+        {
+          "field": "Lines",
+          "labelKey": "explorerColumnLines",
+          "kind": "number"
+        },
+        {
+          "field": "Code",
+          "labelKey": "webAppPromptGroupCode",
+          "kind": "number"
+        },
+        {
+          "field": "CodePercent",
+          "labelKey": "explorerColumnCodePercent",
+          "kind": "number"
+        },
+        {
+          "field": "SourceCode",
+          "labelKey": "explorerColumnSourceCode",
+          "kind": "number"
+        },
+        {
+          "field": "TestCode",
+          "labelKey": "explorerColumnTestCode",
+          "kind": "number"
+        },
+        {
+          "field": "Comments",
+          "labelKey": "explorerColumnComments",
+          "kind": "number"
+        },
+        {
+          "field": "CommentPercent",
+          "labelKey": "explorerColumnCommentPercent",
+          "kind": "number"
+        },
+        {
+          "field": "Blank",
+          "labelKey": "explorerColumnBlank",
+          "kind": "number"
+        },
+        {
+          "field": "BlankPercent",
+          "labelKey": "explorerColumnBlankPercent",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "explorerCodeMetricsInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.codemetrics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCompare",
     "route": "system-explorer/compare",
     "area": "system-explorer",
@@ -9144,6 +10275,150 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerDocumentHashes",
+    "route": "system-explorer/document-hashes",
+    "area": "system-explorer",
+    "labelKey": "explorerDocumentHashesLabel",
+    "sideBarPosition": 14,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Document",
+        "Hash",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerDevToolEmpty",
+    "commandAliases": [
+      "document hashes",
+      "drift hashes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocumentHashesPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "document with its content hash",
+      "source": {
+        "port": "devtool",
+        "endpoint": "DocumentHashes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Document",
+        "Hash",
+        "Modified"
+      ],
+      "filter": [
+        "Document",
+        "Hash"
+      ],
+      "sort": {
+        "fields": [
+          "Document",
+          "Modified"
+        ],
+        "default": "Document",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "name"
+        },
+        {
+          "field": "Hash",
+          "labelKey": "explorerColumnSha256",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "explorerDocumentHashesInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.documenthashes",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerMacro",
     "route": "system-explorer/macros",
     "area": "system-explorer",
@@ -9280,6 +10555,169 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "explorer.macro",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff",
+    "route": "system-explorer/namespace-diff",
+    "area": "system-explorer",
+    "labelKey": "explorerNamespaceDiffLabel",
+    "sideBarPosition": 16,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Document",
+        "Change",
+        "Hash",
+        "OtherHash",
+        "Modified",
+        "OtherModified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerNamespaceDiffEmpty",
+    "commandAliases": [
+      "compare namespaces",
+      "namespace diff",
+      "environment diff"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerNamespaceDiffPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "document that differs between namespaces",
+      "source": {
+        "port": "devtool",
+        "endpoint": "NamespaceDiff",
+        "type": "LIST"
+      },
+      "fields": [
+        "Document",
+        "Change",
+        "Hash",
+        "OtherHash",
+        "Modified",
+        "OtherModified"
+      ],
+      "filter": [
+        "Document",
+        "Change"
+      ],
+      "sort": {
+        "fields": [
+          "Document",
+          "Modified"
+        ],
+        "default": "Document",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "target",
+            "labelKey": "explorerOtherNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "The namespace to compare this one with, spelled as osmgmt.namespaces.read answers its Name."
+          },
+          {
+            "param": "spec",
+            "labelKey": "explorerDocumentsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "Names separated by commas, with * and ? as wildcards, such as MyApp.*.cls,*.mac."
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerIncludeGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "name"
+        },
+        {
+          "field": "Change",
+          "labelKey": "databaseDirectoryChange",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModifiedHere",
+          "kind": "text"
+        },
+        {
+          "field": "OtherModified",
+          "labelKey": "explorerColumnModifiedThere",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "explorerNamespaceDiffInvite",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.namespacediff",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
@@ -17397,6 +18835,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "recover",
         "selfProtection": ""
+      },
+      {
+        "id": "autostart",
+        "selfProtection": ""
+      },
+      {
+        "id": "shutdowngroup",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -17404,7 +18850,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Name",
         "Status",
         "LastStartTime",
-        "LastStopTime"
+        "LastStopTime",
+        "AutoStart",
+        "StartupPriority",
+        "ShutdownGroup"
       ],
       "secretFields": []
     },
@@ -17452,7 +18901,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Name",
         "Status",
         "LastStartTime",
-        "LastStopTime"
+        "LastStopTime",
+        "AutoStart",
+        "StartupPriority",
+        "ShutdownGroup"
       ],
       "filter": [
         "Name",
@@ -17463,7 +18915,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Name",
           "Status",
           "LastStartTime",
-          "LastStopTime"
+          "LastStopTime",
+          "AutoStart",
+          "StartupPriority",
+          "ShutdownGroup"
         ],
         "default": "Name",
         "direction": "asc"
@@ -17490,6 +18945,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "LastStopTime",
           "labelKey": "interopProductionColumnLastStopped",
+          "kind": "text"
+        },
+        {
+          "field": "AutoStart",
+          "labelKey": "interopProductionColumnAutoStart",
+          "kind": "text"
+        },
+        {
+          "field": "StartupPriority",
+          "labelKey": "interopProductionColumnStartupPriority",
+          "kind": "text"
+        },
+        {
+          "field": "ShutdownGroup",
+          "labelKey": "interopProductionColumnShutdownGroup",
           "kind": "text"
         }
       ],
@@ -18731,6 +20201,140 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.IsqlSettingList",
+    "route": "os-management/isql-settings",
+    "area": "os-management",
+    "labelKey": "isqlSettingsLabel",
+    "sideBarPosition": 32,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "isql-setting",
+    "entityLabelKey": "aboutIsqlSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "isql settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "isqlSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "isqlSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "isqlSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Configure.ISQL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "ISQL setting",
+      "label": "The instance's ISQL compatibility settings; each is offered for change. The SQL settings are in osmgmt.sqlsettings, the SQL Shell in osmgmt.sqlshellsettings and TSQL in osmgmt.tsqlsettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "ISQL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "isqlSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.isqlsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.JournalFileDatabaseList",
@@ -22826,6 +24430,143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.MemorySettingList",
+    "route": "os-management/memory-settings",
+    "area": "os-management",
+    "labelKey": "memorySettingsLabel",
+    "sideBarPosition": 27,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "memory-setting",
+    "entityLabelKey": "aboutMemorySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "memory settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "memorySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "memorySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "memorySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Memory",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "memory setting",
+      "label": "The instance's memory settings, including the database cache for each block size, the routine cache and the lock table. The startup settings are in osmgmt.startupsettings and the compatibility settings in osmgmt.compatibilitysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Memory",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "memorySettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.memorysettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.MetricsList",
     "route": "os-management/metrics",
     "area": "os-management",
@@ -23167,6 +24908,176 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.MirrorMonitor",
+    "route": "os-management/mirror-monitor",
+    "area": "os-management",
+    "labelKey": "mirrorMonitorLabel",
+    "sideBarPosition": 33,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "MemberName",
+        "CurrentRole",
+        "CurrentStatus",
+        "JournalLatency",
+        "DatabaseLatency"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "mirrorMonitorEmpty",
+    "commandAliases": [
+      "mirror monitor",
+      "mirroring",
+      "mirror status"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mirrorMonitorPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mirrorMonitorPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "mirrorMonitorPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mirror.Monitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "mirror member",
+      "source": {
+        "port": "mirror",
+        "endpoint": "Members",
+        "type": "LIST"
+      },
+      "fields": [
+        "MemberName",
+        "CurrentRole",
+        "CurrentStatus",
+        "JournalLatency",
+        "DatabaseLatency"
+      ],
+      "filter": [
+        "MemberName",
+        "CurrentRole",
+        "CurrentStatus"
+      ],
+      "sort": {
+        "fields": [
+          "MemberName",
+          "CurrentRole",
+          "CurrentStatus"
+        ],
+        "default": "MemberName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MemberName",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "CurrentRole",
+          "labelKey": "userRoleField",
+          "kind": "text"
+        },
+        {
+          "field": "CurrentStatus",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "JournalLatency",
+          "labelKey": "mirrorColumnJournalLatency",
+          "kind": "text"
+        },
+        {
+          "field": "DatabaseLatency",
+          "labelKey": "mirrorColumnDatabaseLatency",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "banner": {
+      "source": {
+        "port": "mirror",
+        "endpoint": "State",
+        "type": "GET"
+      },
+      "field": "State",
+      "cases": [
+        {
+          "equals": "NotMember",
+          "messageKey": "mirrorNotMemberBanner",
+          "severity": "info"
+        },
+        {
+          "equals": "Unlicensed",
+          "messageKey": "mirrorUnlicensedBanner",
+          "severity": "info"
+        }
+      ]
+    },
+    "toolIdentifier": "osmgmt.mirrormonitor",
+    "refreshDefault": 0,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.NamespaceForm",
@@ -27941,6 +29852,274 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlSettingList",
+    "route": "os-management/sql-settings",
+    "area": "os-management",
+    "labelKey": "sqlSettingsLabel",
+    "sideBarPosition": 29,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "sql-setting",
+    "entityLabelKey": "aboutSqlSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "sql settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "sqlSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "sqlSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Configure.SQL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "SQL setting",
+      "label": "The instance's SQL settings; one marked as shown and never changed is not offered for change. The SQL Shell, TSQL and ISQL settings are in osmgmt.sqlshellsettings, osmgmt.tsqlsettings and osmgmt.isqlsettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "SQL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "sqlSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.sqlsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlShellSettingList",
+    "route": "os-management/sql-shell-settings",
+    "area": "os-management",
+    "labelKey": "sqlShellSettingsLabel",
+    "sideBarPosition": 30,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "sql-shell-setting",
+    "entityLabelKey": "aboutSqlShellSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "sql shell settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "sqlShellSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "sqlShellSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlShellSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Configure.SQL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "SQL Shell setting",
+      "label": "The defaults the SQL Shell starts with on this instance; one marked as shown and never changed is not offered for change. The SQL settings are in osmgmt.sqlsettings, TSQL in osmgmt.tsqlsettings and ISQL in osmgmt.isqlsettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "SQLShell",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "sqlShellSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.sqlshellsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
     "route": "security/ssl",
     "area": "security",
@@ -28152,6 +30331,143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.StartupSettingList",
+    "route": "os-management/startup-settings",
+    "area": "os-management",
+    "labelKey": "startupSettingsLabel",
+    "sideBarPosition": 26,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "startup-setting",
+    "entityLabelKey": "aboutStartupSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "startup settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "startupSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "startupSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "startupSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Startup",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "startup setting",
+      "label": "The instance's startup settings; one marked as shown and never changed is not offered for change. The memory settings are in osmgmt.memorysettings and the compatibility settings in osmgmt.compatibilitysettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "Startup",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "startupSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.startupsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SuperserverForm",
@@ -29962,6 +32278,140 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TsqlSettingList",
+    "route": "os-management/tsql-settings",
+    "area": "os-management",
+    "labelKey": "tsqlSettingsLabel",
+    "sideBarPosition": 31,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "tsql-setting",
+    "entityLabelKey": "aboutTsqlSetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "tsql settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "tsqlSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "tsqlSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "tsqlSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Configure.TSQL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "TSQL setting",
+      "label": "The instance's TSQL compatibility settings; one marked as shown and never changed is not offered for change. The SQL settings are in osmgmt.sqlsettings, the SQL Shell in osmgmt.sqlshellsettings and ISQL in osmgmt.isqlsettings.",
+      "source": {
+        "port": "config",
+        "endpoint": "TSQL",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "tsqlSettingsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.tsqlsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserForm",

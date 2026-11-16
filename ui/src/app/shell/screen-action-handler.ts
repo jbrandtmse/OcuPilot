@@ -149,6 +149,24 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
   // Story 20.34: the Cube manager, whose Build types the cube's name and whose Synchronize is sent at once, each reporting the lines the instance answered.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
+  // Story 21.2: Backup tasks, whose Run warns first, and Backup database list, whose Remove is sent at once.
+  'OcuPilot.Screen.Descriptor.BackupTaskList',
+  'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+  // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
+  // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.StartupSettingList',
+  'OcuPilot.Screen.Descriptor.MemorySettingList',
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList',
+  // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.SqlSettingList',
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList',
+  'OcuPilot.Screen.Descriptor.TsqlSettingList',
+  'OcuPilot.Screen.Descriptor.IsqlSettingList',
+  // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -242,6 +260,23 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  * status as the action's one declared value.
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
+
+/**
+ * Backup tasks and Backup database list (Story 21.2). Backup tasks' Run is a row action with its warning, its Freeze writes is sent by its
+ * page with its limit and its Thaw writes at once, each on the one target `BACKUP_WRITES_TARGET` names; Backup database list's Add database is
+ * its page's dialog, and its Remove is a row action sent at once.
+ */
+export const BACKUP_TASK_LIST = 'OcuPilot.Screen.Descriptor.BackupTaskList';
+export const BACKUP_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.BackupDatabaseList';
+export const BACKUP_FREEZE = 'freeze';
+export const BACKUP_THAW = 'thaw';
+export const BACKUP_ADD_DATABASE = 'add';
+
+/** The one target the freeze and the thaw name: the instance's database writes. */
+export const BACKUP_WRITES_TARGET = 'SYSTEM';
+
+/** The value Freeze writes sends beside its target, under the name its tool declares (AD-56). */
+export const BACKUP_LIMIT_VALUE = 'limit';
 export const ECP_CHANGE_STATUS = 'changestatus';
 
 /**
@@ -448,6 +483,22 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
   // ECP data servers' page registers Change status itself, whose dialog sends the status (Story 18.20).
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
+  // Backup tasks' page registers Freeze writes and Thaw writes itself, each on the instance's database writes, and Backup database list's page
+  // registers Add database itself, whose dialog names the database (Story 21.2).
+  [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
+  [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
+  // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
+  'OcuPilot.Screen.Descriptor.StartupSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.MemorySettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': ['set'],
+  // The four SQL settings screens' page registers Set value itself, whose dialog sends the value (Story 21.4).
+  'OcuPilot.Screen.Descriptor.SqlSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.TsqlSettingList': ['set'],
+  'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
+  // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -460,6 +511,11 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
+  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2).
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update'],
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
+  // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
+  'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
@@ -640,6 +696,12 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
   // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
   [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
+  // Story 21.13: DDL that names a deleted mapping's type no longer maps it to its datatype.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
+  // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
@@ -725,6 +787,12 @@ const TYPED_NAME_ROWS: Readonly<
   [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
   // Story 20.34: a build types the cube's logical name, which the Cube manager's name column shows.
   [ANALYTICS_CUBE_MANAGER]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 21.13: a DDL mapping is keyed by its name, which its Delete types.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.2: a delete types the term list's name and a remove the entry's key.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -771,6 +839,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
   // removes anything, so each warns.
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
+  // Story 21.2: a run starts in the background, and a freeze stops database writes until a thaw or its limit.
+  [BACKUP_TASK_LIST]: { run: STRINGS.backupRunNote, [BACKUP_FREEZE]: STRINGS.backupFreezeConsequence },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
@@ -831,6 +901,8 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   },
   // Story 18.5: a journal integrity check reads every record only when asked.
   [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
+  // Story 21.2: a freeze names how many seconds the instance suspends writes, from 1 to 600.
+  [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
 };
 
 /**

@@ -93,6 +93,64 @@ Parameter CUBEBUILD = "ANALYTICS.CUBE.BUILD";
 /// <p>The consequence code of a synchronize.</p>
 Parameter CUBESYNCHRONIZE = "ANALYTICS.CUBE.SYNCHRONIZE";
 
+/// <p>409: a create whose name matches an existing term list without regard to case (Story 24.2).</p>
+Parameter TERMLISTTAKEN = "ANALYTICS.TERMLIST.TAKEN";
+
+Parameter REASONTERMLISTTAKEN = "This namespace already holds a term list with that name. Names are compared without regard to case.";
+
+/// <p>409: an entry add whose key the term list already holds.</p>
+Parameter TERMLISTENTRYTAKEN = "ANALYTICS.TERMLIST.ENTRYTAKEN";
+
+Parameter REASONTERMLISTENTRYTAKEN = "This term list already holds an entry with that key.";
+
+/// <p>404: the term list is not there.</p>
+Parameter TERMLISTABSENT = "ANALYTICS.TERMLIST.ABSENT";
+
+Parameter REASONTERMLISTABSENT = "This term list no longer exists.";
+
+/// <p>422: a term list name, an entry key or a field name that breaks its shape rule (<method>OcuPilot.Port.AnalyticsPort.TermListViolations</method>).</p>
+Parameter TERMLISTNAME = "ANALYTICS.TERMLIST.NAME";
+
+Parameter REASONTERMLISTNAME = "A term list name is 1 to 255 characters with no control character, within the length the instance can store.";
+
+Parameter TERMLISTKEY = "ANALYTICS.TERMLIST.KEY";
+
+Parameter REASONTERMLISTKEY = "An entry key is 1 to 255 characters with no control character and no ^, within the length the instance can store.";
+
+Parameter TERMLISTFIELD = "ANALYTICS.TERMLIST.FIELD";
+
+Parameter REASONTERMLISTFIELD = "A field name is 1 to 255 characters with no control character and no ^. It is not Value, and no two fields share a name. A term list has at most 50 fields.";
+
+/// <p>422: an entry value names a field the term list does not hold.</p>
+Parameter TERMLISTNOFIELD = "ANALYTICS.TERMLIST.NOFIELD";
+
+Parameter REASONTERMLISTNOFIELD = "This term list has no field of that name.";
+
+/// <p>422: a field leaves the term list while an entry holds a value for it.</p>
+Parameter TERMLISTFIELDINUSE = "ANALYTICS.TERMLIST.FIELDINUSE";
+
+Parameter REASONTERMLISTFIELDINUSE = "Some entries hold a value for this field. Clear those values first, then remove the field.";
+
+/// <p>422: a caption, pattern, subject area, description or value over its length.</p>
+Parameter TERMLISTVALUE = "ANALYTICS.TERMLIST.VALUE";
+
+Parameter REASONTERMLISTVALUE = "A caption, pattern or subject area is at most 255 characters, and a description or value at most 32,000.";
+
+/// <p>409: the database that holds the namespace's term lists is read-only or not mounted.</p>
+Parameter TERMLISTREADONLY = "ANALYTICS.TERMLIST.READONLY";
+
+Parameter REASONTERMLISTREADONLY = "The database that holds this namespace's term lists is read-only, so nothing was written.";
+
+/// <p>409: the database that holds the namespace's term lists is not journaled, so a write could be left half done.</p>
+Parameter TERMLISTNOTJOURNALED = "ANALYTICS.TERMLIST.NOTJOURNALED";
+
+Parameter REASONTERMLISTNOTJOURNALED = "Term lists can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace's term lists.";
+
+/// <p>The consequence codes of the term list delete and the entry remove.</p>
+Parameter TERMLISTDELETE = "ANALYTICS.TERMLIST.DELETE";
+
+Parameter TERMLISTREMOVE = "ANALYTICS.TERMLIST.REMOVE";
+
 /// <p>The sentence for <var>pCode</var>, or <code>""</code> for a code this class does not hold.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
@@ -111,6 +169,17 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#CUBENOTBUILT Quit ..#REASONCUBENOTBUILT
     If pCode = ..#CUBEREADONLY Quit ..#REASONCUBEREADONLY
     If pCode = ..#CUBEFAILED Quit ..#REASONCUBEFAILED
+    If pCode = ..#TERMLISTTAKEN Quit ..#REASONTERMLISTTAKEN
+    If pCode = ..#TERMLISTENTRYTAKEN Quit ..#REASONTERMLISTENTRYTAKEN
+    If pCode = ..#TERMLISTABSENT Quit ..#REASONTERMLISTABSENT
+    If pCode = ..#TERMLISTNAME Quit ..#REASONTERMLISTNAME
+    If pCode = ..#TERMLISTKEY Quit ..#REASONTERMLISTKEY
+    If pCode = ..#TERMLISTFIELD Quit ..#REASONTERMLISTFIELD
+    If pCode = ..#TERMLISTNOFIELD Quit ..#REASONTERMLISTNOFIELD
+    If pCode = ..#TERMLISTFIELDINUSE Quit ..#REASONTERMLISTFIELDINUSE
+    If pCode = ..#TERMLISTVALUE Quit ..#REASONTERMLISTVALUE
+    If pCode = ..#TERMLISTREADONLY Quit ..#REASONTERMLISTREADONLY
+    If pCode = ..#TERMLISTNOTJOURNALED Quit ..#REASONTERMLISTNOTJOURNALED
     Quit ""
 }
 
@@ -132,6 +201,18 @@ ClassMethod CubePreconditionCodes() As %List
 ClassMethod CubeConsequenceCodes() As %List
 {
     Quit $ListBuild(..#CUBEBUILD, ..#CUBESYNCHRONIZE)
+}
+
+/// <p>The term list editor's refusal codes (Story 24.2), as a <class>%List</class>.</p>
+ClassMethod TermListCodes() As %List
+{
+    Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED)
+}
+
+/// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>
+ClassMethod TermListConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#TERMLISTDELETE, ..#TERMLISTREMOVE)
 }
 
 }

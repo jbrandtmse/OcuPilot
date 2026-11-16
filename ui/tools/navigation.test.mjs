@@ -242,6 +242,24 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/metrics',
       // Story 18.37: Interoperability usage, the twenty-second.
       'os-management/interoperability-usage',
+      // Story 21.2: Backup tasks, Backup history and Backup database list, the twenty-third to twenty-fifth.
+      'os-management/backup-tasks',
+      'os-management/backup-history',
+      'os-management/backup-databases',
+      // Story 21.3: Startup, Memory and Compatibility settings, the twenty-sixth to twenty-eighth.
+      'os-management/startup-settings',
+      'os-management/memory-settings',
+      'os-management/compatibility-settings',
+      // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, the twenty-ninth to thirty-second.
+      'os-management/sql-settings',
+      'os-management/sql-shell-settings',
+      'os-management/tsql-settings',
+      'os-management/isql-settings',
+      // Story 21.12: the Mirror monitor, the thirty-third.
+      'os-management/mirror-monitor',
+      // Story 21.13: System and User DDL mappings, the thirty-fourth and thirty-fifth.
+      'os-management/system-ddl-mappings',
+      'os-management/user-ddl-mappings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -375,6 +393,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-data',
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
+      // Story 24.1: Code metrics and Document hashes, after Document databases.
+      'system-explorer/code-metrics',
+      'system-explorer/document-hashes',
+      // Story 24.8: Compare namespaces, after Document hashes.
+      'system-explorer/namespace-diff',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.
@@ -498,6 +521,24 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/metrics',
       // Story 18.37: the twenty-second.
       'os-management/interoperability-usage',
+      // Story 21.2: the twenty-third to twenty-fifth.
+      'os-management/backup-tasks',
+      'os-management/backup-history',
+      'os-management/backup-databases',
+      // Story 21.3: the twenty-sixth to twenty-eighth.
+      'os-management/startup-settings',
+      'os-management/memory-settings',
+      'os-management/compatibility-settings',
+      // Story 21.4: the twenty-ninth to thirty-second.
+      'os-management/sql-settings',
+      'os-management/sql-shell-settings',
+      'os-management/tsql-settings',
+      'os-management/isql-settings',
+      // Story 21.12: the thirty-third.
+      'os-management/mirror-monitor',
+      // Story 21.13: the thirty-fourth and thirty-fifth.
+      'os-management/system-ddl-mappings',
+      'os-management/user-ddl-mappings',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

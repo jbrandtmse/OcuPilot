@@ -38,7 +38,9 @@ XData Groups
   "Audit": ["security.auditsystemevents", "security.audituserevents", "security.auditing"],
   "SQL statements": ["osmgmt.sqlactivity", "explorer.sqltablestatements", "explorer.sqlviewstatements", "explorer.sqlprocedurestatements"],
   "SQL schema objects": ["explorer.sqlschematables", "explorer.sqlschemaviews", "explorer.sqlschemaprocedures"],
-  "Cubes": ["analytics.cubes", "analytics.cubemanager"]
+  "Cubes": ["analytics.cubes", "analytics.cubemanager"],
+  "Backup": ["osmgmt.backuptasks", "osmgmt.backuphistory", "osmgmt.backupdatabases"],
+  "Configuration settings": ["osmgmt.startupsettings", "osmgmt.memorysettings", "osmgmt.compatibilitysettings", "osmgmt.sqlsettings", "osmgmt.sqlshellsettings", "osmgmt.tsqlsettings", "osmgmt.isqlsettings", "osmgmt.systemddlmappings", "osmgmt.userddlmappings"]
 }
 }
 
@@ -274,7 +276,7 @@ Method TestEveryConfusableToolCarriesItsLabel()
         Do $$$AssertTrue(tLabel '= "", tName _ " declares its label")
         If $Data(tReads(tName)) && (tLabel '= "") Do $$$AssertTrue($List(tReads(tName), 2) [ tLabel, tName _ ": its description carries its label")
     }
-    Do $$$AssertEquals(tCount, 41, "eight groups name 41 distinct read tools")
+    Do $$$AssertEquals(tCount, 53, "ten groups name 53 distinct read tools")
     Set tId = ""
     Set tNamed = 0
     For {

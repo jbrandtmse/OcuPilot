@@ -219,7 +219,7 @@ Method TestTheScriptKeepsEveryValueInsideItsLiteral()
     Set tQuery("requestClass") = $Parameter(..#FIXTURE, "DOCUMENTCLASS")
     Set tQuery("fields") = {"content": ("MSH|^~\&|A" _ $Char(13) _ "PID|1")}.%ToJSON()
     Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
-    Do $$$AssertTrue((tText [ "ImportFromString") && (tText [ """_$Char(13)_""") && (tText '[ "%ValidateObject"), "a document is its text imported, a carriage return spelled as $Char")
+    Do $$$AssertTrue((tText [ "ImportFromLibraryStream") && (tText [ "%Stream.TmpCharacter") && (tText '[ "ImportFromString") && (tText [ """_$Char(13)_""") && (tText '[ "%ValidateObject"), "an HL7 document is its text written to a character stream and imported from it, a carriage return spelled as $Char")
     Set tQuery("requestClass") = "EnsLib.EDI.XML.Document"
     For tCase = $ListBuild(" " _ $Char(13, 10) _ "<root/>", "ImportFromString"", ""<root/>"", .tSC)"), $ListBuild("/etc/hostname", "tSC = $System.Status.Error(5001, ""Not XML Format"")") {
         Set tQuery("fields") = {"content": ($List(tCase, 1))}.%ToJSON()
@@ -435,7 +435,7 @@ Method TestTheTransformScriptKeepsTheMessageInsideItsLiteral()
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery)
     Set tText = $Select(tSteps.%Size() = 1: tSteps.%Get(0).text, 1: "")
     Do $$$AssertEquals($Select(tSteps.%Size() = 1: tSteps.%Get(0).kind, 1: ""), "objectscript", "one ObjectScript step")
-    Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ "EnsLib.HL7.Message"", ""ImportFromString""") && (tText [ "IsMutable = 0") && (tText [ "OcuProbeDtl.Hl7"", ""Transform"", tSource, .tTarget") && (tText [ "OutputToLibraryStream(tStream, tSeparators)"), "it switches, parses, calls Transform and renders the raw view: " _ tText)
+    Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ "EnsLib.HL7.Message"", ""ImportFromLibraryStream"", tStream") && (tText [ "%Stream.TmpCharacter") && (tText [ "IsMutable = 0") && (tText [ "OcuProbeDtl.Hl7"", ""Transform"", tSource, .tTarget") && (tText [ "OutputToLibraryStream(tStream, tSeparators)"), "it switches, parses, calls Transform and renders the raw view: " _ tText)
     Do $$$AssertTrue(tText [ "MSH|^~\&|A""""B""_$Char(13)_""PID|1", "a quote is doubled and a carriage return is spelled as $Char inside the message's literal")
     Set tOpens = 0
     For tLine = 1:1:$Length(tText, $Char(10)) {

@@ -607,9 +607,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // (approved at its spec gate).
   // Story 18.38's Live tail and Story 20.16's two literals, merged together, take the table within 50 of 3400; the
   // bound moves to 3800 under the same protocol (approved at both spec gates).
+  // Stories 21.3 and 21.4's settings screens, merged beside Story 24.2's analytics editors, take the table past 3800; the
+  // bound moves to 4200 under the same protocol (runner ruling at the integrate-forward, 2026-11-15).
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 3800,
-    `expected between 150 and 3800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 4200,
+    `expected between 150 and 4200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -699,6 +701,13 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'analyticsRefusalNamespace',
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
+      'explorerNamespaceDiffEmpty',
+      'explorerNamespaceDiffInvite',
+      'explorerNamespaceDiffLabel',
+      'explorerNamespaceDiffPrompt1',
+      'explorerNamespaceDiffPrompt2',
+      'explorerNamespaceDiffPrompt3',
+      'explorerOtherNamespaceLabel',
       'headerNamespaceLabel',
       'impactNamespacesUse',
       'impactNamespacesUseNone',
@@ -734,7 +743,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels and the Namespaces screens\' own copy'
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels, the Namespaces screens\' own copy and Compare namespaces\' title, field label, empty state, invitation and three prompts (Story 24.8)'
   );
 });
 

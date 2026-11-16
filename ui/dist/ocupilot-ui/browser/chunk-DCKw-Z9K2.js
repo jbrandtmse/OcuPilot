@@ -1,1 +1,0 @@
-import{K as ME}from"./chunk-39LNKTGr.js";function t(n){return n.toTimeString().slice(0,8)}function a(n,r,i){return r===`running`?ME.databaseOperationRunning.replace(`<operation>`,()=>n).replace(`<time>`,()=>i===null?``:t(i)):r===`finished`?ME.databaseOperationFinished.replace(`<operation>`,()=>n):r===`continues`?ME.auditDatabaseStillRunning:``}export{t as n,a as t};

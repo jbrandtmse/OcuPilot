@@ -230,7 +230,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner", "the set covers exactly sixty-four entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15, and the percent-class access entry since Story 18.10, and the Doc DB application record since Story 18.30, and the privileged routine application since Story 18.31, and the production item since Story 20.3, and the production item setting since Story 20.22, and the REST service since Story 18.32, and the queue, the queued message and the job since Story 20.23, and the lookup table and the lookup table entry since Story 20.5, and the allowed directory since Story 18.42, and the cube since Story 20.34, and the business partner since Story 20.26")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping", "the set covers exactly seventy-eight entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15, and the percent-class access entry since Story 18.10, and the Doc DB application record since Story 18.30, and the privileged routine application since Story 18.31, and the production item since Story 20.3, and the production item setting since Story 20.22, and the REST service since Story 18.32, and the queue, the queued message and the job since Story 20.23, and the lookup table and the lookup table entry since Story 20.5, and the allowed directory since Story 18.42, and the cube since Story 20.34, and the business partner since Story 20.26, and the startup, memory and compatibility settings since Story 21.3, and the SQL, SQL Shell, TSQL and ISQL settings since Story 21.4, and the mirror since Story 21.12, and the two DDL mappings since Story 21.13")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "log-entry")
@@ -447,7 +447,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             If 'tComposed && 'tValued Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
             ; Story 20.31: the resend's one value is the digest a person reviewed it at. Story 20.41: the change of class's two are the class
             ; and that digest.
-            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", "interop.items.changeclass": "interop.items.changeclass:NewClass,Reviewed", : "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
+            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", "interop.items.changeclass": "interop.items.changeclass:NewClass,Reviewed", "osmgmt.backuptasks.freeze": "osmgmt.backuptasks.freeze:limit", : "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
             ; a key; Story 18.14's copy of mappings from its source namespace; Story 19.13's export
@@ -753,6 +753,45 @@ Method TestAScreenPermissionOnOneOfOcuPilotsOwnScreensIsRefused()
     }
 }
 
+/// <p>Story 21.12, AD-10: a write on a <code>mirror</code> target is judged by its stored payload alone. One that sets
+/// <code>DeleteDB</code> or <code>DeleteDBs</code> true is refused <code>PROHIBITED.MIRRORDATABASES</code> with its sentence, and every
+/// other one -- the flag absent or false, or a payload that cannot be parsed -- is refused <code>PROHIBITED.UNCOVERED</code>. Both callers
+/// ask the same predicate: the shared operation gate with the screen action's own set, and the agent's confirm over a seeded proposal,
+/// which writes nothing to the port.</p>
+/// <p>Mutation (Rule 19): the arm stops reading <code>DeleteDBs</code> -> the <code>DeleteDBs</code> leg goes red; the <code>mirror</code>
+/// branch removed from <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -> every code assertion goes red.</p>
+Method TestAMirrorRemovalWithItsDatabasesIsRefusedAndEveryOtherMirrorWriteIsUncovered()
+{
+    Set tDatabases = $Parameter(..#SHIPPEDSET, "MIRRORDATABASES")
+    Set tUncovered = $Parameter(..#SHIPPEDSET, "UNCOVERED")
+    Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes(), tDatabases) > 0, 1, "the code is one of the set's")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tDatabases), $Parameter(..#SHIPPEDSET, "MIRRORDATABASESREASON"), "with its sentence")
+    For tCase = $ListBuild("{""DeleteDB"":true}", tDatabases), $ListBuild("{""DeleteDBs"":true}", tDatabases), $ListBuild("{""DeleteDB"":false,""DeleteDBs"":true}", tDatabases), $ListBuild("{""DeleteDBs"":1}", tDatabases), $ListBuild("{""DeleteDB"":""true""}", tDatabases), $ListBuild("{""DeleteDB"":false}", tUncovered), $ListBuild("{""DeleteDBs"":0,""DeleteDB"":""false""}", tUncovered), $ListBuild("{}", tUncovered), $ListBuild("{""Name"":""MIRRORSET""}", tUncovered), $ListBuild("{""DeleteDB"":tru", tUncovered), $ListBuild("", tUncovered) {
+        Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).Ask("", $List(tCase, 1), "[]", "MIRRORSET", "mirror", .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "the set answers for " _ $List(tCase, 1))
+        Do $$$AssertEquals(tProhibits _ "|" _ tCode, "1|" _ $List(tCase, 2), "the payload '" _ $List(tCase, 1) _ "' is refused with " _ $List(tCase, 2))
+    }
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("mirror", "instance", "MIRRORSET", .tRef)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("osmgmt.backuptasks.thaw", .tTool, 1)
+    Do $$$AssertTrue($IsObject($Get(tTool)), "a write tool resolves to drive the shared operation gate")
+    If $IsObject($Get(tTool)) {
+        For tCase = $ListBuild("{""DeleteDBs"":true}", tDatabases), $ListBuild("{""DeleteDB"":false}", tUncovered) {
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, tRef, $List(tCase, 1), "[]", "{}", $Username, ##class(OcuPilot.Api.ScreenAction).ProhibitedClassName(), "", .tPairs, .tRefused, .tHttp, .tGateCode, .tDetail)
+            Do $$$AssertStatusOK(tSC, "the screen action's gate answers")
+            Do $$$AssertEquals(tRefused _ "|" _ tHttp _ "|" _ tGateCode, "1|403|" _ $List(tCase, 2), "the screen action's gate refuses " _ $List(tCase, 1) _ " with " _ $List(tCase, 2))
+        }
+    }
+    For tCase = $ListBuild("{""DeleteDB"":true}", tDatabases), $ListBuild("{""Name"":""MIRRORSET""}", tUncovered) {
+        Set tKey = ..Seed($List(tCase, 1), "Name", "MIRRORSET", "mirror")
+        If tKey = "" Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
+        Set tSC = ..Confirm(tKey, .tHttp, .tCode)
+        Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+        Do $$$AssertEquals(tHttp _ "|" _ tCode, "403|" _ $List(tCase, 2), "the agent's confirm refuses " _ $List(tCase, 1) _ " with " _ $List(tCase, 2))
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reached the port")
+    }
+}
+
 /// <p>AC2 and AC6: the set is the only class that spells a <code>PROHIBITED.</code> code or writes
 /// one of its sentences, every code is well formed, and the resolver the confirm handler asks
 /// first answers each of them.</p>
@@ -765,7 +804,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 38, "the set declares thirty-eight codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15, the allow-list code since Story 18.42, the provider SSL/TLS code since Story 18.40, the journal and KMIP start codes since Story 18.48")
+    Do $$$AssertEquals($ListLength(tCodes), 39, "the set declares thirty-nine codes -- the mirror code since Story 21.12, the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15, the allow-list code since Story 18.42, the provider SSL/TLS code since Story 18.40, the journal and KMIP start codes since Story 18.48")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

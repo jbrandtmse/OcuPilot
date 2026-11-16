@@ -26,8 +26,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "update", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Caption", "Modified"], "secretFields": []},
   "emptyStateKey": "analyticsTermListsEmpty",
   "commandAliases": ["term lists", "term list"],
@@ -52,8 +52,8 @@ XData Declaration
       {"field": "Caption", "labelKey": "analyticsColumnCaption", "kind": "text"},
       {"field": "Modified", "labelKey": "analyticsColumnModified", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsTermListsEmptyAgent"
   },
   "toolIdentifier": "analytics.termlists"
 }

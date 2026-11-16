@@ -310,9 +310,11 @@ services:
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate, ReadBackRoute
       # classes: ImpactRoute
+      # classes: HarvestWire
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
+      # classes: AdminStateWrite
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
@@ -363,6 +365,7 @@ services:
       # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
       # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
       # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
+      # classes: InteropSessionTurn, InteropSessionRoute
       # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
       # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
       # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
@@ -590,6 +593,24 @@ services:
       # actions class drives both callers over HTTP and reads the audit rows each leaves; and the gate class signs in as probe principals
       # each missing a pair or WRITE on the facts database, with a cube none of them may see.
       # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
+      # The backup gate class signs in as probe principals holding the backup port's read pairs and its write pairs (Story 21.2).
+      # classes: BackupWriteGate
+      # The mirror gate class signs in as probe principals holding the mirror port's two pairs and the Mirror monitor's third, and as ones each missing a port pair (Story 21.12).
+      # classes: MirrorGate
+      # The term list editor classes (Story 24.2) turn analytics on in USER and write marker-named term lists there: the edit class drives the port's six
+      # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
+      # probe principals each missing the editor's pair or WRITE on the term list database.
+      # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
+      # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
+      # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
+      # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
+      # over HTTP as those principals and drives the row actions and the confirm route.
+      # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals, InteropStartupWire
+      # The namespace comparison's route class (Story 24.8) signs in as principals holding one namespace's database pairs or both, and runs turns as them.
+      # classes: NamespaceDiffRoute
+      # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
+      # class is armed by the database variable too.
+      # classes: CompileWithoutInterop
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -738,6 +759,8 @@ services:
       # classes: WalletRungRoles
       # classes: InteropEditorSaveTurn
       # classes: AnalyticsMdxReadTurn
+      # classes: InteropSessionTurn, InteropSessionRoute
+      # classes: NamespaceDiffRoute
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one
@@ -851,6 +874,24 @@ services:
       # never restarts the instance.
       # classes: DatabaseCreateEncrypted
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
+      # Runs a backup of one probe database to a directory under the manager directory, freezes database
+      # writes for a few seconds and thaws them, and adds and removes a probe database on the backup
+      # database list, through the shipped screen-action and confirm paths. Its own variable because no
+      # narrower one names that effect: a freeze suspends every database write on the instance until the
+      # limit passes, and a list change moves what the list backups cover. The class thaws on every path,
+      # restores the backup list it found and removes the probe task, database and directories (Story 21.2). The gate class does the
+      # same as two probe principals.
+      # classes: BackupWrite, BackupWriteGate
+      OCUPILOT_ALLOW_BACKUP_CONTROL: "1"
+      # Changes one startup, one memory and one compatibility setting of the instance to a value of their own and back, through the shipped
+      # screen-action and confirm paths, and sets the memory setting errlog, which needs a restart, and back. No restore clears the
+      # instance's pending-restart flag, so the flag stays set on the throwaway; the class restores every setting it changed on
+      # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
+      # and purges the cached queries of every namespace once (Story 21.4). TaskMailAuditMask sets, changes and clears the Task Manager
+      # mail password to probe values and restores the stored one after every method (Story 21.24). DdlMappingWrite creates, changes and
+      # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask
+      OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

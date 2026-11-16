@@ -341,6 +341,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['routine-application', 'foldcase'],
     // Story 20.31: a message header's id may name the set of messages a resend names, each once and ascending.
     ['interop-message', 'integerset'],
+    // Story 21.2: a database on the backup list is named without regard to case.
+    ['backup-database', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -1562,7 +1564,10 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.ExplorerClassDocument',
       'OcuPilot.Screen.Descriptor.ExplorerClassList',
+      'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics',
+      'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes',
       'OcuPilot.Screen.Descriptor.ExplorerMacro',
+      'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineList',
       'OcuPilot.Screen.Descriptor.ExplorerSearch',
@@ -1699,7 +1704,7 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     ],
   });
   for (const screen of emittedScreens) {
-    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') continue;
+    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.MirrorMonitor') continue;
     assert.equal(screen.banner, null, `${screen.descriptor} emits no banner`);
   }
 
@@ -1707,6 +1712,27 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
   // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,
   // and the top-level key check DW-271 added would otherwise refuse this clone before the banner
   // rule ran.
+  // Story 21.2: Backup tasks' banner reads the backup port's write state and offers the thaw.
+  const backup = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList');
+  assert.ok(backup !== undefined, 'Backup tasks is declared');
+  assert.deepEqual(backup.banner, {
+    source: { port: 'backup', endpoint: 'Writes', type: 'GET' },
+    field: 'WriteState',
+    cases: [{ equals: 'Frozen', messageKey: 'backupFrozenBanner', severity: 'warning', action: 'thaw' }],
+  });
+
+  // Story 21.12: the Mirror monitor's banner reads the mirror port's state and offers no action.
+  const mirror = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.MirrorMonitor');
+  assert.ok(mirror !== undefined, 'the Mirror monitor is declared');
+  assert.deepEqual(mirror.banner, {
+    source: { port: 'mirror', endpoint: 'State', type: 'GET' },
+    field: 'State',
+    cases: [
+      { equals: 'NotMember', messageKey: 'mirrorNotMemberBanner', severity: 'info' },
+      { equals: 'Unlicensed', messageKey: 'mirrorUnlicensedBanner', severity: 'info' },
+    ],
+  });
+
   const hostile = structuredClone(tasks);
   delete hostile.descriptor;
   hostile.banner = { ...hostile.banner, cases: [{ ...hostile.banner.cases[0], severity: 'error' }] };
@@ -2724,6 +2750,10 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+      'OcuPilot.Screen.Descriptor.BackupHistoryList',
+      'OcuPilot.Screen.Descriptor.BackupTaskList',
+      'OcuPilot.Screen.Descriptor.CompatibilitySettingList',
       'OcuPilot.Screen.Descriptor.EcpSettings',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
@@ -2764,6 +2794,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.LanguageServerList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',
+      'OcuPilot.Screen.Descriptor.MirrorMonitor',
       'OcuPilot.Screen.Descriptor.OAuthClientForm',
       'OcuPilot.Screen.Descriptor.OAuthClientTab',
       'OcuPilot.Screen.Descriptor.OAuthResourceServerForm',
@@ -3121,7 +3152,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3398,6 +3429,63 @@ test('Story 20.15: Screen permissions reads through the access source, the thirt
   assert.equal(readProblem(screen.declaration), null, "its read passes");
   assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }]);
   assert.equal(screen.declaration.classicPage, '', 'and it replaces no classic page');
+});
+
+// Story 24.1: a devtool read is one LIST of DevToolPort's two endpoints with no per-row call, parent list, query or parts. Every case
+// in `OcuPilot.Test.DevToolRead`'s corpus gets its exact sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the devtool arm from `readProblem` -> the endpoint, type and key cases go red.
+test('Story 24.1: the devtool source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'DevToolRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const metrics = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics');
+  assert.ok(metrics !== undefined, 'Code metrics is declared');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(metrics.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 6, `the corpus refuses its shapes (${refusals})`);
+});
+
+// Story 21.3: a config read is one LIST of ConfigPort's three endpoints with no per-row call, parent list, query or parts. Every case
+// in `OcuPilot.Test.ConfigSettingRead`'s corpus gets its exact sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): let the config arm of `readProblem` admit any endpoint -> the endpoint case goes red.
+test('Story 21.3: the config source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'ConfigSettingRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const startup = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.StartupSettingList');
+  assert.ok(startup !== undefined, 'Startup settings is declared');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(startup.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 6, `the corpus refuses its shapes (${refusals})`);
+});
+
+// Story 21.12: a mirror read is one LIST of MirrorPort's one endpoint with no per-row call, parent list, query or parts, and a banner may
+// read the port's state. Every case in `OcuPilot.Test.MirrorRead`'s corpus gets its exact sentence, or none, here as the instance's
+// registry gives it there.
+// Mutation (Rule 19): let the mirror arm of `readProblem` admit any endpoint -> the endpoint case goes red; drop `SOURCE_MIRROR` from the
+// banner rule of `bannerProblem` -> the Mirror monitor's banner is refused and the emission above goes red.
+test('Story 21.12: the mirror source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'MirrorRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const monitor = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.MirrorMonitor');
+  assert.ok(monitor !== undefined, 'the Mirror monitor is declared');
+  assert.equal(bannerProblem(monitor.declaration), null, 'its banner reads the mirror port');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(monitor.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 5, `the corpus refuses its shapes (${refusals})`);
 });
 
 // Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, which both engines admit as one

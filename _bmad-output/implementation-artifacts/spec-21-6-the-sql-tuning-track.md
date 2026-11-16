@@ -1,0 +1,293 @@
+---
+title: 'Story 21.6: The SQL tuning track'
+type: 'feature'
+created: '2026-11-15'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
+warnings: ['multiple-goals', 'oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** System Explorer reads a table's SQL statements and cached queries but cannot show the namespace's statement index or act on it. Freezing or unfreezing a plan, clearing a statement's statistics or plan error, cleaning stale statements and purging cached queries all still need the classic SQL page, and the `slowquery` workflow cannot read the index.
+
+**Approach:** Add a namespace-wide SQL statements list over the statement index, extending `AtelierPort`'s per-table statement query. Its rows carry each statement's details, and its actions are freeze, unfreeze, clear statistics, clear plan error and clean stale. Add purges for one cached query, a table's cached queries and the namespace's, which reuse Story 21.4's `ConfigPort.PurgeCachedQueries` with a qualifiers argument. Every write goes through `SqlPort`, as AD-51's Story 21.6 case and AD-10's tuning-track arm say. `slowquery` gains the statement index read and stays read-only.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- Every write is one operation reached by two callers, the screen action and the agent's confirmed proposal (AD-53). It runs in the confirm request, the vendor call is made with the hash or target alone, and nothing is ever concatenated into SQL (AD-21).
+- The four statement writes on a statement any of whose relations lies in an `OcuPilot` schema are refused `PROHIBITED.OCUPILOTSQL` from either caller, before any write. The relations are read at the write, and a failed read refuses. A purge is never refused by this arm.
+- Every test that freezes, clears or purges creates its own probe table and statements, restores what it changed through the same path that changed it, and purges its probe table's cached queries before it drops the table. It never asserts that a store is empty.
+
+**Never:**
+
+- No index rebuild, tune table, runtime statistics, index analyzer, alternate plans or troubleshooting report. Those are Stories 21.25 to 21.29.
+- No export or import of frozen plans, no check-frozen action, and no statement plan text in a row.
+- No write tool in `slowquery`.
+- No new AD text. No test runs on `ocupilot` or a slot instance.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| List | The namespace's statement index, a probe statement among it | The person's list and `explorer.sqlstatements.read` answer the same capped rows. Each row carries its hash, text (credentials masked), tables, plan state, new plan, plan error, timestamp, version, executions, times, row count and locations | Truncation is reported (AD-36) |
+| Freeze | An unfrozen probe statement | The plan state reads `Frozen/Explicit` after confirm. Read-back `nothingSent` | Already frozen: precondition refusal before any write |
+| Unfreeze | A frozen probe statement | Reads `Unfrozen` after confirm | Not frozen: precondition refusal |
+| Clear statistics | A probe statement with executions | Its executions read blank after confirm. Its plan state is unchanged | none |
+| Clear plan error | A probe statement with a plan error the test set | Its plan error reads blank after confirm | No plan error: precondition refusal |
+| Clean stale | The namespace's index holding the test's own stale statement | That statement is gone after confirm, and a statement that still has a location stays | Nothing stale: precondition refusal |
+| Purge one query | A probe cached query on the Cached queries tab | That class is gone after confirm, and the table's other cached query stays | Absent class: 404 `PORT.NOTFOUND` |
+| Purge a table's | Two probe cached queries on a probe table | Both are gone. Another table's cached query stays | Unknown table: 404, as the tab's own read |
+| Purge the namespace's | A probe cached query in the namespace | It is gone after confirm (armed) | none |
+| Own statement | A statement over `OcuPilot_Kernel_State` | Freeze, unfreeze, clear statistics and clear plan error are refused `PROHIBITED.OCUPILOTSQL` from both callers, and the statement is unchanged | A failed relations read refuses |
+| Changed target | The statement was frozen after the proposal was minted | Confirm refuses `PROPOSAL.TARGETCHANGED`, and nothing is written | none |
+| Gate | A caller without `%Development:USE`, or, for a write, without WRITE on the namespace's routines database | 403 naming the pair, before any read or write | none |
+| Hostile id | A hash with a character outside base64, over 64 characters, or empty | 400 `PORT.VALIDATION`, before any statement | none |
+| Vendor refusal | The vendor answers an error status, for example a freeze over an external table | 409 `SQL.STATEMENT.VENDOR`, the vendor's message in `detail` only, never logged | none |
+| Workflow | A `slowquery` turn | The workflow names `explorer.sqlstatements.read` among its reads and names no write | none |
+
+</intent-contract>
+
+## Code Map
+
+- **Classic sources (read-only):**
+  - `irislib/%CSP/UI/Portal/Dialog/SQLStatementDetails.cls`: freeze :354, unfreeze :397, clear statistics :444, clear plan error :624, all `%Development`.
+  - `irislib/%CSP/UI/Portal/SQL/Home.cls`: statement index :1059-1071 (`%SQL.Manager.Catalog:StatementIndexAll`), clean stale :1115-1119, purge :3740-3761.
+  - `irislib/%SYSTEM/SQL/Statement.cls` and `irislib/%SYSTEM/SQL.cls:1870`.
+- `src/OcuPilot/Port/AtelierPort.cls` -- the read to extend:
+  - `CATALOGSTATEMENTSQUERY` :218 and `CATALOGSTATEMENTSCOLUMNS` :261 (with the `sqltext` kind);
+  - endpoints :107-150; `CATALOGTABS` :154;
+  - `CatalogRows` :1294 (the `tKind = ""` branch binds the system flag; the new endpoint binds none), `CatalogQuery` :1390, `CatalogRelation` :1445 and `CatalogResolve`;
+  - `Pairs` :755, `NamespacePairs` :767, `WritePairs` :788.
+- `src/OcuPilot/Port/SqlPort.cls` -- the port to extend: header :1-41 ("one endpoint", to update), `COMPOSEDTYPES` :54, `Invoke` :658 (served test :665, `sql` id check :670), `SnippetForm` :736, `Snippet` :748, `Gate` :779, `Refuse`/`Fail` :1211/:1222, `Literal` :1232.
+- `src/OcuPilot/Port/ConfigPort.cls` -- `PurgeAfterSet` :912 and `PurgeSteps` :937 (Story 21.4's callers, unchanged), `PurgeCachedQueries` :946. The seam is `Test/ConfigGateSeam.cls:218`.
+- **Tool siblings:**
+  - `Screen/Tool/Write.cls` (`DESTRUCTIVE` :52, `READTYPE` :57, `WRITETYPE` :62, `SENDSBODY` :67, `STATEFIELD` :75, `FINGERPRINTSUBJECT` :97, `PRECONDITIONFIELD` :105, `PORTCLASS` :114, `CLASSICPAGES` :124, `SCREENACTIONS` :167, `READANSWERS` :201);
+  - `TaskResume.cls` (precondition and `StateDiff` :173);
+  - `DatabaseAction.cls` (abstract action family);
+  - `DdlMappingDelete.cls` (`CONSEQUENCECODE` :37, `Consequence` :86).
+- **Kernel:**
+  - `Kernel/Proposal/Operation.cls` (`TargetRefOf` :67 -- the target type is the descriptor's primary type; `ReadTarget` :352, `ApplyAt` :473);
+  - `Mint.cls` (`StateDiff` :247, no-body :264-267);
+  - `Prohibited.cls` (`COVEREDTYPES` :282, `OCUPILOTSQL` :861/:866, `Prohibits` :1515, branch list :1526, target read :1631, `SqlStatement` :2818, `IsOcuPilotCode` :2957, `ReviewedFewOnly` :4518, `Target` :5638);
+  - `Kernel/EntityType.cls` `TYPES` :138, `Kernel/EntityRef.cls` `IDRULES` :59;
+  - `Kernel/Governance/Baseline.cls` explorer keys :204-219;
+  - `Kernel/Agent/Workflow.cls` `slowquery` :261-267.
+- **Screen:**
+  - `Screen/Read.cls:574` already dispatches any `atelier` endpoint, so it needs no change;
+  - `Screen/Descriptor/ExplorerSqlCachedQueries.cls`, `ExplorerDocDbList.cls` (a `list` with row actions), `InteropItemQueueTab.cls` (a tab with a row action);
+  - `Api/Router.cls:147-150`, the generic screen action route, so no route row is added.
+- **Client:**
+  - `ui/src/app/areas/os-management/backup-task-list.page.ts` (page-registered actions with `startFor`);
+  - `shell/screen-action-handler.ts` (`SCREEN_ACTION_DESCRIPTORS` :70, `UNDRAWN_ACTIONS` :462, `WARNING_CONSEQUENCES` :814, `startFor` :1332);
+  - `shell/screen-outlet.ts` (`DESCRIPTOR_PAGES` :165), `shell/detail-page.ts`, `shell/list-page.ts`;
+  - `core/screen-actions.ts` (:104, :120, :170), `core/proposal-view.ts` (:152-413, :474).
+- **Fixtures and tests to follow:**
+  - `Test/ExplorerSqlProbe.cls` (`Make`/`Remove`, the browser spec's fixture model);
+  - `Test/SqlSettingWrite.cls` (an armed purge test that counts only its own class);
+  - `ui/browser/system-explorer-sql.browser-spec.mjs`.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+**Task 0** runs on `ocupilot-ci` before any code (Design Notes). A measured need for a pair beyond `AtelierPort.WritePairs`, or a vendor call that cannot be made without device output, is a HALT `intent gap` naming it.
+
+**Batch 1, server.** Commit when its `(loop)` commands are green.
+
+- `src/OcuPilot/Port/AtelierPort.cls` -- add `Catalog.Statements`: no criterion, `CATALOGSTATEMENTINDEXQUERY` bound `NULL, NULL` and capped by `maxRows`, and its column map `Hash`, `Statement:sqltext`, `Tables`, `PlanState`, `NewPlan:flag`, `PlanError`, `PlanSaved` (`Timestamp`), `PlanVersion` (`Version`), then the tab's statistics columns `Executions` to `Commands` as `number`, then `FirstSeen` and `Location`. Its `CatalogRows` branch binds no table. Tables are `LIST(DISTINCT r.Relation)`. The text is cut as the tab cuts it. It reads the information schema only, and selects no user, client or call stack -- the namespace-wide list the slow-query workflow and the new screen read.
+- `src/OcuPilot/Port/ConfigPort.cls` and `src/OcuPilot/Test/ConfigGateSeam.cls` -- `PurgeCachedQueries(pQualifiers As %DynamicObject = "")`: `""` means `{"allNamespace":1}`. The seam records the qualifiers' JSON in `^||OcuPilotConfigPurgeQualifiers` -- one purge, two callers (Rule 2/31).
+- `src/OcuPilot/Port/SqlPort.cls` -- add endpoints `Statements` and `CachedQueries`, served in `Invoke` and listed in `COMPOSEDTYPES` (AD-51's Story 21.6 case):
+  - `Statements` `STATEMENT` reads a hash's row (`{Hash, PlanState, NewPlan, PlanError, Executions, AverageTime, Tables}`, 404 when absent) or, for the id `*`, `{Statements, Stale}`. The new endpoints take their id from the `id` key. `IDVALUE`'s `sql` check stays on `Sql` and `SqlData`.
+  - The writes are `FREEZE`, `UNFREEZE`, `CLEARSTATISTICS`, `CLEARERROR` (`UpdateSQLIndex^%SYS.SQLSRV(hash,"")`) and `CLEAN`.
+  - `CachedQueries` `PURGE` reads `{Target, Kind, CachedQueries}` for three ids:
+    - `*`, the namespace's;
+    - a table, resolved through the caller's own information schema as `BrowsePlan` resolves one, 404 otherwise;
+    - one class `%sqlcq.<the target namespace>.cls<n>`, 404 when absent, and 400 for another namespace's.
+    The count is the distinct `%sqlcq.` locations in `STATEMENT_LOCATIONS` for the target, the table's joined through `STATEMENT_RELATIONS` on `CatalogRelation`. Task 0 (c) confirms that a purge leaves it 0.
+  - `PURGEQUERIES` builds the qualifiers from the target alone (`{}`, `{"table":[..]}`, `{"class":[..]}`) and calls `ConfigPort.PurgeCachedQueries` in the namespace.
+  - Reads pass `Gate`; writes also pass `AtelierPort.WritePairs`. The hash shape is `^[A-Za-z0-9+/=]{1,64}$`, else 400 `PORT.VALIDATION`. The namespace is switched by save and restore, with the restore first in each `Catch`.
+  - The five statement calls go through one overridable seam, `StatementCall(pType, pHash)`, which a fixture subclass overrides to feed an error status. Production overrides none. A vendor error status is 409 `SQL.STATEMENT.VENDOR`, its message in `detail` and never logged.
+  - `SnippetForm` and `Snippet` render each write as its one vendor call (AD-59).
+- `src/OcuPilot/Api/AtelierError.cls` -- `SQL.STATEMENT.VENDOR`, its ruled sentence, the four precondition sentences and the consequence codes `SQL.STATEMENT.FREEZE`, `.UNFREEZE`, `.CLEARSTATISTICS`, `.CLEARERROR`, `.CLEAN` and `SQL.CACHEDQUERY.PURGE` (add-only).
+- `src/OcuPilot/Screen/Tool/SqlStatementAction.cls` (new, abstract) -- `PORTCLASS` `SqlPort`, `READTYPE` `STATEMENT`, `SENDSBODY` 0, `FINGERPRINTSUBJECT` `PlanState,NewPlan,PlanError`, `CLASSICPAGES` `%CSP.UI.Portal.SQL.Home`, `WRITERESOURCE` `%Development`. `StateDiff` gives one state row from the fresh read and refuses an unmet precondition with its sentence.
+- Its subclasses (new): `ExplorerSqlStatementFreeze` (`explorer.sqlstatements.freeze`, precondition `PlanState` unfrozen), `ExplorerSqlStatementUnfreeze` (`explorer.sqlstatements.unfreeze`, frozen), `ExplorerSqlStatementClearStatistics` (`explorer.sqlstatements.clearstatistics`, state row `Executions`), `ExplorerSqlStatementClearError` (`explorer.sqlstatements.clearerror`, `PlanError` set), and `ExplorerSqlStatementClean` (`explorer.sqlstatements.clean`, id `*` only, subject and precondition `Stale`). Each declares `DESCRIPTORCLASS` `ExplorerSqlStatementList` and `CONSEQUENCECODE`. Each id other than a hash, or other than `*` for clean, is refused at `ArgumentProblem`.
+- `src/OcuPilot/Screen/Tool/SqlCachedQueryPurge.cls` (new, abstract) -- `READTYPE` `PURGE`, `WRITETYPE` `PURGEQUERIES`, subject `CachedQueries`, and the state row `CachedQueries` -> `0`. Its subclasses: `ExplorerSqlCachedQueryPurge` (`explorer.sqlcachedqueries.purge`, id one class), `ExplorerSqlCachedQueryPurgeTable` (`explorer.sqlcachedqueries.purgetable`, id `Schema.Table`) and `ExplorerSqlCachedQueryPurgeNamespace` (`explorer.sqlcachedqueries.purgenamespace`, id `*`). Each declares `DESCRIPTORCLASS` `ExplorerSqlCachedQueries`, and an id whose shape is not the tool's is refused at `ArgumentProblem`.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (add-only) -- `statement-index-entry` and `cached-query` join `COVEREDTYPES`, the `TYPE*` parameters and the branch list at `:1526`. The four statement tools on a `statement-index-entry` read `STATEMENT` through the generic target read (`:1631`, the tool's port), then refuse `OCUPILOTSQL` when any `Tables` entry's schema `IsOcuPilotCode`; a failed or absent read refuses. Clean and the purges have no predicate. Add the `PermittedChangeFields` entries the `ReviewedFewOnly` fall-through needs (`:4518`, as the lock arm does).
+- `src/OcuPilot/Kernel/EntityType.cls` -- the two types and their doc lines. Neither has an `IDRULES` row.
+- `src/OcuPilot/Kernel/Governance/Baseline.cls` (add-only) -- the eight keys, valued as Design Notes says.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSqlStatementList.cls` (new, modeled on `ExplorerDocDbList`) -- route `system-explorer/sql-statements`, the position Design Notes names, archetype `list`, entity `statement-index-entry`, scope `namespace`, id `Hash`, source `{port: "atelier", endpoint: "Catalog.Statements", type: "LIST"}`, `toolIdentifier` `explorer.sqlstatements`, `classicPage` `%CSP.UI.Portal.SQL.Home`, `%Development:USE`, the note `explorerSqlStatementsNote`, and row actions `freeze`, `unfreeze`, `clear-statistics`, `clear-error` and `clean`. No refresh.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSqlCachedQueries.cls` -- `entityType` `cached-query`, and row actions `purge`, `purge-table` and `purge-namespace`. A purge row's id is its `CachedQuery`, keyed as `InteropItemQueueTab` keys its abort rows.
+- `src/OcuPilot/Kernel/Agent/Workflow.cls` -- `slowquery` gains, after its first step, the read step whose text Design Notes escalates, reading `explorer.sqlstatements.read`.
+- `src/OcuPilot/Test/SqlTuningProbe.cls` (new fixture) -- `Make(ns)` and `Remove(ns)`. It makes the probe table `OcuProbe216.T<n>`, its second table, two cached queries on the first and one on the second, a stale statement (a prepared query whose cached query it purged, Task 0 (b)) and a plan error (Task 0 (d)). The browser spec refuses the live container, as it does for `ExplorerSqlProbe`. `Remove` unfreezes and clears the plan error through the same vendor calls, purges both tables' cached queries, then drops them.
+- Tests (new):
+  - `src/OcuPilot/Test/SqlStatementRead.cls` (live-safe) -- the list against a direct bound `SELECT`, the agent read equal to the screen read, credential masking, the `STATEMENT` and `PURGE` shapes, not found, every hostile id, and the gates.
+  - `src/OcuPilot/Test/SqlStatementWrite.cls` (live-safe) -- the four statement writes on both callers, preconditions, target changed, the vendor refusal (seam), and the own-statement refusal on both callers before any write.
+  - `src/OcuPilot/Test/SqlCachedQueryPurge.cls` (live-safe) -- one query and a table's, on both callers, others surviving, each id shape refused on the wrong tool.
+  - `src/OcuPilot/Test/SqlTuningWrite.cls` (armed) -- the namespace purge and clean on both callers, each asserting on its own probe objects.
+  Each class calls `SqlTuningProbe.Remove` in `OnAfterOneTest`.
+- `scripts/ci-throwaway.sh` -- a new `# classes: SqlTuningWrite` line under `OCUPILOT_ALLOW_CONFIG_SETTINGS` (add-only).
+- Every shared-surface test under Verification is updated to the new shape.
+
+**Batch 2, client.** Commit when its `(loop)` commands are green.
+
+- `ui/src/app/areas/system-explorer/sql-statement-list.page.ts` and `sql-cached-queries.page.ts`, each with a spec (new) -- `BackupTaskListPage`'s shape. The first wraps `ListPage` and registers Clean stale on `*`. The second wraps `DetailPage` and registers purge-table on the route's table and purge-namespace on `*`. Both use `handler.startFor`. `shell/screen-outlet.ts` gets two `DESCRIPTOR_PAGES` rows.
+- `shell/screen-action-handler.ts` (add-only) -- both descriptors join `SCREEN_ACTION_DESCRIPTORS`, the three page actions join `UNDRAWN_ACTIONS`, and each action's warning goes in `WARNING_CONSEQUENCES`. `core/screen-actions.ts` gets the labels. `core/proposal-view.ts` gets the consequence codes. `core/strings.ts` gets the ruled strings. `core/screens.generated.ts` and `Screen/Titles.cls` are regenerated (`node tools/screen-mirror.mjs`).
+- `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` -- the ruled strings into Fixed strings (add-only).
+- `ui/browser/system-explorer-sql-statements.browser-spec.mjs` (new) -- `SqlTuningProbe` before and after. Each step waits for the answered signal. The list shows the probe statement; Freeze asks and confirms, and the row reads `Frozen/Explicit`; Unfreeze restores it through the same action; Clear plan error removes the fixture's error; on the probe table's Cached queries tab, Purge removes one row and the other stays. An own statement's Freeze shows the refusal sentence and changes nothing. The `after` hook purges the probe tables' cached queries before dropping them (the Story 21.24 lesson).
+
+**Acceptance Criteria:**
+
+- AC1. Given a namespace holding the probe statement, when the person opens SQL statements and the agent calls `explorer.sqlstatements.read`, then both answer the same capped rows. The probe's row carries its hash, masked text, tables, plan state, new plan, plan error, plan time, version and statistics.
+- AC2. Given the probe statement, when the person or the agent freezes it and then unfreezes it, then each is confirmed before it runs, the row reads `Frozen/Explicit` and then `Unfrozen`, and a second freeze is refused before any write.
+- AC3. Given the probe's statistics, its plan error and a stale probe statement, when clear statistics, clear plan error and clean are confirmed, then the statistics and the error read blank, the stale statement is gone, and a statement with a location stays.
+- AC4. Given probe cached queries on two tables, when one query, one table's or the namespace's queries are purged and confirmed, then exactly the target's queries are gone, and the screen re-reads on the change event.
+- AC5. Given a statement over `OcuPilot_Kernel_State`, when either caller freezes, unfreezes, clears its statistics or clears its plan error, then it is refused `PROHIBITED.OCUPILOTSQL` with its published sentence before any write, and a purge of that table's queries is not refused.
+- AC6. Given the `slowquery` workflow, when a turn follows it, then its steps name `explorer.sqlstatements.read` and no write tool, and it is still offered on the SQL query screen alone.
+- AC7. Given the throwaway, when the browser spec runs forward and in reverse with any other spec file, then it passes, and it leaves no frozen plan, plan error or probe cached query behind.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs:** AD-51 (its Story 21.6 case: `STATEMENT` and `PURGE` types, the hash or target alone), AD-10 (the tuning-track arm, `PROHIBITED.OCUPILOTSQL`), AD-53, AD-6 and AD-34 (one operation, fingerprint, per-target lock), AD-58 (read-back `nothingSent`), AD-14 (change event), AD-15, AD-21 (bound SQL, no caller path), AD-16 (namespace save and restore), AD-29 and AD-61 (gates), AD-36 (one capped read for screen and tool), AD-5 and AD-44 (descriptor, `%CSP.UI.Portal.SQL.Home`), AD-13 (a hash holds `/`, `+` and `=`), AD-22 (keys), AD-39 (vendor message in the answer only), AD-59 (copy-out script), AD-66 (`slowquery` reads only).
+
+**Runner ruling at the plan halt (2026-11-16, unattended):** split as proposed (decide; 5 of 6 children: 21.25 to 21.29 in `epics.md`). This story keeps the statement index and the cached-query purge. Records (c1) and (c2) need an owner answer and are asked of the orchestrator; the re-plan for the narrowed story waits for it. EX-45 and EX-43 are ledgered for the epic-close sheet.
+
+**Owner answer U-76 (2026-11-16, "A: allow both (Recommended)"):** records (c1) and (c2) are written into the spine as proposed. The re-plan for the narrowed story builds the statement actions and the purges.
+
+**Leaf inventory:** the ten leaves probed on 2026-11-15 are in this spec at commit `26d6bdc39`. Stories 21.25 to 21.29 own the rest.
+
+**Measured read-only on `ocupilot` (`ocupilot-slot-a`, `HSCUSTOM`, 2026-11-15):**
+
+- 988 statements, none frozen and none with a plan error. 592 have no `STATEMENT_LOCATIONS` row. The longest hash is 32 characters.
+- Relations are stored upper case (`OCUPILOT_KERNEL_STATE.AGENT`), as `AtelierPort.CatalogRelation` builds them.
+- There are 411 `%sqlcq.HSCUSTOM.*` classes and 377 distinct cached-query locations. `%SQL.Manager.Catalog:CachedQueryInfo`'s `Routine` is the class name (`%sqlcq.HSCUSTOM.cls1`), which the Cached queries tab shows as `CachedQuery`.
+- `INFORMATION_SCHEMA.STATEMENTS` answers `Hash`, `Frozen`, `FrozenDifferent`, `Error`, `Timestamp`, `Version`, the `Stat*` columns and `Statement`, beside the user, client and call-stack columns, which are never selected.
+- The vendor calls are in `irislib/%SYSTEM/SQL/Statement.cls`. `FreezeStatement(hash)` :161, `UnfreezeStatement(hash)` :214 and `ClearStatement(hash)` :63 (statistics) each check `%Development:USE` themselves. `Clean()` :9 checks nothing and calls `CleanSQLIndex^%SYS.SQLSRV(0,1)`. The classic dialog clears a plan error with `UpdateSQLIndex^%SYS.SQLSRV(hash,"")` (`SQLStatementDetails.cls:624-634`). `$SYSTEM.SQL.PurgeQueries` takes `{}` (current namespace), `{"table":[..]}` or `{"class":[..]}` (`SQL.cls:1870-1895`).
+
+**Decided in-stage:**
+
+- **Placement.** The SQL statements list takes the next free System Explorer side-bar position on feature at implement time: 16 if Story 21.5's Globals list (15) has merged, else 15.
+  - Its row actions are freeze, unfreeze, clear statistics and clear plan error, which the shell's handler draws.
+  - Clean stale is its page's own action on target `*`, undrawn by the handler and registered by the page, as `BackupTaskListPage` registers Freeze writes on `SYSTEM`.
+  - The Cached queries tab gains Purge as a row action. Its page's own actions are purge-table (target: the tab's table) and purge-namespace (target `*`), since the classic SQL page offers the namespace purge from any of its pages.
+  - The SQL tables list and the per-table Statements tab are unchanged.
+- **Entity types (two, new).** A tool's target type is its descriptor's primary type (`Operation.TargetRefOf`), so each screen carries the type its tools write.
+  - `statement-index-entry` is one statement in a namespace's index, keyed by its hash and kept exactly, with no `IDRULES` row. `sql-statement` is already a running statement. The id `*` names the whole index, which is clean's target.
+  - `cached-query` has three exact id shapes: `*` (the namespace's), `Schema.Table` (a table's) and `%sqlcq.<NS>.cls<n>` (one query). The purge port reads the shape, so the qualifiers come from the target alone.
+  - The Cached queries tab's `entityType` moves from `class` to `cached-query`. Otherwise a purge would be judged by the class arm, which runs `Code()` on the id and would refuse a purge of OcuPilot's tables, which AD-10 permits.
+- **No route carries a hash.** The list has no detail route, a screen action's id travels in the JSON body, and a proposal's in its arguments. AD-13's codec is not exercised by `+` or `=` (whether its server encode escapes them is unverified).
+- **Clean's fresh read.** AD-51's case lists `Clean` among the hash-alone calls, but `Clean` takes nothing. This plan reads its target `*` as the namespace's index. Its `STATEMENT` read answers `{Statements, Stale}`, with `Stale` (the statements with no location, per Task 0 (b)) as its subject and precondition. Flagged below for the gate.
+- **The refusal sentence is `OCUPILOTSQLREASON`, reused.** One code carries one sentence (`Prohibited.ReasonFor`). No new refusal string.
+- **Keys.** `true` for freeze, unfreeze, clear plan error and the three purges. `false` for clear statistics and clean, because statistics and stale entries do not come back (the key governs the agent only, AD-22). None is destructive (no typed name): a purge costs a re-prepare, and the others change no data.
+- **Statement text** is a `sqltext` field, credential-masked like the tab's. The `Plan` and `JSONPlan` columns are not read. The console's Plan answers a statement the person runs, and Story 21.28 owns plan comparison.
+- **The purge seam.** `ConfigPort.PurgeCachedQueries(pQualifiers As %DynamicObject = "")`, where `""` means `{"allNamespace":1}`. Story 21.4's caller passes nothing and keeps its behavior. `ConfigGateSeam`'s override takes the same argument and records it. `SqlPort` calls it inside the target namespace, after its own gate.
+- **The write pairs** are `AtelierPort.WritePairs(ns)`, `%Development:USE` with READ on the code databases and WRITE on the routines database, which a compile already needs. Task 0 (a) confirms them. A need beyond them is a HALT.
+- **The armed class** `SqlTuningWrite` (namespace purge and clean, which act on a whole namespace) joins `OCUPILOT_ALLOW_CONFIG_SETTINGS` with a new `# classes:` line, add-only, beside `SqlSettingWrite`, which already purges every namespace.
+
+**Strings, escalated for the spec gate's ruling** (none is in `EXPERIENCE.md` or a spec yet):
+
+- Reused, with no new string: the list title "SQL statements", the columns "Statement", "Plan state", "New plan", "Executions" and the times, the note `explorerSqlStatementsNote`, and the tab title "Cached queries".
+- New columns: "Statement hash" · "Tables" · "Plan error" · "Plan saved" · "Plan version".
+- Empty state: "No SQL statements are recorded in this namespace."
+- Actions: "Freeze plan" · "Unfreeze plan" · "Clear statistics" · "Clear plan error" · "Clean stale statements" · "Purge" (one query) · "Purge this table's cached queries" · "Purge all cached queries in this namespace".
+- Consequences (dialog and card):
+  - Freeze: "This statement keeps its current plan until it is unfrozen, even when its indices or table statistics change."
+  - Unfreeze: "This statement takes the plan the optimizer chooses the next time it is prepared."
+  - Clear statistics: "This statement's run statistics are removed, and counting starts again at its next run."
+  - Clear plan error: "The plan error is removed from the statement index. The plan itself is unchanged."
+  - Clean: "Statements that no class or routine in this namespace still holds are removed from its statement index."
+  - Purge: "The purged queries are prepared again the next time each one runs."
+- Precondition refusals: "This statement's plan is already frozen." · "This statement's plan is not frozen." · "This statement has no plan error." · "This namespace's statement index holds no stale statements."
+- Vendor refusal `SQL.STATEMENT.VENDOR`: "The instance did not apply this change to the statement."
+- Three suggested prompts for the list: "Which statements take the longest on average?" · "Is any plan frozen, and does a newer plan exist?" · "Which statements have a plan error?". Command aliases: "statement index" · "frozen plans".
+- The `slowquery` step's text: "Read the namespace's statement index for statements with a high average time, a frozen plan that differs from the current one, or a plan error."
+
+**Flagged for the gate (no AD text changed):** the clean-target reading above. If the gate rules otherwise, clean leaves this story, and the rest stands.
+
+**Extend, don't copy (Rule 2/31):**
+
+- The list query extends `AtelierPort.CATALOGSTATEMENTSQUERY`'s columns. The new `CATALOGSTATEMENTINDEXQUERY` binds `(? IS NULL OR s.Hash = ?)`, and `SqlPort`'s `STATEMENT` read uses that same text with the hash bound.
+- The tools extend a new abstract `SqlStatementAction`, modeled on `DatabaseAction` with `TaskResume`'s precondition and state row. `SqlCachedQueryPurge` follows it.
+- The arm follows `Prohibited.SqlStatement`'s relation test (`IsOcuPilotCode` on each relation's schema), reading `STATEMENT` through the tool's port as the target-reading arms do.
+- The purge reuses `ConfigPort.PurgeCachedQueries`. `CatalogRelation` builds the table's relation key.
+
+**Integration ACs:** `SqlPort`'s two new endpoints are consumed in this story by the eight tools through both callers (AC2 to AC5), and the list read by `slowquery` (AC6).
+
+- **Consumed-by:** 21.25 (index rebuild and tune table, on `SqlPort`); 21.26, 21.27 and 21.28 (each adds its own `slowquery` read).
+- **Consumes:** Story 19.6's `SqlPort`, Story 19.14's Cached queries tab, Story 21.4's purge seam and Story 20.12's workflow catalog.
+
+**Ledger inbox:** none (`LEDGER slice 21-6-the-sql-tuning-track` is empty). DW-2610 (a cached query class with no index row survives a purge) stays with burndown. The purge sentence above claims only the queries purged.
+
+**Contended paths (Epic 24, slot B), checked 2026-11-15** with `git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp` and the merge-base diff:
+
+- Real changes on `EXPERIENCE.md`, `scripts/ci-throwaway.sh`, `Kernel/Governance/Baseline.cls`, `Kernel/Proposal/Prohibited.cls`, `Screen/Read.cls`, `Test/ReadTool.cls`, `ToolEmit.cls`, `ToolRoundTrip.cls`, `core/proposal-view.ts`, `screen-actions.ts`, `screens.generated.ts`, `strings.ts`, `shell/screen-action-handler.ts` and `screen-outlet.ts`. This story's edits there are add-only rows.
+- `ConfigPort.cls`, `ConfigGateSeam.cls` and `EntityType.cls` show only a merge of feature, with no diff. `SqlPort.cls`, `AtelierPort.cls`, `Workflow.cls`, `WorkflowCatalog.cls`, `suggested-prompts.test.mjs` and the `ExplorerSql*` descriptors are untouched.
+- Epic 24's worktree also holds uncommitted count edits to `ReadTool`, `ToolEmit` and `ToolRoundTrip`, so expect a union at the merge.
+
+**Task 0, measured by the implement stage on `ocupilot-ci` before code** (each restored; record results here; until then each is an inference):
+
+- (a) As a principal holding only `AtelierPort.WritePairs`, freeze, unfreeze, clear statistics, clear plan error, clean and each purge succeed. The same principal without the routines database's WRITE is refused (`<PROTECT>` or a status). Record which.
+- (b) A probe statement whose cached query is purged has no location, and `Clean()` removes it. Whether `Clean()` removes any statement that still has a location. Its duration on `HSCUSTOM`. Whether `Clean()` or any of the calls writes to the current device (a write would reach the REST answer; if so, the port redirects output).
+- (c) `PurgeQueries({"table":["Schema.Table"]})` with the SQL name removes that table's cached queries only, and `{"class":["%sqlcq.<NS>.cls<n>"]}` removes that class only. Whether the table name must be the internal form.
+- (d) `UpdateSQLIndex^%SYS.SQLSRV(hash, "probe")` sets `Error`, and `UpdateSQLIndex^%SYS.SQLSRV(hash, "")` clears it. That is the plan-error fixture.
+- (e) Freeze then unfreeze leaves `Frozen` 0. After `ClearStatement` the `Stat*` columns read empty or 0. Record which, since the read-back row says "blank".
+
+## Verification
+
+**Shared surfaces, all `(loop)`:**
+
+- System Explorer's side bar and routes: `ExplorerDescriptor` (`:23`, `:44`, `:59-62`, `:161-171`, `:485`), `Navigation`, `ui/tools/navigation.test.mjs:379-398`, and `screen-mirror.test.mjs`'s route rows and catalog roster (`:3180-3200`).
+- The tool registry: `ReadTool` (`:93` count, `:94`, `:112`, `:370`), `ReadDescriptions` (`:39`, `:279`), `ToolEmit`, `ToolRoundTrip` (`REFUSEEMPTY` `:102`), `ToolWrite` (`:1326` count), `StageTwoTools` (`Elsewhere`), `DeveloperFloor` (`:42`, `:45`, `:52`), `SurfaceCoverage`, `DraftRegistry` (`SnippetForm` per write type), and `Prohibited`'s composed settable counts (`:438-458`).
+- Entity types: `Descriptor:1836` (count), `EntityRef`, and `Prohibited`'s covered-types literal.
+- Governance: `Governance:33`, `GovernanceBaseline:15`.
+- Gates: `PortGate:29`, `ClassicPageGate`, `SqlPort` (test, `:162-189`).
+- The catalog read: `AtelierPortCatalogTabs`, `AtelierPortCatalogTabsLive`, `SqlCredentialMask` (`:155`).
+- The purge seam: `ConfigGateSeam`, `SqlSettingRules`, `SqlSettingWrite`.
+- The workflow: `WorkflowCatalog` (`:117`), `screen-mirror.test.mjs:916`, `suggested-prompts.test.mjs`.
+- The tab's entity type: `system-explorer-sql.browser-spec.mjs`.
+- The armed roster: `ci.test.mjs`.
+
+The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each surface, and every test it changes joins `(loop)`.
+
+*Every test added or changed passes on a fresh environment, in either order.*
+
+**Commands.** Each runs in its own foreground call with `timeout: 600000`, against `ocupilot-ci` only, and never two test calls in one message. Nothing runs on `ocupilot` or a slot instance.
+
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.SqlStatementRead`, one class per call. Then `SqlStatementWrite`, `SqlCachedQueryPurge`, `SqlTuningWrite` (armed), `SqlSettingRules`, `SqlSettingWrite`, `Prohibited`, `PortGate`, `WorkflowCatalog`, `AtelierPortCatalogTabs`, `SqlCredentialMask`, and every shared-surface class above -- expected: green.
+- `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py` and `bash scripts/lint-docs.sh` -- expected: clean.
+- `(loop)` `cd ui && node --test tools/screen-mirror.test.mjs tools/navigation.test.mjs tools/suggested-prompts.test.mjs tools/self-protection.test.mjs tools/proposal-view.test.mjs tools/ci.test.mjs` -- expected: green.
+- `(loop)` `cd ui && npm run build`, then `npm run test:components`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/system-explorer-sql-statements.browser-spec.mjs browser/system-explorer-sql.browser-spec.mjs` -- expected: green.
+- `(once)` `cd ui && npm run test:tools` -- expected: green.
+- `(once)`, runner-owned: the full ObjectScript sweep, one class per call, then `smoke.sh --container ocupilot-ci` and Rule 30's fresh check. The full browser suite is left to CI.
+
+**Mutations (Rule 19).** One per AC. Each is applied, observed red and reverted. The tree is then identical by `git status --short` and `git diff --stat`, and the reverted source is reloaded.
+
+- AC1: `CATALOGSTATEMENTINDEXQUERY` drops `s.Error` -> `SqlStatementRead` red. The descriptor drops `Hash` from its fields -> `screen-mirror.test.mjs` red.
+- AC2: `FREEZE` calls `UnfreezeStatement` -> `SqlStatementWrite` red. The freeze precondition admits a frozen plan -> its refusal test red.
+- AC3: `CLEARSTATISTICS` is a no-op -> `SqlStatementWrite` red. `CLEAN` is a no-op -> `SqlTuningWrite` red.
+- AC4: the purge builds `{}` for a table target -> `SqlCachedQueryPurge` red on the other table's surviving query.
+- AC5: the arm skips the relations read -> `SqlStatementWrite`'s own-statement test red on both callers. A failed relations read answers permitted -> `Prohibited` red.
+- AC6: `slowquery` loses its statement index read -> `WorkflowCatalog` red.
+- AC7: the list's Freeze row action is removed from the descriptor -> `system-explorer-sql-statements.browser-spec.mjs` red, after rebuild and redeploy.
+
+**Runner ruling at the spec gate (2026-11-16):** validated. AD-51's Story 21.6 entry is corrected at its origin: `Clean` takes no argument and cleans the namespace's stale entries (the gate's reading of the escalation). The escalated strings and in-stage decisions are kept (veto U-83).
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
+
+Re-plan, cycle 2: the intent, matrix, Code Map, Tasks, ACs and Verification are rewritten for the narrowed story (U-76). Task 0's five write measurements wait for the implement stage on `ocupilot-ci`. Escalated for the gate: the strings, and the reading of clean's target as `*` (Design Notes).

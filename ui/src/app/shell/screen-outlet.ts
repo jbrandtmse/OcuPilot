@@ -75,6 +75,9 @@ const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor
 /** Stories 20.7 and 20.8: the one page the rule, BPL and DTL editor screens, the Schema viewer and the Configuration diagram share, each descriptor naming this loader. */
 const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/interop-editor.page').then((m) => m.InteropEditorPage);
 
+/** Stories 21.3 and 21.4: the one page the Startup, Memory, Compatibility, SQL, SQL Shell, TSQL and ISQL settings share, each descriptor naming this loader. */
+const CONFIG_SETTINGS_PAGE: PageLoader = () => import('../areas/os-management/config-settings.page').then((m) => m.ConfigSettingsPage);
+
 /** Story 20.9: a message's Contents tab, the detail page drawing its rows as one block of text. */
 const INTEROP_MESSAGE_CONTENTS_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-contents.page').then((m) => m.InteropMessageContentsPage);
 const INTEROP_MESSAGE_TRACE_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-trace.page').then((m) => m.InteropMessageTracePage);
@@ -159,6 +162,20 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 18.5: Journals with its two switches and the integrity check's line, and Journal file
   // details with the file's databases.
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
+  'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
+  'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.
+  'OcuPilot.Screen.Descriptor.StartupSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.MemorySettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.CompatibilitySettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.4: SQL, SQL Shell, TSQL and ISQL settings, on the same page.
+  'OcuPilot.Screen.Descriptor.SqlSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.SqlShellSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.TsqlSettingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.13: System and User DDL mappings, on the same page, which adds New mapping to the user list.
+  'OcuPilot.Screen.Descriptor.DdlSystemMappingList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.DdlUserMappingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),
@@ -205,6 +222,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': () => import('../areas/system-explorer/source-editor.page').then((m) => m.SourceEditorPage),
   // Story 19.4: Search, Compare and Macros, each a page of its own.
   'OcuPilot.Screen.Descriptor.ExplorerSearch': () => import('../areas/system-explorer/code-search.page').then((m) => m.CodeSearchPage),
+  'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerCompare': () => import('../areas/system-explorer/code-compare.page').then((m) => m.CodeComparePage),
   'OcuPilot.Screen.Descriptor.ExplorerMacro': () => import('../areas/system-explorer/macro-lookup.page').then((m) => m.MacroLookupPage),
   // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
@@ -220,6 +240,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': () => import('../areas/system-explorer/docdb-list.page').then((m) => m.DocDbListPage),
   // Story 18.34: the REST API explorer, the list with its create dialog.
   'OcuPilot.Screen.Descriptor.RestApiList': () => import('../areas/web-applications/rest-api-list.page').then((m) => m.RestApiListPage),
+  // Story 24.3: Productions, the list with its Start with the instance and Shutdown group dialogs.
+  'OcuPilot.Screen.Descriptor.InteropProductionList': () => import('../areas/interoperability/interop-production-list.page').then((m) => m.InteropProductionListPage),
   // Story 20.3: Production items, the list with its add dialog.
   'OcuPilot.Screen.Descriptor.InteropItemList': () => import('../areas/interoperability/interop-item-list.page').then((m) => m.InteropItemListPage),
   // Story 20.22: Item settings, the list with its Set value dialog.
@@ -248,6 +270,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropMessageTraceTab': INTEROP_MESSAGE_TRACE_PAGE,
   // Story 20.33: Analytics' MDX query, one statement run in the background and its cells drilled through.
   'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery': () => import('../areas/analytics/mdx-query.page').then((m) => m.MdxQueryPage),
+  // Story 24.2: Term lists with their New term list and Edit term list dialogs, and a term list's entries with their Add entry and Change entry dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': () => import('../areas/analytics/term-list-list.page').then((m) => m.TermListListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': () => import('../areas/analytics/term-list-entry-list.page').then((m) => m.TermListEntryListPage),
 };
 
 /**

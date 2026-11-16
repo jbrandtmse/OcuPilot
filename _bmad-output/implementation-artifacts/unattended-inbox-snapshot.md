@@ -1,4 +1,4 @@
-# Unattended inbox -- run 20261020T0940Z-20,23
+# Unattended inbox -- run 20261114T1656Z-21,22
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
@@ -9,6 +9,13 @@ question: Epic 23's decision sheet holds four suspected IRIS defects found while
 options: A: keep held, never report | B: draft reports for you to review and file
 recommendation: A: keep held (the product works around all four)
 blocks: nothing (no story waits on them)
+answer: (none yet -- answer with the script or --review)
+
+### U-39 | parked | Story 21.12 (Mirroring) | 2026-11-14T20:09:55Z
+question: Mirroring cannot be exercised on any instance this project runs: the Community license this image carries does not allow mirroring at all (measured: the instance reports no mirroring license, and the mirror manager refuses to start), and joining needs a second instance, which the memory rule forbids. Only the mirror monitor (showing 'not a member') and OcuPilot's refusal of the one prohibited removal can be built and tested. Separately, the architecture's prohibited-action rule (AD-10) says removing a mirror 'with its databases' deletes them; the vendor's own documentation says that option only takes the databases out of mirroring and keeps them, so the rule's wording needs your correction.
+options: A: 21.12 keeps the mirror monitor and the prohibited-removal refusal; the mirroring writes (create, edit, join, member and database actions) move to Epic 22's license-gated group, and AD-10's mirror wording is corrected to 'takes the databases out of mirroring' | B: build every mirroring write anyway, checked only through refusals and test fixtures | C: you provide a mirroring-licensed key and a second instance
+recommendation: A (nothing else can be verified; B ships untested writes on the most destructive surface)
+blocks: Story 21.12 only (the rest of Epic 21 continues)
 answer: (none yet -- answer with the script or --review)
 
 ## Stopped
@@ -64,6 +71,36 @@ recommendation: keep both
 blocks: 21.10 when it runs
 answer: (none yet -- answer with the script or --review)
 
+### U-37 | veto | Epic 21 (readiness) | 2026-11-14T17:48:02Z
+question: Epic 21 starts on the readiness check taken at the run's launch (16:57Z, result: concerns) rather than a second identical run, since no planning document changed in between. The concerns: Story 21.11's undo needs a recorded design for capturing state before a write; Story 21.10 carries 30 routed cleanup items and will likely be split; one cleanup item waits on your architecture update (business partners writable); two architecture questions (KMIP refusal, partial cube-update audit) are still open with you.
+options: keep: continue with these concerns planned around | hold Epic 21 until they are resolved
+recommendation: keep (each concern is planned around; the ones that need you stay with you)
+blocks: nothing (Epic 21 continues)
+answer: (none yet -- answer with the script or --review)
+
+### U-38 | veto | Story 21.2 (Backup) | 2026-11-14T19:49:32Z
+question: Ruled at Story 21.2's spec gate: (1) the story was split: 21.2 is now Backup, and the mirroring criteria moved word for word to a new Story 21.12 (Mirroring), planned right after it, because the whole is too large for one pass and mirroring cannot be exercised on a single test instance. (2) A write freeze OcuPilot issues must name its own limit, from 1 to 600 seconds, with no default; 600 seconds is the point at which the instance itself starts blocking updates. (3) The new on-screen wording proposed in the spec (screen titles Backup tasks, Backup history, Backup database list; actions Run, Freeze writes, Thaw writes, Add database, Remove; the freeze limit field and its help; the frozen banner 'Database writes are frozen. Thaw them when the external backup finishes.'; the empty-list and run notes) is kept as proposed.
+options: keep all three | reverse the split (one story) | another limit | other wording (one string each)
+recommendation: keep all three
+blocks: nothing (Story 21.2 continues)
+answer: (none yet -- answer with the script or --review)
+
+### U-41 | veto | DW-2558 | 2026-11-15T00:32:55Z
+question: Epic 22 decision sheet: PRD FR-80's bullet says a later stage's destructive action is absent from the governance baseline and so defaults to disabled; AD-22 as you amended it (2026-09-26, 2026-10-04) has each new write key join the baseline in its own story, enabled unless that story sets it disabled. Ruled: reword the FR-80 bullet to state AD-22's amended rule (planning text only; no code changes).
+options: keep (FR-80 matches AD-22) | reverse (restore the old FR-80 bullet and treat AD-22 as the thing to change, in an attended architecture Update)
+recommendation: keep
+blocks: nothing (Epic 22 merge proceeds)
+answer: (none yet -- answer with the script or --review)
+
+## Holds
+
+### U-40 | hold | Run 20261114T1656Z-21,22 | 2026-11-14T21:36:19Z
+question: Held 2026-11-14 ~21:40Z for the account switch (owner's trigger: 95% weekly usage). Feature a681ae4b (Story 22.1 merged). Epic 21 held at 0fdb14b7 with Story 21.1 pushed but unverified (its sweep stopped at 19/20 on your word; redone on resume); Epic 22 held at a66b0764, 22.2 next. Everything pushed, worktrees clean, throwaways down. Waiting for you: U-39 (21.12 Mirroring, recommend A) and the earlier items.
+options: resume with /epic-cycle 21,22 --unattended after the switch
+recommendation: resume when you are ready
+blocks: the whole run
+answer: (none yet -- answer with the script or --review)
+
 ## Run reports
 
 ### U-2 | report | Run 20261020T0940Z-20,23 | 2026-10-20T15:30:42Z
@@ -94,6 +131,13 @@ recommendation: Answer U-15 before the next resume
 blocks: Nothing
 answer: (none yet -- answer with the script or --review)
 
+### U-36 | report | Run 20261020T0940Z-20,23 | 2026-11-14T13:48:33Z
+question: Run complete (2026-11-14 ~13:50Z). Both epics in the range are done and merged into feature: Epic 20 (41 stories) and Epic 23 (14 stories). 1.0.15 candidate: feature 0b3112f6, CI run 43598581340 green; no upgrade check needed (no stored data, installer, start path, module.xml or compose change since 1.0.14); 10 new governance keys (sent to the Planner). Merged since the 11-13 resume: 20.25, 20.40, 20.41, 20.26, the 20.25 test fix, 23.10, 23.13, 23.14 and both epic closes. Survived one computer crash with nothing lost from git. Open for you: U-30, U-33, U-34 and vetoes U-20, U-29, U-31, U-32, U-35; one action item (the AD-62/AD-15/AD-22 update for business partners). Ledger: nothing left on Epics 20 or 23; 41 open entries routed to 21.7, 21.10 and 17.2; 49 held IRIS defect candidates. Next: Epics 21 and 22 with you present.
+options: read
+recommendation: read; answer the open items with /epic-cycle --review when convenient
+blocks: nothing
+answer: (none yet -- answer with the script or --review)
+
 ## Resolved
 - U-1 | stopped | Story 20.11: Story 20.11 (Analytics, Part A) needs a cube's Relationships tab to link each row to the related cube's Measures tab (I/O matrix, AC2). AD-5 allows a cross-screen row target on a list only; every tab is a detail screen, and a tab group's members share one archetype while only the detail page draws the tab strip, so no shape the current text allows delivers the link. The implementation relaxed the two row-target validators; the orchestrator ruled an AD-5 amendment out of this run (U7(c): AD-5 is cited by done specs and by Epic 23's in-flight 23.11 spec). The story is set aside with its code in _bmad-output/implementation-artifacts/set-aside/20-11-the-analytics-rider-1.patch (implement commit 11bcb1fa, unreviewed, no QA yet). -> A: amend AD-5 with the one sentence 'A tab of a tabbed group (a detail screen drawing a table) may declare one too: a cube's Relationships tab opens the related cube's Measures tab (Story 20.11).' The run picks up 20.11's set-aside patch, keeps the validator relaxation, and continues with QA and code review. (by owner via attended, 2026-10-20T18:22:28Z#8; quoting the owner: "A"); resolved by orchestrator, 2026-10-21T01:23:04Z -- epic 20: AD-5 amended (bf8bc8b7, on feature in 404294a8); 20.11 re-planned per U4 step 3, Task 0 re-applies the set-aside patches
 - U-3 | hold | Run 20261020T0940Z-20,23: Hold complete for the owner's account switch: both runners ended at stage boundaries, everything pushed, throwaways ocupilot-ci and ocupilot-b-ci left up (started by this run). -> (no answer); resolved by orchestrator, 2026-10-22T01:48:42Z -- the 2026-10-20 hold was resumed at 18:43Z (unattended_resumed)
@@ -119,4 +163,4 @@ answer: (none yet -- answer with the script or --review)
 - U-27 | parked | DW-2468 (AD-24, guided-workflow tools): Story 20.36 (Investigate) is done. Its plan also tried to fix DW-2468: a guided workflow's step tools are not in the turn's starting tool set, so the model reaches a step's tool through one tool-search call when that tool is not on the current screen. Code review found that the fix breaks AD-24 (a turn starts with the always-on tools and the screen context's tools only), so it was reverted and the story shipped without it. Fixing it needs AD-24 amended, which is yours (done specs cite AD-24). Proposed wording: '... and the screen context's tools, and in a guided-workflow turn the tools its steps name (AD-66)'. -> (B): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through the tool-search call. No amendment, no follow-up story; close DW-2468 as decided-keep. (by planner, 2026-11-13T07:49:55Z#86; quoting the owner: "B: keep it as is"); resolved by orchestrator, 2026-11-13T07:50:28Z -- owner chose B: AD-24 unchanged; DW-2468 closed by-design
 - U-28 | hold | Run 20261020T0940Z-20,23: Held 2026-11-13T09:59Z on the owner's word; feature 5135d0379; Epic 20 local head b8bf20539 (20.25 gates green on 8127b55f, push on resume); Epic 23 b3f01e196 with a hold patch for 23.10 batch 2; no throwaways up -> (no answer); resolved by orchestrator, 2026-11-14T00:21:51Z -- resumed by the owner 2026-11-13T13:22Z
 
-<!-- journal: 100 lines -->
+<!-- journal: 113 lines -->

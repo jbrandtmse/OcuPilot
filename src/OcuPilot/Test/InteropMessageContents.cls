@@ -303,6 +303,33 @@ Method TestATextAtTheCapIsWholeAndOneCharacterOverIsCut()
     Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tOver.%Id())
 }
 
+/// <p>The contents read of the stream <var>pStreamId</var>'s header as <code>&lt;route's truncated&gt;|&lt;read tool's truncated&gt;</code>, each 1 or 0,
+/// or <code>unread</code>: the screen's read route and the tool <code>interop.messagecontents.read</code> answer one message.</p>
+Method TruncatedFor(pStreamId As %String) As %String
+{
+    Set tId = ..HeaderFor("%Stream.GlobalCharacter", pStreamId)
+    Set tCriteria("message") = tId
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.InteropMessageContentsTab", 5000, .tAnswer, .tRouteHttp, .tFault, .tCriteria)
+    If (tRouteHttp '= 200) || '$IsObject($Get(tAnswer)) Quit "unread"
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("interop.messagecontents.read", .tTool)
+    If '$IsObject($Get(tTool)) Quit "unread"
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {"message": (tId)}, 5000, .tResult, .tToolHttp, .tToolFault)
+    If (+$Get(tToolHttp) '= 200) || '$IsObject($Get(tResult)) Quit "unread"
+    Quit tAnswer.truncated _ "|" _ tResult.truncated
+}
+
+/// <p>AC8 (DW-2433): a text the overall cap cut answers <code>truncated</code> true through the read route and the read tool, though its rows
+/// fit the row cap, and a text of exactly the cap answers false.</p>
+Method TestATextTheCapCutAnswersTruncatedThroughTheRouteAndTheTool()
+{
+    Set tExact = ..CapStream(1000)
+    Set tOver = ..CapStream(1000, "x")
+    Do $$$AssertEquals(..TruncatedFor(tExact.%Id()), "0|0", "a text of exactly the cap is not truncated")
+    Do $$$AssertEquals(..TruncatedFor(tOver.%Id()), "1|1", "a text one character over the cap is truncated, by the route and by the tool")
+    Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tExact.%Id())
+    Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tOver.%Id())
+}
+
 /// <p>An alarm body is read as any message body and its view is not audited, as the classic Contents pane skips it.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.AuditViewHere</method> without its alarm test -- this goes red.</p>
 Method TestAnAlarmBodyIsReadAndItsViewIsNotAudited()

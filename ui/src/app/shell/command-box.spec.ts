@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../core/screen-actions';
-import { JOURNAL_SWITCH_DIRECTORY_ACTION_ID, JOURNAL_SWITCH_FILE_ACTION_ID } from '../core/screen-actions';
+import { BACKUP_FREEZE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID, JOURNAL_SWITCH_FILE_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -883,6 +883,24 @@ describe('the command box', () => {
     option(JOURNAL_SWITCH_DIRECTORY_ACTION_ID)?.click();
     fixture.detectChanges();
     expect(ran).toEqual([JOURNAL_SWITCH_DIRECTORY_ACTION_ID]);
+  });
+
+  it('Story 21.2: Backup tasks\u2019 Freeze writes is listed at screen level and runs on a click', () => {
+    // Mutation (Rule 19): drop the backup line from `actionCandidates` -> the option is not listed.
+    const backup = screen('os-management/backup-tasks', 'backupTasksLabel', 'os-management', {
+      descriptor: 'OcuPilot.Screen.Descriptor.BackupTaskList',
+      rowActions: [{ id: 'run', selfProtection: '' }],
+    });
+    navigation.current = backup;
+    let ran = 0;
+    actions.register(backup.descriptor, BACKUP_FREEZE_ACTION_ID, () => ran++);
+    chord();
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${BACKUP_FREEZE_ACTION_ID}`);
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.backupFreezeAction);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
   });
 
   it('Story 16.11: the Task Manager\u2019s three actions are listed at screen level, the raised one held by the read\u2019s requirement', () => {

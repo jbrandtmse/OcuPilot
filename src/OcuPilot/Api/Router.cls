@@ -272,7 +272,11 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/items/copy" Method="POST" Call="InteropItemCopy"/>
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
+  <Route Url="/analytics/term-lists/form" Method="GET" Call="AnalyticsTermListForm"/>
+  <Route Url="/analytics/term-lists" Method="POST" Call="AnalyticsTermListCreate"/>
+  <Route Url="/analytics/term-list-entries" Method="POST" Call="AnalyticsTermListEntryCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
+  <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
@@ -1939,11 +1943,39 @@ ClassMethod InteropLookupEntryCreate() As %Status
     Quit ##class(OcuPilot.Area.Interop.LookupEntrySave).HandleCreate()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/term-lists/form</code> (Story 24.2): one term list's header for the Edit term list and Add
+/// entry dialogs.</p>
+ClassMethod AnalyticsTermListForm() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.TermListForm).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/term-lists</code> (Story 24.2): Term lists' New term list, resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AnalyticsTermListCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.TermListSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/term-list-entries</code> (Story 24.2): the Entries screen's Add entry, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AnalyticsTermListEntryCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.TermListEntrySave).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business
 /// partner, resolved through the one tool the agent's confirm uses (AD-55).</p>
 ClassMethod InteropPartnerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.PartnerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DdlMappingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DdlMappingSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

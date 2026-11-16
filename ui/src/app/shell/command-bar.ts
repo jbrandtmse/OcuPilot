@@ -24,6 +24,8 @@ import {
   TASK_MANAGER_SUSPEND_ACTION_ID,
   JOURNAL_SWITCH_FILE_ACTION_ID,
   JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
+  BACKUP_FREEZE_ACTION_ID,
+  BACKUP_THAW_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -376,6 +378,16 @@ interface SortOption {
         (click)="onJournalSwitch(journalSwitchDirectoryId)"
       >
         {{ journalSwitchDirectoryLabel }}
+      </button>
+    }
+    @if (hasBackupFreezeAction) {
+      <button type="button" class="ocu-button-text ocu-command-bar-action ocu-command-bar-backup-freeze" (click)="onBackupAction(backupFreezeId)">
+        {{ backupFreezeLabel }}
+      </button>
+    }
+    @if (hasBackupThawAction) {
+      <button type="button" class="ocu-button-text ocu-command-bar-action ocu-command-bar-backup-thaw" (click)="onBackupAction(backupThawId)">
+        {{ backupThawLabel }}
       </button>
     }
     @if (hasDownloadAction) {
@@ -879,6 +891,39 @@ export class CommandBar {
   protected readonly journalSwitchDirectoryLabel = actionLabel('', JOURNAL_SWITCH_DIRECTORY_ACTION_ID);
 
   protected onJournalSwitch(actionId: string): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, actionId);
+  }
+
+  /**
+   * Freeze writes and Thaw writes on Backup tasks (Story 21.2), drawn after the journal switches on exactly the screen that registered them.
+   * Screen-level: each acts on the instance's database writes, not a row, so neither is `aria-disabled` for want of a selection; Freeze writes
+   * opens the warning that asks for the suspend limit, and a thaw of writes that are not frozen is refused by the instance.
+   */
+  protected get hasBackupFreezeAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, BACKUP_FREEZE_ACTION_ID);
+  }
+
+  protected get hasBackupThawAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, BACKUP_THAW_ACTION_ID);
+  }
+
+  protected readonly backupFreezeId = BACKUP_FREEZE_ACTION_ID;
+
+  protected readonly backupThawId = BACKUP_THAW_ACTION_ID;
+
+  protected readonly backupFreezeLabel = actionLabel('', BACKUP_FREEZE_ACTION_ID);
+
+  protected readonly backupThawLabel = actionLabel('', BACKUP_THAW_ACTION_ID);
+
+  protected onBackupAction(actionId: string): void {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, actionId);

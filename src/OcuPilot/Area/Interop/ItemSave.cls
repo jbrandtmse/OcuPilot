@@ -69,6 +69,19 @@ ClassMethod ParentHeld(pNamespace As %String, pParent As %String) As %Boolean
     Quit $ClassMethod(..PortClass(), "ProductionHeld", pNamespace, pParent)
 }
 
+/// <p>The refusal the Save answers when <var>pNamespace</var> does not hold the parent <var>pParent</var>, or <code>$$$OK</code> when it
+/// does: 404 <code>PORT.NOTFOUND</code> after <method>ParentHeld</method> here. Overridable, so a subclass can answer its own code or pass
+/// a refusal of its parent read through.</p>
+ClassMethod ParentRefusal(pNamespace As %String, pParent As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..ParentHeld(pNamespace, pParent) Quit $$$OK
+    Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .pFault, .tDetail)
+    Set pHttpStatus = 404
+    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
+}
+
 /// <p>The rules over the member <var>pName</var> and its fields <var>pFields</var>, in <var>pViolations</var> (<code>pViolations(n) =
 /// $ListBuild(field, code)</code>, count in <code>pViolations</code>): the port's
 /// <method>OcuPilot.Port.InteropPort.AddViolations</method> here. Overridable.</p>
@@ -153,11 +166,9 @@ ClassMethod Create(pProduction As %String, pName As %String, pFields As %Dynamic
             If pName = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ..#NAMEEMPTYCODE)
             Quit
         }
-        If (..#PRODUCTIONMEMBER '= "") && '..ParentHeld(tNamespace, pProduction) {
-            Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .pFault, .tDetail)
-            Set pHttpStatus = 404
-            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
-            Quit
+        If ..#PRODUCTIONMEMBER '= "" {
+            Set tSC = ..ParentRefusal(tNamespace, pProduction, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
         }
         Set tSC = ..Violations(tNamespace, pProduction, pName, pFields, .pViolations)
         If $$$ISERR(tSC) || (pViolations > 0) Quit

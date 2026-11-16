@@ -350,8 +350,8 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 | 2 - the rest of the admin API (P2) | 59 | 20 / 31 / 8 | 3 | admin-v2 write payloads observed; async-result polling; SH-24 directory allow-list; the admin API's final form in IRIS 2027.1 |
 | 3 - System Explorer over the Atelier API (P2) | 36 | 17 / 15 / 4 | 0 | the `action/query` DML/DDL guard (EX-15) shipping with EX-14; Atelier v7 for the XML routes; ETag on `PUT /doc`; the iris-table-editor harvest; `%Service_DocDB` |
 | 4 - Interoperability over interop-editors v7, with an Analytics rider (P2) | 41 | 10 / 25 / 6 | 4 partial | SH-23 JWT/cookie hand-off to `/ui/interop`; SH-25 namespace gating; the `UpdateProduction {action}` vocabulary; a DeepSee-enabled namespace for the rider |
-| 5 - custom-REST parity from the MCP suite's handlers (P3) | 165 | 60 / 79 / 26 | 128 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container; DT-11 before DT-09/DT-10 |
-| 6 - the long tail, on demand (P4) | 56 | 11 / 29 / 16 | 32 | demand plus each group's license, edition, platform or deprecation gate |
+| 5 - custom-REST parity from the MCP suite's handlers (P3) | 164 | 60 / 78 / 26 | 128 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container |
+| 6 - the long tail, on demand (P4) | 57 | 11 / 30 / 16 | 32 | demand plus each group's license, edition, platform or deprecation gate |
 | **Stages 2-6** | **357** | **118 / 179 / 60** | **167** | - |
 
 The agent grows in step: Stage 2 confirmed single writes over the admin-v2 remainder plus wallet-backed keys, context-window management and proxy/custom-CA support; Stage 3 single writes over Atelier plus the agent picker and the free-form SQL tool behind EX-15's guard; Stage 4 guided multistep workflows and Investigate entry points; Stage 5 the 28 iris-session-agent tools plus undo by snapshot and revert; Stage 6 adds nothing to the agent. Token streaming is **not** here - it moved into the polish week by owner decision.
@@ -956,6 +956,8 @@ Every remaining classic portal leaf with a backing class but no route becomes re
 
 **Implementation notes:** The largest stage by far, and the one AD-23 exists for: harvested `ExecuteMCPv2.REST.*` handler bodies inherit an OcuPilot base exposing the same `RenderResponseBody` signature, so **all 738 call sites move unedited** and only the envelope changes. Two harvest cautions carry forward: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so handler bodies are taken and nothing else; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies must be read before harvesting. DT-11 lands before DT-09 and DT-10. Undo needs a state-capture model the write path does not yet have, which is why it waited this long.
 
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] The interoperability parity, analytics editors, developer tools and harvested tools-and-undo stories moved to Epic 24.
+
 ### Epic 22: Stage 6 - the long tail, on demand
 
 Nothing is scheduled. Each excluded row is picked up only when demand appears and its own gate clears, and keeps its stated reason for exclusion until then.
@@ -963,6 +965,12 @@ Nothing is scheduled. Each excluded row is picked up only when demand appears an
 **FRs covered:** FR-80, covering 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
 
 **Implementation notes:** Grouped by the catalog's exclusion reason, with counts where the catalog gives them: license-gated sharding (3); edition-gated HealthShare, Message Bank, Enterprise and ITK (11); deprecated shadowing and iKnow Text Analytics (9); Zen Reports, InterSystems Reports and cluster settings (6); and four further groups that Story 22.1 enumerates and makes testable. A row leaves this epic only when someone asks for it and its gate is demonstrably clear.
+
+### Epic 24: Stage 5, second lane - interoperability, analytics, developer tools and the agent's harvested tools
+
+Split from Epic 21 on 2026-11-14 so that a second slot runs it beside Epic 21: interoperability parity, the analytics editors, the developer tools, and the agent's 28 harvested tools with undo.
+
+**FRs covered:** FR-80, the share of Epic 21's 164 rows those four stories carry
 
 ---
 
@@ -8431,7 +8439,7 @@ So that the analytics category is not empty.
 
 ### Story 20.12: The agent gains guided workflows and Investigate
 
-[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 21.9's promote) get none until those stories land (named limit).
+[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 24.1's promote) get none until those stories land (named limit).
 
 As a developer-administrator facing a stuck production,
 I want the agent to run a known procedure rather than a single call,
@@ -9158,6 +9166,8 @@ So that the classic per-host Actions tab is not needed for it.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Stories 21.7, 21.8, 21.9 and 21.11 moved verbatim to Epic 24 as Stories 24.3, 24.2, 24.1 and 24.4.
+
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
 **Applies to every story in this epic.** The largest stage by far, and the one the harvest seam exists for. **FR-80** governs these; acceptance is that contract plus each row's backing class. Every write is a confirmed proposal; every new destructive key defaults to disabled. Two harvest cautions carry throughout: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so **handler bodies are taken and nothing else**; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies are read before harvesting.
@@ -9182,10 +9192,12 @@ So that 165 rows do not each become a rewrite.
 - **When** any harvested handler responds
 - **Then** it is the one OcuPilot envelope, and the no-double-envelope assertion still passes.
 
-### Story 21.2: Backup and mirroring
+### Story 21.2: Backup
+
+[AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] The mirroring set and the mirroring half of the destructive-operations criterion moved verbatim to Story 21.12, planned next.
 
 As an operator,
-I want backup and the mirroring set,
+I want backup,
 So that the highest-consequence operations are reachable.
 
 **Acceptance Criteria:**
@@ -9194,13 +9206,10 @@ So that the highest-consequence operations are reachable.
 - **When** each runs
 - **Then** it round-trips through the OcuPilot API over its backing class.
 
-- **Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
-- **When** each runs
-- **Then** it round-trips.
-
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
-- **Then** every backup and mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- **Then** every backup write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class (ledger; routed by cr 2026-11-14)
 
 ### Story 21.3: Startup, memory and compatibility settings
 
@@ -9215,6 +9224,8 @@ So that instance tuning is possible here.
 - **Then** it round-trips over its backing class, each change stating its restart requirement where one applies.
 
 ### Story 21.4: NLS locales and SQL settings
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] This story keeps the SQL, TSQL and ISQL settings (with the SQL Shell settings) and the English-interface criterion. The DDL-mapping settings moved to Story 21.13, the NLS configured defaults and the locale definitions editor to Story 21.14, and locale and table import to Story 21.15, each planned next in that order; the first criterion is split verbatim across the four.
 
 As an operator,
 I want locales, collation and the SQL settings,
@@ -9232,6 +9243,8 @@ So that a localized instance is configurable.
 
 ### Story 21.5: Globals and the data tools
 
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] This story keeps the global list, view, edit and kill. Export and import moved to Story 21.17 and find and replace to Story 21.18, each planned next in that order; the criterion is split verbatim across the three.
+
 As a developer,
 I want globals listed, viewed, edited, killed, exported and imported,
 So that the last of the Explorer's data surfaces exists.
@@ -9242,7 +9255,11 @@ So that the last of the Explorer's data surfaces exists.
 - **When** each runs
 - **Then** it round-trips, every write a confirmed proposal and every kill destructive by name.
 
+- DW-2607: The shipped System Explorer import judges global self-protection by name only; the protected-global arm covers imported .GBL documents too (ledger; routed by harvest 2026-11-15)
+
 ### Story 21.6: The SQL tuning track
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] The plan inventoried 10 leaves against the instance. This story keeps the statement index and its details (freeze, unfreeze, clear statistics, clear plan error, clean stale) and the cached-query purge for a namespace, a table or one query; index rebuild and tune table move to Story 21.25, runtime statistics to Story 21.26, the index analyzer and its advice to Story 21.27, alternate show plans to Story 21.28 and the troubleshooting reports to Story 21.29, each planned after this story in that order. The first criterion is split verbatim across them by leaf; the second across this story, 21.26, 21.27 and 21.28, each adding its own read, and the workflow stays read-only.
 
 As a developer diagnosing a slow query,
 I want the statement index, tune table, index analyzer, runtime statistics and alternate plans,
@@ -9258,59 +9275,9 @@ So that performance work has a home.
 - **When** this track lands
 - **Then** the workflow gains the screens it was written for.
 
-### Story 21.7: Interoperability parity
-
-As an interoperability developer,
-I want the remaining production surfaces,
-So that the area reaches parity.
-
-**Acceptance Criteria:**
-
-- **Given** credentials, default settings, purge and its settings, auto-start, managed alerts, rule and business-process logs, suspended messages, export, schedules, PEX, the registries, record maps, HL7 authoring, interface maps and references, port authority, the system monitor, the archive manager, workflow, deployment and shutdown groups
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-- **Given** deployment
-- **When** it runs
-- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
-
-### Story 21.8: The analytics editors
-
-As an analytics developer,
-I want the editors the rider left out,
-So that analytics reaches parity too.
-
-**Acceptance Criteria:**
-
-- **Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-### Story 21.9: Developer tools
-
-As a developer,
-I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
-So that the MCP suite's developer capabilities exist here.
-
-**Acceptance Criteria:**
-
-- **Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
-- **When** each runs
-- **Then** it round-trips over its backing class.
-
-- **Given** the execute-command console's output
-- **When** it is returned
-- **Then** it is bounded by the harvested output ceiling rather than unbounded.
-
-- **Given** environment promote
-- **When** it runs
-- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
-
-- **Given** remote instance profiles
-- **When** they are sequenced
-- **Then** they land **before** environment diff and promote, which depend on them.
-
 ### Story 21.10: The remaining leaves across the six areas
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] The plan inventoried 21 leaves against the instance (the second criterion, met at the plan). This story keeps the security settings leaves (system-wide security parameters, mobile phone providers, audit log export) and the owner-decided KMIP journal refusal (DW-2431); the shell, advisor, permission and task leaves moved to Story 21.19, the OS management and log leaves to Story 21.20, the leaves that wait on the owner to Story 21.21, the CI flake entries to Story 21.22 and the test-hygiene entries to Story 21.23, each planned after this story in that order. The first criterion is split verbatim across them by leaf.
 
 As a developer-administrator,
 I want the last classic-portal leaves in the areas OcuPilot already owns,
@@ -9325,27 +9292,454 @@ So that no area has a remaining gap.
 - **Given** any leaf whose backing class was never inventoried
 - **When** it is picked up
 - **Then** the class is identified against the instance first, and that is the story's first task.
-- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by merge_gate 2026-10-06)
-- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by merge_gate 2026-10-06)
-- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by merge_gate 2026-10-06)
+- DW-2431: AD-10's KMIP arm does not judge journal encryption; the owner-approved refusal sentence is added (ledger; routed by owner answer U-30, 2026-11-15)
+- DW-2457: A write tool whose target is longer than Propose.TARGETREFMAX (2,200 characters), such as an explorer compile or delete of up to 100 long document... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
 
-### Story 21.11: The agent gains the harvested tools and undo
+### Story 21.12: Mirroring
 
-As a developer-administrator,
-I want the agent to reach interoperability and to be able to reverse what it did,
-So that the last two steps of the agent's growth land together.
+[AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.2, whose mirroring criteria it carries verbatim; it is planned next after Story 21.2.
+
+[AMENDED 2026-11-15, owner answer U-39, "A: monitor + refusal (Recommended)", Rule 5] This story keeps the mirror monitor and the prohibited-removal refusal. The mirroring writes (create, edit for failover and async members, join, and member and database actions) move to Epic 22's license-gated group as rows in its exclusion register, because this project's Community license allows no mirroring and a join needs a second instance.
+
+As an operator,
+I want the mirror monitor and OcuPilot's refusal of the prohibited removal,
+So that the highest-consequence mirroring operation is guarded and the mirror's state is visible.
 
 **Acceptance Criteria:**
 
-- **Given** the 28 harvested inspection and search tools
-- **When** they are added
-- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+- **Given** the mirror monitor
+- **When** it runs
+- **Then** it reads the instance's mirror state, including not being a member.
 
-- **Given** undo
-- **When** it is built
-- **Then** it captures a snapshot **before** the write and offers a one-click revert
-- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
-- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+- **Given** removing a mirror with the option that takes its databases out of mirroring (AD-10)
+- **When** either caller asks for it
+- **Then** it is refused, with its code named at this story's spec gate.
+
+- **Given** the mirroring writes this story no longer builds
+- **When** the exclusion register is read
+- **Then** each has a row in its license-gated group naming the license it needs.
+
+### Story 21.13: DDL mappings
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose DDL-mapping criterion it carries verbatim; it is planned next after Story 21.4.
+
+As an operator,
+I want the SQL DDL mappings,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the DDL-mapping settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.14: NLS configured defaults and locale definitions
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose NLS configured-defaults and locale-definitions criterion it carries verbatim; it is planned next after Story 21.13.
+
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] This story keeps the NLS configured defaults and the locale list with its validate, install and delete actions; Copy, the locale properties editor and Load table moved to Story 21.16, planned after Story 21.15. The first criterion is split verbatim across the two.
+
+As an operator,
+I want the NLS configured defaults and the locale definitions,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the NLS configured defaults and the locale definitions editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.15: Locale and table import
+
+[AMENDED 2026-11-15, Story 21.4 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.4, whose locale and table import criterion it carries verbatim; it is planned next after Story 21.14.
+
+As an operator,
+I want locale and table import,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** locale and table import
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+- DW-2606: Locale export (catalog SA-27, with the classic page's file browse) joins this story (ledger; routed by owner answer U-58, 2026-11-15)
+
+### Story 21.16: Custom locales
+
+[AMENDED 2026-11-15, Story 21.14 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.14, whose locale-definitions-editor criterion it carries verbatim for copying a locale, its properties editor and loading a locale's table; it is planned next after Story 21.15.
+
+As an operator,
+I want to copy a locale, edit a custom locale's properties and load a locale's tables,
+So that a localized instance is configurable.
+
+**Acceptance Criteria:**
+
+- **Given** the locale definitions editor's copy, properties and table-load actions
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** these configure the **server's** locales rather than OcuPilot's own interface language
+- **When** the scope is stated
+- **Then** OcuPilot's interface stays English, as it does in every stage.
+
+
+### Story 21.17: Global export and import
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose export and import criterion it carries verbatim; it is planned next after Story 21.5.
+
+As a developer,
+I want globals exported and imported,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** global export and import
+- **When** each runs
+- **Then** it round-trips, every write a confirmed proposal.
+
+- DW-2608: Importing over an existing global refuses as changed because its version reads as the current time (ledger; routed by harvest 2026-11-15)
+
+### Story 21.18: Global find and replace
+
+[AMENDED 2026-11-15, Story 21.5 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.5, whose find-and-replace criterion it carries verbatim; it is planned next after Story 21.17.
+
+As a developer,
+I want find and replace across a global's values,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+- **Given** find and replace
+- **When** it runs
+- **Then** it round-trips, every write a confirmed proposal.
+
+
+### Story 21.19: Shell, advisor, permission and task leaves
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password each need an architecture record no owner answer covers; they move to Story 21.21 and wait for the owner. This story builds the rest.
+
+[AMENDED 2026-11-16, owner answer U-70, "A: all three + mask (Recommended)", Rule 5] The three records are written; resource export and import, a task's output file and the Task Manager mail password return to this story. The audit mask is Story 21.24's.
+
+As a developer-administrator,
+I want the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- DW-2372: A create form's first hand-off to an editor in another page module shows the form's Saved status while that editor's page code loads (Story 20.29) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2471: A 200 answer that is not a screen read's shape leaves a read-state screen with no alert: screen-read.ts classifies it server-fault, ApiService... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.20: OS management and log leaves
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want canceling a running query, the transactions view and the system alerts state and reset,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** canceling a running query, the transactions view and the system alerts state and reset
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-2479: LogSourcePort.LocalFromUtc's conversion direction cannot be falsified on the UTC test instances, as DW-1783 found for the agent ledger (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.21: Leaves that wait on the owner
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+[AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
+
+[AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password join this story from Story 21.19. Each waits for the owner on the record it needs; until then they are not planned.
+
+[AMENDED 2026-11-16, owner answers U-70 and U-74, Rule 5] Those three return to Story 21.19 (U-70). The custom resource on a classic menu item is built with its AD-44 and AD-64 records (U-74).
+
+As a developer-administrator,
+I want a custom resource on a classic menu item and an Operate-only dismount,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** a custom resource on a classic menu item and the Operate-only dismount
+- **When** each runs
+- **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
+
+- **Given** security escalation, Contact WRC, diagnostic reports and Web Gateway management
+- **When** the exclusion register is read
+- **Then** each has a not-planned row with its reason: OcuPilot's own token's roles, a send to the vendor (NFR-6), and no backing class.
+
+- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by merge_gate 2026-10-06)
+- DW-1280: A write that fails after the claim tells the user a tool could not be answered, on a path whose own class header says confirm is not a tool (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.22: CI flake hardening
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want the routed CI flakes fixed at their cause,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the routed flake entries
+- **When** each is worked
+- **Then** its test waits on the system's own readiness signal or is fixed at its cause, and the entry is closed with the evidence.
+
+- DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descript... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5 (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun (ledger; routed by spec_gate 2026-11-15 at the 21.10 split; first routed by range-end sweep 2026-11-14)
+- DW-2544: flake: stream-reply.browser-spec.mjs (c) to (f) timed out (Navigation timeout of 30000 ms with one request in flight; a 60000 ms wait) in CI browser... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2553: flake: SslSecret.TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither ('a wrong password is refused on its field') failed in CI... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+### Story 21.23: Test hygiene and contended client fixes
+
+[AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+As a developer-administrator,
+I want the routed test-hygiene and small client entries closed,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the routed test-hygiene and client entries
+- **When** each is worked
+- **Then** it is fixed, or closed with its reason, without changing a product behavior its story ruled.
+
+- DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/ (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2459: check-objectscript.py has no rule for a Parameter whose value is a {...} expression naming a project class the class neither extends nor declares... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2499: Rule 31: the Area screen-editor Rules classes repeat Problem's violation sentence (29 files), Taken's probe (12) and HandleForm's read (30),... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2369: AgentNavigator reports a screen whose page code cannot load as a refusal for unsaved changes, since Story 20.29 made a failed page-chunk load reject... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+- DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a... (ledger; routed by spec_gate 2026-11-15 at the 21.10 split)
+
+
+### Story 21.24: The Task Manager mail password is masked in OcuPilot's audit read
+
+[AMENDED 2026-11-16, orchestrator ruling U-71, fix-forward under AD-35, Rule 5] Measured on a throwaway (DW-2625): the vendor writes the Task Manager mail password, Base64-encoded, into a ConfigurationChange audit row, and OcuPilot's audit read shows it. AD-35 already requires the mask, so this is a defect fix, not an amendment.
+
+As an administrator,
+I want a secret the vendor writes into an audit row masked wherever OcuPilot shows that row,
+So that reading the audit log never exposes the Task Manager mail password.
+
+**Acceptance Criteria:**
+
+- **Given** the Task Manager mail password set, changed or cleared
+- **When** the audit screen or the agent's audit read tool reads the row
+- **Then** both the old and the new value read masked, while the audit database still holds what the vendor wrote.
+
+- **Given** the other vendor setters that write a secret into an audit row the same way
+- **When** they are searched for
+- **Then** each is masked by the same declaration or ledgered.
+
+- DW-2625: The Task Manager mail password reaches a ConfigurationChange audit row OcuPilot shows unmasked (measured; ledger; routed by orchestrator ruling U-71)
+
+
+### Story 21.25: Index rebuild and tune table
+
+[AMENDED 2026-11-16, Story 21.25 plan, unattended ruling: split into siblings, Rule 5] Setting a table's extent size, selectivity and map size moves to Story 21.31, planned after this story.
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want to rebuild a table's indices and tune a table,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** index rebuild and tune table
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 21.26: Runtime statistics
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want runtime statistics,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** runtime statistics
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.27: The index analyzer and its advice
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want the index analyzer and its advice,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the index analyzer with its advice
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.28: Alternate show plans
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want alternate show plans,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** alternate show plans
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.29: Troubleshooting reports
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want the troubleshooting reports,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the troubleshooting reports
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+
+### Story 21.30: OcuPilot's guarded storage refuses a caller that is not an administrator
+
+[AMENDED 2026-11-16, owner answer U-79, "A: fix story now (Recommended)", fix-forward, Rule 5] DW-2634 (filed in Epic 24's ledger at Story 24.6's plan): `Kernel.State` `SetGuarded` and `Policy.GuardedApply` take OcuPilot's protected role for any caller and check no privilege of their own, so code a `%Development` holder runs directly can rewrite the kill switch or a governance key without being an OcuPilot administrator. Ordered straight after Story 21.24.
+
+As an administrator,
+I want OcuPilot's protected state written only by an OcuPilot administrator, whatever path the code runs on,
+So that the kill switch and governance keys cannot be rewritten by someone who only holds development rights.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code calls the guarded storage methods to rewrite the kill switch or a governance key
+- **Then** the attack is reproduced end to end first and its result recorded; if it fails end to end, the story reports back before anything is built.
+
+- **Given** the attack reproduced
+- **When** the fix lands
+- **Then** the same call is refused and changes nothing, an OcuPilot administrator's write still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
+
+- DW-2634: Guarded storage methods take OcuPilot's protected role for any caller and check no privilege (Epic 24's ledger; routed by owner answer U-79)
+
+
+### Story 21.31: Fixed table statistics
+
+[AMENDED 2026-11-16, Story 21.25 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.25 (itself split from Story 21.6); it carries the first criterion for the fixed-statistics setters.
+
+As a developer diagnosing a slow query,
+I want to set a table's extent size, a field's selectivity and a map's size,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** a table's extent size, a field's selectivity and a map's size
+- **When** each is set
+- **Then** it round-trips over its backing class.
+
+
+### Story 21.32: A SQL settings change leaves the instance's class-query lists working
+
+[AMENDED 2026-11-16, orchestrator ruling on DW-2646, fix-forward, Rule 5] Measured on fresh throwaways: after a SQL setting is changed and changed back on OcuPilot's SQL settings screen, the web server processes fail the vendor admin API's class-query lists (Task Manager Upcoming tasks) with SQLCODE -428 until they are recycled.
+
+As an administrator,
+I want a SQL settings change made in OcuPilot to leave the rest of the instance working,
+So that the Task Manager and other lists keep answering.
+
+**Acceptance Criteria:**
+
+- **Given** a fresh instance
+- **When** the defect's sequence runs (the browser path as it stands, or a request sequence without a browser)
+- **Then** it is reproduced deterministically first, including which pooled worker gets the activation.
+
+- **Given** the fix
+- **When** config-settings, dashboard, ecp-settings and database-operations run in that order on a fresh instance
+- **Then** each is green, and a Rule 19 mutation that removes the fix turns dashboard red.
+
+- DW-2646: A SQL settings change in OcuPilot leaves the web workers failing vendor class-query lists (ledger; routed by orchestrator ruling)
+
+
+### Story 21.33: OcuPilot's other guarded stores refuse a caller who may not write them
+
+[AMENDED 2026-11-16, owner answer U-82, "A", fix-forward, Rule 5] DW-2638 (found at Story 21.30's plan): agent definitions (instructions, provider, credential name) and other users' ledger, proposal, turn, conversation and preference rows can still be written through the public guarded saves by code a `%Development` holder runs directly. Ordered straight after Story 21.32.
+
+As an administrator,
+I want OcuPilot's remaining protected state written only by the callers it belongs to,
+So that code run with development rights cannot rewrite agent definitions or other users' records.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code writes an agent definition or another user's row through the public guarded methods
+- **Then** the attack is reproduced end to end first and its result recorded; if it fails end to end, the story reports back before anything is built.
+
+- **Given** the attack reproduced
+- **When** the fix lands
+- **Then** the same writes are refused and change nothing, every legitimate caller (the turn's own writes included) still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
+
+- DW-2638: Kernel.State stores outside Story 21.30's four still escalate any caller's public guarded write (ledger; routed by owner answer U-82)
+
+
+### Story 21.34: A backup action leaves the web process's null device open
+
+[AMENDED 2026-11-16, orchestrator ruling on DW-2650, fix-forward, Rule 5] On feature, interop-editors failed with `<NOTOPEN>CompileDTL` after backup ran earlier in the same browser leg. Story 21.2's `BackupPort.SuspendCall` opens and closes the null device whenever it is not the current device, so in a pooled web process that already held it open, the close shut the process's own device (DW-2395's mechanism, fixed for `LogSourcePort` in Story 18.38).
+
+As an operator,
+I want a backup action to leave the web process as it found it,
+So that the next request served by that process, a DTL compile among them, still works.
+
+**Acceptance Criteria:**
+
+- **Given** a fresh instance
+- **When** the backup screen's actions run and then the interop editors compile a DTL
+- **Then** the failure is reproduced first, with a count of web processes missing their null device.
+
+- **Given** the fix
+- **When** the same sequence runs
+- **Then** every process keeps its null device, the caller's current device is restored on every path, the device check is shared with `LogSourcePort` rather than copied, and a Rule 19 mutation that removes the held-device check turns the device-state test red.
+
+- DW-2650: A backup action closes a pooled web process's null device, breaking a later DTL compile in that process (orchestrator's ledger; routed by orchestrator ruling)
 
 ---
 
@@ -9363,7 +9757,7 @@ So that a future decision to build one is made against evidence rather than agai
 
 - **Given** the 56 excluded rows
 - **When** they are recorded
-- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
 
 - **Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 - **When** the register is read
@@ -9838,3 +10232,382 @@ So that a red CI run means a real defect and the screens behave as they say.
 - DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's log rows behind in USER (ledger; routed by burndown 2026-11-14)
 - DW-2501: no check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last (ledger; routed by burndown 2026-11-14)
 - DW-2543: Journal records' cold open with Newest first saves the default view before the account read answers, which can lose the remembered filter, row limit and widths (ledger; routed by burndown 2026-11-14)
+
+---
+
+## Epic 24: Stage 5, second lane - interoperability, analytics, developer tools and the agent's harvested tools
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Split from Epic 21 so that a second slot runs these stories beside it. None of them depends on a story Epic 21 still holds: each harvests through Story 21.1's seam, which is on the feature branch, and the interoperability and analytics stories extend Epic 20, which has merged.
+
+The interoperability surfaces that remain, the analytics editors, a developer-tools set, and for the agent the 28 harvested inspection tools and undo by snapshot and revert.
+
+**Applies to every story in this epic.** Epic 21's preamble applies unchanged: **FR-80** governs these; acceptance is that contract plus each row's backing class. Every write is a confirmed proposal; every new destructive key defaults to disabled. **Handler bodies are taken and nothing else**, and the current bodies are read before harvesting.
+
+### Story 24.1: Developer tools
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.9.
+
+As a developer,
+I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (LOC metrics and drift hashes) and Stories 24.5 to 24.9; the other surfaces' acceptance criteria moved to them word for word.
+
+- **Given** the LOC metrics and drift hashes
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.2: The analytics editors
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.8.
+
+As an analytics developer,
+I want the editors the rider left out,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (the term-list editor) and Stories 24.10 to 24.14; the rest of the criterion moved to them. Which editors "the remaining analytics editors" names is read from the catalog's analytics rows (inference).
+
+- **Given** the term-list editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.3: Interoperability parity
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.7.
+
+As an interoperability developer,
+I want the remaining production surfaces,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (auto-start and shutdown groups, plus the cleanup entries below) and Stories 24.15 to 24.19; the first criterion's list is cut in its own order and the deployment criterion moved word for word to 24.19.
+
+- **Given** auto-start and shutdown groups
+- **When** each runs
+- **Then** it round-trips over its backing class.
+- DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted (ledger; routed by range-end sweep 2026-11-14)
+- DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after ... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformatio... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a tes... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...' (ledger; routed by range-end sweep 2026-11-14)
+
+### Story 24.4: The agent gains the harvested tools and undo
+
+[AMENDED 2026-11-14, owner decision "Option 1, split Epic 21 for slot B", relayed by the Planner; stories chosen by the orchestrator from their dependencies] Moved verbatim from Story 21.11.
+
+As a developer-administrator,
+I want the agent to reach interoperability and to be able to reverse what it did,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split into this story (fourteen of the 28 harvested tools: the session and message reads) and Stories 24.20 to 24.23; the other fourteen tools and the undo criterion moved to them, undo word for word.
+
+- **Given** the fourteen harvested session and message tools (search_by_time, search_by_status, search_by_source, search_by_target, search_by_message_class, search_by_session, search_by_super_session, find_related_sessions, find_sessions_using_class, session_summary, session_timeline, message_headers, get_message_detail, get_message_body)
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+### Story 24.5: Unit-test runner and work-queue viewer
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the unit-test runner and the work-queue viewer,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-16, owner answer U-77: "A: run record instead (Recommended)"] The work-queue viewer is replaced by the unit-test runner's own run record, and the work-queue viewer is recorded in the exclusion register as not planned. The story keeps its title and key.
+
+- **Given** the unit-test runner and its run record
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the work-queue viewer
+- **When** this story lands
+- **Then** it is recorded in the exclusion register as not planned, with the reason (the instance-wide queue records no owner, a read consumes another client's result, and the instance offers no way to list it).
+
+### Story 24.6: The command and class-method consoles
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the execute-command and class-method consoles,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the execute-command and class-method consoles
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the execute-command console's output
+- **When** it is returned
+- **Then** it is bounded by the harvested output ceiling rather than unbounded.
+
+### Story 24.7: Web terminal
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want the web terminal,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+- **Given** the web terminal
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.8: Remote instance profiles and environment diff
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want remote instance profiles and environment diff,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-16, owner answer U-45: "C: same instance only (Recommended)"] Environment diff and promote work between namespaces of this instance only; remote instance profiles are not planned and are recorded in the exclusion register. NFR-6, the PRD's single-instance rule and the spine's Deferred row stand unchanged. The story keeps its title and key.
+
+- **Given** environment diff between two namespaces of this instance
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+- **Given** remote instance profiles
+- **When** this story lands
+- **Then** they are recorded in the exclusion register as not planned, with the reason (no request leaves the instance, NFR-6; OcuPilot manages the instance that serves it).
+
+### Story 24.9: Environment promote
+
+[AMENDED 2026-11-15, Story 24.1 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.1; its acceptance criteria are 24.1's, moved word for word.
+
+As a developer,
+I want environment promote,
+So that the MCP suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+[AMENDED 2026-11-16, owner answer U-45: "C: same instance only (Recommended)"] Promote works between namespaces of this instance only.
+
+- **Given** environment promote between two namespaces of this instance
+- **When** it runs
+- **Then** it round-trips over its backing class.
+
+- **Given** environment promote
+- **When** it runs
+- **Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
+
+### Story 24.10: Folder manager transfer and term-list import, export and copy
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the folder manager's export, import and delete, and term-list import, export and copy,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the folder manager's export, import and delete
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the term-list editor's import, export and copy
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.11: Listing groups
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the listing group manager,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the listing group manager
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.12: Quality measures
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the quality measures editor,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the quality measures editor
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.13: Analytics settings
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the analytics settings,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the analytics settings
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.14: PMML model tester and dashboard viewer
+
+[AMENDED 2026-11-15, Story 24.2 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.2; its criterion is 24.2's, moved.
+
+As an analytics developer,
+I want the PMML model tester and the dashboard and pivot viewer,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+- **Given** the remaining analytics editors: the PMML model tester and the dashboard and pivot viewer
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.15: Credentials, default settings and schedules
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want credentials, default settings and schedules,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** credentials, default settings and schedules
+- **When** each runs
+- **Then** it round-trips over its backing class.
+- DW-2636: Environment diff does not yet compare two namespaces' interoperability default settings; compare this story's default-settings read per namespace (ledger; routed by spec gate 2026-11-16)
+
+### Story 24.16: Purge, suspended messages, export and the archive manager
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want purge and its settings, suspended messages, export and the archive manager,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** purge and its settings, suspended messages, export and the archive manager
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.17: Managed alerts, logs, the system monitor and workflow
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want managed alerts, rule and business-process logs, the system monitor and workflow,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** managed alerts, rule and business-process logs, the system monitor and workflow
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.18: PEX, record maps and HL7 authoring
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want PEX, record maps and HL7 authoring,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** PEX, record maps and HL7 authoring
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 24.19: The registries, interface maps and references, port authority and deployment
+
+[AMENDED 2026-11-15, Story 24.3 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.3; its criteria are 24.3's, moved.
+
+As an interoperability developer,
+I want the registries, interface maps and references, port authority and deployment,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+- **Given** the registries, interface maps and references, port authority and deployment
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** deployment
+- **When** it runs
+- **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
+
+### Story 24.20: Undo by snapshot and revert
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want undo by snapshot and revert,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** undo
+- **When** it is built
+- **Then** it captures a snapshot **before** the write and offers a one-click revert
+- **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
+- **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+### Story 24.21: The agent's harvested log, process, source and configuration tools
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested log, process, source and configuration tools,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the ten harvested tools event_log, rule_log, get_business_process_instance, get_business_process_source, list_business_process_methods, get_class_source, get_rule_source, get_production_config_item, get_queue_state and explain_error
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+### Story 24.22: The agent's harvested message body searches
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested message body searches,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the three harvested tools inspect_body_candidates, search_by_body_field and find_sessions_by_body
+- **When** they are added
+- **Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+### Story 24.23: The agent's harvested vocabulary tool
+
+[AMENDED 2026-11-15, Story 24.4 spec gate, unattended ruling (Rule 5 tier-2 split)] Split from Story 24.4; its criteria are 24.4's, moved.
+
+As a developer-administrator,
+I want the harvested vocabulary tool,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+- **Given** the harvested tool vocab_lookup
+- **When** it is added
+- **Then** it declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.

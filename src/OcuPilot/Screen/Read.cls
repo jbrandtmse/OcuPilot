@@ -294,6 +294,41 @@ ClassMethod SqlActivityPortClass() As %String
     Quit "OcuPilot.Port.SqlActivityPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's backup tasks, backup history and backup
+/// database list, and the write state a banner reads, read through <method>BackupPortClass</method> behind that
+/// port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.2).</p>
+Parameter SOURCEBACKUP = "backup";
+
+/// <p>The port every <b>backup</b> read is issued through. Overridable so a fixture can reach another; production
+/// never overrides it.</p>
+ClassMethod BackupPortClass() As %String
+{
+    Quit "OcuPilot.Port.BackupPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the instance's startup, memory and compatibility settings, read
+/// through <method>ConfigPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36,
+/// Story 21.3).</p>
+Parameter SOURCECONFIG = "config";
+
+/// <p>The port every <b>config</b> read is issued through. Overridable so a fixture can reach another; production never
+/// overrides it.</p>
+ClassMethod ConfigPortClass() As %String
+{
+    Quit "OcuPilot.Port.ConfigPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the instance's mirror members, and the mirror state a banner reads, read through
+/// <method>MirrorPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.12).</p>
+Parameter SOURCEMIRROR = "mirror";
+
+/// <p>The port every <b>mirror</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod MirrorPortClass() As %String
+{
+    Quit "OcuPilot.Port.MirrorPort"
+}
+
 /// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics or its
 /// interoperability usage, read through <method>MonitorPortClass</method> behind that port's own gate,
 /// with no namespace and no criteria (AD-29, AD-36).</p>
@@ -322,6 +357,18 @@ Parameter SOURCEANALYTICS = "analytics";
 ClassMethod AnalyticsPortClass() As %String
 {
     Quit "OcuPilot.Port.AnalyticsPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the developer tools that count a namespace's lines and hash its
+/// documents, read through <method>DevToolPortClass</method> behind that port's own gate, which is handed the route's scope
+/// as its namespace (AD-23, AD-29, AD-36).</p>
+Parameter SOURCEDEVTOOL = "devtool";
+
+/// <p>The port every <b>devtool</b> read is issued through. Overridable so a fixture can reach another; production never
+/// overrides it.</p>
+ClassMethod DevToolPortClass() As %String
+{
+    Quit "OcuPilot.Port.DevToolPort"
 }
 
 /// <p>The <code>read.source.port</code> value naming the screens' required permissions, composed by
@@ -439,7 +486,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG, ..#SOURCEMIRROR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -540,6 +587,21 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEDEVTOOL {
+            ; The developer tools' rows (Story 24.1): the route's own scope travels as the port's namespace, and the
+            ; port's gate and bounds run before any body does.
+            Set tQuery("maxRows") = tMax + 1
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..DevToolPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } ElseIf tSource.%Get("port") = ..#SOURCEENCRYPTION {
             ; A key file's lists (Story 18.7): the criteria name the file, which the port resolves
             ; through PathPort at this call; the instance's key material is never answered.
@@ -582,11 +644,13 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tPortCut)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
             }
+            If tPortCut Set tTruncated = 1
         } ElseIf tSource.%Get("port") = ..#SOURCEANALYTICS {
             ; The namespace's cubes, term lists and folder items (Story 20.11): the route's own scope travels as the port's
             ; namespace, and the port's gate runs before any row. A parent-scoped list (a cube's tabs, a term list's entries)
@@ -626,6 +690,33 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Kill tQuery
             Set tQuery("maxRows") = tMax + 1
             Set tPortSC = $ClassMethod(..SqlActivityPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEBACKUP {
+            ; The instance's backup tasks, history or database list (Story 21.2): no namespace and no criteria, so the
+            ; cap is the whole ask; the port's gate runs before any vendor call, and a cut it made itself (the history's
+            ; fixed fifty) is a truncation this read reports as well (AD-36).
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..BackupPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+            If tPortCut Set tTruncated = 1
+        } ElseIf tSource.%Get("port") = ..#SOURCECONFIG {
+            ; The instance's startup, memory or compatibility settings (Story 21.3): no namespace and no criteria, so the cap is
+            ; the whole ask; the port's gate runs before any vendor call (AD-36).
+            Set tPortSC = $ClassMethod(..ConfigPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEMIRROR {
+            ; The instance's mirror members (Story 21.12): no namespace and no criteria, so the cap is the whole ask; the port's gate
+            ; runs before any vendor call (AD-36).
+            Set tPortSC = $ClassMethod(..MirrorPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
@@ -1302,7 +1393,8 @@ ClassMethod BannerKey(pDescriptor As %String, Output pRequires As %String) As %S
         Set tSource = tBanner.%Get("source")
         If '$IsObject(tSource) Quit
         Kill tQuery
-        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Set tBannerPort = $Select(tSource.%Get("port") = ..#SOURCEBACKUP: ..BackupPortClass(), tSource.%Get("port") = ..#SOURCEMIRROR: ..MirrorPortClass(), 1: ..PortClass())
+        Set tPortSC = $ClassMethod(tBannerPort, "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         If $$$ISERR(tPortSC) Quit
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit
         Set tValue = tAnswer.%Get(tBanner.%Get("field"))

@@ -28,14 +28,14 @@ This catalog turns the thirteen research digests and two verification files of t
 | 5. Area 4: Task management | 13 | 3 | 0 | 3 | 0 | 19 |
 | 6. Area 5: OS management | 12 | 3 | 9 | 6 | 4 | 34 |
 | 7. Area 6: All the logs | 4 | 6 | 1 | 1 | 1 | 13 |
-| 8. System Administration, remainder | 0 | 2 | 20 | 27 | 13 | 62 |
-| 9. System Operation, remainder | 0 | 0 | 8 | 9 | 2 | 19 |
+| 8. System Administration, remainder | 0 | 2 | 20 | 22 | 18 | 62 |
+| 9. System Operation, remainder | 0 | 0 | 8 | 8 | 3 | 19 |
 | 10. System Explorer and data browser | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | 0 | 1 | 28 | 69 | 20 | 118 |
 | 12. Analytics | 0 | 1 | 9 | 7 | 7 | 24 |
-| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 10 | 1 | 12 |
+| 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 9 | 2 | 12 |
 | 14. Packaging, deployment and submission | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | **119** | **62** | **137** | **164** | **56** | **538** |
+| **All sections** | **119** | **62** | **137** | **157** | **63** | **538** |
 
 **SMP leaf coverage** (leaves covered / leaves in digest): System Administration 90/90 (54 Configuration incl. 3 Sharding and 6 Mirror, 30 Security, 2 Licensing, 4 Encryption); System Operation 36/36; System Explorer 11/11; Analytics 18/18 (13 DeepSee + 5 Text Analytics); Interoperability 68/68 live and 76/76 in source (the 8 non-rendered leaves are P4 rows IO-78..IO-81 and IO-90). Distinct write actions on P0/P1/P2 pages have their own rows; P4 pages are one row per page or per group as noted in Gaps.
 
@@ -348,11 +348,11 @@ This catalog turns the thirteen research digests and two verification files of t
 | SA-42 | Run backup: Full all databases / Full list / Incremental / Cumulative (4 SysAdmin leaves; same 4 in System Operation, see SO-01) | legacy UtilSysBackup.csp?$ID1=… | custom(Backup.General.StartTask) | execute-mcp Monitor:BackupManage run | iris_backup_manage:run | P3 | M | write-confirm | smp-sysadmin Database Backup rows; harvest-execute-mcp iris_backup_manage |
 | SA-43 | Add local databases to mirror (background) | Dialog.DBMirrorAdd | custom(SYS.MirrorConfiguration; background task MirrorAddDatabases) | — | — | P3 | M | write-confirm | smp-sysadmin Add to Mirror row |
 | SA-44 | Mirror database properties | %CSP.UI.Portal.DatabaseMirror (681) | custom(SYS.Database, SYS.MirrorConfiguration) | — | iris_mirror_status | P3 | L | write-confirm | smp-sysadmin Mirror Database Properties row |
-| SA-45 | Create a mirror (name, agent, VIP, SSL, arbiter) | %CSP.UI.Portal.Mirror.Create; Mirror.Dialog.SSL | custom(SYS.Mirror, SYS.MirrorConfiguration) | — | iris_mirror_status | P3 | L | write-confirm | smp-sysadmin Create a Mirror row; api-coverage Mirror row (no route) |
-| SA-46 | Edit mirror (failover member config, members, pending members/DN updates, remove configuration) | Mirror.EditFailover (1218) + dialogs | custom(Config.Mirrors, Config.MirrorMember, SYS.Mirror) | — | iris_mirror_status | P3 | L | write-confirm | smp-sysadmin Edit Mirror row |
-| SA-47 | Edit async member (tracked mirrors, dejournal filter, leave mirror, clear FailoverDB flags) | Mirror.EditAsync (696) + dialogs | custom(Config.MapMirrors, SYS.Mirror) | — | — | P3 | L | write-confirm | smp-sysadmin Edit Async row |
-| SA-48 | Join as failover member (two-step wizard) | Mirror.JoinFailover (580) | custom(SYS.Agent, SYS.Mirror) | — | — | P3 | L | write-confirm | smp-sysadmin Join as Failover row |
-| SA-49 | Join as async member (DR / reporting) | Mirror.JoinAsync (485) | custom(SYS.Mirror, Config.Mirrors) | — | — | P3 | L | write-confirm | smp-sysadmin Join as Async row |
+| SA-45 | Create a mirror (name, agent, VIP, SSL, arbiter) | %CSP.UI.Portal.Mirror.Create; Mirror.Dialog.SSL | custom(SYS.Mirror, SYS.MirrorConfiguration) | — | iris_mirror_status | P4 | L | none | smp-sysadmin Create a Mirror row; api-coverage Mirror row (no route) — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
+| SA-46 | Edit mirror (failover member config, members, pending members/DN updates, remove configuration) | Mirror.EditFailover (1218) + dialogs | custom(Config.Mirrors, Config.MirrorMember, SYS.Mirror) | — | iris_mirror_status | P4 | L | none | smp-sysadmin Edit Mirror row — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
+| SA-47 | Edit async member (tracked mirrors, dejournal filter, leave mirror, clear FailoverDB flags) | Mirror.EditAsync (696) + dialogs | custom(Config.MapMirrors, SYS.Mirror) | — | — | P4 | L | none | smp-sysadmin Edit Async row — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
+| SA-48 | Join as failover member (two-step wizard) | Mirror.JoinFailover (580) | custom(SYS.Agent, SYS.Mirror) | — | — | P4 | L | none | smp-sysadmin Join as Failover row — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
+| SA-49 | Join as async member (DR / reporting) | Mirror.JoinAsync (485) | custom(SYS.Mirror, Config.Mirrors) | — | — | P4 | L | none | smp-sysadmin Join as Async row — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
 | SA-50 | Enable sharding (%Service_Sharding + %Service_ECP) | Sharding.Dialog.Enable | admin-v2 PUT /security/service | — | — | P4 | S | none | smp-sysadmin Sharding rows — excluded: license-gated ($$Sharding^%SYS.LICENSE=0 on Community) |
 | SA-51 | Configure node-level sharding | Sharding.NodelevelConfig (556) | custom(%SQL.Manager.Catalog ListShards) | — | — | P4 | L | none | same — excluded: license-gated |
 | SA-52 | Configure namespace-level sharding | Sharding.Configuration (788) | custom | — | — | P4 | L | none | same — excluded: license-gated |
@@ -387,7 +387,7 @@ This catalog turns the thirteen research digests and two verification files of t
 | SO-14 | Journal profile (per-global byte sizes; recalculate; background job) | legacy UtilSysJournalProfile.csp | custom(JOB ComputeJournalProfile, ^IRIS.Temp.JournalProfile) | — | — | P3 | M | read | smp-sysop Journals › Profile row |
 | SO-15 | Mirror journal files (mirror members only) | legacy UtilSysJournalsMirror.csp | custom(%SYS.Journal.File:MirrorByTimeReverseOrder) | — | — | P3 | S | read | smp-sysop Journals row |
 | SO-16 | Mirror monitor (member type and status, failover/async member tables, mirrored databases with per-DB status, journal transfer rate, validation failures) | %CSP.UI.Portal.Mirror.Monitor (1546) | custom(SYS.Mirror MemberStatusList, MirroredDatabaseDisplay; %SYSTEM.Mirror) | execute-mcp Monitor:MirrorStatus | iris_mirror_status | P3 | L | read | smp-sysop Mirror Monitor row; api-coverage Mirror row |
-| SO-17 | Mirror actions: start/stop mirror on this member, set/clear no-failover, promote to failover, demote other member, demote self to DR; mirrored DB mount / activate / catch-up / download / remove (background option); authorize async members | Mirror.Monitor ribbon and per-DB links; Dialog.MirrorPromote; Dialog.MirrorDBActions | custom(SYS.Mirror, SYS.MirrorConfiguration; background tasks MirrorMountDB etc.) | — | — | P3 | L | write-confirm | smp-sysop Mirror Monitor row |
+| SO-17 | Mirror actions: start/stop mirror on this member, set/clear no-failover, promote to failover, demote other member, demote self to DR; mirrored DB mount / activate / catch-up / download / remove (background option); authorize async members | Mirror.Monitor ribbon and per-DB links; Dialog.MirrorPromote; Dialog.MirrorDBActions | custom(SYS.Mirror, SYS.MirrorConfiguration; background tasks MirrorMountDB etc.) | — | — | P4 | L | none | smp-sysop Mirror Monitor row — excluded: license-gated ($System.License.NoMirror()=1 on Community) |
 | SO-18 | System as shadow server | legacy UtilSysShadow.csp (%CSP.UI.System.ShadowPane) | none | — | — | P4 | S | none | smp-sysop Shadow Servers row — excluded: shadowing deprecated |
 | SO-19 | System as data source (shadow) | legacy UtilSysShadowDataSource.csp | none | — | — | P4 | S | none | same — excluded: deprecated |
 
@@ -618,9 +618,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | DT-06 | Execute class method (typed args, ByRef/Output markers) | new | custom(ExecuteMCPv2.REST.Command ClassMethod) | execute-mcp Command:ClassMethod; Utils.InvokeWithArgs | iris_execute_classmethod | P3 | M | write-confirm | harvest-execute-mcp iris_execute_classmethod |
 | DT-07 | Lines-of-code metrics per namespace / package | new | custom(ExecuteMCPv2.Loc.*) | execute-mcp Loc:LocCount | iris_loc_count | P3 | S | read | harvest-execute-mcp iris_loc_count |
 | DT-08 | Document hashes for drift detection | new | custom(ExecuteMCPv2.REST.EnvSync DocHashes) | execute-mcp EnvSync:ComputeHashes | iris_env_diff | P3 | S | read | harvest-execute-mcp iris_env_diff |
-| DT-09 | Environment diff (documents, mappings, default settings, web apps, config between two instances) | new | custom(EnvSync + admin endpoints on both profiles) | execute-mcp env-diff.ts | iris_env_diff | P3 | L | read | harvest-execute-mcp iris_env_diff |
-| DT-10 | Environment promote (plan / execute with confirm, steps allowlist, plan-hash freshness, target governance) | new | custom(write endpoints + atelier PUT /doc + compile) | execute-mcp env-promote.ts four-gate model | iris_env_promote | P3 | L | write-confirm | harvest-execute-mcp iris_env_promote safety model |
-| DT-11 | Remote instance profiles (second IRIS connection for diff / promote; governance roster) | new | none (OcuPilot is single-instance; profile stored server-side) | execute-mcp server-base.ts iris_server_profiles | iris_server_profiles | P3 | M | read | harvest-execute-mcp Framework tool row |
+| DT-09 | Environment diff (documents, mappings and default settings between two namespaces of this instance) | new | custom(EnvSync in both namespaces; mapping and default-settings reads) | execute-mcp env-diff.ts (comparison rules) | iris_env_diff | P3 | L | read | harvest-execute-mcp iris_env_diff |
+| DT-10 | Environment promote between two namespaces of this instance (plan / execute with confirm, steps allowlist, plan-hash freshness) | new | custom(write endpoints + atelier PUT /doc + compile) | execute-mcp env-promote.ts four-gate model | iris_env_promote | P3 | L | write-confirm | harvest-execute-mcp iris_env_promote safety model |
+| DT-11 | Remote instance profiles (second IRIS connection for diff / promote; governance roster) | new | none (OcuPilot is single-instance; profile stored server-side) | execute-mcp server-base.ts iris_server_profiles | iris_server_profiles | P4 | M | read | harvest-execute-mcp Framework tool row — excluded: OcuPilot manages the instance that serves it (owner answer U-45, 2026-11-16) |
 | DT-12 | Debugger session / terminal tools (PRD-only placeholders) | new | official-REST atelier GET /%SYS/debug | execute-mcp debug.ts placeholder | — | P4 | L | none | harvest-execute-mcp Placeholder — excluded: dead placeholder, no implementation |
 
 ## 14. Packaging, deployment and contest submission deliverables (PK)
@@ -683,7 +683,7 @@ This catalog turns the thirteen research digests and two verification files of t
 - **EX-15 SQL DML/DDL guard at P2** although the agent SQL tool it protects is P0: the P0 read tools use catalog SELECTs only; the free-form SQL console is P2.
 - **SS-29 Superservers at P2** per the explicit list, although it sits under Security in the SMP.
 - **SA-01 / SA-02 External language servers at P1** per the tier rule, ahead of all other System Administration remainder rows.
-- **DT-11 remote instance profiles at P3** (single-instance product) rather than P4, because DT-09/DT-10 depend on it.
+- **DT-11 remote instance profiles at P4** (owner answer U-45): environment diff and promote (DT-09, DT-10) compare namespaces of this instance.
 
 ## Gaps
 

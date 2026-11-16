@@ -38,20 +38,21 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import {
-  armMessageCounters,
+  answered as screenAnswered,
+  assertFillsHost,
   assertSignOutEndsEditors,
   assertSignedInSilently,
+  decodedPath,
   editorSessionControls,
+  editorShows as screenShows,
+  shellAt as sharedShellAt,
   signOutThroughMenu,
   tabSnapshot,
   until,
   waitForEditorTokens,
-  watchEditorTraffic,
-  watchPolicyViolations,
 } from './interop-editor-spec.mjs';
 import { clickRowCentre, waitForRows } from './list-spec.mjs';
-import { waitForMapAnswered } from './namespace-features.mjs';
-import { openFromSideBar, signedInAt } from './panel-spec.mjs';
+import { openFromSideBar } from './panel-spec.mjs';
 import { INVARIANTS, SKIP, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, keyRoute, needsId, readBaseline } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -75,7 +76,6 @@ const DIAGRAM_ROUTE = 'interoperability/productions/diagram';
 const FRAME = 'app-interop-editor-frame iframe';
 const NOTE = '[data-ocu-editor="note"]';
 const AGENT = '[data-ocu-editor="agent"]';
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 /** The schema types, in the viewer's own list, with the path segment and global the instance keeps each family under. */
 const FAMILIES = [
   { label: 'HL7 v2.x', segment: 'HL7', global: '^EnsHL7.Schema' },
@@ -231,70 +231,13 @@ async function structural(page, route) {
 }
 
 /** A fresh signed-in context at `url`, with the apps' observers armed before the first request, so nothing a screen draws goes unseen. */
-async function shellAt(url) {
-  const observers = {};
-  const { context, page } = await signedInAt(browser, config, url, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
-    observers.traffic = watchEditorTraffic(opened);
-    observers.violations = watchPolicyViolations(opened);
-    observers.messages = await armMessageCounters(opened);
-  });
-  await waitForMapAnswered(page, config.navigationTimeoutMs);
-  return { context, page, ...observers };
-}
+const shellAt = (url) => sharedShellAt(browser, config, url);
 
 /** The screen has answered: its section is no longer busy and it draws a block. */
-async function answered(page) {
-  await page.waitForFunction(
-    () => {
-      const section = document.querySelector('app-interop-editor-page section');
-      return section !== null && section.getAttribute('aria-busy') === 'false' && section.querySelector('[data-ocu-editor]') !== null;
-    },
-    { timeout: config.navigationTimeoutMs }
-  );
-}
-
-/** The screen's frame, as a puppeteer frame, once it is drawn. */
-async function appFrame(page) {
-  const handle = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
-  return handle.contentFrame();
-}
+const answered = (page) => screenAnswered(page, config.navigationTimeoutMs);
 
 /** Wait until the frame's app shows the signed-in person and every text in `texts`. */
-async function appShows(page, texts) {
-  const frame = await appFrame(page);
-  await until(
-    () => frame.evaluate(() => document.body.innerText),
-    (body) => body.includes(config.username) && texts.every((text) => body.includes(text)),
-    `the app shows ${JSON.stringify(texts)}`,
-    config.navigationTimeoutMs
-  );
-  return frame;
-}
-
-/** The path of the page's address, with the entity encoding the router applies to an id undone twice. */
-const decodedPath = (page) => decodeURIComponent(decodeURIComponent(new URL(page.url()).pathname));
-
-/** The box of the frame, its host and the outlet, which the layout assertions compare. */
-function boxes(page) {
-  return page.evaluate(() => {
-    const rect = (node) => {
-      const box = node.getBoundingClientRect();
-      return { left: box.left, top: box.top, width: box.width, height: box.height, bottom: box.bottom };
-    };
-    const host = document.querySelector('app-interop-editor-frame');
-    return { host: rect(host), frame: rect(host.querySelector('iframe')), outlet: rect(document.querySelector('.ocu-screen-outlet')) };
-  });
-}
-
-/** The frame fills its host, to a pixel, ends at the outlet's bottom edge, and is at least 400 px tall. */
-async function assertFillsHost(page) {
-  const box = await boxes(page);
-  for (const side of ['left', 'top', 'width', 'height']) {
-    assert.ok(Math.abs(box.frame[side] - box.host[side]) <= 1, `the frame's ${side} equals its host's: ${JSON.stringify(box)}`);
-  }
-  assert.ok(Math.abs(box.host.bottom - box.outlet.bottom) <= 1, `the host ends at the outlet's bottom edge: ${JSON.stringify(box)}`);
-  assert.ok(box.frame.height >= 400, `the frame is at least 400 px tall: ${box.frame.height}`);
-}
+const appShows = (page, texts) => screenShows(page, config.username, texts, config.navigationTimeoutMs, FRAME);
 
 /** The frame's `src` attributes, one per drawn frame. */
 const frameSources = (page) => page.$$eval(FRAME, (nodes) => nodes.map((node) => node.getAttribute('src')));

@@ -102,6 +102,10 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     ; A lookup entry is namespace-scoped too, and its id is the table and the key.
     Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold205", "hold"))
     Do ..HeldLeg("/interop/lookup-entries?ns=USER", "OcuPilot.Screen.Tool.InteropLookupEntryAdd", tEntry, {"Table": "OcuProbeHold205", "Key": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A term list is namespace-scoped and its id is its name alone; an entry's is the list and the key.
+    Do ..HeldLeg("/analytics/term-lists?ns=USER", "OcuPilot.Screen.Tool.AnalyticsTermListAdd", "OcuProbeHold242", {"Name": "OcuProbeHold242", "OcuProbeUnexpected": 1}.%ToJSON())
+    Set tTermEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold242", "hold"))
+    Do ..HeldLeg("/analytics/term-list-entries?ns=USER", "OcuPilot.Screen.Tool.AnalyticsTermListEntryAdd", tTermEntry, {"TermList": "OcuProbeHold242", "Key": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A business partner is namespace-scoped and its id is its name alone.
     Do ..HeldLeg("/interop/business-partners?ns=USER", "OcuPilot.Screen.Tool.InteropPartnerAdd", "OcuProbeHold226", {"Name": "OcuProbeHold226", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.

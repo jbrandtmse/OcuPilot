@@ -63,6 +63,11 @@ const {
   CONSEQUENCE_UNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
   CONSEQUENCE_JOURNALSWITCHFILE,
+  CONSEQUENCE_BACKUPRUN,
+  CONSEQUENCE_BACKUPFREEZE,
+  CONSEQUENCE_CONFIGSETTINGRESTART,
+  CONSEQUENCE_CONFIGMAPPINGDELETE,
+  CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
   CONSEQUENCE_JOURNALSETTINGSFREEZE,
@@ -1140,4 +1145,53 @@ test('Story 18.26: a connection delete and a token revoke state their consequenc
 test('the code-save consequences are the explorer save\'s and the editor save\'s alone', () => {
   assert.deepEqual([...CODESAVECONSEQUENCES].sort(), [CONSEQUENCE_EXPLORERSAVECOMPILES, CONSEQUENCE_INTEROPEDITORRELOADS].sort());
   assert.equal(CONSEQUENCE_INTEROPEDITORRELOADS, 'INTEROP.EDITOR.RELOADS');
+});
+
+// Story 21.2: the run and the freeze state their ruled sentences on the card, each tool declaring the code the card reads.
+// Mutation (Rule 19): swap the two returns in `consequenceSentence` -> both assertions go red.
+test('Story 21.2: a backup run and a freeze state their consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_BACKUPRUN), STRINGS.backupRunNote);
+  assert.equal(consequenceSentence(CONSEQUENCE_BACKUPFREEZE), STRINGS.backupFreezeConsequence);
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupRun'))?.[1], CONSEQUENCE_BACKUPRUN, 'BackupRun.cls declares the run code the card reads');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupFreeze'))?.[1], CONSEQUENCE_BACKUPFREEZE, 'BackupFreeze.cls declares the freeze code the card reads');
+});
+
+// Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart states the reused restart sentence on the
+// card, under the code the abstract set tool declares and each of the three set tools inherits.
+// Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGSETTINGRESTART` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.3: a setting that takes effect at the next restart states the restart sentence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGRESTART), STRINGS.encryptionStartupRestart);
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGRESTART), 'Takes effect at the next restart.');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGRESTART, 'ConfigSettingSet.cls declares the code the card reads');
+  for (const name of ['StartupSettingSet', 'MemorySettingSet', 'CompatibilitySettingSet']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 21.13: a DDL mapping's delete states the delete sentence on the card, under the code the abstract delete tool declares, which both
+// delete tools inherit.
+// Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGMAPPINGDELETE` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.13: a DDL mapping delete states the delete sentence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGMAPPINGDELETE), STRINGS.configMappingDelete);
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGMAPPINGDELETE), 'DDL that names this type no longer maps it to this datatype.');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('DdlMappingDelete'))?.[1], CONSEQUENCE_CONFIGMAPPINGDELETE, 'DdlMappingDelete.cls declares the code the card reads');
+  for (const name of ['DdlSystemMappingDelete', 'DdlUserMappingDelete']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.DdlMappingDelete/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 21.4: a SQL setting whose change purges the cached queries of every namespace states the purge sentence on the card, under the code the
+// abstract set tool declares as its purge code, which the four SQL set tools inherit.
+// Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGSETTINGPURGE` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.4: a setting whose change purges the cached queries states the purge sentence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGPURGE), STRINGS.configSettingPurge);
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGSETTINGPURGE), 'Changing this setting purges the cached queries in every namespace.');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter PURGECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGPURGE, 'ConfigSettingSet.cls declares the code the card reads');
+  for (const name of ['SqlSettingSet', 'SqlShellSettingSet', 'TsqlSettingSet', 'IsqlSettingSet']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
+  }
 });

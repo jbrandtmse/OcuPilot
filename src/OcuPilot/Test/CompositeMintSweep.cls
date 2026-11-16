@@ -58,6 +58,7 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.WebAppPctAccessMint", "args": {"Name": "/csp/probe", "AllowType": "Allow", "Class": "%ProbeClass"}, "idValue": "/csp/probe", "parts": ["/csp/probe", "Allow", "%ProbeClass"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.BackgroundTaskMint", "args": {"source": "Management Portal", "id": "999999999"}, "idValue": "999999999", "parts": ["Management Portal", "999999999"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.EncryptionKeyFileMint", "args": {"root": "/probe/root", "path": "probe.key"}, "idValue": "probe.key", "parts": ["/probe/root", "probe.key"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.AnalyticsTermListEntryMint", "args": {"TermList": "ProbeList", "Key": "ProbeKey"}, "idValue": "ProbeKey", "parts": ["ProbeList", "ProbeKey"]})
     Quit tRoster
 }
 

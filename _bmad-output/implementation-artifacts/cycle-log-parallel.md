@@ -1893,3 +1893,187 @@
 2026-11-14T13:09:13Z	Epic 20	ci_green_verified	runs=43595329695 head=bd3bf0e5a result=success by=orchestrator
 2026-11-14T13:09:13Z	orchestrator	upgrade_triggers_checked	range=release/1.0.14(723a3662)..bd3bf0e5a kernel_state=none persistent=none install=Roster.cls_version_string_only module_xml=version_string_only compose=none baseline_keys=10_new(read_from_code_at_runtime;Seed_defaults_no_stored_row) upgrade_check=not_needed
 2026-11-14T13:09:13Z	Epic 20	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_2026-10-01)
+2026-11-14T13:10:30Z	Epic 20	epic_merge_started	head=bd3bf0e5a feature=feature/OCU-1_ocupilot-mvp
+2026-11-14T13:12:50Z	Epic 20	decision_sheet_recorded	decided=12(10_at_epic23_sheet+DW-2433_re-owned_21-7,DW-2519_wontfix-accepted,DW-2554_routed_21-7,DW-2555_action_item) by=unattended
+2026-11-14T13:12:50Z	Epic 20	epic_merged_to_feature	repos=. feature_sha=0b3112f6a merge_sha=0b3112f6a head=bd3bf0e5a ci=43598581340(pending) epic_status=done candidate=1.0.15
+2026-11-14T13:12:50Z	Epic 20	worktree_removed	path=.worktrees/epic-20
+2026-11-14T13:12:50Z	Epic 20	epic_branches_deleted	branch=OCU-1-epic20 local+remote slot_b=freed
+2026-11-14T13:15:21Z	orchestrator	ledger_routed_planned	story=21-7-interoperability-parity entries=6 excess=2(DW-2388,DW-2421) by=merge_gate(range_end_sweep)
+2026-11-14T13:15:21Z	orchestrator	ledger_routed_planned	story=21-10-the-remaining-leaves-across-the-six-areas entries=3(+3_existing=6) excess=24 by=merge_gate(range_end_sweep)
+2026-11-14T13:15:21Z	orchestrator	deps_hash_rerecorded	reason=ledger_routed hash=ca25b6cf4292
+2026-11-14T13:15:21Z	orchestrator	ledger_sweep	residue=burndown:51_decision-pending(49_owner_hold_vendor_defects,DW-2431_U-30,DW-2518_U-34) routed:21-10=30,21-7=8,17-2=3 terminal_or_named_owner=all test_tools=2262/2262
+2026-11-14T13:48:33Z	ci	timings_refreshed	rule=29 run=43598581340
+2026-11-14T13:48:33Z	orchestrator	candidate_ci_green	sha=0b3112f6a run=43598581340 release=1.0.15 sent_to=OcuPilot_Planner upgrade_check=not_needed new_keys=10
+2026-11-14T13:48:33Z	orchestrator	unattended_report	merged=epic20(41),epic23(14) since_resume=20.25,20.40,20.41,20.26,20.25fix,23.10,23.13,23.14 crash=survived(no_git_loss) open_owner=U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35 action_items=1(DW-2555) ledger_residue=routed41(21-10:30,21-7:8,17-2:3),owner_hold49,inbox2 throwaways=down next=epics_21,22_attended
+2026-11-14T13:48:33Z	orchestrator	parallel_summary	epics_merged=20,23 stories=20:41,23:14(incl_burndown_23.14) run=20261020T0940Z-20,23 started=2026-10-20T09:40Z ended=2026-11-14T13:48:33Z
+2026-11-14T16:57:01Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed run=20261114T1656Z-21,22
+2026-11-14T16:57:01Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh kit=2026-10-19.3(owner:stay)
+2026-11-14T16:57:01Z	orchestrator	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-14T16:57:01Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T16:57:01Z	orchestrator	owner_decision	id=launch_21_22 via=relay(OcuPilot_Planner,AskUserQuestion_16:52Z) quotes="Start now, unattended (Recommended)"|"Stay on 2026-10-19.3 (Recommended)"|"Planner decides"(readiness)|"Yes, confirmed (Recommended)"(permission) effect=presence_waived(Planner_answers_inbox);kit_kept;readiness_FAIL_to_Planner;hold=usage-triggered(~92pct_weekly;Planner_writes_HOLD;20:00Z_cancelled)
+2026-11-14T16:57:01Z	orchestrator	permission_mode_attested	mode=bypassPermissions by=owner(via_Planner_AskUserQuestion_16:52Z) session=interactive(VS_Code)
+2026-11-14T16:57:01Z	orchestrator	sprint_planning_complete	gate=CONCERNS findings=21.11_undo_state-capture_model_unrecorded(AD_expected_at_spec_gate),21.10_carries_30_routed_ledger_entries(split_likely),DW-2555_AD-62/15/22_sentences_pending_owner_Update,U-30/U-34_AD-10/AD-15_questions_open,22.2_has_no_current_demand in_sync=true
+2026-11-14T16:57:01Z	orchestrator	unattended_started	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 range=21,22 ci=gh visibility=public notify=push lock_token=1794675398-97204 kit=2026-10-19.3 deps=approved(hash_current)
+2026-11-14T16:57:01Z	orchestrator	spine_counter_seeded	next=67
+2026-11-14T16:57:01Z	orchestrator	ledger_counter_seeded	next=2558
+2026-11-14T16:58:44Z	Epic 21	worktree_provisioned	path=.worktrees/epic-21 branch=OCU-1-epic21 from=bb672a5f slot=a
+2026-11-14T16:58:44Z	Epic 22	worktree_provisioned	path=.worktrees/epic-22 branch=OCU-1-epic22 from=bb672a5f slot=b
+2026-11-14T16:58:44Z	Epic 21	worktree_bootstrapped	epic=21 result=ok
+2026-11-14T16:58:44Z	Epic 22	worktree_bootstrapped	epic=22 result=ok
+2026-11-14T16:58:44Z	orchestrator	dispatch_writeahead	epics=21(slot_a,retro_review=own),22(slot_b,retro_review=skip) prompts=e21-unattended-20261114-prompt.md,e22-unattended-20261114-prompt.md gate=token-free_push(Rule_32)
+2026-11-14T17:45:52Z	orchestrator	ci_green_verified	runs=43618538536 head=24a02c86f result=success gate=dispatch(Rule_32)
+2026-11-14T17:45:52Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T17:45:52Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T18:40:50Z	orchestrator	feature_external_commit	sha=b8a0b2e5 by=OcuPilot_Planner what=README.md_1.0.15_port(docs_only,no_token) release=1.0.15_merged_main_6d65ea8c(PR18) runners_integrate_forward=at_next_story_start
+2026-11-14T19:49:55Z	Epic 22	runner_reported	boundary=story_22.1 code_head=74ec38514(43628782453_success) ledger=DW-2558_filed(PRD_FR-80_vs_AD-22,routed_burndown) runner_ruling=rule29_sweep_skipped_for_docs-only_diff(no_src) orchestrator=accepted
+2026-11-14T19:49:55Z	Story 22.1	merged	feature=298f59de1 tip=e808b716f route=code_equal_merge checks=ledger_entry_check_0,dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-14T19:49:55Z	ci	timings_refreshed	rule=29 run=43628782453
+2026-11-14T19:51:23Z	orchestrator	hold_ordered	reason=owner(relay_Planner:weekly_usage_95pct_at_19:48Z;account_switch) hold_file=present dispatch=frozen runners=e21(running),e22(ended_hold)
+2026-11-14T19:51:23Z	Epic 22	runner_ended	reason=hold head=a66b07646 unpushed=none tree=clean state=held next=22.2_implement(spec_ready) staging_f5e641ffa_run_43634085424(pending_at_hold)
+2026-11-14T20:10:23Z	Epic 21	runner_reported	item=U-39 kind=parked unit=Story_21.12(Mirroring) reason=Community_license_NoMirror=1;join_needs_second_instance;AD-10_mirror_arm_DeleteDB_wording rec=A(21.12_monitor+refusal;writes_to_Epic_22_license-gated_group=epic_boundary_owner-only) split=21.2->21.2_Backup+21.12_Mirroring(decide;veto_U-38) open=U-37(readiness_veto) notify=push deps_hash=re-record_reason=split_at_merge
+2026-11-14T20:10:23Z	orchestrator	runner_resumed	epic=21 message=HOLD_in_effect:finish_sweep,push_21.1_code_alone_then_bookkeeping,no_new_stage,U11_hold_steps,end_reason_hold via=SendMessage
+2026-11-14T21:34:33Z	orchestrator	owner_instruction	via=relay(Contest_Planner->OcuPilot_Planner) effect=interrupt_e21_sweep_now;push_15_local_commits_as_is(21.1_unverified,sweep_not_run);patch_uncommitted;end_hold;then_hold_complete note=overrides_U11_no-interrupt_for_a_lead-owned_sweep_on_owner_word
+2026-11-14T21:36:18Z	Epic 21	runner_ended	reason=hold head=0fdb14b7a(on_origin) unpushed=none tree=clean hold_patch=none 21.1=pushed_unverified(sweep_19/20_stopped_on_owner_word;smoke+committed_pending;c7ccce2a9_CI_unknown) inbox=U-37,U-38,U-39 throwaway=ocupilot-ci_down state=held
+2026-11-14T21:36:18Z	Epic 22	ci_green_verified	staging=f5e641ffa runs=43634085424 result=success note=feature_already_holds_22.1+README
+2026-11-14T21:36:18Z	orchestrator	hold_complete	shas=feature:a681ae4b7(+this_hold_commit),e21:0fdb14b7a(origin),e22:a66b07646(origin) throwaways=none_up hold_patches=none lock=released_after_push
+2026-11-14T21:36:18Z	orchestrator	unattended_report	merged=22.1 held=e21(21.1_pushed_unverified),e22(22.2_implement_next) open_owner=U-39,U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35,U-37,U-38 release=1.0.15_on_main_6d65ea8c
+2026-11-14T21:52:35Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T21:52:35Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-14T21:52:35Z	orchestrator	launch_env	depth=4 watchdog=0 bash_max_ms=default
+2026-11-14T21:52:35Z	orchestrator	permission_mode_attested	mode=bypassPermissions source=session_system_prompt(interactive_reinvocation)
+2026-11-14T21:52:35Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T21:52:35Z	orchestrator	hold_cleared	reason=resumed_by_the_owner(interactive_reinvocation_after_account_switch)
+2026-11-14T21:52:35Z	orchestrator	unattended_resumed	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794693143-71436 feature=ae8b680aa deps=approved(hash_current) answers=none runtime_locks=none_to_sweep
+2026-11-14T21:52:35Z	orchestrator	dispatch_writeahead	epics=21(slot_a,held->running),22(slot_b,held->running) prompts=e21-unattended-20261114-prompt.md+resume/epic-21.md,e22-unattended-20261114-prompt.md+resume/epic-22.md gate=token-free_push(Rule_32)
+2026-11-14T22:42:39Z	orchestrator	ci_red_classified	run=43645120786 workflow=.github/workflows/ci.yml class=flake test=ci.test.mjs:DW-2123_bind_budget(gates_node_26.0.0) action=rerun_failed ledger=DW-2565(routed_21-10)
+2026-11-14T22:42:39Z	orchestrator	ci_green_verified	runs=43645120786 head=76ccaa892 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-14T22:42:39Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-redispatch-20261114T2152Z-prompt.md(+e21-unattended-20261114-prompt.md,resume/epic-21.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-14T22:42:39Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-redispatch-20261114T2152Z-prompt.md(+e22-unattended-20261114-prompt.md,resume/epic-22.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-15T00:00:38Z	Epic 22	runner_reported	boundary=story_22.2 code_head=6b064cec8(43652655378_success) ledger=no_new_entries(DW-2558_routed_burndown_to_decision_sheet) next=burndown_gate,epic_close orchestrator=accepted
+2026-11-15T00:00:38Z	Story 22.2	merged	feature=58586c319 tip=b58284e26 route=code_equal_merge checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none new_keys=none
+2026-11-15T00:00:38Z	ci	timings_refreshed	rule=29 run=43652655378
+2026-11-15T00:31:37Z	Epic 22	runner_complete	stories=2 head=fd4f5bbc1 ci=success_runs=43656263754 tokens=302512 decisions_for_user=DW-2558 amendments=none extensions=none retro=skipped_policy applied=none
+2026-11-15T00:31:37Z	Epic 22	merge_enqueued	head=fd4f5bbc1
+2026-11-15T00:32:20Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T00:32:20Z	Epic 22	ci_green_verified	runs=43656263754 head=fd4f5bbc1 result=success
+2026-11-15T00:32:20Z	Epic 22	runner_report_error	field=integrated_forward.feature reported=e1ab5d2c9 actual=acd822931(parent_of_c8c5251f6) impact=feature_moved_after_integrate(22.2_merge+timings),one_more_integrate-forward_needed
+2026-11-15T00:32:20Z	Epic 22	merge_gate_blocked	reason=feature_moved_after_integrate_forward feature=e1ab5d2c9 head=fd4f5bbc1 action=resume_runner_for_integrate_forward(U14)
+2026-11-15T00:32:36Z	Epic 22	runner_resumed	message=one_more_integrate-forward(feature_e1ab5d2c9)_then_Complete_contract via=SendMessage
+2026-11-15T00:32:55Z	orchestrator	ruling	question=DW-2558_FR-80_vs_AD-22_baseline choice=reword_FR-80_bullet_to_AD-22_amended_rule rejected=route_to_story(no_story_owns_the_PRD),leave_stale why=PRD_sentence_stale_against_owner-amended_AD;planning_text_sync category=veto inbox=U-41 reversal=restore_old_bullet policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-15T00:50:54Z	orchestrator	owner_instruction	via=relay(OcuPilot_Planner) quote="Pause local tests (Recommended)" effect=quiet_window(~60min):no_local_test_runs;ocupilot-ci_up_idle;no_containers_stopped;not_a_hold;e22_integrate-forward_relies_on_GitHub_CI(code-equal_fd4f5bbc1) until=QUIET_OFF
+2026-11-15T00:53:46Z	Epic 21	runner_interim_status	quiet_window=idle sweep_21.1=16/20(17-20_after_QUIET_OFF) code_ci=43649659020_on_6e759ee41 throwaway=ocupilot-ci_up_idle
+2026-11-15T01:15:05Z	Epic 22	runner_complete	stories=2 head=9ecda89db ci=success_runs=43659116328 tokens=313518 note=second_contract_after_integrate-forward(feature_e1ab5d2c9)
+2026-11-15T01:15:05Z	Epic 22	amendments_verified	amendments=0 extensions=0 ok=true
+2026-11-15T01:15:05Z	Epic 22	ci_green_verified	runs=43659116328 head=9ecda89db result=success
+2026-11-15T01:15:05Z	Epic 22	epic_merged_to_feature	repos=. feature_sha=e20007c42 merge_sha=e20007c42 submodules= checks=ledger_entry_check_0(2019),dups_none,sprint_validate_ok epics_hash=unchanged upgrade_triggers=none feature_ci=pending(no-token_merge)
+2026-11-15T01:15:05Z	Epic 22	decision_sheet_recorded	decided=1 to_action_items=0 to_x0=0 by=unattended items=DW-2558(veto_U-41,prd_FR-80_reworded)
+2026-11-15T01:15:05Z	Epic 22	model_tier_checkpoint	source=runner(cycle-log-epic-22) result=hold applied=record_only
+2026-11-15T01:15:29Z	Epic 22	worktree_removed	path=.worktrees/epic-22
+2026-11-15T01:15:29Z	Epic 22	epic_branches_deleted	branch=OCU-1-epic22 local+remote
+2026-11-15T01:20:53Z	orchestrator	owner_instruction	via=relay(OcuPilot_Planner) effect=QUIET_OFF(local_tests_resume) runner_21=told
+2026-11-15T01:55:13Z	Epic 21	runner_reported	boundary=story_21.1 code_head=c7ccce2a9(43649659020_success_on_6e759ee41,bookkeeping-only_above) sweep=20/20 smoke=50/50 ledger=DW-2559_escalated,DW-2560_routed_21-2,DW-2561..2564_terminal orchestrator=accepted merge_route=await_staging_head(fast-forward)
+2026-11-15T01:55:13Z	orchestrator	ci_red_classified	run=43662142967 workflow=.github/workflows/ci.yml class=flake?(pending_rerun) test=context-chip.browser-spec.mjs(3_waits_30000ms) head=e20007c42 note=no_client_or_src_change_since_last_green action=rerun_failed
+2026-11-15T02:26:04Z	orchestrator	ci_red_classified	run=43662142967 workflow=.github/workflows/ci.yml class=flake test=context-chip.browser-spec.mjs ledger=DW-2566(routed_21-10)
+2026-11-15T02:26:04Z	Epic 22	ci_green_verified	runs=43662142967 head=e20007c42 result=success gate=feature_after_epic_merge(U9_step3) attempt=2
+2026-11-15T02:34:51Z	Epic 21	runner_reported	staging=8c1f45af5(43665511313_success) carries=21.1(c7ccce2a9)+feature_076653ecb conflicts=sprint-status.yaml(regenerated)
+2026-11-15T02:34:51Z	Story 21.1	merged	feature=8c1f45af5 tip=8c1f45af5 route=fast_forward(staging_head) checks=ledger_entry_check_0(2025),dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-15T02:34:51Z	orchestrator	deps_hash_rerecorded	reason=split story=21.2->21.2_Backup+21.12_Mirroring(veto_U-38) hash=2ccb94cf
+2026-11-15T02:34:51Z	ci	timings_refreshed	rule=29 run=43665511313
+2026-11-15T04:12:40Z	orchestrator	owner_instruction	via=planner quote="Option 1, split Epic 21 for slot B" option="Move a self-contained group into a new sibling epic ... The Orchestrator would check which stories really depend on each other and make the split, since splits are already its call."
+2026-11-15T04:12:40Z	orchestrator	epic_split	from=epic-21 to=epic-24 moved=21.9->24.1,21.8->24.2,21.7->24.3,21.11->24.4 kept=21.2,21.12,21.3,21.4,21.5,21.10,21.6 basis=none_consumes_a_kept_story;21.1_seam_on_feature;20.11+Epic_20_merged;the_28_tools_are_iris-session-agent_interop_tools(21.11_follows_21.7) spine_ref=AD-66_promote_21.9->24.1 epics_ref=20.12_amend_21.9->24.1
+2026-11-15T04:12:40Z	orchestrator	deps_approved	hash=f59b35ca epics=24 by=owner_relay(planner) epic-24_depends_on=epic-11,epic-12,epic-20(all_merged) edge_21_24=none
+2026-11-15T04:12:40Z	orchestrator	range_extended	run=20261114T1656Z-21,22 add=epic-24 slot=b by=owner_relay(planner)
+2026-11-15T04:12:40Z	orchestrator	tracker_generated	new=epic-24,24-1..24-4,epic-24-retrospective dropped_orphans=21-7,21-8,21-9,21-11(all_backlog) validate=ok
+2026-11-15T04:12:40Z	orchestrator	ledger_rerouted	from=21-7-interoperability-parity to=24-3-interoperability-parity ids=DW-2361,DW-2378,DW-2379,DW-2388,DW-2421,DW-2433,DW-2452,DW-2554
+2026-11-15T04:12:40Z	Epic 24	dispatch_writeahead	slot=b retro_review=skip(handled_by_epic_21) gate=feature_head_needs_real_run(Rule_32)
+2026-11-15T04:47:50Z	orchestrator	ci_red_classified	run=43675769752 workflow=.github/workflows/ci.yml class=flake leg=gates(node_22.22.3) cause=vitest_fork_pool_EPIPE head=cee4d3671(planning_only) ledger=DW-2567(routed_21-10) action=rerun_failed
+2026-11-15T04:56:49Z	Epic 24	ci_green_verified	runs=43675769752 head=cee4d3671 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-15T04:56:49Z	Epic 24	runner_dispatched	name=epic-runner-24 slot=b model=opus worktree=.worktrees/epic-24 branch=OCU-1-epic24 base=cee4d3671 prompt=prompts/e24-unattended-20261115-prompt.md retro_review=skip(handled_by_epic_21)
+2026-11-15T05:25:15Z	Epic 24	runner_reported	kind=heads_up split=24.1->24.1(code_metrics+doc_hashes)+24.5..24.9(veto_U-44) bookkeeping=eff701a7d(OCU-1-epic24) readiness_veto=U-43 deps_rerecord_due=split(at_next_merge)
+2026-11-15T05:25:15Z	orchestrator	parked_early	item=U-45 unit=24.8-24.9 reason=NFR-6+PRD_s9+spine_deferred_vs_remote_profiles(owner_only) recommendation=C(same-instance_diff_and_promote)
+2026-11-15T09:33:54Z	Epic 24	runner_reported	story=24.1 head=06dad46b8 runs=43696951376(success) ledger=DW-2577..DW-2584(terminal),DW-2473(occurrence) vetoes=U-43,U-44,U-46 splits=24.1->24.1+24.5..24.9,24.2->24.2+24.10..24.14
+2026-11-15T09:33:54Z	Story 24.1	merged	feature=06dad46b8 then bookkeeping a926ba6f2 route=fast_forward(green_head_pushed_alone,run_43699768641_pending) checks=ledger_entry_check_0(2035),dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-15T09:33:54Z	orchestrator	deps_hash_rerecorded	reason=split stories=24.1->24.1+24.5..24.9(veto_U-44),24.2->24.2+24.10..24.14(veto_U-46) hash=92cde470
+2026-11-15T09:33:54Z	ci	timings_refreshed	rule=29 run=43696951376
+2026-11-15T09:33:54Z	Epic 24	ruling	clarification=24.2_contended_rosters answer=A(add-only_unions_resolved_at_integrate-forward,counts_re-derived) basis=gates.merge_conflicts_resolve+Rule_22 class=decide
+2026-11-15T10:14:26Z	Epic 21	runner_reported	kind=story_red story=21.2 head=32dc20d7c run=43699492613 reds=instance_4/8(BackupWrite_freeze_race,DW-2575)+browser_4/5(language-servers_AC5_shared_surface) class=story rework=3_of_3 next=21.3(ready-for-dev,veto_U-47) unpushed=e0688197c(integrate_forward_1cd2bd663)
+2026-11-15T10:22:11Z	Story 24.1	ci_green_verified	runs=43699768641 head=06dad46b8 result=success gate=feature_after_story_merge(Rule_33)
+2026-11-15T12:02:51Z	Epic 21	runner_reported	story=21.2 head=d34907395 runs=43708708723(success) rework=3(cap) ledger=DW-2560_resolved;DW-2568..2571,2573,2576,2586_wontfix;DW-2572,2574,2575,2585,2587_routed_burndown vetoes=U-42,U-47
+2026-11-15T12:02:51Z	Story 21.2	merge_gate_blocked	reason=feature_moved_by_code(24.1,e820aac45) route=none(no_ff,merge_conflicts) action=runner_integrates_forward_and_reports_staging_head
+2026-11-15T12:22:06Z	Epic 21	runner_reported	staging=df4cf73f0(43713431335_registered) carries=21.2(d34907395)+feature_e820aac45 conflicts=add-only_unions(PortGate_ROSTER,ReadTool_425,ToolRoundTrip_REFUSEEMPTY,descriptor_tests,screen-mirror,tracker) ruling=check-objectscript_rule16_HARVEST_CALLERS+DevToolPort(decide)
+2026-11-15T12:59:32Z	orchestrator	ci_red_classified	run=43713431335 head=df4cf73f0 class=flake leg=gates(node_22.22.3) cause=client_suite_hang_to_job_timeout ledger=DW-2567(occurrence_2) action=rerun_failed
+2026-11-15T13:10:50Z	Story 21.2	merged	feature=df4cf73f0 tip=df4cf73f0 route=fast_forward(staging_head,run_43713431335_success_attempt_2) checks=ledger_entry_check_0(2047),dups_none,sprint_validate_ok,epics_hash_unchanged upgrade_triggers=new_governance_keys(osmgmt.backupdatabases.add,osmgmt.backupdatabases.remove,osmgmt.backuptasks.freeze,osmgmt.backuptasks.run,osmgmt.backuptasks.thaw)_note_for_next_cut feature_ci=43717597429(pending)
+2026-11-15T13:10:50Z	ci	timings_refreshed	rule=29 run=43713431335
+2026-11-15T13:47:11Z	Story 21.2	ci_green_verified	runs=43717597429 head=df4cf73f0 result=success gate=feature_after_story_merge(Rule_33)
+2026-11-15T15:21:58Z	Epic 21	runner_reported	kind=status 21.3=review_closed(HIGH_PasswordHash_excluded,veto_U-49),sweep_running,unpushed split=21.4->21.4+21.13,21.14,21.15(decide,deps_rerecord_due_at_merge) vetoes=U-50,U-51 veto_open=17/20
+2026-11-15T15:30:40Z	orchestrator	answers_applied	via=planner vetoes_kept=U-20,U-29,U-31,U-32,U-35,U-37,U-38,U-41,U-42,U-43,U-44,U-46,U-47,U-48,U-49,U-50,U-51(quote="Keep all 17 (Recommended)") veto_open=0
+2026-11-15T15:30:40Z	Epic 21	answer_relayed	item=U-39 answer=A(monitor+refusal;writes_to_Epic_22_register;AD-10_wording) quote="A: monitor + refusal (Recommended)" unparked=21.12
+2026-11-15T15:30:40Z	Epic 24	answer_relayed	item=U-45 answer=C(same-instance_diff_and_promote;remote_profiles_to_register) quote="C: same instance only (Recommended)"
+2026-11-15T15:32:41Z	orchestrator	answers_applied	via=planner quote="I agree with your recommendations" U-30=A(DW-2431->21-10,AD-10_amendment_owner-sanctioned) U-33=A(owner_hold_DW-2173,2175,2205,2206) U-34=A(DW-2518->24-13,AD-15_sentence_owner-sanctioned)
+2026-11-15T15:50:26Z	Epic 21	ruling	story=21.12 item=U-52(veto) (1)=A(new_License-gated_mirroring_group;catalog_SA-45..49,SO-17_P3->P4;extract_totals;22.1_acceptance_line_add-only) (2)=AD-10_pointer_to_PROHIBITED.MIRRORDATABASES_allowed(part_of_owner_U-39_correction) epics_hash_rerecord_due=rule5_amendment
+2026-11-15T17:03:34Z	Epic 24	runner_reported	story=24.2 head=fcaa50bf7(43735531222_success) staging=7965f70ab(43738892741_pending) conflicts=14_unions_counts_re-derived ledger=DW-2596(by-design),DW-2597(escalated_burndown,decision_sheet) governance_keys=analytics.termlists.*,analytics.termlistentries.*(6;delete/remove_false) prohibited_types=+term-list,+term-list-entry routes=+4
+2026-11-15T17:13:05Z	Epic 24	ruling	story=24.3 clarification=four_shared-file_edits answer=A(1,2_disjoint_hunks;3,4_eleven_fixed_pairs_re-applied_at_integrate-forward_with_grep_check;stop_if_Epic_21_reworded_any) class=decide split=24.3->24.3+24.15..24.19(veto_U-54)
+2026-11-15T17:23:09Z	Epic 21	runner_reported	story=21.3 head=e83ff412a(43737049667_success) tip=6108728a3 ledger=DW-2588_wontfix,DW-2589_resolved,DW-2590..2595_terminal,DW-2559_occurrences vetoes=U-47,U-49(kept)
+2026-11-15T17:23:09Z	orchestrator	merge_order	first=24.2(staging_7965f70ab,reported_first) then=21.3(needs_integrate_forward;conflicts_with_24.2_staging) fallback=21.3_code_equal_if_24.2_red
+2026-11-15T17:50:57Z	Story 24.2	merged	feature=7965f70ab tip=7965f70ab route=fast_forward(staging_head,run_43738892741_success) checks=ledger_entry_check_0(2049),dups_none,sprint_validate_ok,epics_hash_unchanged upgrade_triggers=new_governance_keys(analytics.termlists.*,analytics.termlistentries.*;6;delete/remove_false)_note_for_next_cut
+2026-11-15T17:50:57Z	ci	timings_refreshed	rule=29 run=43738892741
+2026-11-15T18:29:29Z	orchestrator	ci_red_classified	run=43743358535 head=7965f70ab class=flake leg=browser_shard_1/5 spec=a11y-structural-invariants_AC5(governance_settle_protocol_timeout) evidence=same_sha_green_on_epic_branch_43738892741 action=rerun_failed
+2026-11-15T18:49:23Z	Epic 21	runner_reported	staging=fde74e282(43748408456) carries=feature_ddd1ffd7b+21.3(e83ff412a)+21.4_implement_a69923585(unreviewed) conflicts=add-only_unions;ReadTool_445;write_tools_257;strings_cap_3800->4200(decide)
+2026-11-15T18:49:23Z	Story 21.3	merge_gate_blocked	reason=staging_carries_unreviewed_21.4_code action=merge_21.3+21.4_together_at_21.4_boundary
+2026-11-15T18:56:02Z	Story 24.2	ci_green_verified	runs=43743358535 head=7965f70ab result=success gate=feature_after_story_merge(Rule_33) attempt=2
+2026-11-15T20:31:09Z	Epic 21	parked	item=U-58 stories=21.15,21.16 reason=AD-51_named_cases_cross-epic(spec-24-3_cites;U7_re-architecture_c) plus=DW-2606_locale_export recommendation=A
+2026-11-15T20:31:09Z	Epic 21	runner_reported	kind=status 21.4=review_closed,sweep_5/20 ready=21.12(U-52/53),21.13(U-55),21.14(U-56,U-57;split_+21.16) splits_of_21.4=5/6 deps_rerecord_due=split_at_21.4_merge
+2026-11-15T20:49:01Z	Epic 21	parked	item=U-59 stories=21.5,21.18 reason=AD-10_PROTECTEDGLOBAL_arm+AD-36+AD-53_records+AD-51_case(U7_c) recommendation=A split=21.5->21.5+21.17+21.18(3_of_6;d5082f54f;deps_rerecord_due)
+2026-11-15T20:53:48Z	orchestrator	answers_applied	via=planner U-52..U-57=kept(quote="Keep all 6 (Recommended)") U-58=A(quote="A: both + Export (Recommended)";21.15,21.16_unparked;DW-2606->21.15) U-59=A(quote="A: all four (Recommended)";21.5,21.18_unparked) veto_open=0
+2026-11-15T23:00:58Z	Epic 21	parked	item=U-65 story=21.21(owner-gated_leaves:SH-26,SH-27,PM-23,OS-25,SH-28,TM-19,WA-16,DW-1850,DW-1280,DW-2348) recommendation=A split=21.10->21.10+21.19..21.23(6_of_6;1bb9b9fb9;deps_rerecord_due) overlap=21.23_keeps_6_Epic_24_entries(contention_rule)
+2026-11-15T23:01:51Z	orchestrator	answers_applied	via=planner U-60..U-64=kept(quote="Keep all 5 (Recommended)") U-65=A(quote="A (Recommended)";21.21_unparked) veto_open=0
+2026-11-15T23:52:57Z	Epic 21	runner_reported	stories=21.3+21.4 head=290709847(43773475655_success) tip=29d5b8d8e ledger=DW-2598,2599_resolved;DW-2601_burndown;DW-2602..2605,2609_wontfix;DW-2610,DW-1856_decision-pending(decision_sheet) veto=U-66
+2026-11-15T23:52:57Z	Story 21.3+21.4	merged	feature=334fbf9be route=code_equal_merge(tip_29d5b8d8e;code==green_290709847) checks=ledger_entry_check_0(2073),dups_none,sprint_validate_ok upgrade_triggers=new_governance_keys(osmgmt.compatibilitysettings.set,isqlsettings.set,memorysettings.set,sqlsettings.set,sqlshellsettings.set,startupsettings.set,tsqlsettings.set)_note_for_next_cut feature_ci=43777123241
+2026-11-15T23:52:57Z	orchestrator	deps_hash_rerecorded	reason=split+rule5_amendment splits=21.4->21.4,21.13..21.16;21.5->21.5,21.17,21.18;21.10->21.10,21.19..21.23 amendments=U-39,U-52,U-58,U-59,U-65 hash=948eba33
+2026-11-15T23:52:57Z	ci	timings_refreshed	rule=29 run=43773475655
+2026-11-16T00:30:19Z	Story 21.3+21.4	ci_green_verified	runs=43777123241 head=334fbf9be result=success gate=feature_after_story_merge(Rule_33)
+2026-11-16T01:17:14Z	Epic 21	parked	item=U-70 unit=21.21_gated_batch(PM-24,TM-17,TM-18)+DW-2625(possible_audit_secret_leak,unmeasured) recommendation=A action=runner_measures_DW-2625 split=21.19_narrowed(e9f21ce66;deps_rerecord_due) vetoes=U-68,U-69 21.12=committed_96547b386_sweep
+2026-11-16T01:22:57Z	Epic 21	ruling	item=U-71(veto) DW-2625=confirmed(measured_01:21Z_throwaway;Base64_mail_password_unmasked_in_logs.audit_read,old+new_values) basis=AD-35_existing_rule(vendor_audit_secret_masked) class=decide(veto_window:secret_handling) action=fix_forward_story_next(both_paths,tests,mutation) owner=release_decision_and_user_notice_via_planner
+2026-11-16T01:24:33Z	Epic 21	runner_reported	U-71_applied story=21.24(chartered_00dc60e2d,fix_forward;deps_rerecord_due) DW-2625->21.24 plan=running(opus) 21.12_sweep_paused_at_shard_2 plan=one_code_head_for_21.12+21.24
+2026-11-16T01:32:58Z	Epic 24	runner_reported	story=24.3 head=87704295e(43779335677_success_after_flake_rerun_DW-2548) staging=12f9fd65c(43786811296) ledger=DW-2361,2378,2379,2421,2433,2452,2554_resolved;DW-2388_by-design;DW-2612_flake_burndown;DW-2616_decision-pending governance_keys=interop.productions.autostart,interop.productions.shutdowngroup(true) split=24.4->24.4+24.20..24.23(veto_U-67)
+2026-11-16T01:32:58Z	Epic 24	parked_early	item=U-72 story=24.20(undo_new_AD;Kernel/State_Snapshot) recommendation=A
+2026-11-16T01:42:43Z	Epic 21	parked	item=U-74 unit=21.21_SH-27 reason=orchestrator_U-65_wording_error(AD-44_write_vs_AD-64_rule_2_reversal) recommendation=A vetoes=U-73 21.21_rest=proceeds
+2026-11-16T02:08:21Z	orchestrator	ci_red_classified	run=43786811296 head=12f9fd65c class=flake leg=browser_shard_4/5 specs=dashboard,database-operations,ecp-settings(one_minute_window;seed_500_INTERNAL;later_specs_green) action=rerun_failed
+2026-11-16T02:08:55Z	orchestrator	answers_applied	via=planner U-66..69,U-71=kept U-70=A(quote="A: all three + mask (Recommended)") U-72=A(quote="A: accept + keep U-71 (Recommended)") U-74=A(quote="A: amend and build (Recommended)")
+2026-11-16T02:08:55Z	orchestrator	owner_instruction	via=planner release=1.0.16_cut_by_planner_when_21.24_merged_and_green quote="Cut 1.0.16 when green (Recommended)" priority=21.24_not_delayed_by_21.12
+2026-11-16T02:14:25Z	Epic 21	runner_reported	story=21.24 route=b(staging_from_feature_b4be0c8f2,21.24_only) staging=b706fb831(local) eta_green=05:40-05:50Z review_HIGH=base64_76-char_continuation_lines_fixed evidence=agent_tool_unmasked_before(measured_run_121),masked_both_paths_after(run_145),4_mutations_red,survey_clean worktree=.worktrees/epic-21-s2124(rule_10_slip_accepted)
+2026-11-16T02:14:25Z	Story 24.3	merge_held	reason=21.24_release_priority(owner_1.0.16) until=21.24_merged
+2026-11-16T02:14:56Z	Epic 21	ruling	item=U-75(veto) SH-27_AD-10_PROHIBITED.OCUPILOTSCREEN_arm_covered_by_U-74(proposed_records_in_spec-21-21_Design_Notes;tightening_only) DW-2626=resolved_on_U-70_AD-35_sentence
+2026-11-16T02:14:56Z	ci	rerun	run=43786811296 leg=browser_shard_4/5 head=12f9fd65c(24.3_staging) flake=DW-2627
+2026-11-16T02:28:35Z	Epic 21	runner_reported	split=21.6->21.6+21.25..21.29(5_of_6;2e8f93d69;deps_rerecord_due) records=AD-51_entry+AD-10_OCUPILOTSQL_arm(owner_item_filed) DW-2628=EX-45,EX-43_unowned(decision_sheet) 21.24_sweep=2/20
+- 2026-11-16T05:07:40Z ci_red_classified run=43802365008 head=b706fb831 (staging/OCU-1-21.24) jobs=browser-shard-4/5,gates-node22 attempt1: shard4=DW-2627 signature, node22 client hang=DW-2567 (occurrence); unchanged rerun --failed
+- 2026-11-16T05:07:40Z dw_reclassified DW-2627 not_flake: epic-runner-24 diagnosis on 24.3 attempt 2 + spec order in 21.24 shard 4 (config-settings.browser-spec.mjs immediately before database-operations); config-settings leaves an instance setting changed (inference), later specs get SQLCODE -428 on vendor *FILTER procs; exposed by the b4be0c8f2 timings refresh moving the split
+- 2026-11-16T05:07:40Z ruling epic-21: fix config-settings restore inside 21.24 on its staging head (prove order red->green on throwaway, Rule 19 mutation, review), before other work; product-side cause escalates first; second throwaway ocupilot-a2-ci refused (one throwaway per slot), wait for 21.13 review run
+- 2026-11-16T05:07:40Z ruling epic-24: option A; 24.3 staging merge held until 21.24+fix on feature, then integrate forward; 24.4 red with the same signature treated as inherited
+- 2026-11-16T05:07:40Z planner_notified 1.0.16 slip (ETA ~2-3h, inference)
+- 2026-11-16T05:46:56Z ci_red run=43802365008 attempt=2 shard4 red again (expected; DW-2627 real defect, fix in 21.24); no further rerun
+- 2026-11-16T05:46:56Z parked U-77 story=24.5 (work-queue viewer vs AD-61 rule 7); epic-runner-24 resumed on 24.4 CI + 24.6; Planner notified
+- 2026-11-16T06:03:46Z diagnosis epic-21 DW-2627: config-settings SaveMAC after-hook (out-of-band Config.SQL Modify restore) leaves cached-query state on a fresh instance; database-operations seed 500 INTERNAL; not product (4 single samples); fix = spec after-hook purges all-namespace cached queries; fresh pair 7/7+6/6, mutation 7/7+0/6
+- 2026-11-16T06:03:46Z ruling: no 20-shard re-sweep (one spec file, CI runs full suite with the same split); release note unchanged; 21.12 Snippet defect fixed on epic branch before 21.12 merges
+- 2026-11-16T06:06:54Z parked U-78 stories=24.6,24.7 (AD-10 consoles); DW-2634 security escalated (guarded storage, owner question filed); epic-runner-24 resumed on 24.4 CI red + 24.8; Planner notified
+- 2026-11-16T06:06:59Z parked U-78 stories=24.6,24.7 (AD-10 consoles); DW-2634 security escalated (guarded storage, owner item filed); epic-runner-24 resumed on 24.4 CI red + 24.8; Planner notified
+- 2026-11-16T06:07:14Z story_boundary epic=24 story=24.4 head=cae31a918 run=43810505527 red=shard4 inherited (config-settings signature, DW-2627); merges with 24.3 on the next staging head after 21.24 lands; decision sheet adds DW-2629, DW-2631 (decision-pending), DW-2630 (escalated)
+- 2026-11-16T06:29:33Z owner_answers U-75 keep, U-76 A, U-77 A, U-78 C-then-A, U-79 A (Planner, refs #240-#244); resolved; relayed: epic-21 charters DW-2634 fix story after 21.24 (e2e attack first), 21.6 unblocked; epic-24 24.5 rewritten per U-77, 24.6/24.7 wait for the DW-2634 merge
+- 2026-11-16T06:59:02Z merged 21.24 (+ config-settings fix) fast-forward feature b4be0c8f2->6a5bcf05f (staging run 43814889321 green); feature run 43819220427 pending; Planner told (no cut before feature green)
+- 2026-11-16T06:59:02Z veto U-81 (21.30 AD-9 store gate, under U-79; caller inventory condition met); parked U-82 (DW-2638 sibling)
+- 2026-11-16T06:59:02Z 21.30 Task 0: DW-2634 reproduced end to end on throwaway (probe values); fix proceeding; Planner told
+- 2026-11-16T06:59:02Z staging/OCU-1-24.3 feb6b71c7 (24.3+24.4 merged with feature 6a5bcf05f) run 43819841054 pending
+- 2026-11-16T07:26:02Z ci_green feature=6a5bcf05f run=43819220427 missing=none; Planner told (1.0.16 cut point); timings refreshed from 43819220427; DW-2627 resolved-by 21-24 recorded at Epic 21's next merge (key not yet on feature); feature merges held until the Planner confirms the cut
+- 2026-11-16T07:46:05Z epic-21: 21.30 CR done (3df69e648, 07a3a989f), two more HIGHs fixed (GuardedStoredValue arbitrary method/SQL in escalated frame; GuardedRecordWritesMarked saved held object), measured as developer principal; integrated feature 48e3593a3 as 90799012d; sweep for 21.12+21.13+21.30 ETA ~09:50Z
+- 2026-11-16T07:51:21Z ci_red staging/OCU-1-24.3 feb6b71c7 run=43819841054: shard4 dashboard AC2 -428 %SYS.TASK_UPCOMINGTASKSFILTER after config-settings (DW-2627 reopened, routed to epic-21 next code head); node24 gates cancel (DW-2567 occurrence); 24.3/24.4 merge held
+- 2026-11-16T07:52:44Z ruling epic-21 DW-2627: restore SaveMAC via the product route (cause removal) accepted; also measure product-set then session Config.SQL.Modify (classic-portal sequence) once on a fresh instance; red => new DW (product-facing, in 1.0.16), reported to the Planner
+- 2026-11-16T08:20:31Z staging/OCU-1-24.3 run 43819841054 attempt2: node24 gates green (attempt1 cancel infra), shard4 dashboard -428 inherited (DW-2627); held for epic-21 head
+- 2026-11-16T08:20:39Z epic-21 9723084ce: 21.25 planned, three AD records parked (owner item), split 21.31 (6th of 6 children, 21.6 family), DW-2640 to close sheet; deps hash re-record (split) due when on feature
+- 2026-11-16T09:51:58Z DW-2627 PRODUCT DEFECT (epic-21 measured: OcuPilot SQL settings set breaks %SYS class-query procs on fresh instance; session Modify does not); Planner asked to hold 1.0.16 (owner item); epic-21 charters fix_forward in the 21.30 head
+- 2026-11-16T10:03:47Z DW-2646 filed by epic-21 (high): OcuPilot SQL settings browser set leaves CSP workers unable to resolve vendor class-query procs (-428) until workers recycle; purge does not clear; session/REST-direct do not reproduce; ruling: charter 21.32 fix_forward (AD-7 under U7 if child-process isolation), push 21.30+21.12+21.13 head now, merge only on green CI, no test-side workaround; Planner sent impact line for U-85
+- 2026-11-16T11:21:38Z merged epic-21 head 90799012d (21.30, 21.12, 21.13; epic run 43845475577 green) fast-forward to feature; feature run 43850988016 attempt1 red: agent-picker navigation timeout (DW-2648 new, flake vs same-sha green); unchanged rerun
+- 2026-11-16T11:21:38Z ruling epic-21: AD-2 amendment reverted (covered by AD-27; doc comment + Design Notes); DW-2641 routed to epic-21 planning touch
+- 2026-11-16T11:21:38Z staging/OCU-1-24.3 30ae77ef6 (24.3, 24.4, 24.8 integrated with feature 90799012d; nine conflicts unioned by epic-runner-24) run 43855824434 pending; second throwaway refused, CI as the check
+- 2026-11-16T11:21:38Z Planner: DW-2646 reframed as an InterSystems defect, U-85 options revised (A2 cut at 90799012d recommended), vendor report question, U-86 relayed
+- 2026-11-16T11:53:57Z ci_green feature=90799012d run=43850988016 attempt=2 (DW-2648 flake cleared); deps_hash_rerecorded reason=fix_forward(21.24,21.30)+split(21.6->21.25..21.29) hash=8ec4284815a5; timings refreshed from 43850988016
+- 2026-11-16T12:00:09Z merged staging/OCU-1-24.3 30ae77ef6 (24.3, 24.4, 24.8; run 43855824434 green) into feature 6f80c48dc, code-equal (only ui/tools/ci-timings.json differs); tracker last_updated format repaired; deps_hash_rerecorded reason=split(24.3->24.15..24.19, 24.4->24.20..24.23)+rule5_amendment(24.8 U-45) hash=a13cbd89a39b; upgrade trigger: Governance/Baseline keys from Epic 24

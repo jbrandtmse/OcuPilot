@@ -70,7 +70,7 @@ Parameter MONITORTOOLS = "interop.monitor.read";
 Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropMessageHeaderTab,InteropMessageList,InteropMessageTraceTab,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,interop.session.headers,interop.session.summary,interop.session.timeline,interop.sessions.bybodyclass,interop.sessions.byclass,interop.sessions.byid,interop.sessions.bysource,interop.sessions.bystatus,interop.sessions.bysupersession,interop.sessions.bytarget,interop.sessions.bytime,interop.sessions.related,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists and the rule, BPL and DTL editor
 /// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
@@ -81,7 +81,7 @@ Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,i
 Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.messagecontents.read,interop.processes.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;

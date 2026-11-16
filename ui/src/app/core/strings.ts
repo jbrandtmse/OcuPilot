@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:648 */
+  /** EXPERIENCE.md:650 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4882,6 +4882,90 @@ export const STRINGS = {
   explorerMacroPrompt2: 'Where is $$$OK defined?',
   /** EXPERIENCE.md:594 */
   explorerMacroPrompt3: 'What does $$$ThrowOnError do?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsLabel: 'Code metrics',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesLabel: 'Document hashes',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentsLabel: 'Documents',
+  /** EXPERIENCE.md:594 */
+  explorerIncludeGeneratedLabel: 'Include generated',
+  /** EXPERIENCE.md:594 */
+  explorerColumnLines: 'Lines',
+  /** EXPERIENCE.md:594 */
+  explorerColumnCodePercent: 'Code %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnSourceCode: 'Source code',
+  /** EXPERIENCE.md:594 */
+  explorerColumnTestCode: 'Test code',
+  /** EXPERIENCE.md:594 */
+  explorerColumnComments: 'Comments',
+  /** EXPERIENCE.md:594 */
+  explorerColumnCommentPercent: 'Comments %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnBlank: 'Blank',
+  /** EXPERIENCE.md:594 */
+  explorerColumnBlankPercent: 'Blank %',
+  /** EXPERIENCE.md:594 */
+  explorerColumnSha256: 'SHA-256',
+  /** EXPERIENCE.md:594 */
+  explorerDevToolEmpty: 'No class or routine in this namespace matches that pattern.',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsInvite: 'Enter a pattern to count the lines of this namespace\'s classes and routines.',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesInvite: 'Enter a pattern to list a content hash for each matching class and routine.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecLengthReason: 'Name the documents: 1 to 256 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerGeneratedReason: 'generated must be yes or no.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecShapeReason: 'Name documents with letters, digits, %, dots, * and ?, separated by commas.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecWideReason: 'Name a package or a pattern, such as MyApp.*.cls; * on its own covers the whole namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerSpecTooManyReason: 'That pattern matches more than 1,000 documents, the most one read covers. Narrow it to a package.',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt1: 'How much of this package is test code?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt2: 'What share of these classes is comments?',
+  /** EXPERIENCE.md:594 */
+  explorerCodeMetricsPrompt3: 'How many lines of code does this package hold?',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt1: 'List the content hash of every class in this package.',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt2: 'Which of these documents changed most recently?',
+  /** EXPERIENCE.md:594 */
+  explorerDocumentHashesPrompt3: 'How many documents does this pattern match?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffLabel: 'Compare namespaces',
+  /** EXPERIENCE.md:594 */
+  explorerOtherNamespaceLabel: 'Other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedHere: 'Modified here',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedThere: 'Modified there',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyHere: 'Only in this namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyThere: 'Only in the other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeDiffers: 'Content differs',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffEmpty: 'No difference: every matching class and routine is the same in both namespaces.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffInvite: 'Choose another namespace and enter a pattern to see which classes and routines differ.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetReason: 'Name the other namespace: 1 to 64 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetShapeReason: 'Name the namespace to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetSameReason: 'Choose a namespace other than this one to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt1: 'Which classes differ between this namespace and the other one?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt2: 'What does this namespace hold that the other one lacks?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt3: 'Has this package drifted from the other namespace?',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse
@@ -6641,7 +6725,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopRulesEmpty: 'No business rules in this namespace.',
   /** EXPERIENCE.md:604 */
-  interopProductionsEmptyAgent: 'Ask the agent why no production is listed here.',
+  interopProductionsEmptyAgent: 'start a production',
   /** EXPERIENCE.md:604 */
   interopProductionsPrompt1: 'Is any production here troubled or stopped?',
   /** EXPERIENCE.md:604 */
@@ -6705,6 +6789,50 @@ export const STRINGS = {
     'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
   /** EXPERIENCE.md:604 */
   interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnAutoStart: 'Starts with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnStartupPriority: 'Startup priority',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnShutdownGroup: 'Shutdown group',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartAction: 'Start with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartTitle: 'Start <production> with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionShutdownGroupTitle: 'Shutdown group for <production>',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartField: 'Start this production when the instance starts',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartHelp:
+    'When the instance starts, it starts each namespace\'s chosen production in order of startup priority, highest first. Productions with the same priority start in order of namespace name.',
+  /** EXPERIENCE.md:608 */
+  interopProductionShutdownGroupHelp:
+    'When the instance stops, it stops running productions one shutdown group at a time, and those in the same group together. The default group is 2.',
+  /** EXPERIENCE.md:608 */
+  interopAutoStartConsequence:
+    'A namespace starts at most one production with the instance, so this replaces any production set to start before.',
+  /** EXPERIENCE.md:608 */
+  interopShutdownGroupConsequence:
+    'A shutdown group other than 2 can make the instance take longer to stop, which matters where a failover must finish in time.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalSame:
+    'This production is already set that way, so there is nothing to change.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalPriority:
+    'A startup priority is a whole number of at most nine digits, with a minus sign if it is negative.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalGroup:
+    'A shutdown group is a whole number of at most nine digits, with a minus sign if it is negative.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalNoPriority:
+    'A startup priority applies only to a production that starts with the instance.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalNeedsAll:
+    'Changing a startup priority or a shutdown group needs read access to the settings of every namespace that runs interoperability on this instance.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalReadOnly:
+    'This namespace\'s database is mounted read-only, so this setting cannot be saved.',
   /** EXPERIENCE.md:604 */
   interopItemsLabel: 'Production items',
   /** EXPERIENCE.md:604 */
@@ -6716,7 +6844,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemsEmpty: 'This production holds no items.',
   /** EXPERIENCE.md:604 */
-  interopItemsEmptyAgent: 'Ask the agent which item this production should hold.',
+  interopItemsEmptyAgent: 'add an item to this production',
   /** EXPERIENCE.md:604 */
   interopItemsPrompt1: 'Which items of this production are disabled?',
   /** EXPERIENCE.md:604 */
@@ -6821,7 +6949,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemSettingsEmpty: 'This item declares no settings.',
   /** EXPERIENCE.md:604 */
-  interopItemSettingsEmptyAgent: 'Ask the agent which settings this item could have.',
+  interopItemSettingsEmptyAgent: 'set one of this item\'s settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsPrompt1: 'Which settings of this item differ from their defaults?',
   /** EXPERIENCE.md:604 */
@@ -6975,11 +7103,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemJobsPrompt3: 'How many jobs does this item run?',
   /** EXPERIENCE.md:604 */
-  interopQueuesEmptyAgent: 'Ask the agent why no queue is listed here.',
+  interopQueuesEmptyAgent: 'abort the messages in a queue',
   /** EXPERIENCE.md:604 */
-  interopQueueMessagesEmptyAgent: 'Ask the agent why no message is waiting in this queue.',
+  interopQueueMessagesEmptyAgent: 'abort a message in this queue',
   /** EXPERIENCE.md:604 */
-  interopJobsEmptyAgent: 'Ask the agent why no job is listed here.',
+  interopJobsEmptyAgent: 'stop a job',
   /** EXPERIENCE.md:604 */
   actionAbort: 'Abort',
   /** EXPERIENCE.md:604 */
@@ -7032,11 +7160,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
   /** EXPERIENCE.md:604 */
-  interopBusinessPartnersEmptyAgent: 'Ask the agent to add a business partner here.',
+  interopBusinessPartnersEmptyAgent: 'add a business partner',
   /** EXPERIENCE.md:604 */
-  interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
+  interopLookupTablesEmptyAgent: 'create a lookup table',
   /** EXPERIENCE.md:604 */
-  interopLookupEntriesEmptyAgent: 'Ask the agent to add an entry to this lookup table.',
+  interopLookupEntriesEmptyAgent: 'add an entry to this lookup table',
   /** EXPERIENCE.md:604 */
   interopLookupTablesPrompt1: 'Which lookup tables does this namespace hold?',
   /** EXPERIENCE.md:604 */
@@ -7312,7 +7440,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemTestEmpty: 'This item takes no test request.',
   /** EXPERIENCE.md:604 */
-  interopItemTestEmptyAgent: 'Ask the agent which items of this production take a test request.',
+  interopItemTestEmptyAgent: 'send a test request to an item',
   /** EXPERIENCE.md:604 */
   interopItemTestPrompt1: 'Which request classes does this item take?',
   /** EXPERIENCE.md:604 */
@@ -7370,7 +7498,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBplEditorTitle: 'BPL editor',
   /** EXPERIENCE.md:604 */
-  interopTransformsEmptyAgent: 'Ask the agent why no data transformation is listed here.',
+  interopTransformsEmptyAgent: 'test a data transformation',
   /** EXPERIENCE.md:604 */
   interopTransformTestTitle: 'Test <transform>',
   /** EXPERIENCE.md:604 */
@@ -7798,12 +7926,306 @@ export const STRINGS = {
   analyticsCubeManagerPrompt3: 'When was each cube last built or updated?',
   /** EXPERIENCE.md:604 */
   analyticsCubeManagerEmptyAgent: 'Ask the agent why no cube is listed here.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListNewAction: 'New term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEditAction: 'Edit term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListDeleteAction: 'Delete term list',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryChangeAction: 'Change entry',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryRemoveAction: 'Remove entry',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEditTitle: 'Edit term list <name>',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryAddTitle: 'Add an entry to <name>',
+  /** EXPERIENCE.md:607 */
+  analyticsEntryChangeTitle: 'Change entry <key>',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListName: 'Term list name',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListPattern: 'Pattern',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListSubjectArea: 'Subject area',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListHideValue: 'Hide value',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListFieldsHelp: 'Fields name the extra columns each entry can hold besides its value.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListTaken: 'This namespace already holds a term list with that name. Names are compared without regard to case.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListEntryTaken: 'This term list already holds an entry with that key.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListAbsent: 'This term list no longer exists.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListName: 'A term list name is 1 to 255 characters with no control character, within the length the instance can store.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListKey: 'An entry key is 1 to 255 characters with no control character and no ^, within the length the instance can store.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListField: 'A field name is 1 to 255 characters with no control character and no ^. It is not Value, and no two fields share a name. A term list has at most 50 fields.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListNoField: 'This term list has no field of that name.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListFieldInUse: 'Some entries hold a value for this field. Clear those values first, then remove the field.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListValue: 'A caption, pattern or subject area is at most 255 characters, and a description or value at most 32,000.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListReadonly: 'The database that holds this namespace\'s term lists is read-only, so nothing was written.',
+  /** EXPERIENCE.md:607 */
+  analyticsRefusalTermListNotJournaled: 'Term lists can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace\'s term lists.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListDeleteConsequence: 'Deleting this term list removes it and all its entries, and anything that uses it can no longer read them. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListRemoveConsequence: 'Removing this entry cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListsEmptyAgent: 'create a term list',
+  /** EXPERIENCE.md:607 */
+  analyticsTermListEntriesEmptyAgent: 'add an entry to this term list',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryMessage: 'Investigate the selected entry',
   /** EXPERIENCE.md:268 */
   agentEntryActionsColumn: 'Ask the agent',
+  /** EXPERIENCE.md:604 */
+  backupTasksLabel: 'Backup tasks',
+  /** EXPERIENCE.md:604 */
+  backupHistoryLabel: 'Backup history',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesLabel: 'Backup database list',
+  /** EXPERIENCE.md:604 */
+  backupColumnSystemTask: 'System task',
+  /** EXPERIENCE.md:604 */
+  backupFreezeAction: 'Freeze writes',
+  /** EXPERIENCE.md:604 */
+  backupThawAction: 'Thaw writes',
+  /** EXPERIENCE.md:604 */
+  backupAddDatabaseAction: 'Add database',
+  /** EXPERIENCE.md:604 */
+  backupFreezeLimitLabel: 'Suspend limit (seconds)',
+  /** EXPERIENCE.md:604 */
+  backupFreezeLimitHelp: 'Writes resume by themselves after this many seconds, from 1 to 600.',
+  /** EXPERIENCE.md:604 */
+  backupFrozenBanner: 'Database writes are frozen. Thaw them when the external backup finishes.',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesEmpty: 'The list is empty, so a list backup includes every database except IRISTEMP.',
+  /** EXPERIENCE.md:604 */
+  backupFreezeConsequence: 'Database writes stop until you thaw them or the limit passes.',
+  /** EXPERIENCE.md:604 */
+  backupRunNote: 'The backup runs in the background; its result appears in Backup history.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalTaskNotFound: 'There is no backup task with that name.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalRunning: 'A backup is already running.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFreezeLimit: 'Give a suspend limit from 1 to 600 seconds.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFrozen: 'Database writes are already frozen.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalFreezeUnbounded: 'Writes cannot be frozen with a limit on this system.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalNotFrozen: 'Database writes are not frozen.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalDatabaseNotFound: 'There is no database with that name.',
+  /** EXPERIENCE.md:604 */
+  backupRefusalListConflict: 'The backup list already reflects that change.',
+  /** EXPERIENCE.md:604 */
+  aboutBackupTask: 'Backup task',
+  /** EXPERIENCE.md:604 */
+  aboutBackupDatabase: 'Backup database',
+  /** EXPERIENCE.md:604 */
+  backupTasksEmpty: 'No backup tasks on this instance.',
+  /** EXPERIENCE.md:604 */
+  backupTasksEmptyAgent: 'run a backup task',
+  /** EXPERIENCE.md:604 */
+  backupHistoryEmpty: 'No backups are recorded on this instance.',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesEmptyAgent: 'add a database to the backup list',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt1: 'Which backup tasks does this instance have, and when did each last run?',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt2: 'Are database writes frozen right now?',
+  /** EXPERIENCE.md:604 */
+  backupTasksPrompt3: 'Is a backup running?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt1: 'What was the last backup, and did it complete?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt2: 'Which recent backups did not complete?',
+  /** EXPERIENCE.md:604 */
+  backupHistoryPrompt3: 'Which databases did the last full backup cover?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt1: 'Which databases do the list backups cover?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt2: 'Is this database on the backup list?',
+  /** EXPERIENCE.md:604 */
+  backupDatabasesPrompt3: 'Why is a database missing from the backup list?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsLabel: 'Startup settings',
+  /** EXPERIENCE.md:604 */
+  memorySettingsLabel: 'Memory settings',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsLabel: 'Compatibility settings',
+  /** EXPERIENCE.md:604 */
+  aboutStartupSetting: 'Startup setting',
+  /** EXPERIENCE.md:604 */
+  aboutMemorySetting: 'Memory setting',
+  /** EXPERIENCE.md:604 */
+  aboutCompatibilitySetting: 'Compatibility setting',
+  /** EXPERIENCE.md:604 */
+  configSettingsEmpty: 'No settings to show.',
+  /** EXPERIENCE.md:604 */
+  startupSettingsEmptyAgent: 'change a startup setting',
+  /** EXPERIENCE.md:604 */
+  memorySettingsEmptyAgent: 'change a memory setting',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsEmptyAgent: 'change a compatibility setting',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt1: 'Which startup settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt2: 'What does ShutdownTimeout control?',
+  /** EXPERIENCE.md:604 */
+  startupSettingsPrompt3: 'Explain the job and process start and halt settings.',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt1: 'How much memory goes to the database cache for each block size?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt2: 'Which memory settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  memorySettingsPrompt3: 'What do gmheap and locksiz control?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt1: 'What does NullSubscripts change?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt2: 'Which compatibility settings take effect only after a restart?',
+  /** EXPERIENCE.md:604 */
+  compatibilitySettingsPrompt3: 'What does the Undefined setting do?',
+  /** EXPERIENCE.md:604 */
+  configRefusalNotFound: 'There is no setting with that name.',
+  /** EXPERIENCE.md:604 */
+  configRefusalReadOnly: 'This setting is shown here and never changed here.',
+  /** EXPERIENCE.md:604 */
+  configRefusalValue: 'This setting does not accept that value.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBoolean: '0 (off) or 1 (on).',
+  /** EXPERIENCE.md:604 */
+  configAcceptsRange: 'A whole number from %1 to %2.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsMinimum: 'A whole number of at least %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsChoice: 'One of %1.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsText: 'Text of up to %1 characters.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsBlockSizes: 'Block sizes from 4096, 8192, 16384, 32768 and 65536, separated by commas; 8192 is required.',
+  /** EXPERIENCE.md:604 */
+  configAcceptsReadOnly: 'Shown here and never changed here.',
+  /** EXPERIENCE.md:604 */
+  configSettingPurge: 'Changing this setting purges the cached queries in every namespace.',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsLabel: 'SQL settings',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsLabel: 'SQL Shell settings',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsLabel: 'TSQL settings',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsLabel: 'ISQL settings',
+  /** EXPERIENCE.md:604 */
+  aboutSqlSetting: 'SQL setting',
+  /** EXPERIENCE.md:604 */
+  aboutSqlShellSetting: 'SQL Shell setting',
+  /** EXPERIENCE.md:604 */
+  aboutTsqlSetting: 'TSQL setting',
+  /** EXPERIENCE.md:604 */
+  aboutIsqlSetting: 'ISQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsEmptyAgent: 'change a SQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsEmptyAgent: 'change a SQL Shell setting',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsEmptyAgent: 'change a TSQL setting',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsEmptyAgent: 'change an ISQL setting',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt1: 'Which SQL settings purge the cached queries when they change?',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt2: 'What does LockThreshold control?',
+  /** EXPERIENCE.md:604 */
+  sqlSettingsPrompt3: 'Which SQL settings are shown and never changed here?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt1: 'Which settings does the SQL Shell start with?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt2: 'What does the SQL Shell\'s SelectMode change?',
+  /** EXPERIENCE.md:604 */
+  sqlShellSettingsPrompt3: 'What does ExecuteMode do in the SQL Shell?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt1: 'Which TSQL dialect does this instance use?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt2: 'What does ANSI_NULLS change for TSQL?',
+  /** EXPERIENCE.md:604 */
+  tsqlSettingsPrompt3: 'What does QUOTED_IDENTIFIER control?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt1: 'What does DELIMIDENT change?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt2: 'What does RESERVEDWORDPREFIX do?',
+  /** EXPERIENCE.md:604 */
+  isqlSettingsPrompt3: 'Which ISQL settings are on?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorLabel: 'Mirror monitor',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorEmpty: 'No mirror members to show.',
+  /** EXPERIENCE.md:604 */
+  mirrorNotMemberBanner: 'This instance is not a mirror member.',
+  /** EXPERIENCE.md:604 */
+  mirrorUnlicensedBanner: 'This instance is not a mirror member, and its license does not allow mirroring.',
+  /** EXPERIENCE.md:604 */
+  mirrorColumnJournalLatency: 'Journal transfer latency',
+  /** EXPERIENCE.md:604 */
+  mirrorColumnDatabaseLatency: 'Dejournal latency',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt1: 'Is this instance a mirror member?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt2: 'Which members does this mirror have, and what role does each play?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt3: 'Is any mirror member behind on journal transfer or dejournaling?',
+  /** EXPERIENCE.md:604 */
+  mirrorRefusalDatabases: 'Removing a mirror together with taking its databases out of mirroring is not available here.',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsLabel: 'System DDL mappings',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsLabel: 'User DDL mappings',
+  /** EXPERIENCE.md:604 */
+  aboutSystemDdlMapping: 'system DDL mapping',
+  /** EXPERIENCE.md:604 */
+  aboutUserDdlMapping: 'user DDL mapping',
+  /** EXPERIENCE.md:604 */
+  ddlMappingColumnDatatype: 'Datatype',
+  /** EXPERIENCE.md:604 */
+  ddlMappingNewAction: 'New mapping',
+  /** EXPERIENCE.md:604 */
+  ddlMappingDialogTitle: 'New DDL mapping',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsEmpty: 'No system DDL mappings.',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsEmpty: 'No user DDL mappings.',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsEmptyAgent: 'change a system DDL mapping',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsEmptyAgent: 'add a user DDL mapping',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt1: 'Which DDL type maps to %Library.String?',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt2: 'What does VARCHAR map to?',
+  /** EXPERIENCE.md:604 */
+  systemDdlMappingsPrompt3: 'How do I map a new DDL type to a class?',
+  /** EXPERIENCE.md:604 */
+  userDdlMappingsPrompt1: 'Which user DDL mappings does this instance have?',
+  /** EXPERIENCE.md:604 */
+  configAcceptsDatatype: 'A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters.',
+  /** EXPERIENCE.md:604 */
+  configMappingTaken: 'This instance already holds a user DDL mapping of that name.',
+  /** EXPERIENCE.md:604 */
+  configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
+  /** EXPERIENCE.md:604 */
+  configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
 } as const;
 
 /**

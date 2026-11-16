@@ -125,7 +125,9 @@ prose into one checker.
     itself accepts, may appear only in `OcuPilot/Port/AdminPort.cls` -- every other `.cls`/`.mac`/
     `.inc` file, and every shell script under `scripts/`, is refused the moment it appears in code
     (comments excluded), so a vendor dependency the port does not already route through has a
-    blast radius of exactly one file.
+    blast radius of exactly one file. The same rule holds a harvested handler body (AD-23, DW-2560): a
+    class under `OcuPilot/Port/Harvest/` may be named in code only in `OcuPilot/Port/HarvestPort.cls`,
+    `OcuPilot/Port/Harvest/`, `OcuPilot/Test/` and the one area port `HARVEST_CALLERS` declares for it.
 
 17. **Destructive test guard (DW-289, Story 2.13).** A `%UnitTest.TestCase` under `Test/` that
     creates or deletes an IRIS user, creates a role, or moves the console log -- directly, or
@@ -166,9 +168,8 @@ prose into one checker.
     `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` or `Screen/Tool/` names no
     `OcuPilot.Api.*` class but the vocabulary class `OcuPilot.Api.Error`, because the handlers
     depend on the shell reads and the tools and never the reverse; and `BeginCapture` or
-    `%SYS.Capture` appears only in `Port/AdminPort.cls`, `Port/MgmntPort.cls` and
-    `Port/AtelierPort.cls`, because a port's own capture refuses to open inside one that already
-    holds output.
+    `%SYS.Capture` appears only in the ports `CAPTURE_ALLOWED` names, because a port's own capture
+    refuses to open inside one that already holds output.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
@@ -737,6 +738,46 @@ def check_admin_api_containment(problems: list[str]) -> None:
             if ADMIN_API_RE.search(raw):
                 refuse(rel, i)
 
+    check_harvest_containment(problems)
+
+
+# --- Harvested body containment (AD-23, DW-2560) ---------------------------------------
+
+# A harvested handler body is reached only through OcuPilot.Port.HarvestPort, which gates the call. The
+# body's own render outside a port call records nothing, but nothing in the class stops another file from
+# naming it, so the rule does: a class under Port/Harvest/ is named only in the port, in Port/Harvest/
+# itself, in the one area port that declares it, and in the test package. Doc comments are not scanned.
+HARVEST_PACKAGE_RE = re.compile(r"OcuPilot\.Port\.Harvest\.([A-Za-z0-9]+)")
+HARVEST_PORT = "src/OcuPilot/Port/HarvestPort.cls"
+HARVEST_DIR = "src/OcuPilot/Port/Harvest/"
+HARVEST_TEST_DIR = "src/OcuPilot/Test/"
+HARVEST_CALLERS = {
+    "OcuPilot.Port.Harvest.Monitor": "src/OcuPilot/Port/BackupPort.cls",
+    "OcuPilot.Port.Harvest.Loc": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
+}
+
+
+def check_harvest_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if rel == HARVEST_PORT or rel.startswith(HARVEST_DIR) or rel.startswith(HARVEST_TEST_DIR):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_non_comment_lines(text):
+            for m in HARVEST_PACKAGE_RE.finditer(raw):
+                name = f"OcuPilot.Port.Harvest.{m.group(1)}"
+                if HARVEST_CALLERS.get(name) == rel:
+                    continue
+                caller = HARVEST_CALLERS.get(name)
+                allowed = f"{HARVEST_PORT}, {HARVEST_DIR}, {HARVEST_TEST_DIR}" + (f" or {caller}" if caller else "")
+                problems.append(
+                    f"{rel}:{i}: '{name}' may be named only in {allowed} (AD-23, DW-2560); "
+                    f"reach a harvested body through OcuPilot.Port.HarvestPort instead"
+                )
+
 
 def check_escalation_containment(problems: list[str]) -> None:
     for p in iter_objectscript_files():
@@ -919,7 +960,8 @@ CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
 # the only port that captured; Epic 6's MgmntPort captures the same way, Story 19.1's AtelierPort
 # is the third, and Story 20.6's InteropPort the fourth, around the host test's send; Story 20.34's
-# AnalyticsPort is the fifth, around the cube build and synchronize. The rule still
+# AnalyticsPort is the fifth, around the cube build and synchronize; Story 21.1's HarvestPort is
+# the sixth, around a harvested handler body. The rule still
 # refuses a capture anywhere else, which is what keeps one from opening inside another (DW-1173
 # asks whether these can nest).
 CAPTURE_ALLOWED = frozenset(
@@ -929,6 +971,7 @@ CAPTURE_ALLOWED = frozenset(
         "src/OcuPilot/Port/AtelierPort.cls",
         "src/OcuPilot/Port/InteropPort.cls",
         "src/OcuPilot/Port/AnalyticsPort.cls",
+        "src/OcuPilot/Port/HarvestPort.cls",
     }
 )
 
