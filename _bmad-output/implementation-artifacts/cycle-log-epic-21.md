@@ -383,3 +383,4 @@
 2026-11-16T14:03:00Z	Story 21.34	cr_complete	model=opus scope=short_static high=0 med=0 low=3(patched_c1a02ae13) final=done
 2026-11-16T14:03:00Z	Story 21.34	gate_step	step=waiver_gates result=pass(fresh:c1_backup3/3+ie23/23;c2_dbo6/6+backup3/3+ie23/23;c3_cfg7/7+dashboard3/3;8_classes_fwd+rev;smoke_PASSED;patched_rerun_5_classes+c1_green) sweep=waived(orchestrator)
 2026-11-16T14:03:00Z	Story 21.34	committed	sha=c1a02ae13(carries_21.32_edf36c82d+feature_2ef969841+21.34) ci=pending runs=43881658467
+2026-11-16T14:03:11Z	Story 21.32	ci_resolved	story=21.32 sha=edf36c82d runs=43875203822 result=success via=rerun(gates_node22,DW-2567_occurrence,orchestrator)
