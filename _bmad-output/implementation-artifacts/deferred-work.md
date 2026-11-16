@@ -12920,6 +12920,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-16T19:25:47Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43933412899(OCU-1-epic21-a7e5d04fa)gates_node24.15.0_2177ms;unchanged_rerun
 
 ### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
 - source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
@@ -13426,6 +13427,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
 - 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun
 
+### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
+- source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
+- evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
+- 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
+- 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
 ### DW-2662: AD-9's 21.33 list of open writes omits a confirm's claim cancelling every user's live proposals on its target (AD-34); a %Development holder can mint its own proposal on any target through the store and claim it to cancel other users' live proposals there
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
