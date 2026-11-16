@@ -314,3 +314,4 @@
 2026-11-16T06:30:32Z	Story 21.6	story_unparked	via=inbox story_base=none
 2026-11-16T06:30:32Z	Story 21.21	owner_decision	id=U-75 by=owner answer=keep quote="Keep (Recommended)"
 2026-11-16T06:30:32Z	Story 21.30	story_inserted	kind=fix_forward via=owner_answer_U-79 owns=DW-2634(epic24_ledger) order=after_21.24,before_21.12_21.13 note=deps_hash_rerecord_reason=fix_forward
+2026-11-16T06:30:38Z	Story 21.30	stage_spawned	stage=plan spawn_at=2026-11-16T06:30:38Z model=opus agent_name=21-30-plan-1 cycle_iteration=1
