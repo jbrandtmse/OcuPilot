@@ -13236,3 +13236,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.25 plan inventory
 - 2026-11-16T08:20:18Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet with DW-2628
+
+### DW-2646: After a SQL setting is changed and changed back on OcuPilot's SQL settings screen, the web server processes start failing the vendor admin API's class-query lists (Task Manager Upcoming tasks; earlier the database create) with SQLCODE -428 'Stored Procedure ... not found' until those processes are recycled
+- source: spec-21-4-nls-locales-and-sql-settings.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: fresh ocupilot-ci, 2026-11-16: config-settings->dashboard red 2/3 (A purge, B route, D1/D2/Q SaveMAC test alone, 4 repros); dashboard alone 3/3; session-only Modify flip then dashboard 3/3 (E); OcuPilot set 1 / set 1+0 / set1+read+set0 / dashboard-first by direct REST calls all 3/3 (F,H,I,M, one sample each); in the broken state a new process's %PrepareClassQuery(%SYS.Task,UpcomingTasksFilter,2) succeeds, %SYS purge and allNamespace purge do not clear it, terminating the 7 CSP worker processes does (3/3). Mechanism inside the vendor's per-process SQL compile context (inference)
+- 2026-11-16T10:03:05Z status=open owner=burndown by=lead note=orchestrator: product defect; fix-forward story to charter; 1.0.16 held pending owner

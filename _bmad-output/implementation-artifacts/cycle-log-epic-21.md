@@ -335,3 +335,4 @@
 2026-11-16T08:20:18Z	Story 21.25	ruling	question=split_fixed_statistics choice=split(21.31_fixed_table_statistics) rejected=one_story why=size;separate_setter_shape category=decide policy=b9ff703e split_children=6_of_6(21.6_family)
 2026-11-16T08:20:18Z	Story 21.25	plan_clarification_requested	condition=AD_records(AD-51_21.25_case,AD-10_OCUPILOTTABLE_arm,AD-7_synchronous_named_limit) via=orchestrator status=blocked
 2026-11-16T08:20:50Z	Story 21.25	story_parked	stage=plan reason=owner_item_U-84(21.25,21.31) also_waits=21.6_merge category=park code=none
+2026-11-16T10:03:05Z	Story 21.4	defect_found	id=DW-2646 severity=high via=DW-2627_reopen cause=per-process_state_in_CSP_workers_after_UI_SQL_setting_change evidence=b3/proof(A,B,C,D1,D2,E,F,G,H,I,K,L,M,Q)
