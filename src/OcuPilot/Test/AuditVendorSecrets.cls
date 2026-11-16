@@ -267,15 +267,16 @@ ClassMethod ReadTool(pTool As %DynamicObject, pEvents As %String, pSince As %Str
     Quit tSC
 }
 
-/// <p>How many of the vendor's own OAuth 2.0 rows since <var>pSince</var> (UTC) carry <var>pToken</var>
-/// in their event data, read from the audit database directly.</p>
-ClassMethod VendorCarries(pSince As %String, pToken As %String) As %Integer
+/// <p>How many of the vendor's own rows of <var>pEvent</var>, <code>&lt;source&gt;/&lt;type&gt;/&lt;name&gt;</code>,
+/// since <var>pSince</var> (UTC) carry <var>pToken</var> in their event data, read from the audit
+/// database directly.</p>
+ClassMethod VendorCarries(pSince As %String, pToken As %String, pEvent As %String = "%System/%Security/OAuth2") As %Integer
 {
     Set tCount = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = '%System' AND %NOINDEX EventType = '%Security' AND %NOINDEX Event = 'OAuth2'", pSince)
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, $Piece(pEvent, "/", 1), $Piece(pEvent, "/", 2), $Piece(pEvent, "/", 3))
         While tRS.%Next() {
             If tRS.%Get("EventData") [ pToken Set tCount = tCount + 1
         }

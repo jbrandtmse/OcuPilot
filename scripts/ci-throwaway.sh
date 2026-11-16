@@ -871,8 +871,9 @@ services:
       # screen-action and confirm paths, and sets the memory setting errlog, which needs a restart, and back. No restore clears the
       # instance's pending-restart flag, so the flag stays set on the throwaway; the class restores every setting it changed on
       # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
-      # and purges the cached queries of every namespace once (Story 21.4).
-      # classes: ConfigSettingWrite, SqlSettingWrite
+      # and purges the cached queries of every namespace once (Story 21.4). TaskMailAuditMask sets, changes and clears the Task Manager
+      # mail password to probe values and restores the stored one after every method (Story 21.24).
+      # classes: ConfigSettingWrite, SqlSettingWrite, TaskMailAuditMask
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable
