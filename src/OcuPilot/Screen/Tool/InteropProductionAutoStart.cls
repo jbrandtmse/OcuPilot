@@ -2,8 +2,8 @@
 /// the instance and its startup priority, or stop starting any, as the classic Auto-Start Production page does. A namespace starts at
 /// most one production, so turning it on for one replaces the production set before, and the card shows that production's change from
 /// Yes to No. Name the production as the Productions list reports it; give <code>AutoStart</code> <code>1</code> to start it with the
-/// instance or <code>0</code> to stop, and a <code>StartupPriority</code> only with <code>1</code>. A priority left out takes the one the
-/// production's read gives.</p>
+/// instance or <code>0</code> to stop, and a <code>StartupPriority</code> only with <code>1</code>. Turning it on with no priority sets
+/// 0, and the card shows that row.</p>
 /// <p>Two callers reach it: the Productions row action Start with the instance through <class>OcuPilot.Api.ScreenAction</class>, whose dialog
 /// sends the checkbox and the priority, and the agent's proposal and confirmation. Its read, pairs and refusals are
 /// <class>OcuPilot.Screen.Tool.InteropStartupAction</class>'s, and its read-back compares <code>AutoStart</code> and
@@ -51,12 +51,13 @@ ClassMethod RequiredFields() As %List
 ClassMethod FieldDescription(pField As %String) As %String
 {
     If pField = ..#AUTOSTARTFIELD Quit "1 to start this production when the instance starts, 0 to stop starting it. Turning it on replaces any production of the namespace set to start before."
-    Quit "The startup priority, a whole number of at most nine digits with a minus sign if negative; higher priorities start first. Give it only with AutoStart 1. Left out, the production's own priority is used."
+    Quit "The startup priority, a whole number of at most nine digits with a minus sign if negative; higher priorities start first. Give it only with AutoStart 1. Left out, 0 is used."
 }
 
 /// <p>The claim that this production starts with the instance, which the card shows as Yes and No, and, when it replaces another, that
 /// production's own change to No. The merge's payload carries a priority only while the production starts with the instance: turning it
-/// off leaves none, so the read-back compares none, and turning it on with no priority sets 0.</p>
+/// off leaves none, so the read-back compares none, and turning it on with no priority sets 0, which the card shows as a row.
+/// <var>pUnchanged</var> counts the payload properties the write sends untouched.</p>
 ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set tSC = ##super(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
@@ -71,11 +72,20 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
         }
         If pPayload.%Get(..#AUTOSTARTFIELD) = "0" {
             If pPayload.%GetTypeOf(..#PRIORITYFIELD) '= "unassigned" {
+                ; Counted untouched only when the arguments left the priority as the read had it.
+                If pPayload.%Get(..#PRIORITYFIELD) = pFresh.%Get(..#PRIORITYFIELD) Set pUnchanged = pUnchanged - 1
                 Do pPayload.%Remove(..#PRIORITYFIELD)
-                Set pUnchanged = pUnchanged - 1
             }
         } ElseIf (pPayload.%Get(..#AUTOSTARTFIELD) = "1") && (pFresh.%Get(..#AUTOSTARTFIELD) = "0") {
-            If pPayload.%Get(..#PRIORITYFIELD) = "" Do pPayload.%Set(..#PRIORITYFIELD, "0", "string")
+            If pPayload.%Get(..#PRIORITYFIELD) = "" {
+                Do pPayload.%Set(..#PRIORITYFIELD, "0", "string")
+                Set tRow = {}
+                Do tRow.%Set("field", ..#PRIORITYFIELD, "string")
+                Do tRow.%Set("before", "", "string")
+                Do tRow.%Set("after", "0", "string")
+                Do pDiff.%Push(tRow)
+                Set pUnchanged = pUnchanged - 1
+            }
             If pFresh.%Get("AutoStartOther") '= "" {
                 Set tRow = {}
                 Do tRow.%Set("field", "AutoStartOther", "string")

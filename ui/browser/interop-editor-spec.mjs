@@ -141,21 +141,24 @@ export async function shellAt(browser, config, url, observe = async () => {}) {
 /** The path of the page's address, with the entity encoding the router applies to an id undone twice. */
 export const decodedPath = (page) => decodeURIComponent(decodeURIComponent(new URL(page.url()).pathname));
 
-/** The box of the frame, its host and the outlet, which the layout assertions compare. */
-export function boxes(page) {
-  return page.evaluate(() => {
+/** The selector of the host an editor screen draws its frame in. */
+export const SCREEN_HOST_SELECTOR = 'app-interop-editor-frame';
+
+/** The box of the frame, its host and the outlet, which the layout assertions compare; `hostSelector` names another screen's host. */
+export function boxes(page, hostSelector = SCREEN_HOST_SELECTOR) {
+  return page.evaluate((selector) => {
     const rect = (node) => {
       const box = node.getBoundingClientRect();
       return { left: box.left, top: box.top, width: box.width, height: box.height, bottom: box.bottom };
     };
-    const host = document.querySelector('app-interop-editor-frame');
+    const host = document.querySelector(selector);
     return { host: rect(host), frame: rect(host.querySelector('iframe')), outlet: rect(document.querySelector('.ocu-screen-outlet')) };
-  });
+  }, hostSelector);
 }
 
 /** The frame fills its host, to a pixel, ends at the outlet's bottom edge, and is at least 400 px tall. */
-export async function assertFillsHost(page) {
-  const box = await boxes(page);
+export async function assertFillsHost(page, hostSelector = SCREEN_HOST_SELECTOR) {
+  const box = await boxes(page, hostSelector);
   for (const side of ['left', 'top', 'width', 'height']) {
     assert.ok(Math.abs(box.frame[side] - box.host[side]) <= 1, `the frame's ${side} equals its host's: ${JSON.stringify(box)}`);
   }

@@ -62,6 +62,9 @@ Property PreparedMissing As %String(MAXLEN = "");
 /// <p>The <code>OcuPilot.*</code> classes of the probe namespace that were not copied, comma separated.</p>
 Property PreparedExtra As %String(MAXLEN = "");
 
+/// <p><code>USER</code>'s startup settings as the production-backed leg found them, <code>""</code> outside that leg.</p>
+Property PreparedStartup As %List;
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -75,6 +78,21 @@ Method OnBeforeAllTests() As %Status
         Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll", .tLeft))
     }
     Quit tSC
+}
+
+/// <p>After the production-backed leg, however it ended: the probe production is stopped, <code>USER</code>'s startup settings are put
+/// back and read as the leg found them, and the probe production is removed.</p>
+Method OnAfterOneTest() As %Status
+{
+    If ..PreparedStartup = "" Quit $$$OK
+    Set tProbe = ..#PRODUCTIONPROBE
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Settle"), "the probe production is stopped")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreStartup", ..PreparedStartup), "USER's startup settings are put back")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove"), "and the probe production is removed")
+    Do $$$AssertEquals($ListToString($ClassMethod(tProbe, "SaveStartup")), $ListToString(..PreparedStartup), "USER's startup settings read as the leg found them")
+    Do $$$AssertTrue($ClassMethod(tProbe, "Gone"), "and the probe holds nothing")
+    Set ..PreparedStartup = ""
+    Quit $$$OK
 }
 
 Method OnAfterAllTests() As %Status
@@ -383,8 +401,8 @@ ClassMethod ProbeCall(pEndpoint As %String, pType As %String, ByRef pQuery, pBod
 /// answer 200. Each runs its vendor calls while switched to <code>USER</code>, where no <code>OcuPilot.*</code> class exists, so a copy
 /// that calls one inside a switched block fails here, on a path the reads of an empty namespace never reach.</p>
 /// <p>It runs the probe production in <code>USER</code> and writes its auto-start setting, so it needs
-/// <parameter>PRINCIPALSVARIABLE</parameter> beside <parameter>ARMINGVARIABLE</parameter>, and puts <code>USER</code>'s startup settings
-/// back.</p>
+/// <parameter>PRINCIPALSVARIABLE</parameter> beside <parameter>ARMINGVARIABLE</parameter>; <method>OnAfterOneTest</method> puts
+/// <code>USER</code>'s startup settings back and removes the probe production.</p>
 Method TestItServesAProductionRunningInAnInteroperabilityNamespace()
 {
     If $System.Util.GetEnviron(..#PRINCIPALSVARIABLE) '= 1 {
@@ -393,7 +411,8 @@ Method TestItServesAProductionRunningInAnInteroperabilityNamespace()
     }
     Set tProbe = ..#PRODUCTIONPROBE
     Set tProduction = $Parameter(tProbe, "PRODUCTION")
-    Set tSaved = $ClassMethod(tProbe, "SaveStartup")
+    Set ..PreparedStartup = $ClassMethod(tProbe, "SaveStartup")
+    Do $$$AssertTrue(..PreparedStartup '= "", "USER's startup settings are read before the leg changes them")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove"), "no probe production is left from an earlier run")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "Create"), "the probe production is made in USER")
     Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.InteropControl", "StartIt"), "and started")
@@ -416,9 +435,6 @@ Method TestItServesAProductionRunningInAnInteroperabilityNamespace()
         Do ..ProbeCall("Productions", "AUTOSTART", .tQuery, tBody, .tHttp, .tCount, .tCaught)
         Do $$$AssertEquals(tCaught _ "|" _ tHttp, "|200", "the auto-start write " _ tBody.%ToJSON() _ " answers 200 from the probe copy")
     }
-    Do $$$AssertStatusOK($ClassMethod(tProbe, "Settle"), "the probe production is stopped")
-    Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreStartup", tSaved), "USER's startup settings are put back")
-    Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove"), "and the probe production is removed")
 }
 
 /// <p>The probe copy refuses the namespace it runs in, which runs no interoperability, as the install does:

@@ -216,6 +216,7 @@ Method TestAPersonsStartWithTheInstanceTurnsAutoStartOnAndOff()
     Do $$$AssertEquals(..Listed(..#PRODUCTION) _ ";" _ ..Listed(..#OTHER), "Yes|4|2;No||2", "the list shows the change")
     Do $$$AssertEquals(..Audited(tSince, ..#PRODUCTION, .tData), 1, "one audit row of OcuPilot's own")
     Do $$$AssertTrue((tData [ "interop.productions.autostart") && (tData [ "USER") && (tData [ ..#OTHER), "naming the tool, the namespace and the production it replaced: " _ tData)
+    Do $$$AssertTrue((tData '[ "Priority") && (tData '[ "AutoStart"""), "and carrying no value: " _ tData)
     Do $$$AssertEquals(..ActOn("autostart", ..#PRODUCTION, {"AutoStart": "0"}, .tAnswer), "200 ", "turning it off answers 200")
     Do $$$AssertEquals(..Vendor(), "||2|2|0", "and no production of USER starts with the instance")
     Do $$$AssertEquals(..Listed(..#PRODUCTION) _ ";" _ ..Listed(..#OTHER), "No||2;No||2", "the list shows none")
@@ -225,7 +226,8 @@ Method TestAPersonsStartWithTheInstanceTurnsAutoStartOnAndOff()
 /// <p>AC1, AC4, AC5 (Integration): the agent's <code>interop.productions.autostart</code> proposals for the same two changes are
 /// confirmed over HTTP. The card for the first shows the production's change from No to Yes at its priority and the replaced production's
 /// change from Yes to No, with the replacement consequence; the second shows Yes to No and none. The vendor's state reads each change, the
-/// Productions screen and its read tool answer the same row, and each confirm is marked and ledgered.</p>
+/// Productions screen and its read tool answer the same row, and each confirm is marked and ledgered. A third, turning it on with no
+/// priority, shows the priority 0 it sets.</p>
 Method TestTheAgentsAutoStartReplacesTheOtherAndTurnsOff()
 {
     Do $$$AssertStatusOK(..Seed(..#OTHER, 5), "the other production starts with the instance at priority 5")
@@ -240,6 +242,10 @@ Method TestTheAgentsAutoStartReplacesTheOtherAndTurnsOff()
     Do $$$AssertEquals(tChanged, "[{""field"":""AutoStart"",""before"":""Yes"",""after"":""No""}]", "turning it off shows one row")
     Do $$$AssertEquals(tConsequence, "", "and no replacement consequence")
     Do $$$AssertEquals(..Vendor(), "||2|2|0", "no production of USER then starts with the instance")
+    Do $$$AssertStatusOK(..Seed(..#OTHER, 5), "the other production starts with the instance at priority 5 again")
+    Set tStatus = ..Agent("InteropProductionAutoStart", {"Name": (..#PRODUCTION), "AutoStart": "1"}, .tChanged, .tConsequence)
+    Do $$$AssertEquals(tChanged, "[{""field"":""AutoStart"",""before"":""No"",""after"":""Yes""},{""field"":""StartupPriority"",""before"":"""",""after"":""0""},{""field"":""AutoStartOther"",""before"":""Yes"",""after"":""No""}]", "turning it on with no priority shows the priority 0 it sets")
+    Do $$$AssertEquals(..Vendor(), ..#PRODUCTION _ "|0|2|2|0", "and the vendor reads the production at priority 0")
 }
 
 /// <p>AC2, AC4: for the probe production stopped and then running, each caller sets its shutdown group to 3 and then back to 2. The vendor reads
@@ -293,13 +299,14 @@ Method TestAChangeMadeElsewhereAfterTheMintClosesTheConfirm()
 }
 
 /// <p>AD-59: each tool's copy-out draft renders one ObjectScript step that switches to the namespace the proposal read and makes the
-/// vendor's call with the reviewed values, closes the proposal as a draft, and changes nothing.</p>
+/// vendor's call with the reviewed values as the numbers the write passes (a group typed <code>007</code> as 7), closes the proposal as a
+/// draft, and changes nothing.</p>
 Method TestEachStartupToolsDraftRendersItsScript()
 {
-    Set tTools = $ListBuild("InteropProductionAutoStart", "InteropProductionAutoStart", "InteropProductionShutdownGroup")
-    Set tCalls = $ListBuild("SetAutoStart(""" _ ..#PRODUCTION _ """, ""4"")", "SetAutoStart("""")", "SetProductionShutdownGroup(""" _ ..#PRODUCTION _ """, ""3"")")
-    For tI = 1:1:3 {
-        Set tArgs = $Case(tI, 1: {"Name": (..#PRODUCTION), "AutoStart": "1", "StartupPriority": "4"}, 2: {"Name": (..#PRODUCTION), "AutoStart": "0"}, : {"Name": (..#PRODUCTION), "ShutdownGroup": "3"})
+    Set tTools = $ListBuild("InteropProductionAutoStart", "InteropProductionAutoStart", "InteropProductionShutdownGroup", "InteropProductionShutdownGroup")
+    Set tCalls = $ListBuild("SetAutoStart(""" _ ..#PRODUCTION _ """, 4)", "SetAutoStart("""")", "SetProductionShutdownGroup(""" _ ..#PRODUCTION _ """, 3)", "SetProductionShutdownGroup(""" _ ..#PRODUCTION _ """, 7)")
+    For tI = 1:1:4 {
+        Set tArgs = $Case(tI, 1: {"Name": (..#PRODUCTION), "AutoStart": "1", "StartupPriority": "4"}, 2: {"Name": (..#PRODUCTION), "AutoStart": "0"}, 3: {"Name": (..#PRODUCTION), "ShutdownGroup": "3"}, : {"Name": (..#PRODUCTION), "ShutdownGroup": "007"})
         Set tName = $Parameter("OcuPilot.Screen.Tool." _ $List(tTools, tI), "TOOLNAME")
         Set tBefore = ..Vendor()
         If tI = 2 Do $$$AssertStatusOK(..Seed(..#PRODUCTION, 4), "the production starts with the instance, so a stop is a change")

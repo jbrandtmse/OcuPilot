@@ -599,8 +599,9 @@ services:
       # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
-      # principals each missing a pair, with a second interoperability namespace registered for the length of one test.
-      # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals
+      # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
+      # over HTTP as those principals and drives the row actions and the confirm route.
+      # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals, InteropStartupWire
       # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
       # class is armed by the database variable too.
       # classes: CompileWithoutInterop

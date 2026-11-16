@@ -82,6 +82,7 @@ Method OnAfterAllTests() As %Status
     Do ..Unregister()
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     Do $$$AssertEquals($ListToString($ClassMethod(..#PROBE, "SaveStartup")), $ListToString(..PreparedStartup), "USER's startup settings read as they did before the class ran")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Gone"), "and the probe holds nothing")
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
@@ -99,11 +100,15 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+/// <p>Each test starts with no production of <code>USER</code> starting with the instance, since its legs turn auto-start on and then off;
+/// <method>OnAfterOneTest</method> puts back what the class found.</p>
 Method OnBeforeOneTest() As %Status
 {
     Set ..PreparedRegistered = ''$Data(^%SYS("Ensemble", "InstalledNamespace", ..#SECONDNAMESPACE))
     Set ..AddedRegistration = 0
-    Quit $$$OK
+    Set tNow = $ClassMethod(..#PROBE, "SaveStartup")
+    If tNow = "" Quit $$$ERROR($$$GeneralError, "USER's startup settings could not be read")
+    Quit $ClassMethod(..#PROBE, "RestoreStartup", $ListBuild("", "", $List(tNow, 3), $List(tNow, 4)))
 }
 
 Method OnAfterOneTest() As %Status
@@ -115,18 +120,16 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>Register <parameter>SECONDNAMESPACE</parameter> as an interoperability namespace unless it already is, and note that this test
-/// added it.</p>
+/// added it (<method>OcuPilot.Test.ProductionProbe.RegisterNamespace</method>).</p>
 Method Register()
 {
-    If $Data(^%SYS("Ensemble", "InstalledNamespace", ..#SECONDNAMESPACE)) Quit
-    Set ^%SYS("Ensemble", "InstalledNamespace", ..#SECONDNAMESPACE) = ""
-    Set ..AddedRegistration = 1
+    If $ClassMethod(..#PROBE, "RegisterNamespace", ..#SECONDNAMESPACE) Set ..AddedRegistration = 1
 }
 
 /// <p>Remove the registration only when <method>Register</method> added it.</p>
 Method Unregister()
 {
-    If ..AddedRegistration Kill ^%SYS("Ensemble", "InstalledNamespace", ..#SECONDNAMESPACE)
+    Do $ClassMethod(..#PROBE, "UnregisterNamespace", ..#SECONDNAMESPACE, ..AddedRegistration)
     Set ..AddedRegistration = 0
 }
 

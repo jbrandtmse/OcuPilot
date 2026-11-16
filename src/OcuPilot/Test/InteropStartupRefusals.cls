@@ -2,9 +2,11 @@
 /// <code>INTEROP.STARTUP.SAME</code>, a value outside its shape is 422 naming the rule, a priority beside "no auto-start" is
 /// <code>NOPRIORITY</code>, a priority or group change by a caller who cannot read every interoperability namespace is 403
 /// <code>ALLNAMESPACES</code> (turning auto-start on or off at the priority the read answered is admitted) and a namespace whose database
-/// is read-only is 409 <code>READONLY</code>. Each is attempted from the person's row action, the agent's mint and the port, and answers its
-/// code and published sentence with the vendor's startup state, read through its own calls, as it was before and the vendor's own calls
-/// never made.</p>
+/// is read-only is 409 <code>READONLY</code>. <code>SAME</code>, the shape rules and <code>NOPRIORITY</code> are attempted from the person's
+/// row action, the agent's mint and the port; <code>ALLNAMESPACES</code> and <code>READONLY</code> from the port through
+/// <class>OcuPilot.Test.InteropStartupSeam</class>, whose switch reaches no HTTP request (<class>OcuPilot.Test.InteropStartupWire</class> drives
+/// <code>ALLNAMESPACES</code> over the routes). Each answers its code and published sentence with the vendor's startup state, read through
+/// its own calls, as it was before and the vendor's own calls never made.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, an interoperability-enabled <code>USER</code> namespace and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it compiles the probe productions in <code>USER</code>. It shares
@@ -50,6 +52,7 @@ Method OnAfterAllTests() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     Do $$$AssertEquals($ListToString($ClassMethod(..#PROBE, "SaveStartup")), $ListToString(..PreparedStartup), "USER's startup settings read as they did before the class ran")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Gone"), "and the probe holds nothing")
     Quit tSC
 }
 
@@ -172,7 +175,7 @@ Method TestAValueOutsideItsShapeIsRefusedNamingTheRule()
 }
 
 /// <p>AC3: a priority or group change by a caller who cannot read every interoperability namespace's settings is 403 <code>ALLNAMESPACES</code>
-/// before any vendor call, whichever caller; turning auto-start on at the priority the read answered, and off, is admitted. A namespace
+/// from the port before any vendor call; turning auto-start on at the priority the read answered, and off, is admitted. A namespace
 /// whose default database is read-only is 409 <code>READONLY</code> before any vendor call.</p>
 Method TestAChangeNeedsEveryNamespacesSettingsAndAWritableDatabase()
 {

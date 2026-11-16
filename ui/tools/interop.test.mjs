@@ -234,6 +234,8 @@ test('Story 24.3 (DW-2452): the empty-agent phrase of every write-capable Intero
   assert.ok(writeCapable.length >= 11, `the write-capable Interoperability screens are found: ${writeCapable.length}`);
   const wrong = [];
   for (const screen of writeCapable) {
+    // A screen with no key draws no agent phrase, and an empty key would match any entry of strings.ts.
+    if (screen.table.emptyAgentKey === '') continue;
     const phrase = stringValue(screen.table.emptyAgentKey);
     if (!/^[a-z]/.test(phrase) || phrase.endsWith('.')) wrong.push(`${screen.table.emptyAgentKey}: ${JSON.stringify(phrase)}`);
   }

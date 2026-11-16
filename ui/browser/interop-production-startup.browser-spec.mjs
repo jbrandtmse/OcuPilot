@@ -224,8 +224,10 @@ test('Start with the instance sets the production and its priority, the list sho
     await page.waitForSelector(FIELD, { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval(FIELD, (node) => node.value), '0', 'the priority opens at 0 for a production that has none');
     await fill(page, FIELD, '4');
+    const sentBefore = posts.length;
     await page.click(CONFIRM);
     await dialogClosed(page);
+    assert.equal(posts.length, sentBefore + 1, 'the confirm sent one request');
     await rowShows(page, PRODUCTION, [[4, 'Yes'], [5, '4']]);
     await page.click(FILTER_SELECTOR, { clickCount: 3 });
     await page.keyboard.press('Backspace');
@@ -238,8 +240,10 @@ test('Start with the instance sets the production and its priority, the list sho
     assert.equal(await page.$eval(BOX, (node) => node.checked), true, 'the dialog opens checked for a production that starts with the instance');
     assert.equal(await page.$eval(FIELD, (node) => node.value), '4', 'at its own priority');
     await page.click(BOX);
+    const offBefore = posts.length;
     await page.click(CONFIRM);
     await dialogClosed(page);
+    assert.equal(posts.length, offBefore + 1, 'turning it off sent one request');
     await rowShows(page, PRODUCTION, [[4, 'No'], [5, STRINGS.tableEmptyValue]]);
     assert.deepEqual(posts.at(-1), { action: 'autostart', id: PRODUCTION, values: { AutoStart: '0' } }, 'turning it off sends the box alone');
     assert.equal(vendor(), '||2|2|0', 'and no production of USER starts with the instance');
@@ -251,6 +255,8 @@ test('Start with the instance sets the production and its priority, the list sho
 test('Shutdown group opens at the row\'s group, sends the group typed, and keeps the instance\'s sentence in the dialog for a bad value and for one already held', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   const posts = recordActions(page);
+  // The namespace's own auto-start production and priority, which this test does not change.
+  const autoStart = vendor().split('|').slice(0, 2).join('|');
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     await select(page, PRODUCTION);
@@ -265,13 +271,15 @@ test('Shutdown group opens at the row\'s group, sends the group typed, and keeps
     await fill(page, FIELD, '2');
     await page.click(CONFIRM);
     await page.waitForFunction((sentence) => document.querySelector('[data-interop-startup-reason]')?.textContent.trim() === sentence, { timeout: config.navigationTimeoutMs }, STRINGS.interopStartupRefusalSame);
-    assert.equal(vendor(), '||2|2|0', 'nothing was written by either refusal');
+    assert.equal(vendor(), `${autoStart}|2|2|0`, 'nothing was written by either refusal');
     await fill(page, FIELD, '3');
+    const groupBefore = posts.length;
     await page.click(CONFIRM);
     await dialogClosed(page);
     await rowShows(page, PRODUCTION, [[6, '3']]);
+    assert.equal(posts.length, groupBefore + 1, 'the confirm sent one request');
     assert.deepEqual(posts.at(-1), { action: 'shutdowngroup', id: PRODUCTION, values: { ShutdownGroup: '3' } }, 'one request, with the group typed under the tool\'s name');
-    assert.equal(vendor(), '||3|2|1', 'the vendor reads the group');
+    assert.equal(vendor(), `${autoStart}|3|2|1`, 'the vendor reads the group');
   } finally {
     await context.close();
   }

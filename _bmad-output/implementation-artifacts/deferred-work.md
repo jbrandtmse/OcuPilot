@@ -11664,6 +11664,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T18:08:24Z occurrence=20-28-ocupilot-compiles-in-a-namespace-without-interoperability note=cr: the fixture exists (Test.ProductionProbe seeds a USER production); the nine reads pin no row count, so no row loop is held
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:52Z status=resolved-by:24-3-interoperability-parity by=adjudication note=CompileWithoutInterop production-backed leg covers items, settings, queues, jobs and AUTOSTART (run 875)
 
 ### DW-2362: ci-runner's classifyLeftovers words every leftover token as a probe web application to remove with ProbeApps.Remove(), which misleads for the namespace, database and directory tokens ProbeApps.Existing() now reports
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: in-story
@@ -11760,6 +11761,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: HL7 as a character stream in both tests (AD-62 item 11 amended); a test with a char past Latin-1 must round-trip
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:52Z status=resolved-by:24-3-interoperability-parity by=adjudication note=ImportDocumentHere parses HL7 as a stream at both runtime sites and both script texts; U+0151 legs
 
 ### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -11767,6 +11769,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T10:11:55Z status=routed owner=burndown by=cr note=20.6 is done: give the host dialog the same mounted status region; list both test results in EXPERIENCE.md's role=status set
 - 2026-11-14T00:50:16Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:52Z status=resolved-by:24-3-interoperability-parity by=adjudication note=item-test dialog status region always mounted; component and browser legs
 
 ### DW-2380: InteropTransformMint is a third copy of the run-ArgumentProblem-before-the-fresh-read preamble (ExplorerImportMint, RestServiceCreateMint), where one Mint option would serve all three
 - source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -11820,6 +11823,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=burn-down probe; if a signal exists, a leave warning keyed to it
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:53Z status=by-design by=adjudication note=measured zero messages after a real unsaved change in the rule, BPL and DTL editors; AD-63 rule 3 forbids reading the frame; asserted in interop-editors.browser-spec.mjs
 
 ### DW-2389: An interop editor screen whose class name has a letter outside vendor-frame.ts CLASS_NAME (a non-ASCII letter) answers open but draws no frame, so the note and Refresh sit over an empty body with no sentence
 - source: spec-20-7-the-three-embedded-vendor-editors.md (cr) | severity: low | fix-risk: med | footprint: in-story
@@ -12068,6 +12072,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T12:12:09Z status=routed owner=burndown by=cr note=move them into interop-editor-spec.mjs, parameterized by browser and config; rerun the three specs
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:53Z status=resolved-by:24-3-interoperability-parity by=adjudication note=shared editor helpers take frame and host selectors; no private copies remain in the four specs
 
 ### DW-2422: On IRIS (not for Health) the vendor schema viewer lists ASC X12 only, so the Schema viewer's note, prompts and hl7/astm aliases name families it cannot show
 - source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
@@ -12137,6 +12142,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-14T13:09:03Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:interop_port_cut_flag(re-owned_from_21-10)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:53Z status=resolved-by:24-3-interoperability-parity by=adjudication note=contents cut flag reaches truncated; route, tool and browser legs
 
 ### DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters (boundHere, loaded, fault, showRefusal, showSkeleton, busy, showEmpty) and its skeleton, refusal and empty markup instead of sharing them
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-epic
@@ -12224,6 +12230,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T10:52:19Z status=routed owner=burndown by=cr note=reword each to the bare phrase (as userListEmptyAgent) in strings.ts and EXPERIENCE.md :604; 20.31's fixed
 - 2026-11-14T00:50:17Z owner=21-7-interoperability-parity by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T04:11:03Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:53Z status=resolved-by:24-3-interoperability-parity by=adjudication note=eleven interop empty-state phrases reworded (veto U-54); lowercase assertion guards them
 
 ### DW-2453: ScreenDryRun.Handle repeats ScreenAction.Handle's body preamble (descriptor lookup, body read, closed-key loop) and its NotFound/Refuse
 - source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12788,6 +12795,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=product call: send only the fields the person changed, or refuse when the row moved; spec text says send all
 - 2026-11-14T13:10:57Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:send_only_the_fields_the_person_changed
 - 2026-11-15T04:11:04Z owner=24-3-interoperability-parity by=orchestrator note=moved_with_story_21.7_to_24.3(owner_split_2026-11-14)
+- 2026-11-15T23:56:53Z status=resolved-by:24-3-interoperability-parity by=adjudication note=partner Edit sends only changed fields; InteropPartnerControl, component and browser legs
 
 ### DW-2555: AD-62 (10), AD-15 and AD-22 still describe business partners as read-only with READ pairs; Story 20.26's ADD/SET/REMOVEPARTNER amendments are unwritten
 - source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13005,8 +13013,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: GetNSInfo(USER) defines ReadOnly; a test needs a read-only mounted probe database
 - 2026-11-15T22:19:40Z status=wontfix-accepted owner=24-3-interoperability-parity by=harvest note=reopen_if=a production write reaches a read-only database without INTEROP read-only refusal
+- 2026-11-15T23:53:05Z occurrence=24-3-interoperability-parity
 
 ### DW-2612: flake: OAuthClientRegister.TestAStoppedServerIsANamedRefusal failed once in a local shard 12 sweep, green alone and on a full shard rerun
 - source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 24.3 implement (once) sweep on ocupilot-b-ci 2026-11-15; class untouched by the story
 - 2026-11-15T22:19:41Z status=routed owner=burndown by=harvest note=flake; priority at the Epic 24 burn-down
+
+### DW-2616: Three write-capable screens outside Interoperability give a full sentence as emptyAgentKey, so their empty state reads 'Or ask the agent: Ask the agent ...'
+- source: spec-24-3-interoperability-parity.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: strings.ts:6265 explorerDocDbListEmptyAgent, :7356 screenPermissionsEmptyAgent, :7898 analyticsCubeManagerEmptyAgent are sentences on write-capable descriptors (ExplorerDocDbList, AgentScreenPermissions, AnalyticsCubeManager); table-model wraps them in tableWriteCapableEmptyState. DW-2452's root cause outside its eleven interop keys.
+- 2026-11-15T23:53:05Z status=decision-pending owner=burndown by=cr note=string: bare phrases, e.g. 'create a document database', 'change who sees a screen', 'build a cube' (as DW-2452)
+
+### DW-2617: InteropStartupAction.ArgumentProblem repeats InteropPartnerAction.ArgumentProblem's string-collect and violation-sentence loop
+- source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Screen/Tool/InteropStartupAction.cls ArgumentProblem vs Screen/Tool/InteropPartnerAction.cls ArgumentProblem: same loop, field list and port method differ; the violation-sentence loop recurs in about 25 tool classes
+- 2026-11-15T23:53:05Z status=wontfix-accepted owner=24-3-interoperability-parity by=cr note=reopen_if=a shared violation-sentence helper lands in Screen/Tool/Write.cls or InteropAction.cls
+
+### DW-2618: The Productions list page's dialog open, close and send-refusal routing repeats interop-item-setting-list.page.ts
+- source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: interop-production-list.page.ts onOpen/onClose/onSend vs interop-item-setting-list.page.ts onOpen/onClose/onSet; the spec's reason (different fields, five kept actions) covers the dialog, not the routing; the same routing recurs in the other interop list pages
+- 2026-11-15T23:53:05Z status=wontfix-accepted owner=24-3-interoperability-parity by=cr note=reopen_if=a shared dialog-send helper lands in ui/src/app/shell or a list page's send routing diverges from its siblings

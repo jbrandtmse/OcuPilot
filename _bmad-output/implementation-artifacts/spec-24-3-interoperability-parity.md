@@ -290,6 +290,47 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (branch `OCU-1-
   - DW-2452: no interop empty state reads "Or ask the agent: Ask the agent";
   - DW-2388: Task 0 (d)'s count is recorded, and asserted if it is zero.
 
+### Review Findings
+
+Code review 2026-11-15 (four layers, full-opus tier). 0 decision-needed, 13 patch (applied), 4 defer, 16 rejected.
+
+- [x] [Review][Patch] The agent's card omitted the priority 0 a turn-on with no priority sets (medium) [src/OcuPilot/Screen/Tool/InteropProductionAutoStart.cls MergeUpdate]
+- [x] [Review][Patch] The turn-off branch miscounted `unchangedCount` when the arguments carried an empty priority (low) [InteropProductionAutoStart.cls MergeUpdate]
+- [x] [Review][Patch] The tool description and class doc promised the production's own priority when none is given; the write sets 0 (low) [InteropProductionAutoStart.cls]
+- [x] [Review][Patch] The script form passed the group and priority as typed strings: a group `007` is a silent vendor no-op and no priority took the vendor's recommended one (medium) [src/OcuPilot/Port/InteropPort.cls StartupSnippet]
+- [x] [Review][Patch] DW-2388's rule and BPL legs made no unsaved change: the rule leg typed into the actions filter and the BPL leg only opened a submenu; Save stayed disabled (measured). Each leg now makes a real change and waits for Save to enable before counting (medium) [ui/browser/interop-editors.browser-spec.mjs]
+- [x] [Review][Patch] AC7's as-found and `Gone()` assertions were missing from the `CompileWithoutInterop` leg (cleanup was inline, not failure-safe), `InteropStartupRefusals` and `InteropStartupGate` (medium) [src/OcuPilot/Test/CompileWithoutInterop.cls, InteropStartupRefusals.cls, InteropStartupGate.cls]
+- [x] [Review][Patch] `InteropStartupGate` and the startup browser spec assumed `USER` starts no production with the instance (medium) [InteropStartupGate.cls OnBeforeOneTest, ui/browser/interop-production-startup.browser-spec.mjs]
+- [x] [Review][Patch] Test headers claimed what their tests do not do: the refusals class's callers, the wire class's "minted before the pair was lost", and an unasserted "no value" in the audit row (now asserted) (low) [InteropStartupRefusals.cls, InteropStartupWire.cls, InteropStartupControl.cls]
+- [x] [Review][Patch] "One request" was asserted from the last post only (low) [interop-production-startup.browser-spec.mjs]
+- [x] [Review][Patch] The shared `boxes` and `assertFillsHost` hard-coded the editor host (low) [ui/browser/interop-editor-spec.mjs]
+- [x] [Review][Patch] The DW-2452 lowercase check would read an arbitrary string for an empty key (low) [ui/tools/interop.test.mjs]
+- [x] [Review][Patch] The namespace registration helpers were copied between the gate and wire classes (low, Rule 31) [ProductionProbe.cls RegisterNamespace and UnregisterNamespace]
+- [x] [Review][Patch] No `mutation:` line showed the port's pair and the tool's resource each pinned on its own (low, Rule 19): three mutations recorded under Verification
+- [x] [Review][Defer] Three write-capable screens outside Interoperability carry sentence-shaped agent phrases (medium, out-of-footprint) — deferred: DW-2616, decision-pending owner=burndown (new strings)
+- [x] [Review][Defer] `READONLY` is reached from no HTTP caller; the seam cannot reach one (low) — deferred: occurrence on DW-2611
+- [x] [Review][Defer] `InteropStartupAction.ArgumentProblem` repeats `InteropPartnerAction.ArgumentProblem`'s loop (low, Rule 31) — deferred: DW-2617, wontfix-accepted
+- [x] [Review][Defer] The Productions page's dialog routing repeats `interop-item-setting-list.page.ts` (low, Rule 31) — deferred: DW-2618, wontfix-accepted
+
+Rejected:
+
+- Replacing another auto-start production sets the namespace's priority to 0 without the all-namespaces read: the classic page does the same on a production switch (it applies the recommended priority, 0 unless vendor code set one, `AutoStartProduction.cls` :87 and :138-:142), and Boundaries admit a turn-on at the read's priority. By design.
+- The vendor's recommended priority is not read (runner's question): Named limits decide it. No exported vendor class calls `SetAutoStartRecommendedPriority` (searched `irislib/` and `irissys/`), so both set 0 here; they differ only where vendor code has set a recommended priority.
+- The DW-2452 phrases read oddly under their empty states: the strings are the owner's ruling.
+- The Auto Run Result's counts and the Design Notes' `Test/Prohibited` sentence: the fix edits the spec's own narrative, the runner's.
+- No lock between the facts read and the vendor write: low, and the classic `ApplyID` takes none; wontfix-theoretical, real only if two writers set one namespace's auto-start in the same moment.
+- A body with a priority and no `AutoStart` answers `SAME`: unreachable, since both callers require `AutoStart`.
+- `<PROTECT>` after a partial running-production write: false; Task 0 (b) measured the classic pairs' `^%SYS` write succeeding, and the gate requires them.
+- `DefaultReadOnly` fails open: low; it is the classic page's own read (`$G(tInfo("ReadOnly"),0)`), and the vendor's write then fails into a mapped fault.
+- `TransformSnippet` with no `sourceClass`: false; `TransformFactsHere` sets it whenever the class is compiled.
+- AC clauses without their own `mutation:` line: Rule 19 asks one per AC, and AC1 to AC8 each have one.
+- The gate class's `$NAMESPACE` assertion cannot fail today: low; it guards the vendor reads across builds and pins nothing.
+- The page spec checks only that the five actions are registered: the Productions and stop-confirm browser specs drive them on this page.
+- Write pairs are judged before the namespace shape: the Code Map records it, as for every sibling write.
+- AD-62 rule 2's literal `%Ens_ProductionRun:USE` for a production write: the spec chose the classic pages' pairs, and the AD-62 item 18 clause waits for the owner's attended update (no spine edit in this run).
+- The marker's proposal id is not read back: low; `auditMarked` is the confirm's own record of the marker, the check `InteropControl` uses.
+- `strings.ts`'s `taskCreate` citation moved from :649 to :650: forced by the new row.
+
 ## Spec Change Log
 
 - 2026-11-15, runner spec gate (unattended rulings, one veto item): (1) the `Proposed split` is applied in `epics.md`: 24.3 keeps auto-start, shutdown groups and the eight ledger entries; Stories 24.15-24.19 are inserted after 24.14, the deployment criterion moved word for word to 24.19. (2) The `Proposed strings`, including the lowercase empty-state phrases for DW-2452, are kept as written. (3) Both new keys ship enabled (neither is destructive; AD-22). (4) The spine is not edited in this run: the AD-62 items 11, 15 and 18 lines, the AD-15 case and the AD-22 keys wait as proposed lines for the owner's attended architecture update; the business-partners clause is added to that update's pending text. (5) The edits that are more than an append in files Epic 21 has changed (`Screen/Read.cls` interop branch, `Prohibited.cls` comment, the eleven reworded sentences in EXPERIENCE.md's row and the matching `strings.ts` values) wait on the orchestrator's ruling before implement.
@@ -518,7 +559,7 @@ The twenty surfaces each appear exactly once across the six stories.
 - **(a) Audit.** Auditing was on (`Security.System` `AuditEnabled` 1). `SetAutoStart` and `SetProductionShutdownGroup` each wrote no `%SYS.Audit` row (the table's count read 30,524 before and after the calls). OcuPilot records `ConfigChange` (AD-15's named case).
 - **(b) Pairs.** As a principal holding only `%DB_HSCUSTOM:R`, `%Development:USE`, `%Ens_Portal:USE`, `%Ens_ProductionConfig:RW`, `%Admin_Manage:USE` and `%DB_USER:RW`, `SetAutoStart` succeeded and `SetProductionShutdownGroup` of the running probe production succeeded, and the vendor's `^%SYS("Ensemble","RunningNamespace","USER","SystemShutdownGroup")` read 4. The vendor's `^%SYS` write needs no pair beyond the classic ones, so no pair was added.
 - **(c) All-namespaces reads.** With `HSSYS` temporarily registered under `^%SYS("Ensemble","InstalledNamespace")` and a principal without READ on its database, both `GetNamespacesByShutdownGroup` and `GetNamespacesByStartupPriority` answered `ERROR #5001: Failed to order all Ensemble namespaces by priority or group.`; `$NAMESPACE` read `USER` before and after, and `^Ens.AutoStart`, its priority and the group node were unchanged. Only `USER` is registered on a stock throwaway, so `InteropStartupGate` registers `HSSYS` for one test and removes it.
-- **(d) DW-2388.** With `armMessageCounters` armed, an unsaved change in each editor sent no message to the shell or the frame: the rule editor (typing into its first text field, `mat-input-0`), the BPL editor (an activity added to the diagram, since it draws no text field until one is selected) and the DTL editor (its settings description). `interop-editors.browser-spec.mjs` asserts the count is zero; the product is unchanged (AD-63 rule 3).
+- **(d) DW-2388.** With `armMessageCounters` armed, an unsaved change in each editor sent no message to the shell or the frame: the rule editor (a description typed in its Edit Rule dialog), the BPL editor (Add, Activity, Empty) and the DTL editor (its settings description), each confirmed unsaved by the editor's own Save becoming enabled (corrected at code review: the first rule and BPL steps made no unsaved change). `interop-editors.browser-spec.mjs` asserts the count is zero; the product is unchanged (AD-63 rule 3).
 - **Measured while building.** The vendor's `EnsLib.HL7.Message.ImportFromString` turns a character past Latin-1 in a segment after MSH into `?` (code 63) and keeps one in MSH-3; `ImportFromLibraryStream` over a `%Stream.TmpCharacter` keeps both (code 337). `OcuPilot.Test.Http`'s request stream sends `?` for such a character, so the two U+0151 legs send it as a `\uXXXX` escape (`InteropItemControl.CallWide`).
 
 ## Verification
@@ -627,6 +668,26 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - mutation: Story 24.3 page spec, `InteropProductionListPage.onSend` sends `{ Values: JSON.stringify(values) }` -> `interop-production-list.page.spec.ts` red on the auto-start and shutdown-group send legs (`npm run test:components`, one spec file).
 - mutation: Story 24.3 dialog spec, an unchecked box also sends the typed priority -> `interop-production-startup-dialog.spec.ts` red on the box-alone leg (`npm run test:components`, one spec file).
 - mutation: Story 24.3 startup browser spec, the same `onSend` change as the page spec (bundle rebuilt and redeployed) -> `interop-production-startup.browser-spec.mjs` red on both dialog legs; reverted, rebuilt and redeployed, green.
+
+**QA additions (QA stage, `ocupilot-b-ci`).** Each mutation was applied to the working tree, loaded (or built and redeployed), observed red, reverted byte-identically (`cmp` against the saved copy) and loaded again.
+
+- (QA) `src/OcuPilot/Test/InteropStartupWire.cls`: the two writes over the real routes as real principals (the exact classic set, then one missing each pair), both callers, the confirm route, the running production's vendor `^%SYS` value, the audit actor, and ALLNAMESPACES over the row action and the confirm; listed under `OCUPILOT_ALLOW_PRINCIPALS` in `scripts/ci-throwaway.sh` (modified).
+- (QA) `ui/browser/interop-message-contents-cut.browser-spec.mjs`: DW-2433's cut note in a real browser, exactly at the cap and one over.
+- (QA) `ui/browser/interop-item-test.browser-spec.mjs` (modified): DW-2379's hidden status region in a real browser.
+- mutation: AC3, the shutdown group's pair removed from both the tool (`WRITERESOURCE`) and the port (`GROUPPAIR`); either alone leaves the other check refusing, so the class stays green for one -> `InteropStartupWire` `TestAPrincipalMissingAPairIsRefusedByNameFromBothCallersAndNothingChanges` red on the row action, the confirm and the unchanged-state legs.
+- mutation: AC3, the all-namespaces check skipped (`If 0 && tNeedsAll ...`) -> `InteropStartupWire` `TestAChangeNeedsEveryNamespacesSettingsOverTheRowActionsAndTheConfirm` red on the row action, the priority and the confirm legs.
+- mutation: DW-2433, `ReadMessageContents` sets `pCut` to 0 at the cap cut (browser leg, no bundle change) -> `interop-message-contents-cut.browser-spec.mjs` red on the one-over note.
+- mutation: DW-2379, the status region removed from `interop-item-test-dialog.ts` (bundle rebuilt and redeployed) -> the new browser leg red; reverted, rebuilt and redeployed, green.
+
+**Code review (`ocupilot-b-ci`).** Each mutation was applied, loaded, observed red, restored from a saved copy (`cmp`) and loaded again.
+
+- mutation: AC3, the port's `GROUPPAIR` line in `Pairs` made unreachable, the tool unchanged -> `InteropStartupGate` `TestEachMissingPairIsRefusedByNameThroughThePortAndTheTools` red on `OcuP243NoManage`'s two shutdown-group port legs (run 876).
+- mutation: AC3, `InteropProductionShutdownGroup.WRITERESOURCE` emptied, the port unchanged -> the same test red on the tool legs, `OcuP243NoManage`'s included (run 877).
+- mutation: AC3, the port's `AUTOSTARTPAIR` line made unreachable -> the same test red on `OcuP243NoConfigWrite`'s two auto-start port legs (run 878).
+- mutation: AC1, `MergeUpdate` does not push the priority-0 row -> `TestTheAgentsAutoStartReplacesTheOtherAndTurnsOff` red on the no-priority card leg (run 879).
+- mutation: AC6, `StartupSnippet` writes the group as the typed string -> `TestEachStartupToolsDraftRendersItsScript` red on the group 3 and `007` legs (run 879).
+- mutation: DW-2388, the rule leg's Edit Rule dialog not submitted -> the rule leg red on "holds an unsaved change" (Save stays disabled). The shell-posting mutation above still pins the zero-message assertion, which this pass did not change.
+- Re-run after the patches: `InteropStartupControl`, `InteropStartupRefusals`, `InteropStartupGate`, `InteropStartupWire` and `CompileWithoutInterop` green; `interop-production-startup`, `interop-viewers` and `interop-editors` browser specs green; `npm run test:tools` 2287 of 2287; `check-objectscript` 0 problems.
 
 ## Auto Run Result
 

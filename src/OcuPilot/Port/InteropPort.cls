@@ -7753,21 +7753,22 @@ ClassMethod PerformStartup(pNamespace As %String, pType As %String, pName As %St
 }
 
 /// <p>The lines <method>Snippet</method> adds for the startup write <var>pType</var> of the production <var>pId</var> (Story 24.3),
-/// carrying the body <var>pBody</var>: <code>SetAutoStart</code> of the production and the priority the body carries (none when it
-/// carries none), <code>SetAutoStart("")</code> for <code>AutoStart</code> <code>"0"</code>, or
-/// <code>SetProductionShutdownGroup</code> of the production and the group. Names and values are string literals.</p>
+/// carrying the body <var>pBody</var>: <code>SetAutoStart</code> of the production and the priority the body carries (0 when it
+/// carries none, as the write sets), <code>SetAutoStart("")</code> for <code>AutoStart</code> <code>"0"</code>, or
+/// <code>SetProductionShutdownGroup</code> of the production and the group. Names are string literals; a priority and a group are
+/// written as the numbers the write passes, so a value such as <code>007</code> reaches the vendor as <code>7</code>.</p>
 ClassMethod StartupSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
     Set tNL = $Char(10)
     If pType = ..#TYPESHUTDOWNGROUP {
         Set tGroup = ""
         If $IsObject(pBody) && (pBody.%GetTypeOf("ShutdownGroup") = "string") Set tGroup = pBody.%Get("ShutdownGroup")
-        Quit tNL _ " Set tSC = ##class(Ens.Director).SetProductionShutdownGroup(" _ ..Literal(pId) _ ", " _ ..Literal(tGroup) _ ")"
+        Quit tNL _ " Set tSC = ##class(Ens.Director).SetProductionShutdownGroup(" _ ..Literal(pId) _ ", " _ (+tGroup) _ ")"
     }
     If $IsObject(pBody) && (pBody.%GetTypeOf("AutoStart") = "string") && (pBody.%Get("AutoStart") = "0") Quit tNL _ " Set tSC = ##class(Ens.Director).SetAutoStart("""")"
     Set tPriority = ""
     If $IsObject(pBody) && (pBody.%GetTypeOf("StartupPriority") = "string") Set tPriority = pBody.%Get("StartupPriority")
-    Quit tNL _ " Set tSC = ##class(Ens.Director).SetAutoStart(" _ ..Literal(pId) _ ", " _ ..Literal(tPriority) _ ")"
+    Quit tNL _ " Set tSC = ##class(Ens.Director).SetAutoStart(" _ ..Literal(pId) _ ", " _ (+tPriority) _ ")"
 }
 
 /// <p>The lines <method>Snippet</method> adds for the partner write <var>pType</var> of the partner named <var>pId</var>

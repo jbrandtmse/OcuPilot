@@ -91,3 +91,9 @@
 2026-11-15T22:19:42Z	Story 24.3	stage_spawned	stage=qa spawn_at=2026-11-15T22:19:42Z model=sonnet agent_name=24-3-interoperability-parity-qa-1 cycle_iteration=1
 2026-11-15T22:50:17Z	Story 24.3	qa_complete	spawn_at=2026-11-15T22:21:00Z model=sonnet tests=Test/InteropStartupWire.cls,browser/interop-message-contents-cut.browser-spec.mjs,+leg_interop-item-test tests_added=2 mutations_demonstrated=4 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-11-15T22:50:17Z	Story 24.3	stage_spawned	stage=code-review spawn_at=2026-11-15T22:50:17Z model=opus agent_name=24-3-interoperability-parity-code-review-1 cycle_iteration=1
+2026-11-15T23:57:05Z	Story 24.3	cr_complete	spawn_at=2026-11-15T22:52:00Z model=opus resolved=13 fixed_at_source=13 by_design=1 wontfix=2 routed=0 escalated=0 decision_pending=1 occurrence=DW-2611 deferred=4 dismissed=16 high=0 med=6 low=11 rows=17 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
+2026-11-15T23:57:05Z	Story 24.3	ledger_adjudicated	owned=8 resolved=7 reowned=0 terminal=1 to_decision_sheet=DW-2616 model=claude-opus-5-5
+2026-11-15T23:57:05Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.3 run=20261114T1656Z-21,22
+2026-11-15T23:57:57Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.3 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T00:14:27Z	Story 24.3	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+interop-production-startup_and_item-test_browser_specs_on_fresh_throwaway model=claude-opus-5-5
+2026-11-16T00:14:27Z	Story 24.3	fresh_check	env=recipe tests=19_classes+8_specs result=pass order=forward,reverse classes_tests=237 browser=57/57_together,reverse_singly_green components=3469

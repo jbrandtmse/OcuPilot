@@ -823,6 +823,21 @@ ClassMethod RestoreStartup(pSaved As %List) As %Status
     Quit tSC
 }
 
+/// <p>Register <var>pNamespace</var> as an interoperability namespace (<code>^%SYS("Ensemble","InstalledNamespace")</code>) for the
+/// length of a test unless it already is; 1 when this call added it, for <method>UnregisterNamespace</method> (Story 24.3).</p>
+ClassMethod RegisterNamespace(pNamespace As %String) As %Boolean
+{
+    If $Data(^%SYS("Ensemble", "InstalledNamespace", pNamespace)) Quit 0
+    Set ^%SYS("Ensemble", "InstalledNamespace", pNamespace) = ""
+    Quit 1
+}
+
+/// <p>Remove <var>pNamespace</var>'s registration when <var>pAdded</var>, as <method>RegisterNamespace</method> answered.</p>
+ClassMethod UnregisterNamespace(pNamespace As %String, pAdded As %Boolean)
+{
+    If pAdded Kill ^%SYS("Ensemble", "InstalledNamespace", pNamespace)
+}
+
 /// <p>1 when <code>USER</code> holds no probe state: no current production, no probe production
 /// configuration and no probe class; 0 otherwise.</p>
 ClassMethod Gone() As %Boolean

@@ -480,9 +480,16 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
   }
 });
 
+/** Whether the editor's own Save is enabled, which each of the three editors draws only while it holds an unsaved change. */
+const saveEnabled = (frame) =>
+  frame.evaluate(() => {
+    const save = [...document.querySelectorAll('button')].find((node) => node.innerText.trim() === 'Save');
+    return save !== undefined && !save.disabled;
+  });
+
 /**
- * Make an unsaved change in the editor `kind` opens: type into the DTL editor's settings description, type into the rule editor's first text field,
- * and add an activity to the BPL editor's diagram. Answers what was changed.
+ * Make an unsaved change in the editor `kind` opens: type into the DTL editor's settings description, type into the rule's description
+ * in the rule editor's Edit Rule dialog and submit it, and add an Empty activity to the BPL editor's diagram. Answers what was changed.
  */
 async function typeUnsavedChange(frame, kind) {
   if (kind.key === 'transform') {
@@ -490,34 +497,34 @@ async function typeUnsavedChange(frame, kind) {
     await frame.click('#transform-settings-iconbutton');
     await frame.waitForSelector('#transform-settings-description-textarea', { visible: true, timeout: config.navigationTimeoutMs });
     await frame.type('#transform-settings-description-textarea', 'unsaved by the browser spec');
-    return 'transform-settings-description-textarea';
+    return 'the transformation\'s description';
   }
   if (kind.key === 'process') {
-    // The BPL editor draws no text field until an activity is selected, so its unsaved change is an activity added to the diagram.
+    // The BPL editor's Add menu opens a submenu per kind of shape; Activity's holds Empty, which adds a shape and nothing else.
     await frame.evaluate(() => [...document.querySelectorAll('button')].find((node) => node.innerText.trim().endsWith('Add'))?.click());
     await frame.waitForSelector('.mat-mdc-menu-panel .mat-mdc-menu-item', { visible: true, timeout: config.navigationTimeoutMs });
-    const added = await frame.$eval('.mat-mdc-menu-panel .mat-mdc-menu-item', (node) => {
-      const label = node.innerText.trim();
-      node.click();
-      return label;
-    });
-    return `an added activity (${added})`;
+    await frame.$$eval('.mat-mdc-menu-panel .mat-mdc-menu-item', (nodes) => nodes.find((node) => node.innerText.trim() === 'Activity')?.click());
+    await frame.waitForFunction(() => document.querySelectorAll('.mat-mdc-menu-panel').length > 1, { timeout: config.navigationTimeoutMs });
+    await frame.$$eval('.mat-mdc-menu-panel .mat-mdc-menu-item', (nodes) => nodes.find((node) => node.innerText.trim() === 'Empty')?.click());
+    return 'an Empty activity added to the diagram';
   }
-  const field = await frame.evaluateHandle(() =>
-    [...document.querySelectorAll('textarea, input[type="text"], input:not([type])')].find((node) => {
-      const box = node.getBoundingClientRect();
-      return !node.disabled && !node.readOnly && box.width > 0 && box.height > 0;
-    }) ?? null
-  );
-  const element = field.asElement();
-  assert.ok(element !== null, `the ${kind.key} editor draws a field that takes typing`);
-  const named = await element.evaluate((node) => `${node.id}/${node.name}/${node.placeholder}`);
-  await element.click();
-  await element.type('unsaved');
-  return named;
+  // The rule editor draws its rules on a canvas; its one text field outside a dialog filters the actions list. Its Edit Rule dialog
+  // submits only with a rule type, so the dialog keeps the type the editor loaded the probe rule as.
+  await frame.waitForSelector('mat-icon[data-mat-icon-name="edit"]', { visible: true, timeout: config.navigationTimeoutMs });
+  await frame.click('mat-icon[data-mat-icon-name="edit"]');
+  await frame.waitForSelector('.cdk-overlay-pane textarea', { visible: true, timeout: config.navigationTimeoutMs });
+  await frame.type('.cdk-overlay-pane textarea', 'unsaved by the browser spec');
+  const [ruleType] = await frame.$$('.cdk-overlay-pane mat-select');
+  assert.ok(ruleType !== undefined, 'the Edit Rule dialog draws its rule type');
+  await ruleType.click();
+  await frame.waitForSelector('mat-option', { visible: true, timeout: config.navigationTimeoutMs });
+  await frame.$$eval('mat-option', (nodes) => nodes.find((node) => node.innerText.trim() === 'General Business Rule')?.click());
+  await frame.waitForFunction(() => document.querySelector('mat-option') === null, { timeout: config.navigationTimeoutMs });
+  await frame.$$eval('.cdk-overlay-pane button', (nodes) => nodes.find((node) => node.innerText.trim() === 'Submit')?.click());
+  return 'the rule\'s description in its Edit Rule dialog';
 }
 
-test('DW-2388: an unsaved change typed into the rule, BPL and DTL editors sends no message to the shell', async (t) => {
+test('DW-2388: an unsaved change made in the rule, BPL and DTL editors sends no message to the shell', async (t) => {
   for (const kind of KINDS) {
     await t.test(kind.key, async (inner) => {
       const { context, page, messages } = await shellAt(screenUrl(kind.listRoute, kind.name));
@@ -525,10 +532,12 @@ test('DW-2388: an unsaved change typed into the rule, BPL and DTL editors sends 
         await answered(page);
         const frame = await editorShows(page, kind.name.slice(0, -'.cls'.length));
         await messages.reset();
+        assert.equal(await saveEnabled(frame), false, `the ${kind.key} editor opens with nothing unsaved`);
         const typed = await typeUnsavedChange(frame, kind);
-        inner.diagnostic(`typed into ${typed}`);
+        inner.diagnostic(`changed ${typed}`);
+        await until(() => saveEnabled(frame), (enabled) => enabled, `the ${kind.key} editor holds an unsaved change after ${typed}`, config.navigationTimeoutMs);
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        assert.deepEqual(await messages.seen(), [], `no message reached the shell or the frame after typing into ${typed}`);
+        assert.deepEqual(await messages.seen(), [], `no message reached the shell or the frame after ${typed}`);
       } finally {
         await context.close();
       }
