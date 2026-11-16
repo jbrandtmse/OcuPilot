@@ -305,3 +305,5 @@
 2026-11-16T06:10:14Z	Story 21.24	ci_red_classified	run=43802365008 job=browser_shard_4/5 class=story_hygiene(orchestrator_reclassified_DW-2627) cause=config-settings_SaveMAC_session_restore_left_cached-query_state(fresh_instance) fix=after-hook_purge_all_namespaces evidence=fresh_pairs_red_x3,fixed_7/7+6/6_x2,mutation_0/6
 2026-11-16T06:10:14Z	Story 21.24	committed	sha=6a5bcf05f(staging/OCU-1-21.24,ff_from_b4be0c8f2) ci=pending runs=43814889321 note=sweep_skipped_by_orchestrator(test-only)
 2026-11-16T06:14:04Z	Story 21.12	gate_step	step=defect_fix item=MirrorPort_missing_Snippet(found_by_21.13_implement,DraftRegistry) fix=bbae181c5 verified=DraftRegistry,MirrorRead,PortGate_green
+2026-11-16T06:14:11Z	Story 21.13	dev_complete	spawn_at=2026-11-16T04:11:00Z model=sonnet build_sha=9ca39bb68 baseline_revision=4d4cd1b4d story_base=4d4cd1b4d review_loop_iteration=0 followup_review_recommended=false deferred=1(DraftRegistry_red_from_21.12,fixed_bbae181c5) cycle_iteration=1
+2026-11-16T06:14:11Z	Story 21.13	stage_spawned	stage=qa spawn_at=2026-11-16T06:14:11Z model=sonnet agent_name=21-13-ddl-mappings-qa-1 cycle_iteration=1
