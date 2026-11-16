@@ -247,3 +247,4 @@
 2026-11-16T00:43:15Z	Story 21.12	dev_complete	spawn_at=2026-11-15T23:55:00Z model=sonnet build_sha=bcdac6676 baseline_revision=187a5d77a story_base=187a5d77a review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 note=stale_planning_counts_ledgered_DW-2619;AD-29_Binds_proposal_beside_DW-2559
 2026-11-16T00:43:15Z	Story 21.12	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-16T00:43:15Z	Story 21.12	stage_spawned	stage=qa spawn_at=2026-11-16T00:43:15Z model=sonnet agent_name=21-12-mirroring-qa-1 cycle_iteration=1
+2026-11-16T00:43:35Z	Story 21.10	stage_spawned	stage=plan spawn_at=2026-11-16T00:43:35Z model=opus agent_name=21-10-the-remaining-leaves-across-the-six-areas-plan-2 cycle_iteration=2
