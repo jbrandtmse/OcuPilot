@@ -327,3 +327,4 @@
 2026-11-16T07:43:26Z	Story 21.30	cr_complete	spawn_at=2026-11-16T07:25:00Z model=opus resolved=7 fixed_at_source=7 deferred=0 dismissed=10 high=2(GuardedStoredValue_arbitrary_SQL,GuardedRecordWritesMarked_held_row;patched) med=1 low=14 rows=27 unresolved_high_med=0 caller_condition_U-81=met final=done cycle_iteration=1 commit=07a3a989f
 2026-11-16T07:45:33Z	Epic 21	integrate_forward	from=feature_48e3593a3 to=90799012d conflicts=1(ci-throwaway.sh_roster,union) checks=ci.test.mjs_103
 2026-11-16T07:45:48Z	Epic 21	gate_step	step=fresh_check+full_sweep stories=21.12,21.13,21.30 head=af5b8b8b3 started=2026-11-16T07:45:48Z dir=e21u/b3
+2026-11-16T07:46:01Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T07:46:01Z model=opus agent_name=21-6-plan-2 cycle_iteration=2
