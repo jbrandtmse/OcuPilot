@@ -27,6 +27,9 @@ Community 2026.2, build 221U, which has the `HSSYS` namespace), read only, in th
 namespace, on 2026-11-14. A statement marked `(inference)` was
 not confirmed against the instance or the source.
 
+The license-gated mirroring rows were read on the development instance named slot A (the `ocupilot` container, read only, same image),
+on 2026-11-15, where `$System.License.NoMirror()` returned 1.
+
 ## Picking up a row
 
 A request names a row by its ID. Three steps follow, in this order. The first always runs; the second
@@ -139,6 +142,17 @@ is the pick-up story's to author.
 | SA-50 | Enable sharding | Needs a sharding license, which Community Edition lacks. | `license` | The instance holds a sharding license. This row is backed by the admin-v2 API, so it needs no new API once the license is there; the architecture reaches that API only through its single port (AD-27). | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
 | SA-51 | Configure node-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
 | SA-52 | Configure namespace-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
+
+### License-gated mirroring
+
+| ID | Feature | Reason | Gate kind | Gate | How to tell it has cleared |
+| --- | --- | --- | --- | --- | --- |
+| SA-45 | Create a mirror | Needs a license that allows mirroring, which Community Edition lacks. | `license` | The instance holds a license that allows mirroring. | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
+| SA-46 | Edit a mirror's failover members | Needs a license that allows mirroring, which Community Edition lacks. | `license` | The instance holds a license that allows mirroring, and it is a failover member (`$System.Mirror.IsMember()` is 1). | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
+| SA-47 | Edit an async member | Needs a license that allows mirroring, which Community Edition lacks. | `license` | The instance holds a license that allows mirroring, and it is an async member (`$System.Mirror.IsMember()` is 2). | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
+| SA-48 | Join a mirror as a failover member | Needs a license that allows mirroring, which Community Edition lacks, and a second instance that runs the mirror. | `license` | The instance holds a license that allows mirroring, and so does the instance whose mirror it joins. | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
+| SA-49 | Join a mirror as an async member | Needs a license that allows mirroring, which Community Edition lacks, and a second instance that runs the mirror. | `license` | The instance holds a license that allows mirroring, and so does the instance whose mirror it joins. | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
+| SO-17 | Mirror member and database actions | Needs a license that allows mirroring, which Community Edition lacks. | `license` | The instance holds a license that allows mirroring, and it is a mirror member (`$System.Mirror.IsMember()` is 1 or 2). | `$System.License.NoMirror()` returns 0. The vendor's mirror start evaluates it (`MIRRORMGR.int`, lines 54 to 56). Slot A read 1 on 2026-11-15. |
 
 ### Edition-gated HealthShare, Message Bank, Enterprise and ITK pages
 

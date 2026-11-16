@@ -255,6 +255,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/sql-shell-settings',
       'os-management/tsql-settings',
       'os-management/isql-settings',
+      // Story 21.12: the Mirror monitor, the thirty-third.
+      'os-management/mirror-monitor',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -527,6 +529,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/sql-shell-settings',
       'os-management/tsql-settings',
       'os-management/isql-settings',
+      // Story 21.12: the thirty-third.
+      'os-management/mirror-monitor',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

@@ -8094,6 +8094,26 @@ export const STRINGS = {
   isqlSettingsPrompt2: 'What does RESERVEDWORDPREFIX do?',
   /** EXPERIENCE.md:604 */
   isqlSettingsPrompt3: 'Which ISQL settings are on?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorLabel: 'Mirror monitor',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorEmpty: 'No mirror members to show.',
+  /** EXPERIENCE.md:604 */
+  mirrorNotMemberBanner: 'This instance is not a mirror member.',
+  /** EXPERIENCE.md:604 */
+  mirrorUnlicensedBanner: 'This instance is not a mirror member, and its license does not allow mirroring.',
+  /** EXPERIENCE.md:604 */
+  mirrorColumnJournalLatency: 'Journal transfer latency',
+  /** EXPERIENCE.md:604 */
+  mirrorColumnDatabaseLatency: 'Dejournal latency',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt1: 'Is this instance a mirror member?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt2: 'Which members does this mirror have, and what role does each play?',
+  /** EXPERIENCE.md:604 */
+  mirrorMonitorPrompt3: 'Is any mirror member behind on journal transfer or dejournaling?',
+  /** EXPERIENCE.md:604 */
+  mirrorRefusalDatabases: 'Removing a mirror together with taking its databases out of mirroring is not available here.',
 } as const;
 
 /**

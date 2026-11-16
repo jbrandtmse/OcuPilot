@@ -162,6 +162,7 @@ XData Titles
 "messagesLogListLabel": "messages.log",
 "metricsLabel": "Prometheus metrics",
 "mftConnectionListLabel": "Managed file transfer",
+"mirrorMonitorLabel": "Mirror monitor",
 "namespaceListLabel": "Namespaces",
 "navAreaHome": "Home",
 "oauthClientFormLabel": "Client configuration",

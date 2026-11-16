@@ -9542,7 +9542,7 @@ So that a future decision to build one is made against evidence rather than agai
 
 - **Given** the 56 excluded rows
 - **When** they are recorded
-- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
 
 - **Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 - **When** the register is read

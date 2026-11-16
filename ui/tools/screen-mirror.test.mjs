@@ -1703,7 +1703,7 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     ],
   });
   for (const screen of emittedScreens) {
-    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList') continue;
+    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.BackupTaskList' || screen.descriptor === 'OcuPilot.Screen.Descriptor.MirrorMonitor') continue;
     assert.equal(screen.banner, null, `${screen.descriptor} emits no banner`);
   }
 
@@ -1718,6 +1718,18 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     source: { port: 'backup', endpoint: 'Writes', type: 'GET' },
     field: 'WriteState',
     cases: [{ equals: 'Frozen', messageKey: 'backupFrozenBanner', severity: 'warning', action: 'thaw' }],
+  });
+
+  // Story 21.12: the Mirror monitor's banner reads the mirror port's state and offers no action.
+  const mirror = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.MirrorMonitor');
+  assert.ok(mirror !== undefined, 'the Mirror monitor is declared');
+  assert.deepEqual(mirror.banner, {
+    source: { port: 'mirror', endpoint: 'State', type: 'GET' },
+    field: 'State',
+    cases: [
+      { equals: 'NotMember', messageKey: 'mirrorNotMemberBanner', severity: 'info' },
+      { equals: 'Unlicensed', messageKey: 'mirrorUnlicensedBanner', severity: 'info' },
+    ],
   });
 
   const hostile = structuredClone(tasks);
@@ -2781,6 +2793,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.LanguageServerList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',
+      'OcuPilot.Screen.Descriptor.MirrorMonitor',
       'OcuPilot.Screen.Descriptor.OAuthClientForm',
       'OcuPilot.Screen.Descriptor.OAuthClientTab',
       'OcuPilot.Screen.Descriptor.OAuthResourceServerForm',
@@ -3138,7 +3151,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3451,6 +3464,27 @@ test('Story 21.3: the config source refusals agree with the instance corpus', ()
     if (testCase.expected !== null) refusals += 1;
   }
   assert.ok(refusals >= 6, `the corpus refuses its shapes (${refusals})`);
+});
+
+// Story 21.12: a mirror read is one LIST of MirrorPort's one endpoint with no per-row call, parent list, query or parts, and a banner may
+// read the port's state. Every case in `OcuPilot.Test.MirrorRead`'s corpus gets its exact sentence, or none, here as the instance's
+// registry gives it there.
+// Mutation (Rule 19): let the mirror arm of `readProblem` admit any endpoint -> the endpoint case goes red; drop `SOURCE_MIRROR` from the
+// banner rule of `bannerProblem` -> the Mirror monitor's banner is refused and the emission above goes red.
+test('Story 21.12: the mirror source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'MirrorRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const monitor = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.MirrorMonitor');
+  assert.ok(monitor !== undefined, 'the Mirror monitor is declared');
+  assert.equal(bannerProblem(monitor.declaration), null, 'its banner reads the mirror port');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(monitor.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 5, `the corpus refuses its shapes (${refusals})`);
 });
 
 // Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, which both engines admit as one

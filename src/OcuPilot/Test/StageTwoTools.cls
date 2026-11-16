@@ -143,6 +143,7 @@ XData Elsewhere
 <screen name="SqlShellSettingList"/>
 <screen name="TsqlSettingList"/>
 <screen name="IsqlSettingList"/>
+<screen name="MirrorMonitor"/>
 <screen name="MemorySettingList"/>
 <screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>

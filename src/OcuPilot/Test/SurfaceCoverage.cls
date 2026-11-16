@@ -290,6 +290,7 @@ XData Coverage
 <screen name="SqlShellSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="TsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="IsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
+<screen name="MirrorMonitor" class="OcuPilot.Test.MirrorRead" method="TestTheScreenDeclaresItsPagePairsAndSource"/>
 <tool name="osmgmt.sqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.sqlshellsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.tsqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
