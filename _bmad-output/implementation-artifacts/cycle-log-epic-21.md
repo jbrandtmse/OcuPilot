@@ -394,3 +394,5 @@
 2026-11-16T15:46:36Z	Story 21.33	cr_complete	scope=batch1 model=opus resolved=9 deferred=3(DW-2662_AD-9_text,DW-2663,DW-2664) dismissed=15 high=2(claim_target_bound,owner_immutable;patched)+1(DW-2662_AD_text) med=6 low=18 five_paths=unchanged commit=8e6d9de06
 2026-11-16T15:46:36Z	Story 21.33	ad_amended	ad=AD-9 change=open_writes_4->5(claim_sibling_cancel,AD-34) mode=comply_first_U7
 2026-11-16T15:49:52Z	Story 21.33	gate_step	step=fresh_check+full_sweep scope=batch1 head=8e6d9de06 started=2026-11-16T15:49:52Z dir=e21u/21-33/gate1
+2026-11-16T15:59:18Z	Story 21.33	fresh_check	scope=batch1 classes=17_green specs=3_green_fwd+rev result=pass
+2026-11-16T15:59:18Z	Story 21.33	gate_step	step=sweep_stopped_at_shard1 reason=DW-2664_must_settle_in_batch1_head(orchestrator) note=sweep_reruns_after
