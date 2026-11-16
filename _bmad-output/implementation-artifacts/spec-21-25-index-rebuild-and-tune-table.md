@@ -2,7 +2,7 @@
 title: 'Story 21.25: Index rebuild and tune table'
 type: 'feature'
 created: '2026-11-16'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -242,9 +242,11 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - AC5: the arm skips the class-name test -> the own-class probe red on both callers. A failed resolve answers permitted -> `Prohibited` red.
 - AC6: the Indices tab loses its `rebuild` row action -> `system-explorer-sql-tuning.browser-spec.mjs` red, after rebuild and redeploy.
 
+**Owner answer U-84 (2026-11-16, "A"):** the three records are written into the spine as proposed, with the new `PROHIBITED.OCUPILOTTABLE` code and its escalated sentence. Implementation waits for Story 21.6's merge.
+
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: AD records AD-51 (Story 21.25's case), AD-10 (OcuPilot's own tables arm, and its code), AD-7 (rebuild and tune run in the request, named limit)
+Status: ready-for-dev
+Blocking condition: none (implements after Story 21.6 merges)
 
 First plan. The spec is otherwise complete for development once the three records are ruled. Escalated for the gate: the strings, the four entity types, the keys, and the recommended split of Batch 3. Task 0's eight write measurements wait for the implement stage on `ocupilot-ci`, since `ocupilot` is read-only and a rebuild or tune writes.

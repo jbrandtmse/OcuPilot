@@ -9699,6 +9699,27 @@ So that the Task Manager and other lists keep answering.
 
 - DW-2646: A SQL settings change in OcuPilot leaves the web workers failing vendor class-query lists (ledger; routed by orchestrator ruling)
 
+
+### Story 21.33: OcuPilot's other guarded stores refuse a caller who may not write them
+
+[AMENDED 2026-11-16, owner answer U-82, "A", fix-forward, Rule 5] DW-2638 (found at Story 21.30's plan): agent definitions (instructions, provider, credential name) and other users' ledger, proposal, turn, conversation and preference rows can still be written through the public guarded saves by code a `%Development` holder runs directly. Ordered straight after Story 21.32.
+
+As an administrator,
+I want OcuPilot's remaining protected state written only by the callers it belongs to,
+So that code run with development rights cannot rewrite agent definitions or other users' records.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code writes an agent definition or another user's row through the public guarded methods
+- **Then** the attack is reproduced end to end first and its result recorded; if it fails end to end, the story reports back before anything is built.
+
+- **Given** the attack reproduced
+- **When** the fix lands
+- **Then** the same writes are refused and change nothing, every legitimate caller (the turn's own writes included) still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
+
+- DW-2638: Kernel.State stores outside Story 21.30's four still escalate any caller's public guarded write (ledger; routed by owner answer U-82)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand

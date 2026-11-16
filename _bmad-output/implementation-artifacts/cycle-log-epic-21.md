@@ -361,3 +361,8 @@
 2026-11-16T11:24:25Z	Story 21.32	cr_complete	spawn_at=2026-11-16T11:05:00Z model=opus resolved=6 deferred=1(DW-2647_interop-editors_vendor_-428,burndown) dismissed=9 high=0 med=1 low=6 rows=22 unresolved_high_med=0 final=done cycle_iteration=1 cost=0.15us/call commit=edf36c82d
 2026-11-16T11:24:35Z	Story 21.32	gate_step	step=fresh_check+full_sweep head=4574c0f6a started=2026-11-16T11:24:35Z dir=e21u/21-32/gate
 2026-11-16T11:30:51Z	Story 21.32	fresh_check	env=recipe(rebuilt_11:2xZ) classes=6_green chain_forward=config-settings(6/7,cold_signin_flake_DW-2649)->dashboard_3/3->ecp-settings_5/5->database-operations_6/6 reverse=all_green result=pass(chain_proven)
+2026-11-16T12:43:38Z	Story 21.33	story_inserted	kind=fix_forward via=owner_answer_U-82 owns=DW-2638 order=after_21.32
+2026-11-16T12:43:38Z	Epic 21	owner_decision	ids=U-85(A:wait_for_21.32),U-82(A),U-81(kept),U-84(A),U-83(kept),vendor_report(hold:DW-2646,DW-2647) via=inbox(relayed)
+2026-11-16T12:44:14Z	Story 21.25	owner_decision	id=U-84 by=owner answer=A
+2026-11-16T12:44:14Z	Story 21.25	ad_amended	ads=AD-51(Story_21.25_case),AD-10(OCUPILOTTABLE_arm),AD-7(rebuild+tune_in_request) marker=[AMENDED_2026-11-16,Story_21.25,owner_answer_U-84] lint_spine=ok
+2026-11-16T12:44:14Z	Story 21.25	story_unparked	via=inbox note=implements_after_21.6_merge;21.31_shares_records
