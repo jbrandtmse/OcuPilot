@@ -13248,3 +13248,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: 21.24 CI log (scratch e21u/21-24/ci-b4.log, browser shard 4/5): %Api.InteropEditors.v1.impl answered 500, SQLCODE -428 'ENSPORTAL.UTILS_ENUMERATEMESSAGECLASSES' not found, two minutes after the same -428 on Database.ConfigCRUD; the 21.32 fix covers only AdminPort.InvokeLocated
 - 2026-11-16T11:20:51Z status=escalated owner=burndown by=cr note=vendor dispatch, not OcuPilot's; ties to the owner's DW-2646 vendor-report call; CI risk if config-settings shares a leg with an editor spec
+
+### DW-2649: flake: config-settings.browser-spec.mjs 'each of the seven screens answers its rows' timed out waiting for #ocu-signin-user (30000 ms) as the first browser test on a just-rebuilt throwaway; the same spec passed 7/7 in the reverse run minutes later
+- source: cycle-log-epic-21.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: e21u/21-32/gate/fresh/specs-forward.log, 2026-11-16T11:27Z, fresh rebuild
+- 2026-11-16T11:30:51Z status=routed owner=21-22-ci-flake-hardening by=lead note=cold first sign-in on a fresh instance; same family as the page-load hangs in DW-2544/2549/2566
