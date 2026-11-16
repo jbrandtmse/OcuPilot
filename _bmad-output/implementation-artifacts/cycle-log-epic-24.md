@@ -128,3 +128,5 @@
 2026-11-16T05:25:38Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.4 run=20261114T1656Z-21,22 started_by=runner-24
 2026-11-16T05:27:20Z	Story 24.4	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+InteropSessionTurn_real_turn+InteropSessionRoute_real_principals_on_fresh_throwaway model=claude-opus-5-5
 2026-11-16T05:27:20Z	Story 24.4	fresh_check	env=recipe tests=10_classes result=pass order=forward,reverse classes_tests=92
+2026-11-16T05:29:07Z	Story 24.4	committed	sha=cae31a918 submodules= ci=pending runs=43810505527 amendments=epics.md_24.4_AC_cut,epics.md_24.20-24.23_inserted
+2026-11-16T05:29:07Z	Story 24.4	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
