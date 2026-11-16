@@ -12993,6 +12993,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:37Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T04:48:03Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357531;client_suite_hang_cancelled;unchanged_rerun
 - 2026-11-16T07:51:21Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43819841054(staging-24.3-feb6b71c7)job133140150868_node24.15.0_client_suite_cancelled_at_25min;rerun_by_epic-runner-24
+- 2026-11-16T13:52:02Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43875203822(OCU-1-epic21-edf36c82d)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
 
 ### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13227,6 +13228,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-6-the-command-and-class-method-consoles.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess pins the escalation; Api/Governance checks IsAdministrator above GuardedApply; end-to-end non-admin rewrite not yet run
 - 2026-11-16T06:06:00Z status=escalated owner=burndown by=harvest note=security; found at 24.6 plan; out of Epic 24 footprint (Kernel/State, AD-9); for the orchestrator and the decision sheet
+- 2026-11-16T12:01:42Z status=resolved-by:21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a owner=21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a by=orchestrator note=U-79_A;reproduced_e2e_then_fixed_in_21.30(3df69e648,07a3a989f);feature_90799012d_run43850988016_green
 
 ### DW-2635: Environment diff does not yet compare two namespaces' global, routine and package mappings (catalog DT-09)
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13420,3 +13422,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
 - evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
 - 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun
+
+### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
+- source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
+- evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
+- 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
+- 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
