@@ -286,3 +286,7 @@
 2026-11-16T02:09:51Z	Story 21.24	ledger_adjudicated	owned=1 resolved=1(DW-2625_by_21.24) filed=DW-2626(AD-35_text,burndown,orchestrator) occurrence=DW-1645(localized_labels)
 2026-11-16T02:12:41Z	Story 21.24	ruling	question=release_1.0.16_route choice=b(staging_from_feature_b4be0c8f2+21.24_only,b706fb831) rejected=a(combined_with_21.12) why=clean_apply;no_21.12_risk;owner_release category=decide policy=b9ff703e via=orchestrator_priority
 2026-11-16T02:12:42Z	Story 21.24	gate_step	step=fresh_check+sweep env=ocupilot-ci_rebuilt_from_.worktrees/epic-21-s2124 started=2026-11-16T02:12:41Z
+2026-11-16T02:14:42Z	Story 21.19	owner_decision	id=U-70 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: all three + mask (Recommended)"
+2026-11-16T02:14:42Z	Story 21.19	ad_amended	ads=AD-51(Story_21.19_case),AD-21(consumers+TM-17_case),AD-35(mail_password_row) marker=[AMENDED_2026-11-16,Story_21.19,owner_answer_U-70] lint_spine=ok note=batch4_returns_to_21.19;closes_DW-2626_text_gap
+2026-11-16T02:14:42Z	Story 21.21	owner_decision	id=U-74 via=inbox(relayed_by_orchestrator) by=owner answer=A quote="A: amend and build (Recommended)"
+2026-11-16T02:14:42Z	Story 21.21	ad_amended	ads=AD-44(custom_resource_set_clear),AD-64(rule2) marker=[AMENDED_2026-11-16,Story_21.21,owner_answer_U-74] lint_spine=ok note=AD-10_OCUPILOTSCREEN_arm_asked_of_orchestrator

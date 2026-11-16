@@ -103,7 +103,7 @@ deferred:
 - DW-2471: `ui/src/app/core/screen-read.ts:230-234` answers an `ok` answer it cannot read as `{kind:'rejected', status, code:null, path}`, so every shared-read screen draws its refusal and holds until Retry. The class-access tab's own remap (`web-app-class-access-tab.ts:211-214`) is removed as redundant; Guardrails and findings keep their own reads.
 - Tests: `create-form.store.spec.ts` (copy fills and skips, a refused source read keeps the buffer, clearing restores); `ui/browser/web-applications-create.browser-spec.mjs` (Copy from a source the spec creates, Save, the editor shows the copied values; the spec deletes both apps); a held-chunk leg in it and in `users-create.browser-spec.mjs` and `roles-create.browser-spec.mjs` (the editor chunk is held: no Saved status shows; released: the editor's Saved shows); `ui/tools/screen-read.test.mjs:261-266` now asserts `rejected`; `web-app-class-access-tab.spec.ts`'s unreadable leg keeps passing through the shared read, its `mutation:` note moved to the shared read.
 
-### Batch 4: moved to Story 21.21 at the spec gate (not built in this story)
+### Batch 4: PM-24, TM-17 and TM-18's password (records written on owner answer U-70)
 
 - **PM-24**, on `TaskExport`/`TaskImport`'s shape: `permissions.resources.export` (all resources or the selected ones, to a `PathPort` root and name as an overwriting `file` whose overwrite is a constant) and `permissions.resources.import` (a `source` file or the screen's local text, through a temporary file OcuPilot names, previewed with `Flags` 1 and refused when the file no longer yields the reviewed resource names). Row/toolbar actions on `ResourceList`; `classicPage` `%CSP.UI.Portal.Dialog.ExportResource`. Import is destructive by name (it overwrites existing resources), so its key ships `false`.
 - **TM-17**: Task details gains `OutputFile` and an Open output action that reads the task's stored output file, bounded and tail-first through `LogSourcePort`, only where the record allows it.
@@ -201,6 +201,8 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - The full ObjectScript sweep over `src/OcuPilot/Test` (once, before `dev_complete`), one class per call or batches sized from `ui/tools/ci-timings.json` to about 8 minutes -- expected: green. The full browser suite is left to CI (Rule 29).
 
 **Runner ruling at the spec gate (2026-11-16):** Batch 4 (PM-24, TM-17, TM-18's password) moves to Story 21.21, which waits on the owner for the three records; this story builds Batches 1 to 3. The mail-password audit exposure is ledgered as DW-2625 (decision-pending, owner item requested). The escalated strings and named limits are kept (veto U-69).
+
+**Owner answer U-70 (2026-11-16, "A: all three + mask (Recommended)"):** the AD-51 entry and AD-21 consumer line for PM-24 and the AD-21 case for TM-17 are written into the spine as proposed above; the AD-35 record names the mail-password row. Batch 4 is built in this story; the audit mask itself is Story 21.24's and is already in the code, so TM-18's password task is the secret-only write alone.
 
 ## Auto Run Result
 

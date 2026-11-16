@@ -9431,6 +9431,8 @@ So that the last of the Explorer's data surfaces exists.
 
 [AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password each need an architecture record no owner answer covers; they move to Story 21.21 and wait for the owner. This story builds the rest.
 
+[AMENDED 2026-11-16, owner answer U-70, "A: all three + mask (Recommended)", Rule 5] The three records are written; resource export and import, a task's output file and the Task Manager mail password return to this story. The audit mask is Story 21.24's.
+
 As a developer-administrator,
 I want the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy,
 So that no area has a remaining gap.
@@ -9469,6 +9471,8 @@ So that no area has a remaining gap.
 [AMENDED 2026-11-15, owner answer U-65, "A (Recommended)", Rule 5] This story builds a custom resource on a classic menu item, the Operate-only dismount (DW-1850, with its AD-27 named case), DW-1280's sentence and DW-2348's stricter header. The TOTP QR code and process variables are closed as by design. Security escalation, Contact WRC, diagnostic reports and Web Gateway management go to Epic 22's exclusion register as not planned.
 
 [AMENDED 2026-11-16, Story 21.19 spec gate, unattended ruling, Rule 5] Resource export and import, a task's output file and the Task Manager mail password join this story from Story 21.19. Each waits for the owner on the record it needs; until then they are not planned.
+
+[AMENDED 2026-11-16, owner answers U-70 and U-74, Rule 5] Those three return to Story 21.19 (U-70). The custom resource on a classic menu item is built with its AD-44 and AD-64 records (U-74).
 
 As a developer-administrator,
 I want a custom resource on a classic menu item and an Operate-only dismount,

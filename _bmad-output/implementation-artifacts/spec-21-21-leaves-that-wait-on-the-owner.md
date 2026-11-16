@@ -216,6 +216,8 @@ Every test added or changed passes on a fresh environment, in either order. Muta
 
 **Runner ruling at the spec gate (2026-11-16):** the AD-27 named case is written into the spine (owner answer U-65). Batches 1 to 4 are ready. Batch 5 (SH-27) is held: whether owner answer U-65 covers the AD-44 and AD-64 records is asked of the orchestrator, and the implement stage builds Batch 5 only if a ruling is recorded here. Story 22.1's group line is extended add-only. The escalated strings and register rows are kept (veto U-73).
 
+**Owner answer U-74 (2026-11-16, "A: amend and build (Recommended)"):** the AD-44 and AD-64 records are written into the spine as proposed. The AD-10 `PROHIBITED.OCUPILOTSCREEN` arm proposed beside them is asked of the orchestrator; Batch 5 is built once it is ruled, recorded here.
+
 ## Auto Run Result
 
 Status: ready-for-dev
