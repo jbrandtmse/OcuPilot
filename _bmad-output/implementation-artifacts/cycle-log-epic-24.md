@@ -141,3 +141,6 @@
 2026-11-16T06:06:13Z	Story 24.6	ruling	question=consoles_vs_AD-10 choice=park rejected=amend_AD-10,drop_scope why=AD-10_rearchitecture_cited_by_done_specs_and_scope_drop_owner_only category=park inbox=U-78 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T06:06:13Z	Story 24.6	story_parked	inbox=U-78 code=none stage=plan
 2026-11-16T06:06:13Z	Story 24.7	story_parked	inbox=U-78 code=none stage=not_planned reason=web_terminal_runs_arbitrary_code_same_AD-10_question
+2026-11-16T06:07:04Z	Story 24.4	ci_red_classified	run=43810505527 workflow=.github/workflows/ci.yml class=inherited test=dashboard,database-operations,ecp-settings(browser_shard_4_after_config-settings,SQLCODE_-428_FILTER_procedures) ruling=orchestrator_inherited_signature
+2026-11-16T06:07:04Z	Story 24.4	ci_resolved	story=24.4 sha=cae31a918 runs=43810505527 failed=browser_shard_4_inherited_config-settings via=none result=failure_inherited resolved_at=next_plan first_ci=inherited
+2026-11-16T06:07:04Z	Epic 24	orchestrator_message	note=DW-2634_to_owner_not_in_any_epic24_story; config-settings_fix_lands_with_21.24
