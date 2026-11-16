@@ -300,3 +300,4 @@
 2026-11-16T04:09:48Z	Story 21.24	smoke_complete	method=cli result=pass iterations=1 defects_caught=1(review:wrapped_continuation_lines) evidence=smoke.sh_PASSED+fresh_check_9_classes model=claude-opus-5-5
 2026-11-16T04:09:48Z	Story 21.24	committed	sha=b706fb831(staging/OCU-1-21.24,from_feature_b4be0c8f2) epic_branch_shas=37538ee8a,f3b81e542 ci=pending runs=43802365008
 2026-11-16T04:09:48Z	Story 21.24	story_cycle	plan_to_commit_min=~170 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,cr:opus
+2026-11-16T04:10:45Z	Story 21.13	stage_spawned	stage=implement spawn_at=2026-11-16T04:10:45Z model=sonnet agent_name=21-13-ddl-mappings-implement-1 cycle_iteration=1 story_base=351eb9da7
