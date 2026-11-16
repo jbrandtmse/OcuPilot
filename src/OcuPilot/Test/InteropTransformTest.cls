@@ -202,6 +202,20 @@ Method TestDocumentsAreShownAsRawTextOneSegmentToALine()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the confirmed tests stored nothing either")
 }
 
+/// <p>AC8 (DW-2378): an HL7 message whose PID-5 holds U+0151 is parsed from a character stream, so the target shows the character and no
+/// <code>?</code>.</p>
+Method TestAnHl7MessageKeepsACharacterPastLatin1()
+{
+    Set tMessage = $Replace($ClassMethod(..#FIXTURE, "Hl7Text"), "DOE^JANE", "DOE^J" _ $Char(337) _ "ANE")
+    Set tBody = {"action": "test", "values": {}}
+    Do tBody.%Set("id", $Parameter(..#FIXTURE, "HL7") _ ".cls", "string")
+    Do tBody.values.%Set("content", tMessage, "string")
+    Do $ClassMethod(..#CONTROL, "CallWide", "POST", ..#SCREEN _ "/action", tBody, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the HL7 Test answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Set tOutput = $Select($IsObject(tAnswer): tAnswer.%Get("output"), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tOutput): tOutput.lines.%Get(2), 1: ""), "PID|1||PAT001^^^OCU^MR||DOE^J" _ $Char(337) _ "ANE||19800101|F", "the target's PID line holds U+0151")
+}
+
 /// <p>AC1: a transformation that creates <code>existing</code> gets a target from <code>%New()</code> with no argument: the classic
 /// dialog's argument would put its own marker text into the response's first property, so the target here holds only what the
 /// transformation wrote.</p>

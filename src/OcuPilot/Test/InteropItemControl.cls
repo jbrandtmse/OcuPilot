@@ -112,6 +112,25 @@ ClassMethod Call(pMethod As %String, pPath As %String, pBody, Output pStatus As 
     Quit tSC
 }
 
+/// <p><method>Call</method> for a body that holds a character past Latin-1 (Story 24.3): each character above 127 is sent as its
+/// <code>\uXXXX</code> escape, so the request body is ASCII and the server reads the character itself. <method>Call</method> writes the
+/// character to a request stream that sends <code>?</code> for it.</p>
+ClassMethod CallWide(pMethod As %String, pPath As %String, pBody, Output pStatus As %Integer, Output pAnswer) As %Status
+{
+    Set pAnswer = ""
+    Kill tExtra
+    Set tJson = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+    Set tAscii = ""
+    For tI = 1:1:$Length(tJson) {
+        Set tChar = $Extract(tJson, tI)
+        Set tAscii = tAscii _ $Select($ASCII(tChar) > 127: "\u" _ $Extract($ZHex($ASCII(tChar) + 65536), 2, 5), 1: tChar)
+    }
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ pPath _ $Select(pPath [ "?": "&", 1: "?") _ "ns=" _ ..#NAMESPACE
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tRaw, .tHeaders, tAscii, "application/json", .tExtra, 120)
+    Try { Set pAnswer = ##class(%DynamicObject).%FromJSON($Get(tRaw)) } Catch { Set pAnswer = $Get(tRaw) }
+    Quit tSC
+}
+
 /// <p>The composite id of <var>pName</var> in the probe production, as the routes take it.</p>
 ClassMethod IdOf(pName As %String) As %String
 {

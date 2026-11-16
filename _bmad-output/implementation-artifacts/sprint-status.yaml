@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-16-2026 07:40'
+last_updated: '11-16-2026 11:06'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -442,18 +442,27 @@ development_status:
   epic-24: in-progress
   24-1-developer-tools: done
   24-2-the-analytics-editors: done
-  24-3-interoperability-parity: backlog
-  24-4-the-agent-gains-the-harvested-tools-and-undo: backlog
+  24-3-interoperability-parity: done
+  24-4-the-agent-gains-the-harvested-tools-and-undo: done
   24-5-unit-test-runner-and-work-queue-viewer: backlog
   24-6-the-command-and-class-method-consoles: backlog
   24-7-web-terminal: backlog
-  24-8-remote-instance-profiles-and-environment-diff: backlog
-  24-9-environment-promote: backlog
+  24-8-remote-instance-profiles-and-environment-diff: done
+  24-9-environment-promote: ready-for-dev
   24-10-folder-manager-transfer-and-term-list-import-export-and-copy: backlog
   24-11-listing-groups: backlog
   24-12-quality-measures: backlog
   24-13-analytics-settings: backlog
   24-14-pmml-model-tester-and-dashboard-viewer: backlog
+  24-15-credentials-default-settings-and-schedules: backlog
+  24-16-purge-suspended-messages-export-and-the-archive-manager: backlog
+  24-17-managed-alerts-logs-the-system-monitor-and-workflow: backlog
+  24-18-pex-record-maps-and-hl7-authoring: backlog
+  24-19-the-registries-interface-maps-and-references-port-authority: backlog
+  24-20-undo-by-snapshot-and-revert: backlog
+  24-21-the-agent-s-harvested-log-process-source-and-configuration-t: backlog
+  24-22-the-agent-s-harvested-message-body-searches: backlog
+  24-23-the-agent-s-harvested-vocabulary-tool: backlog
   epic-24-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

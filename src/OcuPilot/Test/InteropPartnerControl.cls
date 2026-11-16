@@ -412,6 +412,35 @@ Method TestTheReviewedFieldListsAndPreconditionCodesAreTheTools()
     }
 }
 
+/// <p>AC8: a person's Edit that carries one value changes that field and keeps every other, a field another caller changed after the list was
+/// read included.</p>
+Method TestAnEditCarryingOneValueKeepsTheOthers()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "PutPartner", ..#PARTNER), "the probe partner is arranged")
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = ..#PARTNER
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "BusinessPartners", "SETPARTNER", .tQuery, {"PrimaryEmail": "elsewhere@example.test"}, .tRow, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "another caller changes the email after the list was read")
+    Set tBefore = ..Held(..#PARTNER)
+    Do $$$AssertTrue($IsObject(tBefore), "the partner is read")
+    If '$IsObject(tBefore) Quit
+    Set tText = ..Act("edit", ..#PARTNER, {"Description": (..#VALUEMARKER)}, .tAnswer)
+    Do $$$AssertEquals(tText, "200 ", "an Edit carrying only the description answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Set tHeld = ..Held(..#PARTNER)
+    Do $$$AssertTrue($IsObject(tHeld), "the partner is held")
+    If '$IsObject(tHeld) Quit
+    Do $$$AssertEquals(tHeld.Description, ..#VALUEMARKER, "the description is changed")
+    Set tFields = $ListFromString($Parameter(..#PORT, "PARTNERSETFIELDS"))
+    Set tKept = 1
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        If (tField '= "Description") && (tHeld.%Get(tField) '= tBefore.%Get(tField)) Set tKept = 0
+    }
+    Do $$$AssertTrue(tKept, "and every other field keeps what it held")
+    Do $$$AssertEquals(tHeld.PrimaryEmail, "elsewhere@example.test", "including the one changed elsewhere")
+}
+
 /// <p>AC4 (Integration): Story 20.5's Business partners read -- the screen's read route over the wire and the read tool
 /// <code>interop.businesspartners.read</code> -- lists a partner added through the Save with its fields, then lists the values an
 /// Edit changed, then no longer lists the partner once it is removed.</p>

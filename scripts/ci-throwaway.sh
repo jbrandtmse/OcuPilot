@@ -365,6 +365,7 @@ services:
       # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
       # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
       # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
+      # classes: InteropSessionTurn, InteropSessionRoute
       # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
       # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
       # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
@@ -600,6 +601,16 @@ services:
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
       # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
+      # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
+      # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
+      # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
+      # over HTTP as those principals and drives the row actions and the confirm route.
+      # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals, InteropStartupWire
+      # The namespace comparison's route class (Story 24.8) signs in as principals holding one namespace's database pairs or both, and runs turns as them.
+      # classes: NamespaceDiffRoute
+      # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
+      # class is armed by the database variable too.
+      # classes: CompileWithoutInterop
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -748,6 +759,8 @@ services:
       # classes: WalletRungRoles
       # classes: InteropEditorSaveTurn
       # classes: AnalyticsMdxReadTurn
+      # classes: InteropSessionTurn, InteropSessionRoute
+      # classes: NamespaceDiffRoute
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

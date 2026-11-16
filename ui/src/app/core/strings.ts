@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:649 */
+  /** EXPERIENCE.md:650 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4936,6 +4936,36 @@ export const STRINGS = {
   explorerDocumentHashesPrompt2: 'Which of these documents changed most recently?',
   /** EXPERIENCE.md:594 */
   explorerDocumentHashesPrompt3: 'How many documents does this pattern match?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffLabel: 'Compare namespaces',
+  /** EXPERIENCE.md:594 */
+  explorerOtherNamespaceLabel: 'Other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedHere: 'Modified here',
+  /** EXPERIENCE.md:594 */
+  explorerColumnModifiedThere: 'Modified there',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyHere: 'Only in this namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeOnlyThere: 'Only in the other namespace',
+  /** EXPERIENCE.md:594 */
+  explorerChangeDiffers: 'Content differs',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffEmpty: 'No difference: every matching class and routine is the same in both namespaces.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffInvite: 'Choose another namespace and enter a pattern to see which classes and routines differ.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetReason: 'Name the other namespace: 1 to 64 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetShapeReason: 'Name the namespace to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerTargetSameReason: 'Choose a namespace other than this one to compare with.',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt1: 'Which classes differ between this namespace and the other one?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt2: 'What does this namespace hold that the other one lacks?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffPrompt3: 'Has this package drifted from the other namespace?',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse
@@ -6695,7 +6725,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopRulesEmpty: 'No business rules in this namespace.',
   /** EXPERIENCE.md:604 */
-  interopProductionsEmptyAgent: 'Ask the agent why no production is listed here.',
+  interopProductionsEmptyAgent: 'start a production',
   /** EXPERIENCE.md:604 */
   interopProductionsPrompt1: 'Is any production here troubled or stopped?',
   /** EXPERIENCE.md:604 */
@@ -6759,6 +6789,50 @@ export const STRINGS = {
     'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
   /** EXPERIENCE.md:604 */
   interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnAutoStart: 'Starts with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnStartupPriority: 'Startup priority',
+  /** EXPERIENCE.md:608 */
+  interopProductionColumnShutdownGroup: 'Shutdown group',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartAction: 'Start with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartTitle: 'Start <production> with the instance',
+  /** EXPERIENCE.md:608 */
+  interopProductionShutdownGroupTitle: 'Shutdown group for <production>',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartField: 'Start this production when the instance starts',
+  /** EXPERIENCE.md:608 */
+  interopProductionAutoStartHelp:
+    'When the instance starts, it starts each namespace\'s chosen production in order of startup priority, highest first. Productions with the same priority start in order of namespace name.',
+  /** EXPERIENCE.md:608 */
+  interopProductionShutdownGroupHelp:
+    'When the instance stops, it stops running productions one shutdown group at a time, and those in the same group together. The default group is 2.',
+  /** EXPERIENCE.md:608 */
+  interopAutoStartConsequence:
+    'A namespace starts at most one production with the instance, so this replaces any production set to start before.',
+  /** EXPERIENCE.md:608 */
+  interopShutdownGroupConsequence:
+    'A shutdown group other than 2 can make the instance take longer to stop, which matters where a failover must finish in time.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalSame:
+    'This production is already set that way, so there is nothing to change.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalPriority:
+    'A startup priority is a whole number of at most nine digits, with a minus sign if it is negative.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalGroup:
+    'A shutdown group is a whole number of at most nine digits, with a minus sign if it is negative.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalNoPriority:
+    'A startup priority applies only to a production that starts with the instance.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalNeedsAll:
+    'Changing a startup priority or a shutdown group needs read access to the settings of every namespace that runs interoperability on this instance.',
+  /** EXPERIENCE.md:608 */
+  interopStartupRefusalReadOnly:
+    'This namespace\'s database is mounted read-only, so this setting cannot be saved.',
   /** EXPERIENCE.md:604 */
   interopItemsLabel: 'Production items',
   /** EXPERIENCE.md:604 */
@@ -6770,7 +6844,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemsEmpty: 'This production holds no items.',
   /** EXPERIENCE.md:604 */
-  interopItemsEmptyAgent: 'Ask the agent which item this production should hold.',
+  interopItemsEmptyAgent: 'add an item to this production',
   /** EXPERIENCE.md:604 */
   interopItemsPrompt1: 'Which items of this production are disabled?',
   /** EXPERIENCE.md:604 */
@@ -6875,7 +6949,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemSettingsEmpty: 'This item declares no settings.',
   /** EXPERIENCE.md:604 */
-  interopItemSettingsEmptyAgent: 'Ask the agent which settings this item could have.',
+  interopItemSettingsEmptyAgent: 'set one of this item\'s settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsPrompt1: 'Which settings of this item differ from their defaults?',
   /** EXPERIENCE.md:604 */
@@ -7029,11 +7103,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemJobsPrompt3: 'How many jobs does this item run?',
   /** EXPERIENCE.md:604 */
-  interopQueuesEmptyAgent: 'Ask the agent why no queue is listed here.',
+  interopQueuesEmptyAgent: 'abort the messages in a queue',
   /** EXPERIENCE.md:604 */
-  interopQueueMessagesEmptyAgent: 'Ask the agent why no message is waiting in this queue.',
+  interopQueueMessagesEmptyAgent: 'abort a message in this queue',
   /** EXPERIENCE.md:604 */
-  interopJobsEmptyAgent: 'Ask the agent why no job is listed here.',
+  interopJobsEmptyAgent: 'stop a job',
   /** EXPERIENCE.md:604 */
   actionAbort: 'Abort',
   /** EXPERIENCE.md:604 */
@@ -7086,11 +7160,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
   /** EXPERIENCE.md:604 */
-  interopBusinessPartnersEmptyAgent: 'Ask the agent to add a business partner here.',
+  interopBusinessPartnersEmptyAgent: 'add a business partner',
   /** EXPERIENCE.md:604 */
-  interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
+  interopLookupTablesEmptyAgent: 'create a lookup table',
   /** EXPERIENCE.md:604 */
-  interopLookupEntriesEmptyAgent: 'Ask the agent to add an entry to this lookup table.',
+  interopLookupEntriesEmptyAgent: 'add an entry to this lookup table',
   /** EXPERIENCE.md:604 */
   interopLookupTablesPrompt1: 'Which lookup tables does this namespace hold?',
   /** EXPERIENCE.md:604 */
@@ -7366,7 +7440,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemTestEmpty: 'This item takes no test request.',
   /** EXPERIENCE.md:604 */
-  interopItemTestEmptyAgent: 'Ask the agent which items of this production take a test request.',
+  interopItemTestEmptyAgent: 'send a test request to an item',
   /** EXPERIENCE.md:604 */
   interopItemTestPrompt1: 'Which request classes does this item take?',
   /** EXPERIENCE.md:604 */
@@ -7424,7 +7498,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBplEditorTitle: 'BPL editor',
   /** EXPERIENCE.md:604 */
-  interopTransformsEmptyAgent: 'Ask the agent why no data transformation is listed here.',
+  interopTransformsEmptyAgent: 'test a data transformation',
   /** EXPERIENCE.md:604 */
   interopTransformTestTitle: 'Test <transform>',
   /** EXPERIENCE.md:604 */

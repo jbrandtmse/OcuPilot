@@ -701,6 +701,13 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'analyticsRefusalNamespace',
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
+      'explorerNamespaceDiffEmpty',
+      'explorerNamespaceDiffInvite',
+      'explorerNamespaceDiffLabel',
+      'explorerNamespaceDiffPrompt1',
+      'explorerNamespaceDiffPrompt2',
+      'explorerNamespaceDiffPrompt3',
+      'explorerOtherNamespaceLabel',
       'headerNamespaceLabel',
       'impactNamespacesUse',
       'impactNamespacesUseNone',
@@ -736,7 +743,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels and the Namespaces screens\' own copy'
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels, the Namespaces screens\' own copy and Compare namespaces\' title, field label, empty state, invitation and three prompts (Story 24.8)'
   );
 });
 

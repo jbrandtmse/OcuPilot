@@ -228,6 +228,36 @@ test('AC2, AC8: Send test sends the request built from the typed fields and show
   }
 });
 
+// AC8 (Story 24.3, DW-2379) (QA). Mutation (Rule 19): remove the dialog's `role="status"` region (`data-interop-test-announce`), rebuild and
+// redeploy -> the first assertion goes red; render the region with no `statusLine` -> the announced-text assertion goes red.
+test('AC8 (Story 24.3, DW-2379): the dialog keeps a hidden polite status region mounted, empty before a test and announcing the sentence when it ends', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await openTestTab(page);
+    await openDialog(page);
+    const region = () =>
+      page.evaluate(() => {
+        const node = document.querySelector('[role="dialog"] [data-interop-test-announce]');
+        if (node === null) return null;
+        const box = node.getBoundingClientRect();
+        return { role: node.getAttribute('role'), hidden: node.classList.contains('ocu-visually-hidden'), text: node.textContent.trim(), tiny: box.width <= 1 && box.height <= 1 };
+      });
+    const before = await region();
+    assert.deepEqual(before, { role: 'status', hidden: true, text: '', tiny: true }, 'the polite status region is mounted before any test, empty and out of sight');
+    await page.select('[role="dialog"] [data-interop-test-class]', REQUEST);
+    const text = await page.waitForSelector('[role="dialog"] [data-interop-test-field][data-field="Text"] [data-interop-test-input]', { visible: true, timeout: config.navigationTimeoutMs });
+    await text.type('announce');
+    await (await page.waitForSelector('[role="dialog"] [data-interop-test-send]', { visible: true })).click();
+    await page.waitForSelector('[role="dialog"] [data-interop-test-result] pre', { timeout: config.navigationTimeoutMs });
+    const shown = await page.$eval('[data-interop-test-status]', (node) => node.textContent?.trim() ?? '');
+    assert.ok(/^The target answered in session \d+ with Ens\.StringResponse\.$/.test(shown), `the visible status sentence names the session: ${shown}`);
+    await page.waitForFunction((wanted) => document.querySelector('[role="dialog"] [data-interop-test-announce]')?.textContent?.trim() === wanted, { timeout: config.navigationTimeoutMs }, shown);
+    assert.deepEqual(await region(), { role: 'status', hidden: true, text: shown, tiny: true }, 'the same region now announces the visible sentence, still out of sight');
+  } finally {
+    await context.close();
+  }
+});
+
 // AC3 (Story 20.30, Integration). Mutation (Rule 19): build the dialog's link from `responseClass` in place of `sessionId` -> the path wait
 // goes red; point the link at `messages/document` -> the path wait goes red; drop `data-interop-test-trace` -> the link wait goes red;
 // skip the `ClearSession` call -> the last assertion goes red.

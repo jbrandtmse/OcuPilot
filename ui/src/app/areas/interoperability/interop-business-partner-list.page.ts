@@ -19,10 +19,11 @@ export const INTEROP_PARTNER_ADD_ACTION = 'add';
 /** The declared row action Edit, which this page's dialog sends (Story 20.26). */
 export const INTEROP_PARTNER_EDIT_ACTION = 'edit';
 
-/** The partner the open Edit dialog changes: the row's key, which the action is sent for, and its name, which the dialog shows. */
+/** The partner the open Edit dialog changes: the row's key, which the action is sent for, its name, which the dialog shows, and the values the dialog opened with. */
 interface PartnerTarget {
   readonly id: string;
   readonly name: string;
+  readonly initial: Readonly<Record<string, string>>;
 }
 
 /** `value` as text, or `''`. */
@@ -37,9 +38,10 @@ function text(value: unknown): string {
  * **New business partner and Edit are this page's own actions**, registered on the descriptor after injecting the shell's
  * handler, whose construction registers the list's declared Remove (which types the partner's name). New business partner opens
  * the dialog for a new partner in the namespace the shell is scoped to. Edit opens it on the selected row, with the name read-only
- * and the other thirteen fields as the row reported them, and sends them through the handler's `sendFor` with every value, an empty
- * one allowed; a refusal stays in the dialog, on the field where the instance names it, and an applied change closes it, and the
- * handler's change event re-reads the list (AD-14).
+ * and the other thirteen fields as the row reported them, and sends through the handler's `sendFor` only the values the person changed,
+ * an empty one allowed, so a field another caller changed since the list was read is kept; a dialog that changes nothing closes without
+ * sending. A refusal stays in the dialog, on the field where the instance names it, and an applied change closes it, and the handler's
+ * change event re-reads the list (AD-14).
  */
 @Component({
   selector: 'app-interop-business-partner-list-page',
@@ -128,7 +130,7 @@ export class InteropBusinessPartnerListPage {
     const initial: Record<string, string> = { [INTEROP_PARTNER_NAME]: text(row[INTEROP_PARTNER_NAME]) };
     for (const field of INTEROP_PARTNER_VALUE_FIELDS) initial[field] = text(row[field]);
     this.form.reset(initial);
-    this.target.set({ id: selected, name: initial[INTEROP_PARTNER_NAME] });
+    this.target.set({ id: selected, name: initial[INTEROP_PARTNER_NAME], initial });
   }
 
   protected onCloseEdit(): void {
@@ -138,14 +140,22 @@ export class InteropBusinessPartnerListPage {
 
   /**
    * One Edit through the handler's `sendFor`, the refusal kept in the dialog rather than on the list's banner: the sentence the
-   * instance gave a field, else the envelope's own. The name is the target and is not among the values.
+   * instance gave a field, else the envelope's own. The name is the target and is not among the values, and a value equal to the one
+   * the dialog opened with is not sent either.
    */
   protected async onEdit(values: PartnerValues): Promise<void> {
     const target = this.target();
     if (target === null || this.form.busy()) return;
-    const generation = this.form.begin();
     const sent: Record<string, string> = {};
-    for (const field of INTEROP_PARTNER_VALUE_FIELDS) sent[field] = values[field] ?? '';
+    for (const field of INTEROP_PARTNER_VALUE_FIELDS) {
+      const value = values[field] ?? '';
+      if (value !== (target.initial[field] ?? '')) sent[field] = value;
+    }
+    if (Object.keys(sent).length === 0) {
+      this.onCloseEdit();
+      return;
+    }
+    const generation = this.form.begin();
     const applied = await this.handler.sendFor(INTEROP_BUSINESS_PARTNER_LIST, INTEROP_PARTNER_EDIT_ACTION, target.id, sent, { setRefusal: () => undefined });
     // A dialog canceled while this send was in flight no longer answers it.
     if (!this.form.current(generation) || this.target() !== target) return;
