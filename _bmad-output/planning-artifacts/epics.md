@@ -9259,6 +9259,8 @@ So that the last of the Explorer's data surfaces exists.
 
 ### Story 21.6: The SQL tuning track
 
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] The plan inventoried 10 leaves against the instance. This story keeps the statement index and its details (freeze, unfreeze, clear statistics, clear plan error, clean stale) and the cached-query purge for a namespace, a table or one query; index rebuild and tune table move to Story 21.25, runtime statistics to Story 21.26, the index analyzer and its advice to Story 21.27, alternate show plans to Story 21.28 and the troubleshooting reports to Story 21.29, each planned after this story in that order. The first criterion is split verbatim across them by leaf; the second across this story, 21.26, 21.27 and 21.28, each adding its own read, and the workflow stays read-only.
+
 As a developer diagnosing a slow query,
 I want the statement index, tune table, index analyzer, runtime statistics and alternate plans,
 So that performance work has a home.
@@ -9554,6 +9556,89 @@ So that reading the audit log never exposes the Task Manager mail password.
 - **Then** each is masked by the same declaration or ledgered.
 
 - DW-2625: The Task Manager mail password reaches a ConfigurationChange audit row OcuPilot shows unmasked (measured; ledger; routed by orchestrator ruling U-71)
+
+
+### Story 21.25: Index rebuild and tune table
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want to rebuild a table's indices and tune a table,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** index rebuild and tune table
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+### Story 21.26: Runtime statistics
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want runtime statistics,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** runtime statistics
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.27: The index analyzer and its advice
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want the index analyzer and its advice,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the index analyzer with its advice
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.28: Alternate show plans
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below, and its second for this story's read.
+
+As a developer diagnosing a slow query,
+I want alternate show plans,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** alternate show plans
+- **When** each runs
+- **Then** it round-trips over its backing class.
+
+- **Given** the diagnose-slow-query guided workflow
+- **When** this story lands
+- **Then** the workflow gains this story's read and stays read-only.
+
+### Story 21.29: Troubleshooting reports
+
+[AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
+
+As a developer diagnosing a slow query,
+I want the troubleshooting reports,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** the troubleshooting reports
+- **When** each runs
+- **Then** it round-trips over its backing class.
 
 ---
 

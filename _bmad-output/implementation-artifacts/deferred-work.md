@@ -13200,3 +13200,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ARCHITECTURE-SPINE.md AD-35 ends 'This covers only the named events; a vendor secret found in any other event is a new declaration here'; grep finds no MailAuthPassword or ConfigurationChange in the spine; AuditPort.VENDORCONFIGSECRETS declares it; the spec forbids a spine edit under ruling U-71
 - 2026-11-16T02:04:31Z status=escalated owner=burndown by=cr note=human=owner: add a one-sentence sixth declaration to AD-35, or record ruling U-71 there as the reason none is needed
+
+### DW-2628: Frozen-plan export and import (EX-45) and query history (EX-43) are owned by no story after the 21.6 split
+- source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.6 plan inventory, Design Notes
+- 2026-11-16T02:27:28Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet: a later story, or Epic 22's register

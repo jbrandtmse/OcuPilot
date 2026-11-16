@@ -292,3 +292,6 @@
 2026-11-16T02:14:42Z	Story 21.21	ad_amended	ads=AD-44(custom_resource_set_clear),AD-64(rule2) marker=[AMENDED_2026-11-16,Story_21.21,owner_answer_U-74] lint_spine=ok note=AD-10_OCUPILOTSCREEN_arm_asked_of_orchestrator
 2026-11-16T02:14:55Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T02:14:55Z model=opus agent_name=21-6-the-sql-tuning-track-plan-1 cycle_iteration=1
 2026-11-16T02:15:21Z	Story 21.21	ad_amended	ad=AD-10 arm=OCUPILOTSCREEN marker=[AMENDED_2026-11-16,Story_21.21_spec_gate,owner_answer_U-74;ruling_U-75,Rule_20] lint_spine=ok note=batch5_unheld
+2026-11-16T02:27:38Z	Story 21.6	ruling	question=plan_intent_gap_too_large choice=split(21.6_statements+purge,21.25_rebuild+tune,21.26_stats,21.27_analyzer,21.28_alt_plans,21.29_reports) rejected=one_story,batches why=size;five_backing_shapes;owner-gated_reports category=decide policy=b9ff703e split_children=5_of_6
+2026-11-16T02:27:38Z	Story 21.6	plan_clarification_requested	condition=AD-51_entry(c1)+AD-10_OCUPILOTSQL_arm(c2) via=orchestrator status_reset=draft
+2026-11-16T02:27:38Z	Epic 21	deps_hash_rerecorded	reason=split story=21.6->21.6,21.25..21.29 note=orchestrator_rerecords
