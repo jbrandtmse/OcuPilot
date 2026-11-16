@@ -417,3 +417,4 @@
 2026-11-16T20:46:46Z	Epic 21	integrate_forward	from=feature_ebb3e85d8(2a542f893) to=627c176c4 conflicts=1(stamp)
 2026-11-16T20:46:46Z	Story 21.33	ruling	question=gate_batches_2_and_3_together choice=yes(one_fresh_check+sweep+head_after_batch3) rejected=separate_heads why=no_release_cut_between(orchestrator);saves_a_sweep category=decide policy=b9ff703e
 2026-11-16T20:46:46Z	Story 21.33	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-16T20:46:46Z model=opus agent_name=21-33-code-review-b2 cycle_iteration=2
+2026-11-16T21:25:50Z	Story 21.33	cr_complete	scope=batch2 model=opus resolved=10 high=1(DW-2666_reserve_sweep_caller_inputs;unpatched,orchestrator) med=3_patched low=19 five_paths=unchanged dw2665=<PROTECT>+822;unwind_tested;rule6_one_method commit=9bbe57702
