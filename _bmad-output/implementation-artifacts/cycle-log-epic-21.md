@@ -277,3 +277,6 @@
 2026-11-16T01:33:41Z	Story 21.21	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-10,AD-27,AD-16,AD-44,AD-63 owned_ledger=DW-1850,DW-1280,DW-2348 addressed=3 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-16T01:41:09Z	Story 21.22	stage_spawned	stage=plan spawn_at=2026-11-16T01:41:09Z model=opus agent_name=21-22-ci-flake-hardening-plan-1 cycle_iteration=1
 2026-11-16T01:42:40Z	Story 21.21	runner_reported	item=U-74(orchestrator,parked) scope=SH-27_batch5 note=U-65_does_not_cover_A;batches_1-4_proceed
+2026-11-16T01:49:59Z	Story 21.24	dev_complete	spawn_at=2026-11-16T01:29:00Z model=sonnet build_sha=37538ee8a baseline_revision=06d9dd2ba story_base=06d9dd2ba review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 note=mutations:decl_emptied_5/5_red(run121),shared_surfaces_green
+2026-11-16T01:49:59Z	Story 21.24	ruling	question=QA_stage_for_urgent_fix-forward choice=fold_QA_into_CR(verification-gap_layer)+implement's_3_mutations rejected=separate_QA_stage why=U-71_urgency;tests_and_mutations_already_present;one_test_class category=decide policy=b9ff703e
+2026-11-16T01:49:59Z	Story 21.24	stage_spawned	stage=code-review spawn_at=2026-11-16T01:49:59Z model=opus agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-code-review-1 cycle_iteration=1
