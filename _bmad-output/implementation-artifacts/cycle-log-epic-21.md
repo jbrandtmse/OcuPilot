@@ -359,3 +359,4 @@
 2026-11-16T11:05:11Z	Story 21.32	ruling	question=QA_stage choice=fold_QA_into_CR rejected=separate_QA why=fix-forward_priority;repro_test+mutation_present category=decide policy=b9ff703e
 2026-11-16T11:05:11Z	Story 21.32	stage_spawned	stage=code-review spawn_at=2026-11-16T11:05:11Z model=opus agent_name=21-32-code-review-1 cycle_iteration=1
 2026-11-16T11:24:25Z	Story 21.32	cr_complete	spawn_at=2026-11-16T11:05:00Z model=opus resolved=6 deferred=1(DW-2647_interop-editors_vendor_-428,burndown) dismissed=9 high=0 med=1 low=6 rows=22 unresolved_high_med=0 final=done cycle_iteration=1 cost=0.15us/call commit=edf36c82d
+2026-11-16T11:24:35Z	Story 21.32	gate_step	step=fresh_check+full_sweep head=4574c0f6a started=2026-11-16T11:24:35Z dir=e21u/21-32/gate
