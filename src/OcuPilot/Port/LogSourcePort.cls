@@ -3239,7 +3239,7 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
         Set tExtended = "^|""%SYS""|" _ $Extract(tGlobal, 2, *)
         Set %OcuPilotIntegrityStream = pStream
         Set %OcuPilotIntegrityLine = ""
-        If '..DeviceIsOpen(tNull) {
+        If '##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull) {
             Open tNull:::1
             Set tOpenedNull = 1
         }
@@ -3269,23 +3269,6 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
     }
     If tOpenedNull Close tNull
     Quit tSC
-}
-
-/// <p>Whether this process has <var>pDevice</var> open, which a <code>Use</code> that raises
-/// <code>&lt;NOTOPEN&gt;</code> answers no; any other raise is the caller's. The current device is the
-/// same after the call.</p>
-ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean [ Private ]
-{
-    Set tCurrent = $IO
-    Try {
-        Use pDevice
-        Set tOpen = 1
-    } Catch ex {
-        If ex.Name '= "<NOTOPEN>" Throw ex
-        Set tOpen = 0
-    }
-    If tOpen Use tCurrent
-    Quit tOpen
 }
 
 /// <p>End the line <method>IntegrityReport</method>'s capture holds with <var>pText</var> appended, as

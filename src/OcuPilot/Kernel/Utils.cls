@@ -516,4 +516,22 @@ ClassMethod DocumentLines(pDocName As %String, Output pLines) As %Status
     Quit tSC
 }
 
+/// <p>Whether this process has <var>pDevice</var> open, which a <code>Use</code> that raises
+/// <code>&lt;NOTOPEN&gt;</code> answers no; any other raise is the caller's. The current device is the
+/// same after the call. A caller that opens a device only when this answers no, and closes it only then,
+/// leaves a device the process already held, as the vendor's compile routes expect to find it.</p>
+ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean
+{
+    Set tCurrent = $IO
+    Try {
+        Use pDevice
+        Set tOpen = 1
+    } Catch ex {
+        If ex.Name '= "<NOTOPEN>" Throw ex
+        Set tOpen = 0
+    }
+    If tOpen Use tCurrent
+    Quit tOpen
+}
+
 }

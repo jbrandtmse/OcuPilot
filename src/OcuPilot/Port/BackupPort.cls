@@ -619,6 +619,10 @@ ClassMethod FreezeOrThaw(pType As %String, ByRef pQuery, Output pResult, Output 
 /// call: both print their progress to the current device, which in a request is the response. The output is discarded rather than
 /// captured, because <code>%SYS.Capture</code> refuses the freeze's output with <code>&lt;PROTECT&gt;</code> for a caller holding only
 /// <parameter>WRITEPAIRS</parameter> (measured on <code>ocupilot-ci</code>).</p>
+/// <p>The process is left as it was found. The null device is opened only when the process does not hold it, and closed only when this
+/// method opened it: the vendor's DTL and BPL compile routes <code>Use</code> it without opening it, so a pooled web process that
+/// holds it must keep it. The caller's device, with its mnemonic space and output redirection, is restored on every path, a raise
+/// included.</p>
 ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Private ]
 {
     Set tVendor = $$$OK
@@ -626,20 +630,47 @@ ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Priva
     Set tDevice = $IO
     Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
     Set tNull = ##class(%Library.Device).GetNullDevice()
-    Set tOpened = 0
+    Set (tOpened, tSwitched) = 0
     ; The caller's device may redirect its output to a routine (a request, a capture); the vendor's output takes none of it.
     Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
     Try {
         ; A caller already writing to the null device (its name is followed by a job suffix) keeps it: it is not this method's to close.
         If $Piece(tDevice, ":", 1) '= tNull {
-            Open tNull::1
-            If '$Test {
-                Set tVendor = $$$ERROR($$$GeneralError, "the null device could not be opened")
-                Quit
+            If '##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull) {
+                Open tNull::1
+                If '$Test {
+                    Set tVendor = $$$ERROR($$$GeneralError, "the null device could not be opened")
+                    Quit
+                }
+                Set tOpened = 1
             }
-            Set tOpened = 1
             Use tNull
+            Set tSwitched = 1
         }
+        Set tVendor = ..VendorSuspend(pType, pLimit)
+    } Catch ex {
+        Set tVendor = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    If tSwitched {
+        If tMnemonic '= "" {
+            Use tDevice::("^" _ tMnemonic)
+        } Else {
+            Use tDevice
+        }
+    }
+    If tOpened Close tNull
+    Do ##class(%Library.Device).ReDirectIO(tRedirected)
+    Quit tVendor
+}
+
+/// <p>The vendor call <method>SuspendCall</method> makes with the null device current: in <code>%SYS</code>, by save and restore,
+/// <code>ExternalFreeze</code> with <var>pLimit</var> as <code>WDSuspendLimit</code> for a <code>FREEZE</code>, otherwise
+/// <code>ExternalThaw</code>. Its status is the vendor's own, and the namespace is the caller's when it returns.</p>
+ClassMethod VendorSuspend(pType As %String, pLimit As %Integer) As %Status [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
         Set $NAMESPACE = "%SYS"
         If pType = "FREEZE" {
             Set tVendor = ##class(Backup.General).ExternalFreeze("", ..#FREEZETEXT, 1, 10, 0, 0, 0, "", "", pLimit)
@@ -650,15 +681,6 @@ ClassMethod SuspendCall(pType As %String, pLimit As %Integer) As %Status [ Priva
         Set tVendor = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-    If tOpened {
-        If tMnemonic '= "" {
-            Use tDevice::("^" _ tMnemonic)
-        } Else {
-            Use tDevice
-        }
-        Close tNull
-    }
-    Do ##class(%Library.Device).ReDirectIO(tRedirected)
     Quit tVendor
 }
 
