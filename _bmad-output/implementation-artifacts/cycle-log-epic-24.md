@@ -170,3 +170,6 @@
 2026-11-16T10:15:41Z	Story 24.8	fresh_check	env=recipe(merged_tree_feature_48e3593a3) tests=16_classes+3_specs result=pass order=forward,reverse classes_tests=237 components=3487 tools=2292
 2026-11-16T10:15:41Z	Story 24.8	committed	sha=fd063e74a code_head=39fbcf32d(merged_with_feature_48e3593a3) submodules= ci=pending runs=43847172970 amendments=epics.md_24.8_24.9_U-45,feature-catalog_DT-09_DT-10_DT-11,extract-stages,extract-catalog,epics.md_stage_table,exclusion-register_DT-11
 2026-11-16T10:15:41Z	Story 24.8	story_cycle	plan_to_commit_min=270 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-16T10:16:35Z	Story 24.5	owner_decision	id=U-77 at=2026-11-16T06:22:11Z#244 via=inbox by=owner(relayed_by_orchestrator) answer=A_run_record_instead
+2026-11-16T10:16:35Z	Story 24.5	story_unparked	via=inbox id=U-77 effect=epics.md_amended,spec_status_draft,re-plan
+2026-11-16T10:16:35Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T10:16:35Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-2 cycle_iteration=2

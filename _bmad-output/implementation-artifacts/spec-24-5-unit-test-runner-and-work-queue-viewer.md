@@ -2,7 +2,7 @@
 title: 'Story 24.5: Unit-test runner and work-queue viewer'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -68,6 +68,9 @@ The sibling repository is `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31` 
 Pending the re-plan.
 
 ## Design Notes
+
+**Owner answer U-77 (2026-11-16, "A: run record instead (Recommended)"):** the work-queue viewer is replaced by the runner's own run record (a read-only list of this namespace's test runs with each run's methods and failures), and the work-queue viewer goes in the exclusion register as not planned (catalog DT-03 to P4; the register test holds the catalog, the stage extract and the register equal, so the row moves in all three in one change). Re-plan the whole story on this basis, keeping the runner shape prepared below.
+
 
 ### The blocking question (intent gap, AD-61 rule 7)
 

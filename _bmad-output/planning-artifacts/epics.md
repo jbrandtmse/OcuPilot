@@ -10108,9 +10108,15 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
-- **Given** the unit-test runner and work-queue viewer
+[AMENDED 2026-11-16, owner answer U-77: "A: run record instead (Recommended)"] The work-queue viewer is replaced by the unit-test runner's own run record, and the work-queue viewer is recorded in the exclusion register as not planned. The story keeps its title and key.
+
+- **Given** the unit-test runner and its run record
 - **When** each runs
 - **Then** it round-trips over its backing class.
+
+- **Given** the work-queue viewer
+- **When** this story lands
+- **Then** it is recorded in the exclusion register as not planned, with the reason (the instance-wide queue records no owner, a read consumes another client's result, and the instance offers no way to list it).
 
 ### Story 24.6: The command and class-method consoles
 
