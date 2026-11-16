@@ -364,6 +364,7 @@ services:
       # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
       # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
       # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
+      # classes: InteropSessionTurn
       # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
       # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
       # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
@@ -753,6 +754,7 @@ services:
       # classes: WalletRungRoles
       # classes: InteropEditorSaveTurn
       # classes: AnalyticsMdxReadTurn
+      # classes: InteropSessionTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

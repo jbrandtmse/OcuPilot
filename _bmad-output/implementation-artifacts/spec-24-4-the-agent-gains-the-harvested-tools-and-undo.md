@@ -2,7 +2,8 @@
 title: 'Story 24.4: The agent gains the harvested tools and undo (first slice: the fourteen session and message tools)'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '814552475df7d443b470c912f4cfaf9296258bf4'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -152,30 +153,30 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24/` unless abs
 
 **Execution:**
 
-- [ ] **Task 0 (`ocupilot-b-ci`, HSCUSTOM, measure only, nothing left behind).**
+- [x] **Task 0 (`ocupilot-b-ci`, HSCUSTOM, measure only, nothing left behind).**
   - (a) A grouped `SELECT TOP ? SessionId, MIN(...) ... GROUP BY SessionId` over an ID-bounded window runs through `SqlRows` for a principal holding only `MESSAGEPAIRS` and READ on the namespace's database.
   - (b) A `SuperSession` equality on `Ens.SuperSessionIndex` uses its index (`%SYS.PTools` plan or `EXPLAIN`).
   - Record both under Design Notes › Measured. If (a) refuses, read sessions as top-level header rows grouped in ObjectScript under the same cap, and record that.
-- [ ] `src/OcuPilot/Port/InteropPort.cls` -- add `Sessions`, `SessionSummary` and `SessionMessages` to `ENDPOINTS` and their `MESSAGEPAIRS` to `Pairs`. Route them in `InvokeRuntime`'s LIST branch to new private `ListSessions`, `ReadSessionSummary` and `ListSessionMessages`. Each validates its criteria by name (`RefuseCriterion` reasons appended to `MessageCriterionReason`), binds every value, reuses `LOWERIDSQL`, `StoredStamp`, `MessageRow` and `TRACESQL`'s session statement, and caps at `maxRows`. Update the class doc's endpoint list. -- one port, one gate (AD-62).
-- [ ] `src/OcuPilot/Screen/Tool/InteropInspect.cls` (new, abstract, `KIND` `read`) -- the shared base. It provides:
+- [x] `src/OcuPilot/Port/InteropPort.cls` -- add `Sessions`, `SessionSummary` and `SessionMessages` to `ENDPOINTS` and their `MESSAGEPAIRS` to `Pairs`. Route them in `InvokeRuntime`'s LIST branch to new private `ListSessions`, `ReadSessionSummary` and `ListSessionMessages`. Each validates its criteria by name (`RefuseCriterion` reasons appended to `MessageCriterionReason`), binds every value, reuses `LOWERIDSQL`, `StoredStamp`, `MessageRow` and `TRACESQL`'s session statement, and caps at `maxRows`. Update the class doc's endpoint list. -- one port, one gate (AD-62).
+- [x] `src/OcuPilot/Screen/Tool/InteropInspect.cls` (new, abstract, `KIND` `read`) -- the shared base. It provides:
   - `PrivilegePairs` from `InteropPort.Pairs` for the tool's declared `ENDPOINTS`;
   - `SecretArguments` declaring none;
   - a `View` that validates, builds the port query from the tool's arguments (`Query` hook), calls `InteropPort.Invoke` with `Kernel.Scope.Current()`, and answers `{fields, rows, truncated, rowsSent, rowsAvailable, truncatedFields}`;
   - the common schema members (`hours`, `endDateTime`, `maxRows`).
-- [ ] `src/OcuPilot/Screen/Tool/InteropSessionsBy{Time,Status,Source,Target,BodyClass,Id,SuperSession,Class}.cls`, `InteropSessionsRelated.cls`, `InteropSessionSummary.cls`, `InteropSessionTimeline.cls`, `InteropSessionHeaders.cls`, `InteropMessageDetail.cls`, `InteropMessageBody.cls` (fourteen new) -- each declares `TOOLNAME`, `DESCRIPTION`, its schema and its `Query`; nothing else. -- extend, don't copy (Rule 31).
-- [ ] `src/OcuPilot/Test/InteropSessionRead.cls` (new) -- port-level coverage, on headers it stores with `InteropMessageRead.StoreHeader` and `Ens.SuperSessionIndex` rows it creates and removes by marker:
+- [x] `src/OcuPilot/Screen/Tool/InteropSessionsBy{Time,Status,Source,Target,BodyClass,Id,SuperSession,Class}.cls`, `InteropSessionsRelated.cls`, `InteropSessionSummary.cls`, `InteropSessionTimeline.cls`, `InteropSessionHeaders.cls`, `InteropMessageDetail.cls`, `InteropMessageBody.cls` (fourteen new) -- each declares `TOOLNAME`, `DESCRIPTION`, its schema and its `Query`; nothing else. -- extend, don't copy (Rule 31).
+- [x] `src/OcuPilot/Test/InteropSessionRead.cls` (new) -- port-level coverage, on headers it stores with `InteropMessageRead.StoreHeader` and `Ens.SuperSessionIndex` rows it creates and removes by marker:
   - every matrix row;
   - window edges (721 and 169 refused; a header one second outside the window is absent);
   - the cap and `truncated`;
   - zero rows for an absent key;
   - `MESSAGEPAIRS` refused to a holder of `%Ens_Portal:USE` alone, through the gate seam.
-- [ ] `src/OcuPilot/Test/InteropSessionTools.cls` (new) -- tool-level coverage:
+- [x] `src/OcuPilot/Test/InteropSessionTools.cls` (new) -- tool-level coverage:
   - each of the fourteen is listed by the registry with `kind` `read` and is advertised by `ProviderTools` under its wire name;
   - a call through `Dispatch.AnswerOne` with a recording `GateClass` asks the gate exactly once, with kind `read`, before the port, and answers the port's rows;
   - the content pair is refused by name on `detail` and `body`, with the header pair alone;
   - `body` records one `ViewContents`.
-- [ ] `src/OcuPilot/Test/InteropSessionTurn.cls` (new, armed `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER`) -- the integration criterion, after `InteropFloorTurn`'s pattern; list it under both variables in `scripts/ci-throwaway.sh`.
-- [ ] Rosters -- in `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `InteropFloor`, add the fourteen names and the rows each needs. Then sweep `src/OcuPilot/Test`, `ui/tools` and `ui/browser` for any other assertion on the tool count or names, and add to it.
+- [x] `src/OcuPilot/Test/InteropSessionTurn.cls` (new, armed `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER`) -- the integration criterion, after `InteropFloorTurn`'s pattern; list it under both variables in `scripts/ci-throwaway.sh`.
+- [x] Rosters -- in `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `InteropFloor`, add the fourteen names and the rows each needs. Then sweep `src/OcuPilot/Test`, `ui/tools` and `ui/browser` for any other assertion on the tool count or names, and add to it.
 
 **Acceptance Criteria:**
 
@@ -190,6 +191,24 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24/` unless abs
 - 2026-11-15, runner spec gate (unattended rulings, one veto item): (1) the `Proposed split` is applied in `epics.md`: 24.4 keeps the fourteen session and message tools; Stories 24.20 (undo, criterion word for word), 24.21, 24.22 and 24.23 are inserted after 24.19. (2) The six `Proposed strings` are kept as written. (3) The spine is not edited in this run: the AD-62 item 19 and AD-36 lines wait as proposed lines for the owner's attended architecture update; the `Proposed AD` for undo goes to the orchestrator when 24.20 is planned (a new AD is never written by a runner). (4) The edits to rosters and counts shared with Epic 21 append this story's members only (orchestrator ruling A); `origin/OCU-1-epic21` has none of this story's files changed against feature at this gate.
 
 ## Review Triage Log
+
+### 2026-11-15 — Review pass
+
+- verdicts: 13 findings — high 0, medium 2, low 11, false 0, maybe-false 0
+- findings:
+  - `[medium]` `patch` tool `Query` hooks drop secondary arguments with no test noticing — added `TestEachArgumentChangesWhatIsRead` (errorsOnly, beginDateTime, superSession, a two-word status list, `match`, `hours`, `endDateTime`); two mutations observed red and reverted.
+  - `[medium]` `patch` hermeticity: `bytime`, `bystatus` and `bybodyclass` legs read the instance's newest 50 sessions — `maxRows` 500 on those three calls.
+  - `[low]` `patch` `InteropSessionTurn` zero-view assertion has no positive control — the assertion is dropped there (AC4 pins the refusal by name); `InteropSessionTools` takes a positive control before its zero assertion.
+  - `[low]` `patch` test doc comments claim mutation outcomes the spec does not record — the comments are removed; the spec's `## Verification` holds the lines.
+  - `[low]` `patch` dead `"hours": 2` in `TestTheCapReportsTruncated` — removed.
+  - `[low]` `reject` `InteropMessageDetail` records a view when `maxRows` is under 23 and no body row is returned — rare input; the fix adds a branch.
+  - `[low]` `reject` window cut by header ID, so a session's counts can include headers older than the window — the same rule `ListMessages` applies (Design Notes, Named limits).
+  - `[low]` `reject` `SESSIONKEYSQL` takes an arbitrary key when one session's headers sit under several — no such session was shown to exist.
+  - `[low]` `reject` session rows aggregate the headers that matched the search, not the whole session — the sibling's grouped query does the same; tool descriptions say "it holds there".
+  - `[low]` `reject` the 168-hour and 100-row maxima for `byclass` live in the tool schema, not the port — the matrix names the schema as the surface (`TOOL.ARGUMENTS`).
+  - `[low]` `reject` tool pairs are derived from the port, so `ToolEmit` re-derives its expectation — `InteropFloor`'s role rosters and the pair-refusal legs pin the mapping from outside.
+  - `[low]` `reject` non-append edits in `InteropPort` and four rosters (`InteropDescriptor`, `InteropHostDescriptor`, `InteropFloor`, `ReadTool`) — each is an appended member; the port is not an Epic 21 file.
+  - `[low]` `reject` no tool-level test of the not-interoperability row — the port refuses it before any tool logic and `InteropSessionRead` pins it.
 
 ## Design Notes
 
@@ -254,7 +273,12 @@ Checked and not engaged:
 - A body read records `ViewContents` once per call, as the screen's contents tab does.
 - `byclass` matches a class name against the source, target and body-class columns. A host's configuration name equals its class only when it was named so, as the sibling's own note says.
 
-**Measured (plan, read only).** The vendor indexes listed in Code Map were read from `irislib/`. Nothing else was measured; Task 0 measures the grouped statement.
+**Measured (Task 0, `ocupilot-b-ci`, nothing left behind).**
+
+- The vendor indexes listed in Code Map were read from `irislib/`.
+- (a) The grouped `SELECT TOP ? ... GROUP BY SessionId` over an ID-bounded window ran through `SqlRows` for a principal holding `%Ens_Portal:USE`, `%Ens_MessageHeader:USE` and READ on the namespace's database, and answered the planted session's row: `InteropSessionTurn`'s first step. No fallback to grouping in ObjectScript was needed.
+- (b) `ssi.SuperSession = ?` does not use `Ens.SuperSessionIndex.SuperSession` (its subscript is `%SQLUPPER(250)` and the property allows 300). `%SQLUPPER(ssi.SuperSession, 250) = %SQLUPPER(?, 250) AND ssi.SuperSession = ?` reads that index map (`EXPLAIN`), so the port uses it.
+- `MIN(col)` answers an upper-cased name here, as the column collates; `MIN(%EXACT(col))` answers it as stored, so the session rows use the second.
 
 **Contended files (Epic 21 registers through the same rosters; check each against `origin/OCU-1-epic21` before editing).** These edits are not pure appends:
 
@@ -379,16 +403,45 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 **Pinning mutations (Rule 19, planned).** The implement stage applies each, observes red, reverts byte-identically and recompiles, then records the line.
 
 - AC1: `InteropInspect`'s `KIND` emptied → `InteropSessionTools`' listing leg, and `check-objectscript.py` rule 14.
+  - mutation: `KIND = ""` on `InteropInspect` -> the registry listing refuses and `InteropSessionTools` reddens in all six methods, and `check-objectscript.py` names each concrete tool (nearest KIND is ''); reverted, recompiled.
 - AC2: `InteropInspect.PrivilegePairs` answers `""` → `InteropSessionTools`' pair-before-port leg.
+  - mutation: `PrivilegePairs` answers `""` -> `TestAMissingPairIsRefusedByNameBeforeThePort` (all fourteen) and `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` redden; reverted, recompiled.
 - AC2: `Dispatch.AnswerOne`'s `Decide` call is skipped for kind `read` (a temporary edit, reverted) → `InteropSessionTools`' gate-asked-once leg.
+  - mutation: `Decide` skipped for kind `read` -> `TestEachToolAsksTheGateOnceThenReadsThePort` reddens alone, for every tool; `Dispatch.cls` reverted (`git status` clean) and recompiled.
 - AC3: `ListSessions` drops the window's lower ID bound → `InteropSessionRead`'s outside-the-window leg.
+  - mutation: the window's lower ID bound bound as `0` -> `TestEachKindAnswersItsSessions` (the three-hour leg), `TestAClassNameIsMatchedWhereItIsAsked` and `TestTheWindowIsBoundedAndExact` redden; reverted, recompiled.
 - AC3: the `related` read keeps the seed session → its related leg.
+  - mutation: the seed's exclusion bound as `0` -> `TestTheSuperSessionReads` reddens alone; reverted, recompiled.
 - AC3: `maxRows` is ignored → the cap leg.
+  - mutation: `ListSessions` binds `SQLMAX` in place of the cap -> `TestTheCapCutsAndAMalformedCriterionIsRefused` reddens alone; reverted, recompiled.
+- AC3 (tool arguments): each tool passes its own arguments on.
+  - mutation: the `errorsOnly` line removed from `InteropSessionHeaders`, and separately the `hours` carry removed from `InteropSessionsBySource` -> `InteropSessionTools.TestEachArgumentChangesWhatIsRead` reddens alone each time; reverted byte-identically, recompiled.
 - AC4: `InteropMessageBody` declares no content pair → `InteropSessionTurn`'s refused-step leg.
+  - mutation: `ENDPOINTS = "MessageHeader"` on `InteropMessageBody` -> `InteropSessionTurn` reddens at its refused-step assertion, and `InteropSessionTools`' content and body legs redden; reverted, recompiled.
 - AC5: one name removed from `ReadTool`'s list, and separately the count → `ReadTool` red alone.
+  - mutation: `interop.session.summary` removed from the list, and separately the count set to 460 -> `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` reddens alone each time; reverted, recompiled.
 - AC5: one `InteropFloor` row removed → that test alone.
+  - mutation: `interop.sessions.related` removed from `OPERATORTOOLS` -> `TestTheToolsEachPrincipalHoldsAreItsRoster` reddens alone (operator and administrator); reverted, recompiled.
+  - mutation: `interop.sessions.byid:TOOL.ARGUMENTS` removed from `REFUSEEMPTY` -> `ToolRoundTrip` reddens alone; the `ToolEmit` branch's class test made false -> `TestEveryLiveToolRequiresItsScreensPairs` reddens alone for the fourteen; reverted, recompiled.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The agent gains fourteen read tools over three new `InteropPort` reads (`Sessions`, `SessionSummary`, `SessionMessages`, all under the message viewer's pairs) and the existing `MessageHeader` and `MessageContents` reads. One abstract base, `InteropInspect`, holds the gate-facing contract; each tool is a declaration over it.
+
+**Files changed.**
+
+- `src/OcuPilot/Port/InteropPort.cls`: three endpoints, their pairs, the runtime routing and the six proposed refusal strings.
+- `src/OcuPilot/Screen/Tool/InteropInspect.cls` and fourteen `InteropSession*` / `InteropMessage*` tool classes (new).
+- `src/OcuPilot/Test/InteropSessionRead.cls`, `InteropSessionTools.cls`, `InteropSessionTurn.cls` and `InteropSessionProbe.cls` (new); `scripts/ci-throwaway.sh` arms the turn class.
+- Appended roster members in `ReadTool`, `ToolRoundTrip`, `ToolEmit`, `InteropFloor`, `InteropDescriptor` and `InteropHostDescriptor`.
+
+**Review.** 13 findings, 0 high, 2 medium, 11 low: 5 patched (tool-argument pass-through test added, hermetic caps, positive control for the zero-view check, dead line, mutation narration removed from comments), 8 rejected with reasons in the Review Triage Log. None deferred. Follow-up review recommended: false (two medium patches, both tests).
+
+**Verification.** `LOADERRORS=0` on `ocupilot-b-ci`. The three new classes, the changed rosters and their neighbours are green; the full ObjectScript sweep ran all 17 shards green after the last patch (5,670 tests, 0 failed). `npm run test:tools` (2,292), `check-objectscript.py` (0 problems), `lint-docs.sh` and `screen-mirror --check` are clean. Mutations are recorded under Verification.
+
+**Decided in-stage (implement).** `bysource` and `bytarget` refuse an empty name with the fallback sentence; `message.detail`'s `maxRows` caps header and body rows together; the grouped session read uses `MIN(%EXACT(col))` and the super-session equality uses the index's `%SQLUPPER(250)` form.
+
+**Residual risks.** Session row counts cover the headers matching the search; the window assumes header IDs rise with time, as `ListMessages` does. `interop.message.detail` names no tool for rule decisions until Story 24.21 lands one.
