@@ -152,3 +152,4 @@
 2026-11-16T06:26:53Z	Story 24.8	ruling	question=strings choice=keep category=veto inbox=U-80 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T06:26:53Z	Story 24.8	ledger_routed_planned	story=24-15-credentials-default-settings-and-schedules entries=1(DW-2636) excess=0 by=spec_gate
 2026-11-16T06:26:53Z	Story 24.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-29,AD-61,AD-36,AD-23,AD-16,AD-60,AD-5,AD-24 decision_dependency=none sections_created=none owned_ledger=none harvested_at_gate=DW-2635,DW-2636 mutates_shared_runtime=true throwaway=ocupilot-b-ci model=claude-opus-5-5
+2026-11-16T06:27:31Z	Story 24.8	stage_spawned	stage=implement spawn_at=2026-11-16T06:27:31Z model=sonnet agent_name=24-8-remote-instance-profiles-and-environment-diff-implement-1 cycle_iteration=1 story_base=af0e2fb82
