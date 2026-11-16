@@ -47,7 +47,7 @@ Method TestDeviceIsOpenAnswersFromWhatTheProcessHolds()
         Do ..CloseNull(tNull)
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull), 0, "a null device the process has not opened is not open")
         Do $$$AssertEquals($IO, tIO, "and the current device is the same")
-        Open tNull:::1
+        Open tNull::1
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull), 1, "a null device the process has opened is open")
         Do $$$AssertEquals($IO, tIO, "and the current device is the same")
     } Catch ex {
@@ -55,7 +55,7 @@ Method TestDeviceIsOpenAnswersFromWhatTheProcessHolds()
     }
     Do ..CloseNull(tNull)
     If $IO '= tIO Use tIO
-    If tWasOpen Open tNull:::1
+    If tWasOpen Open tNull::1
 }
 
 /// <p>The null device and the current device after <method>OcuPilot.Test.BackupDeviceSeam.Suspend</method> of a freeze and of a thaw, with the null
@@ -77,7 +77,7 @@ Method TestSuspendLeavesTheNullDeviceAsItFoundIt()
                 For tMode = "ok", "status", "raise" {
                     Set tLeg = tType _ "/" _ $Select(tHeld: "held", 1: "not held") _ "/" _ tMode
                     Do ..CloseNull(tNull)
-                    If tHeld Open tNull:::1
+                    If tHeld Open tNull::1
                     Do $ClassMethod(..#SEAM, "Mode", tMode)
                     Set tSC = $ClassMethod(..#SEAM, "Suspend", tType)
                     Do $$$AssertEquals($IO, tIO, tLeg _ ": the caller's device is current again")
@@ -93,7 +93,7 @@ Method TestSuspendLeavesTheNullDeviceAsItFoundIt()
     }
     Do ..CloseNull(tNull)
     If $IO '= tIO Use tIO
-    If tWasOpen Open tNull:::1
+    If tWasOpen Open tNull::1
     Do $ClassMethod(..#SEAM, "Mode", "ok")
 }
 
@@ -109,7 +109,7 @@ Method TestSuspendKeepsACallersNullDevice()
     Try {
         For tMode = "ok", "raise" {
             Do ..CloseNull(tNull)
-            Open tNull:::1
+            Open tNull::1
             Use tNull
             Do $ClassMethod(..#SEAM, "Mode", tMode)
             Set tSC = $ClassMethod(..#SEAM, "Suspend", "THAW")
@@ -123,7 +123,7 @@ Method TestSuspendKeepsACallersNullDevice()
     }
     If $IO '= tIO Use tIO
     Do ..CloseNull(tNull)
-    If tWasOpen Open tNull:::1
+    If tWasOpen Open tNull::1
     Do $ClassMethod(..#SEAM, "Mode", "ok")
 }
 

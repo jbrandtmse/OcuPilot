@@ -678,6 +678,7 @@ ClassMethod VendorSuspend(pType As %String, pLimit As %Integer) As %Status [ Pri
             Set tVendor = ##class(Backup.General).ExternalThaw()
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tVendor = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS

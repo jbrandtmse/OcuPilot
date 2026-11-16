@@ -523,6 +523,7 @@ ClassMethod DocumentLines(pDocName As %String, Output pLines) As %Status
 ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean
 {
     Set tCurrent = $IO
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
     Try {
         Use pDevice
         Set tOpen = 1
@@ -530,7 +531,13 @@ ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean
         If ex.Name '= "<NOTOPEN>" Throw ex
         Set tOpen = 0
     }
-    If tOpen Use tCurrent
+    If tOpen {
+        If tMnemonic '= "" {
+            Use tCurrent::("^" _ tMnemonic)
+        } Else {
+            Use tCurrent
+        }
+    }
     Quit tOpen
 }
 
