@@ -9678,6 +9678,27 @@ So that performance work has a home.
 - **When** each is set
 - **Then** it round-trips over its backing class.
 
+
+### Story 21.32: A SQL settings change leaves the instance's class-query lists working
+
+[AMENDED 2026-11-16, orchestrator ruling on DW-2646, fix-forward, Rule 5] Measured on fresh throwaways: after a SQL setting is changed and changed back on OcuPilot's SQL settings screen, the web server processes fail the vendor admin API's class-query lists (Task Manager Upcoming tasks) with SQLCODE -428 until they are recycled.
+
+As an administrator,
+I want a SQL settings change made in OcuPilot to leave the rest of the instance working,
+So that the Task Manager and other lists keep answering.
+
+**Acceptance Criteria:**
+
+- **Given** a fresh instance
+- **When** the defect's sequence runs (the browser path as it stands, or a request sequence without a browser)
+- **Then** it is reproduced deterministically first, including which pooled worker gets the activation.
+
+- **Given** the fix
+- **When** config-settings, dashboard, ecp-settings and database-operations run in that order on a fresh instance
+- **Then** each is green, and a Rule 19 mutation that removes the fix turns dashboard red.
+
+- DW-2646: A SQL settings change in OcuPilot leaves the web workers failing vendor class-query lists (ledger; routed by orchestrator ruling)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand

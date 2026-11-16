@@ -336,3 +336,13 @@
 2026-11-16T08:20:18Z	Story 21.25	plan_clarification_requested	condition=AD_records(AD-51_21.25_case,AD-10_OCUPILOTTABLE_arm,AD-7_synchronous_named_limit) via=orchestrator status=blocked
 2026-11-16T08:20:50Z	Story 21.25	story_parked	stage=plan reason=owner_item_U-84(21.25,21.31) also_waits=21.6_merge category=park code=none
 2026-11-16T10:03:05Z	Story 21.4	defect_found	id=DW-2646 severity=high via=DW-2627_reopen cause=per-process_state_in_CSP_workers_after_UI_SQL_setting_change evidence=b3/proof(A,B,C,D1,D2,E,F,G,H,I,K,L,M,Q)
+2026-11-16T10:04:42Z	Story 21.30	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.30	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.30	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:42Z	Story 21.12	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.12	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.12	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:42Z	Story 21.13	gate_step	step=full_sweep result=pass shards=20/20 head=90799012d dir=e21u/b3
+2026-11-16T10:04:42Z	Story 21.13	smoke_complete	method=cli result=pass evidence=smoke.sh_PASSED(rebuilt) model=claude-opus-5-5
+2026-11-16T10:04:42Z	Story 21.13	committed	sha=90799012d(code_head:21.30+21.12+21.13+integrate_48e3593a3) ci=pending runs=43845475577
+2026-11-16T10:04:44Z	Story 21.32	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2646
