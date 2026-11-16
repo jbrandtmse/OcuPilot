@@ -244,3 +244,6 @@
 2026-11-15T23:33:41Z	Story 21.20	spec_validated	service_introducing=true(Harvest.Alerts) integration_ac=present adr_constrained_acs=AD-21,AD-22,AD-23,AD-29,AD-36,AD-51,AD-53 owned_ledger=DW-1562,DW-1856,DW-2479 addressed=2 declined=1(DW-1856_to_owner) mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
 2026-11-15T23:51:42Z	Story 21.4	ci_resolved	story=21.4 sha=290709847 runs=43773475655 result=success failed=none via=none resolved_at=next_plan
 2026-11-15T23:51:58Z	Story 21.12	stage_spawned	stage=implement spawn_at=2026-11-15T23:51:58Z model=sonnet agent_name=21-12-mirroring-implement-1 cycle_iteration=1 story_base=29d5b8d8e
+2026-11-16T00:43:15Z	Story 21.12	dev_complete	spawn_at=2026-11-15T23:55:00Z model=sonnet build_sha=bcdac6676 baseline_revision=187a5d77a story_base=187a5d77a review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 note=stale_planning_counts_ledgered_DW-2619;AD-29_Binds_proposal_beside_DW-2559
+2026-11-16T00:43:15Z	Story 21.12	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-16T00:43:15Z	Story 21.12	stage_spawned	stage=qa spawn_at=2026-11-16T00:43:15Z model=sonnet agent_name=21-12-mirroring-qa-1 cycle_iteration=1

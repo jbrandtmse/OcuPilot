@@ -13156,3 +13156,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.10 plan leaf inventory; owner answer U-65 A
 - 2026-11-15T23:02:00Z status=by-design owner=21-21-leaves-that-wait-on-the-owner by=owner note=owner answer U-65 (A): by design
+
+### DW-2619: Planning counts are stale after 21.12 moved six mirroring rows to Stage 5: epics.md says Epic 21 carries 165 rows (lines ~973, ~9179) and Story 22.1 says 56 excluded rows (~9543); Epic 24 also adds register rows, so re-derive both from the extract and register at the epic close
+- source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep '165 rows\|56 excluded' epics.md after bcdac6676
+- 2026-11-16T00:43:15Z status=open owner=burndown by=spec_gate note=re-derive at close; contended with Epic 24 register rows
