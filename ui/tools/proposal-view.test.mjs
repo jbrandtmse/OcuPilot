@@ -44,6 +44,7 @@ const {
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
   CONSEQUENCE_EXPLORERSAVECOMPILES,
+  CONSEQUENCE_EXPLORERPROMOTENOROLLBACK,
   CONSEQUENCE_INTEROPEDITORRELOADS,
   CODESAVECONSEQUENCES,
   CONSEQUENCE_RESTSERVICECREATE,
@@ -349,12 +350,13 @@ test("the task export's consequence code resolves to the export dialog's replace
 // class rather than restated, and its card states the published line.
 //
 // Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red;
-// drop the RESTSERVICE.CREATE.COMPILES branch -> the REST service leg goes red.
+// drop the RESTSERVICE.CREATE.COMPILES branch -> the REST service leg goes red; drop the EXPLORER.PROMOTE.NOROLLBACK branch -> the promote leg goes red.
 test("the System Explorer export's and import's consequence codes are the tools' own and resolve to their lines", () => {
   for (const [file, constant, sentence] of [
     ['ExplorerExport.cls', CONSEQUENCE_EXPLOREREXPORTREPLACES, STRINGS.taskExportReplaces],
     ['ExplorerImport.cls', CONSEQUENCE_EXPLORERIMPORTREPLACES, STRINGS.explorerImportReplaces],
     ['ExplorerSave.cls', CONSEQUENCE_EXPLORERSAVECOMPILES, STRINGS.explorerSaveCompilesOnConfirm],
+    ['ExplorerNamespacePromote.cls', CONSEQUENCE_EXPLORERPROMOTENOROLLBACK, STRINGS.explorerPromoteConsequence],
     ['InteropEditorSave.cls', CONSEQUENCE_INTEROPEDITORRELOADS, STRINGS.interopEditorSaveOnConfirm],
     ['RestServiceCreate.cls', CONSEQUENCE_RESTSERVICECREATE, STRINGS.restServiceCreateEffect],
   ]) {

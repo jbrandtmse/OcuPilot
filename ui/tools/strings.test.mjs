@@ -702,6 +702,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
       'explorerNamespaceDiffEmpty',
+      'explorerNamespaceDiffEmptyAgent',
       'explorerNamespaceDiffInvite',
       'explorerNamespaceDiffLabel',
       'explorerNamespaceDiffPrompt1',

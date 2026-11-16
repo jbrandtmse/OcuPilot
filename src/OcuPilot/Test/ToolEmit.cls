@@ -166,6 +166,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
         Set tArgs = {}
         If tTool.class = "OcuPilot.Screen.Tool.ErrorRead" Set tArgs = {"namespace": ($Namespace), "date": "09/16/2026"}
         If tTool.class = "OcuPilot.Screen.Tool.ErrorDelete" Set tArgs = {"namespace": ($Namespace)}
+        If tTool.class = "OcuPilot.Screen.Tool.ExplorerNamespacePromote" Set tArgs = {"target": "USER"}
         Set tAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, tArgs, .tAddedResolved)
         Do $$$AssertEquals(tAddedResolved, 1, tTool.name _ ": the pairs its arguments add are read")
         Set tExpectedAdded = ""
@@ -317,6 +318,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, $Parameter(tTool.class, "DATABASEPERMISSION")) {
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerNamespacePromote" {
+            ; Story 24.9: the promote declares its screen's pairs alone, and WRITE on the routines database of the other namespace
+            ; its arguments name, here USER, is an argument pair (AD-8).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({"Namespace": "USER"}, .tExpectedAddedResolved)
+            Do $$$AssertTrue($ListLength(tExpectedAdded) > 0, tTool.name _ ": the expected argument pair, WRITE on the other namespace's routines database, resolves")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

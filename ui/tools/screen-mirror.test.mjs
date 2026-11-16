@@ -1087,15 +1087,17 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
   assert.deepEqual(
     declaring.map((screen) => screen.className).sort(),
-    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
-    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages are the lists that declare a multi-select'
+    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
+    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages and, since Story 24.9, Compare namespaces are the lists that declare a multi-select'
   );
   for (const screen of declaring) assert.equal(multiSelectProblem(screen.declaration), null, `${screen.className}'s declaration passes`);
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
   const messages = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropMessageList');
   assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100 }, 'Messages checks every row for resend, at most the port\'s cap (Story 20.31)');
-  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages)) {
+  const compare = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff');
+  assert.deepEqual(compare.declaration.multiSelect, { action: 'promote', eligible: 'Promotable', max: 100, ineligibleKey: 'explorerPromoteIneligible' }, 'Compare namespaces checks the promotable rows for promote, at most the port\'s cap (Story 24.9)');
+  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages && entry !== compare)) {
     assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
   }
 

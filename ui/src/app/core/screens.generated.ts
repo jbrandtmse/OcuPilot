@@ -10308,14 +10308,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "scope": "namespace",
     "parentScope": "",
     "id": {
-      "kind": "none",
+      "kind": "single",
       "parts": []
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "promote",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Document",
@@ -10323,7 +10328,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Hash",
         "OtherHash",
         "Modified",
-        "OtherModified"
+        "OtherModified",
+        "Promotable"
       ],
       "secretFields": []
     },
@@ -10367,7 +10373,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Hash",
         "OtherHash",
         "Modified",
-        "OtherModified"
+        "OtherModified",
+        "Promotable"
       ],
       "filter": [
         "Document",
@@ -10435,15 +10442,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "explorerNamespaceDiffInvite",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerNamespaceDiffEmptyAgent"
     },
     "toolIdentifier": "explorer.namespacediff",
+    "multiSelect": {
+      "action": "promote",
+      "eligible": "Promotable",
+      "max": 100,
+      "ineligibleKey": "explorerPromoteIneligible"
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""

@@ -294,6 +294,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Export, which opens the export dialog over them.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
+  // Story 24.9: Compare namespaces' Promote, over the checked rows.
+  'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': { promote: STRINGS.explorerPromoteAction },
   // Story 18.5: Journals' two switches, each also titling its warning dialog, and its Check integrity.
   'OcuPilot.Screen.Descriptor.JournalList': {
     switchfile: STRINGS.journalSwitchFileAction,
