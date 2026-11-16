@@ -13256,3 +13256,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-21.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: e21u/21-32/gate/fresh/specs-forward.log, 2026-11-16T11:27Z, fresh rebuild
 - 2026-11-16T11:30:51Z status=routed owner=21-22-ci-flake-hardening by=lead note=cold first sign-in on a fresh instance; same family as the page-load hangs in DW-2544/2549/2566
+
+### DW-2651: The install-owned stores (WebApp, Stamp, Version, Demo) and the screen-access store (Access) still take any caller's public guarded write; WebApp.GuardedRecord drives what Installer.Uninstall deletes (code read, not reproduced)
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: 21.33 plan code read
+- 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
+
+### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 21.33 plan code read
+- 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision

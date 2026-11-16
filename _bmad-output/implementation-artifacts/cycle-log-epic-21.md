@@ -367,3 +367,6 @@
 2026-11-16T12:44:14Z	Story 21.25	ad_amended	ads=AD-51(Story_21.25_case),AD-10(OCUPILOTTABLE_arm),AD-7(rebuild+tune_in_request) marker=[AMENDED_2026-11-16,Story_21.25,owner_answer_U-84] lint_spine=ok
 2026-11-16T12:44:14Z	Story 21.25	story_unparked	via=inbox note=implements_after_21.6_merge;21.31_shares_records
 2026-11-16T12:44:47Z	Story 21.33	stage_spawned	stage=plan spawn_at=2026-11-16T12:44:47Z model=opus agent_name=21-33-plan-1 cycle_iteration=1
+2026-11-16T13:00:09Z	Story 21.33	story_created	spawn_at=2026-11-16T12:46:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md build_status=ready-for-dev eta=batch1_4.5-5h,total_8-9h
+2026-11-16T13:00:09Z	Story 21.33	ad_amended	ad=AD-9 mode=comply_first_U7 marker=[AMENDED_2026-11-16,Story_21.33,owner_answer_U-82,DW-2638] lint_spine=ok
+2026-11-16T13:00:09Z	Story 21.33	spec_validated	integration_ac=present adr_constrained_acs=AD-9,AD-15,AD-7 owned_ledger=DW-2638 filed=DW-2651(high),DW-2652(med) behaviour_changes_listed=5 model=claude-opus-5-5
