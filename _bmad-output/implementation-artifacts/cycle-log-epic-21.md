@@ -400,3 +400,4 @@
 2026-11-16T16:28:51Z	Story 21.33	gate_step	step=gates_stopped reason=DW-2665_fix_in_batch1(orchestrator)
 2026-11-16T16:38:17Z	Story 21.33	gate_step	step=DW-2665_red_before(822,row_keyless) fix=needs_AD-9_text asked=orchestrator(A_allow_text+rule6_widen|B_release_note) meanwhile=fresh_check+sweep_on_46f695b40(dir_gate3)
 2026-11-16T16:38:50Z	Story 21.33	ruling	question=DW-2665_timing choice=batch2(A_design) via=orchestrator note=no_cut_until_batch2_on_feature;batch1_head_without_it
+2026-11-16T16:50:35Z	Story 21.33	fresh_check	scope=batch1(46f695b40) classes=19_green specs=3_green_fwd+rev result=pass
