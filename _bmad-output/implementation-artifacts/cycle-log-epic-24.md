@@ -226,3 +226,5 @@
 2026-11-16T22:48:35Z	Story 24.5	ruling	question=forced_strings(third_prompt,agent_phrase) choice=keep why=plain_language_registry_requires category=veto reversal=reword inbox=U-98 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-16T22:48:35Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-53(named_audit_gap_measured_Task0_item6)
 2026-11-16T22:48:35Z	Story 24.5	stage_spawned	stage=qa spawn_at=2026-11-16T22:48:35Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-qa-1 cycle_iteration=3
+2026-11-16T23:23:36Z	Story 24.5	qa_complete	spawn_at=2026-11-16T22:48:00Z model=sonnet tests=ui/browser/unit-tests-principals.browser-spec.mjs tests_added=1(7_tests) mutations_demonstrated=7 first_run_failures=2(product_defects_fixed:ResolveTests_NoPriv,BuildTestSpec_package_override) clarifications=0 closing_sections_present=true
+2026-11-16T23:23:36Z	Story 24.5	stage_spawned	stage=code-review spawn_at=2026-11-16T23:23:36Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-code-review-1 cycle_iteration=3
