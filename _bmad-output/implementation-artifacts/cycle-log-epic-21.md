@@ -332,3 +332,5 @@
 2026-11-16T08:05:10Z	Story 21.6	ruling	question=strings,cached-query_entity,keys,Clean_target choice=keep;AD-51_wording_corrected_at_origin(Clean_takes_no_argument) rejected=drop_clean why=vendor_call_shape category=veto inbox=U-83 policy=b9ff703e
 2026-11-16T08:05:10Z	Story 21.6	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-51,AD-10,AD-29,AD-53 owned_ledger=none mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-16T08:08:11Z	Story 21.25	stage_spawned	stage=plan spawn_at=2026-11-16T08:08:11Z model=opus agent_name=21-25-plan-1 cycle_iteration=1
+2026-11-16T08:20:18Z	Story 21.25	ruling	question=split_fixed_statistics choice=split(21.31_fixed_table_statistics) rejected=one_story why=size;separate_setter_shape category=decide policy=b9ff703e split_children=6_of_6(21.6_family)
+2026-11-16T08:20:18Z	Story 21.25	plan_clarification_requested	condition=AD_records(AD-51_21.25_case,AD-10_OCUPILOTTABLE_arm,AD-7_synchronous_named_limit) via=orchestrator status=blocked

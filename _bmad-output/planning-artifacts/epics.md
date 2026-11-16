@@ -9560,6 +9560,8 @@ So that reading the audit log never exposes the Task Manager mail password.
 
 ### Story 21.25: Index rebuild and tune table
 
+[AMENDED 2026-11-16, Story 21.25 plan, unattended ruling: split into siblings, Rule 5] Setting a table's extent size, selectivity and map size moves to Story 21.31, planned after this story.
+
 [AMENDED 2026-11-16, Story 21.6 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.6; it carries that story's first criterion for the leaves named below.
 
 As a developer diagnosing a slow query,
@@ -9660,6 +9662,21 @@ So that the kill switch and governance keys cannot be rewritten by someone who o
 - **Then** the same call is refused and changes nothing, an OcuPilot administrator's write still succeeds, and a Rule 19 mutation that removes the check turns the pinning test red.
 
 - DW-2634: Guarded storage methods take OcuPilot's protected role for any caller and check no privilege (Epic 24's ledger; routed by owner answer U-79)
+
+
+### Story 21.31: Fixed table statistics
+
+[AMENDED 2026-11-16, Story 21.25 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.25 (itself split from Story 21.6); it carries the first criterion for the fixed-statistics setters.
+
+As a developer diagnosing a slow query,
+I want to set a table's extent size, a field's selectivity and a map's size,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+- **Given** a table's extent size, a field's selectivity and a map's size
+- **When** each is set
+- **Then** it round-trips over its backing class.
 
 ---
 

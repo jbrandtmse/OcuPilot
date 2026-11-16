@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-16-2026 08:05'
+last_updated: '11-16-2026 08:20'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -415,6 +415,7 @@ development_status:
   21-28-alternate-show-plans: backlog
   21-29-troubleshooting-reports: backlog
   21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done
+  21-31-fixed-table-statistics: backlog
   epic-21-retrospective: optional
 
   epic-22: done

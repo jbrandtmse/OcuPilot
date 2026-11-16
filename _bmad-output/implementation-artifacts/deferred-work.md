@@ -13231,3 +13231,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T02:08:21Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified(transient_instance_window); unchanged rerun
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
+
+### DW-2640: Two SQL table leaves are owned by no story after the 21.6 and 21.25 splits: drop item and the Indices tab's map-status toggle
+- source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 21.25 plan inventory
+- 2026-11-16T08:20:18Z status=decision-pending owner=burndown by=spec_gate note=epic-close sheet with DW-2628
