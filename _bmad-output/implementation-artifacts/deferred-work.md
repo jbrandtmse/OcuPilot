@@ -13422,6 +13422,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
 - 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
+- 2026-11-16T23:19:06Z occurrence=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
@@ -13470,3 +13471,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci as a %Development principal without OcuPilotAdmin or %All (code review runs 87, 91): SweepAnyCaller takes the cutoff from the caller's pLimitsClass and EndedAt from GuardedOpenId, which answers the caller's held object. SqlRun's reserve sweep has the same shape (Batch 3).
 - 2026-11-16T21:14:16Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=HIGH, unpatched: the fix edits the reserve sweep U-89 froze; orchestrator ruling
 - 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=instance limits class and SQL-read state for a non-administrator in both reserve sweeps; ReserveSweepWrite 11 tests red-before green-after
+
+### DW-2667: A caller of the reserve stores directly chooses its own caps: SqlRun.GuardedReserve's pMaxRunning is checked against every user's live runs, its kind is free text and its busy check matches the name exactly, and Turn.GuardedReserve takes its own hour limit and window
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: code read 2026-11-16 (inference, not reproduced): a %Development holder reserving with a large pMaxRunning and begun runs can fill BackgroundRun.MaxRunning so other users' reserves answer full; frontmatter deferred item 3 is the turn half
+- 2026-11-16T23:19:06Z status=escalated owner=burndown by=cr note=changing a reserve beyond the DW-2666 ruling needs an orchestrator ruling (U-89)

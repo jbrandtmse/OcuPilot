@@ -32,30 +32,13 @@ ClassMethod TranscriptKinds() As %List
     Quit $ListBuild("Turn.GuardedBegin", "Turn.GuardedProgress", "Turn.GuardedAddDropped", "Turn.GuardedFinish", "Turn.GuardedRenew", "Turn.GuardedRequestStop", "Turn.GuardedReconcile", "Turn.GuardedForgetStarts", "Turn.GuardedSweepStarts", "Turn.GuardedSweep", "Turn.GuardedDelete", "Turn.ForgedProgress", "Turn.ForgedSave", "Turn.SlotHeld", "Step.GuardedAppend", "Step.GuardedUpdate", "Step.GuardedSnapshotText", "Step.GuardedFinishTool", "Step.GuardedDeleteForTurn", "Nav.GuardedRequest", "Nav.GuardedSettle", "Nav.GuardedDeleteForTurn", "Convo.LoadOrCreate", "Convo.AppendEntry", "Convo.GuardedDelete", "Convo.GuardedPurgeEmpty", "Entry.GuardedAppend", "Entry.GuardedDeleteForConvo", "Entry.GuardedPurge")
 }
 
-/// <p><method>OcuPilot.Test.AdminStateWriteProbe.Run</method>, remembering <var>pParent</var> so a step
-/// can ask it a question while the plan runs.</p>
-ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
-{
-    Set %OcuPilotTranscriptParent = pParent
-    Do ##super(pParent, pUsername, pPlan)
-}
-
-/// <p>The value step field <var>pField</var> carries, with a <code>$name</code> reference answered from
-/// what an earlier step of this process stored.</p>
-ClassMethod Value(pStep As %DynamicObject, pField As %String) As %String
-{
-    Set tValue = pStep.%Get(pField)
-    If $Extract(tValue) '= "$" Quit tValue
-    Quit $Get(^||OcuPilotTranscriptProbe($Extract(tValue, 2, *)))
-}
-
 /// <p>Run one step of the plan, answered as the parent answers one.</p>
 ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
 {
     Set tKind = pStep.%Get("kind")
     If '$ListFind(..TranscriptKinds(), tKind) {
         Set tLeg = ##super(pStep)
-        If (tKind = "Turn.GuardedReserve") && tLeg.%Get("ok") Set ^||OcuPilotTranscriptProbe("reserved") = tLeg.%Get("key")
+        If (tKind = "Turn.GuardedReserve") && tLeg.%Get("ok") Set ^||OcuPilotProbe("reserved") = tLeg.%Get("key")
         Quit tLeg
     }
     Set tLeg = {}
@@ -105,15 +88,11 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             }
             Set tRow = ""
         } ElseIf tKind = "Turn.SlotHeld" {
-            Do $System.Event.Clear($Job)
-            Do $System.Event.Signal(%OcuPilotTranscriptParent, "slot|" _ $Job _ "|" _ tUser)
-            Set tMessage = $System.Event.WaitMsg("", 10)
-            If $ListGet(tMessage, 1) '= 1 Throw ##class(%Exception.General).%New("the parent did not answer the slot question")
-            Do tLeg.%Set("held", ''$ListGet(tMessage, 2), "boolean")
+            Do tLeg.%Set("held", ''..Ask("slot", tUser), "boolean")
         } ElseIf tKind = "Step.GuardedAppend" {
             Set tSC = $ClassMethod(tStep, "GuardedAppend", tKey, pStep.%Get("stepKind"), "probe.step", pStep.%Get("status"), "", "", "", tLimits, .tSeq, .tStored, "tasks/schedule")
             Do tLeg.%Set("seq", +$Get(tSeq), "number")
-            If $$$ISOK(tSC) && (pStep.%Get("as") '= "") Set ^||OcuPilotTranscriptProbe(pStep.%Get("as")) = tSeq
+            If $$$ISOK(tSC) && (pStep.%Get("as") '= "") Set ^||OcuPilotProbe(pStep.%Get("as")) = tSeq
         } ElseIf tKind = "Step.GuardedUpdate" {
             Set tSC = $ClassMethod(tStep, "GuardedUpdate", tKey, ..Value(pStep, "seq"), "ok", "updated", "", "", tLimits)
         } ElseIf tKind = "Step.GuardedSnapshotText" {
@@ -133,7 +112,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tConvoRow = $ClassMethod(tConvo, "LoadOrCreate", ..Value(pStep, "convKey"), tUser, 5, .tSC, .tConflict)
             If $IsObject(tConvoRow) {
                 Do tLeg.%Set("convKey", tConvoRow.ConvKey, "string")
-                Set ^||OcuPilotTranscriptProbe("conv") = tConvoRow.ConvKey
+                Set ^||OcuPilotProbe("conv") = tConvoRow.ConvKey
                 If pStep.%Get("hold") Set %OcuPilotTranscriptConvo = tConvoRow
             }
             Set tConvoRow = ""

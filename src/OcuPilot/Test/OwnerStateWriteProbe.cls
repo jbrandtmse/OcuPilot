@@ -13,6 +13,35 @@ ClassMethod Handles(pKind As %String) As %Boolean
     Quit ##super(pKind)
 }
 
+/// <p><method>OcuPilot.Test.AdminStateWriteProbe.Run</method>, remembering <var>pParent</var> so a step
+/// can ask it a question while the plan runs (<method>Ask</method>).</p>
+ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
+{
+    Set %OcuPilotProbeParent = pParent
+    Do ##super(pParent, pUsername, pPlan)
+}
+
+/// <p>The value step field <var>pField</var> carries, with a <code>$name</code> reference answered from
+/// what an earlier step of this process stored in <code>^||OcuPilotProbe(name)</code>.</p>
+ClassMethod Value(pStep As %DynamicObject, pField As %String) As %String
+{
+    Set tValue = pStep.%Get(pField)
+    If $Extract(tValue) '= "$" Quit tValue
+    Quit $Get(^||OcuPilotProbe($Extract(tValue, 2, *)))
+}
+
+/// <p>Ask the process that started the run question <var>pQuestion</var> about <var>pArgument</var> and
+/// answer its reply. The parent answers through
+/// <method>OcuPilot.Test.TranscriptOwnerWrite.RunAsWatched</method>, as the suite's own identity.</p>
+ClassMethod Ask(pQuestion As %String, pArgument As %String) As %String
+{
+    Do $System.Event.Clear($Job)
+    Do $System.Event.Signal(%OcuPilotProbeParent, pQuestion _ "|" _ $Job _ "|" _ pArgument)
+    Set tMessage = $System.Event.WaitMsg("", 10)
+    If $ListGet(tMessage, 1) '= 1 Throw ##class(%Exception.General).%New("the parent did not answer the " _ pQuestion _ " question")
+    Quit $ListGet(tMessage, 2)
+}
+
 /// <p>The steps this class adds, as <code>Store.Method</code>. <code>Agent.BaseSave</code>,
 /// <code>Agent.BaseSaveIfCurrent</code> and <code>Propose.EditSave</code> open a row with the public
 /// <code>GuardedOpenId</code>, change it and save it through <code>Base</code>'s public saves;

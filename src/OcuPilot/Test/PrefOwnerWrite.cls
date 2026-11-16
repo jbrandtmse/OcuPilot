@@ -100,7 +100,8 @@ Method OnAfterOneTest() As %Status
 /// deletes, sweeps and purges across users. Each is refused <code>822</code> and the victim's rows read, versions
 /// included, as they did.</p>
 /// <p>Mutation (Rule 19): <code>OwnerWriteRefused</code> answers <code>$$$OK</code> first -> this goes red with the
-/// batch one and two refusal tests; no owner, administrator or open-path test does.</p>
+/// batch one and two refusal tests; no owner, administrator or open-path test does. <code>SqlRun.GuardedBegin</code>
+/// checks the key's stored owner before its lock -> removing that check turns the last leg red.</p>
 Method TestADeveloperIsRefusedAVictimsSettings()
 {
     Set tKinds = ..VictimKinds()
@@ -114,6 +115,11 @@ Method TestADeveloperIsRefusedAVictimsSettings()
         Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), tKind _ " ok=0 code=822", tKind _ " is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
         Do $$$AssertEquals(tAfter, tBefore, tKind _ " leaves the victim's rows as they were; before " _ tBefore _ " after " _ tAfter)
     }
+    If '..SeedVictim() Quit
+    Set tBefore = ..VictimState()
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "SqlRun.GuardedBegin", "user": (..#DEVUSER), "key": (..Seed("queued"))}], ..#PROBE)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.GuardedBegin ok=0 code=822", "a begin of the victim's run under the developer's own name is refused before it takes the run's lock: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Do $$$AssertEquals(..VictimState(), tBefore, "and leaves the victim's rows as they were")
 }
 
 /// <p>A developer holds its own preference row, sharing row and run row with their <code>UserName</code> set to the

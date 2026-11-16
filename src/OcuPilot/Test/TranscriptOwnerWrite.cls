@@ -635,15 +635,17 @@ Method OwnState() As %String
     Quit " own:" _ ##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT UserName || '|' || Iterations || '|' || RowVersion FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = '" _ $Get(..Seed("own")) _ "'")
 }
 
-/// <p><method>OcuPilot.Test.AdminStateWrite.RunAs</method> for a plan with <code>Turn.SlotHeld</code> steps:
-/// each one asks this process, which reads the lock table as the suite's own identity, whether any process
-/// holds the named user's turn slot, and the child goes on once it is told.</p>
-ClassMethod RunAsWatched(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
+/// <p><method>OcuPilot.Test.AdminStateWrite.RunAs</method> for a plan of probe <var>pProbe</var> whose steps ask
+/// this process a question (<method>OcuPilot.Test.OwnerStateWriteProbe.Ask</method>), answered as the suite's own
+/// identity, and the child goes on once it is told: <code>slot</code>, whether any process holds the named user's
+/// turn slot; <code>runlock</code>, whether any process holds the named run's lock; <code>forgetrun</code>, delete
+/// the named run's row, answering 1 when the statement succeeded.</p>
+ClassMethod RunAsWatched(pUser As %String, pPlan As %DynamicArray, pProbe As %String = {..#PROBE}) As %DynamicObject
 {
     Set tOut = {}
     Try {
         Do $System.Event.Clear($Job)
-        Job ##class(OcuPilot.Test.AdminStateWriteProbe).RunProbe($Job, ..#PROBE, pUser, pPlan.%ToJSON())::10
+        Job ##class(OcuPilot.Test.AdminStateWriteProbe).RunProbe($Job, pProbe, pUser, pPlan.%ToJSON())::10
         If '$Test {
             Do tOut.%Set("error", "the probe process did not start")
             Quit
@@ -655,11 +657,19 @@ ClassMethod RunAsWatched(pUser As %String, pPlan As %DynamicArray) As %DynamicOb
                 Quit
             }
             Set tText = $ListGet(tMessage, 2)
-            If $Piece(tText, "|", 1) '= "slot" {
+            Set tQuestion = $Piece(tText, "|", 1)
+            Set tArgument = $Piece(tText, "|", 3)
+            If tQuestion = "slot" {
+                Set tAnswer = ''$Data(^$LOCK($Name(^OcuPilotTurnSlot(tArgument))))
+            } ElseIf tQuestion = "runlock" {
+                Set tAnswer = ''$Data(^$LOCK($Name(^OcuPilotSqlRun(tArgument))))
+            } ElseIf tQuestion = "forgetrun" {
+                Set tAnswer = (##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ?", tArgument).%SQLCODE = 0)
+            } Else {
                 Set tOut = ##class(%DynamicObject).%FromJSON(tText)
                 Quit
             }
-            Do $System.Event.Signal($Piece(tText, "|", 2), ''$Data(^$LOCK($Name(^OcuPilotTurnSlot($Piece(tText, "|", 3))))))
+            Do $System.Event.Signal($Piece(tText, "|", 2), tAnswer)
         }
     } Catch ex {
         Set tOut = {}

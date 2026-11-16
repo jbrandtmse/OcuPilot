@@ -118,8 +118,10 @@ ClassMethod IsTerminal(pState As %String) As %Boolean
 /// one remains; <var>pFull</var> is 1 when the live rows of every kind number <var>pMaxRunning</var>
 /// or more; otherwise the user's ended rows of that kind are deleted and the row inserted. Neither
 /// refusal inserts anything. The section is released before the
-/// expired rows are swept (<method>GuardedSweep</method>), whether or not a row was inserted; the
-/// sweep's status is <var>pSweepStatus</var>, and it never fails the reserve.</p>
+/// expired rows are swept (<method>SweepAnyCaller</method>), whether or not a row was inserted; the
+/// sweep's status is <var>pSweepStatus</var>, and it never fails the reserve. A caller who neither is
+/// <var>pUser</var> nor holds the administrative resource is refused; a caller who does not hold it reconciles and
+/// sweeps by the instance's own limits (<parameter>LIMITSSOURCE</parameter>), not <var>pLimitsClass</var>.</p>
 /// <p>A reserve section another process holds past <parameter>CAPLOCKTIMEOUT</parameter> seconds is
 /// an error status, with nothing inserted.</p>
 ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning As %Integer, pLimitsClass As %String, Output pKey As %String, Output pBusyKey As %String, Output pFull As %Boolean, Output pSweepStatus As %Status, pKind As %String = "sql") As %Status
@@ -185,6 +187,8 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, Output pBegun As %Bo
     Set pBegun = 0
     Set pCancel = 0
     Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..KeyOwnerRefused("RunKeyIdxExists", pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedSqlRunLock(pKey, 0, .tHeld)
     If $$$ISERR(tSC) || 'tHeld Quit tSC
@@ -312,16 +316,19 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
 /// <code>{id, status, startedAt, endedAt, cancelRequested, result?, refusal?}</code>:
 /// <code>status</code> is <code>running</code> for a queued or running row, else the row's state;
 /// <code>result</code> is an ended run's stored answer, and <code>refusal</code> a failed run's stored
-/// envelope, each present only when one is stored.</p>
+/// envelope, each present only when one is stored. The lost run is ended only for a caller who is
+/// <var>pUser</var> or holds the administrative resource.</p>
 ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass As %String, Output pFound As %Boolean, Output pView As %DynamicObject, pKind As %String = "sql") As %Status
 {
     Set pFound = 0
     Set pView = ""
     Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
     If $$$ISERR(tSC) || (tId = "") Quit tSC
-    Set tSC = ..Reconcile(tId, ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE), .tState, .tOwner, .tRunKey)
-    If $$$ISERR(tSC) Quit tSC
-    If tState = "" Quit $$$OK
+    If ..CallerOwns(pUser) || ..CallerIsAdministrator() {
+        Set tSC = ..Reconcile(tId, ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE), .tState, .tOwner, .tRunKey)
+        If $$$ISERR(tSC) Quit tSC
+        If tState = "" Quit $$$OK
+    }
     Set tSC = ..GuardedOpenId(tId, .tRow)
     If $$$ISERR(tSC) Quit tSC
     Set tView = {}

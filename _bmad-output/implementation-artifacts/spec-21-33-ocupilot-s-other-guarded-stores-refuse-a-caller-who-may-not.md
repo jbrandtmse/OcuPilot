@@ -181,7 +181,7 @@ The integration net of real non-admin turns and runs stays green: the turn class
 
 Code review, Batch 1 (2026-11-16, HEAD `be4f8d61f`, full-opus tier: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
 
-- [ ] [Review][Decision] A confirm's claim cancels other users' live proposals, and AD-9's list of open writes leaves that out (high). Measured on `ocupilot-ci` as a `%Development` principal. Minting its own proposal on a victim's target and claiming it left the victim's proposal `canceled`/`sibling`. The code follows AD-34, so the gap is the AD text: add "a confirm's claim canceling every user's live proposals on its own proposal's target (AD-34)" to the open writes, or rule otherwise. DW-2662, for the orchestrator.
+- [x] [Review][Decision] A confirm's claim cancels other users' live proposals, and AD-9's list of open writes leaves that out (high). Closed: AD-9 names it (DW-2662). Measured on `ocupilot-ci` as a `%Development` principal. Minting its own proposal on a victim's target and claiming it left the victim's proposal `canceled`/`sibling`. The code follows AD-34, so the gap is the AD text: add "a confirm's claim canceling every user's live proposals on its own proposal's target (AD-34)" to the open writes, or rule otherwise. DW-2662, for the orchestrator.
 - [x] [Review][Patch] A claim canceled siblings of whatever target the caller passed, not its own row's (high, measured) [Propose.cls GuardedClaimAndClose]. A non-administrator's target must now equal the stored `TargetRef`; `TestAClaimCancelsOnlyItsOwnTargetsSiblings`.
 - [x] [Review][Patch] An administrator's save could change a row's owner, against AD-9's "a save cannot change it" (high) [Base.cls GuardedSaveOwned, GuardedSave, GuardedSaveIfCurrent]. Every caller now goes through `OwnerChangeRefused`; administrator legs added to the forged-owner test.
 - [x] [Review][Patch] Three victim legs could not fail on "rows unchanged" because nothing they would write was seeded (medium) [StoreOwnerWrite.cls]. The tests now seed a lapsed proposal and a keyless targeted one.
@@ -213,7 +213,7 @@ Rejected or closed at emission:
 
 Code review, Batch 2 (2026-11-16, commit `d30e55097` against `06e2aec10`, HEAD `90431b452`, full-opus tier: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). QA folded in.
 
-- [ ] [Review][Decision] A non-administrator's turn reserve still runs the cross-user sweep on a retention it controls (high, measured; DW-2666) [Turn.cls GuardedReserve, SweepAnyCaller]. As `%Development` without `OcuPilotAdmin` or `%All`, a reserve that passes a limits class with no `RETENTIONSECONDS` deleted another user's turn that had just ended (run 87). A reserve with the product limits class did the same while the caller held that turn with `EndedAt` back-dated, because `GuardedOpenId` answers the held object (run 91). This is the `GuardedSweep` capability the batch closed, one hop away, which breaks AD-9 ("deletes and purges across users are an administrator's"). Proposed fix: for a non-administrator, take the cutoff from the instance's limits class (`Loop.LimitsClass()`), and read `State` and `EndedAt` by SQL. Product callers are unchanged. The fix still edits the reserve sweep that U-89 froze, so it is unpatched and goes to the orchestrator. `SqlRun`'s reserve sweep has the same shape (Batch 3).
+- [x] [Review][Decision] A non-administrator's turn reserve still runs the cross-user sweep on a retention it controls (high, measured; DW-2666). Closed by Batch 3. [Turn.cls GuardedReserve, SweepAnyCaller]. As `%Development` without `OcuPilotAdmin` or `%All`, a reserve that passes a limits class with no `RETENTIONSECONDS` deleted another user's turn that had just ended (run 87). A reserve with the product limits class did the same while the caller held that turn with `EndedAt` back-dated, because `GuardedOpenId` answers the held object (run 91). This is the `GuardedSweep` capability the batch closed, one hop away, which breaks AD-9 ("deletes and purges across users are an administrator's"). Proposed fix: for a non-administrator, take the cutoff from the instance's limits class (`Loop.LimitsClass()`), and read `State` and `EndedAt` by SQL. Product callers are unchanged. The fix still edits the reserve sweep that U-89 froze, so it is unpatched and goes to the orchestrator. `SqlRun`'s reserve sweep has the same shape (Batch 3).
 - [x] [Review][Patch] DW-2663 left ledger rows on another user's conversation key, which spend that conversation's access-row cap (medium) [Ledger.cls GuardedAppend, GuardedCountOverflow]. Both writers now refuse that key through `NamedOwnerRefused` on `Convo`. Two `.Convo` legs were added to `TestADeveloperCannotSpendAVictimsTurnCaps`, and `VictimState` now reads ledger rows by that key.
 - [x] [Review][Patch] No test showed that `Convo.GuardedDelete` removes the conversation's entries (medium) [TranscriptOwnerWrite.cls TestADeveloperWritesItsOwnTurnAndConversation].
 - [x] [Review][Patch] Five helpers were copied from `StoreOwnerWrite` (medium, Rule 31; Batch 1's `reopen_if` fired) [TranscriptOwnerWrite.cls]. `DetailOf`, `Detail` and `KindsOf` (was `PlanKinds`) now live in `AdminStateWrite`, and both classes call them. `AssertCalled` and `AssertPrincipal` stay as copies: they are instance assertion helpers, and sharing them needs a parent class with no tests, which the runner fails.
@@ -243,6 +243,29 @@ Rejected or closed at emission (Batch 2):
 - low: a second escalated read of the parent owner per child save. The cost is negligible, and removing it adds a branch.
 - false: the probe profile's suffixed role. The store gate reads the unsuffixed `ADMINRESOURCE` that the step adds.
 - rejected, spec edit: frontmatter `deferred:` item 3, the residual-risk count, and the Auto Run Result's removed Batch 1 lines.
+
+Code review, Batch 3 and DW-2666 (2026-11-16, commit `2ba8d0051` against its parent, HEAD `e0a7cf528`, full-opus tier: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Measured on `ocupilot-ci` as the developer principal.
+
+- [x] [Review][Patch] `SqlRun.GuardedViewForOwner` ended another user's lost run for any caller who named that user (medium, measured run 121) [SqlRun.cls]. It reconciles only for the run's owner or an administrator; the view itself is a read (DW-2652). `TestAViewOfAnotherUsersRunEndsNothing`.
+- [x] [Review][Patch] `SqlRun.GuardedBegin` took another user's run lock before checking the key's owner, so a caller looping on it could keep that run from beginning (medium, inference) [SqlRun.cls]. The stored owner is checked first; a new leg in `TestADeveloperIsRefusedAVictimsSettings`.
+- [x] [Review][Patch] The three residuals had no test (medium, Rule 19) [ReserveSweepWrite.cls]. `TestATurnSweepDeletesOnlyATurnStillExpiredAsRead` and its run twin hold the first row so the delete waits, and change the next two meanwhile; `TestATurnSweepThatFailsLeavesTheTurnWhole` holds the proposal row past the lock timeout; `TestARefusedRunFinishReleasesTheRunLock` asks the suite whether the lock is held. The probe's `Ask`, `Value` and `Run` moved to `OwnerStateWriteProbe`, and `RunAsWatched` takes a probe and two more questions, rather than a third `RunAs`.
+- [x] [Review][Patch] `TestAnAdministratorsSweepKeepsTheLimitsClassItIsGiven` swept every user's rows with a one-second retention and queued limit (medium, hermeticity). It now passes a one-day class and keeps rows past the instance's retention.
+- [x] [Review][Patch] Five tests that keep another user's row passed even if the sweep stopped early (low): each asserts `sweepOk`.
+- [x] [Review][Patch] `SqlRun.GuardedReserve`'s doc named the administrator's sweep (low); false triage and Residual reasons replaced at origin (low); the two Decision items above closed (low).
+- [x] [Review][Defer] A direct caller of the reserve stores chooses its own caps: the run cap counted over every user, a free-text kind, an exact-match busy check, and the turn hour limit and window (medium, inference). DW-2667, escalated: changing a reserve beyond DW-2666's ruling is U-89's call. The run answers, preferences and sharing reads join DW-2652.
+
+U-89: the five open paths and the claim's own-target cancel keep their behavior. `TestTheOpenPathsStillWork` (runs 107, 108) and `TestTheOpenSweepStillWorks` (run 129) are green. The turn sweep deleting the turn row first, inside a transaction, is how its delete repeats the state condition: the end state is the same, and a failed child delete now rolls the turn back whole (measured, run 118). `GuardedAbandonForUser` and `SqlRun.Reconcile` are Pass Scope audit items with unchanged product effect. Nothing changed beyond the ruled scope.
+
+Rejected or closed at emission (Batch 3):
+
+- low, by-design: `SqlRun.GuardedBegin` or `GuardedFinish` on a key whose row is gone answers 822 to its owner, as Batch 2 ruled for turns.
+- low, wontfix-accepted: `Base.GuardedRowsWhere` sits beside `GuardedRowsNoParam`, as the per-arity `GuardedIdsWhere` family does. reopen_if=a third rows reader appears.
+- low, wontfix-accepted: `ReserveSweepWrite` is 537 lines. reopen_if=another test is added to it.
+- low, wontfix-accepted: two `PrefOwnerWrite` legs rely on the child reaching its sweep within the 10-second queued limit. reopen_if=either is seen red on CI.
+- low, wontfix-accepted: pass 3's Auto Run Result replaced pass 2's, as the template keeps only the current pass. reopen_if=a Batch 2 decision is needed and is not in Design Notes or the triage log.
+- low, wontfix-theoretical: `InstanceLimits.ForRuns` reads the base `BackgroundRun`, not a run kind's subclass. Real if a run kind overrides `LimitsClass`.
+- low, wontfix-theoretical: `InstanceLimitsClass`'s `$ClassMethod` and the `TROLLBACK` sit outside a `Try`. Real only if `InstanceLimits` is not compiled or a rollback throws.
+- low, wontfix-theoretical: the sweep transaction holds row locks until it commits, and could escalate on a turn with over about 1,000 steps (inference). Real if a turn carries that many steps.
 
 ## Spec Change Log
 
@@ -294,10 +317,10 @@ Rejected or closed at emission (Batch 2):
 
 - verdicts: 13 findings - high 0, medium 0, low 11, false 2, maybe-false 0
 - findings:
-  - `[low]` `[reject]` The sweep deletes' repeat of state and end time is pinned by no test - the repeat is defense in depth behind the SQL read the tests pin, nothing runs between read and delete, and a seam adds a test-only entry point; stated as such under Residual. reopen_if=a sweep's row can change between its read and its delete.
-  - `[low]` `[reject]` `Turn.DeleteExpired`'s transaction and rollback are untested - a failure injection into a private escalated delete costs more than the harm, an orphaned child row the next sweep does not reach; the transaction is what keeps the turn-first order safe. reopen_if=a child delete is seen to fail.
-  - `[low]` `[reject]` The unlock on a refused `SqlRun.GuardedFinish` is unpinned - the owner of a begun run whose row is gone is the only holder, the run's job ends at once and releases it; a held-lock probe step is the cost. reopen_if=a refused finish is seen to leave a run lock held.
-  - `[low]` `[reject]` `GuardedViewForOwner`'s instance limit is invisible to every test - it reconciles only the caller's own run, so no other user's row is reachable; the edit keeps one rule for the one private reconcile.
+  - `[low]` `[reject]` The sweep deletes' repeat of state and end time is pinned by no test. Code review pinned it (`ReserveSweepWrite`).
+  - `[low]` `[reject]` `Turn.DeleteExpired`'s transaction and rollback are untested. Code review pinned it (`ReserveSweepWrite`).
+  - `[low]` `[reject]` The unlock on a refused `SqlRun.GuardedFinish` is unpinned. Code review pinned it (`ReserveSweepWrite`).
+  - `[low]` `[reject]` `GuardedViewForOwner`'s instance limit is invisible to every test. Code review found the view reconciled any named user's run and closed it.
   - `[low]` `[reject]` `SqlRun.Reconcile`'s lost-race branch (the conditional update matching no row) has no test - it needs a seam between read and update, and the branch only re-reads the state.
   - `[low]` `[patch]` Several Batch 3 gates have no mutation line of their own - three more observed and recorded: the three administrator gates `Pref.GuardedDeleteForUser`, `Sharing.GuardedDeleteForUser` and `SqlRun.GuardedSweep` each red alone; the owner check at the top of `Sharing.GuardedSetForUser` is shadowed by `GuardedSaveOwned` (stays green), recorded as such.
   - `[low]` `[reject]` `PrefOwnerWrite`'s administrator leg empties the preference and sharing stores - the class is armed for a throwaway and runs one class at a time, and every test creates the rows it reads.
@@ -677,11 +700,21 @@ mutation: `SqlRun.SweepAnyCaller` uses the passed limits class -> `TestARunReser
 mutation: `Turn.SweepAnyCaller` reads each end time from the opened row -> `TestAReserveHoldingAnotherUsersTurnKeepsIt` red alone (run 69); `SqlRun.SweepAnyCaller` the same -> `TestARunReserveHoldingAnotherUsersRunKeepsIt` red alone (run 70); each reverted, byte-identical, reloaded.
 mutation: `Turn.GuardedReserve` makes no sweep -> `TestAReserveStillSweepsAnotherUsersExpiredTurn` red alone (run 71); `SqlRun.GuardedReserve` makes none -> `TestARunReserveStillSweepsAnotherUsersExpiredRun` and `PrefOwnerWrite.TestTheOpenSweepStillWorks` red (runs 72, 73); `Turn.DeleteExpired` leaves the turn's children -> the proposal assertion of the turn sweep test red alone (run 78); each reverted, byte-identical, reloaded.
 mutation: `SqlRun.Reconcile` saves the opened row instead of updating by SQL -> `TestARunReserveStoresNoEditFromAHeldLostRun` red alone (run 74); `Reconcile` suspects only a queued row -> `TestARunReserveStillEndsAnotherUsersLostRuns` and the held-edit test red (run 79); each reverted, byte-identical, reloaded.
-mutation: `Base.InstanceLimitsClass` ignores the administrator -> `TestAnAdministratorsSweepKeepsTheLimitsClassItIsGiven` red alone, `Retention` green (runs 75, 76); reverted, `Base.cls` byte-identical, reloaded.
+mutation: `Base.InstanceLimitsClass` ignores the administrator -> `TestAnAdministratorsSweepKeepsTheLimitsClassItIsGiven` (now a one-day class that keeps rows past the instance's retention) red alone (code review, run 122); reverted, `Base.cls` byte-identical (md5 `2cdc5318...`), reloaded.
 mutation: `Turn.GuardedAbandonForUser` reads each key from the opened row -> `TestAnAbandonIgnoresAHeldKey` red alone (run 77); reverted, `Turn.cls` byte-identical, reloaded.
 
 mutation: the owner check removed from the top of `Sharing.GuardedSetForUser` -> `PrefOwnerWrite` stays green (run 95), because `GuardedSaveOwned` makes the same check before it saves; the writer's own line is the earlier refusal, as in Batches 1 and 2 (code review); reverted, `Sharing.cls` byte-identical (md5 `6d3f02e9...`), reloaded.
 mutation: the administrator gate removed from `Pref.GuardedDeleteForUser`, `Sharing.GuardedDeleteForUser` and `SqlRun.GuardedSweep` -> `PrefOwnerWrite.TestADeveloperIsRefusedAVictimsSettings` red alone, on each of the three legs (the 822 and the unchanged-rows assertions; code review, run 96); reverted, `Pref.cls`, `Sharing.cls` and `SqlRun.cls` byte-identical (md5 `03d9264c...`, `6d3f02e9...`, `feef1665...`), reloaded.
+
+Code review (2026-11-16, `ocupilot-ci`, real developer principal; `ReserveSweepWrite` 16 tests run 124, `PrefOwnerWrite` 6 run 129, `TranscriptOwnerWrite` 9 run 107, `StoreOwnerWrite` 14 run 108, `SqlRunStore` 109, `SqlBackgroundJob` 110, `SqlBackgroundRoutes` 111, `AnalyticsMdxJob` 112, `AnalyticsMdxRoutes` 113, `Retention` 114, all green). Each mutation below was applied alone, observed red, reverted byte-identical and reloaded:
+
+mutation: `Turn.DeleteExpired`'s delete drops its state and end-time conditions -> `ReserveSweepWrite.TestATurnSweepDeletesOnlyATurnStillExpiredAsRead` red alone (run 115).
+mutation: `SqlRun.SweepAnyCaller`'s delete drops them -> `TestARunSweepDeletesOnlyARunStillExpiredAsRead` red alone (run 116).
+mutation: `Turn.DeleteExpired` deletes with no transaction -> `TestATurnSweepThatFailsLeavesTheTurnWhole` red alone (run 118); with `TROLLBACK` alone removed, the same test red alone (run 119). Green on the product: a rollback outside the escalated frame restores the turn row.
+mutation: `SqlRun.GuardedFinish`'s refusal returns without the unlock -> `TestARefusedRunFinishReleasesTheRunLock` red alone (run 120).
+mutation: `SqlRun.GuardedViewForOwner` reconciles for any caller (the pass 3 code) -> `TestAViewOfAnotherUsersRunEndsNothing` red alone (run 121).
+mutation: `SqlRun.GuardedBegin`'s key-owner check removed -> `PrefOwnerWrite.TestADeveloperIsRefusedAVictimsSettings` red on its begin-under-own-name leg alone (run 123).
+mutation: the owner check removed from `Pref.GuardedRemove` and `Pref.GuardedTrim` -> that test red on those two legs alone (run 126); `Sharing.DeleteAllGuarded`'s administrator gate removed -> red on that leg alone (run 127); `SqlRun.GuardedReserve`'s owner check removed -> red on that leg alone (run 128).
 
 ## Auto Run Result
 
@@ -696,14 +729,14 @@ Blocking condition: none
 - Helpers examined for a caller-controlled limit or a held object that decides what is written to another user's row:
   - `Turn.SweepAnyCaller`: changed (above).
   - `SqlRun.GuardedReserve`'s sweep and `SqlRun.Reconcile`: changed. Reconcile read the caller's queued limit and saved the opened row; it now reads the instance's limit for a non-administrator and ends the run by one conditional `UPDATE` of state, end time and version.
-  - `SqlRun.GuardedViewForOwner`: its reconcile now takes the instance's limit for a non-administrator; the view stays a read.
+  - `SqlRun.GuardedViewForOwner`: its reconcile takes the instance's limit for a non-administrator, and (code review) runs only for the run's owner or an administrator.
   - `Turn.GuardedAbandonForUser`: changed behavior-neutrally. It took each turn key from the opened row, which a caller may hold; it now reads the key by SQL. Its ids, signal and count are as before.
   - `Turn.ReconcileHeld`: unchanged. It is reached only through `GuardedReserve` and `GuardedReconcile`, both owner-checked, and writes only the caller's own rows by SQL-selected ids.
   - `Propose.ExpireStaleAnyCaller`: unchanged. It compares each row's stored `ExpiresAt` with the clock by one `UPDATE` and reads no limit and no object.
   - `Agent.GuardedClearVerification` and `RebalanceDefaultSql`: unchanged. Both are SQL-only and take no value from a row object.
   - `Propose.GuardedClaimAndClose`'s cancel of its own target's siblings: unchanged (Batch 1).
 - The five non-owner product paths are unchanged in effect: `TestTheOpenPathsStillWork` in `StoreOwnerWrite` and `TranscriptOwnerWrite` pass, and `PrefOwnerWrite.TestTheOpenSweepStillWorks` pins the run reserve's sweep.
-- Residual (inference): the sweep delete's repeat of state and end time cannot be separated from the read by a test, because nothing runs between them; it is defense in depth and no mutation of it is observed red. The unlock on a refused `SqlRun.GuardedFinish` is pinned by no test: a caller cannot hold a lock on a key it does not own. `TurnLoop` and the other turn classes in the net are green.
+- Residual: none open; code review pinned the sweep deletes' repeat, the rollback and the refused finish's unlock. `TurnLoop` and the other turn classes in the net are green.
 - Files: `src/OcuPilot/Kernel/State/Base.cls`, `Turn.cls`, `Pref.cls`, `Sharing.cls`, `SqlRun.cls`; `src/OcuPilot/Kernel/InstanceLimits.cls` (new); `src/OcuPilot/Test/PrefOwnerWrite.cls`, `ReserveSweepWrite.cls` and `PrefStateWriteProbe.cls` (new), `StoreOwnerWrite.cls`; `scripts/ci-throwaway.sh`.
 - Verification: reload `LOADERRORS=0`; every Batch 3 and net class in the table above green; mutations under `## Verification`; `check-objectscript` 0 problems, its harness 159 tests OK, `ci.test.mjs` 103 pass.
 - Review: 13 findings - 1 patched (low: three mutation lines), 0 deferred, 12 rejected with reasons in the triage log. The turn sweep's turn-first delete order inside a transaction is the only change of shape to an open path; its end state is as before. Follow-up review recommended: false (no high or medium patched).
