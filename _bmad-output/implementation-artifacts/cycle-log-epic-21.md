@@ -355,3 +355,6 @@
 2026-11-16T10:39:25Z	Story 21.13	ci_resolved	story=21.13 sha=90799012d runs=43845475577 result=success failed=none via=none
 2026-11-16T10:39:25Z	Story 21.32	stage_spawned	stage=implement spawn_at=2026-11-16T10:39:25Z model=sonnet agent_name=21-32-implement-1 cycle_iteration=1 story_base=bfa1aaca4
 2026-11-16T10:40:57Z	Story 21.32	ad_reverted	ad=AD-2 via=orchestrator_ruling note=AD-27_already_covers_vendor_internals_in_port;record_in_AdminPort_doc_and_Design_Notes
+2026-11-16T11:05:11Z	Story 21.32	dev_complete	spawn_at=2026-11-16T10:40:00Z model=sonnet build_sha=a9d6b4a18 followup_review_recommended=false deferred=0 cycle_iteration=1 chain=7/7,3/3,5/5,6/6_fresh mutation=dashboard+ecp_red note=doc_comment_AD-27_c9150cd11
+2026-11-16T11:05:11Z	Story 21.32	ruling	question=QA_stage choice=fold_QA_into_CR rejected=separate_QA why=fix-forward_priority;repro_test+mutation_present category=decide policy=b9ff703e
+2026-11-16T11:05:11Z	Story 21.32	stage_spawned	stage=code-review spawn_at=2026-11-16T11:05:11Z model=opus agent_name=21-32-code-review-1 cycle_iteration=1
