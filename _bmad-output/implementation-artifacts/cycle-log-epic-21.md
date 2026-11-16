@@ -378,3 +378,8 @@
 2026-11-16T13:25:55Z	Story 21.34	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2650(orchestrator_ledger) priority=before_21.33
 2026-11-16T13:29:06Z	Story 21.34	gate_step	step=reproduction result=red env=fresh(epic21+feature_2ef969841) evidence=backup_3/3_then_interop-editors_22/23(AC2_#6220,<NOTOPEN>CompileDTL+30_pid2228) nullprobe=0_missing(58/66/88;pid2228_gone)
 2026-11-16T13:29:06Z	Story 21.34	stage_spawned	stage=plan+implement spawn_at=2026-11-16T13:29:06Z model=sonnet agent_name=21-34-build-1 cycle_iteration=1 note=urgent;plan+implement_in_one_pass(decide)
+2026-11-16T13:33:11Z	Story 21.34	ruling	question=Rule29_sweep choice=waived_by_orchestrator(explicit) replacement=fresh:class_set_fwd+rev,device_test+mutation,chains(backup->ie;dbo->backup->ie;config-settings->dashboard),smoke lapses_if=any_red_or_scope_beyond(BackupPort,LogSourcePort,kernel_method) category=orchestrator_ruling
+2026-11-16T13:49:19Z	Story 21.34	dev_complete	spawn_at=2026-11-16T13:33:00Z model=sonnet build_sha=3aae36cc1 mutations=4 chain=backup_3/3,interop-editors_23/23(fresh) followup_review_recommended=false deferred=1(low) cycle_iteration=1
+2026-11-16T14:03:00Z	Story 21.34	cr_complete	model=opus scope=short_static high=0 med=0 low=3(patched_c1a02ae13) final=done
+2026-11-16T14:03:00Z	Story 21.34	gate_step	step=waiver_gates result=pass(fresh:c1_backup3/3+ie23/23;c2_dbo6/6+backup3/3+ie23/23;c3_cfg7/7+dashboard3/3;8_classes_fwd+rev;smoke_PASSED;patched_rerun_5_classes+c1_green) sweep=waived(orchestrator)
+2026-11-16T14:03:00Z	Story 21.34	committed	sha=c1a02ae13(carries_21.32_edf36c82d+feature_2ef969841+21.34) ci=pending runs=43881658467
