@@ -328,3 +328,6 @@
 2026-11-16T07:45:33Z	Epic 21	integrate_forward	from=feature_48e3593a3 to=90799012d conflicts=1(ci-throwaway.sh_roster,union) checks=ci.test.mjs_103
 2026-11-16T07:45:48Z	Epic 21	gate_step	step=fresh_check+full_sweep stories=21.12,21.13,21.30 head=af5b8b8b3 started=2026-11-16T07:45:48Z dir=e21u/b3
 2026-11-16T07:46:01Z	Story 21.6	stage_spawned	stage=plan spawn_at=2026-11-16T07:46:01Z model=opus agent_name=21-6-plan-2 cycle_iteration=2
+2026-11-16T08:05:10Z	Story 21.6	story_created	spawn_at=2026-11-16T07:42:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md build_status=ready-for-dev cycle_iteration=2
+2026-11-16T08:05:10Z	Story 21.6	ruling	question=strings,cached-query_entity,keys,Clean_target choice=keep;AD-51_wording_corrected_at_origin(Clean_takes_no_argument) rejected=drop_clean why=vendor_call_shape category=veto inbox=U-83 policy=b9ff703e
+2026-11-16T08:05:10Z	Story 21.6	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-51,AD-10,AD-29,AD-53 owned_ledger=none mutates_shared_runtime=false model=claude-opus-5-5
