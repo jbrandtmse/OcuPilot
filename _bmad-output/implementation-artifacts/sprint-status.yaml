@@ -409,7 +409,7 @@ development_status:
   21-22-ci-flake-hardening: backlog
   21-23-test-hygiene-and-contended-client-fixes: backlog
   21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: 
-    ready-for-dev
+    in-progress
   epic-21-retrospective: optional
 
   epic-22: done

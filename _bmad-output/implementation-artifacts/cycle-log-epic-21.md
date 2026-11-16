@@ -269,3 +269,4 @@
 2026-11-16T01:23:34Z	Story 21.24	stage_spawned	stage=plan spawn_at=2026-11-16T01:23:34Z model=opus agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-plan-1 cycle_iteration=1
 2026-11-16T01:30:58Z	Story 21.24	story_created	spawn_at=2026-11-16T01:25:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit.md build_status=ready-for-dev
 2026-11-16T01:30:58Z	Story 21.24	spec_validated	service_introducing=false integration_ac=present(screen+tool_measured) adr_constrained_acs=AD-35,AD-36,AD-60 owned_ledger=DW-2625 addressed=1 declined=0 survey=1_setter_declared,0_to_ledger mutates_shared_runtime=false(throwaway_only) model=claude-opus-5-5
+2026-11-16T01:30:59Z	Story 21.24	stage_spawned	stage=implement spawn_at=2026-11-16T01:30:59Z model=sonnet agent_name=21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit-implement-1 cycle_iteration=1 story_base=b59f85c49
