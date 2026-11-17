@@ -270,3 +270,9 @@
 2026-11-17T07:44:19Z	Story 24.6	stage_spawned	stage=code-review spawn_at=2026-11-17T07:44:19Z model=opus agent_name=24-6-the-command-and-class-method-consoles-code-review-1 cycle_iteration=2
 2026-11-17T08:17:17Z	Story 24.6	cr_complete	spawn_at=2026-11-17T07:44:19Z model=opus resolved=8 fixed_at_source=8 by_design=1 wontfix_accepted=4 routed=1(DW-2696) escalated=1(DW-2695) decision_pending=1(DW-2694) dismissed=13 high=1 med=5 low=11 rows=43 unresolved_high_med=3 clarifications=0 closing_sections_present=true final=done high_fixed=audit_row_before_body(Halt_left_no_row) note=QA_ConsoleRun_New_kept;Harvest.TestNoHarvestedBodyNamesTheResponseWriter_adjusted cycle_iteration=2
 2026-11-17T08:17:17Z	Story 24.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2697,DW-2698,DW-2699,DW-2700,DW-2701 to_burndown=DW-2694,DW-2695,DW-2696 model=claude-opus-5-5
+2026-11-17T08:35:16Z	Story 24.6	integrate_forward	feature=1dbdfbb85(code_8c58f5edf,21.33+21.34+21.35) head=736a381ed conflicts_resolved=none
+2026-11-17T08:35:16Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.6_merged_tree run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T08:35:16Z	Story 24.6	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49(1_skipped_agentswitches)+consoles_9/9+a11y-structural-invariants_13/13_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-17T08:35:16Z	Story 24.6	fresh_check	env=recipe(merged_tree_736a381ed) tests=26_classes+3_specs result=pass order=forward,reverse note=DevToolProbe_is_a_helper_not_a_test_class
+2026-11-17T08:35:16Z	Story 24.6	committed	sha=db0850449 code_head=736a381ed(merged_with_feature_1dbdfbb85) ci=pending runs=44047946906 amendments=none
+2026-11-17T08:35:16Z	Story 24.6	story_cycle	plan_to_commit_min=482(incl_hold_04:16-06:14Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
