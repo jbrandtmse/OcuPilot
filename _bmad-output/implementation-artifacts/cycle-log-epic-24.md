@@ -346,3 +346,5 @@
 2026-11-17T23:22:09Z	Story 24.11	fresh_check	env=recipe(merged_tree_6f350eeb2) tests=12_classes result=fail order=forward failing=AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite(first_run_only:SQLStatsSettings_init;passes_on_rerun) scope=batch1
 2026-11-17T23:22:09Z	Story 24.11	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=fresh_check:TestNoReadMakesAJournaledWrite scope_baseline=6f350eeb2
 2026-11-17T23:22:14Z	Story 24.11	stage_spawned	stage=implement spawn_at=2026-11-17T23:22:14Z model=sonnet agent_name=24-11-listing-groups-implement-rework-1 cycle_iteration=2 scope=batch1_rework
+2026-11-17T23:42:48Z	Story 24.11	dev_complete	spawn_at=2026-11-17T23:22:30Z model=sonnet build_sha=8e36650ec baseline_revision=99f2903966eedcfcd624b79fe5d50c873ad970ab review_loop_iteration=0 followup_review_recommended=false deferred=0 scope=batch1_rework_1 fresh_instance_first_run=pass mutations=bit_write,control_write cycle_iteration=2
+2026-11-17T23:42:48Z	Story 24.11	stage_spawned	stage=code-review spawn_at=2026-11-17T23:42:48Z model=opus agent_name=24-11-listing-groups-code-review-rework-1 cycle_iteration=2
