@@ -1,4 +1,5 @@
-/// <p>Pins Story 24.2's gate on the term list editor's six writes (AD-8, AD-29, AD-44, AD-65) at the person's routes and actions and at the port, against <code>USER</code>: a
+/// <p>Pins Story 24.2's gate on the term list editor's six writes (AD-8, AD-29, AD-44, AD-65) at the person's routes and actions and at the port, against <code>USER</code>
+/// (and, since Story 24.10, on its three transfers): a
 /// principal without the Term List Manager's own pair <code>%DeepSee_PortalEdit:USE</code>, and one holding the pairs but only READ on the
 /// database <code>^DeepSee.TermList</code> maps to, are each refused 403 <code>AUTH.NOPRIVILEGE</code> naming the failed pair on every route
 /// and screen action, with the term lists as they were; and a term list database that is mounted read-only is refused 409
@@ -141,9 +142,46 @@ Method TestEachWriteIsRefusedNamingTheFailedPair()
     Do $$$AssertEquals(tStatus, 200, "the principal holding every pair writes: " _ $Extract(tRaw, 1, 200))
 }
 
+/// <p>Story 24.10, AC4: the three transfers as the person reaches them, each as <code>&lt;path&gt;|&lt;body&gt;</code> for the list <var>pList</var>:
+/// Export to this browser, Copy term list and Import of a local file.</p>
+ClassMethod TransferRequests(pList As %String) As %List
+{
+    Set tPath = "/screens/analytics.termlists/action"
+    Quit $ListBuild(tPath _ "|" _ {"action": "export-browser", "id": (pList)}.%ToJSON(), tPath _ "|" _ {"action": "copy", "id": (pList), "values": {"NewName": (pList _ "Copy")}}.%ToJSON(), tPath _ "|" _ {"action": "import-local", "id": "import", "values": {"fileName": "a.csv", "content": ("%%NAME," _ pList _ "In" _ $Char(10) _ "k,v" _ $Char(10))}}.%ToJSON())
+}
+
+/// <p>Story 24.10, AC4: each transfer, from the person's side, is refused 403 naming the failed pair for the principal without the editor's pair
+/// and, for the copy and the import, for the one with READ alone on the term list database; the export, which only reads, asks the file system's
+/// resource instead, which no principal here holds, so each one that holds the editor's pair is refused for it. The term lists are as they were.</p>
+/// <p>Mutation (Rule 19): declare <code>WRITE</code> as <parameter>OcuPilot.Screen.Tool.AnalyticsTermListExport.DESTINATIONPERMISSION</parameter>'s
+/// default again -- the read-only principal's export leg is refused for the database and goes red.</p>
+Method TestEachTransferIsRefusedNamingTheFailedPair()
+{
+    Set tName = ..#MARKER _ "Transfer"
+    Do $ClassMethod(..#EDIT, "Arrange", tName)
+    Set tBefore = $ClassMethod(..#EDIT, "Snapshot")
+    Set tRequests = ..TransferRequests(tName)
+    For tCase = $ListBuild(..#P1, "%DeepSee_PortalEdit:USE", "%DeepSee_PortalEdit:USE", "%DeepSee_PortalEdit:USE"), $ListBuild(..#P2, "%Admin_FileSystemAccess:USE", "%DB_USER:WRITE", "%DB_USER:WRITE"), $ListBuild(..#P3, "%Admin_FileSystemAccess:USE", "", "") {
+        For tI = 1:1:$ListLength(tRequests) {
+            Set tRequest = $List(tRequests, tI)
+            Set tPair = $List(tCase, tI + 1)
+            Set tStatus = ..Call("POST", $Piece(tRequest, "|", 1), $List(tCase, 1), $Piece(tRequest, "|", 2, *), .tRaw)
+            If tPair = "" {
+                Do $$$AssertTrue(tStatus < 300, $List(tCase, 1) _ ": request " _ tI _ " is not refused for a pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 160))
+            } Else {
+                Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tRaw), "403 AUTH.NOPRIVILEGE|" _ tPair, $List(tCase, 1) _ ": request " _ tI _ " is refused naming its pair")
+            }
+        }
+        If $List(tCase, 3) '= "" Do $$$AssertEquals($ClassMethod(..#EDIT, "Snapshot"), tBefore, $List(tCase, 1) _ ": and the term lists are as they were")
+        Do $ClassMethod(..#EDIT, "Sweep")
+        Do $ClassMethod(..#EDIT, "Arrange", tName)
+        Set tBefore = $ClassMethod(..#EDIT, "Snapshot")
+    }
+}
+
 /// <p>AC3: with the term list database mounted read-only, each of the six writes is refused 409 <code>ANALYTICS.TERMLIST.READONLY</code> before
 /// any vendor call, and the term lists are as they were.</p>
-/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitDestination</method> in <method>OcuPilot.Port.AnalyticsPort.AdmitTermList</method> -- the
+/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitDestination</method> in <method>OcuPilot.Port.AnalyticsPort.AdmitJournaled</method> -- the
 /// six legs go red.</p>
 Method TestAReadOnlyDatabaseIsRefusedBeforeAnyVendorCall()
 {

@@ -164,6 +164,16 @@ Parameter ALLOWLISTAGENT = "PROHIBITED.ALLOWLISTAGENT";
 /// strings and pinned equal to <code>allowListRefusalAgent</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter ALLOWLISTAGENTREASON = "The allowed directories fence every server path OcuPilot reads or writes, so they are changed on the Allowed directories screen alone.";
 
+/// <p>A call of a tool that declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter> through a tool the agent can
+/// reach (<method>AgentReachable</method>, AD-10 as amended by Story 24.5, owner answer U-86): such a tool runs code with the
+/// rights of whoever starts it, so only a person's own screen starts it. The person's route is a tool that is never
+/// advertised, so it is not refused.</p>
+Parameter PERSONONLY = "PROHIBITED.PERSONONLY";
+
+/// <p>The one sentence <parameter>PERSONONLY</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed
+/// strings and pinned equal to <code>personOnlyRefusal</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter PERSONONLYREASON = "This runs code with the rights of whoever starts it, so it is started from its own screen alone.";
+
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
@@ -279,7 +289,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -758,6 +768,10 @@ Parameter TYPETERMLIST = "term-list";
 
 Parameter TYPETERMLISTENTRY = "term-list-entry";
 
+/// <p>A folder item (a pivot, dashboard or other item of the Folder items screen), exported, imported or deleted by the folder manager (AD-65, Story 24.10).
+/// AD-10 names no effect on one: OcuPilot holds no folder item, so a write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEFOLDERITEM = "folder-item";
+
 /// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
 /// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
 /// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
@@ -1121,10 +1135,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges last -- thirty-nine in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds last -- forty in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1175,6 +1189,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#STARTUPJOURNAL Quit ..#STARTUPJOURNALREASON
     If pCode = ..#STARTUPKMIP Quit ..#STARTUPKMIPREASON
     If pCode = ..#MIRRORDATABASES Quit ..#MIRRORDATABASESREASON
+    If pCode = ..#PERSONONLY Quit ..#PERSONONLYREASON
     Quit ""
 }
 
@@ -1525,9 +1540,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 24.5: a tool that runs code as the person is judged on the tool alone, before the type arms, and reads no target.
+        Set tPersonClass = ..ToolClassNamed(pToolName)
+        If (tPersonClass '= "") && ($Parameter(tPersonClass, "PERSONGATE") '= "") && ..AgentReachable(pToolName) {
+            Do ..Refuse(..#PERSONONLY, .pProhibits, .pCode)
             Quit
         }
 
@@ -1630,6 +1652,15 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; browser never reads, and AD-10 names no effect on a lookup table, so the arm reads no target; the port refuses a file
         ; that is not exactly one lookup table, or holds another table than the one named, before any load.
         If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
+        ; Story 24.10: a term list import names the list its file holds, or the literal import id for a server file the browser never
+        ; reads, and AD-10 names no effect on a term list, so the arm reads no target; the port refuses a file that is not a term list
+        ; export, or holds another list than the one named, and a name already held, before any write. An export and a copy read the
+        ; source and are judged as any term list write is, by the reviewed-few sweep below.
+        If (tType = ..#TYPETERMLIST) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
+        ; Story 24.10: a folder item import names the first item its file holds, or the literal import id for a server file the browser never reads,
+        ; and AD-10 names no effect on a folder item, so the arm reads no target; the port refuses a file that is not folder items only, or whose first
+        ; item is another, and a name already held, before any write. An export and a delete read the item and are judged by the reviewed-few sweep below.
+        If (tType = ..#TYPEFOLDERITEM) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
@@ -1881,7 +1912,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; A term list and one of its entries (Story 24.2): AD-10 names no effect on either, because OcuPilot uses no term list, so a write
         ; passes the reviewed-few sweep and nothing else.
-        If (tType = ..#TYPETERMLIST) || (tType = ..#TYPETERMLISTENTRY) {
+        If (tType = ..#TYPETERMLIST) || (tType = ..#TYPETERMLISTENTRY) || (tType = ..#TYPEFOLDERITEM) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }

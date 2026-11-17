@@ -71,6 +71,10 @@ ClassMethod Take(pProposalId As %String, pUser As %String, pOrigin As %String, O
         Set tSC = $ClassMethod(tStore, "GuardedExpireStale", pUser)
         If $$$ISERR(tSC) Quit
         Set tSC = $ClassMethod(tStore, "GuardedByKey", pProposalId, .tFound, .tRow)
+        If ##class(OcuPilot.Kernel.Proposal.Write).IsRefusedRead(tSC) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Kernel.Proposal.Write).#UNKNOWN, .pHttpStatus, .pCode)
+            Quit
+        }
         If $$$ISERR(tSC) Quit
         If 'tFound || ($Get(tRow("user")) '= pUser) || ($Get(tRow("state")) '= $Parameter(tStore, "STATELIVE")) {
             Set tSC = ..Refuse(404, ##class(OcuPilot.Kernel.Proposal.Write).#UNKNOWN, .pHttpStatus, .pCode)

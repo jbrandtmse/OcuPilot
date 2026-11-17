@@ -333,6 +333,8 @@ const KERNEL_REFUSALS = [
   ['PROVIDERSSL', 'sslRefusalProviderNamed'],
   // Story 21.12: removing a mirror together with taking its databases out of mirroring, which either caller is refused before any vendor call.
   ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
+  // Story 24.5: a call of the unit-test runner through a tool the agent can reach, which either caller is refused with.
+  ['PERSONONLY', 'personOnlyRefusal'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -661,6 +663,20 @@ const ATELIER_REFUSALS = [
   // Story 24.1: Code metrics' and Document hashes' wide-pattern and too-many-documents refusals.
   ['REASONSPECWIDE', 'explorerSpecWideReason'],
   ['REASONSPECTOOMANY', 'explorerSpecTooManyReason'],
+  // Story 24.5: the unit-test run's seven refusals, the switched-off sentence among them.
+  ['REASONUNITTESTOFF', 'explorerUnitTestOffReason'],
+  ['REASONUNITTESTNOTFOUND', 'explorerUnitTestNotFoundReason'],
+  ['REASONUNITTESTTOOMANY', 'explorerUnitTestTooManyReason'],
+  ['REASONUNITTESTPRODUCTION', 'explorerUnitTestProductionReason'],
+  ['REASONUNITTESTBUSY', 'explorerUnitTestBusyReason'],
+  ['REASONUNITTESTOWNCODE', 'explorerUnitTestOwnCodeReason'],
+  ['REASONUNITTESTNORESULT', 'explorerUnitTestNoResultReason'],
+  // Story 24.6: the two consoles' switched-off, own-code and not-found sentences.
+  ['REASONCOMMANDOFF', 'explorerCommandOffReason'],
+  ['REASONCLASSMETHODOFF', 'explorerClassMethodOffReason'],
+  ['REASONCOMMANDOWNCODE', 'explorerCommandOwnCodeReason'],
+  ['REASONCLASSMETHODOWNCODE', 'explorerClassMethodOwnCodeReason'],
+  ['REASONCLASSMETHODNOTFOUND', 'explorerClassMethodNotFoundReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -690,6 +706,25 @@ const DEVTOOL_REFUSALS = [
   ['CHANGEONLYHERE', 'explorerChangeOnlyHere'],
   ['CHANGEONLYTHERE', 'explorerChangeOnlyThere'],
   ['CHANGEDIFFERS', 'explorerChangeDiffers'],
+  // Story 24.9: a promote's five refusals and the four outcomes it answers each document.
+  ['REASONNOTASTEP', 'explorerPromoteNotAStepReason'],
+  ['REASONSTALE', 'explorerPromoteStaleReason'],
+  ['REASONSYSTEM', 'explorerPromoteSystemReason'],
+  ['REASONSTORAGE', 'explorerPromoteStorageReason'],
+  ['REASONDOCUMENTS', 'explorerPromoteDocumentsReason'],
+  ['OUTCOMEREPLACED', 'explorerPromoteReplaced'],
+  ['OUTCOMEADDED', 'explorerPromoteAdded'],
+  ['OUTCOMEFAILED', 'explorerPromoteFailed'],
+  ['OUTCOMENOTATTEMPTED', 'explorerPromoteNotAttempted'],
+  // Story 24.5: the unit-test run's argument refusal and what a recorded method's result reads.
+  ['REASONTESTSSHAPE', 'explorerUnitTestsShapeReason'],
+  ['RESULTPASSED', 'explorerUnitTestsPassed'],
+  ['RESULTFAILED', 'explorerPromoteFailed'],
+  ['RESULTSKIPPED', 'explorerUnitTestsSkipped'],
+  // Story 24.6: the consoles' three input refusals.
+  ['REASONCOMMANDSHAPE', 'explorerCommandShapeReason'],
+  ['REASONCLASSMETHODSHAPE', 'explorerClassMethodShapeReason'],
+  ['REASONARGUMENTSSHAPE', 'explorerClassMethodArgumentsReason'],
 ];
 
 test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
@@ -698,6 +733,23 @@ test("Story 24.1: each of Code metrics' and Document hashes' argument refusals i
   for (const [parameter, key] of DEVTOOL_REFUSALS) {
     const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
     assert.notEqual(server, null, `DevToolPort.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
+});
+
+/** Story 24.9's promote tool, which declares the two lines its review counts the documents left alone with. */
+const PROMOTE_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerNamespacePromote.cls');
+
+test("Story 24.9: the promote's two review lines are one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REVIEWWARNINGONE in ExplorerNamespacePromote.cls -> this goes red naming both.
+  const source = readFileSync(PROMOTE_TOOL, 'utf8');
+  for (const [parameter, key] of [
+    ['REVIEWWARNING', 'explorerPromoteWarning'],
+    ['REVIEWWARNINGONE', 'explorerPromoteWarningOne'],
+  ]) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `ExplorerNamespacePromote.cls declares ${parameter}`);
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   }

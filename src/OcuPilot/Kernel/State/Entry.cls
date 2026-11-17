@@ -9,6 +9,17 @@
 Class OcuPilot.Kernel.State.Entry Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>), owned
+/// through its conversation: <property>ConvoKey</property> names the conversation, and the
+/// conversation's stored owner is the entry's. <method>GuardedAppend</method> refuses a caller who
+/// neither owns that conversation nor holds the administrative resource; the purge and the delete across
+/// conversations are an administrator's.</p>
+Parameter OWNERWRITE As %String = "ConvoKey";
+
+Parameter OWNERPARENT As %String = "OcuPilot.Kernel.State.Convo";
+
+Parameter OWNERPARENTINDEX As %String = "ConvKeyIdx";
+
 /// <p>The conversation this entry belongs to (<property>OcuPilot.Kernel.State.Convo.ConvKey</property>).</p>
 Property ConvoKey As %String(MAXLEN = 64);
 
@@ -103,7 +114,8 @@ Index ConvoSeqIdx On (ConvoKey, Seq) [ Unique ];
 /// conversation whose older entries retention removed keeps appending.</p>
 ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "", pEgress As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pConvoKey)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedIdsWhere("SELECT MAX(Seq) FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pConvoKey, .tHighest)
         If $$$ISERR(tSC) Quit
@@ -123,7 +135,7 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
         Set tRow.Citations = pCitations
         Set tRow.Egress = pEgress
         If pStepsJson '= "" Do tRow.StepsJson.Write(pStepsJson)
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -153,9 +165,14 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 /// or JSON null when the turn carried none or it does not parse. <var>pWithDefinition</var> 1 adds
 /// <code>definitionId</code>, the definition the entry ran under or <code>""</code>. The default leaves
 /// the shape the panel's restore reads unchanged.</p>
+/// <p>Answered for a conversation its caller owns and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no row. A key that names no conversation
+/// answers no rows.</p>
 ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWithContext As %Boolean = 0, pWithDefinition As %Boolean = 0) As %Status
 {
     Set pRows = []
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tIds)
     If $$$ISERR(tSC) Quit tSC
     Set tCreatedAt = ""
@@ -256,9 +273,15 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWi
 /// because <class>OcuPilot.Api.Conversation</class> is what needs it, to attach each turn's
 /// proposals outside the escalated frame (AD-9), and the view's own shape is a published contract
 /// this does not widen.</p>
+/// <p>Answered as <method>GuardedRows</method> is: for a conversation its caller owns and to an administrator only.
+/// A key that names no conversation answers no keys to a caller who is not an administrator, even where entries are
+/// still kept under it.</p>
 ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
 {
     Kill pKeys
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey, .tNamed)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tNamed Quit $$$OK
     Set tSC = ..GuardedPairsWhere("SELECT Seq, TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tRows) {
@@ -279,6 +302,7 @@ ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
 ClassMethod GuardedPurge(ByRef pCutoffs, Output pRemoved As %Integer) As %Status
 {
     Set pRemoved = 0
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = ..GuardedRowsNoParam("SELECT e.ID, e.DefinitionId, e.AppendedAt, c.CreatedAt FROM OcuPilot_Kernel_State.Entry e LEFT JOIN OcuPilot_Kernel_State.Convo c ON c.ConvKey = e.ConvoKey", .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set tDefault = $Get(pCutoffs)
@@ -298,11 +322,12 @@ ClassMethod GuardedPurge(ByRef pCutoffs, Output pRemoved As %Integer) As %Status
     Quit tSC
 }
 
-/// <p>Delete every entry of conversation <var>pConvoKey</var>. For test teardown and
-/// <method>OcuPilot.Kernel.State.Convo.GuardedDelete</method>; retention removes entries one by one
-/// through <method>GuardedPurge</method>.</p>
+/// <p>Delete every entry of conversation <var>pConvoKey</var>. An administrator's; the conversation's own
+/// delete (<method>OcuPilot.Kernel.State.Convo.GuardedDelete</method>) removes them by its own statement,
+/// and retention removes entries one by one through <method>GuardedPurge</method>.</p>
 ClassMethod GuardedDeleteForConvo(pConvoKey As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pConvoKey)
 }
 

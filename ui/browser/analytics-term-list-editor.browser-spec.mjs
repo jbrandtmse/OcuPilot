@@ -6,7 +6,9 @@
  * flag, which the list shows and the vendor reads back; Edit term list opens on what the instance holds and a changed caption shows in the row;
  * Add entry writes an entry with its field value, which the entries list shows joined as `Region: West` and `%Lookup` answers; Change entry opens
  * on the row's values and the new value shows; Remove entry asks for the key typed and states its consequence; and Delete asks for the list's
- * name typed, states its consequence, and the list leaves.
+ * name typed, states its consequence, and the list leaves. Story 24.10 adds the transfers: Export writes the list to a server file, which Import
+ * reads back after the list is deleted, with the same header, fields and values; Export to this browser saves `<name>.csv`, which Import reads
+ * back from the file this computer holds; and Copy term list makes a second list equal to the source, refusing a name already held.
  *
  * **It turns analytics on for `USER` and writes term lists there** through `OcuPilot.Test.AnalyticsProbe`, so it runs on a throwaway only; the
  * `after` hook removes every marked list and restores `USER`'s flags, whatever the tests answered.
@@ -18,6 +20,9 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
@@ -32,6 +37,8 @@ const config = browserConfig();
 const STRINGS = loadStrings();
 const PROBE = 'OcuPilot.Test.AnalyticsProbe';
 const EDIT = 'OcuPilot.Test.AnalyticsTermListEdit';
+const TRANSFER = 'OcuPilot.Test.AnalyticsTermListTransfer';
+const FILES = 'OcuPilot.Test.ExplorerTransferProbe';
 const MARKER = 'OcuProbeTL24B';
 const NEW = `${MARKER}New`;
 const EXISTING = `${MARKER}Held`;
@@ -40,6 +47,7 @@ const ENTRIES = (name) => `/ocupilot/analytics/term-lists/entries/${encodeURICom
 
 let browser = null;
 let created = false;
+let localDirectory = '';
 
 /** Run one probe call in the throwaway and answer its marker. */
 function probe(name, expression) {
@@ -156,12 +164,16 @@ before(async () => {
   assert.equal(enabled.value, '1', `analytics is turned on for USER: ${enabled.output}`);
   runIris(config.container, [`Do ##class(${EDIT}).Arrange("${EXISTING}")`]);
   assert.ok(probe('TLARRANGED', `##class(${EDIT}).Marked()`).value.includes(EXISTING.toUpperCase()), 'a list is arranged so the screen has rows');
+  runIris(config.container, [`Do ##class(${FILES}).RemoveDirectory()`, `Do ##class(${FILES}).MakeDirectory()`]);
+  localDirectory = mkdtempSync(join(tmpdir(), 'epic-24-2410-'));
   browser = await puppeteer.launch(launchOptions(config));
 });
 
 after(async () => {
   try {
+    if (localDirectory !== '') rmSync(localDirectory, { recursive: true, force: true });
     if (created && /-ci$/.test(config.container)) {
+      runIris(config.container, [`Do ##class(${FILES}).RemoveDirectory()`]);
       probe('TLSWEEP', `##class(${EDIT}).Sweep()`);
       const removed = probe('TLGONE', `$System.Status.IsOK(##class(${PROBE}).Remove())_##class(${PROBE}).Gone()_(##class(${EDIT}).Marked()="")`);
       assert.equal(removed.value, '111', `the probe and the marked lists are removed and USER is left as found: ${removed.output}`);
@@ -188,7 +200,7 @@ test('AC1, AC2: a list is created, edited and deleted, and an entry added, chang
     assert.equal(probe('TLNODE', `$Get(^|"USER"|DeepSee.TermList("${NEW.toUpperCase()}","hideValue"))_"|"_$Get(^|"USER"|DeepSee.TermList("${NEW.toUpperCase()}","fieldList"))`).value, '1|Region', 'the vendor holds the hide-value flag and the field');
 
     const menu = await rowAction(page, NEW, 1 + 1, STRINGS.analyticsTermListEditAction);
-    assert.deepEqual(menu, [STRINGS.analyticsTermListEditAction, STRINGS.analyticsTermListDeleteAction], 'the row menu offers Edit term list and Delete term list');
+    assert.deepEqual(menu, [STRINGS.analyticsTermListEditAction, STRINGS.analyticsTermListDeleteAction, STRINGS.taskExportAction, STRINGS.analyticsTermListCopyAction], 'the row menu offers Edit term list, Delete term list, Export and Copy term list');
     await page.waitForSelector('[data-term-list-field="Caption"]', { visible: true, timeout: config.navigationTimeoutMs });
     await page.waitForFunction(() => document.querySelector('[data-term-list-field="Caption"]').value !== '', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('[data-term-list-field="Caption"]', (node) => node.value), 'First caption', 'Edit opens on what the instance holds');
@@ -260,6 +272,168 @@ test('AC3: a refusal the instance answers is shown in the dialog and writes noth
     assert.equal(await shownText(page, '[data-term-list-entry-reason]'), STRINGS.analyticsRefusalTermListEntryTaken, 'a key the list holds is refused with the server\'s sentence');
     await page.keyboard.press('Escape');
     assert.equal(probe('TLSNAP', `##class(${EDIT}).Snapshot()`).value, before, 'and nothing was written');
+  } finally {
+    await context.close();
+  }
+});
+
+/** The vendor's reading of the list `name` as the transfer test dumps it, which compares header, fields, keys and values in one string. */
+function dump(name) {
+  return probe('TLDUMP', `##class(${TRANSFER}).Dump("${name}")`).value;
+}
+
+/** Remove the list `name` through the vendor's own delete, in USER. */
+function drop(name) {
+  runIris(config.container, ['Set $NAMESPACE="USER"', `Do ##class(%DeepSee.TermList).%DeleteTermList("${name}")`]);
+  assert.equal(probe('TLDROPPED', `##class(${TRANSFER}).Dump("${name}")`).value, '', `${name} is removed`);
+}
+
+/** Press the command bar's action labelled `label`, once it is offered. */
+async function commandBar(page, label) {
+  await page.waitForFunction(
+    (wanted) => Array.from(document.querySelectorAll('.ocu-command-bar-action')).some((button) => button.textContent.trim() === wanted && button.getAttribute('aria-disabled') === null),
+    { timeout: config.navigationTimeoutMs },
+    label
+  );
+  await page.evaluate((wanted) => {
+    Array.from(document.querySelectorAll('.ocu-command-bar-action')).find((button) => button.textContent.trim() === wanted).click();
+  }, label);
+}
+
+/** Wait until the page's transfer status line reads `line`. */
+function statusReads(page, line) {
+  return page.waitForFunction((wanted) => document.querySelector('[data-term-list-transfer-status]')?.textContent.trim() === wanted, { timeout: config.navigationTimeoutMs }, line);
+}
+
+/** The open dialog's server-path picker, ready on its one root: the root it offers. */
+async function pickerRoot(page) {
+  await page.waitForSelector('.ocu-dialog-body .ocu-path-picker select', { timeout: config.navigationTimeoutMs });
+  return page.$eval('.ocu-dialog-body .ocu-path-picker select', (select) => select.value);
+}
+
+/** Record the files this browser is asked to save, without leaving the page. */
+function captureDownloads(page) {
+  return page.evaluate(() => {
+    window.__ocuSaved = [];
+    const create = URL.createObjectURL.bind(URL);
+    let blob = null;
+    URL.createObjectURL = (made) => {
+      blob = made;
+      return create(made);
+    };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download && blob !== null) {
+        const kept = blob;
+        const name = this.download;
+        void kept.text().then((text) => window.__ocuSaved.push({ name, type: kept.type, text }));
+        return;
+      }
+      click.call(this);
+    };
+  });
+}
+
+/** Narrow the list to `name`, select its row, open its menu and choose the entry labeled `label`. */
+async function listRowAction(page, name, label) {
+  await rowAction(page, name, 1 + 1, label);
+}
+
+// AC1, AC2. Mutation (Rule 19): make `AnalyticsPort.PerformExport` answer 200 without writing the file (skip the seam's export) -> the import below finds no file and
+// this goes red; drop `'export'` from the Term lists' `UNDRAWN_ACTIONS` entry in screen-action-handler.ts, rebuild and redeploy -> the handler registers it and the
+// menu assertion of the first test goes red.
+test('AC1, AC2: a list is exported to a server file, deleted, and imported back from it with the same header, fields and values', async () => {
+  const name = `${MARKER}Move`;
+  const file = `${probe('TLDIR', `##class(${FILES}).RelativeName("move.csv")`).value}`;
+  runIris(config.container, [`Do ##class(${TRANSFER}).Arrange("${name}")`]);
+  const { context, page } = await signedInAt(browser, config, LISTS, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    const before = dump(name);
+    assert.ok(before.includes('~a,b^West^n1^v1'), `the list is arranged: ${before}`);
+
+    await listRowAction(page, name, STRINGS.taskExportAction);
+    await page.waitForSelector('app-explorer-export-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-export-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsTermListExportTitle.replace('<name>', name), 'the export dialog is titled by the list');
+    assert.equal(await page.$eval('[data-explorer-export-replaces]', (node) => node.textContent.trim()), STRINGS.analyticsTermListExportHelp, 'and says what the file holds and that a file at the name is replaced');
+    const root = await pickerRoot(page);
+    assert.ok(root !== '', 'the picker offers the instance\'s one allowed root');
+    await page.type('.ocu-dialog-body .ocu-path-picker input[type="text"]', file);
+    await page.click('[data-explorer-export-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListExportDone.replace('<name>', name));
+
+    drop(name);
+    await page.reload();
+    await answered(page);
+    await commandBar(page, STRINGS.actionImport);
+    await page.waitForSelector('app-explorer-import-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-import-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsTermListImportTitle, 'the import dialog is titled in the list\'s words');
+    assert.equal(await page.$('input[data-explorer-import-compile]'), null, 'and offers no compile choice');
+    assert.equal(await page.$eval('[data-explorer-import-replaces]', (node) => node.textContent.trim()), STRINGS.analyticsTermListImportHelp, 'it states that the file creates the list it names');
+    assert.equal(await pickerRoot(page), root);
+    await page.type('.ocu-dialog-body .ocu-path-picker input[type="text"]', file);
+    await page.click('[data-explorer-import-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListImportDone.replace('<name>', name));
+    await rowReads(page, name, 1, 'Cap, "q"');
+    assert.equal(dump(name), before, 'the list is back with the same header, fields and values');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC1, AC2, AC3. Mutation (Rule 19): drop `content` in `OcuPilot.Screen.Tool.AnalyticsTermListImport.ScreenActionDelta` -> the local import is refused and this goes red;
+// drop the copy dialog's `NewName` value in term-list-copy-dialog.ts, rebuild and redeploy -> the copy is refused and this goes red.
+test('AC1, AC2, AC3: a list is exported to this browser and imported back from the file this computer holds, and copied under a new name', async () => {
+  const name = `${MARKER}Browse`;
+  runIris(config.container, [`Do ##class(${TRANSFER}).Arrange("${name}")`]);
+  const { context, page } = await signedInAt(browser, config, LISTS, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    const before = dump(name);
+    await captureDownloads(page);
+    await listRowAction(page, name, STRINGS.taskExportAction);
+    await page.waitForSelector('app-explorer-export-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
+    await pickerRoot(page);
+    await page.click('input[data-explorer-export-destination="browser"]');
+    await page.waitForFunction(() => document.querySelector('.ocu-dialog-body .ocu-path-picker') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-export-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListExportDone.replace('<name>', name));
+    await page.waitForFunction(() => window.__ocuSaved.length === 1, { timeout: config.navigationTimeoutMs });
+    const saved = await page.evaluate(() => window.__ocuSaved[0]);
+    assert.equal(saved.name, `${name}.csv`, 'the browser saves <name>.csv');
+    assert.equal(saved.type, 'text/csv');
+    assert.ok(saved.text.startsWith(`%%NAME,${name}\n`) && saved.text.includes('"a,b",v1,West,n1'), 'the file is the vendor\'s CSV export of that one list');
+
+    drop(name);
+    await page.reload();
+    await answered(page);
+    const local = join(localDirectory, `${name}.csv`);
+    writeFileSync(local, saved.text, 'utf8');
+    await commandBar(page, STRINGS.actionImport);
+    await pickerRoot(page);
+    await page.click('input[data-explorer-import-source="local"]');
+    await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('input[data-explorer-import-file]', (input) => input.getAttribute('accept')), '.csv,.txt', 'the file input offers .csv and .txt files');
+    const input = await page.$('input[data-explorer-import-file]');
+    await input.uploadFile(local);
+    await page.waitForFunction(() => document.querySelector('[data-explorer-import-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-import-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListImportDone.replace('<name>', name));
+    assert.equal(dump(name), before, 'the list is back with the same header, fields and values, the accented key included');
+
+    const copy = `${name}Copy`;
+    await listRowAction(page, name, STRINGS.analyticsTermListCopyAction);
+    await page.waitForSelector('[data-term-list-copy-name]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsTermListCopyTitle.replace('<name>', name), 'Copy term list is titled by the source');
+    await fill(page, '[data-term-list-copy-name]', name.toLowerCase());
+    await page.click('[data-term-list-copy-confirm]');
+    assert.equal(await shownText(page, '[data-term-list-copy-reason]'), STRINGS.analyticsRefusalTermListTaken, 'a name held in another case is refused with the server\'s sentence');
+    await fill(page, '[data-term-list-copy-name]', copy);
+    await confirmDialog(page, '[data-term-list-copy-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListCopyDone.replace('<name>', name).replace('<new>', copy));
+    await rowReads(page, copy, 1, 'Cap, "q"');
+    assert.equal(dump(copy), before, 'the copy equals the source');
+    assert.equal(dump(name), before, 'and the source is unchanged');
   } finally {
     await context.close();
   }

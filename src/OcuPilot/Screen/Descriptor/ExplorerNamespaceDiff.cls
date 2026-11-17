@@ -6,12 +6,16 @@
 /// it is this one, is unknown, or is one the caller may not read; <code>spec</code>, which the port refuses when it is
 /// absent, is a bare <code>*</code> or matches more documents than one read covers in either namespace; and
 /// <code>generated</code>, which compares generated routines when it is <code>yes</code>.</p>
-/// <p><b>Its id is <code>none</code></b>: a row is a document's difference, not an entity. Its scope is
+/// <p><b>Its id is the row's <code>Document</code></b>, which the checked rows name to the promote. Its scope is
 /// <code>namespace</code>, its primary entity type <code>class</code> and its secondary <code>routine</code>, so
 /// a change to either re-reads it (AD-14).</p>
 /// <p><b>Its privilege set is <code>%Development:USE</code></b>; the port also requires READ on each namespace's code
-/// databases (AD-29). <b>No classic page compares namespaces</b>, so <code>classicPage</code> is empty (AD-44). It
-/// declares no action and does not refresh (AD-43).</p>
+/// databases (AD-29). <b>No classic page compares namespaces</b>, so <code>classicPage</code> is empty (AD-44). It does
+/// not refresh (AD-43).</p>
+/// <p><b>Its one row action is <code>promote</code></b> (Story 24.9), its <code>multiSelect</code> action: it writes the
+/// checked rows, at most <parameter>OcuPilot.Port.AtelierPort.MAXDOCUMENTS</parameter> documents, into the other namespace
+/// and compiles them (<class>OcuPilot.Screen.Tool.ExplorerNamespacePromote</class>). A row is checkable when the read's
+/// <code>Promotable</code> says so, which a document only in the other namespace never is.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -31,10 +35,10 @@ XData Declaration
   "secondaryEntityTypes": ["routine"],
   "scope": "namespace",
   "parentScope": "",
-  "id": {"kind": "none", "parts": []},
+  "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Document", "Change", "Hash", "OtherHash", "Modified", "OtherModified"], "secretFields": []},
+  "rowActions": [{"id": "promote", "selfProtection": ""}],
+  "context": {"fields": ["Document", "Change", "Hash", "OtherHash", "Modified", "OtherModified", "Promotable"], "secretFields": []},
   "emptyStateKey": "explorerNamespaceDiffEmpty",
   "commandAliases": ["compare namespaces", "namespace diff", "environment diff"],
   "suggestedPrompts": [
@@ -47,7 +51,7 @@ XData Declaration
   "read": {
     "row": "document that differs between namespaces",
     "source": {"port": "devtool", "endpoint": "NamespaceDiff", "type": "LIST"},
-    "fields": ["Document", "Change", "Hash", "OtherHash", "Modified", "OtherModified"],
+    "fields": ["Document", "Change", "Hash", "OtherHash", "Modified", "OtherModified", "Promotable"],
     "filter": ["Document", "Change"],
     "sort": {"fields": ["Document", "Modified"], "default": "Document", "direction": "asc"},
     "paging": "cap",
@@ -66,10 +70,11 @@ XData Declaration
       {"field": "Modified", "labelKey": "explorerColumnModifiedHere", "kind": "text"},
       {"field": "OtherModified", "labelKey": "explorerColumnModifiedThere", "kind": "text"}
     ],
-    "emptyNextKey": "explorerNamespaceDiffInvite",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerNamespaceDiffEmptyAgent"
   },
-  "toolIdentifier": "explorer.namespacediff"
+  "toolIdentifier": "explorer.namespacediff",
+  "multiSelect": {"action": "promote", "eligible": "Promotable", "max": 100, "ineligibleKey": "explorerPromoteIneligible"}
 }
 }
 

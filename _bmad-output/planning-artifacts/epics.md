@@ -350,8 +350,8 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 | 2 - the rest of the admin API (P2) | 59 | 20 / 31 / 8 | 3 | admin-v2 write payloads observed; async-result polling; SH-24 directory allow-list; the admin API's final form in IRIS 2027.1 |
 | 3 - System Explorer over the Atelier API (P2) | 36 | 17 / 15 / 4 | 0 | the `action/query` DML/DDL guard (EX-15) shipping with EX-14; Atelier v7 for the XML routes; ETag on `PUT /doc`; the iris-table-editor harvest; `%Service_DocDB` |
 | 4 - Interoperability over interop-editors v7, with an Analytics rider (P2) | 41 | 10 / 25 / 6 | 4 partial | SH-23 JWT/cookie hand-off to `/ui/interop`; SH-25 namespace gating; the `UpdateProduction {action}` vocabulary; a DeepSee-enabled namespace for the rider |
-| 5 - custom-REST parity from the MCP suite's handlers (P3) | 164 | 60 / 78 / 26 | 128 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container |
-| 6 - the long tail, on demand (P4) | 57 | 11 / 30 / 16 | 32 | demand plus each group's license, edition, platform or deprecation gate |
+| 5 - custom-REST parity from the MCP suite's handlers (P3) | 157 | 59 / 78 / 20 | 122 | the OcuPilot API router; the handler harvest; legacy CSP source pulled from the container |
+| 6 - the long tail, on demand (P4) | 64 | 12 / 30 / 22 | 38 | demand plus each group's license, edition, platform or deprecation gate |
 | **Stages 2-6** | **357** | **118 / 179 / 60** | **167** | - |
 
 The agent grows in step: Stage 2 confirmed single writes over the admin-v2 remainder plus wallet-backed keys, context-window management and proxy/custom-CA support; Stage 3 single writes over Atelier plus the agent picker and the free-form SQL tool behind EX-15's guard; Stage 4 guided multistep workflows and Investigate entry points; Stage 5 the 28 iris-session-agent tools plus undo by snapshot and revert; Stage 6 adds nothing to the agent. Token streaming is **not** here - it moved into the polish week by owner decision.
@@ -9741,6 +9741,28 @@ So that the next request served by that process, a DTL compile among them, still
 
 - DW-2650: A backup action closes a pooled web process's null device, breaking a later DTL compile in that process (orchestrator's ledger; routed by orchestrator ruling)
 
+
+### Story 21.35: OcuPilot's install records and other users' state answer only to their callers
+
+[AMENDED 2026-11-16, owner answer U-90, "A", fix-forward, Rule 5] DW-2651 and DW-2652 (found at Story 21.33's plan): the install-owned stores (web applications, stamps, versions, demo records) and the screen-access store still take any caller's public guarded write, and `Base`'s public reads let a `%Development` holder read another user's turns, conversations, proposals and ledger rows. Ordered after Story 21.33.
+
+As an administrator,
+I want OcuPilot's install records written only by the install and its administrators, and each user's state read only by that user or an administrator,
+So that code run with development rights can neither steer an uninstall nor read another user's work.
+
+**Acceptance Criteria:**
+
+- **Given** a `%Development` holder who is not an OcuPilot administrator, running code directly on a throwaway
+- **When** that code writes an install-owned or screen-access row, or reads another user's turn, conversation, proposal or ledger row
+- **Then** each is reproduced end to end first and recorded; if none lands, the story reports back before anything is built.
+
+- **Given** the fix
+- **When** an install, an upgrade and an uninstall run, and the same writes and reads are tried
+- **Then** the install path completes unchanged, the writes and reads are refused and change nothing, and a Rule 19 mutation that removes each check turns its pinning test red.
+
+- DW-2651: The install-owned stores and screen access still take any caller's public guarded write (ledger; routed by owner answer U-90)
+- DW-2652: Base's public reads let a %Development holder read another user's turns, conversations, proposals and ledger rows (ledger; routed by owner answer U-90)
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
@@ -10343,6 +10365,8 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
+[AMENDED 2026-11-16, owner answer U-78: "C: fix U-79 first, then A (Recommended)"] Built under AD-10's run-code exception (Story 24.5): a person's alone, off by default through its governance key, every run confirmed with its consequence named.
+
 - **Given** the execute-command and class-method consoles
 - **When** each runs
 - **Then** it round-trips over its backing class.
@@ -10360,6 +10384,8 @@ I want the web terminal,
 So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
+
+[AMENDED 2026-11-16, owner answer U-78: "C: fix U-79 first, then A (Recommended)"] Built under AD-10's run-code exception (Story 24.5): a person's alone, off by default through its governance key, every run confirmed with its consequence named.
 
 - **Given** the web terminal
 - **When** it runs

@@ -6,6 +6,12 @@
 Class OcuPilot.Kernel.State.Stamp Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers and <code>Base</code>'s public saves refuse a caller who does not hold the administrative
+/// resource. The installer writes it through its own administrator frame
+/// (<method>OcuPilot.Install.Installer.AsAdministrator</method>).</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>How many of a profile's newest stamps the retention sweep keeps (<method>GuardedSweep</method>).
 /// A stamp is write-only history -- the one row each install run appends, read by tests alone --
 /// so a count bound is all the sweep needs to keep every row a reader uses.</p>
@@ -106,6 +112,8 @@ Method ResolveGrantedUser() As %String
 /// separately. Do not widen this predicate without deciding that question first.</p>
 ClassMethod DeleteByProfile(pProfile As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     ; Inherited dispatch (..), not ##class(OcuPilot.Kernel.State.Base): GuardedExecuteOneParam
     ; is [ Private ], and IRIS enforces that at runtime against the *named* class, so the
     ; explicit ##class() form raises <PRIVATE METHOD> from here even though Stamp extends
@@ -124,6 +132,8 @@ ClassMethod DeleteByProfile(pProfile As %String) As %Status
 /// first failure is the answer.</p>
 ClassMethod GuardedSweep() As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Set tFirst = $$$OK
     Set tSC = ..GuardedRowsNoParam("SELECT Profile, COUNT(*) FROM OcuPilot_Kernel_State.Stamp GROUP BY Profile", .tGroups)
     If $$$ISERR(tSC) Quit tSC

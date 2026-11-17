@@ -320,9 +320,13 @@ const TERM_LIST_SENTENCES = [
   ['REASONTERMLISTVALUE', 'analyticsRefusalTermListValue'],
   ['REASONTERMLISTREADONLY', 'analyticsRefusalTermListReadonly'],
   ['REASONTERMLISTNOTJOURNALED', 'analyticsRefusalTermListNotJournaled'],
+  // Story 24.10: the term list transfers' three refusals.
+  ['REASONTERMLISTTOOLARGE', 'analyticsRefusalTermListTooLarge'],
+  ['REASONTERMLISTIMPORTSHAPE', 'analyticsRefusalTermListImportShape'],
+  ['REASONTERMLISTIMPORTCHANGED', 'analyticsRefusalTermListImportChanged'],
 ];
 
-const TERM_LIST_TOOLS = ['AnalyticsTermListAdd', 'AnalyticsTermListUpdate', 'AnalyticsTermListDelete', 'AnalyticsTermListEntryAdd', 'AnalyticsTermListEntrySet', 'AnalyticsTermListEntryRemove'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+const TERM_LIST_TOOLS = ['AnalyticsTermListAdd', 'AnalyticsTermListUpdate', 'AnalyticsTermListDelete', 'AnalyticsTermListEntryAdd', 'AnalyticsTermListEntrySet', 'AnalyticsTermListEntryRemove', 'AnalyticsTermListExport', 'AnalyticsTermListImport', 'AnalyticsTermListCopy'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
 
 test('Story 24.2: each term list refusal is one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of REASONTERMLISTFIELDINUSE in AnalyticsError.cls (or of analyticsRefusalTermListFieldInUse in strings.ts) -> this
@@ -350,8 +354,10 @@ test("Story 24.2: the delete's and the remove's consequence codes name one publi
   }
 });
 
-test('Story 24.2: the six tools declare write, the analytics port and the classic Term List Manager, and the port calls only the vendor calls the story names', () => {
-  // Mutation (Rule 19): call %ImportCSV from AnalyticsPort.cls -> this goes red naming the call.
+test('Story 24.2: the six tools declare write, the analytics port and the classic Term List Manager, and the port calls only the vendor calls the stories name', () => {
+  // Mutation (Rule 19): call %ImportCSV from AnalyticsPort.cls -> this goes red naming the call. Story 24.10 adds the three transfer tools, and the
+  // port's %ExportCSV (to a resolved file or inside an output capture) and %ParseCSVRecord; the vendor's %ImportCSV stays out, because it deletes
+  // and recreates a held list and reads lines by the stream's own terminator.
   for (const file of TERM_LIST_TOOLS) {
     const source = readFileSync(file, 'utf8');
     assert.ok(source.includes('Extends OcuPilot.Screen.Tool.AnalyticsTermList'), `${file} extends the term list tool base`);
@@ -362,9 +368,62 @@ test('Story 24.2: the six tools declare write, the analytics port and the classi
   for (const call of ['%CreateTermList(', '%FromObj(', '%SetValue(', '%DeleteTermList(', '%ToObj(']) {
     assert.ok(code.includes(`##class(%DeepSee.TermList).${call}`) || code.includes(`.${call}`), `the port calls ${call}`);
   }
-  for (const never of [/%ImportCSV/, /%ExportCSV/, /%GetTermListNameFromStream/, /%DeepSee\.REST/, /%Api\.DeepSee/, /\/api\/deepsee/i]) {
+  for (const never of [/%ImportCSV/, /%GetTermListNameFromStream/, /%DeepSee\.REST/, /%Api\.DeepSee/, /\/api\/deepsee/i]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.TermList\)\.(%\w+)\(/g)].map((match) => match[1]);
-  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%CreateTermList', '%DeleteTermList', '%FromObj', '%GetTermLists', '%SetValue', '%ToObj'], 'and only those TermList calls');
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%CreateTermList', '%DeleteTermList', '%ExportCSV', '%FromObj', '%GetTermLists', '%ParseCSVRecord', '%SetValue', '%ToObj'], 'and only those TermList calls');
+});
+
+/** The folder manager's refusals (Story 24.10), each pinned to its `strings.ts` key; the too-large and changed sentences are the term lists' own. */
+const FOLDER_ITEM_SENTENCES = [
+  ['REASONFOLDERITEMTAKEN', 'analyticsRefusalFolderItemTaken'],
+  ['REASONFOLDERITEMABSENT', 'analyticsRefusalFolderItemAbsent'],
+  ['REASONFOLDERITEMLOCKED', 'analyticsRefusalFolderItemLocked'],
+  ['REASONFOLDERITEMREADONLY', 'analyticsRefusalFolderItemReadonly'],
+  ['REASONFOLDERITEMNOTJOURNALED', 'analyticsRefusalFolderItemNotJournaled'],
+  ['REASONFOLDERITEMIMPORTSHAPE', 'analyticsRefusalFolderItemImportShape'],
+  ['REASONFOLDERITEMTOOLARGE', 'analyticsRefusalTermListTooLarge'],
+  ['REASONFOLDERITEMIMPORTCHANGED', 'analyticsRefusalTermListImportChanged'],
+];
+
+const FOLDER_ITEM_TOOLS = ['AnalyticsFolderItemExport', 'AnalyticsFolderItemImport', 'AnalyticsFolderItemDelete'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+
+test('Story 24.10: each folder item refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONFOLDERITEMLOCKED in AnalyticsError.cls (or of analyticsRefusalFolderItemLocked in strings.ts) -> this goes red
+  // naming both.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of FOLDER_ITEM_SENTENCES) {
+    const server = serverSentence(parameter);
+    assert.equal(server, stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${server}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server.toLowerCase().includes('agent'), `${parameter} names no caller: ${server}`);
+  }
+});
+
+test("Story 24.10: the folder item delete's consequence code names one published sentence, on the tool, proposal-view.ts and Fixed strings", () => {
+  // Mutation (Rule 19): change CONSEQUENCECODE in AnalyticsFolderItemDelete.cls to ANALYTICS.TERMLIST.DELETE -> this goes red naming the tool.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.equal(classParameter(FOLDER_ITEM_TOOLS[2], 'CONSEQUENCECODE'), 'ANALYTICS.FOLDERITEM.DELETE', 'the delete tool names the consequence code');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE'"), 'proposal-view.ts holds the code');
+  assert.ok(experience.includes(`"${stringValue('analyticsFolderItemDeleteConsequence')}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
+});
+
+test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
+  // Mutation (Rule 19): call $System.OBJ.Load or an XML reader from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
+  for (const file of FOLDER_ITEM_TOOLS) {
+    assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsFolderItem'), `${file} extends the folder item tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsFolderItemAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.FolderManager";'), 'the base declares the classic Folder Manager');
+  assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/\$System\.OBJ\./i, /\$SYSTEM\.OBJ\./i, /%XML\.Reader/, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.UserLibrary\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import'], 'and only those Utils calls');
+  const imports = [...code.matchAll(/\.%Import\(([^)]*)\)/g)].map((match) => match[1]);
+  assert.deepEqual(imports, ['tBytes, 0, 0, 0, "", .tLoaded'], 'the one vendor import replaces nothing and kills nothing');
 });

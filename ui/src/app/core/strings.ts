@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:650 */
+  /** EXPERIENCE.md:652 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4966,6 +4966,96 @@ export const STRINGS = {
   explorerNamespaceDiffPrompt2: 'What does this namespace hold that the other one lacks?',
   /** EXPERIENCE.md:594 */
   explorerNamespaceDiffPrompt3: 'Has this package drifted from the other namespace?',
+  /** EXPERIENCE.md:594 */
+  explorerNamespaceDiffEmptyAgent: 'promote documents into another namespace',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteAction: 'Promote',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteIneligible: 'A document only in the other namespace is never promoted or deleted.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteConsequence: 'Each listed document is written into the other namespace, replacing its copy there, and compiled. Nothing there is deleted. There is no rollback: a document written before a failure stays written, and the text it replaced is not kept.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteWarning: '<n> documents only in the other namespace stay as they are.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteWarningOne: '1 document only in the other namespace stays as it is.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteReplaced: 'Replaced',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteAdded: 'Added',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteFailed: 'Failed',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteNotAttempted: 'Not attempted',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDone: 'Promoted <n> documents to the other namespace and compiled them.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDoneErrors: 'Promoted <n> documents to the other namespace; the compile reported errors.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStopped: 'Promote stopped at <document>. The documents written before it stay written.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteNotAStepReason: 'Choose documents the plan lists as only in this namespace or as differing.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStaleReason: 'The namespaces changed after this plan was shown, so nothing was written. Compare them again and review the new plan.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteSystemReason: 'Promote works between two namespaces other than %SYS and never writes a document whose name begins with %.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteStorageReason: 'A class here lacks a storage definition its copy in the other namespace has, so nothing was written: compiling it there would change how its stored data is read.',
+  /** EXPERIENCE.md:594 */
+  explorerPromoteDocumentsReason: 'Choose 1 to 100 documents to promote.',
+  // Story 24.5: Unit tests -- the Run form, its warning dialog, the seven refusals and the person-only sentence, the two lists' columns
+  // and the runs list's empty state, prompts and agent phrase.
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsLabel: 'Unit tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestRunLabel: 'Unit test run',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunAction: 'Run tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsTestsLabel: 'Tests',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsLevelPackage: 'Package',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunTitle: 'Run these tests?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsRunConsequence: 'The tests\' own code runs as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestOffReason: 'Running unit tests is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsShapeReason: 'Name a package, a class, or Class:Method with letters, digits and dots.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestNotFoundReason: 'No compiled test class matches in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestTooManyReason: 'This package holds more test classes than one run takes.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestProductionReason: 'These tests include a production test, which stops the running production. OcuPilot does not run production tests.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestBusyReason: 'Another unit-test run is in progress. Try again when it ends.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestOwnCodeReason: 'OcuPilot does not run its own tests.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestNoResultReason: 'The run recorded no results.',
+  /** EXPERIENCE.md:594 */
+  personOnlyRefusal: 'This runs code with the rights of whoever starts it, so it is started from its own screen alone.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnDuration: 'Duration',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnMethods: 'Methods',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsColumnFailure: 'Failure',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPassed: 'Passed',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsSkipped: 'Skipped',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsEmpty: 'No unit-test runs are recorded in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt1: 'Which tests failed in the newest run?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt2: 'How long did the newest run take?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsPrompt3: 'How many tests passed in the newest run?',
+  /** EXPERIENCE.md:594 */
+  explorerUnitTestsEmptyAgent: 'explain why a test failed',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse
@@ -7982,6 +8072,60 @@ export const STRINGS = {
   analyticsTermListsEmptyAgent: 'create a term list',
   /** EXPERIENCE.md:607 */
   analyticsTermListEntriesEmptyAgent: 'add an entry to this term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyAction: 'Copy term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportTitle: 'Export term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportTitle: 'Import a term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyTitle: 'Copy term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyNameLabel: 'Name of the copy',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportHelp: 'The file holds the term list\'s properties and every entry, in the CSV form the classic Term List Manager exports. A file already at this name is replaced.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportHelp: 'The file must be a term list export. It creates the term list it names; a term list of that name must not exist.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportShape: 'This file is not a term list export, or it holds no entry.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportChanged: 'The file changed after it was reviewed, so nothing was imported.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListTooLarge: 'The file is larger than OcuPilot imports or exports.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportDone: 'Exported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportDone: 'Imported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyDone: 'Copied <name> to <new>.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemExportTitle: 'Export folder item <name>',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportTitle: 'Import folder items',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemExportHelp: 'The file holds the folder item\'s definition, in the XML form the classic Folder Manager imports. A file already at this name is replaced.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportHelp: 'The file must hold folder items only, as OcuPilot or the classic Folder Manager exports them. It creates each item it holds; no item of that name may exist.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemTaken: 'This namespace already holds a folder item with a name in this file. Names are compared without regard to case.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemAbsent: 'This folder item no longer exists.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemLocked: 'This folder item is locked, so it cannot be deleted.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemReadonly: 'The database that holds this namespace\'s folder items is read-only, so nothing was written.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemNotJournaled: 'Folder items can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace\'s folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemImportShape: 'This file holds no folder item, or something other than folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemDeleteConsequence: 'Deleting this folder item removes it for every user, and dashboards that show it can no longer display it. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportDone: 'Imported <count> folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemDeleteDone: 'Deleted <name>.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemsEmptyAgent: 'import folder items',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
@@ -8226,6 +8370,68 @@ export const STRINGS = {
   configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
   /** EXPERIENCE.md:604 */
   configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
+  // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
+  // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
+  /** EXPERIENCE.md:594 */
+  explorerCommandLabel: 'Command console',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodLabel: 'Class method console',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunAction: 'Run command',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunAction: 'Call method',
+  /** EXPERIENCE.md:594 */
+  explorerCommandFieldLabel: 'Command',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleHintLead: 'A list in square brackets, such as',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleHintByRefTail: 'to pass a value by reference.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunTitle: 'Run this command?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunConsequence: 'This runs ObjectScript as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunTitle: 'Call this class method?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunConsequence: 'This runs the method\'s code as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleByRefLabel: 'By-reference values',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleNoOutput: 'Nothing was written.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleOutputCut: 'The output was cut at 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleReturnCut: 'The return value was cut at 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleByRefCut: 'Some by-reference values were left out to keep the answer under 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandOffReason: 'Running commands is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodOffReason: 'Calling class methods is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandOwnCodeReason: 'OcuPilot does not run a command that names OcuPilot.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodOwnCodeReason: 'OcuPilot does not call its own class methods.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodNotFoundReason: 'No compiled class method of that name is in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandShapeReason: 'Enter the command on one line, up to 30,000 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodShapeReason: 'Name a class and one of its class methods with letters, digits, dots and %.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodArgumentsReason: 'Give the arguments as a list in square brackets of at most 20 values: text, numbers, true or false, or a by-reference value.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt1: 'How do I list a global\'s first subscripts?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt2: 'What does $ZVERSION show?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt3: 'How do I count a table\'s rows in one command?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt1: 'Which class method returns the instance\'s version?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt2: 'How do I pass an argument by reference?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt3: 'What does a %Status return value mean?',
 } as const;
 
 /**

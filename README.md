@@ -159,8 +159,10 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   the agent everywhere with a kill switch, hold it read-only, switch off individual agent writes,
   and cap how many turns each user runs an hour; anyone can make the agent read-only for
   themselves. Only an OcuPilot administrator can change the kill switch, the holds, the provider
-  connection settings and the governance policy, even from code run directly in IRIS. Sixty-three
-  agent actions ship switched off - running a backup, freezing and thawing writes, adding or
+  connection settings and the governance policy, and each user's conversations, proposals and
+  agent records stay readable only by that user or an administrator, even from code run directly
+  in IRIS. Sixty-five agent actions ship switched off - promoting classes and routines to another
+  namespace, deleting an analytics folder item, running a backup, freezing and thawing writes, adding or
   removing a database on the backup list, deleting a system or user DDL mapping, deleting a term
   list or removing one of its entries, deleting a local database, a remote
   database, a namespace, a license server or an ECP data server, changing an ECP data server's
@@ -174,7 +176,9 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   messages, editing and resending a message, removing a lookup entry, deleting or importing a lookup table, deleting a managed file transfer connection or
   revoking its token, replacing an RSA wallet secret, deleting a superserver, and deleting a %-class
   access entry, a Doc DB application, a REST service or a privileged routine application - and an
-  administrator turns them on under **Agent co-pilot → Governance policy**. The **Guardrails** page shows all of it in one place.
+  administrator turns them on under **Agent co-pilot → Governance policy**. Running unit tests,
+  running a command and calling a class method are for people only, never the agent, and start
+  switched off in the same way. The **Guardrails** page shows all of it in one place.
 - **Step-by-step help.** Guided workflows walk you through nine common jobs - recovering a stuck
   production, resending failed messages, tracing a message, checking the instance's health, reviewing
   security, finding a slow query, fixing a class until it compiles, reviewing a class and setting up a
@@ -219,11 +223,14 @@ and remove business partners, where a partner an item still names cannot be remo
 In a namespace under source control, a save that source control has not released is refused until
 you check the document out. Accounts that use the classic Interoperability pages can sign in to
 OcuPilot for these screens. **Analytics** lists cubes with their measures, dimensions and
-relationships, term lists and folder items; creates, edits and deletes term lists and their entries; builds and synchronizes cubes from its Cube manager; runs an MDX query with a row limit, a time limit and
+relationships, term lists and folder items; creates, edits, deletes, exports, imports and copies term lists and their entries; exports,
+imports and deletes folder items; builds and synchronizes cubes from its Cube manager; runs an MDX query with a row limit, a time limit and
 Cancel, and drills through to listings, asking you first when a statement would run code or SQL on
 the server; and links to Architect, Analyzer and the User Portal. **System Explorer** lists a namespace's classes and routines, shows and edits their
 source, shows a class's reference page from the instance's own class documentation, searches source, compares two documents line by line, compares the code of two namespaces, counts lines of code,
-lists each document's hash and finds where a macro is defined; it
+promotes classes and routines to another namespace of this instance, lists each document's hash,
+runs unit tests and keeps their run records, has a command console and a class method console
+(people only, switched off at first) and finds where a macro is defined; it
 compiles and deletes them, exports them as XML to a file on the server or a download, and imports an
 XML export or a source file from the server or your computer. Its SQL catalog lists schemas, tables,
 views and procedures with their details, limited to what your own SQL privileges show; a schema
@@ -407,6 +414,11 @@ and thawing writes, adding or removing a database on the backup list, deleting a
 mapping, and deleting a term list or removing one of its entries. The screens do all nine, and
 settings you already made are kept. If you set the Task Manager mail password, change it after the
 update.
+
+In 1.0.17, two more agent actions start switched off in the same way: promoting classes and
+routines to another namespace, and deleting a folder item. The screens do both. Running unit tests,
+running a command and calling a class method start switched off for everyone, and an administrator
+switches each on under **Agent co-pilot → Governance policy**. Settings you already made are kept.
 
 ## Get a model key in two minutes
 
@@ -618,8 +630,8 @@ token and hidden values left as placeholders.
   Community, and builds and loads the IPM package offline, including into a namespace without
   interoperability. The ObjectScript suite runs across eight
   containers at once and the browser specs across five, so a full run takes about 30 minutes.
-- **Tests:** 751 `%UnitTest` classes run inside IRIS; 136 Node test files and 280 Angular component
-  specs cover the client; 220 browser specs exercise the running portal.
+- **Tests:** 778 `%UnitTest` classes run inside IRIS; 136 Node test files and 286 Angular component
+  specs cover the client; 225 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question. It asks the instance's own web server at

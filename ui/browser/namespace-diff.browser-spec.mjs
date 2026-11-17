@@ -136,7 +136,8 @@ test('AC1 and AC4: the screen shows the three changes between the two namespaces
 test('AC1: over the route, the diff answers the four rows with their hashes and no row for the identical document', async () => {
   const diff = await read({ target: THERE, spec: SPEC });
   assert.equal(diff.status, 200, diff.text);
-  assert.deepEqual(diff.body.fields, ['Document', 'Change', 'Hash', 'OtherHash', 'Modified', 'OtherModified'], 'the six fields, in order');
+  assert.deepEqual(diff.body.fields, ['Document', 'Change', 'Hash', 'OtherHash', 'Modified', 'OtherModified', 'Promotable'], 'the seven fields, in order');
+  assert.deepEqual(diff.body.rows.map((row) => row.Promotable), [true, true, false, true], 'every row is promotable but the one only in the other namespace (Story 24.9)');
   assert.deepEqual(diff.body.rows.map((row) => row.Document), DOCUMENTS, 'the four documents, in order');
   assert.deepEqual(diff.body.rows.map((row) => row.Change), CHANGES, 'each with its change');
   assert.equal(diff.body.truncated, false, 'not truncated');

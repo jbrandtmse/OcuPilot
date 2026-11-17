@@ -2,119 +2,484 @@
 title: 'Story 24.6: The command and class-method consoles'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'done'
+baseline_revision: '230e912913dfd532dc8b68c63b3ecfa442934a35'
+baseline_commit: '230e912913dfd532dc8b68c63b3ecfa442934a35'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred:
-  - summary: "OcuPilot's guarded storage methods escalate for any caller, so any code a %Development holder runs can rewrite OcuPilot's protected state (kill switch, governance keys) without OcuPilotAdmin."
-    evidence: "Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess (measured, pinned): a user refused <PROTECT> on a direct write succeeds through Kernel.State.Base's guarded methods. Kernel/State/Switch.SetGuarded and Policy.GuardedApply check no caller privilege; Api/Governance.cls checks IsAdministrator() before calling GuardedApply. Reachable today through the vendor's web terminal (%Development:USE only); the end-to-end governance rewrite by a non-administrator is (inference)."
-    location: 'src/OcuPilot/Kernel/State/Base.cls; src/OcuPilot/Kernel/State/Policy.cls:73; src/OcuPilot/Kernel/State/Switch.cls:165'
-    severity: 'high'
+deferred: []
 ---
 
-# Story 24.6: The command and class-method consoles
-
-The plan stage halted on an intent gap against AD-10. A console that runs caller-typed ObjectScript, or calls a caller-named class method, can reach every arm of AD-10's prohibited set, and OcuPilot's own protected state through its guarded storage methods, with no write-path predicate able to see it. The spine has no named gap for that, and "whatever the caller" is its Rule. The investigation, the options and the prepared shape are kept below so the re-plan can start from them.
+<intent-contract>
 
 ## Intent
 
-Not planned yet: the plan stage halted on an intent gap (Auto Run Result). The story's two ACs (`epics.md:10115-10131`) are unchanged: each console round-trips over its backing class, and the command console's output is bounded by the harvested output ceiling.
+**Problem:** OcuPilot cannot run an ObjectScript command or call a class method (catalog DT-05, DT-06). Both run code with the signed-in person's rights, so nothing on the write path can see what they change (owner answer U-78).
+
+**Approach:** Build both consoles under AD-10's run-code exception, on Story 24.5's mechanism and with no new gate:
+
+- **People only.** Each write tool is unadvertised and declares `PERSONGATE`, so `PROHIBITED.PERSONONLY` refuses any call the agent can reach.
+- **Off by default.** Each tool's key ships `false`, and `POST /screens/:screen/action` asks it after the screen's pairs and before any hold or read.
+- **Gated like the vendor terminal, or more strictly.**
+- **Confirmed.** Every run passes a warning dialog that names its consequence.
+- **The work.** The sibling's library methods are harvested unchanged (`ApplyOutputCeiling` with its 32,768-character ceiling, and `InvokeWithArgs` with its helpers). They run through `DevToolPort` and `HarvestPort` (AD-23).
 
 ## Boundaries & Constraints
 
-Pending the ruling. Fixed whichever option is taken: no edit to `Port/HarvestPort.cls` or `Port/Harvest/Handler.cls`; bodies harvested only through `DevToolPort` (AD-23, AD-29); no sibling name anywhere; the output ceiling is the sibling's 32,768 characters.
+**Always:**
+
+- A person's Run goes through `POST /screens/:screen/action` (24.5, unchanged). The order is: the screen's pairs, the key (403 `EXPLORER.COMMAND.OFF` or `EXPLORER.CLASSMETHOD.OFF`), the hold, the fresh read, then the write.
+- `DevToolPort` checks everything before any body runs, in this order:
+  1. `AtelierPort.Pairs()` (`%Development:USE`).
+  2. The namespace's shape, then `WritePairs(ns)`.
+  3. The request type.
+  4. The input's shape.
+  5. The `ocupilot` screen.
+  6. For a class method, its resolution.
+- A body runs only through `HarvestPort.Invoke`. Its device output comes back only through `HarvestPort`'s existing capture and the handler's `OnCaptured`. The output is cut by the harvested `ApplyOutputCeiling`:
+  - a command's output with the full 32,768 characters;
+  - a class method's output with the budget `InvokeWithArgs` leaves after the return value and the by-reference values.
+- An error raised by the person's own code is the run's answer (200, `error`), not a fault.
+- After the body, the port rolls back any transaction the code left open, back to the level the run began at (24.5's `RunLocked` model).
+- Each run that reaches a body writes one OcuPilot `SecurityChange` audit row: the console, the namespace and, for a class method, the class and method. It never carries the command, the arguments or the answer.
+- The output, return value, by-reference values and error reach the screen only (AD-39's eighth exception).
+- The harvested methods are the sibling's at `c6aad31` after the rename table.
+
+**Never:**
+
+- The agent never starts or fills a console. No advertised tool, no mint, no proposal card, no copy-out draft, no screen context and no arrival values.
+- No sibling body taken whole.
+- No edit to `Api/ScreenAction.cls`, `Kernel/Proposal/Prohibited.cls` or `Screen/Tool/Write.cls`; 24.5's mechanism serves as built.
+- No `JOB`, no time limit and no cancel.
+- No caller value in SQL text and no path (AD-21).
+- No sibling name.
+- No ObjectScript test runs code outside `^||` nodes, locals and the probe class it makes.
 
 ## I/O & Edge-Case Matrix
 
-Pending the ruling.
+The rows run in `USER` on `ocupilot-b-ci`. `OcuProbe246.Echo` is made and removed by each test that uses it:
+
+- `Echo(pText, ByRef pOut)` writes `pText`, sets `pOut = pText_"!"` and returns `$Length(pText)`.
+- `Big()` returns 40,000 characters.
+- `Fails()` divides by zero.
+
+Rows from Command to Open transaction assume the key is on.
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|---|---|---|---|
+| Command | `Write "ok"` | 200 `{output: "ok", truncated: false, error: ""}`; one audit row | none |
+| Code error | `Write "a" Set x=1/0` | 200, `output` "a", `error` names `<DIVIDE>` | not logged |
+| Long output | a command writing 40,000 characters | `output` is at most 32,768 characters and ends with the cut marker; `truncated` true | none |
+| Class method | `OcuProbe246.Echo`, `Echo`, `["hi", {"byRef": true, "value": "x"}]` | 200: `returnValue` "2", `output` "hi", `byRefValues` `{"1": "hi!"}`, `argCount` 2 | none |
+| Big return | `OcuProbe246.Echo`, `Big`, `[]` | `returnValueTruncated` true, `returnValue` at most 32,768 characters | none |
+| Method error | `OcuProbe246.Echo`, `Fails` | 200, `error` names `<DIVIDE>` | not logged |
+| Open transaction | `TStart  Set ^\|\|ocu246=1` | 200; `$TLevel` back to its starting value after the run | none |
+| Not found | a missing class, an instance method or a private method | 404 `EXPLORER.CLASSMETHOD.NOTFOUND` | not logged |
+| Bad shape | blank command, over 30,000 characters, or a control character; class `a..b` or method `1x`; arguments not a JSON array, over 20 entries, a `null`, a nested array, or `{"byRef": false}` with no value | 400 `PORT.VALIDATION` with the field's reason | not logged |
+| Own code | a command naming `ocupilot` in any case; a class whose first segment is `ocupilot` | 400 `EXPLORER.COMMAND.OWNCODE` or `EXPLORER.CLASSMETHOD.OWNCODE` | not logged |
+| Gate | no `%Development:USE`, or no WRITE on the routines database | 403 `AUTH.NOPRIVILEGE` with `detail.failedPair` | not logged |
+| Switched off | any Run with the key at its shipped `false` | 403 `EXPLORER.COMMAND.OFF` or `EXPLORER.CLASSMETHOD.OFF`, before the hold and the read | not logged |
+| Agent | `explorer_command_run` or `explorer_classmethod_run` by any name | `TOOL.UNKNOWN`; a fixture registry that advertises it gets 403 `PROHIBITED.PERSONONLY` | structured |
+
+In every refusal row, the recorder records no body call and no audit row is written.
+
+</intent-contract>
 
 ## Code Map
 
-The sibling repository is `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31`. It is read-only. The ledger slice for `24-6-the-command-and-class-method-consoles` is empty.
+**Sibling (read-only):** `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31`. The ledger slice for this story is empty.
 
-### Backing classes (sibling)
+- `src/ExecuteMCPv2/REST/Command.cls` (436 lines):
+  - `Execute:61` and `ClassMethod:243` give the call order the handlers keep.
+  - Their redirect (`Use tNull::("^"_$ZNAME)`, `:115-118`, `:289-291`) and `Redirects:424` are not taken. A mnemonic of the body's own routine raises `<NOROUTINE>` once switched to a namespace OcuPilot's code is not mapped into. 24.5 measured this for `RunTests`'s identical redirect; Task 0 item 3 confirms it here.
+- `src/ExecuteMCPv2/Utils.cls`, taken verbatim after the rename table. The doc comments are replaced by OcuPilot contract comments.
+  - `OUTPUTCEILING` 32768 (`:27`) and `BYREFNODECEILING` 1000 (`:34`).
+  - `ApplyOutputCeiling:324`, `SurrogateSafeCutLength:364`, `ParseArgEntry:394`, `BuildByRefNode:504`, `AddByRefPosition:607` and `InvokeWithArgs:700-905`.
+  - Rename table: `%ExecuteMCPTruncated` becomes `%OcuPilotConsoleTruncated` (`:714,840,841`). The marker `[IRIS-MCP-TRUNCATED ceiling=<n>chars]` becomes `[cut at <n> characters]` (`:333`).
 
-- `src/ExecuteMCPv2/REST/Command.cls` (436 lines; the harvest map's 376 is stale).
-  - `Execute:61` reads `{command, namespace}`, switches namespace, redirects I/O to a null device bound to `"^"_$ZNAME` (`:115-118`), runs `XECUTE tCommand` (`:122`), tears down (`TeardownRedirect:45`), then bounds the output with `Utils.ApplyOutputCeiling` and answers `{output, truncated}`.
-  - `ClassMethod:243` reads `{className, methodName, args, namespace}` and calls `Utils.InvokeWithArgs`, answering `{returnValue, argCount, output, byRefValues, truncated, byRefTruncated, returnValueTruncated}`.
-  - `Redirects:424` holds the mnemonic labels. The comment at `:85` says the sibling maps its package to `%ALL` so `^$ZNAME` resolves after the switch; OcuPilot's package is not mapped there (inference that the redirect fails in another namespace; Task 0 measures).
-- `src/ExecuteMCPv2/Utils.cls`: `OUTPUTCEILING` 32768 (`:27`, the AC's "harvested output ceiling"), `BYREFNODECEILING` 1000 (`:34`), `ApplyOutputCeiling:324`, `SurrogateSafeCutLength:364`, `ParseArgEntry:394`, `BuildByRefNode:504`, `AddByRefPosition:607`, `InvokeWithArgs:700-973` (the 20-argument ladder and the shared budget). About 580 library lines join the class-method body.
-- `src/ExecuteMCPv2/Setup.cls:73,89`: the sibling's web application resource is `%Development`.
-- Catalog (`research/.../feature-catalog.md:617-618`): DT-05 and DT-06, both `write-confirm`, backing "custom(ExecuteMCPv2.REST.Command ...)", classic page "new".
+**Vendor bar:** `irissys/%Atelier/v7/TerminalAgent.cls:10,375`. The vendor's web terminal asks `%Development:USE` alone, and the portal has no command page. The consoles ask that, plus `WritePairs(ns)`, behind a key that is off by default, so they are stricter.
 
-### Vendor bar
+**24.5's mechanism (consumed, not edited):**
 
-- `irissys/%Atelier/v7/TerminalAgent.cls:10,375`: the vendor's web terminal (`/api/atelier/%SYS/terminal`) refuses without `%Development:USE`. The portal has no command page, so this and terminal programmer mode are the bar.
+- `Screen/Tool/Write.cls:177` declares `PERSONGATE`.
+- `Api/ScreenAction.cls:316-329` asks the key; the reason comes from `AtelierError.ReasonFor`.
+- `Kernel/Proposal/Prohibited.cls:1546-1550` is the `PERSONONLY` arm.
+- `Screen/Tool/ExplorerUnitTestRun.cls` is the tool model: `READSVALUES`, `ScreenActionDelta`, `PortQuery`, `StateDiff` and `WriteOutput`.
+- `Kernel/Governance/Baseline.cls:221`.
+- `Api/AtelierError.cls:261-310` holds the code, reason and `ReasonFor` pattern.
 
-### OcuPilot seams
+**Seams:**
 
-- `src/OcuPilot/Port/DevToolPort.cls` (378 lines): endpoints `:52-55`, `Endpoints():125`, `Invoke:151` (gate, namespace pairs, validation, then `HarvestPortClass()`), `Deny`/`Refuse`/`Fail` `:353-370`, `Snippet`/`SnippetForm` `:341-347`.
-- `src/OcuPilot/Port/HarvestPort.cls:76` `Invoke`: wraps the body in `%SYS.Capture` and discards its device output (`:125-142`); a body's error render becomes `INTERNAL`/`PORT.*` with the text logged, never sent (AD-39).
-- `src/OcuPilot/Screen/Tool/ExplorerSqlRun.cls`: the model for a write that runs caller-chosen code (`PORTCLASS` `SqlPort` `:40`, `READTYPE` `GUARD` `:49`, `DESTRUCTIVE` 1 `:61`). `Kernel/Governance/Baseline.cls:215,217`: `explorer.sqlquery.run` and `explorer.sqldata.save` ship `false`.
-- `src/OcuPilot/Kernel/State/Base.cls:183-376`: every guarded method escalates through `OcuPilotState`. `Switch.SetGuarded:165` and `Policy.GuardedApply:73` check no caller privilege; `Api/Governance.cls:43,71` checks `IsAdministrator()` before calling them.
-- `ui/src/app/areas/system-explorer/dev-tool.page.ts` (277 lines) and `dev-tool.store.ts` (68 lines).
+- `Port/DevToolPort.cls` (1,727 lines):
+  - `Endpoints:306`, `COMPOSEDTYPES:115` and `Invoke:344`, whose unit-test dispatch at `:356` is the model for the console dispatch.
+  - `UnitTest:524` is the check-order model. `RunLocked:703` is the rollback model. `Audit:1551` is the audit model.
+  - `SnippetForm:1570`, `Snippet:1591`, `RunSnippet:1653`, and `Deny`, `Refuse` and `Fail` (`:1702-1719`).
+- `Port/HarvestPort.cls`: `Invoke:76`, which keeps `tLines` from `EndCapture` (`:140`) and calls `Answer` (`:151`, `Answer:176`).
+- `Port/Harvest/Handler.cls` is the base. `Port/Harvest/UnitTestRun.cls` is the model for an OcuPilot handler over harvested methods (`..SwitchNamespace`, `RenderResponseBody`).
+- `Port/AtelierPort.cls`: `Pairs():755`, `WritePairs():788`, and `NAMESPACEPATTERN` with its refusal reasons.
+- `Kernel/Audit/Event.cls:194` `Record`.
+- `Kernel/State/Switch.cls:170` `SetGuarded` refuses a non-administrator (21.30).
+- `Screen/Descriptor/ExplorerSqlQuery.cls` is the model for a form page with no read, the row action `run`, and the literal target under `class`.
+
+**Client:**
+
+- `ui/src/app/areas/system-explorer/dev-tool.store.ts:150-185` is the model for ask, cancel and proceed through `RunSender.sendFor`.
+- `shell/screen-action-handler.ts:1836` `lastOutput()` gives the run's answer.
+- `shell/warning-dialog` and `shell/screen-outlet.ts:225-238` hold the loader lines.
+
+**Tests and rosters:**
+
+- Models: `Test/UnitTestRunGate.cls`, `UnitTestPersonOnly.cls` (parameterized by class parameters), `UnitTestActionFixture.cls`, `DevToolHarvestRecorder.cls`, `DevToolPortFixture.cls` and `DevToolProbe.cls`.
+- `Test/NamespacePromote.cls:243-265` is the audit-row assertion model (`Test/AuditEvent.RowsCarrying`).
+- Browser models: `ui/browser/unit-tests.browser-spec.mjs`, `unit-tests-principals.browser-spec.mjs` and `preferences-reset.mjs` (`setGovernanceKey`, `resetGovernancePolicy`).
+- Rosters. Every file that names 24.5's tool is a roster to check, and each count is re-derived:
+  - `Test/Descriptor`, `DeveloperFloor`, `ExplorerDescriptor`, `Governance`, `GovernanceBaseline`, `Prohibited`, `ReadTool`, `StageTwoTools`, `SurfaceCoverage`, `ToolEmit` (`:328`, the branch for 24.5's tool) and `ToolRoundTrip`;
+  - `ui/tools/screen-mirror.test.mjs` and `navigation.test.mjs`;
+  - `DraftRegistry`, `PortGate`, `ClassicPageGate`, `Navigation`, `Wire` and `WireAreaAnyScreen`.
 
 ## Tasks & Acceptance
 
-Pending the ruling.
+**Execution, batch 1 (server):**
+
+- **Task 0, on `ocupilot-b-ci`, before any code.** Run one probe at a time and record each result under Design Notes as `Task 0 (measured)`. Item 1 stops the story if it fails.
+  1. A probe handler under `HarvestPort.Invoke`, called from `HSCUSTOM` and switched to `USER`, runs `Xecute "Write ""a"",!,""b"""` and then a 40,000-character `Write`. Check that `EndCapture`'s lines carry both writes whole.
+  2. The same probe calls a parent-class method with `..` while switched. Check that it resolves, as 24.5's `..BuildTestSpec` does.
+  3. The sibling's redirect form, bound to the probe's own routine and switched to `USER`, raises `<NOROUTINE>`. This is recorded only.
+- `src/OcuPilot/Port/Harvest/Handler.cls` -- add `ClassMethod OnCaptured(pLines As %DynamicArray, pResult As %DynamicObject) As %Status`, a no-op by default. Its contract: called after an OK render with the body's captured device lines.
+- `src/OcuPilot/Port/HarvestPort.cls` -- after an OK render whose result is an object, call `$ClassMethod(pHandler, "OnCaptured", tLines, pResult)` with the namespace already restored. An error from it, or an exception, is 500 `INTERNAL`, logged. The header says the output is discarded unless the handler takes it (AD-39's eighth exception).
+- `src/OcuPilot/Port/Harvest/Console.cls` -- new; extends `Handler`. The two parameters and the six methods, verbatim after the rename table.
+- `src/OcuPilot/Port/Harvest/ConsoleRun.cls` -- new; extends `Console`.
+  - `Command()` reads `command` and `namespace`, switches with `..SwitchNamespace`, and runs `Xecute` inside its own `Try`. It restores the namespace and renders `{truncated: false, error, outputBudget: OUTPUTCEILING}`.
+  - `ClassMethod()` reads `class`, `method`, `args` (JSON text, `%FromJSON`) and `namespace`. It calls `..InvokeWithArgs`, then builds `returnValue` as the sibling does: the OREF guard, then `ApplyOutputCeiling` with `returnValueTruncated`. It renders `{returnValue, argCount, byRefValues, truncated, byRefTruncated, returnValueTruncated, error, outputBudget}`.
+  - `error` is the code's `$System.Status.GetErrorText`, or `""`.
+  - `OnCaptured` joins the lines with `$Char(10)`, stopping one character past `outputBudget`. It sets `output` to `..ApplyOutputCeiling(text, .truncated, outputBudget)`, ORs that into `truncated`, and removes `outputBudget`.
+- `src/OcuPilot/Port/DevToolPort.cls`:
+  - Add the endpoints `Command` and `ClassMethod` (`STATE`, `RUN`), dispatched like `UnitTestEndpoints`, with `COMPOSEDTYPES` appended. Add the keys `command`, `class`, `method` and `args`, and `COMMANDMAX` 30000.
+  - `Console()` runs the Always checks. Class and method match `^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$` and `^%?[A-Za-z][A-Za-z0-9]*$`. The arguments follow `ParseArgEntry`'s accepted shapes, with at most 20.
+  - Resolution, with the namespace saved and restored: a compiled, public class method in `%Dictionary.CompiledMethod`.
+  - `STATE` echoes `{Namespace, Command}` or `{Namespace, Class, Method, Arguments}`, where `Arguments` is the count.
+  - `RUN` calls `HarvestPort` with `HANDLERCONSOLE`, then rolls back as `RunLocked` does, then writes the audit row with `Event.Record("run", "class", <"command"|"classmethod">, {}, 1, effects)`, as `Audit:1551` does.
+  - `SnippetForm` and `Snippet`: an `objectscript` step holding the command, and a `comment` step naming the class and method, as `RunSnippet` does. Update the header.
+- `src/OcuPilot/Screen/Tool/ExplorerCommandRun.cls` and `ExplorerClassMethodRun.cls` -- new, on `ExplorerUnitTestRun`'s model:
+  - `ADVERTISED 0`, `PORTCLASS DevToolPort`, `READTYPE STATE`, `WRITETYPE RUN`, `DESTRUCTIVE 1`, `SENDSBODY 0` and `READSVALUES 1`.
+  - `SCREENACTIONS run`, with `IDARGUMENT` `Target` and the literals `command` and `classmethod`.
+  - `PERSONGATE` `EXPLORER.COMMAND.OFF` and `EXPLORER.CLASSMETHOD.OFF`.
+  - `SCREENVALUES` `run=command` and `run=class:method:args`.
+  - `WriteOutput` passes the answer's fields through.
+- `src/OcuPilot/Kernel/Governance/Baseline.cls` -- add `"explorer.command.run": false` and `"explorer.classmethod.run": false`, add-only.
+- `src/OcuPilot/Api/AtelierError.cls` -- add the five codes with the reasons under Proposed strings, and add them to `ReasonFor`.
+- `src/OcuPilot/Screen/Descriptor/ExplorerCommand.cls` and `ExplorerClassMethod.cls` -- new, on `ExplorerSqlQuery`'s model:
+  - Routes `system-explorer/command` and `system-explorer/class-method`, at side-bar positions 18 and 19.
+  - `form-page`, no `read`, id `none`, `%Development:USE`, entity type `class`, scope `namespace`.
+  - Row action `run`, `classicPage` `""` with no exemption (as 24.5), and empty `context`.
+  - `toolIdentifier` `explorer.command` and `explorer.classmethod`.
+- `src/OcuPilot/Screen/Titles.cls` -- regenerate. Add this story's members to every roster in the Code Map, appending only, and re-derive each count.
+- `src/OcuPilot/Test/ToolEmit.cls:328` -- widen 24.5's branch from that one class to every tool that declares `PERSONGATE`.
+- `scripts/check-objectscript.py` and `scripts/test_check_objectscript.py` -- add the `HARVEST_CALLERS` row `OcuPilot.Port.Harvest.ConsoleRun`, with `DevToolPort` as its caller, and one harness case for naming it anywhere else.
+- Tests:
+  - `src/OcuPilot/Test/ConsoleGate.cls` -- new, under 500 lines, through a `ScreenAction` fixture and `DevToolHarvestRecorder`. It covers every refusal row and Switched off for both tools, and the key-on path recording `ConsoleRun.Command` or `ClassMethod` with the port's keys only. It saves and restores the stored policy.
+  - `src/OcuPilot/Test/ConsoleRoundTrip.cls` -- new. Through `DevToolPortFixture` with the real bodies, it covers the rows from Command to Open transaction, the audit row (`AuditEvent.RowsCarrying`, with no command text in its data), and the namespace and `$TLevel` restored.
+  - `src/OcuPilot/Test/CommandPersonOnly.cls` and `ClassMethodPersonOnly.cls` -- new subclasses of `UnitTestPersonOnly` with its parameters overridden. A leg that needs a read tool is overridden, because a console declares none.
+  - `src/OcuPilot/Test/DevToolProbe.cls` -- add `MakeConsoleProbe` and `RemoveConsoleProbe` for `OcuProbe246.Echo`.
+
+**Execution, batch 2 (client):**
+
+- `ui/src/app/areas/system-explorer/console.store.ts` and `console.page.ts` (with `.spec.ts`) -- new; one page serves both descriptors.
+  - The Command form is a textarea limited to 30,000 characters. The Class method form has Class, Method and Arguments.
+  - Run opens `app-warning-dialog` with the console's consequence. Confirm sends `sendFor(descriptor, 'run', <literal>, values, sink, scope)`. Cancel sends nothing.
+  - The answer is read from `lastOutput()`: output, return value, by-reference values, error, and each truncation note. A refusal shows the instance's reason.
+  - Spec cases: the dialog's consequence, Cancel sends nothing, the off reason, and the truncation note.
+- `ui/src/app/shell/screen-outlet.ts` -- two loader lines.
+- `ui/src/app/core/strings.ts`, `core/screens.generated.ts` (`node tools/screen-mirror.mjs`) and EXPERIENCE.md's Fixed strings (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`) -- add-only.
+- `ui/browser/consoles.browser-spec.mjs` -- new, as administrator. `before` asserts the throwaway and makes the probe.
+  - With the key at baseline, Run then Confirm shows the off sentence.
+  - With the key on, the command, long-output, class-method and error rows show through the dialog.
+  - `after` removes the probe and restores the policy.
+- `ui/browser/consoles-principals.browser-spec.mjs` -- new, on `unit-tests-principals`'s model. A principal holds `%Development:USE` and the `USER` and `HSCUSTOM` database pairs, and is not an OcuPilot administrator.
+  - Both consoles run with the key on.
+  - Each missing pair gives 403 naming it.
+  - Both tools are in none of the agent's lists.
+  - A command calling the kill switch's guarded store by indirection (`$ClassMethod("Ocu"_"Pilot.Kernel.State.Switch", "SetGuarded", ...)`) leaves the switch as it was.
+
+**Acceptance Criteria:**
+
+- **AC1.** Given the key switched on, when a person runs a command and confirms, then it round-trips over the harvested console class: matrix rows Command, Code error and Open transaction, observed in the browser on `ocupilot-b-ci`.
+- **AC2.** Given the key switched on, when a person calls a class method with arguments, one passed by reference, and confirms, then it round-trips over `InvokeWithArgs`: matrix rows Class method, Big return and Method error.
+- **AC3.** Given a command's output, when it is returned, then it is bounded by the harvested output ceiling: at most 32,768 characters, ending with the cut marker, with `truncated` true.
+- **AC4.** Given any refusal row, when the run is asked, then it answers that row's status and code. The recorder records no body call, and no audit row is written.
+- **AC5 (Integration, off by default).** The consumer is `ScreenAction`. Given either tool's `PERSONGATE` and its key at the shipped `false`, when a person's Run is sent, then it answers 403 with the tool's `OFF` code, and nothing is held, read or run. After an administrator's `PUT /agent/governance` sets the key on, the same Run runs.
+- **AC6 (people only).** Given the agent, when it looks for or calls either console, then neither tool is in any of its lists or resolves by any name. A registry that offered one is refused `PROHIBITED.PERSONONLY` on the instance.
+- **AC7 (confirmed).** Given either console, when the person presses Run, then the warning dialog shows that console's consequence. Nothing is sent before Confirm, and Cancel sends nothing.
+- **AC8.** Given the six harvested methods, when they are compared with the sibling's after the rename table, then each implementation's SHA-256 matches the pinned hash, and `uv run scripts/check-objectscript.py` passes.
+- **AC9 (least privilege).** Given the principal above, when it runs either console over the real route, then the run succeeds with exactly those pairs and is refused 403 without each one. An indirect call of OcuPilot's guarded store from that principal's command leaves OcuPilot's state unchanged.
+- **AC10 (audited).** Given a run that reaches a body, when it ends, then one `SecurityChange` row names the console and the namespace (and the class and method). The command, the arguments and the answer are in no row.
+
+### Review Findings
+
+Code review 2026-11-17 (full-opus; four layers). 17 entries from 43 raw findings: high 1, medium 5, low 11. Every patch was re-run on `ocupilot-b-ci`, one class per call: `ConsoleGate`, `ConsoleBoundary`, `ConsoleRoundTrip`, `UnitTestRunGate`, `CommandPersonOnly`, `ClassMethodPersonOnly`, `Harvest`, `HarvestCaptured`, `HarvestWire`, `PortCapture`, `UnitTestRecord`, `UnitTestPersonOnly` and `DevToolRead` are green. Both browser specs are green on the rebuilt bundle (4 of 4 and 5 of 5), and the console component spec is green (11 of 11).
+
+- [x] [Review][Patch] **(high)** The audit row was written only after the body answered. A command that ran `Halt` ran its code and wrote no row: measured on the route, 3 runs gave 2 rows. AD-53, the Always line and AC10 require a row for each run. `RunConsole` and `RunLocked` now write the row before the body is entered; measured again, 4 runs gave 4 rows. [src/OcuPilot/Port/DevToolPort.cls `RunConsole`, `RunLocked`]
+- [x] [Review][Patch] **(medium)** QA's `New %request, %response, %session` in `ConsoleRun` turned `Harvest.TestNoHarvestedBodyNamesTheResponseWriter` red. The tripwire now skips only a line that is a `New` of variable names, and any other use still reddens it. Epic 21 has not changed that file. [src/OcuPilot/Test/Harvest.cls]
+- [x] [Review][Patch] **(medium)** A command that left another device current lost the run's answer: the route returned 200 with an empty body, measured. `HarvestPort` now makes the caller's device current again before `EndCapture`. [src/OcuPilot/Port/HarvestPort.cls `Invoke`]
+- [x] [Review][Defer] **(medium)** A class method with no return value raises `<COMMAND>` after it has run, so its by-reference values are lost. Fixing it changes the hash-pinned `InvokeWithArgs` (AC8). DW-2694, decision-pending.
+- [x] [Review][Defer] **(medium)** The spine's AD-53 still calls the 24.5 run a named audit gap after DW-2673. DW-2695 is escalated as a spine amendment for the lead. The `RunLocked` doc comment is patched.
+- [x] [Review][Defer] **(medium)** The audit-count windows rest on a fixed `Hang 0.25`. DW-2696 is routed to burndown, to be fixed once in `Test/AuditEvent`.
+- [x] [Review][Patch] `OnCaptured` raised `<MAXSTRING>` when a later line had the longest string length. It now joins only what the budget leaves. [src/OcuPilot/Port/Harvest/ConsoleRun.cls `OnCaptured`]
+- [x] [Review][Patch] A command typed with a trailing line break was refused after Confirm. The break is now dropped before sending. [ui/src/app/areas/system-explorer/console.store.ts `values`]
+- [x] [Review][Patch] Three `ConsoleGate` gaps are closed:
+  - The class method's three cut flags now pass through the route as true.
+  - A by-reference value that is an object or an array is refused, and a 30,000-character command is accepted.
+  - The `If $IsObject` checks are preceded by an assertion. [src/OcuPilot/Test/ConsoleGate.cls]
+- [x] [Review][Patch] The Auto Run Result's verification predates QA's product change, and `ConsoleBoundary` was not in it. The re-runs above close this.
+- [x] [Review][Defer] (low) These are closed with a reason, each with its `reopen_if` in the ledger:
+  - A class method's output cut note against the shared budget: DW-2697.
+  - Leftover locks, and the hold an argumentless `Lock` drops: DW-2698.
+  - The own-code screen does not check arguments: DW-2699, by-design (AD-10).
+  - An answer survives a namespace switch: DW-2700.
+  - The hint borrows `permissionWrite`: DW-2701.
+
+Rejected:
+
+- (false) An argumentless `Kill` breaks the request. Measured on the route: `Kill`, then two more runs on the same process, all 200 with the right answers.
+- (false) The command's text reaches other rows. A marker command left 0 rows across every audit event and 0 lines in `messages.log`.
+- (false) A fault log is rolled back with the code's transaction. `Kernel.Fault` writes to the console log, which a rollback does not undo.
+- (false) `ConsoleBoundary` runs code outside the Never list. Its `%SYS` and home-namespace legs touch no state.
+- (false) An applied run can show no answer. `OnCaptured` always sets `output`, so `WriteOutput` answers for every 200.
+- (low) The harvested `<MAXSTRING>` labels and `%OcuPilotConsoleTruncated` are inert. They are verbatim and pinned by AC8.
+- (low) The capture grows without a bound, and a `Read` waits. Both are named limits: no time limit, and `Read` gets no input.
+- (low) `IsHandler` accepts the `Console` helpers. `HARVEST_CALLERS` fixes who calls the port.
+- (low) `sendFor` can reject. `requestJson` answers a result kind (inference).
+- (low) A failed `EndCapture` shows as empty output. `EndCapture` always quits 1 and traps its own errors, and the device case is patched above.
+- (low) The AC9 guard leg. This duplicates the earlier triage entry and its Verification line.
+- (low) The rename made a false pointer in the harvested comments. They are hash-pinned.
+- (low) "Before the hold" is never asserted. That is 24.5's unchanged route.
+
+## Spec Change Log
+
+- 2026-11-16, re-plan (iteration 2), owner answer U-78 "C: fix U-79 first, then A (Recommended)"; the DW-2634 fix (Story 21.30) is on feature. The halted draft was replaced by a full plan on Story 24.5's `PERSONGATE` mechanism.
+  - The `deferred:` item was harvested as DW-2634, which 21.30 resolved, so it was removed and the next harvest does not file it twice.
+  - The sibling's `Execute` and `ClassMethod` are no longer taken whole, because their redirect cannot resolve across namespaces. OcuPilot's handlers keep their call order over the harvested library methods.
+  - KEEP: the harvested library methods, the 32,768 ceiling and the answer shapes.
+
+## Review Triage Log
+
+### 2026-11-16 -- Review pass
+
+- verdicts: 19 findings -- high 0, medium 2, low 17, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A class method's output budget (what the return value leaves of 32,768) had no test -- added probe method `Both` and `ConsoleRoundTrip.TestAClassMethodsReturnAndOutputShareOneBudget`; mutation recorded and observed red.
+  - `[medium]` `[patch]` No test that a run whose harvest call faulted writes no row, and `UnitTestRunGate`'s refused leg was refused by the key, not the port -- added `DevToolHarvestRecorder.SetFault`, `ConsoleGate.TestARunWhoseBodyFaultedWritesNoRow` and a fault leg in `UnitTestRunGate`, with the key on before the refused leg and its status asserted; both mutations observed red.
+  - `[low]` `[patch]` AC9's guarded-store leg had no recorded mutation -- the guard dropped alone stays green (the principal also holds no write on OcuPilot's data, observed); the comment and the Verification line now say so.
+  - `[low]` `[reject]` AC1's mutation line names the server tier, not the browser spec -- the browser spec asserts the same round trip through the route, and the mutation reddens the tier that owns the code; no named harm.
+  - `[low]` `[patch]` `runRows` read a failed lookup as zero rows -- one assertion that the marker was present.
+  - `[low]` `[reject]` The browser Cancel check can pass while a run is in flight -- `console.page.spec.ts` pins Cancel by recorded requests, so the browser leg is a redundant second look.
+  - `[low]` `[reject]` Context and discovery checks in the two person-only subclasses are negative-only -- the AC6 mutation reddens the tool-level checks; an empty but valid answer is not a reachable defect.
+  - `[low]` `[reject]` `RunLocked` writes the unit-test row before its no-result check -- a run that reached its body is a run; the row is intended.
+  - `[low]` `[reject]` `ConsoleSnippet` has no test -- no console tool mints a proposal, so nothing reaches it (inference: `Draft` is its only caller).
+  - `[low]` `[reject]` Body-answer rows run against real bodies at the port tier and against canned answers at the route tier -- the browser specs run route plus real body for the command, class-method and by-reference rows (AC1, AC2); no row is unpinned.
+  - `[low]` `[reject]` The Gate row is asserted at the port, and the browser asserts the named pair in text rather than `detail.failedPair` -- the route's 403 envelope is Story 24.5's, unchanged.
+  - `[low]` `[reject]` The audit row is written when the harvest port answers OK, not whenever a body was entered -- the body's own errors are answered 200 and audited; a harvest-port fault is a failed call, and the spec's notes say so.
+  - `[low]` `[patch]` The sibling's file name `Command.cls` stood in five comments of the harvested bodies -- renamed in comments only, `InvokeWithArgs`'s hash re-pinned, and the rename table's third entry recorded under Design Notes.
+  - `[low]` `[reject]` The harvested bodies keep the sibling's review-history comments -- the spec takes the bodies verbatim and pins each hash; stripping them would change the harvest.
+  - `[low]` `[reject]` The harvested capture-overflow flag and its `<MAXSTRING>` labels are inert here (inference) -- harmless unchanged code; cutting happens in `OnCaptured`.
+  - `[low]` `[reject]` The script form of a console run exists but is unreachable -- see the `ConsoleSnippet` row.
+  - `[low]` `[reject]` The gate is never compared with the vendor terminal's in the diff -- the Code Map and AD-10 carry the comparison, and the checks are stricter.
+  - `[low]` `[reject]` The browser agent test accepts either `TOOL.UNKNOWN` or `PROHIBITED.PERSONONLY` -- the ObjectScript tier pins each exactly.
+  - `[low]` `[reject]` Scope beyond the consoles: unit-test runs now write a row, and a failing `OnCaptured` is 500 -- both are orchestrator rulings (DW-2673, the hook), and no Never line bars them.
 
 ## Design Notes
 
-### The blocking question (intent gap, AD-10)
+**Owner answer U-78 (2026-11-16):** both consoles are built under AD-10's run-code exception, which the spine already carries for 24.5 and which names this story. The condition, the DW-2634 fix, is met: `SetGuarded` and `GuardedApply` refuse a caller who is not an OcuPilot administrator (`AdminWriteRefused`, Story 21.30). The 24.5 mechanism serves unchanged, so there is no intent gap.
 
-**AD-10's Rule:** "Every item here is refused on the instance, on the write path, whatever the caller", its predicates are "evaluated against the resolved target at the moment of the write", and "A self-protection rule that a screen enforces only in its UI is not a prohibition."
+### Governing ADs
 
-What the plan found:
+- AD-10: the run-code exception and its named gap. AD-22: the person key. AD-53: unadvertised, two callers, and the dialog as the review.
+- AD-39: the eighth exception. AD-15: OcuPilot's own row for a person's write the vendor does not audit.
+- AD-23 and AD-29: the harvest seam and `DevToolPort`'s gate. AD-61: the gate pairs.
+- AD-7: the run happens in the action request. AD-34: the hold. AD-14: the change event. AD-51, AD-52 and AD-58: the write model.
+- AD-16: switches save and restore. AD-21: bound values only. AD-24: no context. AD-11 and AD-60: output never reaches the model. AD-35: output may hold secrets, so it is never logged. AD-17: probe classes only on the throwaway.
 
-1. **No target to judge.** A command or a class method runs with the signed-in person's rights. A caller who holds the privileges can delete `_SYSTEM`, disable `%Service_WebGateway`, change OcuPilot's roles, or delete `OcuPilot.*` classes in one line. No predicate on the write path can see what the code will do.
-2. **OcuPilot's own state is reachable by any caller, not only a privileged one.** `Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess` (measured, pinned) shows a user refused `<PROTECT>` on a direct write succeeds through the guarded storage methods. `Switch.SetGuarded` and `Policy.GuardedApply` check no caller, and the governance API's `IsAdministrator()` check sits above them. So one console line could turn off the kill switch or enable every governance key for a `%Developer` who is not an OcuPilot administrator (inference: not executed end to end). The same path exists today through the vendor's web terminal; it is recorded in `deferred:` for the lead to harvest.
-3. **A text screen is not sound.** Refusing a command that names `ocupilot` stops a literal reference only: `$ClassMethod("Ocu"_"Pilot...")`, `Xecute`, indirection and `$Char` pass it. The class-method console's class name can be refused soundly, but not what that method's code does.
-4. **The posture against the vendor is not the problem.** Gated on `AtelierPort.Pairs()` (`%Development:USE`) and the namespace's pairs, the console asks what the vendor's web terminal asks. The conflict is with OcuPilot's own AD-10 and AD-9 promises.
-5. **The spine names this family case by case, never in general:** the SQL console's "Named gap: a procedure's or function's own code" (AD-10), MDX constructs that run code behind a person's confirmation while the agent refuses them (AD-65), the cube build's source expressions (AD-65), and the try-it console's named gap (AD-57). Each was an AD amendment at a spec gate. No AD names a console that runs caller-typed ObjectScript.
+### Decided in-stage (reversible)
 
-So the console cannot be built without amending AD-10 with a named gap that weakens "whatever the caller". That is a spine amendment and a weakened guarantee (veto window, Rule 20 U7), so this stage cannot decide it.
+- **OcuPilot's handlers, not the sibling's.** `ConsoleRun` is a deliberate copy of the sibling's call order (Rule 31). The only differences: no redirect, and the code's own error becomes `error` (a failed render reaches the person only as `INTERNAL`).
+- **The output rides `HarvestPort`'s capture.** `%SYS.Capture` resolves in every namespace; 24.5's Task 0 item 2 measured this from `USER`.
+  - The one extension is `OnCaptured`: two lines in `HarvestPort` and a no-op on the base. It is a hook, not a second capture, because `%SYS.Capture` refuses to nest ("Capture Already Active").
+  - The ceiling is applied inside the harvested class, so `ApplyOutputCeiling` keeps a harvested call site.
+- **The audit row.** Running code is the most security-relevant act the product offers. An OcuPilot row per run (AD-15, promote's precedent) is stricter than a named gap, and it holds no text, because a command can carry a password.
+- **Limits and shapes:**
+  - The command is one line of at most 30,000 characters: `Xecute` takes one line, and 30,000 is the card width's precedent.
+  - At most 20 arguments, the sibling's limit.
+  - A class method must be compiled, public and a class method, so a call `$ClassMethod` would refuse becomes a clean 404.
+- **The `ocupilot` screen** is text matching in any letter case. It is a screen, not a prohibition: indirection passes it, and 21.30's guarded stores are what hold.
+- **One page, `console.page.ts`, for both consoles.** `dev-tool.page.ts` (577 lines) is a list page over a read, and the consoles have no read. The run-mode state follows `dev-tool.store.ts`'s ask, cancel and proceed.
+- **Side-bar positions 18 and 19**, after Unit tests (17). Position 15 stays free.
+- **Named limits (inference until the browser spec observes them):**
+  - The code runs in OcuPilot's request process. A lock, a device change, a process-private global or a `$Roles` change it leaves stays with that process. A person can clear them from Locks and Processes.
+  - A run past the Web Gateway timeout loses its answer and keeps its process until it ends. A person can end it from Processes.
+  - A `Read` gets no input.
+  - Two runs of one console in one namespace are serialized by AD-34's hold; the second gets 409.
+  - The whole device output is held in process-private storage until the run ends. Only the first 32,768 characters reach the screen.
 
-### Options
+### Integration ACs, Consumed-by and Consumes
 
-- **A (recommended).** Amend AD-10 with a named gap for the two consoles, and build them person-only:
-  - Gate: `AtelierPort.Pairs()` then `NamespacePairs(ns)`, as `DevToolPort` already does. Never looser than the vendor's terminal.
-  - Both write tools are unadvertised (AD-53's named case, as `explorer.sqldata.save` and Story 21.5's node writes). The agent never proposes code to run: the model is assumed compromised (NFR-6), and a command, unlike a SQL statement, has no classification to refuse on. This follows AD-65's "an agent read tool never executes code".
-  - Each run asks a confirmation that names the consequence, on AD-65's precedent.
-  - Defense in depth, stated as not a prohibition: the class-method console refuses a class in an `OcuPilot` package (`PROHIBITED.OCUPILOTCODE`), and the command console refuses text naming an OcuPilot stem in any case.
-  - Proposed AD-10 sentence: "**The command and class-method consoles (Story 24.6)**: a person's own run executes with that person's rights, as the vendor's terminal does, and can reach every arm of this set, OcuPilot's protected state through its storage classes included. Named gap: what the code itself does. The consoles are person-only, gated on `%Development:USE` and the namespace's pairs, confirm each run, and refuse a literal reference to OcuPilot's own names as a screen, not a prohibition."
-  - Two smaller amendments ride with it: AD-39's eighth exception (output, return value, by-reference values and error text reach the screen only), and an AD-53 named gap if Task 0 measures that the vendor audits no run.
-- **B.** A, plus admission: refuse a caller who holds `%All`, `%Admin_Secure`, `%Admin_Manage` or `%Admin_Operate`, or WRITE on the install namespace's routines database. Not recommended: it does not close item 2, which any caller reaches, and it shuts out the administrators the tool is for, which the owner's developer-tool-first rule argues against.
-- **C.** Close item 2 first, in its own story: the guarded storage methods refuse a caller outside OcuPilot's API and turn. Then A. This changes AD-9 and is out of this story's scope.
-- **D.** Exclude DT-05 and DT-06 (P4, exclusion register). Reason: "OcuPilot cannot keep AD-10's self-protection for code a person types; the vendor's terminal serves it." Gate: "AD-10 names a gap for caller-written code." Dropping scope is owner-only.
+- **Integration ACs:** AC5 (`ScreenAction` consumes each tool's `PERSONGATE`), and AC1 and AC3 (`HarvestPort` consumes `ConsoleRun.OnCaptured`; the person sees the bounded output).
+- **Consumed-by:** 24.7 (the web terminal) may reuse `OnCaptured` and the `Console` ceiling (inference). No other consumer is in this story.
+- **Consumes:**
+  - 24.5's `PERSONGATE` ask, the `PERSONONLY` arm and `UnitTestPersonOnly`;
+  - 24.1's `DevToolPort`, recorder and probe;
+  - `AtelierPort`'s pairs and `Event.Record`;
+  - 21.30's guarded stores.
 
-### Prepared for the re-plan under A (decided in-stage, reversible)
+### Contended files (orchestrator ruling A): edits beyond appending (check `origin/OCU-1-epic21` at integrate-forward)
 
-- **Size.** One implement pass is reachable with named limits: two endpoints on `DevToolPort` (`Command`, `ClassMethod`), one harvested body class `Port/Harvest/Command.cls` plus the five `Utils` library methods as a mixin (24.1's rename-table model), two descriptors on one System Explorer screen with two tabs, and `dev-tool.page.ts` extended.
-- **Governance keys:** `explorer.command.run` and `explorer.classmethod.run`, default `false`, destructive. A person's own run asks no key (AD-22, AD-53).
-- **Task 0 measures:**
-  1. whether the body's `"^"_$ZNAME` redirect resolves after a switch to a namespace OcuPilot is not mapped into. If it does not, the port runs the body in the install namespace and the body's own `namespace` switch does the rest, or the port is extended (never the body);
-  2. whether `HarvestPort`'s `%SYS.Capture` and the body's own redirect nest without losing the body's captured output;
-  3. whether the vendor writes an audit event for a run;
-  4. whether `$System.Alarm`, as `SqlPort` uses it, stops a runaway command. Named limit either way: code that catches `<ALARM>`, or runs past the gateway timeout, keeps its CSP worker until it ends, as the cube build's does (AD-65).
-- **Hermeticity.** Tests run only commands and probe class methods that touch a `^||` node or a probe class in `USER`, which each test makes and removes.
+- `Prohibited.cls` and `ScreenAction.cls`: none.
+- More than an append:
+  - `DevToolPort.cls`: the header and the `Invoke` dispatch.
+  - `HarvestPort.cls`: an insertion after the answer.
+  - `Harvest/Handler.cls`: a new method.
+  - `Test/ToolEmit.cls`: the branch widened.
+- Re-derived counts: `ReadTool` (no new read tool, so expected unchanged), the write-tool count, `ClassicPageGate`, and the descriptor and side-bar rosters. Re-count after the union; never add the deltas.
 
-### Proposed strings (veto item, for the re-plan)
+### Governance keys
 
-- Titles: "Command console" · "Class method console".
-- Confirmation: "This runs ObjectScript as you, with your rights. OcuPilot cannot check what it changes, including OcuPilot itself."
-- Truncation note: "Output was cut at 32,768 characters."
+- `explorer.command.run`: default `false`, destructive, person-only.
+- `explorer.classmethod.run`: default `false`, destructive, person-only.
 
-### Governing ADs (to confirm at the re-plan)
+### Proposed strings (veto item)
 
-AD-10 (the conflict), AD-9, AD-23, AD-29, AD-61 rule 1, AD-36, AD-39, AD-53, AD-22, AD-65 (precedent), AD-57 (precedent), AD-60, AD-7, AD-16, AD-21. There is no `## Deferred` row on either surface.
+- Titles: "Command console" and "Class method console". Buttons: "Run command" and "Call method".
+- Fields:
+  - "Command".
+  - "Class" and "Method".
+  - "Arguments", with the hint: A list in square brackets, such as ["a", 1]. Write {"byRef": true, "value": "x"} to pass a value by reference.
+- Dialogs:
+  - "Run this command?": "This runs ObjectScript as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes."
+  - "Call this class method?": "This runs the method's code as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes."
+- Answer labels: "Output", "Return value", "By-reference values" and "Error". When there is no output: "Nothing was written."
+- Truncation notes:
+  - "The output was cut at 32,768 characters."
+  - "The return value was cut at 32,768 characters."
+  - "Some by-reference values were left out to keep the answer under 32,768 characters."
+  - The in-text marker: `[cut at 32768 characters]`.
+- Refusals:
+  - "Running commands is switched off on this instance. An administrator can switch it on in Governance policy."
+  - "Calling class methods is switched off on this instance. An administrator can switch it on in Governance policy."
+  - "OcuPilot does not run a command that names OcuPilot."
+  - "OcuPilot does not call its own class methods."
+  - "No compiled class method of that name is in this namespace."
+  - "Enter the command on one line, up to 30,000 characters."
+  - "Name a class and one of its class methods with letters, digits, dots and %."
+  - "Give the arguments as a list in square brackets of at most 20 values: text, numbers, true or false, or a by-reference value."
+- Tool descriptions:
+  - "Run an ObjectScript command in a namespace. Only a person runs it, from the Command console; the agent never does."
+  - "Call a class method in a namespace. Only a person calls it, from the Class method console; the agent never does."
+- Suggested prompts:
+  - Command console: "How do I list a global's first subscripts?", "What does $ZVERSION show?" and "How do I count a table's rows in one command?"
+  - Class method console: "Which class method returns the instance's version?", "How do I pass an argument by reference?" and "What does a %Status return value mean?"
+- Agent phrases, used only if the screen mirror requires one for these pages: "explain an ObjectScript command" and "explain a class method".
+- Command aliases:
+  - Command console: "command console", "run command" and "execute command".
+  - Class method console: "class method console", "call class method" and "run class method".
+
+### Proposed spine amendments (the runner writes these at the spec gate, citing owner answer U-78)
+
+Written at the spec gate on 2026-11-16, citing owner answer U-78: AD-10's consoles sentence, AD-22's two keys, AD-53's sixth and seventh unadvertised tools, and AD-39's eighth exception (orchestrator ruling; owner veto U-101). Orchestrator ruling on the audit row (DW-2673): the audit test proves the row exists, that it never carries the command, the arguments or the output, and that Story 24.5's runner gets the same row if a measurement at the route shows it has none.
+
+- **AD-10**, appended to the paragraph "Code a person runs through OcuPilot":
+
+  > **The command and class-method consoles** [AMENDED 2026-11-16, Story 24.6 spec gate, owner answer U-78: "C: fix U-79 first, then A (Recommended)", Rule 20] run a command the person types, or a class method the person names, with the person's rights, as the vendor's terminal does. Named gap: what that code does, which can reach every arm of this set. OcuPilot's protected state stays refused to anyone who is not an OcuPilot administrator by its guarded stores (Story 21.30). A command that names OcuPilot in any letter case, or a class in an `OcuPilot` package, is refused by the port as a screen, not a prohibition.
+
+- **AD-22**, in "One person's write asks its key", after "`explorer.unittests.run` ships `false` (Story 24.5)", add: "; `explorer.command.run` and `explorer.classmethod.run` ship `false` (Story 24.6, owner answer U-78)".
+- **AD-53**, after "A fifth unadvertised tool":
+
+  > **A sixth and a seventh unadvertised tool** [AMENDED 2026-11-16, Story 24.6 spec gate, owner answer U-78, Rule 20]: `explorer.command.run` and `explorer.classmethod.run` (Story 24.6) are a person's alone under AD-10's run-code exception. Their keys ship `false` and are asked by the screen action route (AD-22), and they have no mint, no proposal card and no copy-out draft. Each run records OcuPilot's own `SecurityChange` row naming the console, the namespace and, for a class method, the class and method, never the command, the arguments or the answer (AD-15), so neither is a named audit gap.
+
+- **AD-39**, after the seventh exception:
+
+  > **The eighth exception** [AMENDED 2026-11-16, Story 24.6 spec gate, owner answer U-78, Rule 20]: a console run's output, return value, by-reference values and error text (Story 24.6) reach the screen only, as text, and never the model, a tool result, a ledger row, an audit payload, a log line or screen context.
+
+### Implementation notes (measured and decided in the implement stage)
+
+**Task 0 (measured), on `ocupilot-b-ci`, from `HSCUSTOM` switched to `USER`, with a probe handler that extends `Harvest.Handler` and runs `HarvestPort.Invoke`'s capture steps (`BeginCapture`, the call, `EndCapture`):**
+
+1. `Xecute "Write ""a"",!,""b"""` and then a 40,000-character `Write` come back whole: three lines, `a`, `b` followed by the 40,000 characters (40,001), and `c`. The gate passed, and the story went ahead.
+2. A parent-class method called with `..` while switched (`..SanitizeError`) resolves in `USER`, as `..BuildTestSpec` does.
+3. The sibling's redirect form, bound to the probe's own routine and switched to `USER`, raises `<COMMAND>` at the `Xecute`, not `<NOROUTINE>`: it fails across namespaces either way, so it is not taken. Recorded only.
+
+**DW-2673 (measured):** a Story 24.5 run sent through the real action route (`UnitTestActionFixture`, the port's own checks, a canned body answer) with the key on answered 200 with one body call and wrote 0 OcuPilot audit rows since its start. A control `Event.Record` in the same window wrote 1, so the read sees OcuPilot's rows. `DevToolPort.RunLocked` therefore calls the same `AuditRun` the consoles do (console `unittests`, the namespace, never the tests), pinned by `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests`. The ledger entry is closed with this result.
+
+**Deviations from the spec's text, each mechanical:**
+
+- `STATE` answers `Arguments` as the list's text and adds `ArgumentCount` as the number. A count under `Arguments` cannot also be the settable field the write's query is composed from (`Mint.Merge` refuses a text for a number).
+- The Arguments hint is three strings of the source around two code examples, so the rendered sentence is the proposed one. A string holding double quotes cannot be one literal of EXPERIENCE.md's table. The lone `Write` is `permissionWrite`, and Class, Method, Arguments, Output, Return value and Error reuse their existing strings (every value in `strings.ts` is unique).
+- The rename table gains a third entry, in comments only: the sibling's file name `Command.cls` becomes "the command body" (five places), which re-pins `InvokeWithArgs`. The harvested bodies otherwise keep their own comments, as `Harvest.UnitTest` does, so each pinned hash covers them. The CRLF line ends are the instance's form of a stored method.
+- Test commands and fixture bodies write with `W`, since the write-discipline rule matches the word `Write` in any code line, strings included.
+- `UnitTestPersonOnly` gains three parameters (`LITERAL`, `ENDPOINT`, `QUERY`) and skips its read-tool legs when `READWIRENAME` is empty; `CommandPersonOnly` and `ClassMethodPersonOnly` override them.
+- New test files beyond the spec's list: `ConsoleActionFixture`, `ConsoleTool/Registry`, `RunCommand` and `RunClassMethod` (the route's fixture), and `HarvestCaptured` with its fixture (the `OnCaptured` hook, which no other test reached).
+- The two tools are two short copies, not one base: their values, reads and answers differ (Rule 31).
+- Audit: the port writes the row when the harvest port answers OK, so a recorder that answers a canned result also writes one; a refusal before the body, or a harvest-port fault, writes none.
+- The three audit-counting classes read the audit clock after a pause of a quarter second: a row is stamped a little after the call that wrote it, so a clock read right after the last test could count its rows.
+- The command and class-method tests the browser specs run hold the key on only after the page is open, since signing in puts the stored policy back to its defaults.
 
 ## Verification
 
-Pending the ruling.
+**Shared surfaces:** System Explorer side-bar positions 18 and 19; the registered and unadvertised tool rosters; the governance baseline and the stored policy; the `EXPLORER.*` code roster and EXPERIENCE.md's Fixed strings; `HarvestPort`'s answer (`OnCaptured`); `ToolEmit`'s person-gate branch. Every test added or changed passes on a fresh environment, in either order. Tests touch only `^||` nodes, locals and `OcuProbe246` in `USER`, which they make and remove. Tests that store a key restore the policy they found.
+
+**Commands:**
+
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.ConsoleGate --class OcuPilot.Test.ConsoleRoundTrip --class OcuPilot.Test.CommandPersonOnly --class OcuPilot.Test.ClassMethodPersonOnly` -- expected: all pass.
+  - Run each class touched the same way, one call at a time, each under about 170 s: the Code Map rosters, `UnitTestPersonOnly`, `UnitTestRunGate`, `Harvest`, `PortCapture`, `DevToolPort*` and `NamespacePromote`.
+- `(loop)` `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/consoles.browser-spec.mjs browser/consoles-principals.browser-spec.mjs` -- expected: pass. Never run beside a `ci-runner` call.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components` -- expected: pass.
+- `(loop)` `uv run scripts/check-objectscript.py && uv run scripts/test_check_objectscript.py` -- expected: clean.
+- `(once)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --shard k/17`, for k = 1..17, one call each -- expected: green. The full browser suite is left to CI.
+
+**Mutations (Rule 19), one per AC, recorded as `mutation:` lines by the implement stage:**
+
+- AC1: `OnCaptured` no longer sets `output`. mutation: deleted the `output` set in `ConsoleRun.OnCaptured` -> `ConsoleRoundTrip` went red (4 of 6 tests, among them `TestACommandAnswersItsOutputItsOwnErrorAndLeavesNoTransaction`), reverted byte-identical.
+- AC2: `ClassMethod()` drops `byRefValues`. mutation: deleted the `byRefValues` set in `ConsoleRun.ClassMethod` -> `ConsoleRoundTrip.TestAClassMethodAnswersItsReturnItsOutputAndItsByReferenceValues` red alone, reverted byte-identical.
+- AC3: `outputBudget` is ignored in `OnCaptured`. mutation: `tBudget` forced to 1,000,000 in `ConsoleRun.OnCaptured` -> `ConsoleRoundTrip.TestAnOutputPastTheCeilingIsCutWithTheMarker` red alone, reverted byte-identical.
+- AC4: the `ocupilot` screen is made unreachable. mutation: the command screen in `DevToolPort.Console` compared with a word no command holds -> `ConsoleGate.TestEveryRefusalRowAnswersItsStatusAndCodeAndRecordsNoCall` red alone, reverted byte-identical.
+- AC5: a tool's `PERSONGATE` is emptied. mutation: `ExplorerCommandRun`'s `PERSONGATE` emptied -> `ConsoleGate.TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun` red alone, reverted byte-identical.
+- AC6: `ADVERTISED 1`. mutation: `ExplorerCommandRun` `ADVERTISED 1` -> `CommandPersonOnly` red (`TestTheToolIsInNoListTheAgentSees`, `TestAToolTheAgentCanReachCannotRunTheTests`, `TestEveryWriteOfTheRunEndpointDeclaresThePersonGate`), reverted byte-identical.
+- AC7: Run sends without the dialog. mutation: `ConsolePage.onAsk` sends the run when the form is asked -> `console.page.spec.ts` red (the two dialog tests), reverted byte-identical.
+- AC8: one harvested line is changed. mutation: `pArgCount = 0` made `1` in `Console.InvokeWithArgs` -> `ConsoleRoundTrip.TestTheHarvestedMethodsAreTheSiblingsAfterTheRenames` red naming it, reverted byte-identical.
+- AC9: a `WritePairs` pair is dropped. mutation: `NamespacePairs` asked in place of `WritePairs` in `DevToolPort.Console` -> `ConsoleGate.TestACallerShortOfAPairIsRefusedByName` and the key-on test red, reverted byte-identical.
+- AC10: the audit call is removed. mutation: the `AuditRun` calls removed from `DevToolPort.RunConsole` -> `ConsoleRoundTrip.TestARunWritesOneRowThatNamesTheConsoleAndNothingTheyTyped` red alone, reverted byte-identical.
+- Review patches (AC2, AC10): mutation: `outputBudget` answered as `..#OUTPUTCEILING` in `ConsoleRun.ClassMethod` -> `ConsoleRoundTrip.TestAClassMethodsReturnAndOutputShareOneBudget` red alone (the two together 62,768). mutation (code review, superseding the faulted-body line): the `AuditRun` calls moved below the harvest status check in `DevToolPort.RunConsole` and `RunLocked` -> `ConsoleGate.TestARunWhoseBodyFaultedStillWritesItsRow` red alone and `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests` red alone. Each reverted byte-identical (`cmp`).
+- AC9, OcuPilot's own state: mutation: the `AdminWriteRefused` guard dropped from `Switch.SetGuarded` -> `consoles-principals.browser-spec.mjs` stays green (observed): the principal holds no write on OcuPilot's data, so the instance also refuses the store. The guard itself is pinned by Story 21.30's tests; this leg pins that the principal's command changes nothing.
+- DW-2673: the `AuditRun` call removed from `DevToolPort.RunLocked` -> `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests` red alone, reverted byte-identical.
+- (QA) `src/OcuPilot/Test/ConsoleBoundary.cls` (new, 8 tests); `src/OcuPilot/Test/DevToolProbe.cls` (probe methods `Opens` and `Wrecks`); `src/OcuPilot/Port/Harvest/ConsoleRun.cls` (`New %request, %response, %session` in `Execute` and in the new private `Call`).
+- (QA) AC1: mutation: `SwitchNamespace` skipped in `ConsoleRun.Command` -> `ConsoleBoundary.TestACommandRunsInTheNamespaceItIsScopedTo` red alone, reverted byte-identical.
+- (QA) AC1, AC3: mutation: lines joined with a space in `ConsoleRun.OnCaptured` -> `ConsoleBoundary.TestLinesAreJoinedWithLineFeedsAndCutAcrossThem` red alone, reverted byte-identical.
+- (QA) AC3: mutation: `Console.SurrogateSafeCutLength` never backs off -> `ConsoleBoundary.TestACutNeverSplitsAnAstralCharacter` red alone, reverted byte-identical.
+- (QA) AC2: mutation: `Console.ParseArgEntry` passes a boolean as `"true"` -> `ConsoleBoundary.TestAnArgumentOfEachKindReachesTheMethod` red alone, reverted byte-identical.
+- (QA) AC2, AC10: mutation: `DevToolPort.RunConsole` rolls back only a command's transaction -> `ConsoleBoundary.TestATransactionALeftOpenByEitherConsoleIsRolledBack` red alone, reverted byte-identical.
+- (QA) AC10: mutation: `New` removed from `ConsoleRun.Execute` -> `ConsoleBoundary.TestACommandCannotBreakThePortsAnswer` red alone (500); `New` removed from `ConsoleRun.Call` -> `ConsoleBoundary.TestAMethodCannotBreakThePortsAnswer` red alone. Each reverted byte-identical.
+- (QA) AC4: mutation: the blank-command shape refusal moved ahead of the gate in `DevToolPort.Console`, and the shape check made to yield to the own-code screen -> `ConsoleBoundary.TestTheChecksRunInTheOrderTheStoryNames` red alone each time, reverted byte-identical.
+- (Code review) AC1, AC3: mutation: `OnCaptured`'s join put back to `$Extract(tText _ tLine, 1, tBudget + 1)` -> `ConsoleBoundary.TestLinesAreJoinedWithLineFeedsAndCutAcrossThem` red alone.
+- (Code review) AC1: mutation: `HarvestPort.Invoke`'s `Use tDevice` before `EndCapture` removed -> `ConsoleBoundary.TestACommandThatLeavesAnotherDeviceCurrentCannotKeepTheCapture` red. Four later tests in that run also went red, from the capture mnemonic left on the runner's device.
+- (Code review) The `Harvest` tripwire: mutation: a non-`New` use of `%response` added to `ConsoleRun.Call` -> `Harvest.TestNoHarvestedBodyNamesTheResponseWriter` red.
+- (Code review) AC7: mutation: the trailing-break strip removed from `ConsoleState.values` -> `console.page.spec.ts` "sends a command typed with a trailing line break as one line" red alone.
+- Each server mutation was applied on `ocupilot-b-ci`, the whole `src` tree reloaded and the class run; after the revert the tree was reloaded and `git status` plus a hash of every changed and new file were equal to before.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- AD-10. The consoles run caller-typed ObjectScript or a caller-named class method with the person's rights, so every arm of AD-10's prohibited set is reachable, and OcuPilot's protected state is reachable by any caller through the guarded storage methods (measured: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess). No write-path predicate can see what code does, and a name screen is bypassed by indirection, so "refused on the instance, on the write path, whatever the caller" cannot hold. Recommended resolution (option A): amend AD-10 with a named gap for the two consoles, built person-only (unadvertised write tools, keys `explorer.command.run` and `explorer.classmethod.run` default false), gated on `%Development:USE` and the namespace's pairs as the vendor's web terminal is, each run confirmed with its consequence named, with a literal OcuPilot-name refusal as defense in depth only, plus AD-39's eighth exception. Options B to D and the prepared shape are in Design Notes. A further split of 24.6 is not available. Separately, the guarded-storage escalation path is recorded in `deferred:` for harvest (out of footprint).
+Status: done
+Blocking condition: none
+
+**Summary.** The Command console and the Class method console are built on Story 24.5's `PERSONGATE` mechanism, unchanged: two unadvertised person-only tools, two keys that ship `false`, `DevToolPort`'s `Command` and `ClassMethod` endpoints, the harvested `Console` methods and `ConsoleRun` bodies over `HarvestPort` (with the `OnCaptured` hook, AD-39's eighth exception), one OcuPilot `SecurityChange` row per run that names no command, argument or answer, and one client page serving both consoles behind a warning dialog. Story 24.5's unit-test run now writes the same row (DW-2673).
+
+**Measurements.** Task 0: captured output survives a switch to `USER` (gate passed); a parent-class method resolves while switched; the sibling's redirect fails across namespaces (`<COMMAND>`). DW-2673: a 24.5 run at the action route wrote 0 OcuPilot rows against a control row of 1, so it was given the row and a test; the ledger entry is `resolved-by:24-6`. Details are under Design Notes.
+
+**Files changed.** About 54 paths: `Port/DevToolPort.cls`, `Port/HarvestPort.cls`, `Port/Harvest/{Handler,Console,ConsoleRun}.cls`, `Screen/Tool/Explorer{Command,ClassMethod}Run.cls`, `Screen/Descriptor/Explorer{Command,ClassMethod}.cls`, `Kernel/Governance/Baseline.cls`, `Api/AtelierError.cls`, `Screen/Titles.cls`, roster tests, the new `Console*` and `*PersonOnly` test classes and fixtures, `ui/src/app/areas/system-explorer/console.{store,page}.ts` with its spec, the strings, the screen mirror, EXPERIENCE.md's Fixed strings, two browser specs, and the `HARVEST_CALLERS` row in `scripts/check-objectscript.py`.
+
+**Review.** 19 findings, none high; 5 patched (2 medium, 3 low), 14 rejected with their reasons in the Review Triage Log. Patched: the class-method shared-budget test, the faulted-body no-row tests (recorder `SetFault`, `ConsoleGate` and `UnitTestRunGate`), the principals spec's lookup assertion and its honest AC9 mutation note, and `Command.cls` renamed in five harvested comments with `InvokeWithArgs` re-pinned. Patched counts by verdict: medium 2, low 3.
+
+**Follow-up review recommendation:** `followup_review_recommended: true` -- two medium entries were patched; the unverified risk is that the patch tests and the re-pinned `InvokeWithArgs` hash were verified by their own tests, mutations and the full sweep but no second reviewer read them.
+
+**Verification.** `ConsoleGate` 6, `ConsoleRoundTrip` 7, `CommandPersonOnly` 4, `ClassMethodPersonOnly` 4, `UnitTestRunGate` 9 tests green; both browser specs 9 of 9; `test:tools` 2296 of 2296; `test:components` 3519 of 3519; `check-objectscript.py` 0 problems and its harness OK; the full ObjectScript sweep green in all 17 shards (765 classes; shard 1 was rerun once after an earlier run of it was cut short by a call timeout and left a probe web application behind, then ran clean). Mutations: one per AC plus the review patches, each observed red and reverted; the one exception (the `SetGuarded` guard alone, AC9) stays green because the instance also refuses the principal, and is recorded as observed.
+
+**Residual risks.** The audit row is written when the harvest port answers OK, so a recorder's canned answer also writes one. The harvested bodies keep the sibling's in-body comments, since each pinned hash covers them. The new test classes are not yet in `ui/tools/ci-timings.json`; the merge gate refreshes it. The full browser suite is left to CI. `/tmp/t0` inside `ocupilot-b-ci` holds root-owned probe files from Task 0.

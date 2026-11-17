@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-16-2026 13:29'
+last_updated: '11-17-2026 19:25'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -417,9 +417,9 @@ development_status:
   21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done
   21-31-fixed-table-statistics: backlog
   21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list: done
-  21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: 
-    ready-for-dev
-  21-34-a-backup-action-leaves-the-web-process-s-null-device-open: in-progress
+  21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: done
+  21-34-a-backup-action-leaves-the-web-process-s-null-device-open: done
+  21-35-ocupilot-s-install-records-and-other-users-state-answer-only: done
   epic-21-retrospective: optional
 
   epic-22: done
@@ -449,13 +449,13 @@ development_status:
   24-2-the-analytics-editors: done
   24-3-interoperability-parity: done
   24-4-the-agent-gains-the-harvested-tools-and-undo: done
-  24-5-unit-test-runner-and-work-queue-viewer: backlog
-  24-6-the-command-and-class-method-consoles: backlog
+  24-5-unit-test-runner-and-work-queue-viewer: done
+  24-6-the-command-and-class-method-consoles: done
   24-7-web-terminal: backlog
   24-8-remote-instance-profiles-and-environment-diff: done
-  24-9-environment-promote: ready-for-dev
-  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: backlog
-  24-11-listing-groups: backlog
+  24-9-environment-promote: done
+  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: done
+  24-11-listing-groups: in-progress
   24-12-quality-measures: backlog
   24-13-analytics-settings: backlog
   24-14-pmml-model-tester-and-dashboard-viewer: backlog

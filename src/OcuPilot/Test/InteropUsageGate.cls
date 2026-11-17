@@ -149,7 +149,7 @@ Method Adjust(pPairs As %String) As %Status
     If $$$ISERR(tSC) Quit tSC
     Set ..StoredAdjustment = pPairs
     For tI = 1:1:$Length(..#TOOLS, ",") {
-        Set tSC = $ClassMethod(..#ACCESSSTORE, "GuardedPut", $Piece(..#TOOLS, ",", tI), pPairs, 0, ..#PROBE)
+        Set tSC = $ClassMethod(..#ACCESSSTORE, "GuardedPut", $Piece(..#TOOLS, ",", tI), pPairs, 0, $Username)
         If $$$ISERR(tSC) Quit
     }
     Quit tSC

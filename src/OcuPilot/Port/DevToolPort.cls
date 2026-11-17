@@ -1,6 +1,8 @@
-/// <p>The port to the developer-tool bodies that count a namespace's lines, hash its documents and compare two
-/// namespaces' documents (AD-23, AD-29): the only caller of <class>OcuPilot.Port.Harvest.Loc</class> and
-/// <class>OcuPilot.Port.Harvest.EnvSync</class>, through <class>OcuPilot.Port.HarvestPort</class>.
+/// <p>The port to the developer-tool bodies that count a namespace's lines, hash its documents, compare two
+/// namespaces' documents, run a namespace's unit tests and run a person's command or class method (AD-23, AD-29): the only
+/// caller of <class>OcuPilot.Port.Harvest.Loc</class>, <class>OcuPilot.Port.Harvest.EnvSync</class>,
+/// <class>OcuPilot.Port.Harvest.UnitTestRun</class> and <class>OcuPilot.Port.Harvest.ConsoleRun</class>, through
+/// <class>OcuPilot.Port.HarvestPort</class>.
 /// Nothing here issues an HTTP request, and nothing here names a class of the source code API.</p>
 /// <p>The bodies refuse a bad request in a way the harvest port answers as an internal fault, and
 /// neither caps what it scans, so <b>the order of every call is fixed</b> and nothing reaches a body
@@ -34,9 +36,51 @@
 /// the namespace is switched.</p>
 /// <p><b>Its answers</b> are lists of rows: <parameter>ENDPOINTCODEMETRICS</parameter> one row of totals,
 /// <parameter>ENDPOINTDOCUMENTHASHES</parameter> one row for each document, in the body's order, and
-/// <parameter>ENDPOINTNAMESPACEDIFF</parameter> one row for each document that is not the same in both namespaces.</p>
+/// <parameter>ENDPOINTNAMESPACEDIFF</parameter> one row for each document that is not the same in both namespaces; the
+/// composed types answer one object each (<method>Invoke</method>).</p>
+/// <p><b>Promote.</b> The <parameter>ENDPOINTNAMESPACEDIFF</parameter> endpoint also serves two composed types.
+/// <parameter>TYPEPLAN</parameter> derives the promote plan (<method>Plan</method>) from the same two body answers
+/// and checks the documents the caller names against it. <parameter>TYPEPROMOTE</parameter> does that and then writes
+/// them into the other namespace through <class>OcuPilot.Port.AtelierPort</class> alone, source first and nothing ever
+/// written to the first namespace. After steps 1 to 9 above, in this order and before any write:</p>
+/// <ol>
+/// <li>The first namespace, the other namespace or a document the caller names being <code>%SYS</code> or beginning
+/// with <code>%</code> is 400 <parameter>CODESYSTEM</parameter>.</li>
+/// <li>The documents (<parameter>DOCUMENTSKEY</parameter>, 1 to <parameter>OcuPilot.Port.AtelierPort.MAXDOCUMENTS</parameter>
+/// names) are held to the plan's steps: a name that is not an <code>Only in this namespace</code> or
+/// <code>Content differs</code> step refuses the whole request, 400 <parameter>CODENOTASTEP</parameter> with
+/// <code>detail.document</code>. A count outside the bounds is 400 <code>PORT.VALIDATION</code>.</li>
+/// <li>For <parameter>TYPEPROMOTE</parameter> only: WRITE on the other namespace's routines database
+/// (<method>OcuPilot.Port.AtelierPort.WritePairs</method>), evaluated like step 1 of the read; then the reviewed plan
+/// hash (<parameter>REVIEWEDKEY</parameter>, else <parameter>PLANHASHKEY</parameter>) compared with the plan hash derived
+/// now, 409 <parameter>CODESTALE</parameter> when it differs or is absent; then a preflight that reads the text of every
+/// chosen document, and the other namespace's text and version for each that is saved, refusing a text longer than one
+/// save takes or whose first line does not name its document; then the storage guard, 409
+/// <parameter>CODESTORAGE</parameter> with <code>detail.document</code> for a class whose copy in the other namespace
+/// has a storage definition its source lacks.</li>
+/// </ol>
+/// <p>Only then are documents written, in <code>Document</code> order and stopping at the first failure: a save with the
+/// version the preflight read and never over a newer one, a create, each sent without compiling, then one compile of the
+/// classes and one of the routines. Nothing is deleted and nothing is undone. The answer is 200
+/// <code>{documents: [{Document, Outcome, Reason}], lines, errors, stopped}</code>; the write is audited as OcuPilot's own
+/// <code>ConfigChange</code>.</p>
+/// <p><b>Unit tests</b> (Story 24.5). Three more endpoints serve the unit-test runner: <parameter>ENDPOINTUNITTESTRUN</parameter>
+/// reads what a run would run (<parameter>TYPESTATE</parameter>) and runs it (<parameter>TYPERUN</parameter>), and
+/// <parameter>ENDPOINTUNITTESTRUNS</parameter> and <parameter>ENDPOINTUNITTESTMETHODS</parameter> list what
+/// <code>%UnitTest_Result</code> recorded. They take their own order of checks after step 1 above, which
+/// <method>UnitTest</method> sets out; a run is the one write here that runs the code of the classes it names, as the
+/// signed-in person, and OcuPilot cannot see what that code changes. It is a person's alone (AD-10): the tool that reaches it
+/// is never advertised, and it declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter>.</p>
+/// <p><b>Consoles</b> (Story 24.6). Two more endpoints, <parameter>ENDPOINTCOMMAND</parameter> and
+/// <parameter>ENDPOINTCLASSMETHOD</parameter>, read what a console run would run (<parameter>TYPESTATE</parameter>) and run
+/// it (<parameter>TYPERUN</parameter>): an ObjectScript command, or a class method with its arguments, in a namespace, as the
+/// signed-in person. They take the order of checks <method>Console</method> sets out, after step 1 above, and a run writes one
+/// OcuPilot <code>SecurityChange</code> row naming the console and the namespace and never the command, the arguments or the
+/// answer (<method>AuditRun</method>). Each is a person's alone (AD-10): the tool that reaches it is never advertised and
+/// declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>HarvestPortClass</method>,
-/// <method>MaxDocuments</method> and <method>LogFault</method>. Production overrides none.</p>
+/// <method>AtelierPortClass</method>, <method>MaxDocuments</method>, <method>MaxTestClasses</method>,
+/// <method>LockName</method> and <method>LogFault</method>. Production overrides none.</p>
 Class OcuPilot.Port.DevToolPort Extends %RegisteredObject
 {
 
@@ -65,8 +109,136 @@ Parameter ENDPOINTDOCUMENTHASHES = "DocumentHashes";
 /// <p>The endpoint answering a row for each document that differs between two namespaces of this instance.</p>
 Parameter ENDPOINTNAMESPACEDIFF = "NamespaceDiff";
 
-/// <p>The one request type this port serves: a list.</p>
+/// <p>The request type every endpoint serves: a list.</p>
 Parameter TYPELIST = "LIST";
+
+/// <p>The two request types <parameter>ENDPOINTNAMESPACEDIFF</parameter> also serves: the plan of a promote, and the
+/// promote itself.</p>
+Parameter TYPEPLAN = "PLAN";
+
+Parameter TYPEPROMOTE = "PROMOTE";
+
+/// <p>The <code>endpoint/type</code> pairs whose writes this port composes from the query it is given, and sends no caller
+/// body for.</p>
+Parameter COMPOSEDTYPES = "NamespaceDiff/PROMOTE,UnitTestRun/RUN,Command/RUN,ClassMethod/RUN";
+
+/// <p>The endpoint that runs a namespace's unit tests (<parameter>TYPERUN</parameter>) and reads what a run would run
+/// (<parameter>TYPESTATE</parameter>); the endpoint listing a namespace's recorded runs, newest first; and the endpoint
+/// listing one run's methods (Story 24.5).</p>
+Parameter ENDPOINTUNITTESTRUN = "UnitTestRun";
+
+Parameter ENDPOINTUNITTESTRUNS = "UnitTestRuns";
+
+Parameter ENDPOINTUNITTESTMETHODS = "UnitTestMethods";
+
+/// <p>The request types <parameter>ENDPOINTUNITTESTRUN</parameter> serves: the read of what a run would run, and the run.</p>
+Parameter TYPESTATE = "STATE";
+
+Parameter TYPERUN = "RUN";
+
+/// <p>The query keys a unit-test request reads: the target, its level (<code>package</code>, <code>class</code> or
+/// <code>method</code>), the run a methods list reads, and the key the run's target travels under.</p>
+Parameter TESTSKEY = "tests";
+
+Parameter LEVELKEY = "level";
+
+Parameter RUNKEY = "run";
+
+Parameter IDKEY = "id";
+
+/// <p>The literal the run's target is named by (AD-13): a run is made in a namespace, not against a named object.</p>
+Parameter IDVALUE = "unittests";
+
+/// <p>The shape a package or a class name takes, and the shape a method name takes.</p>
+Parameter TESTSPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
+
+Parameter TESTMETHODPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>The longest target this port reads.</p>
+Parameter TESTSMAXLENGTH As INTEGER = 256;
+
+/// <p>The first segment of a target this port never runs, in lower case: OcuPilot's own tests.</p>
+Parameter OWNSEGMENT = "ocupilot";
+
+/// <p>The most test classes one run takes.</p>
+Parameter MAXTESTCLASSES As INTEGER = 50;
+
+/// <p>The lock one run takes, in the instance's temporary database, so it names no global OcuPilot keeps.</p>
+Parameter LOCKNAME = "^CacheTemp.OcuPilotUnitTestRun";
+
+/// <p>The most rows a record read answers when the query names no cap, and the most characters of failure text a
+/// method row carries.</p>
+Parameter RECORDROWS As INTEGER = 1000;
+
+Parameter FAILUREMAX As INTEGER = 2000;
+
+/// <p>The unit-test body, and its method.</p>
+Parameter HANDLERUNITTEST = "OcuPilot.Port.Harvest.UnitTestRun";
+
+Parameter METHODUNITTEST = "Run";
+
+/// <p>The two console endpoints (Story 24.6): a command, and a class method. Each serves <parameter>TYPESTATE</parameter> and
+/// <parameter>TYPERUN</parameter>.</p>
+Parameter ENDPOINTCOMMAND = "Command";
+
+Parameter ENDPOINTCLASSMETHOD = "ClassMethod";
+
+/// <p>The query keys a console request reads: the command, the class and the method, and the arguments as a JSON array's text.
+/// The run's target is the literal <parameter>IDVALUECOMMAND</parameter> or <parameter>IDVALUECLASSMETHOD</parameter>
+/// under <parameter>IDKEY</parameter> (AD-13): a run is made in a namespace, not against a named object.</p>
+Parameter COMMANDKEY = "command";
+
+Parameter CLASSKEY = "class";
+
+Parameter METHODKEY = "method";
+
+Parameter ARGSKEY = "args";
+
+Parameter IDVALUECOMMAND = "command";
+
+Parameter IDVALUECLASSMETHOD = "classmethod";
+
+/// <p>The longest command this port reads, and the most arguments a class method takes.</p>
+Parameter COMMANDMAX As INTEGER = 30000;
+
+Parameter MAXARGUMENTS As INTEGER = 20;
+
+/// <p>The shape a class name takes and the shape a method name takes, each with an optional leading <code>%</code>.</p>
+Parameter CLASSPATTERN = "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
+
+Parameter METHODPATTERN = "^%?[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>The console bodies, and their methods: the command's and the class method's.</p>
+Parameter HANDLERCONSOLE = "OcuPilot.Port.Harvest.ConsoleRun";
+
+Parameter METHODCOMMAND = "Command";
+
+Parameter METHODCLASSMETHOD = "ClassMethod";
+
+/// <p>The sentences a console's own input refusals carry.</p>
+Parameter REASONCOMMANDSHAPE = "Enter the command on one line, up to 30,000 characters.";
+
+Parameter REASONCLASSMETHODSHAPE = "Name a class and one of its class methods with letters, digits, dots and %.";
+
+Parameter REASONARGUMENTSSHAPE = "Give the arguments as a list in square brackets of at most 20 values: text, numbers, true or false, or a by-reference value.";
+
+/// <p>The sentence a target or level outside <parameter>TESTSPATTERN</parameter>'s shape carries.</p>
+Parameter REASONTESTSSHAPE = "Name a package, a class, or Class:Method with letters, digits and dots.";
+
+/// <p>What a recorded method's <code>Result</code> reads for a passed, a failed and a skipped method.</p>
+Parameter RESULTPASSED = "Passed";
+
+Parameter RESULTFAILED = "Failed";
+
+Parameter RESULTSKIPPED = "Skipped";
+
+/// <p>The query keys a plan or a promote reads beyond a diff's: the documents, comma-separated; the plan hash the
+/// caller reviewed; and the plan hash a proposal was made at.</p>
+Parameter DOCUMENTSKEY = "documents";
+
+Parameter REVIEWEDKEY = "reviewed";
+
+Parameter PLANHASHKEY = "planHash";
 
 /// <p>The query key naming the namespace a call runs in.</p>
 Parameter NAMESPACEKEY = "namespace";
@@ -111,6 +283,35 @@ Parameter REASONTARGETSHAPE = "Name the namespace to compare with.";
 
 Parameter REASONTARGETSAME = "Choose a namespace other than this one to compare with.";
 
+/// <p>The codes and sentences a plan's or a promote's own refusals carry.</p>
+Parameter CODENOTASTEP = "EXPLORER.PROMOTE.NOTASTEP";
+
+Parameter REASONNOTASTEP = "Choose documents the plan lists as only in this namespace or as differing.";
+
+Parameter CODESTALE = "EXPLORER.PROMOTE.STALE";
+
+Parameter REASONSTALE = "The namespaces changed after this plan was shown, so nothing was written. Compare them again and review the new plan.";
+
+Parameter CODESYSTEM = "EXPLORER.PROMOTE.SYSTEM";
+
+Parameter REASONSYSTEM = "Promote works between two namespaces other than %SYS and never writes a document whose name begins with %.";
+
+Parameter CODESTORAGE = "EXPLORER.PROMOTE.STORAGE";
+
+Parameter REASONSTORAGE = "A class here lacks a storage definition its copy in the other namespace has, so nothing was written: compiling it there would change how its stored data is read.";
+
+Parameter REASONDOCUMENTS = "Choose 1 to 100 documents to promote.";
+
+/// <p>What a promote's answer reads for each document: written over the other namespace's copy, written as a new
+/// document, refused by the write that stopped the promote, and left unwritten after it.</p>
+Parameter OUTCOMEREPLACED = "Replaced";
+
+Parameter OUTCOMEADDED = "Added";
+
+Parameter OUTCOMEFAILED = "Failed";
+
+Parameter OUTCOMENOTATTEMPTED = "Not attempted";
+
 /// <p>What a namespace diff's <code>Change</code> reads for a document in the first namespace alone, in the other
 /// alone, and in both with different content.</p>
 Parameter CHANGEONLYHERE = "Only in this namespace";
@@ -133,6 +334,13 @@ ClassMethod HarvestPortClass() As %String
     Quit "OcuPilot.Port.HarvestPort"
 }
 
+/// <p>The class every plan's and promote's document read, save, create and compile is run through. Overridable so a
+/// fixture can fail a chosen save; production never overrides it.</p>
+ClassMethod AtelierPortClass() As %String
+{
+    Quit "OcuPilot.Port.AtelierPort"
+}
+
 /// <p>The most documents one call reads. Overridable so a fixture can lower it; production never
 /// overrides it.</p>
 ClassMethod MaxDocuments() As %Integer
@@ -150,22 +358,28 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <p>The endpoints this port serves, as a list.</p>
 ClassMethod Endpoints() As %List
 {
-    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES, ..#ENDPOINTNAMESPACEDIFF)
+    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES, ..#ENDPOINTNAMESPACEDIFF, ..#ENDPOINTUNITTESTRUN, ..#ENDPOINTUNITTESTRUNS, ..#ENDPOINTUNITTESTMETHODS, ..#ENDPOINTCOMMAND, ..#ENDPOINTCLASSMETHOD)
 }
 
-/// <p>Serve <var>pEndpoint</var> for request type <parameter>TYPELIST</parameter>, after this class's
-/// header's gate.</p>
+/// <p>Serve <var>pEndpoint</var> for request type <parameter>TYPELIST</parameter>, or, for
+/// <parameter>ENDPOINTNAMESPACEDIFF</parameter> only, <parameter>TYPEPLAN</parameter> or
+/// <parameter>TYPEPROMOTE</parameter>, after this class's header's gate.</p>
 /// <p><var>pQuery</var> carries <parameter>SPECKEY</parameter>, <parameter>GENERATEDKEY</parameter>
 /// (optional, <code>no</code> when absent), <parameter>NAMESPACEKEY</parameter> (optional: the request's
 /// scope when absent), <parameter>MAXROWSKEY</parameter> (optional, a whole number above zero, the
 /// most rows a hash or diff list answers) and, for <parameter>ENDPOINTNAMESPACEDIFF</parameter>,
-/// <parameter>TARGETKEY</parameter>. <var>pBody</var> is not read.</p>
-/// <p>On success, at 200, <var>pResult</var> is an array of rows: for
+/// <parameter>TARGETKEY</parameter>. A plan or a promote also reads <parameter>DOCUMENTSKEY</parameter>,
+/// <parameter>REVIEWEDKEY</parameter> and <parameter>PLANHASHKEY</parameter>. <var>pBody</var> is not read.</p>
+/// <p>On success, at 200, <var>pResult</var> for a plan is <code>{Namespace, Target, Spec, Generated, Steps, Warnings,
+/// PlanHash, Reviewed}</code>: the namespaces, the cleaned spec and <code>yes</code> or <code>no</code>, the chosen
+/// documents as <code>[{Document, Change}]</code> in <code>Document</code> order, how many documents only the other
+/// namespace holds, the plan hash (<method>Plan</method>) and <code>""</code>; for a promote it is
+/// <method>Promote</method>'s answer. Otherwise <var>pResult</var> is an array of rows: for
 /// <parameter>ENDPOINTCODEMETRICS</parameter> one <code>{Documents, Lines, Code, CodePercent, SourceCode,
 /// TestCode, Comments, CommentPercent, Blank, BlankPercent}</code>, and for
 /// <parameter>ENDPOINTDOCUMENTHASHES</parameter> <code>{Document, Hash, Modified}</code> for each document,
 /// <code>Hash</code> the SHA-256 of its text in hex, and for <parameter>ENDPOINTNAMESPACEDIFF</parameter>
-/// <code>{Document, Change, Hash, OtherHash, Modified, OtherModified}</code> for each document that is in one
+/// <code>{Document, Change, Hash, OtherHash, Modified, OtherModified, Promotable}</code> for each document that is in one
 /// namespace only or whose hashes differ (the other namespace's fields <code>""</code> for a document it lacks),
 /// in <code>Document</code> order, at most the row cap of them.</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
@@ -173,8 +387,10 @@ ClassMethod Endpoints() As %List
 /// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, a target, a cap, a spec or a
 /// generated value of the wrong shape, or a namespace whose databases cannot be resolved; 400
 /// <parameter>OcuPilot.Api.AtelierError.SPECWIDE</parameter> and
-/// <parameter>OcuPilot.Api.AtelierError.SPECTOOMANY</parameter>; 501 <code>PORT.NOTIMPLEMENTED</code> for
-/// another endpoint or type; and whatever the harvest port answers for a body's failure, 500
+/// <parameter>OcuPilot.Api.AtelierError.SPECTOOMANY</parameter>; for a plan or a promote, 400
+/// <parameter>CODESYSTEM</parameter> and <parameter>CODENOTASTEP</parameter>, 409 <parameter>CODESTALE</parameter> and
+/// <parameter>CODESTORAGE</parameter> and a document's own refusals (<method>Preflight</method>); 501
+/// <code>PORT.NOTIMPLEMENTED</code> for another endpoint or type; and whatever the harvest port answers for a body's failure, 500
 /// <code>INTERNAL</code> for anything else, logged.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is
 /// unchanged on return.</p>
@@ -190,6 +406,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; EvaluateRequired, not EvaluatePairs: a pair set that parses to nothing fails closed.
         If '$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .tFailedPair) {
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $ListFind(..UnitTestEndpoints(), pEndpoint) {
+            Set tSC = ..UnitTest(pEndpoint, pType, .pQuery, tPairs, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $ListFind(..ConsoleEndpoints(), pEndpoint) {
+            Set tSC = ..Console(pEndpoint, pType, .pQuery, tPairs, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
@@ -208,7 +432,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
-        If ('$ListFind(..Endpoints(), pEndpoint)) || (pType '= ..#TYPELIST) {
+        Set tPlanType = (pType = ..#TYPEPLAN) || (pType = ..#TYPEPROMOTE)
+        If ('$ListFind(..Endpoints(), pEndpoint)) || ((pType '= ..#TYPELIST) && '(tPlanType && (pEndpoint = ..#ENDPOINTNAMESPACEDIFF))) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
@@ -281,13 +506,23 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
         }
 
+        If tPlanType {
+            Set tSC = ..PlanProblem(tNamespace, tTarget, $Get(pQuery(..#DOCUMENTSKEY)), .tNames, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+
         Set tMetrics = (pEndpoint = ..#ENDPOINTCODEMETRICS)
         Set tSC = ..RunBody(tMetrics, tSpec, tNamespace, tIncludeGenerated, tPairs _ tNamespacePairs, .tAnswer, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         If tDiff {
             Set tSC = ..RunBody(0, tSpec, tTarget, tIncludeGenerated, tPairs _ tTargetPairs, .tOtherAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
-            Set pResult = ..DiffRows(tAnswer, tOtherAnswer, tMax)
+            If tPlanType {
+                Set tSC = ..Compose(pType = ..#TYPEPROMOTE, tNamespace, tTarget, tSpec, tIncludeGenerated, tNames, ..Plan(tAnswer, tOtherAnswer), $Get(pQuery(..#REVIEWEDKEY)), $Get(pQuery(..#PLANHASHKEY)), .pResult, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            } Else {
+                Set pResult = ..DiffRows(tAnswer, tOtherAnswer, tMax)
+            }
         } Else {
             Set pResult = $Select(tMetrics: ..MetricsRows(tAnswer), 1: ..HashRows(tAnswer, tMax))
         }
@@ -297,6 +532,682 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The most test classes one run takes. Overridable so a fixture can lower it; production never overrides it.</p>
+ClassMethod MaxTestClasses() As %Integer
+{
+    Quit ..#MAXTESTCLASSES
+}
+
+/// <p>The lock one run takes. Overridable so a fixture can hold another name; production never overrides it.</p>
+ClassMethod LockName() As %String
+{
+    Quit ..#LOCKNAME
+}
+
+/// <p>The three unit-test endpoints, as a list.</p>
+ClassMethod UnitTestEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTUNITTESTRUN, ..#ENDPOINTUNITTESTRUNS, ..#ENDPOINTUNITTESTMETHODS)
+}
+
+/// <p>The two console endpoints, as a list.</p>
+ClassMethod ConsoleEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTCOMMAND, ..#ENDPOINTCLASSMETHOD)
+}
+
+/// <p>Serve one of the two console endpoints, after <method>Invoke</method>'s first step. The read answers
+/// <code>{Namespace, Command}</code> for the command console and <code>{Namespace, Class, Method, Arguments,
+/// ArgumentCount}</code> for the class method console, <code>Arguments</code> the list as sent and <code>ArgumentCount</code>
+/// its length; the run answers what its body rendered, the code's own error included (<code>error</code>), and never raises
+/// one of that code's as a fault.</p>
+/// <p>Every check precedes any body, in this order, and a refusal records no body call and writes no audit row:</p>
+/// <ol>
+/// <li>The namespace's shape, then <method>OcuPilot.Port.AtelierPort.WritePairs</method>, refused 400
+/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 1 of <method>Invoke</method>
+/// otherwise.</li>
+/// <li>The request type: <parameter>TYPESTATE</parameter> or <parameter>TYPERUN</parameter>, else 501.</li>
+/// <li>The input's shape, 400 <code>PORT.VALIDATION</code>: a command of 1 to <parameter>COMMANDMAX</parameter> characters
+/// with no control character; a class name and a method name (<parameter>CLASSPATTERN</parameter>,
+/// <parameter>METHODPATTERN</parameter>); and arguments that are a JSON array of at most <parameter>MAXARGUMENTS</parameter>
+/// values, each a text, a number, a boolean or a by-reference marker.</li>
+/// <li>The <parameter>OWNSEGMENT</parameter> screen, 400 <parameter>OcuPilot.Api.AtelierError.COMMANDOWNCODE</parameter> or
+/// <parameter>OcuPilot.Api.AtelierError.CLASSMETHODOWNCODE</parameter>: a command that names it in any letter case, and a
+/// class whose first segment is it. It is a screen: code reached by indirection passes it.</li>
+/// <li>For a class method, its resolution (<method>ClassMethodFound</method>): a compiled, public class method of the
+/// namespace, else 404 <parameter>OcuPilot.Api.AtelierError.CLASSMETHODNOTFOUND</parameter>.</li>
+/// </ol>
+/// <p>The run then calls <parameter>HANDLERCONSOLE</parameter> through the harvest port with the pairs of the gate and the
+/// namespace, after writing the audit row (<method>AuditRun</method>), and rolls back any transaction the code left open to the
+/// level the run began at. No <code>OcuPilot.*</code> class is called while the namespace is switched.</p>
+ClassMethod Console(pEndpoint As %String, pType As %String, ByRef pQuery, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tCommand = (pEndpoint = ..#ENDPOINTCOMMAND)
+    Set tFailedPair = ""
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+    }
+    Set tNamespacePairs = ##class(OcuPilot.Port.AtelierPort).WritePairs(tNamespace)
+    If tNamespacePairs = "" {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    }
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", tNamespacePairs, .tFailedPair) {
+        Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    }
+    If (pType '= ..#TYPESTATE) && (pType '= ..#TYPERUN) {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+
+    Set tText = $Get(pQuery(..#COMMANDKEY))
+    Set tClass = $Get(pQuery(..#CLASSKEY))
+    Set tMethod = $Get(pQuery(..#METHODKEY))
+    Set tArgs = $Get(pQuery(..#ARGSKEY))
+    If tCommand {
+        If '..CommandShapeOK(tText) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCOMMANDSHAPE, .pHttpStatus, .pFault)
+        }
+        If $ZConvert(tText, "L") [ ..#OWNSEGMENT {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#COMMANDOWNCODE, ##class(OcuPilot.Api.AtelierError).#REASONCOMMANDOWNCODE, .pHttpStatus, .pFault)
+        }
+    } Else {
+        If '$Match(tClass, ..#CLASSPATTERN) || '$Match(tMethod, ..#METHODPATTERN) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCLASSMETHODSHAPE, .pHttpStatus, .pFault)
+        }
+        If '..ArgumentsShapeOK(tArgs, .tArgCount) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONARGUMENTSSHAPE, .pHttpStatus, .pFault)
+        }
+        If $ZConvert($Piece(tClass, ".", 1), "L") = ..#OWNSEGMENT {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#CLASSMETHODOWNCODE, ##class(OcuPilot.Api.AtelierError).#REASONCLASSMETHODOWNCODE, .pHttpStatus, .pFault)
+        }
+        Set tFoundSC = ..ClassMethodFound(tNamespace, tClass, tMethod, .tFound)
+        If $$$ISERR(tFoundSC) {
+            Quit ..Fail("the class method could not be resolved", tFoundSC, .pHttpStatus, .pFault)
+        }
+        If 'tFound {
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#CLASSMETHODNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONCLASSMETHODNOTFOUND, .pHttpStatus, .pFault)
+        }
+    }
+
+    If pType = ..#TYPESTATE {
+        Set pResult = {}
+        Do pResult.%Set("Namespace", tNamespace, "string")
+        If tCommand {
+            Do pResult.%Set("Command", tText, "string")
+        } Else {
+            Do pResult.%Set("Class", tClass, "string")
+            Do pResult.%Set("Method", tMethod, "string")
+            Do pResult.%Set("Arguments", tArgs, "string")
+            Do pResult.%Set("ArgumentCount", tArgCount, "number")
+        }
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..RunConsole(tCommand, tNamespace, tText, tClass, tMethod, tArgs, pPairs _ tNamespacePairs, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pText</var> is a command this port takes: 1 to <parameter>COMMANDMAX</parameter> characters, not blank, and
+/// with no control character, so it is one line. Pure.</p>
+ClassMethod CommandShapeOK(pText As %String) As %Boolean
+{
+    If $IsObject(pText) || ($Length(pText) > ..#COMMANDMAX) Quit 0
+    If $ZStrip(pText, "<>W") = "" Quit 0
+    Quit $ZStrip(pText, "*C") = pText
+}
+
+/// <p>Whether <var>pText</var> is an argument list this port takes, and in <var>pCount</var> how many it holds: empty, or the
+/// text of a JSON array of at most <parameter>MAXARGUMENTS</parameter> values, each a text, a number or a boolean, or an
+/// object <code>{"byRef": &lt;boolean&gt;, "value": &lt;scalar&gt;}</code> whose value may be left out only for a
+/// <code>true</code> <code>byRef</code>. A <code>null</code>, a nested array and any other object are refused. Pure.</p>
+ClassMethod ArgumentsShapeOK(pText As %String, Output pCount As %Integer) As %Boolean
+{
+    Set pCount = 0
+    If pText = "" Quit 1
+    Set tOK = 1
+    Try {
+        Set tArray = ##class(%DynamicAbstractObject).%FromJSON(pText)
+        If '$IsObject(tArray) || 'tArray.%IsA("%Library.DynamicArray") || (tArray.%Size() > ..#MAXARGUMENTS) {
+            Set tOK = 0
+            Quit
+        }
+        Set pCount = tArray.%Size()
+        For tI = 0:1:pCount - 1 {
+            Set tType = tArray.%GetTypeOf(tI)
+            If (tType = "null") || (tType = "array") {
+                Set tOK = 0
+                Quit
+            }
+            If tType '= "object" Continue
+            Set tEntry = tArray.%Get(tI)
+            Set tValueType = tEntry.%GetTypeOf("value")
+            If (tEntry.%GetTypeOf("byRef") '= "boolean") || (tValueType = "null") || (tValueType = "object") || (tValueType = "array") || ((tValueType = "unassigned") && 'tEntry.%Get("byRef")) {
+                Set tOK = 0
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tOK = 0
+    }
+    If 'tOK Set pCount = 0
+    Quit tOK
+}
+
+/// <p>Whether <var>pNamespace</var> holds a compiled, public class method <var>pMethod</var> of the class <var>pClass</var>, in
+/// <var>pFound</var>. While the namespace is switched only the class dictionary is read, and it is restored first in the
+/// <code>Catch</code>.</p>
+ClassMethod ClassMethodFound(pNamespace As %String, pClass As %String, pMethod As %String, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCompiled = ##class(%Dictionary.CompiledMethod).%OpenId(pClass _ "||" _ pMethod)
+        If $IsObject(tCompiled) {
+            Set pFound = tCompiled.ClassMethod && 'tCompiled.Private
+        }
+        Set tCompiled = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pFound = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Run the console's body for the input the checks passed, in <var>pNamespace</var>, under <var>pPairs</var>, answering what the
+/// body rendered in <var>pResult</var>. The audit row is written before the body is entered, so a run whose code ends its own
+/// process or breaks the port's answer is recorded all the same. Any transaction the code left open is rolled back to the level
+/// the run began at, on every path, before anything else is written.</p>
+ClassMethod RunConsole(pCommand As %Boolean, pNamespace As %String, pText As %String, pClass As %String, pMethod As %String, pArgs As %String, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tLevel = $TLevel
+    Try {
+        Kill tQuery
+        Set tQuery("namespace") = pNamespace
+        If pCommand {
+            Set tQuery("command") = pText
+        } Else {
+            Set tQuery("class") = pClass
+            Set tQuery("method") = pMethod
+            If pArgs '= "" Set tQuery("args") = pArgs
+        }
+        If pCommand {
+            Do ..AuditRun(..#IDVALUECOMMAND, pNamespace, "", "")
+        } Else {
+            Do ..AuditRun(..#IDVALUECLASSMETHOD, pNamespace, pClass, pMethod)
+        }
+        Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERCONSOLE, $Select(pCommand: ..#METHODCOMMAND, 1: ..#METHODCLASSMETHOD), pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        If $$$ISERR(tBodySC) {
+            Set pHttpStatus = tHttp
+            Set pFault = tFault
+            Set tSC = tBodySC
+            Quit
+        }
+        Set pResult = tAnswer
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        Set tSC = ..Fail("the console run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Record OcuPilot's own <code>SecurityChange</code> row for a run of <var>pConsole</var> (<parameter>IDVALUECOMMAND</parameter>,
+/// <parameter>IDVALUECLASSMETHOD</parameter> or <code>unittests</code>), because the instance audits none of what a person's
+/// own code does (AD-15). The row names the console and the namespace and, for a class method, the class and the method, and
+/// never the command, the arguments, the tests or the answer. It never fails the run: a row that cannot be recorded is
+/// logged.</p>
+ClassMethod AuditRun(pConsole As %String, pNamespace As %String, pClass As %String, pMethod As %String) [ Private ]
+{
+    Try {
+        Set tEffects = {}
+        Do tEffects.%Set("console", pConsole, "string")
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pClass '= "" {
+            Do tEffects.%Set("class", pClass, "string")
+            Do tEffects.%Set("method", pMethod, "string")
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record("run", "class", pConsole, {}, 1, tEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the console run could not be audited", tSC)
+    } Catch ex {
+        Do ..LogFault("the console run could not be audited", ex.AsStatus())
+    }
+}
+
+/// <p>Serve one of the three unit-test endpoints, after <method>Invoke</method>'s first step. The run and its read answer
+/// <code>{Namespace, Tests, Level, Classes, Production, Busy}</code> for <parameter>TYPESTATE</parameter> and
+/// <code>{run, passed, failed}</code> for <parameter>TYPERUN</parameter>; the two record endpoints answer a list of rows
+/// (<method>RunRows</method>, <method>MethodRows</method>).</p>
+/// <p>Every check precedes any body, in this order, and a refusal leaves the root global and the lock as they were:</p>
+/// <ol>
+/// <li>The namespace's shape, then its pairs: <method>OcuPilot.Port.AtelierPort.WritePairs</method> for the run and its
+/// read, <method>OcuPilot.Port.AtelierPort.NamespacePairs</method> for a record read, each refused 400
+/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 1 of <method>Invoke</method>
+/// otherwise.</li>
+/// <li>The request type.</li>
+/// <li>For the run and its read: the target's shape and level, 400 <code>PORT.VALIDATION</code>; the first segment of the
+/// target being <parameter>OWNSEGMENT</parameter> in any case, 400
+/// <parameter>OcuPilot.Api.AtelierError.UNITTESTOWNCODE</parameter>; the target's resolution
+/// (<method>ResolveTests</method>), 404 <parameter>OcuPilot.Api.AtelierError.UNITTESTNOTFOUND</parameter>; the class cap
+/// (<method>MaxTestClasses</method>), 400 <parameter>OcuPilot.Api.AtelierError.UNITTESTTOOMANY</parameter> with
+/// <code>detail.count</code> and <code>detail.max</code>; a production test among the classes, 409
+/// <parameter>OcuPilot.Api.AtelierError.UNITTESTPRODUCTION</parameter>.</li>
+/// <li>For the run: the lock (<method>LockName</method>), 409 <parameter>OcuPilot.Api.AtelierError.UNITTESTBUSY</parameter>
+/// when another run holds it.</li>
+/// </ol>
+/// <p>The run then sets the namespace's root global when it does not name an existing directory
+/// (<method>RootBegin</method>), runs <class>OcuPilot.Port.Harvest.UnitTestRun</class> through the harvest port, puts the
+/// root back and releases the lock, on every path. A run the body answers with no recorded result is 500
+/// <parameter>OcuPilot.Api.AtelierError.UNITTESTNORESULT</parameter>, logged. No <code>OcuPilot.*</code> class is called
+/// while the namespace is switched.</p>
+ClassMethod UnitTest(pEndpoint As %String, pType As %String, ByRef pQuery, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tRun = (pEndpoint = ..#ENDPOINTUNITTESTRUN)
+    Set tFailedPair = ""
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+    }
+    Set tNamespacePairs = $Select(tRun: ##class(OcuPilot.Port.AtelierPort).WritePairs(tNamespace), 1: ##class(OcuPilot.Port.AtelierPort).NamespacePairs(tNamespace))
+    If tNamespacePairs = "" {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    }
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", tNamespacePairs, .tFailedPair) {
+        Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    }
+    If $Select(tRun: (pType '= ..#TYPESTATE) && (pType '= ..#TYPERUN), 1: pType '= ..#TYPELIST) {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+    If 'tRun {
+        Quit ..Record(pEndpoint, tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+    }
+
+    Set tTests = $Get(pQuery(..#TESTSKEY))
+    Set tLevel = $Get(pQuery(..#LEVELKEY))
+    If '..TestsShapeOK(tTests, tLevel) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTESTSSHAPE, .pHttpStatus, .pFault)
+    }
+    If $ZConvert($Piece($Piece(tTests, ":", 1), ".", 1), "L") = ..#OWNSEGMENT {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#UNITTESTOWNCODE, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTOWNCODE, .pHttpStatus, .pFault)
+    }
+    Set tResolveSC = ..ResolveTests(tNamespace, tTests, tLevel, .tNames, .tProduction)
+    If $$$ISERR(tResolveSC) {
+        Quit ..Fail("the unit tests could not be resolved", tResolveSC, .pHttpStatus, .pFault)
+    }
+    If $ListLength(tNames) = 0 {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#UNITTESTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTNOTFOUND, .pHttpStatus, .pFault)
+    }
+    Set tLimit = ..MaxTestClasses()
+    If $ListLength(tNames) > tLimit {
+        Set tDetail = {}
+        Do tDetail.%Set("count", $ListLength(tNames), "number")
+        Do tDetail.%Set("max", tLimit, "number")
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#UNITTESTTOOMANY, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTTOOMANY, .pHttpStatus, .pFault, tDetail)
+    }
+    If tProduction {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#UNITTESTPRODUCTION, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTPRODUCTION, .pHttpStatus, .pFault)
+    }
+
+    Set tLockName = ..LockName()
+    If pType = ..#TYPESTATE {
+        Lock +@tLockName:0
+        Set tBusy = '$Test
+        If 'tBusy Lock -@tLockName
+        Set pResult = {}
+        Do pResult.%Set("Namespace", tNamespace, "string")
+        Do pResult.%Set("Tests", tTests, "string")
+        Do pResult.%Set("Level", tLevel, "string")
+        Do pResult.%Set("Classes", $ListToString(tNames, ","), "string")
+        Do pResult.%Set("Production", 0, "boolean")
+        Do pResult.%Set("Busy", ''tBusy, "boolean")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Lock +@tLockName:0
+    If '$Test {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#UNITTESTBUSY, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTBUSY, .pHttpStatus, .pFault)
+    }
+    Try {
+        Set tSC = ..RunLocked(tNamespace, tTests, tLevel, tNames, pPairs _ tNamespacePairs, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the unit-test run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Lock -@tLockName
+    Quit tSC
+}
+
+/// <p>Whether <var>pTests</var> is a target of the shape <var>pLevel</var> reads: 1 to <parameter>TESTSMAXLENGTH</parameter>
+/// characters, a dotted name of letters and digits at the package and class levels, and <code>Class:Method</code> at the
+/// method level. Pure.</p>
+ClassMethod TestsShapeOK(pTests As %String, pLevel As %String) As %Boolean
+{
+    If $IsObject(pTests) || (pTests = "") || ($Length(pTests) > ..#TESTSMAXLENGTH) Quit 0
+    If (pLevel '= "package") && (pLevel '= "class") && (pLevel '= "method") Quit 0
+    If pLevel '= "method" Quit $Match(pTests, ..#TESTSPATTERN)
+    If $Length(pTests, ":") '= 2 Quit 0
+    Quit $Match($Piece(pTests, ":", 1), ..#TESTSPATTERN) && $Match($Piece(pTests, ":", 2), ..#TESTMETHODPATTERN)
+}
+
+/// <p>The compiled test classes <var>pTests</var> names at <var>pLevel</var> in <var>pNamespace</var>, as the
+/// <class>%List</class> <var>pNames</var> of their names in name order, and whether any of them is a
+/// <class>%UnitTest.TestProduction</class> test in <var>pProduction</var>. A package names every non-abstract
+/// <class>%UnitTest.TestCase</class> subclass under <code>&lt;package&gt;.</code>; a class names itself when it is one;
+/// a method names its class when that class is one and has a compiled method of that name beginning with
+/// <code>Test</code>, in that case, as the manager collects them. A target that names nothing answers an empty list. While
+/// the namespace is switched only system classes and <method>IsTestClass</method> are called, and it is restored first in
+/// the <code>Catch</code>.</p>
+ClassMethod ResolveTests(pNamespace As %String, pTests As %String, pLevel As %String, Output pNames As %List, Output pProduction As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pNames = ""
+    Set pProduction = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pLevel = "package" {
+            Set tStatement = ##class(%SQL.Statement).%New()
+            Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH ? AND Abstract = 0 ORDER BY Name", pTests _ ".")
+            If '$IsObject(tResult) {
+                Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+                Quit
+            }
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+                Quit
+            }
+            Set tNextSC = $$$OK
+            While tResult.%Next(.tNextSC) {
+                Set tName = tResult.%Get("Name")
+                If ..IsTestClass(tName, .tProductionClass) {
+                    Set pNames = pNames _ $ListBuild(tName)
+                    If tProductionClass Set pProduction = 1
+                }
+            }
+            If $$$ISERR(tNextSC) Set tSC = tNextSC
+            Set tResult = ""
+        } Else {
+            Set tClass = $Piece(pTests, ":", 1)
+            Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tClass)
+            If $IsObject(tCompiled) && 'tCompiled.Abstract {
+                Set tName = tCompiled.Name
+                Set tMethodOK = 1
+                If pLevel = "method" {
+                    Set tMethod = $Piece(pTests, ":", 2)
+                    Set tMethodOK = ($Extract(tMethod, 1, 4) = "Test") && ##class(%Dictionary.CompiledMethod).%ExistsId(tName _ "||" _ tMethod)
+                }
+                If tMethodOK && ..IsTestClass(tName, .tProductionClass) {
+                    Set pNames = $ListBuild(tName)
+                    Set pProduction = tProductionClass
+                }
+            }
+            Set tCompiled = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pNames = ""
+        Set pProduction = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Whether the compiled class <var>pName</var> extends <class>%UnitTest.TestCase</class>, and in <var>pProduction</var>
+/// whether it extends <class>%UnitTest.TestProduction</class>. A class that cannot be loaded is not a test.</p>
+ClassMethod IsTestClass(pName As %String, Output pProduction As %Boolean) As %Boolean [ Private ]
+{
+    Set pProduction = 0
+    Set tIs = 0
+    Try {
+        Set tIs = +$ClassMethod(pName, "%Extends", "%UnitTest.TestCase")
+        If tIs Set pProduction = +$ClassMethod(pName, "%Extends", "%UnitTest.TestProduction")
+    } Catch {
+        Set tIs = 0
+        Set pProduction = 0
+    }
+    Quit tIs
+}
+
+/// <p>Run <var>pTests</var> at <var>pLevel</var> in <var>pNamespace</var> with the lock held, answering <code>{run, passed,
+/// failed}</code> in <var>pResult</var>. A package run sends the body <var>pNames</var>, the classes the checks passed, so
+/// the classes that run are the classes checked. The namespace's root global is set for the run when it does not name an
+/// existing directory and put back on every path (<method>RootBegin</method>, <method>RootEnd</method>), after any
+/// transaction the tests left open is rolled back to the level the run began at. The run's audit row (<method>AuditRun</method>)
+/// is written before the body is entered. A run that recorded no result is 500
+/// <parameter>OcuPilot.Api.AtelierError.UNITTESTNORESULT</parameter>, logged.</p>
+ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %String, pNames As %List, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tChanged = 0
+    Set tHad = 0
+    Set tOld = ""
+    Set tLevel = $TLevel
+    Try {
+        Do ..RootBegin(pNamespace, .tChanged, .tHad, .tOld)
+        Kill tQuery
+        Set tQuery("target") = pTests
+        Set tQuery("level") = pLevel
+        Set tQuery("namespace") = pNamespace
+        If pLevel = "package" Set tQuery("classes") = $ListToString(pNames, ",")
+        Do ..AuditRun(..#IDVALUE, pNamespace, "", "")
+        Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERUNITTEST, ..#METHODUNITTEST, pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        If $$$ISERR(tBodySC) {
+            Set pHttpStatus = tHttp
+            Set pFault = tFault
+            Set tSC = tBodySC
+            Quit
+        }
+        If '$IsObject($Get(tAnswer)) || (+tAnswer.%Get("run") < 1) {
+            Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTNORESULT, .pHttpStatus, .pFault)
+            Do ..LogFault("the unit-test run recorded no result", tSC, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT)
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("run", tAnswer.%Get("run"), "number")
+        Do pResult.%Set("passed", +tAnswer.%Get("passed"), "number")
+        Do pResult.%Set("failed", +tAnswer.%Get("failed"), "number")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        Set tSC = ..Fail("the unit-test run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Do ..RootEnd(pNamespace, tChanged, tHad, tOld)
+    Quit tSC
+}
+
+/// <p>Point <var>pNamespace</var>'s unit-test root global (<code>^UnitTestRoot</code>, the vendor's, never renamed and named
+/// nowhere else) at the manager directory when it does not hold the name of an existing directory, so a run that loads
+/// nothing does not stop on a missing one. <var>pChanged</var> says the root was set; <var>pHad</var> and <var>pOld</var> are
+/// whether it held a value before and the value. The global is reached by an extended reference, so no namespace is
+/// switched.</p>
+ClassMethod RootBegin(pNamespace As %String, Output pChanged As %Boolean, Output pHad As %Boolean, Output pOld As %String) As %Status [ Private ]
+{
+    Set pChanged = 0
+    Set pHad = ($Data(^|pNamespace|UnitTestRoot) # 2)
+    Set pOld = $Get(^|pNamespace|UnitTestRoot)
+    If pHad && ##class(%File).DirectoryExists(pOld) Quit $$$OK
+    Set ^|pNamespace|UnitTestRoot = $System.Util.ManagerDirectory()
+    Set pChanged = 1
+    Quit $$$OK
+}
+
+/// <p>Put the root global back as <method>RootBegin</method> found it: its old value when it held one, killed when it held
+/// none; nothing when <method>RootBegin</method> changed nothing.</p>
+ClassMethod RootEnd(pNamespace As %String, pChanged As %Boolean, pHad As %Boolean, pOld As %String) [ Private ]
+{
+    If 'pChanged Quit
+    Try {
+        If pHad {
+            Set ^|pNamespace|UnitTestRoot = pOld
+        } Else {
+            Kill ^|pNamespace|UnitTestRoot
+        }
+    } Catch ex {
+        Do ..LogFault("the unit-test root could not be put back", ex.AsStatus())
+    }
+}
+
+/// <p>The rows of <var>pEndpoint</var>, <parameter>ENDPOINTUNITTESTRUNS</parameter> or
+/// <parameter>ENDPOINTUNITTESTMETHODS</parameter>, from <var>pNamespace</var>'s <code>%UnitTest_Result</code> tables, in
+/// <var>pResult</var>. <var>pQuery</var> carries <parameter>MAXROWSKEY</parameter> (optional, a whole number above zero,
+/// <parameter>RECORDROWS</parameter> when absent) and, for the methods, <parameter>RUNKEY</parameter>: a value that is not a
+/// whole number above zero names no run, so it answers no rows. Each statement is fixed and binds every value, and is
+/// issued after the gate without a privilege check: holding <code>%Development:USE</code> and the namespace's database
+/// pairs does not grant SQL privileges on the vendor's result tables.</p>
+ClassMethod Record(pEndpoint As %String, pNamespace As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+    If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONMAXROWS, .pHttpStatus, .pFault)
+    }
+    Set tMax = $Select(tMaxText = "": ..#RECORDROWS, 1: +tMaxText)
+    Set tRun = $Get(pQuery(..#RUNKEY))
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set pResult = []
+        If (pEndpoint = ..#ENDPOINTUNITTESTMETHODS) && '$Match(tRun, "^[1-9][0-9]*$") {
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set $NAMESPACE = pNamespace
+        If pEndpoint = ..#ENDPOINTUNITTESTRUNS {
+            Set tSC = ..ReadRuns(tMax, pResult)
+        } Else {
+            Set tSC = ..ReadMethods(tMax, tRun, pResult)
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISOK(tSC) Set pHttpStatus = 200
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) {
+        Set pResult = ""
+        Quit ..Fail(pEndpoint _ " could not read the recorded runs", tSC, .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>At most <var>pMax</var> runs, newest first, as <code>{Run, Started, Duration, Methods, Passed, Failed, Finished}</code>
+/// rows pushed onto <var>pRows</var>. Runs in the current namespace; it names system classes only and calls
+/// <method>FinishedAt</method>.</p>
+ClassMethod ReadRuns(pMax As %Integer, pRows As %DynamicArray) As %Status [ Private ]
+{
+    Set tCount = "(SELECT COUNT(*) FROM %UnitTest_Result.TestMethod tm JOIN %UnitTest_Result.TestCase tc ON tm.TestCase = tc.ID JOIN %UnitTest_Result.TestSuite ts ON tc.TestSuite = ts.ID WHERE ts.TestInstance = ti.ID"
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? ti.ID, ti.DateTime, ti.Duration, " _ tCount _ "), " _ tCount _ " AND tm.Status = 1), " _ tCount _ " AND tm.Status = 0) FROM %UnitTest_Result.TestInstance ti ORDER BY ti.ID DESC", pMax)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    Set tSC = $$$OK
+    While tResult.%Next(.tSC) {
+        Set tRow = {}
+        Do tRow.%Set("Run", +tResult.%GetData(1), "number")
+        Do tRow.%Set("Started", tResult.%GetData(2), "string")
+        Do tRow.%Set("Duration", +tResult.%GetData(3), "number")
+        Do tRow.%Set("Methods", +tResult.%GetData(4), "number")
+        Do tRow.%Set("Passed", +tResult.%GetData(5), "number")
+        Do tRow.%Set("Failed", +tResult.%GetData(6), "number")
+        Do tRow.%Set("Finished", ..FinishedAt(tResult.%GetData(2), tResult.%GetData(3)), "string")
+        Do pRows.%Push(tRow)
+    }
+    Quit tSC
+}
+
+/// <p>At most <var>pMax</var> methods of run <var>pRun</var>, in class and method order, as <code>{Class, Method, Result,
+/// Duration, Failure}</code> rows pushed onto <var>pRows</var>. <code>Failure</code> is the descriptions of the method's
+/// failed assertions joined by <code>; </code>, or, for a failed method with none, the error the manager recorded for it, cut
+/// at <parameter>FAILUREMAX</parameter> characters. Runs in the current namespace; it names system classes only.</p>
+ClassMethod ReadMethods(pMax As %Integer, pRun As %Integer, pRows As %DynamicArray) As %Status [ Private ]
+{
+    Kill tMethods
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? tc.Name, tm.Name, tm.Status, tm.Duration, tm.ID, tm.ErrorDescription FROM %UnitTest_Result.TestMethod tm JOIN %UnitTest_Result.TestCase tc ON tm.TestCase = tc.ID JOIN %UnitTest_Result.TestSuite ts ON tc.TestSuite = ts.ID WHERE ts.TestInstance = ? ORDER BY tc.Name, tm.Name", pMax, pRun)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    Set tCount = 0
+    Set tSC = $$$OK
+    While tResult.%Next(.tSC) {
+        Set tCount = tCount + 1
+        Set tMethods(tCount) = $ListBuild(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3), tResult.%GetData(4), tResult.%GetData(5), tResult.%GetData(6))
+    }
+    If $$$ISERR(tSC) Quit tSC
+    For tAt = 1:1:tCount {
+        Set tStatus = $List(tMethods(tAt), 3)
+        Set tFailure = ""
+        If tStatus = 0 {
+            Set tAsserts = ##class(%SQL.Statement).%New()
+            Set tAnswer = ##class(%SQL.Statement).%ExecDirectNoPriv(.tAsserts, "SELECT ta.Description FROM %UnitTest_Result.TestAssert ta WHERE ta.TestMethod = ? AND ta.Status = 0 ORDER BY ta.Counter", $List(tMethods(tAt), 5))
+            If '$IsObject(tAnswer) {
+                Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+                Quit
+            }
+            If tAnswer.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$SQLCode, tAnswer.%SQLCODE, tAnswer.%Message)
+                Quit
+            }
+            While tAnswer.%Next(.tSC) {
+                Set tFailure = tFailure _ $Select(tFailure = "": "", 1: "; ") _ tAnswer.%GetData(1)
+                If $Length(tFailure) > ..#FAILUREMAX Quit
+            }
+            If $$$ISERR(tSC) Quit
+            If tFailure = "" Set tFailure = $ZStrip($ListGet(tMethods(tAt), 6), "<>W")
+        }
+        Set tRow = {}
+        Do tRow.%Set("Class", $List(tMethods(tAt), 1), "string")
+        Do tRow.%Set("Method", $List(tMethods(tAt), 2), "string")
+        Do tRow.%Set("Result", $Case(tStatus, 1: ..#RESULTPASSED, 0: ..#RESULTFAILED, 2: ..#RESULTSKIPPED, : ""), "string")
+        Do tRow.%Set("Duration", +$List(tMethods(tAt), 4), "number")
+        Do tRow.%Set("Failure", $Extract(tFailure, 1, ..#FAILUREMAX), "string")
+        Do pRows.%Push(tRow)
+    }
+    Quit tSC
+}
+
+/// <p>The time a run that started at <var>pStarted</var>, a <code>%TimeStamp</code>, and took <var>pDuration</var> seconds
+/// ended, as <code>YYYY-MM-DD hh:mm:ss</code>, or <code>""</code> when the start is not a time. Pure.</p>
+ClassMethod FinishedAt(pStarted As %String, pDuration As %Numeric) As %String
+{
+    Set tFinished = ""
+    Try {
+        Set tHorolog = $ZDateTimeH(pStarted, 3)
+        Set tSeconds = $Piece(tHorolog, ",", 2) + $Select(pDuration > 0: pDuration, 1: 0)
+        Set tDays = $Piece(tHorolog, ",", 1) + (tSeconds \ 86400)
+        Set tFinished = $ZDateTime(tDays _ "," _ (tSeconds # 86400), 3, 1, 0)
+    } Catch {
+        Set tFinished = ""
+    }
+    Quit tFinished
 }
 
 /// <p>Run the line-count body when <var>pMetrics</var>, the hash body otherwise, in <var>pNamespace</var> over
@@ -425,11 +1336,11 @@ ClassMethod HashRows(pAnswer As %DynamicObject, pMax As %Integer) As %DynamicArr
     Quit tRows
 }
 
-/// <p>One <code>{Document, Change, Hash, OtherHash, Modified, OtherModified}</code> row for each document that
+/// <p>One <code>{Document, Change, Hash, OtherHash, Modified, OtherModified, Promotable}</code> row for each document that
 /// <var>pHere</var> and <var>pThere</var>, two hash bodies' results, do not hold alike: a document is keyed by its
 /// name, equal hashes are the same whatever their times, and the rows are in <code>Document</code> order, at most
 /// <var>pMax</var> of them when that is above zero. A document only in <var>pThere</var> is reported, never a
-/// deletion signal.</p>
+/// deletion signal, and is the one row that is not <code>Promotable</code>.</p>
 ClassMethod DiffRows(pHere As %DynamicObject, pThere As %DynamicObject, pMax As %Integer) As %DynamicArray [ Private ]
 {
     Kill tHere, tThere, tNames
@@ -463,21 +1374,655 @@ ClassMethod DiffRows(pHere As %DynamicObject, pThere As %DynamicObject, pMax As 
         Do tRow.%Set("OtherHash", $Select(tOther: $List(tThere(tName), 1), 1: ""), "string")
         Do tRow.%Set("Modified", $Select(tHas: $List(tHere(tName), 2), 1: ""), "string")
         Do tRow.%Set("OtherModified", $Select(tOther: $List(tThere(tName), 2), 1: ""), "string")
+        Do tRow.%Set("Promotable", (tChange '= ..#CHANGEONLYTHERE), "boolean")
         Do tRows.%Push(tRow)
     }
     Quit tRows
 }
 
-/// <p><code>""</code>: no request this port serves is a write, so none has a script form (AD-59).</p>
+/// <p>The hash of the plan the two body answers <var>pHere</var> and <var>pThere</var> make, and its parts, as
+/// <code>{steps, warnings, planHash}</code>. Pure: it reads <method>DiffRows</method> over every document, with no row
+/// cap. <code>steps</code> is each <code>Only in this namespace</code> and <code>Content differs</code> row as
+/// <code>{Document, Change, Hash, OtherHash}</code>, in <code>Document</code> order; <code>warnings</code> is each
+/// <code>Only in the other namespace</code> row as <code>{Document}</code>, which is never a step.
+/// <code>planHash</code> is the SHA-256 in lower case hex of every row, steps and warnings together, each as
+/// <code>Document|Change|Hash|OtherHash</code> on its own line in <code>Document</code> order; the times are left out,
+/// so a document saved again with the same text changes nothing.</p>
+ClassMethod Plan(pHere As %DynamicObject, pThere As %DynamicObject) As %DynamicObject
+{
+    Set tRows = ..DiffRows(pHere, pThere, 0)
+    Set tSteps = []
+    Set tWarnings = []
+    Set tText = ""
+    Set tFirst = 1
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tChange = tRow.%Get("Change")
+        Set tText = tText _ $Select(tFirst: "", 1: $Char(10)) _ tRow.%Get("Document") _ "|" _ tChange _ "|" _ tRow.%Get("Hash") _ "|" _ tRow.%Get("OtherHash")
+        Set tFirst = 0
+        If tChange = ..#CHANGEONLYTHERE {
+            Set tWarning = {}
+            Do tWarning.%Set("Document", tRow.%Get("Document"), "string")
+            Do tWarnings.%Push(tWarning)
+            Continue
+        }
+        Set tStep = {}
+        Do tStep.%Set("Document", tRow.%Get("Document"), "string")
+        Do tStep.%Set("Change", tChange, "string")
+        Do tStep.%Set("Hash", tRow.%Get("Hash"), "string")
+        Do tStep.%Set("OtherHash", tRow.%Get("OtherHash"), "string")
+        Do tSteps.%Push(tStep)
+    }
+    Set tPlan = {}
+    Do tPlan.%Set("steps", tSteps)
+    Do tPlan.%Set("warnings", tWarnings)
+    Do tPlan.%Set("planHash", ..Sha256Hex(tText), "string")
+    Quit tPlan
+}
+
+/// <p>The SHA-256 of <var>pText</var> as UTF-8, in lower case hex.</p>
+ClassMethod Sha256Hex(pText As %String) As %String [ Private ]
+{
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pText, "O", "UTF8"))), "L")
+}
+
+/// <p>The refusals of a plan's or a promote's arguments that need no body, after the read's own: the first namespace, the
+/// other one or a document being <code>%SYS</code> or beginning with <code>%</code> is
+/// <parameter>CODESYSTEM</parameter>; a name over 256 characters is <parameter>CODENOTASTEP</parameter>; and a count of
+/// documents outside 1 to <parameter>OcuPilot.Port.AtelierPort.MAXDOCUMENTS</parameter> is
+/// <code>PORT.VALIDATION</code>. <var>pNames</var> is <var>pDocuments</var>, comma-separated, as a <class>%List</class>
+/// of each name once, sorted by character code.</p>
+ClassMethod PlanProblem(pNamespace As %String, pTarget As %String, pDocuments As %String, Output pNames As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pNames = ""
+    Kill tSorted
+    Set tSystem = ($ZConvert(pNamespace, "U") = "%SYS") || ($ZConvert(pTarget, "U") = "%SYS")
+    Set tLong = ""
+    For tI = 1:1:$Length(pDocuments, ",") {
+        Set tName = $Piece(pDocuments, ",", tI)
+        If tName = "" Continue
+        If $Extract(tName) = "%" Set tSystem = 1
+        If $Length(tName) > 256 {
+            If tLong = "" Set tLong = tName
+            Continue
+        }
+        Set tSorted("n" _ tName) = tName
+    }
+    If tSystem Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ..#CODESYSTEM, ..#REASONSYSTEM, .pHttpStatus, .pFault)
+    If tLong '= "" Quit ..NotAStep(tLong, .pHttpStatus, .pFault)
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey), 1, tName)
+        If tKey = "" Quit
+        Set pNames = pNames _ $ListBuild(tName)
+    }
+    If ($ListLength(pNames) = 0) || ($ListLength(pNames) > ##class(OcuPilot.Port.AtelierPort).#MAXDOCUMENTS) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONDOCUMENTS, .pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p>The refusal of the document <var>pName</var> as no step of the plan, naming at most its first 256
+/// characters.</p>
+ClassMethod NotAStep(pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {}
+    Do tDetail.%Set("document", $Extract(pName, 1, 256), "string")
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ..#CODENOTASTEP, ..#REASONNOTASTEP, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The answer of a plan, or of a promote when <var>pPromote</var>, for the documents <var>pNames</var> against the plan
+/// <var>pPlan</var> (<method>Plan</method>): every name must be one of its steps, else the whole request is refused
+/// (<method>NotAStep</method>). A plan answers <code>{Namespace, Target, Spec, Generated, Steps, Warnings, PlanHash,
+/// Reviewed}</code>, <code>Steps</code> only the chosen steps. <var>pReviewed</var>, else <var>pPlanHash</var>, is the
+/// plan hash the promote was reviewed at.</p>
+ClassMethod Compose(pPromote As %Boolean, pNamespace As %String, pTarget As %String, pSpec As %String, pIncludeGenerated As %Boolean, pNames As %List, pPlan As %DynamicObject, pReviewed As %String, pPlanHash As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Kill tChange
+        Set tIterator = pPlan.%Get("steps").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tStep) {
+            Set tChange(tStep.%Get("Document")) = tStep.%Get("Change")
+        }
+        Set tMissing = ""
+        For tI = 1:1:$ListLength(pNames) {
+            If '$Data(tChange($List(pNames, tI))) {
+                Set tMissing = $List(pNames, tI)
+                Quit
+            }
+        }
+        If tMissing '= "" {
+            Set tSC = ..NotAStep(tMissing, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tChosen = []
+        Set tShown = []
+        Set tIterator = pPlan.%Get("steps").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tStep) {
+            If '$ListFind(pNames, tStep.%Get("Document")) Continue
+            Do tChosen.%Push(tStep)
+            Set tRow = {}
+            Do tRow.%Set("Document", tStep.%Get("Document"), "string")
+            Do tRow.%Set("Change", tStep.%Get("Change"), "string")
+            Do tShown.%Push(tRow)
+        }
+        If pPromote {
+            Set tExpected = $Select(pReviewed '= "": pReviewed, 1: pPlanHash)
+            Set tSC = ..Promote(pNamespace, pTarget, tChosen, pPlan.%Get("planHash"), tExpected, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Do pResult.%Set("Target", pTarget, "string")
+        Do pResult.%Set("Spec", pSpec, "string")
+        Do pResult.%Set("Generated", $Select(pIncludeGenerated: "yes", 1: "no"), "string")
+        Do pResult.%Set("Steps", tShown)
+        Do pResult.%Set("Warnings", pPlan.%Get("warnings").%Size(), "number")
+        Do pResult.%Set("PlanHash", pPlan.%Get("planHash"), "string")
+        Do pResult.%Set("Reviewed", "", "string")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the plan failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Write the steps <var>pChosen</var>, the plan's <code>{Document, Change, Hash, OtherHash}</code> in <code>Document</code> order, from
+/// <var>pNamespace</var> into <var>pTarget</var> (this class's header, the promote's third step on), answering
+/// <code>{documents, lines, errors, stopped}</code> at 200 in <var>pResult</var>. <var>pPlanHash</var> is the plan hash
+/// derived now and <var>pReviewed</var> the one the caller reviewed.</p>
+ClassMethod Promote(pNamespace As %String, pTarget As %String, pChosen As %DynamicArray, pPlanHash As %String, pReviewed As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Kill ^||OcuPilotDevToolPromote
+    Try {
+        Set tWritePairs = ##class(OcuPilot.Port.AtelierPort).WritePairs(pTarget)
+        If tWritePairs = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tFailedPair = ""
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", tWritePairs, .tFailedPair) {
+            Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pReviewed = "") || (pReviewed '= pPlanHash) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTALE, ..#REASONSTALE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..Preflight(pNamespace, pTarget, pChosen, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+
+        Set tDocuments = []
+        Set tLines = []
+        Set tErrors = 0
+        Set tStopped = 0
+        Set tReplaced = 0
+        Set tAdded = 0
+        Set tWritten = []
+        Set tClasses = ""
+        Set tRoutines = ""
+        For tI = 1:1:pChosen.%Size() {
+            Set tStep = pChosen.%Get(tI - 1)
+            Set tName = tStep.%Get("Document")
+            Set tReplaces = (tStep.%Get("Change") = ..#CHANGEDIFFERS)
+            Set tDocument = {}
+            Do tDocument.%Set("Document", tName, "string")
+            Do tDocument.%Set("Reason", "", "string")
+            If tStopped {
+                Do tDocument.%Set("Outcome", ..#OUTCOMENOTATTEMPTED, "string")
+                Do tDocuments.%Push(tDocument)
+                Continue
+            }
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESPACEKEY) = pTarget
+            Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESKEY) = tName
+            Set tQuery(##class(OcuPilot.Port.AtelierPort).#CONTENTKEY) = ^||OcuPilotDevToolPromote(tI, "text")
+            Set tQuery(##class(OcuPilot.Port.AtelierPort).#COMPILEKEY) = 0
+            If tReplaces Set tQuery(##class(OcuPilot.Port.AtelierPort).#VERSIONKEY) = ^||OcuPilotDevToolPromote(tI, "version")
+            Set tWriteSC = $ClassMethod(..AtelierPortClass(), "Invoke", ..EndpointOf(tName), $Select(tReplaces: ##class(OcuPilot.Port.AtelierPort).#TYPESAVE, 1: ##class(OcuPilot.Port.AtelierPort).#TYPECREATE), .tQuery, "", .tWriteResult, .tWriteHttp, .tWriteFault)
+            Kill tQuery
+            If $$$ISERR(tWriteSC) {
+                Set tStopped = 1
+                Do tDocument.%Set("Outcome", ..#OUTCOMEFAILED, "string")
+                Do tDocument.%Set("Reason", $Select($IsObject($Get(tWriteFault)) && (tWriteFault.%Get("reason") '= ""): tWriteFault.%Get("reason"), 1: ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON), "string")
+                Do tDocuments.%Push(tDocument)
+                Continue
+            }
+            Do tDocument.%Set("Outcome", $Select(tReplaces: ..#OUTCOMEREPLACED, 1: ..#OUTCOMEADDED), "string")
+            Do tDocuments.%Push(tDocument)
+            Do tWritten.%Push(tName, "string")
+            If tReplaces {
+                Set tReplaced = tReplaced + 1
+            } Else {
+                Set tAdded = tAdded + 1
+            }
+            If ..Extension(tName) = "cls" {
+                Set tClasses = tClasses _ $Select(tClasses = "": "", 1: ",") _ tName
+            } ElseIf ..Extension(tName) '= "inc" {
+                Set tRoutines = tRoutines _ $Select(tRoutines = "": "", 1: ",") _ tName
+            }
+        }
+        Kill ^||OcuPilotDevToolPromote
+
+        If 'tStopped {
+            For tKind = 1, 2 {
+                Set tNames = $Select(tKind = 1: tClasses, 1: tRoutines)
+                If tNames = "" Continue
+                Kill tQuery
+                Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESPACEKEY) = pTarget
+                Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESKEY) = tNames
+                Set tQuery(##class(OcuPilot.Port.AtelierPort).#KEEPSOURCEKEY) = 1
+                Set tQuery(##class(OcuPilot.Port.AtelierPort).#COMPILEDEPENDENTSKEY) = 0
+                Set tQuery(##class(OcuPilot.Port.AtelierPort).#SKIPUPTODATEKEY) = 1
+                Set tCompileSC = $ClassMethod(..AtelierPortClass(), "Invoke", $Select(tKind = 1: ##class(OcuPilot.Port.AtelierPort).#ENDPOINTCLASSES, 1: ##class(OcuPilot.Port.AtelierPort).#ENDPOINTROUTINES), ##class(OcuPilot.Port.AtelierPort).#TYPECOMPILE, .tQuery, "", .tCompiled, .tCompileHttp, .tCompileFault)
+                Kill tQuery
+                If $$$ISERR(tCompileSC) {
+                    Set tErrors = 1
+                    Do tLines.%Push($Select($IsObject($Get(tCompileFault)) && (tCompileFault.%Get("reason") '= ""): tCompileFault.%Get("reason"), 1: ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON), "string")
+                    Continue
+                }
+                If $IsObject(tCompiled) {
+                    Set tCompiledIterator = tCompiled.%Get("lines").%GetIterator()
+                    While tCompiledIterator.%GetNext(.tLineIndex, .tLine) {
+                        Do tLines.%Push(tLine, "string")
+                    }
+                    If tCompiled.%Get("errors") Set tErrors = 1
+                }
+            }
+        }
+
+        If (tReplaced + tAdded) > 0 Do ..Audit(pNamespace, pTarget, tReplaced, tAdded, tStopped, tWritten)
+        Set pResult = {}
+        Do pResult.%Set("documents", tDocuments)
+        Do pResult.%Set("lines", tLines)
+        Do pResult.%Set("errors", ''tErrors, "boolean")
+        Do pResult.%Set("stopped", ''tStopped, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the promote failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Kill ^||OcuPilotDevToolPromote
+    Quit tSC
+}
+
+/// <p>Read every chosen step's text before anything is written, into <code>^||OcuPilotDevToolPromote</code>: the
+/// document's text in <var>pNamespace</var> and, for a step that replaces a document, the version of its copy in
+/// <var>pTarget</var>. Each text is read as the plan's hash read it (<method>ReadSource</method>) and must hash to the
+/// plan's, the source's to <code>Hash</code> and the other copy's to <code>OtherHash</code>, and the other copy's version
+/// must be read, else the promote is 409 <parameter>CODESTALE</parameter>, so what is written is what the plan showed and
+/// no save is sent without its version. A text that cannot be read is 500 <code>INTERNAL</code>, logged. A document the instance keeps no source
+/// for is 404 <code>PORT.NOTFOUND</code>; a text longer than one save takes is 400
+/// <parameter>OcuPilot.Api.AtelierError.SAVETOOLARGE</parameter>; a text whose first line does not name its document is 422
+/// <parameter>OcuPilot.Api.AtelierError.SAVEHEADER</parameter>; each with <code>detail.document</code>. Then the storage
+/// guard: a class whose copy in <var>pTarget</var> has a <code>Storage</code> definition its text in
+/// <var>pNamespace</var> lacks is 409 <parameter>CODESTORAGE</parameter>.</p>
+ClassMethod Preflight(pNamespace As %String, pTarget As %String, pChosen As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    For tI = 1:1:pChosen.%Size() {
+        Set tStep = pChosen.%Get(tI - 1)
+        Set tName = tStep.%Get("Document")
+        Set tDetail = {}
+        Do tDetail.%Set("document", tName, "string")
+        Set tSC = ..ReadSource(pNamespace, tName, .tText, .tHash, .tAvailable)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("the promote could not read a document's text", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If 'tAvailable {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        If tHash '= tStep.%Get("Hash") {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTALE, ..#REASONSTALE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SAVETOOLARGE, ##class(OcuPilot.Api.AtelierError).#REASONSAVETOOLARGE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        If ##class(OcuPilot.Port.AtelierPort).Header(##class(OcuPilot.Port.AtelierPort).SavedLines(tText)) '= tName {
+            Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEHEADER, ##class(OcuPilot.Api.AtelierError).#REASONSAVEHEADER, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        Set ^||OcuPilotDevToolPromote(tI, "text") = tText
+        Set ^||OcuPilotDevToolPromote(tI, "storage") = ..StorageNames(tText)
+        If tStep.%Get("Change") '= ..#CHANGEDIFFERS Continue
+        Set tSC = ..ReadSource(pTarget, tName, .tOtherText, .tOtherHash, .tOtherAvailable)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("the promote could not read a document's text", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If 'tOtherAvailable {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        If tOtherHash '= tStep.%Get("OtherHash") {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTALE, ..#REASONSTALE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        Set tSC = ..ReadVersion(pTarget, tName, .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tVersion = "" {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTALE, ..#REASONSTALE, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        Set ^||OcuPilotDevToolPromote(tI, "version") = tVersion
+        Set ^||OcuPilotDevToolPromote(tI, "otherStorage") = ..StorageNames(tOtherText)
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Set tLost = ""
+    For tI = 1:1:pChosen.%Size() {
+        Set tOther = $Get(^||OcuPilotDevToolPromote(tI, "otherStorage"))
+        Set tOwn = $Get(^||OcuPilotDevToolPromote(tI, "storage"))
+        For tJ = 1:1:$ListLength(tOther) {
+            If '$ListFind(tOwn, $List(tOther, tJ)) Set tLost = pChosen.%Get(tI - 1).%Get("Document")
+            If tLost '= "" Quit
+        }
+        If tLost '= "" Quit
+    }
+    If tLost = "" Quit tSC
+    Set tDetail = {}
+    Do tDetail.%Set("document", tLost, "string")
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ..#CODESTORAGE, ..#REASONSTORAGE, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The text of the document <var>pName</var> in <var>pNamespace</var> exactly as the hash body reads it for a plan:
+/// a class through <code>%Compiler.UDL.TextServices</code>, a routine, include file or generated routine through
+/// <code>%Routine</code> with the header line the source code API writes
+/// (<method>OcuPilot.Kernel.Utils.DocumentLines</method>). <var>pText</var> is its lines joined by line feeds,
+/// <var>pHash</var> the SHA-256 in upper case hex of the lines each followed by a line feed, which is the plan's
+/// <code>Hash</code>, and <var>pAvailable</var> 0 for a document the instance does not hold or keeps no source for.
+/// The source code API's own document read is not used: after the hash bodies have run in two namespaces its first read
+/// of the first namespace can answer the other namespace's text. Only system classes run while the namespace is
+/// switched, and it is restored first in the <code>Catch</code>.</p>
+ClassMethod ReadSource(pNamespace As %String, pName As %String, Output pText As %String, Output pHash As %String, Output pAvailable As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pText = ""
+    Set pHash = ""
+    Set pAvailable = 0
+    Kill tLines
+    Set tLines(0) = 0
+    Set tIsClass = (..Extension(pName) = "cls")
+    Set tExt = ..Extension(pName)
+    Set tHeader = "ROUTINE " _ $Piece(pName, ".", 1, $Length(pName, ".") - 1)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If tIsClass {
+            Kill tLines
+            Set tReadSC = ##class(%Compiler.UDL.TextServices).GetTextAsArray(pNamespace, pName, .tLines)
+            If $$$ISERR(tReadSC) Quit
+            Set pAvailable = 1
+        } Else {
+            Set $NAMESPACE = pNamespace
+            Set tRoutine = $Select(##class(%Routine).Exists(pName): ##class(%Routine).%OpenId(pName), 1: "")
+            If $IsObject(tRoutine) {
+                Set tAttributes = $Select(tExt = "mac": "", 1: "Type=" _ $ZConvert(tExt, "U"))
+                If tRoutine.Generated Set tAttributes = tAttributes _ $Select(tAttributes = "": "", 1: ",") _ "Generated"
+                Set tLines(1) = tHeader _ $Select(tAttributes = "": "", 1: " [" _ tAttributes _ "]")
+                Set tLines(0) = 1
+                Do tRoutine.Rewind()
+                While 'tRoutine.AtEnd {
+                    Set tLength = 3641144
+                    Set tLine = tRoutine.ReadLine(.tLength, .tLineSC)
+                    If $$$ISERR(tLineSC) {
+                        Set tSC = tLineSC
+                        Quit
+                    }
+                    Set tLines(0) = tLines(0) + 1
+                    Set tLines(tLines(0)) = tLine
+                }
+                Set pAvailable = $$$ISOK(tSC)
+            }
+            Set tRoutine = ""
+            Set $NAMESPACE = tOrigNS
+        }
+        If 'pAvailable Quit
+        Set tHashText = ""
+        For tI = 1:1:+$Get(tLines(0)) {
+            Set pText = pText _ $Select(tI > 1: $Char(10), 1: "") _ $Get(tLines(tI))
+            Set tHashText = tHashText _ $Get(tLines(tI)) _ $Char(10)
+        }
+        Set pHash = $System.Encryption.ToHex($System.Encryption.SHAHash(256, tHashText))
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The version a save of the document <var>pName</var> in <var>pNamespace</var> is made against: the
+/// <code>modified</code> the source code API's document read answers.</p>
+ClassMethod ReadVersion(pNamespace As %String, pName As %String, Output pVersion As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pVersion = ""
+    Kill tQuery
+    Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESPACEKEY) = pNamespace
+    Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMEKEY) = pName
+    Set tQuery(##class(OcuPilot.Port.AtelierPort).#FORMKEY) = "udl"
+    Set tQuery(##class(OcuPilot.Port.AtelierPort).#MAXROWSKEY) = 1
+    Set tSC = $ClassMethod(..AtelierPortClass(), "Invoke", $Select(..Extension(pName) = "cls": ##class(OcuPilot.Port.AtelierPort).#ENDPOINTCLASS, 1: ##class(OcuPilot.Port.AtelierPort).#ENDPOINTROUTINE), ..#TYPELIST, .tQuery, "", .tRows, .pHttpStatus, .pFault, .tDocument)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject($Get(tDocument)) Set pVersion = tDocument.%Get("modified")
+    Quit tSC
+}
+
+/// <p>The names of the <code>Storage</code> definitions the UDL text <var>pText</var> holds, as a <class>%List</class>: the
+/// word after <code>Storage</code> on each line that begins with it.</p>
+ClassMethod StorageNames(pText As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(pText, $Char(10)) {
+        Set tLine = $Piece(pText, $Char(10), tI)
+        If $Extract(tLine, 1, 8) '= "Storage " Continue
+        Set tName = $ZStrip($Piece($ZStrip($Extract(tLine, 9, *), "<>W"), "{", 1), "<>W")
+        If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
+/// <p>The extension of the document <var>pName</var>, in lower case.</p>
+ClassMethod Extension(pName As %String) As %String [ Private ]
+{
+    Quit $ZConvert($Piece(pName, ".", $Length(pName, ".")), "L")
+}
+
+/// <p>The endpoint of <class>OcuPilot.Port.AtelierPort</class> that serves the document <var>pName</var>'s kind in a set:
+/// the classes' for a class, the routines' for any other.</p>
+ClassMethod EndpointOf(pName As %String) As %String [ Private ]
+{
+    Quit $Select(..Extension(pName) = "cls": ##class(OcuPilot.Port.AtelierPort).#ENDPOINTCLASSES, 1: ##class(OcuPilot.Port.AtelierPort).#ENDPOINTROUTINES)
+}
+
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for a promote that wrote at least one document (AD-15), from
+/// whichever caller made it: the instance audits neither a document save nor a compile. The row names the other
+/// namespace as its target and, as effects, the first namespace, the counts and the documents written, never a text. It
+/// never fails the write: a row that cannot be recorded is logged.</p>
+ClassMethod Audit(pNamespace As %String, pTarget As %String, pReplaced As %Integer, pAdded As %Integer, pStopped As %Boolean, pWritten As %DynamicArray) [ Private ]
+{
+    Try {
+        Set tEffects = {}
+        Do tEffects.%Set("source", pNamespace, "string")
+        Do tEffects.%Set("replaced", pReplaced, "number")
+        Do tEffects.%Set("added", pAdded, "number")
+        Do tEffects.%Set("stopped", ''pStopped, "boolean")
+        Do tEffects.%Set("documents", pWritten)
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record("promote", "namespace", pTarget, {}, 0, tEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the promote could not be audited", tSC)
+    } Catch ex {
+        Do ..LogFault("the promote could not be audited", ex.AsStatus())
+    }
+}
+
+/// <p><code>objectscript</code> for a namespace diff's <parameter>TYPEPROMOTE</parameter>, a unit-test
+/// <parameter>TYPERUN</parameter> and a console's <parameter>TYPERUN</parameter>; <code>""</code> for every other request, which
+/// has no script form (AD-59). A person-only run mints no proposal, so its script is never offered; it is the form the port rule
+/// asks of every write.</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If (pEndpoint = ..#ENDPOINTNAMESPACEDIFF) && (pType = ..#TYPEPROMOTE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTUNITTESTRUN) && (pType = ..#TYPERUN) Quit "objectscript"
+    If $ListFind(..ConsoleEndpoints(), pEndpoint) && (pType = ..#TYPERUN) Quit "objectscript"
     Quit ""
 }
 
-/// <p>No step: no request this port serves is a write (AD-59).</p>
+/// <p>A promote as a script (AD-59), mirroring <method>Promote</method>'s writes: a first line that starts the script as
+/// succeeding, then one line for each document of <parameter>DOCUMENTSKEY</parameter>, in the order its names sort in, that
+/// copies the document's text from the namespace <parameter>NAMESPACEKEY</parameter> names to the one
+/// <parameter>TARGETKEY</parameter> names, then one <code>$System.OBJ.CompileList</code> with
+/// <parameter>OcuPilot.Port.AtelierPort.IMPORTCOMPILEFLAGS</parameter> for the classes and one for the routines, in the
+/// other namespace. A class is copied with <code>%Compiler.UDL.TextServices</code>, a routine line by line with
+/// <code>%Routine</code>; a routine the first namespace does not hold is reported and nothing is written over its copy.
+/// A document the stored payload's <code>Steps</code> (<var>pContext</var><code>.payload</code>) lists as only in the
+/// first namespace is a create, written only while its name is free in the other namespace (<method>FreeCheck</method>).
+/// As the write does, the script stops at the first copy that fails or is refused, and compiles only when every copy
+/// succeeded. Every value is rendered as a string literal, so nothing the query carries runs as code, and no line opens a
+/// block it does not close, so the script runs the same as a method body and pasted line by line into a terminal. It
+/// copies what the namespace holds when it runs, and it does not check the plan. A script longer than
+/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    If pEndpoint = ..#ENDPOINTUNITTESTRUN Quit ..RunSnippet(.pQuery)
+    If $ListFind(..ConsoleEndpoints(), pEndpoint) Quit ..ConsoleSnippet(pEndpoint, .pQuery)
+    Set tSource = $Get(pQuery(..#NAMESPACEKEY))
+    Set tTarget = $Get(pQuery(..#TARGETKEY))
+    Kill tCreate
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") && (pContext.%Get("payload").%GetTypeOf("Steps") = "array") {
+        Set tIterator = pContext.%Get("payload").%Get("Steps").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPlanned) {
+            If $IsObject(tPlanned) && (tPlanned.%Get("Change") = ..#CHANGEONLYHERE) Set tCreate("n" _ tPlanned.%Get("Document")) = ""
+        }
+    }
+    Kill tSorted
+    For tI = 1:1:$Length($Get(pQuery(..#DOCUMENTSKEY)), ",") {
+        Set tName = $Piece($Get(pQuery(..#DOCUMENTSKEY)), ",", tI)
+        If tName '= "" Set tSorted("n" _ tName) = tName
+    }
+    Set tText = ""
+    Set tClasses = ""
+    Set tRoutines = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey), 1, tName)
+        If tKey = "" Quit
+        Set tTaken = " Set tOK = 0 Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(tName _ " is taken: this namespace holds it or another document of its name, so nothing was created.") _ "))"
+        If ..Extension(tName) = "cls" {
+            Set tBase = $Extract(tName, 1, *-4)
+            Set tCopy = "Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString(" _ ..Literal(tSource) _ ", " _ ..Literal(tBase) _ ", .tText) Set:$System.Status.IsOK(tSC) tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ ..Literal(tTarget) _ ", " _ ..Literal(tBase) _ ", tText) Set tOK = $System.Status.IsOK(tSC) Do $System.Status.DisplayError(tSC)"
+            If $Data(tCreate(tKey)) {
+                Set tText = tText _ $Char(10) _ " If tOK { Set $NAMESPACE = " _ ..Literal(tTarget) _ " If '(" _ ..FreeCheck(tName) _ ") {" _ tTaken _ " } Else { " _ tCopy _ " } }"
+            } Else {
+                Set tText = tText _ $Char(10) _ " If tOK { " _ tCopy _ " }"
+            }
+            Set tClasses = tClasses _ $Select(tClasses = "": "", 1: ",") _ tName
+        } Else {
+            Set tStepLine = " If tOK { Set $NAMESPACE = " _ ..Literal(tSource) _ " Kill tLine Set tFound = ##class(%Routine).Exists(" _ ..Literal(tName) _ ") Set tRead = $Select(tFound: ##class(%Routine).%OpenId(" _ ..Literal(tName) _ "), 1: """") If tFound { Do tRead.Rewind() While 'tRead.AtEnd { Set tLength = 3641144 Set tRow = tRead.ReadLine(.tLength) Set tLine($Increment(tLine)) = tRow } } Set tRead = """" Set $NAMESPACE = " _ ..Literal(tTarget)
+            Set tStepLine = tStepLine _ " If 'tFound { Set tOK = 0 Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(tName _ ": " _ ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE) _ ")) }"
+            If $Data(tCreate(tKey)) Set tStepLine = tStepLine _ " If tFound, '(" _ ..FreeCheck(tName) _ ") {" _ tTaken _ " }"
+            Set tStepLine = tStepLine _ " If tOK { Set tWrite = ##class(%Routine).%New(" _ ..Literal(tName) _ ") Do tWrite.Clear() For tI = 1:1:$Get(tLine) { Do tWrite.WriteLine(tLine(tI)) } Set tSC = tWrite.Save() Set tOK = $System.Status.IsOK(tSC) Do $System.Status.DisplayError(tSC) } }"
+            Set tText = tText _ $Char(10) _ tStepLine
+            If ..Extension(tName) '= "inc" Set tRoutines = tRoutines _ $Select(tRoutines = "": "", 1: ",") _ tName
+        }
+        If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit
+    }
+    If tText = "" Quit []
+    Set tText = " Set tOK = 1" _ tText
+    For tNames = tClasses, tRoutines {
+        If tNames = "" Continue
+        Set tText = tText _ $Char(10) _ " If tOK { Set $NAMESPACE = " _ ..Literal(tTarget) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(##class(OcuPilot.Port.AtelierPort).#IMPORTCOMPILEFLAGS) _ ") Do $System.Status.DisplayError(tSC) }"
+    }
+    If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit []
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p>A unit-test run as a script (AD-59): one step that, in the namespace the query names, points the root global at the
+/// manager directory when it does not name a directory, runs the class or the method with the colon form and
+/// <code>/noload/nodelete/norecursive</code>, and puts the root global back. A package, or a target of the wrong shape, is one
+/// <code>comment</code> step: the colon form takes a class, so the script says to name one. Every value is a string literal.</p>
+ClassMethod RunSnippet(ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tTests = $Get(pQuery(..#TESTSKEY))
+    Set tLevel = $Get(pQuery(..#LEVELKEY))
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tStep = {}
+    If '..TestsShapeOK(tTests, tLevel) || (tLevel = "package") {
+        Do tStep.%Set("kind", "comment", "string")
+        Do tStep.%Set("text", ..#REASONTESTSSHAPE, "string")
+        Quit [(tStep)]
+    }
+    Set tText = " Set $NAMESPACE = " _ ..Literal(tNamespace) _ " Set tHad = ($Data(^UnitTestRoot) # 2), tOld = $Get(^UnitTestRoot) If 'tHad || '##class(%File).DirectoryExists(tOld) Set ^UnitTestRoot = $System.Util.ManagerDirectory()"
+    Set tText = tText _ " Do ##class(%UnitTest.Manager).RunTest(" _ ..Literal(":" _ tTests) _ ", ""/noload/nodelete/norecursive"") If tHad { Set ^UnitTestRoot = tOld } Else { Kill ^UnitTestRoot }"
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p>A console run as a script (AD-59). The command console is one <code>objectscript</code> step: a switch to the namespace
+/// the query names, then the command itself. The class method console is one <code>comment</code> step that names the class
+/// and the method, because its arguments are the person's own and a script never carries them. A step longer than
+/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter>, or a class and method of the wrong shape, answers no
+/// step.</p>
+ClassMethod ConsoleSnippet(pEndpoint As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tStep = {}
+    If pEndpoint = ..#ENDPOINTCOMMAND {
+        Set tCommand = $Get(pQuery(..#COMMANDKEY))
+        If '..CommandShapeOK(tCommand) Quit []
+        Set tText = " Set $NAMESPACE = " _ ..Literal(tNamespace) _ " " _ tCommand
+        If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit []
+        Do tStep.%Set("kind", "objectscript", "string")
+        Do tStep.%Set("text", tText, "string")
+        Quit [(tStep)]
+    }
+    Set tClass = $Get(pQuery(..#CLASSKEY))
+    Set tMethod = $Get(pQuery(..#METHODKEY))
+    If '$Match(tClass, ..#CLASSPATTERN) || '$Match(tMethod, ..#METHODPATTERN) Quit []
+    Do tStep.%Set("kind", "comment", "string")
+    Do tStep.%Set("text", "Call the class method " _ tClass _ "." _ tMethod _ " in the namespace " _ tNamespace _ " with the arguments you entered.", "string")
+    Quit [(tStep)]
+}
+
+/// <p>The expression a create's script line reads as true while nothing in the current namespace holds a document that
+/// takes <var>pName</var>: the taken-name rule <class>OcuPilot.Port.AtelierPort</class>'s create applies, rendered as its
+/// own create script renders it. For a class, no class of that name in any letter case; for an include file, no document
+/// of exactly that name; for a routine or intermediate routine, no routine of its base name of a type in
+/// <parameter>OcuPilot.Port.AtelierPort.TAKINGROUTINETYPES</parameter>.</p>
+ClassMethod FreeCheck(pName As %String) As %String [ Private ]
+{
+    Set tBase = $Piece(pName, ".", 1, $Length(pName, ".") - 1)
+    If ..Extension(pName) = "cls" Quit "'$Data(^rINDEXCLASS(" _ ..Literal($ZConvert(tBase, "U")) _ "))"
+    If ..Extension(pName) = "inc" Quit "'##class(%RoutineMgr).Exists(" _ ..Literal(pName) _ ")"
+    Set tTypes = ##class(OcuPilot.Port.AtelierPort).#TAKINGROUTINETYPES
+    Set tCheck = ""
+    For tI = 1:1:$Length(tTypes, ",") {
+        Set tCheck = tCheck _ $Select(tCheck = "": "", 1: " || ") _ "##class(%RoutineMgr).Exists(" _ ..Literal(tBase _ "." _ $Piece(tTypes, ",", tI)) _ ")"
+    }
+    Quit "'(" _ tCheck _ ")"
+}
+
+/// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a
+/// <code>$Char</code>.</p>
+ClassMethod Literal(pValue As %String) As %String [ Private ]
+{
+    Set tText = """" _ $Replace(pValue, """", """""") _ """"
+    For tCode = 0:1:31 {
+        If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
+    }
+    Quit tText
 }
 
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>

@@ -314,7 +314,11 @@ services:
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
-      # classes: AdminStateWrite
+      # classes: AdminStateWrite, StoreOwnerWrite, TranscriptOwnerWrite, AdminPathWrite
+      # classes: PrefOwnerWrite, ReserveSweepWrite
+      # classes: InstallRecordWrite, InstallAsAdministrator
+      # classes: OwnerStateRead
+      # classes: UserStateRead
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
@@ -601,13 +605,24 @@ services:
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
       # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
+      # The term list transfer class (Story 24.10) drives the export, import and copy at the port through the same seam, and both callers over HTTP,
+      # with probe files in the explorer probe's directory under the manager directory.
+      # classes: AnalyticsTermListTransfer
+      # The transfer edge class (Story 24.10) pins the transfers' file replacement, text bound, parse rules and the person's refusals, in the same directory.
+      # classes: AnalyticsTermListTransferEdge
+      # The folder manager classes (Story 24.10, Batch 2) turn analytics on in USER and write marker-named folder items and files there: the transfer class
+      # drives the export, import and delete at the port through the same seam, the routes class both callers over HTTP, and the gate class signs in as
+      # probe principals each missing a pair or WRITE on the folder item database. The edge class adds the hidden item, the text bound, the bystander
+      # and the cards, through the transfer class's helpers.
+      # classes: AnalyticsFolderItemBounds, AnalyticsFolderItemEdge, AnalyticsFolderItemGate, AnalyticsFolderItemRoutes, AnalyticsFolderItemTransfer
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
       # over HTTP as those principals and drives the row actions and the confirm route.
       # classes: InteropStartupControl, InteropStartupGate, InteropStartupRefusals, InteropStartupWire
       # The namespace comparison's route class (Story 24.8) signs in as principals holding one namespace's database pairs or both, and runs turns as them.
-      # classes: NamespaceDiffRoute
+      # The promote's route class (Story 24.9) does the same, with and without WRITE on the other namespace's routines database.
+      # classes: NamespaceDiffRoute, NamespacePromoteRoute
       # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
       # class is armed by the database variable too.
       # classes: CompileWithoutInterop
@@ -648,6 +663,7 @@ services:
       # classes: ContainerStartNamespace
       # classes: SslReadInstall
       # classes: ProposalTargetKey
+      # classes: InstallRecordWrite, InstallAsAdministrator
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
@@ -760,7 +776,7 @@ services:
       # classes: InteropEditorSaveTurn
       # classes: AnalyticsMdxReadTurn
       # classes: InteropSessionTurn, InteropSessionRoute
-      # classes: NamespaceDiffRoute
+      # classes: NamespaceDiffRoute, NamespacePromoteRoute
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

@@ -9,6 +9,16 @@
 Class OcuPilot.Kernel.State.Step Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>), owned
+/// through its turn: <property>TurnKey</property> names the turn, and the turn's stored owner is the
+/// step's. A writer refuses a caller who neither owns that turn nor holds the administrative resource;
+/// <method>GuardedDeleteForTurn</method> is an administrator's.</p>
+Parameter OWNERWRITE As %String = "TurnKey";
+
+Parameter OWNERPARENT As %String = "OcuPilot.Kernel.State.Turn";
+
+Parameter OWNERPARENTINDEX As %String = "TurnKeyIdx";
+
 /// <p>The turn this step belongs to.</p>
 Property TurnKey As %String(MAXLEN = 64);
 
@@ -81,7 +91,8 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
 {
     Set pSeq = 0
     Set pStored = 0
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", pKey, .tCount)
         If $$$ISERR(tSC) Quit
@@ -108,7 +119,7 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
         Set tRow.FailedScreen = pFailedScreen
         Do ..ApplyContent(tRow, pName, pSummary, pText, pLimitsClass)
         If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
         Set tRow = ""
@@ -123,12 +134,14 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
 /// the cap has no row, and nothing is written.</p>
 ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String, pSummary As %String, pText As %String, pCode As %String, pLimitsClass As %String) As %Status
 {
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     Set tRow.Status = pStatus
     Set tRow.Code = pCode
     Do ..ApplyContent(tRow, tRow.Name, pSummary, pText, pLimitsClass)
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
 }
@@ -144,6 +157,8 @@ ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String,
 /// returns (AD-9).</p>
 ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %String, pLimitsClass As %String) As %Status
 {
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     If (tRow.Kind '= "model") || (tRow.Status '= "running") {
@@ -153,7 +168,7 @@ ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %Str
     Set tWasCut = tRow.Truncated
     Do ..ApplyContent(tRow, tRow.Name, tRow.Summary, pText, pLimitsClass)
     Set tRow.Truncated = tWasCut
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
 }
@@ -170,6 +185,8 @@ ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %Str
 /// and the step reads <code>""</code>.</p>
 ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pText As %String = "", pFailedScreen As %String = "") As %Status
 {
+    Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     Set tRow.Status = pStatus
@@ -187,7 +204,7 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
     }
     Do ..ApplyContent(tRow, pName, "", tText, pLimitsClass)
     If pArgumentsTruncated || $Get(tTargetCut) || $Get(tTextCut) Set tRow.Truncated = 1
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
 }
@@ -197,9 +214,14 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
 /// reason, failedPair, failedScreen}</code> (Story 4.5). <code>result</code> is the parsed <code>{rowsReturned,
 /// rowsSent, truncated}</code> object when the step recorded one, else JSON null; every other new
 /// field is the empty string when the step carries none.</p>
+/// <p>Answered for a turn its caller owns and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no row. A key that names no turn answers
+/// no rows.</p>
 ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? ORDER BY Seq", pKey, .tIds)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tIds) {
@@ -242,6 +264,7 @@ ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Stat
 /// <p>Delete every step of turn <var>pKey</var>.</p>
 ClassMethod GuardedDeleteForTurn(pKey As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", pKey)
 }
 

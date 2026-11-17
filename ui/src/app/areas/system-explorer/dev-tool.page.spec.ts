@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ApiService, type JsonResult } from '../../core/api';
+import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { NavigationService } from '../../core/navigation';
@@ -18,7 +18,7 @@ import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DevToolPage } from './dev-tool.page';
 
 /**
- * Code metrics, Document hashes and (Story 24.8) Compare namespaces over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
+ * Code metrics, Document hashes, (Story 24.8) Compare namespaces and (Story 24.5) Unit tests over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
  * `ScreenArrivals` and a stubbed HTTP answer (Story 24.1): nothing read before a search, the search's exact criteria, the rows the
  * read answered held by the screen's store, a refused search shown with the instance's reason in place of the rows, an agent's
  * arrival run once, and a re-read when a class in the namespace changes.
@@ -27,6 +27,7 @@ import { DevToolPage } from './dev-tool.page';
 const METRICS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics') as ScreenDeclaration;
 const HASHES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes') as ScreenDeclaration;
 const DIFF = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff') as ScreenDeclaration;
+const TESTS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerUnitTests') as ScreenDeclaration;
 
 const HASH_ROWS = [
   { Document: 'Demo.One.cls', Hash: 'A'.repeat(64), Modified: '2026-11-15 05:26:40.7' },
@@ -43,16 +44,36 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
+/** A promote's dry-run and action requests, kept apart from the reads the other specs count in `paths`. */
+interface PromoteRequest {
+  readonly path: string;
+  readonly body: Record<string, unknown>;
+}
+
 async function mount(
   screen: ScreenDeclaration,
-  options: { rows?: readonly unknown[]; truncated?: boolean; arrivals?: ScreenArrivals; namespaces?: readonly string[]; refusal?: { status: number; code: string; reason: string | null } } = {}
+  options: {
+    rows?: readonly unknown[];
+    truncated?: boolean;
+    arrivals?: ScreenArrivals;
+    namespaces?: readonly string[];
+    refusal?: { status: number; code: string; reason: string | null };
+    dryRun?: JsonResult<unknown>;
+    action?: JsonResult<unknown>;
+  } = {}
 ) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
+  const promoteRequests: PromoteRequest[] = [];
   const answer = { refusal: options.refusal };
   const bus = new ChangeBus();
+  const actions = new ScreenActions();
   const api = {
-    requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path: string, init?: ApiRequestInit): Promise<JsonResult<T>> => {
+      if (path.endsWith('/dryrun') || path.endsWith('/action')) {
+        promoteRequests.push({ path, body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown> });
+        return (path.endsWith('/dryrun') ? options.dryRun : options.action) as JsonResult<T>;
+      }
       paths.push(path);
       if (answer.refusal !== undefined) return { kind: 'error', status: answer.refusal.status, code: answer.refusal.code, reason: answer.refusal.reason, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: options.rows ?? HASH_ROWS, truncated: options.truncated ?? false, banner: '' } as T };
@@ -73,7 +94,7 @@ async function mount(
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
-      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: ChangeBus, useValue: bus },
       { provide: ScreenArrivals, useValue: options.arrivals ?? new ScreenArrivals() },
@@ -98,6 +119,8 @@ async function mount(
   return {
     host,
     paths,
+    promoteRequests,
+    actions,
     bus,
     stores,
     answer,
@@ -245,5 +268,218 @@ describe('System Explorer Compare namespaces', () => {
     const { host, paths } = await mount(DIFF, { arrivals });
     expect(paths).toEqual(['/api/ocupilot/screens/explorer.namespacediff/read?maxRows=1000&target=ZED&spec=Demo.*.cls&generated=no']);
     expect((host.querySelector('[data-ocu-devtool="target"]') as HTMLSelectElement).value).toBe('ZED');
+  });
+});
+
+const DIFF_ROWS = [
+  { Document: 'Demo.Changed.cls', Change: STRINGS.explorerChangeDiffers, Hash: 'A'.repeat(64), OtherHash: 'B'.repeat(64), Modified: '2026-11-16 10:00:00', OtherModified: '2026-11-16 10:05:00', Promotable: true },
+  { Document: 'Demo.OnlyHere.cls', Change: STRINGS.explorerChangeOnlyHere, Hash: 'C'.repeat(64), OtherHash: '', Modified: '2026-11-16 10:00:00', OtherModified: '', Promotable: true },
+  { Document: 'Demo.OnlyThere.cls', Change: STRINGS.explorerChangeOnlyThere, Hash: '', OtherHash: 'D'.repeat(64), Modified: '', OtherModified: '2026-11-16 10:00:00', Promotable: false },
+];
+
+const REVIEW_LINES = ['Demo.Changed.cls -- Content differs', 'Demo.OnlyHere.cls -- Only in this namespace', STRINGS.explorerPromoteWarningOne].join('\n');
+const DRY_RUN: JsonResult<unknown> = { kind: 'ok', status: 200, body: { rows: [{ field: 'Documents', before: '', after: REVIEW_LINES }], review: { Digest: 'F'.repeat(64) } } };
+
+function applied(output: unknown): JsonResult<unknown> {
+  return { kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'class', scope: 'HSCUSTOM', id: 'Demo.Changed.cls,Demo.OnlyHere.cls' }, readBack: null, output } };
+}
+
+/** Check the two promotable rows, press Promote and let the dry run answer. */
+async function promoteChecked(ctx: Awaited<ReturnType<typeof mount>>): Promise<void> {
+  await ctx.search('Demo.*.cls', false, 'ZED');
+  ctx.stores.for(DIFF.descriptor, DIFF.refreshRates).setChecked(['Demo.OnlyHere.cls', 'Demo.Changed.cls']);
+  expect(ctx.actions.run(DIFF.descriptor, 'promote')).toBe(true);
+  await ctx.settle();
+}
+
+/** Type `name` into the open typed-name dialog and confirm it. */
+async function confirmByName(ctx: Awaited<ReturnType<typeof mount>>, name: string): Promise<void> {
+  const field = ctx.host.querySelector('app-typed-name-dialog .ocu-typed-name-field') as HTMLInputElement;
+  field.value = name;
+  field.dispatchEvent(new Event('input'));
+  await ctx.settle();
+  (ctx.host.querySelector('app-typed-name-dialog .ocu-button-destructive') as HTMLButtonElement).click();
+  await ctx.settle();
+}
+
+describe('System Explorer Compare namespaces, Promote', () => {
+  it('registers Promote for the screen that declares it, and for no other of the three', async () => {
+    // Mutation (Rule 19): register the action whether or not the descriptor declares it -> the Code metrics and Document hashes legs go red.
+    for (const [screen, expected] of [[DIFF, true], [METRICS, false], [HASHES, false]] as const) {
+      const { actions } = await mount(screen);
+      expect(actions.has(screen.descriptor, 'promote')).toBe(expected);
+    }
+  });
+
+  it('reviews the checked set with the criteria last searched, and states the consequence and the review above the typed name', async () => {
+    // Mutation (Rule 19): leave `generated` out of the values `onPromote` sends -> the request assertion goes red.
+    const ctx = await mount(DIFF, { rows: DIFF_ROWS, dryRun: DRY_RUN });
+    await promoteChecked(ctx);
+    expect(ctx.promoteRequests).toEqual([
+      {
+        path: '/api/ocupilot/screens/explorer.namespacediff/dryrun',
+        body: { action: 'promote', id: 'Demo.Changed.cls,Demo.OnlyHere.cls', values: { target: 'ZED', spec: 'Demo.*.cls', generated: 'no' } },
+      },
+    ]);
+    expect(ctx.host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.explorerPromoteAction} ZED`);
+    expect(Array.from(ctx.host.querySelectorAll('[data-ocu-review] li')).map((item) => item.textContent?.trim())).toEqual(REVIEW_LINES.split('\n'));
+    expect(ctx.host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.explorerPromoteConsequence);
+    expect((ctx.host.querySelector('app-typed-name-dialog .ocu-button-destructive') as HTMLElement).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('sends the reviewed hash once the other namespace is typed, then draws the status and the per-document output and unchecks the rows', async () => {
+    // Mutation (Rule 19): leave `Reviewed` out of the confirm's values in `ScreenActionHandler.confirmReviewed` -> the second request assertion goes red.
+    const output = {
+      documents: [
+        { Document: 'Demo.Changed.cls', Outcome: STRINGS.explorerPromoteReplaced, Reason: '' },
+        { Document: 'Demo.OnlyHere.cls', Outcome: STRINGS.explorerPromoteAdded, Reason: '' },
+      ],
+      lines: ['Compilation finished'],
+      errors: false,
+      stopped: false,
+    };
+    const ctx = await mount(DIFF, { rows: DIFF_ROWS, dryRun: DRY_RUN, action: applied(output) });
+    await promoteChecked(ctx);
+    await confirmByName(ctx, 'ZED');
+    expect(ctx.promoteRequests[1]).toEqual({
+      path: '/api/ocupilot/screens/explorer.namespacediff/action',
+      body: { action: 'promote', id: 'Demo.Changed.cls,Demo.OnlyHere.cls', values: { target: 'ZED', spec: 'Demo.*.cls', generated: 'no', Reviewed: 'F'.repeat(64) } },
+    });
+    expect(ctx.host.querySelector('[data-explorer-write="status"]')?.textContent?.trim()).toBe(STRINGS.explorerPromoteDone.replace('<n>', '2'));
+    expect(ctx.host.querySelector('[data-explorer-write="output"]')?.textContent).toBe(['Replaced: Demo.Changed.cls', 'Added: Demo.OnlyHere.cls', 'Compilation finished'].join('\n'));
+    expect(ctx.stores.for(DIFF.descriptor, DIFF.refreshRates).checked().size).toBe(0);
+  });
+
+  it("says where a promote stopped, and that the compile's errors were reported", async () => {
+    // Mutation (Rule 19): drop the stopped branch of `promoteStatus` -> the stopped leg goes red.
+    const stopped = {
+      documents: [
+        { Document: 'Demo.Changed.cls', Outcome: STRINGS.explorerPromoteReplaced, Reason: '' },
+        { Document: 'Demo.OnlyHere.cls', Outcome: STRINGS.explorerPromoteFailed, Reason: 'The document is held by another process.' },
+      ],
+      lines: [],
+      errors: false,
+      stopped: true,
+    };
+    const first = await mount(DIFF, { rows: DIFF_ROWS, dryRun: DRY_RUN, action: applied(stopped) });
+    await promoteChecked(first);
+    await confirmByName(first, 'ZED');
+    expect(first.host.querySelector('[data-explorer-write="status"]')?.textContent?.trim()).toBe(STRINGS.explorerPromoteStopped.replace('<document>', 'Demo.OnlyHere.cls'));
+    expect(first.host.querySelector('[data-explorer-write="output"]')?.textContent).toBe('Replaced: Demo.Changed.cls\nFailed: Demo.OnlyHere.cls -- The document is held by another process.');
+    const errored = await mount(DIFF, { rows: DIFF_ROWS, dryRun: DRY_RUN, action: applied({ documents: [{ Document: 'Demo.Changed.cls', Outcome: STRINGS.explorerPromoteReplaced, Reason: '' }], lines: ['ERROR 5001'], errors: true, stopped: false }) });
+    await promoteChecked(errored);
+    await confirmByName(errored, 'ZED');
+    expect(errored.host.querySelector('[data-explorer-write="status"]')?.textContent?.trim()).toBe(STRINGS.explorerPromoteDoneErrors.replace('<n>', '1'));
+  });
+
+  it("shows the instance's reason when the review is refused, and opens no dialog", async () => {
+    const reason = STRINGS.explorerPromoteSystemReason;
+    const ctx = await mount(DIFF, { rows: DIFF_ROWS, dryRun: { kind: 'error', status: 400, code: 'EXPLORER.PROMOTE.SYSTEM', reason, detail: null } });
+    await promoteChecked(ctx);
+    expect(ctx.host.querySelector('[data-explorer-write="status"]')?.textContent?.trim()).toBe(reason);
+    expect(ctx.host.querySelector('app-typed-name-dialog')).toBeNull();
+    expect(ctx.promoteRequests).toHaveLength(1);
+  });
+
+  it("draws the instance's reason for a document only the other namespace holds, and no checkable box", async () => {
+    const ctx = await mount(DIFF, { rows: DIFF_ROWS });
+    await ctx.search('Demo.*.cls', false, 'ZED');
+    const rows = Array.from(ctx.host.querySelectorAll('.ocu-data-table-row, [role="row"]')).filter((row) => row.textContent?.includes('Demo.OnlyThere.cls'));
+    const box = rows[0]?.querySelector('.ocu-data-table-check') as HTMLElement | null;
+    expect(box?.getAttribute('aria-disabled')).toBe('true');
+    expect(box?.getAttribute('aria-description')).toBe(STRINGS.explorerPromoteIneligible);
+  });
+});
+
+const RUN_ROWS = [{ Run: 7, Started: '2026-11-16 10:00:00', Duration: 1.5, Methods: 2, Passed: 1, Failed: 1, Finished: '2026-11-16 10:00:01' }];
+
+/** Name the tests and what they name, then press Run and let the page answer. */
+async function pressRun(ctx: Awaited<ReturnType<typeof mount>>, tests: string, level = 'class'): Promise<void> {
+  const input = ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement;
+  input.value = tests;
+  input.dispatchEvent(new Event('input'));
+  const select = ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement;
+  select.value = level;
+  select.dispatchEvent(new Event('change'));
+  (ctx.host.querySelector('[data-ocu-devtool="run"]') as HTMLButtonElement).click();
+  await ctx.settle();
+}
+
+function dialogButtons(ctx: Awaited<ReturnType<typeof mount>>): readonly HTMLButtonElement[] {
+  return Array.from(ctx.host.querySelectorAll('app-warning-dialog button')) as HTMLButtonElement[];
+}
+
+describe('System Explorer Unit tests', () => {
+  it("draws the Run form from the descriptor's criteria, reads the runs on arrival with no search, and registers no action for a menu", async () => {
+    const ctx = await mount(TESTS, { rows: RUN_ROWS });
+    expect(ctx.paths).toEqual(['/api/ocupilot/screens/explorer.unittests/read?maxRows=1000']);
+    expect(ctx.host.querySelector('label[for="ocu-devtool-tests"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsTestsLabel);
+    expect(ctx.host.querySelector('.ocu-criteria-hint')?.textContent?.trim()).toBe('A package, a class, or Class:Method');
+    expect(ctx.host.querySelector('label[for="ocu-devtool-level"]')?.textContent?.trim()).toBe(STRINGS.actionRun);
+    const select = ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => `${option.value}=${option.textContent?.trim()}`)).toEqual([
+      `package=${STRINGS.explorerUnitTestsLevelPackage}`,
+      `class=${STRINGS.explorerClassDocumentLabel}`,
+      `method=${STRINGS.explorerSqlColumnMethod}`,
+    ]);
+    expect(select.value).toBe('class');
+    expect(ctx.host.querySelector('[data-ocu-devtool="run"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunAction);
+    expect(ctx.host.querySelector('[data-ocu-devtool="submit"]')).toBeNull();
+    expect(ctx.host.querySelector('app-data-table')).not.toBeNull();
+    expect(ctx.stores.for(TESTS.descriptor, TESTS.refreshRates).data()).toEqual(RUN_ROWS);
+    expect(ctx.actions.has(TESTS.descriptor, 'run')).toBe(false);
+  });
+
+  it('opens the warning dialog on Run, with the consequence named, and sends nothing: Cancel sends nothing either', async () => {
+    // Mutation (Rule 19): send the action from `onAskRun` without the dialog -> the request assertions go red.
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: applied({ run: 8, passed: 1, failed: 0 }) });
+    await pressRun(ctx, 'Demo.Tests');
+    expect(ctx.host.querySelector('app-warning-dialog .ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunTitle);
+    expect(ctx.host.querySelector('app-warning-dialog .ocu-warning-consequence')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunConsequence);
+    expect(ctx.promoteRequests).toEqual([]);
+    const cancel = dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionCancel);
+    cancel?.click();
+    await ctx.settle();
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.promoteRequests).toEqual([]);
+  });
+
+  it('names no tests, opens no dialog', async () => {
+    const ctx = await mount(TESTS, { rows: RUN_ROWS });
+    await pressRun(ctx, '   ');
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.promoteRequests).toEqual([]);
+  });
+
+  it('sends the run once Proceed is pressed, with the tests and the level as typed, and shows no refusal', async () => {
+    // Mutation (Rule 19): leave `level` out of the values `proceed` sends -> the request assertion goes red.
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: applied({ run: 8, passed: 1, failed: 0 }) });
+    await pressRun(ctx, 'Demo.Tests:TestOne', 'method');
+    dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionProceed)?.click();
+    await ctx.settle();
+    expect(ctx.promoteRequests).toEqual([{ path: '/api/ocupilot/screens/explorer.unittests/action', body: { action: 'run', id: 'unittests', values: { tests: 'Demo.Tests:TestOne', level: 'method' } } }]);
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.host.querySelector('[data-ocu-devtool="run-refusal"]')).toBeNull();
+  });
+
+  it("shows the instance's reason when the run is refused, the switched-off sentence included, and keeps the form", async () => {
+    // Mutation (Rule 19): draw the generic sentence alone in `proceed` -> the reason assertion goes red.
+    const refused: JsonResult<unknown> = { kind: 'error', status: 403, code: 'EXPLORER.UNITTEST.OFF', reason: STRINGS.explorerUnitTestOffReason, detail: null };
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: refused });
+    await pressRun(ctx, 'Demo.Tests');
+    dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionProceed)?.click();
+    await ctx.settle();
+    expect(ctx.host.querySelector('[data-ocu-devtool="run-refusal"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestOffReason);
+    expect((ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement).value).toBe('Demo.Tests');
+    expect(ctx.promoteRequests).toHaveLength(1);
+  });
+
+  it("shows an agent's arrival in the Run form and runs nothing", async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: TESTS.route, criterion: '', criteria: { tests: 'Demo.Tests', level: 'package' } });
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, arrivals });
+    expect((ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement).value).toBe('Demo.Tests');
+    expect((ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement).value).toBe('package');
+    expect(ctx.promoteRequests).toEqual([]);
   });
 });

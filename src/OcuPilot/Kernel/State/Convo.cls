@@ -15,6 +15,11 @@
 Class OcuPilot.Kernel.State.Convo Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>): a
+/// writer refuses a caller who neither owns the conversation nor holds the administrative resource, and
+/// <method>GuardedPurgeEmpty</method> is an administrator's.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
 /// <p>The user who created this conversation, as <code>$USERNAME</code> read it. A weak reference
 /// (AD-37).</p>
 Property UserName As %String(MAXLEN = 160);
@@ -57,7 +62,8 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
     Set tConvo = $$$NULLOREF
     Try {
         If pId '= "" {
-            Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pId, .tIds)
+            Set tSC = ..NamedOwnerRefused($ClassName(), "ConvKeyIdxExists", pId)
+            If $$$ISOK(tSC) Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pId, .tIds)
             If $$$ISERR(tSC) {
                 Set pStatus = tSC
                 Quit
@@ -68,11 +74,16 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
             }
             Set tRowId = tIds(1)
         } Else {
+            Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+            If $$$ISERR(tSC) {
+                Set pStatus = tSC
+                Quit
+            }
             Set tRow = ..%New()
             Set tRow.ConvKey = ..NewKey()
             Set tRow.UserName = pUser
             Set tRow.CreatedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-            Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+            Set tSC = ..GuardedSaveOwned(tRow, 0)
             If $$$ISERR(tSC) {
                 Set pStatus = tSC
                 Quit
@@ -93,10 +104,15 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
 }
 
 /// <p>Whether <var>pUser</var>, matched exactly, owns conversation <var>pKey</var>. A plain read:
-/// unlike <method>LoadOrCreate</method> this takes no lock and opens nothing exclusively.</p>
+/// unlike <method>LoadOrCreate</method> this takes no lock and opens nothing exclusively. Asked for
+/// <var>pUser</var> by that user or an administrator only: any other caller is refused <code>$$$AccessDenied</code>
+/// (vendor <code>ERROR #822</code>). A caller who names itself and another user's conversation is answered not
+/// owned.</p>
 ClassMethod GuardedOwner(pKey As %String, pUser As %String, Output pFound As %Boolean) As %Status
 {
     Set pFound = 0
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ? AND %EXACT(UserName) = ?", pKey, pUser, .tIds)
     If $$$ISERR(tSC) Quit tSC
     Set pFound = ($Get(tIds(1)) '= "")
@@ -140,10 +156,14 @@ ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String,
 /// <p>The user who created conversation <var>pKey</var>, matched exactly, as stored; <var>pUser</var>
 /// is <code>""</code> when no conversation holds that key. A plain read, like
 /// <method>GuardedOwner</method>; the user is a weak reference (AD-37), so a name the instance no
-/// longer holds still reads back.</p>
+/// longer holds still reads back. Answered for a conversation its caller owns and to an administrator only: any
+/// other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and <var>pUser</var> stays
+/// empty. A key that names no conversation answers <code>""</code> for every caller.</p>
 ClassMethod GuardedOwnerOf(pKey As %String, Output pUser As %String) As %Status
 {
     Set pUser = ""
+    Set tSC = ..NamedOwnerRefused($ClassName(), "ConvKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT UserName FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pUser = $Get(tRows(1))
@@ -215,6 +235,7 @@ ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String
 ClassMethod GuardedPurgeEmpty(pCutoff As %String, Output pRemoved As %Integer) As %Status
 {
     Set pRemoved = 0
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tParams = []
     Do tParams.%Push(pCutoff, "string")
     Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(CreatedAt) < ? AND NOT EXISTS (SELECT e.ID FROM OcuPilot_Kernel_State.Entry e WHERE e.ConvoKey = OcuPilot_Kernel_State.Convo.ConvKey)", .tParams, .pRemoved)
@@ -300,10 +321,14 @@ ClassMethod NewKey() As %String [ Private ]
 }
 
 /// <p>Delete conversation <var>pKey</var> and its entries. For test teardown only; production
-/// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>).</p>
+/// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>). The entries go by
+/// this class's own statement, because <method>OcuPilot.Kernel.State.Entry.GuardedDeleteForConvo</method>
+/// is an administrator's and the owner's delete must reach them.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedDeleteForConvo(pKey)
+    Set tSC = ..KeyOwnerRefused("ConvKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pKey)
     If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey)
 }

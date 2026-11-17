@@ -9,6 +9,8 @@ prose into one checker.
    Includes any `IRIS_*` environment variable and the vendor's `%Atelier` package (a
    forbidden-token guard standing in for a coupling `OcuPilot.Kernel.Utils` never had to
    drop — see that story's Design Notes).
+   The vendor's `^UnitTestRoot` is the one admitted token, in `src/OcuPilot/Port/DevToolPort.cls`
+   only, where a unit-test run sets and restores it (Story 24.5).
 
 2. **Naming.** No `%` or `_` in a declared class or property name; no `_` in a declared
    class parameter or method name (`.claude/rules/objectscript-basics.md` — the `%` ban is
@@ -51,7 +53,9 @@ prose into one checker.
 6. **Escalation containment (AD-9, Story 1.3, AC6).** `New $ROLES` and
    `$SYSTEM.Security.AddRoles` may appear only in `OcuPilot/Kernel/State/Base.cls` and
    `OcuPilot/Test/State.cls` — the tree's one escalation point and the one test class
-   that impersonates a denied user to prove it. Every other file is refused the moment
+   that impersonates a denied user to prove it — and `New $ROLES` (never `AddRoles`) in
+   `OcuPilot/Install/Installer.cls`'s `AsAdministrator` alone, the one frame in which AD-9 gives an
+   install step the administrative role it was granted. Every other file is refused the moment
    either token appears in it, mechanically enforcing AD-9's "the storage classes, and
    only the storage classes" rather than leaving it to review.
 
@@ -239,6 +243,10 @@ FORBIDDEN_LITERALS = (
 )
 ENV_VAR_RE = re.compile(r"\bIRIS_[A-Z0-9_]*\b")
 
+# The vendor's own root global, which `%UnitTest.Manager` reads and which is never renamed. It is
+# admitted in one file only: the unit-test port sets it for a run and puts it back (Story 24.5).
+VENDOR_ROOT_ADMITTED = {"^UnitTestRoot": "src/OcuPilot/Port/DevToolPort.cls"}
+
 # --- ObjectScript declaration shapes --------------------------------------------------
 
 # The class declaration, with the `Extends` clause the cap in check_naming needs to tell a
@@ -323,6 +331,8 @@ def check_rename_tokens(problems: list[str]) -> None:
         rel = p.relative_to(ROOT).as_posix()
         for token in FORBIDDEN_LITERALS:
             if token not in text:
+                continue
+            if VENDOR_ROOT_ADMITTED.get(token) == rel:
                 continue
             for i, line in enumerate(text.splitlines(), start=1):
                 if token in line:
@@ -631,6 +641,16 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# AD-9's one use of `New $ROLES` outside Base: the installer's `AsAdministrator` adds the administrative role
+# to its own process around one install step. The exception is the token `New $ROLES` in that one method of that
+# one file; `AddRoles` is refused there as everywhere else.
+ESCALATION_METHOD_ALLOWED = {
+    "src/OcuPilot/Install/Installer.cls": "AsAdministrator",
+}
+NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
+ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)
+METHOD_DECLARATION_RE = re.compile(r"^(?:Class)?Method\s+([A-Za-z0-9_%]+)", re.IGNORECASE)
+
 # The one OcuPilot package folder that must never contain a storage class escalating outside
 # the two files above; kept as its own constant so this rule cannot silently drift from the
 # roster's package set if that ever grows.
@@ -755,6 +775,8 @@ HARVEST_CALLERS = {
     "OcuPilot.Port.Harvest.Monitor": "src/OcuPilot/Port/BackupPort.cls",
     "OcuPilot.Port.Harvest.Loc": "src/OcuPilot/Port/DevToolPort.cls",
     "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.UnitTestRun": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.ConsoleRun": "src/OcuPilot/Port/DevToolPort.cls",
 }
 
 
@@ -785,12 +807,21 @@ def check_escalation_containment(problems: list[str]) -> None:
         text = read_text(p)
         if text is None:
             continue
+        method = ""
         for i, raw in iter_code_lines(text):
-            if ESCALATION_RE.search(raw) and rel not in ESCALATION_ALLOWED:
-                problems.append(
-                    f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
-                    f"{' or '.join(sorted(ESCALATION_ALLOWED))} (AD-9, AC6)"
-                )
+            declaration = METHOD_DECLARATION_RE.match(raw)
+            if declaration:
+                method = declaration.group(1)
+            if not ESCALATION_RE.search(raw) or rel in ESCALATION_ALLOWED:
+                continue
+            is_new_roles_only = NEW_ROLES_RE.search(raw) is not None and ADD_ROLES_RE.search(raw) is None
+            if is_new_roles_only and ESCALATION_METHOD_ALLOWED.get(rel) == method:
+                continue
+            problems.append(
+                f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
+                f"{' or '.join(sorted(ESCALATION_ALLOWED))}, or 'New $ROLES' in "
+                f"{', '.join(f'{f} {m}' for f, m in sorted(ESCALATION_METHOD_ALLOWED.items()))} (AD-9, AC6)"
+            )
 
 
 # --- Restraint containment (AD-30, AD-40, Story 3.7) ----------------------------------

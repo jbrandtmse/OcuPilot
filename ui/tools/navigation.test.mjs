@@ -376,6 +376,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-views/document',
       'system-explorer/sql-views/fields',
       'system-explorer/sql-views/statements',
+      // Story 24.5: one unit-test run's methods, unlisted, after the SQL catalog's tabs by descriptor class name.
+      'system-explorer/unit-tests/methods',
       'system-explorer/classes',
       'system-explorer/routines',
       // Story 19.4: Search, Compare and Macros, after Routines.
@@ -398,6 +400,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/document-hashes',
       // Story 24.8: Compare namespaces, after Document hashes.
       'system-explorer/namespace-diff',
+      // Story 24.5: Unit tests, after Compare namespaces.
+      'system-explorer/unit-tests',
+      // Story 24.6: Command console and Class method console, after Unit tests.
+      'system-explorer/command',
+      'system-explorer/class-method',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.

@@ -12920,6 +12920,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-16T19:25:47Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43933412899(OCU-1-epic21-a7e5d04fa)gates_node24.15.0_2177ms;unchanged_rerun
 
 ### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
 - source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
@@ -12993,6 +12994,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:37Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T04:48:03Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357531;client_suite_hang_cancelled;unchanged_rerun
 - 2026-11-16T07:51:21Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43819841054(staging-24.3-feb6b71c7)job133140150868_node24.15.0_client_suite_cancelled_at_25min;rerun_by_epic-runner-24
+- 2026-11-16T13:52:02Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43875203822(OCU-1-epic21-edf36c82d)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
+- 2026-11-16T16:17:56Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43897913630(OCU-1-epic24-e34cedcd7)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
 
 ### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13101,6 +13104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
 - 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint
+- 2026-11-17T13:04:24Z occurrence=24-10-folder-manager-transfer-and-term-list-import-export-and-copy
 
 ### DW-2611: InteropPort.DefaultReadOnly's true path is not run against a real read-only database; the READONLY refusal is pinned through the seam
 - source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-story
@@ -13227,6 +13231,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-6-the-command-and-class-method-consoles.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: Test/State.TestEscalationIsWhatGrantsTheDeniedUserAccess pins the escalation; Api/Governance checks IsAdministrator above GuardedApply; end-to-end non-admin rewrite not yet run
 - 2026-11-16T06:06:00Z status=escalated owner=burndown by=harvest note=security; found at 24.6 plan; out of Epic 24 footprint (Kernel/State, AD-9); for the orchestrator and the decision sheet
+- 2026-11-16T12:01:42Z status=resolved-by:21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a owner=21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a by=orchestrator note=U-79_A;reproduced_e2e_then_fixed_in_21.30(3df69e648,07a3a989f);feature_90799012d_run43850988016_green
 
 ### DW-2635: Environment diff does not yet compare two namespaces' global, routine and package mappings (catalog DT-09)
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13321,6 +13326,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Base.GuardedSave/GuardedSaveIfCurrent escalate any object; ProviderPort.cls:187 writes Agent.GuardedClearVerification during a turn, so admin-gating Agent is not a one-line change (21.30 plan, code read)
 - 2026-11-16T06:43:58Z status=decision-pending owner=burndown by=spec_gate note=security: orchestrator/owner to decide scope (sibling of DW-2634)
 - 2026-11-16T12:43:38Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=re-owned to Story 21.33 on owner answer U-82 (A)
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batches 1-3: Agent is ADMINWRITE; ledger proposal turn conversation pref sharing run are OWNERWRITE; tests StoreOwnerWrite TranscriptOwnerWrite PrefOwnerWrite
 
 ### DW-2639: Switch.GuardedRecordWritesMarked admits any caller, so a %Development holder can set the observed marking fact and hide or show the unmarked-writes banner (AD-15)
 - source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: low | fix-risk: low | footprint: in-epic
@@ -13333,6 +13339,54 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
 
+### DW-2653: A person's promote action that omits Reviewed is not held to the plan-hash compare; the client always sends it and the agent's confirm is held by PlanHash
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: Story 20.41 rejected the same shape by design (Reviewed optional per AD-56; spec-20-41 Review Findings)
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a caller other than the client reaches the promote action
+- 2026-11-16T15:08:47Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=confirmed at cr: dry run needs Reviewed optional; caller already holds WRITE; reopen_if=a caller other than the client reaches the action
+
+### DW-2654: After a confirmed promote the outcome dialog lists the compile lines only; per-document outcomes are on the page's output pane
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list
+- 2026-11-16T14:18:23Z status=wontfix-accepted owner=24-9-environment-promote by=harvest note=reopen_if=a person reports missing per-document outcomes in the dialog
+
+### DW-2655: Promote preflight refusals (changed hash, missing source, over-long text, wrong header line) are reached by no test
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; needs a seam over ReadSource or a plan/preflight race
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review (Rule 19)
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=NamespacePromoteEdges.TestEachPreflightRefusalWritesNothing over a ReadSource/ReadVersion forge; mutation red
+
+### DW-2656: A target document whose version read answers no document object leaves an empty version, so its save is refused inside the write loop after earlier documents were written, not before any write
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-9 deferred list; promote has no rollback
+- 2026-11-16T14:18:23Z status=routed owner=24-9-environment-promote by=harvest note=for 24.9's code review: move the check into the preflight
+- 2026-11-16T15:08:47Z status=resolved-by:24-9-environment-promote owner=24-9-environment-promote by=cr note=Preflight refuses an empty version 409 STALE before any write; pinned and mutation-red in NamespacePromoteEdges
+
+### DW-2657: The Atelier source-code document read answered another namespace's text once, in a web process whose hash bodies had just run in two namespaces (observed on ocupilot-b-ci, cause not found); promote reads through its own ReadSource
+- source: spec-24-9-environment-promote.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: spec-24-9 deferred list; one observation, no reproduction (inference that other Atelier reads after a namespace switch are exposed)
+- 2026-11-16T14:18:23Z status=routed owner=burndown by=harvest note=AtelierPort readers after namespace switches may be exposed; reproduce before fixing
+- 2026-11-16T15:08:48Z status=routed owner=burndown by=cr note=cr: ReadSource sound (re-hash refuses wrong text); ReadVersion still reads via Atelier, a wrong version stops at a 409
+
+### DW-2658: Compare namespaces' promote status reads 'Promoted 1 documents' for one document: the two status lines have no singular
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dev-tool.store.ts promoteStatus fills explorerPromoteDone/DoneErrors with n=1; the project adds a singular at 1 (Story 19.18)
+- 2026-11-16T15:08:57Z status=decision-pending owner=burndown by=cr note=string:Promoted 1 document to the other namespace and compiled it. / Promoted 1 document to the other namespace; the compile reported errors.
+
+### DW-2659: DevToolPort copies AtelierPort's private Literal and the create script's free-name check, because AtelierPort.cls is read-only for 24.9
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.Literal and FreeCheck repeat AtelierPort.Literal and FreeCheck (both Private); the spec's Code Map makes AtelierPort read-only
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a story edits AtelierPort.cls: make Literal and FreeCheck reachable and delete DevToolPort's copies
+
+### DW-2660: No promote test covers a generated .int step (generated=yes), whose ReadSource header must equal the hash body's
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: routine save, .inc create and .mac create are pinned (NamespacePromoteEdges); a mismatch refuses the step as stale, never writes
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a promote with generated=yes is refused as stale with neither namespace changed
+
+### DW-2661: The agent's confirm-time fence call (ConfirmProblem to StepsProblem) is not mutation-pinned: no fixture makes AgentProblem refuse only at confirm
+- source: spec-24-9-environment-promote.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: StepsProblem and ConfirmProblem's plan re-read are pinned; a refusal only the confirm sees needs a database mapping change between mint and confirm
+- 2026-11-16T15:08:57Z status=wontfix-accepted owner=24-9-environment-promote by=cr note=reopen_if=a confirmed promote writes a step whose package maps outside the target's routines database
 ### DW-2640: Two SQL table leaves are owned by no story after the 21.6 and 21.25 splits: drop item and the Indices tab's map-status toggle
 - source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 21.25 plan inventory
@@ -13361,14 +13415,304 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=Batch1_1472e282d+f67606129:InstallRecordWrite,InstallAsAdministrator_pin_each_refusal_and_the_installer_frame;measured_as_real_principals
 
 ### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
+- 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
+- 2026-11-16T23:19:06Z occurrence=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=Batch2_4529a120a+a9ae32d6e,Batch3_88f29266d+review:OwnerStateRead,UserStateRead,ReserveSweepWrite_held-row_legs;measured_as_developer_principal
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
 - evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
 - 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun
+
+### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
+- source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
+- evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
+- 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
+- 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+- 2026-11-17T02:02:03Z status=resolved-by:21-34-a-backup-action-leaves-the-web-process-s-null-device-open owner=21-34-a-backup-action-leaves-the-web-process-s-null-device-open by=orchestrator note=BackupPort_null_device_fix_c1a02ae13;feature_run43888708331_green_incl_shard4;duplicate_heading_from_epic21_branch_removed_at_merge
+
+### DW-2668: A Run's answer counts a skipped test method as failed when the caller holds SQL privileges
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: UnitTestRun.Run takes passed/failed from the harvested ParseTestResults, which counts every status but 1 as failed; the runs list and CountResults count status 2 as neither
+- 2026-11-17T00:00:04Z status=by-design owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=spec Task step 5 prescribes ParseTestResults and AC7 keeps it unchanged; the screen shows the runs list's counts
+
+### DW-2669: A run whose test class fails before any method (OnBeforeAllTests, no instance) records 0 methods and the screen shows no reason
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the manager records such errors on TestCase/TestSuite ErrorDescription; ReadRuns and ReadMethods read TestMethod rows only, so the run reads Methods 0, Failed 0
+- 2026-11-17T00:00:05Z status=wontfix-accepted owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=reopen_if=a person reports a run listed with 0 methods whose class has test methods
+
+### DW-2670: The Run dialog names neither the tests it will run nor the instance-wide SQL statistics reset
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the dialog opens before the STATE read and shows only the fixed consequence; RunTest resets the SQL statistics flags instance-wide (Manager.cls:497,738-741); the agent can pre-fill the form
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:add the target and level to the dialog, and 'It also resets the instance's SQL statistics settings.'
+
+### DW-2671: The run's methods list shows the runs list's empty state, which says no runs are recorded
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ExplorerUnitTestRun.cls:33 emptyStateKey explorerUnitTestsEmpty reads 'No unit-test runs are recorded in this namespace.' on one run's methods list
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:'This run recorded no test methods.' as the methods list's own empty state
+
+### DW-2672: Exclusion register EX-57 (UnitTest Portal) still says no OcuPilot link exists, while Unit tests now shows the run record
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: docs/exclusion-register.md:230 EX-57 reads 'No OcuPilot link exists yet; the classic portal serves it.'; Story 24.5 ships the runs and methods lists over %UnitTest_Result
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=catalog call: retire EX-57 as served by DT-02, or keep it for the classic portal's other pages
+### DW-2662: AD-9's 21.33 list of open writes omits a confirm's claim cancelling every user's live proposals on its target (AD-34); a %Development holder can mint its own proposal on any target through the store and claim it to cancel other users' live proposals there
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
+- 2026-11-16T15:42:19Z status=decision-pending owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=orchestrator: amend AD-9 open-write list (claim sibling cancel) or rule otherwise
+- 2026-11-16T15:45:12Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=AD-9's open writes now name the claim's sibling cancel on its own stored target (comply first, U7; orchestrator told); the review bound the claim target to the stored TargetRef
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=claim cancels siblings of its own stored target only; AD-9 names it; TestAClaimCancelsOnlyItsOwnTargetsSiblings
+
+### DW-2663: Propose.GuardedMint, Ledger.GuardedAppend and GuardedCountOverflow check only the user argument, so a developer can write its own rows onto another user's turn or conversation key: a proposal counts against that turn's guided-workflow write cap (Dispatch via GuardedCountForTurn) and ledger rows consume its per-turn row cap
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference, not reproduced): GuardedCountForTurn and the ledger's TurnKey counts have no owner filter; the fix needs the turn's stored owner by TurnKeyIdx, which Batch 2 makes an owner store. Same root as the spec's third deferred: item.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: check the turn and conversation owner in these writers
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batch 2: turn and conversation owner checked in Propose.GuardedMint and Ledger writers; TestADeveloperCannotSpendAVictimsTurnCaps
+
+### DW-2664: Ledger.GuardedPurgeBefore and Propose.GuardedRebuildTargetKeys now need OcuPilotAdmin in the calling process; the retention task's run-as user and an install by a non-%All administrator (EnsureGrant does not change the running process) are not pinned to hold it
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Code read (inference): Installer runs EnsureGrant then EnsureProposalTargetKeys in one process; EnsureRetentionTask sets no RunAsUser; Retention and Installer suites run as %All. Batches 2-3 gate more retention calls.
+- 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite
+- 2026-11-16T16:24:29Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=measured on ocupilot-ci: retention task runs as its saving account (irisowner, %All) and purges; OcuPilotAdmin without %All passes rebuild and purge; first install by a non-%All account was refused 822 at EnsureProposalTargetKeys, fixed by checking the administrator only when a row needs a key; pinned by OcuPilot.Test.AdminPathWrite
+
+### DW-2673: A unit-test run (Story 24.5) may record no OcuPilot audit row: Task 0 saw 0 new %SYS.Audit rows in the run window, and OcuPilot's own audit writes through $System.Security.Audit into the same log (inference: not measured whether that run went through the action route)
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
+- 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
+- 2026-11-17T02:04:53Z status=resolved-by:24-6-the-command-and-class-method-consoles by=implement note=measured at the action route on ocupilot-b-ci: a 24.5 run wrote 0 OcuPilot rows while a control Event.Record wrote 1; DevToolPort.RunLocked now calls AuditRun (SecurityChange, console unittests, namespace, no tests); pinned by UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests, mutation red
+
+### DW-2694: Class method console: a method with no return value raises <COMMAND> after it ran (InvokeWithArgs calls every method as a function), so the run shows an error and its by-reference values are dropped
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Probed on ocupilot-b-ci: Set x=$ClassMethod("%SYSTEM.OBJ","ShowFlags") prints the flags, then raises <COMMAND>. The fix changes the harvested, hash-pinned InvokeWithArgs (AC8) or adds a second call path beside it.
+- 2026-11-17T08:12:13Z status=decision-pending owner=burndown by=cr note=owner call: deviate from the verbatim harvest (re-pin AC8) for void methods, or accept; fix-risk high (AC8 pin)
+
+### DW-2695: AD-53's fifth unadvertised tool (Story 24.5) still names the unit-test run a named audit gap; since DW-2673 every run writes OcuPilot's own SecurityChange row, and the spine does not say so (Rule 20)
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-53 fifth tool: 'Named audit gap: a run records no vendor audit event'; DevToolPort.RunLocked calls AuditRun (console unittests) before the body since Story 24.6.
+- 2026-11-17T08:12:13Z status=escalated owner=burndown by=cr note=spine amendment (AD-53 fifth tool sentence) for the lead under Rule 20; amending an AD is a veto item
+
+### DW-2696: Audit-row count assertions bound their window with a fixed Hang 0.25 before reading the audit clock, so a row stamped late by a loaded instance can land in the next test's window
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ConsoleGate, ConsoleRoundTrip, ConsoleBoundary and UnitTestRunGate read AuditEvent.Now() after Hang 0.25 and assert exact counts via AuditEvent.RowsCarrying; an id-based lower bound in AuditEvent would remove the timing.
+- 2026-11-17T08:12:13Z status=routed owner=burndown by=cr note=fix once in OcuPilot.Test.AuditEvent (id-based lower bound), not per class
+
+### DW-2697: Class method console: when the return value uses the shared 32,768 budget, the output's cut note still says 32,768 and its marker names the smaller budget; a fully used budget shows 'Nothing was written.' beside the cut note
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ConsoleRun.OnCaptured cuts with ApplyOutputCeiling(text, .t, outputBudget); console.store cutNotes always shows explorerConsoleOutputCut. A fix needs a new shipped string.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=a person reports a class-method answer whose cut note names a different number from its marker
+
+### DW-2698: A command's locks outlive its run, and an argumentless Lock in a command releases the route's AD-34 hold mid-request
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RunConsole rolls back transactions only; Operation.Hold is a process lock (Lock +^OcuPilotProposalTarget), so the person's own Lock commands act on it. Leftover locks are a named limit in the spec.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=two runs of one console in one namespace are observed overlapping, or a leftover lock blocks another person's request
+
+### DW-2699: The class method console's own-code screen checks only the class's first segment, not the arguments, so %SYSTEM.OBJ.Delete with an OcuPilot class name passes it while the same call typed as a command is refused
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.Console: $ZConvert($Piece(tClass,".",1),"L") = OWNSEGMENT; AD-10 as amended names 'a class in an OcuPilot package' as the screen, not the arguments.
+- 2026-11-17T08:12:25Z status=by-design owner=24-6-the-command-and-class-method-consoles by=cr note=AD-10's screen wording; reopens only by an AD-10 or spec amendment
+
+### DW-2700: A console's last answer stays on the page after the namespace is switched and does not say which namespace it ran in
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: console.page.ts holds one ConsoleState per screen store (HELD WeakMap), and ScreenStores.for keys stores by descriptor only.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=a person reads a console answer under a namespace other than the one it ran in
+
+### DW-2701: The Arguments hint borrows STRINGS.permissionWrite as its imperative verb, so rewording that permission label would silently change the hint
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: console.page.ts builds the hint from explorerConsoleHintLead, two code examples, permissionWrite and explorerConsoleHintByRefTail; strings.ts values must be unique, so no second 'Write' key exists.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=STRINGS.permissionWrite's value changes
+### DW-2665: An upgrade from a release before the proposal target key (1.0.13 or earlier), run by an account granted OcuPilotAdmin in that same install, would be refused at the target-key step (the grant does not reach the running process); a second install passes (inference, not measured)
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
+- 2026-11-16T16:27:30Z status=decision-pending owner=burndown by=lead note=orchestrator: release-note line or a fix in Batch 2
+- 2026-11-16T16:28:51Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=fix in Batch 1 (orchestrator): run the installer/start-path target-key rebuild under the protected role; measure with a seeded keyless row
+- 2026-11-16T16:38:50Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=Batch 2 (ruling): A's design; AD-9 text at Batch 2's spec gate citing U-82 and DW-2665 (owner veto item); no release cut until Batch 2 is on feature
+- 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batch 2: New ROLES frame in Installer.EnsureProposalTargetKeys, rule 6 admits it; AdminPathWrite
+
+### DW-2666: A non-administrator's Turn.GuardedReserve still runs the cross-user sweep on a retention it controls: a limits class with no RETENTIONSECONDS, or a held copy of another user's ended turn with EndedAt back-dated, deletes that user's unexpired turns with their steps, directive, proposals and signals
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci as a %Development principal without OcuPilotAdmin or %All (code review runs 87, 91): SweepAnyCaller takes the cutoff from the caller's pLimitsClass and EndedAt from GuardedOpenId, which answers the caller's held object. SqlRun's reserve sweep has the same shape (Batch 3).
+- 2026-11-16T21:14:16Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=HIGH, unpatched: the fix edits the reserve sweep U-89 froze; orchestrator ruling
+- 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=instance limits class and SQL-read state for a non-administrator in both reserve sweeps; ReserveSweepWrite 11 tests red-before green-after
+
+### DW-2667: A caller of the reserve stores directly chooses its own caps: SqlRun.GuardedReserve's pMaxRunning is checked against every user's live runs, its kind is free text and its busy check matches the name exactly, and Turn.GuardedReserve takes its own hour limit and window
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: code read 2026-11-16 (inference, not reproduced): a %Development holder reserving with a large pMaxRunning and begun runs can fill BackgroundRun.MaxRunning so other users' reserves answer full; frontmatter deferred item 3 is the turn half
+- 2026-11-16T23:19:06Z status=escalated owner=burndown by=cr note=changing a reserve beyond the DW-2666 ruling needs an orchestrator ruling (U-89)
+
+### DW-2674: ReportGatewayGap drops the status of its gateway-mark step, so a refused mark is silent
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Installer.ReportGatewayGap discards AsAdministrator(gatewayMark)'s status, as the earlier direct call did; InstallAsAdministrator pins the installer's path.
+- 2026-11-17T03:59:30Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=an install leaves a WebApp row at GatewayReported=0 and logs no warn
+
+### DW-2675: Retention's stamp sweep is refused when the task's saving account does not hold OcuPilotAdmin
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Stamp.GuardedSweep now calls AdminWriteRefused; the task runs as the account that saved it, which EnsureGrant grants OcuPilotAdmin (inference).
+- 2026-11-17T03:59:30Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a retention task run reports the install-stamp sweep failed with ERROR #822
+
+### DW-2676: A held Version object edited in memory reaches AsAdministrator's saveRow in the same process
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: MarkInstalling and EnsureVersion open the row by %OpenId; only a process that can write IRISSYS gains the role (measured), and it can grant itself any role.
+- 2026-11-17T03:59:30Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a process without IRISSYS write could add the administrative role
+
+### DW-2677: A subclass of Installer can override a step that AsAdministrator dispatches through .. and run it with the role
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Needs compile rights in the install code database (outside AD-9's rule) and IRISSYS write for the addition; four non-installers measured <PROTECT>.
+- 2026-11-17T03:59:31Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a non-IRISSYS writer could add the administrative role
+
+### DW-2678: A store refusal of a set the screen-access port built would answer 500 rather than a written reason
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Measured: all 222 adjustable screens' declared sets and every stored row pass Access.SetRefused, and the port's gate equals the store's writer check.
+- 2026-11-17T03:59:31Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a descriptor declares a pair outside the pattern, or one pair twice
+
+### DW-2679: Fixture.Create saves demo inventory rows outside AsAdministrator's frame
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Decided note: the fixture runs as the container's own account, which holds %All, at the start path and in the smoke.
+- 2026-11-17T03:59:32Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Design Notes, Decided in-stage
+
+### DW-2680: AsAdministrator's demoRemove step wraps all of Fixture.Remove, not only the inventory purge
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's closed step list names RemoveDemoFixtures; the role holds only OcuPilotAdmin, so the %SYS deletes gain nothing (inference).
+- 2026-11-17T03:59:32Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Tasks, Batch 1 step list
+
+### DW-2681: Access.GuardedPut takes a changer argument it only checks against the caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec requires the pBy check; the port passes $Username; CallerOwns compares without regard to case.
+- 2026-11-17T03:59:33Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Tasks, Batch 1 Access bullet
+
+### DW-2682: InstallRecordWrite's administrator test purges every screen adjustment and trims every profile's stamps
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestAnAdministratorWritesTheInstallRecords runs Access.DeleteAllGuarded and Stamp.GuardedSweep as an administrator; its assertions use only its own rows.
+- 2026-11-17T03:59:33Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a class after InstallRecordWrite in one CI leg fails on a missing screen adjustment or stamp
+
+### DW-2683: InstallRecordWrite's fingerprint counts whole tables, so any concurrent writer would redden a refusal test
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Fingerprint includes COUNT(*) of the five tables; nothing writes them during a test run today (inference).
+- 2026-11-17T03:59:34Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a writer such as the retention task's sweep ran during an InstallRecordWrite test
+
+### DW-2684: AdminStateWrite's call-coverage assertion derives both sides from InstallRecordWrite for the five new stores
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PlanKinds(install) and Writes/AdjusterWrites read the same InstallRecordWrite lists; the public-method split still catches a missing method.
+- 2026-11-17T03:59:35Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a write listed in InstallRecordWrite.Writes with no public method leaves the roster test green
+
+### DW-2686: Propose.GuardedCountForTurn and Ledger.GuardedCountForTurn answer a count to any caller for a key that names no turn or conversation
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both refuse a key another user owns; a key naming no row counts orphans. Keys are 32 random hex; no product caller asks for a key it does not own. Propose.cls:873
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T08:09:47Z occurrence=21-35-ocupilot-s-install-records-and-other-users-state-answer-only note=B2 code review: the same unfiltered count reaches Ledger.GuardedAppend's pSeq, and a subject counts the administrator-owned transcript-access rows filed under its conversation key; the overflow writer's leak of the count through pDropped on a refused save is fixed in this pass
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=orphan-count_part_fixed_in_B3_review(OwnerStateRead.TestACountOnAnotherUsersOrphanedLedgerAnswersNothing);residual_GuardedAppend_pSeq_and_a_subject_counting_admin_transcript-access_rows_under_its_own_conversation_key_reveal_counts_only;reopen_if=a_non-owner_non-administrator_reads_a_count_of_rows_under_a_key_another_user_owns
+
+### DW-2687: Base.GuardedProbeGet reads any subscript of the probe global for any caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: No code outside Test/ writes ^OcuPilotKernelStateProbe and GuardedProbeSet is an administrator's; pre-existing BaseSurface open read. Base.cls:777
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=reopen_if=any_class_outside_src/OcuPilot/Test_writes_^OcuPilotKernelStateProbe(grep_src)
+
+### DW-2688: A non-administrator's read of a step or entry row costs one more escalated parent-owner read (inference, unmeasured)
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OwnerWriteRefused reads the parent's owner via the any-caller stored-value read once per opened row; a timed Entry.GuardedRows over a long conversation as the owner would settle it. Base.cls:253
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T15:18:26Z occurrence=21-35 note=B3:Turn.GuardedSignals,Step.GuardedRows,Nav.GuardedPending,Entry.GuardedRows_each_one_more_escalated_parent_read
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=reopen_if=a_timed_Entry.GuardedRows_or_Step.GuardedRows_over_a_200-row_parent_as_its_owner_takes_over_2x_the_administrator's_time
+
+### DW-2689: No test covers a held own row whose owner or key is edited in memory before a store save, reserve, abandon or sweep
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: StoreOwnerWrite and OwnerStateWriteProbe held-victim-row legs now meet 822 at the open, so they no longer prove a save refuses a forged held row; a leg holding the developer's own row with an edited owner would settle it
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item; resume asks the B2 CR to re-pin it
+- 2026-11-17T08:09:47Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=re-pinned by ReserveSweepWrite.TestAHeldOwnRowNamingAnotherUserIsRefused (own turn and run held with the owner edited: turn reserve, finish and cancel refused 822, abandon marks only the own turn, victim rows unchanged; mutation OwnedSaveRefused answers OK reddens the finish leg)
+### DW-2685: flake: screen-permissions-agent.browser-spec.mjs AC1 (both tests) timed out (Navigation timeout of 30000 ms with one request in flight) in CI browser shard 4/5
+- source: CI run 44029722214 (feature dispatch head 4f3b7d2fe) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; the head was bookkeeping over green code 8c58f5edf; same navigation-timeout shape as DW-2544
+- 2026-11-17T07:20:51Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake found at the dispatch gate; for the flake-hardening story
+
+### DW-2690: Write.IsRefusedRead maps every AccessDenied status to a non-owner answer, so an owner's read refused 822 for another reason would answer NOTYOURS or UNKNOWN
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Write.cls IsRefusedRead tests the error code only; no current store path answers 822 to an owner (inference); an owner's confirm answering NOTYOURS would make it real
+- 2026-11-17T08:09:47Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=an owner's confirm, cancel or draft of its own live proposal answers NOTYOURS or UNKNOWN
+
+### DW-2691: Base.GuardedStoredValue reads the owner and the value in two escalated frames, so a key re-created between them could answer a value whose owner was not checked
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Base.cls GuardedStoredValue calls GuardedStoredValueAnyCaller twice; the gated keys are unique and 32 random hex characters; a delete and re-mint of the same key between the two reads would make it real
+- 2026-11-17T08:09:48Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a store reuses a key value or a non-unique index is read through GuardedStoredValue
+
+### DW-2692: A %Development holder can hold a proposal target's claim lock through Propose.GuardedTargetHold, delaying other users' confirms of that target
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Propose.GuardedTargetHold is an open read on the Batch 2 roster; the same LOCK on a protected global is likely takeable directly (inference); pre-existing
+- 2026-11-17T08:09:48Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a confirm of a target fails with the in-flight message while no confirm of it is running
+
+### DW-2693: A non-administrator's write of a large stream (an entry's steps, a run's answer) outside Base's frame may fail with PROTECT, because the stream allocates its id in the protected stream global
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: %Stream.GlobalCharacter.SetupTmpGbl takes $sequence on the location for a new stream past its buffer (420000 characters measured, 100000 not); Entry.GuardedAppend and SqlRun.GuardedFinish write outside the frame (inference, unmeasured as a principal)
+- 2026-11-17T08:09:48Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=Entry.GuardedAppend with a 420000-character steps array, run as a %Development principal on its own conversation, answers PROTECT
+
+### DW-2704: Api/Transcripts.HandleRead's 404 for a refused Entry.GuardedTurnKeys has no test leg
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: B3 build-auto deferred item; the owner-read refusal path of the transcript route is pinned, the turn-keys refusal mapping is not
+- 2026-11-17T15:18:25Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=route_now_calls_the_shared_Write.IsRefusedRead(B3_review);reopen_if=TranscriptsWire_or_a_principal_probe_shows_a_non-404_answer_to_a_non-owner_turn-keys_read
+
+### DW-2705: Entry.GuardedTurnKeys answers the turn keys of an orphaned conversation to any caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A conversation key naming no row passes the owner check; keys are 32 random hex and no product caller asks for one it does not own (same shape as DW-2686)
+- 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=B3_review_patch:Base.NamedOwnerRefused_row_output;UserStateRead.TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack
+
+### DW-2706: Convo.GuardedScreenRows's SQL scope and its per-row open are not pinned one at a time
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The transcript list's two defences are tested together; removing one alone may stay green
+- 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:39Z status=wontfix-accepted by=adjudication note=reopen_if=removing_either_the_SQL_user_scope_or_the_per-row_open_check_alone_shows_another_user's_row_in_Convo.GuardedScreenRows(mutation_probe)
+
+### DW-2707: Turn.GuardedAbandonForUser hands any caller the number of another user's live turns, a third open answer beside AD-9's two open reads
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The abandon stays open by owner answer U-89, and its pCount answers a developer naming the victim (ReserveSweepWrite.TestAnAbandonIgnoresAHeldKey asserts count 1). AD-9's 21.35 paragraph says two reads stay open. No product caller reads the count for another user.
+- 2026-11-17T15:41:30Z status=decision-pending owner=burndown by=cr note=human=owner: hide the count from a non-owner non-administrator, or name it in AD-9 as open
+### DW-2702: The lookup table transfer's script form (InteropPort.TransferSnippet) passes the unresolved relative path to $System.OBJ.Export and Load, so the copied-out script does not act on the file the write would
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 24.10's copy of the same branch, run on ocupilot-b-ci, ended not OK with the relative path and wrote the file once resolved through PathPort; 20.5's branch is the same text (inference for Interop's outcome)
+- 2026-11-17T13:04:24Z status=routed owner=burndown by=cr note=AD-59 prevents a script that makes a different change; resolve through ExportFile/PathPort as AnalyticsPort now does
+
+### DW-2703: AD-39's fifth exception names an export's XML lines; Story 24.10's term list export answers CSV lines to the screen, which no spine line names
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AnalyticsTermListExport.WriteOutput returns the CSV lines citing AD-39's fifth exception; the spine's fifth lists 'an export's XML lines'; U-105's three proposed spine lines do not extend it
+- 2026-11-17T13:04:24Z status=escalated owner=burndown by=cr note=add 'a term list export's CSV lines' to AD-39's fifth with U-105's spine lines (spine edit is owner-only in this run)
+
+### DW-2708: Folder manager export: AnalyticsPort.AdmitRead (READ on the folder item database) has no negative test
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A probe principal without %DB_USER is refused by the namespace gate before AdmitRead runs; reachable only where ^DeepSee.FolderItemD maps to another database
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a test or install maps ^DeepSee.FolderItemD to a database other than the namespace default
+
+### DW-2709: Folder manager: ReadFolderItem's locked-and-hidden branch (code 3 with %CheckResource false) is not exercised
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every test runs as an account holding every resource, so %CheckResource is always true
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a resource-bound folder item read by a probe principal lacking that resource shows the item
+
+### DW-2710: Batch 2's proposed AD-65 line omits %GetFolderItemClasses, which the port calls on every folder item import read, write and script, and no AD-15 case records that the vendor audits no folder item write
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AnalyticsPort.FolderItemClasses calls %DeepSee.UserLibrary.Utils.%GetFolderItemClasses; AD-65's Rule enumerates the only reads the port may call, and the spec's proposed AD-65 line (U-106) names %Export, %Import, %DeleteFolderItem and %FolderItemExists only
+- 2026-11-17T18:23:40Z status=escalated owner=burndown by=cr note=add %GetFolderItemClasses and the vendor-not-audited case to U-106's AD-65/AD-15 lines (spine edit is owner-only)
+
+### DW-2711: The Folder items import status line reads 'Imported 1 folder items.' for one item: the line has no singular
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: folder-item-list.page.ts onImport fills analyticsFolderItemImportDone with count=1; the project adds a singular at 1 (Story 19.18), as DW-2658 records for 24.9
+- 2026-11-17T18:23:40Z status=decision-pending owner=burndown by=cr note=string:Imported 1 folder item. (a new shipped string, owner-only; the import status line is part of U-107)
+
+### DW-2712: AnalyticsFolderItemExport and AnalyticsFolderItemImport repeat about 90 and 120 lines of AnalyticsTermListExport and AnalyticsTermListImport (file arguments, PortQuery, ScreenActionDelta, WriteOutput, Consequence) under the spec's weak reason that wording and rows differ
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: diff of the two pairs without doc comments: the exports differ in TOOLNAME, DESCRIPTION, READTYPE, READANSWERS and one schema sentence; the imports also in StateDiff, WriteOutput and TargetName
+- 2026-11-17T18:23:40Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=cr note=reopen_if=a third analytics transfer tool copies the same file-argument methods; lift them into a shared transfer helper then
+### DW-2713: flake: InteropItemRun.TestTheStartHelperWaitsForTheProductionsOwnUpdate saw the probe production's operation hold no job after the start in CI instance shard 6/8
+- source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; same start-timing family as DW-2535 (resolved by 20.25); 21.35 touches no interop code
+- 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
+
+### DW-2714: flake: analytics-mdx.browser-spec.mjs AC1 waited 145 s for the first query's answer in CI browser shard 2/5
+- source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
+- 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head

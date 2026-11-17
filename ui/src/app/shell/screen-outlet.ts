@@ -225,6 +225,11 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  // Story 24.5: Unit tests, the runs list with its Run form; one run's methods are the shared list page.
+  'OcuPilot.Screen.Descriptor.ExplorerUnitTests': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  // Story 24.6: the Command console and the Class method console, one page serving both.
+  'OcuPilot.Screen.Descriptor.ExplorerCommand': () => import('../areas/system-explorer/console.page').then((m) => m.ConsolePage),
+  'OcuPilot.Screen.Descriptor.ExplorerClassMethod': () => import('../areas/system-explorer/console.page').then((m) => m.ConsolePage),
   'OcuPilot.Screen.Descriptor.ExplorerCompare': () => import('../areas/system-explorer/code-compare.page').then((m) => m.CodeComparePage),
   'OcuPilot.Screen.Descriptor.ExplorerMacro': () => import('../areas/system-explorer/macro-lookup.page').then((m) => m.MacroLookupPage),
   // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
@@ -273,6 +278,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.2: Term lists with their New term list and Edit term list dialogs, and a term list's entries with their Add entry and Change entry dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': () => import('../areas/analytics/term-list-list.page').then((m) => m.TermListListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': () => import('../areas/analytics/term-list-entry-list.page').then((m) => m.TermListEntryListPage),
+  // Story 24.10: Folder items with their Export, Import and Delete.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };
 
 /**

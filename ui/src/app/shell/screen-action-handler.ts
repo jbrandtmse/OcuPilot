@@ -155,6 +155,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
+  // Story 24.10: the Folder items, whose Delete types the item's name and whose Export and Import dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -408,6 +410,10 @@ export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessage
 export const MESSAGE_RESEND = 'resend';
 export const MESSAGE_EDIT_RESEND = 'editresend';
 
+/** Story 24.9: Compare namespaces, whose Promote is reviewed by a dry run and confirmed by typing the other namespace's name. */
+export const EXPLORER_NAMESPACE_DIFF = 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff';
+export const NAMESPACE_PROMOTE = 'promote';
+
 /** The value a reviewed action carries beside its own: the digest of the review it was confirmed from (AD-53). */
 const REVIEWED_VALUE = 'Reviewed';
 
@@ -420,6 +426,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
   // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
+  // Story 24.9: Compare namespaces' Promote lists the steps and the documents left alone before it is confirmed.
+  [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
 };
 
 /**
@@ -430,6 +438,7 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast' | 'dry-run'>>>> = {
   [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: 'dry-run' },
+  [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: 'dry-run' },
 };
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
@@ -511,9 +520,13 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
-  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2).
-  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update'],
+  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2);
+  // the Term lists' page also registers Copy term list and Export itself and draws Import as a screen-level action, whose dialogs send the five
+  // transfer actions (Story 24.10).
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update', 'copy', 'export', 'export-browser', 'import', 'import-local'],
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
+  // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
@@ -702,9 +715,13 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
+  // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
+  // Story 24.9: a promote writes each document over the other namespace's copy, and nothing is undone.
+  [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: STRINGS.explorerPromoteConsequence },
 };
 
 /**
@@ -793,6 +810,8 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.2: a delete types the term list's name and a remove the entry's key.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**

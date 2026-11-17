@@ -49,6 +49,13 @@ Parameter CLASSICPAGES = "%DeepSee.UI.CubeRegistry";
 /// <p>The global whose database the write needs WRITE on: the cube facts here, the term lists for the term list editor's tools.</p>
 Parameter DESTINATIONGLOBAL = "^DeepSee.Fact";
 
+/// <p>The permission the write needs on the database <parameter>DESTINATIONGLOBAL</parameter> maps to: <code>WRITE</code> here, <code>READ</code> for
+/// a tool that only reads the destination (the term list export, Story 24.10).</p>
+Parameter DESTINATIONPERMISSION = "WRITE";
+
+/// <p>A resource beyond the destination's that the tool needs at <code>USE</code>, or <code>""</code> (the term list export's file system access).</p>
+Parameter FILERESOURCE;
+
 /// <p>The consequence code the proposal carries; the client maps it to its published sentence.</p>
 Parameter CONSEQUENCECODE;
 
@@ -105,9 +112,10 @@ ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
     Quit ""
 }
 
-/// <p>What the caller must hold: the screen's own pairs, then WRITE on the resource guarding the database
-/// <code>^DeepSee.Fact</code> maps to in the namespace the request is scoped to, then READ on the resource guarding its routines
-/// database, then the custom resource of each <parameter>CLASSICPAGES</parameter> page, each pair once (AD-8, AD-44, AD-65).
+/// <p>What the caller must hold: the screen's own pairs, then <parameter>DESTINATIONPERMISSION</parameter> (WRITE here) on the resource
+/// guarding the database <parameter>DESTINATIONGLOBAL</parameter> maps to in the namespace the request is scoped to, then READ on the
+/// resource guarding its routines database, then <parameter>FILERESOURCE</parameter> at USE when it names one, then the custom resource of
+/// each <parameter>CLASSICPAGES</parameter> page, each pair once (AD-8, AD-44, AD-65).
 /// <var>pResolved</var> is 0 when a database names no resource.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
@@ -126,10 +134,14 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
         Set pResolved = 0
         Quit ""
     }
-    Set tWrite = $ListBuild(tFacts, ##class(OcuPilot.Port.AnalyticsPort).#WRITEPERMISSION)
+    Set tWrite = $ListBuild(tFacts, ..#DESTINATIONPERMISSION)
     If '$ListFind(tPairs, tWrite) Set tPairs = tPairs _ $ListBuild(tWrite)
     Set tRead = $ListBuild(tRoutines, ##class(OcuPilot.Port.AnalyticsPort).#READPERMISSION)
     If '$ListFind(tPairs, tRead) Set tPairs = tPairs _ $ListBuild(tRead)
+    If ..#FILERESOURCE '= "" {
+        Set tFile = $ListBuild(..#FILERESOURCE, "USE")
+        If '$ListFind(tPairs, tFile) Set tPairs = tPairs _ $ListBuild(tFile)
+    }
     Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 

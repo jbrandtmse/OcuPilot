@@ -166,6 +166,16 @@ Parameter CREATES As BOOLEAN = 0;
 /// the field twice.</p>
 Parameter SCREENACTIONS = "";
 
+/// <p>The code a person's screen action of this tool is refused with, 403, while the tool's governance key is off, or
+/// <code>""</code> for a tool whose action is not asked its key (AD-10's run-code exception, AD-22, owner answer U-86).
+/// <code>""</code> here.</p>
+/// <p>A tool that declares one runs code with the signed-in person's rights, which nothing on the write path can see or
+/// undo. It is a person's alone: <class>OcuPilot.Api.ScreenAction</class> asks the key after the screen's pairs and before
+/// the hold and the fresh read, and <class>OcuPilot.Kernel.Proposal.Prohibited</class> refuses a call of it that the agent
+/// can reach, so the tool also declares <parameter>OcuPilot.Screen.Tool.Base.ADVERTISED</parameter> 0. Its key ships
+/// <code>false</code> in <class>OcuPilot.Kernel.Governance.Baseline</class>.</p>
+Parameter PERSONGATE = "";
+
 /// <p>Whether this agent-only write is listed in its bound screen's context although no screen action carries
 /// it (AD-24, Story 20.16): <code>0</code> here, so a write is listed only through a declared row action or a
 /// primary action it creates for. A tool that declares <code>1</code> is also bound to its screen through

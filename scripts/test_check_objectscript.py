@@ -101,6 +101,34 @@ class FixtureTreeCase(unittest.TestCase):
         )
 
 
+class TestVendorRootAdmittedInOneFile(FixtureTreeCase):
+    """`^UnitTestRoot` is a rename-checklist token, admitted in the unit-test port alone (Story 24.5)."""
+
+    PORT = "src/OcuPilot/Port/DevToolPort.cls"
+    OTHER = "src/OcuPilot/Port/OtherPort.cls"
+
+    def body(self, name: str) -> str:
+        return (
+            f"Class OcuPilot.Port.{name} Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run()\n{\n    Set tOld = $Get(^UnitTestRoot)\n}\n\n}\n"
+        )
+
+    def test_the_unit_test_port_may_name_the_root(self):
+        self.write(self.PORT, self.body("DevToolPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertEqual(problems, [], f"expected the port admitted, got {problems}")
+
+    def test_any_other_file_naming_the_root_is_refused(self):
+        self.write(self.OTHER, self.body("OtherPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("OtherPort.cls" in p and "^UnitTestRoot" in p for p in problems),
+            f"expected the other file refused, got {problems}",
+        )
+
+
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
     class that gets a data global -- extends `%Persistent`, directly or transitively through
@@ -676,6 +704,62 @@ class TestEmbeddedPythonRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_embedded_python(problems)
         self.assertEqual(problems, [])
+
+
+class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
+    """AD-9: `New $ROLES` is refused outside Base and the one test class, except in the installer's
+    `AsAdministrator`, which adds the administrative role it was granted to its own process."""
+
+    INSTALLER = "src/OcuPilot/Install/Installer.cls"
+
+    def installer(self, body: str, method: str = "AsAdministrator", path: str = INSTALLER) -> list[str]:
+        self.write(
+            path,
+            "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
+            f"ClassMethod {method}() As %Status\n{{\n    Set tSC = $$$OK\n{body}\n    Quit tSC\n}}\n\n"
+            "ClassMethod Other() As %Status\n{\n    Quit $$$OK\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_the_target_key_step_is_accepted(self):
+        self.assertEqual(self.installer("    New $ROLES\n    Set $ROLES = $ROLES _ \",OcuPilotAdmin\""), [])
+
+    def test_the_abbreviated_spelling_is_accepted_in_the_same_method(self):
+        self.assertEqual(self.installer("    N $ROLES"), [])
+
+    def test_new_roles_in_another_installer_method_is_refused(self):
+        problems = self.installer("    New $ROLES", method="EnsureGrant")
+        self.assertTrue(any("Installer.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_new_roles_in_the_former_target_key_step_is_refused(self):
+        problems = self.installer("    New $ROLES", method="EnsureProposalTargetKeys")
+        self.assertTrue(any("Installer.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_add_roles_in_the_target_key_step_is_refused(self):
+        problems = self.installer("    Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "AddRoles is refused in the target-key step as it is everywhere else")
+
+    def test_a_line_carrying_both_tokens_in_the_target_key_step_is_refused(self):
+        problems = self.installer("    New $ROLES Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "a line that also escalates through AddRoles is refused")
+
+    def test_new_roles_in_a_same_named_method_of_another_file_is_refused(self):
+        problems = self.installer("    New $ROLES", path="src/OcuPilot/Kernel/Other.cls")
+        self.assertTrue(any("Other.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_new_roles_in_a_method_after_the_target_key_step_is_refused(self):
+        self.write(
+            self.INSTALLER,
+            "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
+            "ClassMethod AsAdministrator() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
+            "ClassMethod Other() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        self.assertEqual(len(problems), 1, f"expected the later method alone refused, got {problems}")
+        self.assertIn("Installer.cls:12:", problems[0])
 
 
 class TestHandlerWireTestRule(FixtureTreeCase):
@@ -1292,6 +1376,16 @@ class TestHarvestBodyContainment(FixtureTreeCase):
         self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.Other"')
         problems = self.containment_problems()
         self.assertTrue(any(p.startswith(self.CALLER + ":6:") for p in problems), f"another body is refused, got {problems}")
+
+    def test_the_console_body_is_named_only_by_the_developer_tool_port(self):
+        self.plant("src/OcuPilot/Port/DevToolPort.cls", 'Quit "OcuPilot.Port.Harvest.ConsoleRun"')
+        self.assertEqual(self.containment_problems(), [], "the developer-tool port names the console body")
+        self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.ConsoleRun"')
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith(self.CALLER + ":6:") and "OcuPilot.Port.Harvest.ConsoleRun" in p for p in problems),
+            f"another area port naming the console body is refused, got {problems}",
+        )
 
     def test_a_caller_not_in_the_declared_table_is_refused(self):
         original = dict(co.HARVEST_CALLERS)

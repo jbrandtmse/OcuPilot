@@ -224,6 +224,9 @@ export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
 /** Story 20.21: an agent's class or routine save, which compiles the saved text on Confirm, as the user. */
 export const CONSEQUENCE_EXPLORERSAVECOMPILES = 'EXPLORER.SAVE.COMPILES';
 
+/** Story 24.9: an agent's promote between two namespaces, which writes each document over the other namespace's copy and has no rollback. */
+export const CONSEQUENCE_EXPLORERPROMOTENOROLLBACK = 'EXPLORER.PROMOTE.NOROLLBACK';
+
 /**
  * Story 20.16: an agent's save of the class text behind a rule, BPL or DTL editor, which compiles it on Confirm and
  * opens the document again in the editor, dropping any change not saved there.
@@ -408,6 +411,8 @@ export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
+/** Story 24.10: the folder item delete; one published sentence. */
+export const CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
@@ -507,6 +512,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
   // Story 20.21: an agent's class or routine save states that Confirm compiles the saved text, published once.
   if (code === CONSEQUENCE_EXPLORERSAVECOMPILES) return STRINGS.explorerSaveCompilesOnConfirm;
+  // Story 24.9: an agent's promote states that each document is written over the other namespace's copy and that nothing is undone, published once.
+  if (code === CONSEQUENCE_EXPLORERPROMOTENOROLLBACK) return STRINGS.explorerPromoteConsequence;
   // Story 20.16: an agent's editor save states that Confirm compiles the text and the editor opens the document again, published once.
   if (code === CONSEQUENCE_INTEROPEDITORRELOADS) return STRINGS.interopEditorSaveOnConfirm;
   // Story 18.32: an agent's REST service create states that Confirm compiles the service's classes, published once.
@@ -599,6 +606,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_BACKUPFREEZE) return STRINGS.backupFreezeConsequence;
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSTERMLISTREMOVE) return STRINGS.analyticsTermListRemoveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;

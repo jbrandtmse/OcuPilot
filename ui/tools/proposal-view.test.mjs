@@ -44,6 +44,7 @@ const {
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
   CONSEQUENCE_EXPLORERSAVECOMPILES,
+  CONSEQUENCE_EXPLORERPROMOTENOROLLBACK,
   CONSEQUENCE_INTEROPEDITORRELOADS,
   CODESAVECONSEQUENCES,
   CONSEQUENCE_RESTSERVICECREATE,
@@ -350,12 +351,13 @@ test("the task export's consequence code resolves to the export dialog's replace
 // class rather than restated, and its card states the published line.
 //
 // Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red;
-// drop the RESTSERVICE.CREATE.COMPILES branch -> the REST service leg goes red.
+// drop the RESTSERVICE.CREATE.COMPILES branch -> the REST service leg goes red; drop the EXPLORER.PROMOTE.NOROLLBACK branch -> the promote leg goes red.
 test("the System Explorer export's and import's consequence codes are the tools' own and resolve to their lines", () => {
   for (const [file, constant, sentence] of [
     ['ExplorerExport.cls', CONSEQUENCE_EXPLOREREXPORTREPLACES, STRINGS.taskExportReplaces],
     ['ExplorerImport.cls', CONSEQUENCE_EXPLORERIMPORTREPLACES, STRINGS.explorerImportReplaces],
     ['ExplorerSave.cls', CONSEQUENCE_EXPLORERSAVECOMPILES, STRINGS.explorerSaveCompilesOnConfirm],
+    ['ExplorerNamespacePromote.cls', CONSEQUENCE_EXPLORERPROMOTENOROLLBACK, STRINGS.explorerPromoteConsequence],
     ['InteropEditorSave.cls', CONSEQUENCE_INTEROPEDITORRELOADS, STRINGS.interopEditorSaveOnConfirm],
     ['RestServiceCreate.cls', CONSEQUENCE_RESTSERVICECREATE, STRINGS.restServiceCreateEffect],
   ]) {
@@ -1193,5 +1195,20 @@ test('Story 21.4: a setting whose change purges the cached queries states the pu
   assert.equal(/Parameter PURGECODE = "([^"]+)";/.exec(tool('ConfigSettingSet'))?.[1], CONSEQUENCE_CONFIGSETTINGPURGE, 'ConfigSettingSet.cls declares the code the card reads');
   for (const name of ['SqlSettingSet', 'SqlShellSettingSet', 'TsqlSettingSet', 'IsqlSettingSet']) {
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 24.2 and Story 24.10: the agent's card for a term list delete, an entry remove and a folder item delete reads each one's published sentence.
+// Mutation (Rule 19): delete the `CONSEQUENCE_ANALYTICSFOLDERITEMDELETE` line from `consequenceSentence` -> the folder item case goes red on ''.
+test('Story 24.10: the analytics deletes and the entry remove state their consequence on the card', async () => {
+  const view = await import(corePath('proposal-view.ts'));
+  const cases = [
+    [view.CONSEQUENCE_ANALYTICSTERMLISTDELETE, STRINGS.analyticsTermListDeleteConsequence],
+    [view.CONSEQUENCE_ANALYTICSTERMLISTREMOVE, STRINGS.analyticsTermListRemoveConsequence],
+    [view.CONSEQUENCE_ANALYTICSFOLDERITEMDELETE, STRINGS.analyticsFolderItemDeleteConsequence],
+  ];
+  for (const [code, sentence] of cases) {
+    assert.ok(typeof sentence === 'string' && sentence !== '', `${code} has a published sentence`);
+    assert.equal(view.consequenceSentence(code), sentence, `${code} reads its published sentence`);
   }
 });

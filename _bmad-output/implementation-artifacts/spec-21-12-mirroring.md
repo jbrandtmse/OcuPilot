@@ -219,7 +219,7 @@ Code review 2026-11-15, full-opus, four layers. 0 decision-needed, 8 patch (appl
 
 **Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.MirrorRead`, one class per call, then each of `Prohibited`, `PortGate`, and every shared-surface class above -- expected: green.
 - `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` -- expected: clean.
 - `(loop)` `cd ui && node --test tools/exclusion-register.test.mjs tools/self-protection.test.mjs tools/screen-mirror.test.mjs tools/navigation.test.mjs` -- expected: green.

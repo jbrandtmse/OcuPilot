@@ -1,1 +1,0 @@
-import"./chunk-BCIENBpf.js";import"./chunk-B2M4-eiY.js";import"./chunk-DTcRdP-P.js";import"./chunk-BupQPVhH.js";import"./chunk-CpQF2wsF.js";import"./chunk-BJQkuOIK.js";import"./chunk-CDPaMYhe.js";import"./main-N2Y7TXKI.js";import{n as V,r as ge,t as Ae}from"./chunk-C4rrhHoq2.js";export{ge as NamespaceFormPage};

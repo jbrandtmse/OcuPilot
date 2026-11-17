@@ -166,6 +166,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
         Set tArgs = {}
         If tTool.class = "OcuPilot.Screen.Tool.ErrorRead" Set tArgs = {"namespace": ($Namespace), "date": "09/16/2026"}
         If tTool.class = "OcuPilot.Screen.Tool.ErrorDelete" Set tArgs = {"namespace": ($Namespace)}
+        If tTool.class = "OcuPilot.Screen.Tool.ExplorerNamespacePromote" Set tArgs = {"target": "USER"}
         Set tAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, tArgs, .tAddedResolved)
         Do $$$AssertEquals(tAddedResolved, 1, tTool.name _ ": the pairs its arguments add are read")
         Set tExpectedAdded = ""
@@ -259,14 +260,18 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsTermListAction") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsTermListAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsFolderItemAction") {
             ; Story 24.2: the term list editor's six writes declare WRITE on the database ^DeepSee.TermList maps to and READ on the routines
-            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
+            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65). Story 24.10: the folder
+            ; manager's three declare the same over the database ^DeepSee.FolderItemD maps to.
+            Set tOwnGlobal = $Select($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsFolderItemAction"): ##class(OcuPilot.Port.AnalyticsPort).#FOLDERITEMGLOBAL, 1: ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL)
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, tOwnGlobal, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list or folder item database resolves")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
-            For tOwnPair = $ListBuild(tTermResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
+            ; Story 24.10: the export reads only (READ on the term list database) and names the file system's resource, which it writes through.
+            For tOwnPair = $ListBuild(tTermResource, $Parameter(tTool.class, "DESTINATIONPERMISSION")), $ListBuild(tRoutineResource, "READ"), $ListBuild($Parameter(tTool.class, "FILERESOURCE"), "USE") {
+                If $List(tOwnPair, 1) = "" Continue
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
@@ -317,6 +322,18 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, $Parameter(tTool.class, "DATABASEPERMISSION")) {
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerNamespacePromote" {
+            ; Story 24.9: the promote declares its screen's pairs alone, and WRITE on the routines database of the other namespace
+            ; its arguments name, here USER, is an argument pair (AD-8).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({"Namespace": "USER"}, .tExpectedAddedResolved)
+            Do $$$AssertTrue($ListLength(tExpectedAdded) > 0, tTool.name _ ": the expected argument pair, WRITE on the other namespace's routines database, resolves")
+        } ElseIf $Parameter(tTool.class, "PERSONGATE") '= "" {
+            ; Stories 24.5 and 24.6: a tool that runs code as the person (PERSONGATE) declares its screen's pairs alone; the port adds
+            ; the namespace's database pairs, WRITE on its routines database included, and names the one it finds missing (AD-8).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

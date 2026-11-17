@@ -174,7 +174,7 @@ Rejected:
 
 **Commands.** Run one command per foreground call, with `timeout: 600000`, against `ocupilot-ci` only. Never put two test calls in one message.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.AdminStateWrite` -- expected: red at Task 0, green after the fix.
 - `(loop)` The same command, one class per call, for `State`, `SwitchState`, `MarkingRestraint`, `SwitchesWire`, `Governance`, `GovernanceWire`, `EgressSettingsWire`, `Egress`, `ConfigGate`, `AgentWireSecurity` and `ProposalConfirm` -- expected: green.
 - `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, and `bash scripts/lint-docs.sh _bmad-output/implementation-artifacts/spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md` -- expected: 0 problems.

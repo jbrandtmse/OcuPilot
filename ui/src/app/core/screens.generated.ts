@@ -2746,7 +2746,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -2843,8 +2864,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsFolderItemsEmptyAgent"
     },
     "toolIdentifier": "analytics.folderitems",
     "refreshDefault": 0,
@@ -3140,6 +3161,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
         "selfProtection": ""
       }
     ],
@@ -9855,6 +9896,83 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassMethod",
+    "route": "system-explorer/class-method",
+    "area": "system-explorer",
+    "labelKey": "explorerClassMethodLabel",
+    "sideBarPosition": 19,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "class method console",
+      "call class method",
+      "run class method"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassMethodPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassMethodPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassMethodPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.classmethod",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCodeMetrics",
     "route": "system-explorer/code-metrics",
     "area": "system-explorer",
@@ -10037,6 +10155,83 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "explorer.codemetrics",
     "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCommand",
+    "route": "system-explorer/command",
+    "area": "system-explorer",
+    "labelKey": "explorerCommandLabel",
+    "sideBarPosition": 18,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "command console",
+      "run command",
+      "execute command"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCommandPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCommandPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerCommandPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.command",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -10587,14 +10782,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "scope": "namespace",
     "parentScope": "",
     "id": {
-      "kind": "none",
+      "kind": "single",
       "parts": []
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "promote",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Document",
@@ -10602,7 +10802,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Hash",
         "OtherHash",
         "Modified",
-        "OtherModified"
+        "OtherModified",
+        "Promotable"
       ],
       "secretFields": []
     },
@@ -10646,7 +10847,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Hash",
         "OtherHash",
         "Modified",
-        "OtherModified"
+        "OtherModified",
+        "Promotable"
       ],
       "filter": [
         "Document",
@@ -10714,15 +10916,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "explorerNamespaceDiffInvite",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerNamespaceDiffEmptyAgent"
     },
     "toolIdentifier": "explorer.namespacediff",
+    "multiSelect": {
+      "action": "promote",
+      "eligible": "Promotable",
+      "max": 100,
+      "ineligibleKey": "explorerPromoteIneligible"
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -14945,6 +15152,325 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "explorer.sqlviews",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerUnitTestRun",
+    "route": "system-explorer/unit-tests/methods",
+    "area": "system-explorer",
+    "labelKey": "explorerUnitTestRunLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/unit-tests",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Class",
+        "Method",
+        "Result",
+        "Duration",
+        "Failure"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerUnitTestsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "method of one unit-test run",
+      "source": {
+        "port": "devtool",
+        "endpoint": "UnitTestMethods",
+        "type": "LIST"
+      },
+      "fields": [
+        "Class",
+        "Method",
+        "Result",
+        "Duration",
+        "Failure"
+      ],
+      "filter": [
+        "Class",
+        "Method",
+        "Result"
+      ],
+      "sort": {
+        "fields": [
+          "Class",
+          "Method",
+          "Result",
+          "Duration"
+        ],
+        "default": "Class",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "run",
+            "labelKey": "actionRun",
+            "kind": "text",
+            "maxLength": 20,
+            "hint": "One run, spelled as explorer.unittests.read answers its Run."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Method",
+          "labelKey": "explorerSqlColumnMethod",
+          "kind": "name"
+        },
+        {
+          "field": "Result",
+          "labelKey": "taskHistoryColumnResult",
+          "kind": "status"
+        },
+        {
+          "field": "Duration",
+          "labelKey": "explorerUnitTestsColumnDuration",
+          "kind": "number"
+        },
+        {
+          "field": "Failure",
+          "labelKey": "explorerUnitTestsColumnFailure",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.unittestrun",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerUnitTests",
+    "route": "system-explorer/unit-tests",
+    "area": "system-explorer",
+    "labelKey": "explorerUnitTestsLabel",
+    "sideBarPosition": 17,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Run",
+        "Started",
+        "Duration",
+        "Methods",
+        "Passed",
+        "Failed",
+        "Finished"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerUnitTestsEmpty",
+    "commandAliases": [
+      "unit tests",
+      "run tests",
+      "test runs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerUnitTestsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "recorded unit-test run",
+      "source": {
+        "port": "devtool",
+        "endpoint": "UnitTestRuns",
+        "type": "LIST"
+      },
+      "fields": [
+        "Run",
+        "Started",
+        "Duration",
+        "Methods",
+        "Passed",
+        "Failed",
+        "Finished"
+      ],
+      "filter": [
+        "Run",
+        "Started"
+      ],
+      "sort": {
+        "fields": [
+          "Run",
+          "Started",
+          "Duration",
+          "Failed"
+        ],
+        "default": "Run",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "tests",
+            "labelKey": "explorerUnitTestsTestsLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "A package, a class, or Class:Method"
+          },
+          {
+            "param": "level",
+            "labelKey": "actionRun",
+            "kind": "choice",
+            "maxLength": 7,
+            "options": [
+              "package",
+              "class",
+              "method"
+            ],
+            "default": "class"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Run",
+          "labelKey": "actionRun",
+          "kind": "name"
+        },
+        {
+          "field": "Started",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        },
+        {
+          "field": "Duration",
+          "labelKey": "explorerUnitTestsColumnDuration",
+          "kind": "number"
+        },
+        {
+          "field": "Methods",
+          "labelKey": "explorerUnitTestsColumnMethods",
+          "kind": "number"
+        },
+        {
+          "field": "Passed",
+          "labelKey": "explorerUnitTestsPassed",
+          "kind": "number"
+        },
+        {
+          "field": "Failed",
+          "labelKey": "explorerPromoteFailed",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerUnitTestsEmptyAgent"
+    },
+    "toolIdentifier": "explorer.unittests",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
