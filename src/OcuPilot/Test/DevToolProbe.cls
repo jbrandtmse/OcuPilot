@@ -7,7 +7,8 @@
 /// rules for the package <code>OcuProbe248</code>, and Story 24.9's <method>MakeStoragePair</method> and
 /// <method>RemoveStoragePair</method> for <code>OcuProbe249</code>. Story 24.5's <method>MakeTests</method>,
 /// <method>RemoveTests</method> and <method>RemoveRun</method> save, remove and clear the run of the unit-test classes
-/// <code>OcuProbe245.Mixed</code> and <code>OcuProbe245P.Prod</code>.</p>
+/// <code>OcuProbe245.Mixed</code> and <code>OcuProbe245P.Prod</code>. Story 24.6's <method>MakeConsoleProbe</method> and
+/// <method>RemoveConsoleProbe</method> do the same for the class <code>OcuProbe246.Echo</code>.</p>
 Class OcuPilot.Test.DevToolProbe Extends %RegisteredObject
 {
 
@@ -284,6 +285,49 @@ ClassMethod RemoveTests(pNamespace As %String = "USER") As %Status
     Set tProductionSC = ..RemoveDocuments(pNamespace, ..#TESTSPRODUCTIONPACKAGE, "")
     If $$$ISERR(tProductionSC) Set tSC = $$$ADDSC(tSC, tProductionSC)
     Quit tSC
+}
+
+/// <p>The package of the console probe class, and its name.</p>
+Parameter CONSOLEPACKAGE = "OcuProbe246";
+
+Parameter CONSOLECLASS = "OcuProbe246.Echo";
+
+/// <p>Save and compile <code>OcuProbe246.Echo</code> in <var>pNamespace</var>: <code>Echo(pText, ByRef pOut)</code> writes
+/// <var>pText</var>, sets <var>pOut</var> to it and a <code>!</code>, and returns its length; <code>Big()</code> returns 40,000
+/// characters; <code>Fails()</code> divides by zero; <code>Opens()</code> leaves a transaction open; <code>Wrecks()</code> kills and
+/// sets the harvest port's response and request variables; <code>Instance()</code> is an instance method and <code>Hidden()</code> a
+/// private class method, which a console never calls. None is run.</p>
+ClassMethod MakeConsoleProbe(pNamespace As %String = "USER") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCRLF = $Char(13, 10)
+        Set tText = "Class " _ ..#CONSOLECLASS _ " Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF
+        Set tText = tText _ "ClassMethod Echo(pText As %String, ByRef pOut As %String) As %Integer" _ tCRLF _ "{" _ tCRLF _ "    W pText" _ tCRLF _ "    Set pOut = pText _ ""!""" _ tCRLF _ "    Quit $Length(pText)" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Big() As %String" _ tCRLF _ "{" _ tCRLF _ "    Quit $Translate($Justify("""", 40000), "" "", ""x"")" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Both() As %String" _ tCRLF _ "{" _ tCRLF _ "    W $Translate($Justify("""", 40000), "" "", ""y"")" _ tCRLF _ "    Quit $Translate($Justify("""", 30000), "" "", ""x"")" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Fails() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    W ""before"", !" _ tCRLF _ "    Quit 1 / 0" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Opens() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    TStart" _ tCRLF _ "    Set ^||ocu246 = 1" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Wrecks() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    Kill %response" _ tCRLF _ "    Set %request = """"" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "Method Instance() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Hidden() As %Integer [ Private ]" _ tCRLF _ "{" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF _ "}" _ tCRLF
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#CONSOLECLASS, tText)
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = pNamespace
+        Set tSC = $System.OBJ.Compile(..#CONSOLECLASS, "ck-d")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove the console probe package from <var>pNamespace</var> and report any class that survives.</p>
+ClassMethod RemoveConsoleProbe(pNamespace As %String = "USER") As %Status
+{
+    Quit ..RemoveDocuments(pNamespace, ..#CONSOLEPACKAGE, "")
 }
 
 /// <p>The newest unit-test run <var>pNamespace</var> records, as its index, or 0 for none.</p>

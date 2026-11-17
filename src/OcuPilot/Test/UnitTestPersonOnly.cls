@@ -5,6 +5,9 @@
 /// registered write whose port endpoint is the run's declares <code>PERSONGATE</code>.</p>
 /// <p>Live-safe and unarmed: it reads the registry, the descriptors and the set, and writes nothing. Needs a process holding the
 /// screen's privilege pairs, since the shared gate asks them before the prohibited set.</p>
+/// <p>Every parameter below names the tool the class pins; <class>OcuPilot.Test.CommandPersonOnly</class> and
+/// <class>OcuPilot.Test.ClassMethodPersonOnly</class> (Story 24.6) override them. A tool with no read tool on its screen leaves
+/// <parameter>READWIRENAME</parameter> empty, which skips the legs that look for one.</p>
 Class OcuPilot.Test.UnitTestPersonOnly Extends %UnitTest.TestCase
 {
 
@@ -22,6 +25,13 @@ Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.ExplorerUnitTests";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
+/// <p>The literal the tool's target is named by, the port endpoint its writes reach, and the words the discovery tool is asked.</p>
+Parameter LITERAL = "unittests";
+
+Parameter ENDPOINT = "UnitTestRun";
+
+Parameter QUERY = "unit tests";
+
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#SET, "Disarm")
@@ -36,10 +46,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The run's target reference: the literal <code>unittests</code> under <code>class</code> in the route's namespace.</p>
+/// <p>The run's target reference: the literal <parameter>LITERAL</parameter> under <code>class</code> in the route's namespace.</p>
 ClassMethod Target() As %String
 {
-    Do ##class(OcuPilot.Kernel.EntityRef).Key("class", ##class(OcuPilot.Kernel.EntityRef).ScopeFor("namespace"), "unittests", .tRef)
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("class", ##class(OcuPilot.Kernel.EntityRef).ScopeFor("namespace"), ..#LITERAL, .tRef)
     Quit tRef
 }
 
@@ -62,7 +72,7 @@ Method TestTheToolIsInNoListTheAgentSees()
     Do $$$AssertStatusOK(tSC, "the provider list builds")
     Set tNames = ""
     For tI = 1:1:+$Get(tTools) Set tNames = tNames _ $ListBuild(tTools(tI, "name"))
-    Do $$$AssertTrue($ListFind(tNames, ..#READWIRENAME) > 0, "the provider list carries the Unit tests read tool")
+    If ..#READWIRENAME '= "" Do $$$AssertTrue($ListFind(tNames, ..#READWIRENAME) > 0, "the provider list carries the screen's read tool")
     Do $$$AssertEquals($ListFind(tNames, ..#WIRENAME), 0, "and not the run")
     Set tSC = $ClassMethod(..#REGISTRY, "ResolveWire", ..#WIRENAME, .tWire)
     Do $$$AssertEquals($IsObject(tWire), 0, "the model's call to it by wire name resolves to nothing")
@@ -73,12 +83,12 @@ Method TestTheToolIsInNoListTheAgentSees()
     Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(..#DESCRIPTOR, .tContext)
     Do $$$AssertStatusOK(tSC, "the screen context's tools build")
     Set tContext = $Select($IsObject($Get(tContext)): tContext.%ToJSON(), 1: "")
-    Do $$$AssertTrue(tContext [ ..#READWIRENAME, "the context carries the read tool")
+    If ..#READWIRENAME '= "" Do $$$AssertTrue(tContext [ ..#READWIRENAME, "the context carries the read tool")
     Do $$$AssertTrue(tContext '[ ..#WIRENAME, "and not the run")
-    Set tSC = ##class(OcuPilot.Screen.Tool.ToolsFind).View("", {"query": "unit tests"}, 200, .tFound, .tHttp, .tFault)
+    Set tSC = ##class(OcuPilot.Screen.Tool.ToolsFind).View("", {"query": (..#QUERY)}, 200, .tFound, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the discovery tool answers")
     Set tFound = $Select($IsObject($Get(tFound)): tFound.%ToJSON(), 1: "")
-    Do $$$AssertTrue(tFound [ ..#READWIRENAME, "and finds the read tool for the same words")
+    If ..#READWIRENAME '= "" Do $$$AssertTrue(tFound [ ..#READWIRENAME, "and finds the read tool for the same words")
     Do $$$AssertTrue(tFound '[ ..#WIRENAME, "and never lists the run")
 }
 
@@ -126,7 +136,7 @@ Method TestEveryWriteOfTheRunEndpointDeclaresThePersonGate()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If (tTool.kind '= "write") || (tTool.class = "") Continue
         If $ClassMethod(tTool.class, "PortClass") '= "OcuPilot.Port.DevToolPort" Continue
-        If $ClassMethod(tTool.class, "Endpoint") '= ##class(OcuPilot.Port.DevToolPort).#ENDPOINTUNITTESTRUN Continue
+        If $ClassMethod(tTool.class, "Endpoint") '= ..#ENDPOINT Continue
         Set tFound = tFound + 1
         Do $$$AssertTrue($Parameter(tTool.class, "PERSONGATE") '= "", tTool.name _ ": declares PERSONGATE")
         Do $$$AssertEquals($Parameter(tTool.class, "ADVERTISED"), 0, tTool.name _ ": is unadvertised")

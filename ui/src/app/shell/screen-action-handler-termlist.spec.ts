@@ -66,10 +66,12 @@ afterEach(() => {
 describe('the term-list editor through the generic handler (Story 24.2)', () => {
   it('leaves Edit term list and Change entry to their pages and registers Delete term list and Remove entry', () => {
     // Mutation (Rule 19): drop the Term lists' entry from `UNDRAWN_ACTIONS` -> the handler registers `update` and this goes red; drop the
-    // entries' entry -> it registers `set` and this goes red.
+    // entries' entry -> it registers `set` and this goes red; drop `'copy'` or `'export'` from the Term lists' entry -> the handler registers it and this
+    // goes red.
+    // Story 24.10: the page also registers Copy term list and Export itself and draws Import, so the handler registers only Delete.
     const lists = mount(LISTS);
-    expect(lists.screen.rowActions.map((action) => action.id)).toEqual(['update', 'delete']);
-    expect([lists.actions.has(LISTS, 'update'), lists.actions.has(LISTS, 'delete')]).toEqual([false, true]);
+    expect(lists.screen.rowActions.map((action) => action.id)).toEqual(['update', 'delete', 'export', 'export-browser', 'copy', 'import', 'import-local']);
+    expect(['update', 'delete', 'export', 'export-browser', 'copy', 'import', 'import-local'].map((id) => lists.actions.has(LISTS, id))).toEqual([false, true, false, false, false, false, false]);
     const entries = mount(ENTRIES);
     expect(entries.screen.rowActions.map((action) => action.id)).toEqual(['set', 'remove']);
     expect([entries.actions.has(ENTRIES, 'set'), entries.actions.has(ENTRIES, 'remove')]).toEqual([false, true]);

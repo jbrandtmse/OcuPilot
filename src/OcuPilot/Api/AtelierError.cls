@@ -299,8 +299,40 @@ Parameter UNITTESTNORESULT = "EXPLORER.UNITTEST.NORESULT";
 
 Parameter REASONUNITTESTNORESULT = "The run recorded no results.";
 
-/// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above, carries, or
-/// <code>""</code> for any other code (Story 24.5).</p>
+/// <p>Envelope code: a person's command run is asked while its governance key, <code>explorer.command.run</code>, is off, which
+/// is how it ships (Story 24.6, AD-10, AD-22). Rendered on the <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with
+/// 403, before the hold and the fresh read, and never logged.</p>
+Parameter COMMANDOFF = "EXPLORER.COMMAND.OFF";
+
+Parameter REASONCOMMANDOFF = "Running commands is switched off on this instance. An administrator can switch it on in Governance policy.";
+
+/// <p>Envelope code: a person's class method call is asked while its governance key, <code>explorer.classmethod.run</code>,
+/// is off, which is how it ships (Story 24.6). Rendered like <parameter>COMMANDOFF</parameter>.</p>
+Parameter CLASSMETHODOFF = "EXPLORER.CLASSMETHOD.OFF";
+
+Parameter REASONCLASSMETHODOFF = "Calling class methods is switched off on this instance. An administrator can switch it on in Governance policy.";
+
+/// <p>Envelope code: the command names OcuPilot in any letter case (Story 24.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, and never logged.</p>
+Parameter COMMANDOWNCODE = "EXPLORER.COMMAND.OWNCODE";
+
+Parameter REASONCOMMANDOWNCODE = "OcuPilot does not run a command that names OcuPilot.";
+
+/// <p>Envelope code: the class's first segment is OcuPilot's own (Story 24.6). Rendered like
+/// <parameter>COMMANDOWNCODE</parameter>.</p>
+Parameter CLASSMETHODOWNCODE = "EXPLORER.CLASSMETHOD.OWNCODE";
+
+Parameter REASONCLASSMETHODOWNCODE = "OcuPilot does not call its own class methods.";
+
+/// <p>Envelope code: the namespace holds no compiled, public class method of that name (Story 24.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, and never logged.</p>
+Parameter CLASSMETHODNOTFOUND = "EXPLORER.CLASSMETHOD.NOTFOUND";
+
+Parameter REASONCLASSMETHODNOTFOUND = "No compiled class method of that name is in this namespace.";
+
+/// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above or one of the five
+/// <code>EXPLORER.COMMAND.*</code> and <code>EXPLORER.CLASSMETHOD.*</code> codes, carries, or <code>""</code> for any other
+/// code (Stories 24.5 and 24.6).</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
     If pCode = ..#UNITTESTOFF Quit ..#REASONUNITTESTOFF
@@ -310,6 +342,11 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNITTESTBUSY Quit ..#REASONUNITTESTBUSY
     If pCode = ..#UNITTESTOWNCODE Quit ..#REASONUNITTESTOWNCODE
     If pCode = ..#UNITTESTNORESULT Quit ..#REASONUNITTESTNORESULT
+    If pCode = ..#COMMANDOFF Quit ..#REASONCOMMANDOFF
+    If pCode = ..#CLASSMETHODOFF Quit ..#REASONCLASSMETHODOFF
+    If pCode = ..#COMMANDOWNCODE Quit ..#REASONCOMMANDOWNCODE
+    If pCode = ..#CLASSMETHODOWNCODE Quit ..#REASONCLASSMETHODOWNCODE
+    If pCode = ..#CLASSMETHODNOTFOUND Quit ..#REASONCLASSMETHODNOTFOUND
     Quit ""
 }
 

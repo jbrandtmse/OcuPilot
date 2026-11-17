@@ -3,7 +3,8 @@
 /// asked for and what it was sent, and, for a call that names a namespace, what that namespace's unit-test root held while
 /// the call ran. After <method>SetDry</method> it answers an empty success and runs no body, so a test can lift the port's
 /// document cap without a scan; after <method>SetAnswer</method> it answers that result, and after
-/// <method>SetOpenTransaction</method> it opens a transaction first and leaves it open, as a test's own code can.</p>
+/// <method>SetOpenTransaction</method> it opens a transaction first and leaves it open, as a test's own code can, and after
+/// <method>SetFault</method> it answers a fault with an error status, as a harvest call that failed does.</p>
 Class OcuPilot.Test.DevToolHarvestRecorder Extends OcuPilot.Port.HarvestPort
 {
 
@@ -14,6 +15,7 @@ ClassMethod Clear()
     Kill ^||OcuPilotDevToolRecorderDry
     Kill ^||OcuPilotDevToolRecorderAnswer
     Kill ^||OcuPilotDevToolRecorderOpenTx
+    Kill ^||OcuPilotDevToolRecorderFault
 }
 
 /// <p>Answer every later call an empty success, without running its body, until <method>Clear</method>.</p>
@@ -33,6 +35,12 @@ ClassMethod SetAnswer(pJson As %String)
 ClassMethod SetOpenTransaction()
 {
     Set ^||OcuPilotDevToolRecorderOpenTx = 1
+}
+
+/// <p>Answer every later call a 500 fault and an error status, without running its body, until <method>Clear</method>.</p>
+ClassMethod SetFault()
+{
+    Set ^||OcuPilotDevToolRecorderFault = 1
 }
 
 /// <p>How many calls were recorded since <method>Clear</method>.</p>
@@ -72,6 +80,13 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
     If tRootNamespace '= "" Do tCall.%Set("root", $Get(^|tRootNamespace|UnitTestRoot), "string")
     Set tIndex = $Increment(^||OcuPilotDevToolRecorder)
     Set ^||OcuPilotDevToolRecorder(tIndex) = tCall.%ToJSON()
+    If $Get(^||OcuPilotDevToolRecorderFault) {
+        Set pResult = ""
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "OcuPilot.Test.DevToolHarvestRecorder: an armed fault")
+        Set pConsole = []
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DevToolHarvestRecorder: an armed fault")
+    }
     If $Data(^||OcuPilotDevToolRecorderAnswer) {
         If $Get(^||OcuPilotDevToolRecorderOpenTx) TStart
         Set pResult = ##class(%DynamicObject).%FromJSON(^||OcuPilotDevToolRecorderAnswer)

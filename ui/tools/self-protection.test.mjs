@@ -671,6 +671,12 @@ const ATELIER_REFUSALS = [
   ['REASONUNITTESTBUSY', 'explorerUnitTestBusyReason'],
   ['REASONUNITTESTOWNCODE', 'explorerUnitTestOwnCodeReason'],
   ['REASONUNITTESTNORESULT', 'explorerUnitTestNoResultReason'],
+  // Story 24.6: the two consoles' switched-off, own-code and not-found sentences.
+  ['REASONCOMMANDOFF', 'explorerCommandOffReason'],
+  ['REASONCLASSMETHODOFF', 'explorerClassMethodOffReason'],
+  ['REASONCOMMANDOWNCODE', 'explorerCommandOwnCodeReason'],
+  ['REASONCLASSMETHODOWNCODE', 'explorerClassMethodOwnCodeReason'],
+  ['REASONCLASSMETHODNOTFOUND', 'explorerClassMethodNotFoundReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -715,6 +721,10 @@ const DEVTOOL_REFUSALS = [
   ['RESULTPASSED', 'explorerUnitTestsPassed'],
   ['RESULTFAILED', 'explorerPromoteFailed'],
   ['RESULTSKIPPED', 'explorerUnitTestsSkipped'],
+  // Story 24.6: the consoles' three input refusals.
+  ['REASONCOMMANDSHAPE', 'explorerCommandShapeReason'],
+  ['REASONCLASSMETHODSHAPE', 'explorerClassMethodShapeReason'],
+  ['REASONARGUMENTSSHAPE', 'explorerClassMethodArgumentsReason'],
 ];
 
 test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {

@@ -25,4 +25,14 @@ ClassMethod RenderResponseBody(pStatus As %Status, pMsgPart As %DynamicArray, pR
     Quit $$$OK
 }
 
+/// <p>Called by <class>OcuPilot.Port.HarvestPort</class> after a body's render was OK, once the caller's namespace is
+/// restored: <var>pLines</var> is the body's captured device output as an array of lines (empty when it wrote nothing) and
+/// <var>pResult</var> the render's result object, which a handler that takes the output adds its fields to. A no-op here, so
+/// a body's device output is discarded unless its handler takes it (AD-39's eighth exception). An error status is answered
+/// 500 <code>INTERNAL</code>, logged.</p>
+ClassMethod OnCaptured(pLines As %DynamicArray, pResult As %DynamicObject) As %Status
+{
+    Quit $$$OK
+}
+
 }

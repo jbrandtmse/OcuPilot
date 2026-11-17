@@ -1377,6 +1377,16 @@ class TestHarvestBodyContainment(FixtureTreeCase):
         problems = self.containment_problems()
         self.assertTrue(any(p.startswith(self.CALLER + ":6:") for p in problems), f"another body is refused, got {problems}")
 
+    def test_the_console_body_is_named_only_by_the_developer_tool_port(self):
+        self.plant("src/OcuPilot/Port/DevToolPort.cls", 'Quit "OcuPilot.Port.Harvest.ConsoleRun"')
+        self.assertEqual(self.containment_problems(), [], "the developer-tool port names the console body")
+        self.plant(self.CALLER, 'Quit "OcuPilot.Port.Harvest.ConsoleRun"')
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith(self.CALLER + ":6:") and "OcuPilot.Port.Harvest.ConsoleRun" in p for p in problems),
+            f"another area port naming the console body is refused, got {problems}",
+        )
+
     def test_a_caller_not_in_the_declared_table_is_refused(self):
         original = dict(co.HARVEST_CALLERS)
         try:

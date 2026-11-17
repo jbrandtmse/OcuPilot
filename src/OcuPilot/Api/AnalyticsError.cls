@@ -146,6 +146,21 @@ Parameter TERMLISTNOTJOURNALED = "ANALYTICS.TERMLIST.NOTJOURNALED";
 
 Parameter REASONTERMLISTNOTJOURNALED = "Term lists can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace's term lists.";
 
+/// <p>409: a term list file or export holds more than the product transfers (Story 24.10).</p>
+Parameter TERMLISTTOOLARGE = "ANALYTICS.TERMLIST.TOOLARGE";
+
+Parameter REASONTERMLISTTOOLARGE = "The file is larger than OcuPilot imports or exports.";
+
+/// <p>409: an import file is not a term list export, holds no entry, or holds another list than the one the call names.</p>
+Parameter TERMLISTIMPORTSHAPE = "ANALYTICS.TERMLIST.IMPORTSHAPE";
+
+Parameter REASONTERMLISTIMPORTSHAPE = "This file is not a term list export, or it holds no entry.";
+
+/// <p>409: the import file no longer reads as it did when it was reviewed.</p>
+Parameter TERMLISTIMPORTCHANGED = "ANALYTICS.TERMLIST.IMPORTCHANGED";
+
+Parameter REASONTERMLISTIMPORTCHANGED = "The file changed after it was reviewed, so nothing was imported.";
+
 /// <p>The consequence codes of the term list delete and the entry remove.</p>
 Parameter TERMLISTDELETE = "ANALYTICS.TERMLIST.DELETE";
 
@@ -180,6 +195,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TERMLISTVALUE Quit ..#REASONTERMLISTVALUE
     If pCode = ..#TERMLISTREADONLY Quit ..#REASONTERMLISTREADONLY
     If pCode = ..#TERMLISTNOTJOURNALED Quit ..#REASONTERMLISTNOTJOURNALED
+    If pCode = ..#TERMLISTTOOLARGE Quit ..#REASONTERMLISTTOOLARGE
+    If pCode = ..#TERMLISTIMPORTSHAPE Quit ..#REASONTERMLISTIMPORTSHAPE
+    If pCode = ..#TERMLISTIMPORTCHANGED Quit ..#REASONTERMLISTIMPORTCHANGED
     Quit ""
 }
 
@@ -203,10 +221,10 @@ ClassMethod CubeConsequenceCodes() As %List
     Quit $ListBuild(..#CUBEBUILD, ..#CUBESYNCHRONIZE)
 }
 
-/// <p>The term list editor's refusal codes (Story 24.2), as a <class>%List</class>.</p>
+/// <p>The term list editor's refusal codes (Story 24.2) and its transfers' three (Story 24.10), as a <class>%List</class>.</p>
 ClassMethod TermListCodes() As %List
 {
-    Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED)
+    Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED, ..#TERMLISTTOOLARGE, ..#TERMLISTIMPORTSHAPE, ..#TERMLISTIMPORTCHANGED)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

@@ -170,6 +170,8 @@ XData Coverage
 <screen name="ExplorerSqlViews" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
 <screen name="ExplorerUnitTests" class="OcuPilot.Test.UnitTestRecord" method="TestTheRunsListShowsEachRunNewestFirstWithItsCounts"/>
 <screen name="ExplorerUnitTestRun" class="OcuPilot.Test.UnitTestRecord" method="TestTheMethodsListCarriesEachResultAndTheFailureText"/>
+<screen name="ExplorerCommand" class="OcuPilot.Test.ConsoleRoundTrip" method="TestACommandAnswersItsOutputItsOwnErrorAndLeavesNoTransaction"/>
+<screen name="ExplorerClassMethod" class="OcuPilot.Test.ConsoleRoundTrip" method="TestAClassMethodAnswersItsReturnItsOutputAndItsByReferenceValues"/>
 <screen name="ExplorerSqlProcedures" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
 <screen name="ExplorerSqlTable" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
@@ -283,6 +285,9 @@ XData Coverage
 <tool name="analytics.termlistentries.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
 <tool name="analytics.termlistentries.set" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
 <tool name="analytics.termlistentries.remove" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
+<tool name="analytics.termlists.export" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestAnExportWritesTheVendorsCsvToAFileAndToTheBrowser"/>
+<tool name="analytics.termlists.import" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestAnExportImportsBackAsTheSameList"/>
+<tool name="analytics.termlists.copy" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestACopyEqualsItsSourceExceptItsNameAndStamp"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
@@ -459,6 +464,8 @@ XData Coverage
 <tool name="explorer.sqlquery.run" class="OcuPilot.Test.SqlPort" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.unittests.run" class="OcuPilot.Test.UnitTestRunGate" method="TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly"/>
+<tool name="explorer.command.run" class="OcuPilot.Test.ConsoleGate" method="TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly"/>
+<tool name="explorer.classmethod.run" class="OcuPilot.Test.ConsoleGate" method="TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
 <tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>

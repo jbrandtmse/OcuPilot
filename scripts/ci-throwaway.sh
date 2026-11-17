@@ -605,6 +605,11 @@ services:
       # writes, its refusals and a failed second value write through a seam, the routes class both callers over HTTP, and the gate class signs in as
       # probe principals each missing the editor's pair or WRITE on the term list database.
       # classes: AnalyticsTermListEdit, AnalyticsTermListGate, AnalyticsTermListRoutes
+      # The term list transfer class (Story 24.10) drives the export, import and copy at the port through the same seam, and both callers over HTTP,
+      # with probe files in the explorer probe's directory under the manager directory.
+      # classes: AnalyticsTermListTransfer
+      # The transfer edge class (Story 24.10) pins the transfers' file replacement, text bound, parse rules and the person's refusals, in the same directory.
+      # classes: AnalyticsTermListTransferEdge
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in

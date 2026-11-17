@@ -246,3 +246,61 @@
 2026-11-17T01:01:14Z	Story 24.6	ruling	question=strings_keys_gate_audit choice=keep why=owner_answer_U-78_shape_stricter_than_vendor_terminal category=veto reversal=reword_or_regate inbox=U-102 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-17T01:01:14Z	Epic 24	owner_decision	id=U-99/U-100 note=orchestrator_reworded_audit_gap_after_runner_correction;DW-2673_routed_to_24.6
 2026-11-17T01:01:14Z	Story 24.6	stage_spawned	stage=implement spawn_at=2026-11-17T01:01:14Z model=sonnet agent_name=24-6-the-command-and-class-method-consoles-implement-1 cycle_iteration=2
+2026-11-17T01:17:53Z	Story 24.5	ci_result	sha=7fc563379 run=43988754165 result=failure cause=own_defect(a11y-structural-invariants_AC5_unresolved_system-explorer/unit-tests/methods) fix=walk_SKIP_entry
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-98 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-100 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-101 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-102 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T02:06:20Z	Story 24.5	ci_result	sha=230e91291 run=43994767652 result=success fix=walk_SKIP
+2026-11-17T02:20:44Z	Story 24.5	merged_to_feature	feature=230e91291(fast-forward) by=orchestrator
+2026-11-17T04:16:22Z	Epic 24	hold_ordered	reason=owner:account_switch(weekly_usage_95pct,requested_at=2026-11-17T04:16:07Z) running_stage=24.6_implement(sweep_shard_8_of_17) action=no_new_stage
+2026-11-17T05:44:11Z	Story 24.6	dev_complete	spawn_at=2026-11-17T01:00:00Z model=sonnet build_sha=0bac71b0f baseline_revision=230e91291(rebased_by_stage_after_runner_ff) review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green cycle_iteration=2 task0=capture_survives_USER(pass) DW-2673=resolved(24.5_run_wrote_0_rows;now_SecurityChange_row)
+2026-11-17T05:44:11Z	Story 24.6	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-17T05:44:29Z	Story 24.6	hold_saved	story=24-6-the-command-and-class-method-consoles stage=implement patch=none tree=clean note=implement_committed_0bac71b0f;qa_cr_fresh_check_not_started
+2026-11-17T05:44:29Z	Epic 24	throwaway_down	project=ocupilot-b-ci reason=hold started_by=runner-24
+2026-11-17T05:44:29Z	Epic 24	hold_complete	shas=0bac71b0f(24.6_code_local_commit,pushed_with_bookkeeping),230e91291(24.5_fix,merged) throwaways_up=none
+2026-11-17T07:23:23Z	Epic 24	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 slot=b redispatch=20261117T0614Z
+2026-11-17T07:23:23Z	Epic 24	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-17T07:23:23Z	Epic 24	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-17T07:23:23Z	Epic 24	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-17T07:23:23Z	Epic 24	slot_binding_verified	mcp_profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap_check=ok head=ad9c71823 tree=clean unpushed=none
+2026-11-17T07:23:23Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=qa_cr_24.6 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T07:23:23Z	Story 24.6	stage_spawned	stage=qa spawn_at=2026-11-17T07:23:23Z model=sonnet agent_name=24-6-the-command-and-class-method-consoles-qa-1 cycle_iteration=2
+2026-11-17T07:44:19Z	Story 24.6	qa_complete	spawn_at=2026-11-17T07:23:30Z model=sonnet tests=src/OcuPilot/Test/ConsoleBoundary.cls tests_added=8 mutations_demonstrated=10 first_run_failures=1(product_defect_fixed:ConsoleRun_New_%request_%response_%session) clarifications=0 closing_sections_present=true cycle_iteration=2
+2026-11-17T07:44:19Z	Story 24.6	stage_spawned	stage=code-review spawn_at=2026-11-17T07:44:19Z model=opus agent_name=24-6-the-command-and-class-method-consoles-code-review-1 cycle_iteration=2
+2026-11-17T08:17:17Z	Story 24.6	cr_complete	spawn_at=2026-11-17T07:44:19Z model=opus resolved=8 fixed_at_source=8 by_design=1 wontfix_accepted=4 routed=1(DW-2696) escalated=1(DW-2695) decision_pending=1(DW-2694) dismissed=13 high=1 med=5 low=11 rows=43 unresolved_high_med=3 clarifications=0 closing_sections_present=true final=done high_fixed=audit_row_before_body(Halt_left_no_row) note=QA_ConsoleRun_New_kept;Harvest.TestNoHarvestedBodyNamesTheResponseWriter_adjusted cycle_iteration=2
+2026-11-17T08:17:17Z	Story 24.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2697,DW-2698,DW-2699,DW-2700,DW-2701 to_burndown=DW-2694,DW-2695,DW-2696 model=claude-opus-5-5
+2026-11-17T08:35:16Z	Story 24.6	integrate_forward	feature=1dbdfbb85(code_8c58f5edf,21.33+21.34+21.35) head=736a381ed conflicts_resolved=none
+2026-11-17T08:35:16Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.6_merged_tree run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T08:35:16Z	Story 24.6	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49(1_skipped_agentswitches)+consoles_9/9+a11y-structural-invariants_13/13_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-17T08:35:16Z	Story 24.6	fresh_check	env=recipe(merged_tree_736a381ed) tests=26_classes+3_specs result=pass order=forward,reverse note=DevToolProbe_is_a_helper_not_a_test_class
+2026-11-17T08:35:16Z	Story 24.6	committed	sha=db0850449 code_head=736a381ed(merged_with_feature_1dbdfbb85) ci=pending runs=44047946906 amendments=none
+2026-11-17T08:35:16Z	Story 24.6	story_cycle	plan_to_commit_min=482(incl_hold_04:16-06:14Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-17T08:39:05Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(feature_merge_1dbdfbb85) model=claude-opus-5-5
+2026-11-17T08:39:05Z	Story 24.7	stage_spawned	stage=plan spawn_at=2026-11-17T08:39:05Z model=opus agent_name=24-7-web-terminal-plan-1 cycle_iteration=1
+2026-11-17T08:45:37Z	Story 24.7	plan_clarification_requested	spawn_at=2026-11-17T08:40:20Z model=opus build_status=blocked condition=intent_gap(DT-04_TerminalAgent_WebSocket_stateful_child_process;Bearer_401;outside_AD-10_U-78_exception) options=A_narrow_to_console_transcript,B_not_planned,C_stateful_terminal
+2026-11-17T08:45:37Z	Story 24.7	ruling	question=web_terminal_scope choice=park rejected=decide_A(narrows_scope),veto why=owner_only(dropping_or_deferring_scope;moving_an_AC;AD_amendments) category=park inbox=U-104 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T08:45:37Z	Story 24.7	story_parked	stage=plan code=none spec=_bmad-output/implementation-artifacts/spec-24-7-web-terminal.md(status_blocked) inbox=U-104
+2026-11-17T08:46:33Z	Epic 24	orchestrator_message	U-104_parked_pushed_to_owner;continue_24.10;orchestrator_watches_736a381ed_run_44047946906_and_merges_under_Rule_33
+2026-11-17T08:46:33Z	Story 24.10	stage_spawned	stage=plan spawn_at=2026-11-17T08:46:33Z model=opus agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-plan-1 cycle_iteration=1
+2026-11-17T08:59:21Z	Story 24.10	story_created	spawn_at=2026-11-17T08:46:30Z model=opus path=_bmad-output/implementation-artifacts/spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md build_status=blocked(intent_gap_split) epic_context=reused
+2026-11-17T08:59:21Z	Story 24.10	ruling	question=split_folder_manager choice=no_split_two_batches_in_one_story(batch1_term_lists_this_spec,batch2_folder_manager_second_spec) rejected=new_sibling(passes_split_children_6),move_AC_to_24.11(owner_only_no_milestone) why=keeps_both_ACs_in_story;21.33_precedent category=veto inbox=U-105 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T08:59:21Z	Story 24.10	ruling	question=server_file_variants,strings,create_only,spine_lines(AD-21,AD-51,AD-65) choice=keep;spine_lines_stay_in_spec(U-87_precedent) category=veto inbox=U-105 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T08:59:21Z	Story 24.10	spec_validated	service_introducing=true integration_ac=present(AC6) adr_constrained_acs=AD-51,AD-52,AD-53,AD-54,AD-21,AD-39,AD-22 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(throwaway_only) scope=batch1_term_lists
+2026-11-17T09:15:05Z	Story 24.6	ci_resolved	story=24.6 sha=736a381ed runs=44047946906 result=success failed=none via=none resolved_at=next_plan
+2026-11-17T09:15:05Z	Story 24.10	stage_spawned	stage=implement spawn_at=2026-11-17T09:15:05Z model=sonnet agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-implement-1 cycle_iteration=1 story_base=74fb0a86a scope=batch1_term_lists
+2026-11-17T12:30:42Z	Epic 24	orchestrator_message	24.6_merged(feature_ff_to_bb323e74e,bookkeeping_5bd91e50e);U-105_recorded;no_new_feature_code
+2026-11-17T12:30:42Z	Story 24.10	dev_complete	spawn_at=2026-11-17T09:15:30Z model=sonnet build_sha=409e3e0b5 baseline_revision=bb323e74e story_base=bb323e74e review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green scope=batch1_term_lists footprint_extension=EXPERIENCE.md(add-only_1_line) contended=scripts/ci-throwaway.sh(add-only_3_lines) decided_in_stage=export_needs_%Admin_FileSystemAccess_both_callers(20.5_precedent),import_copy_readback_nothingSent cycle_iteration=1
+2026-11-17T12:30:42Z	Story 24.10	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-17T12:30:42Z	Story 24.10	stage_spawned	stage=qa spawn_at=2026-11-17T12:30:42Z model=sonnet agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-qa-1 cycle_iteration=1
+2026-11-17T12:45:35Z	Story 24.10	qa_complete	spawn_at=2026-11-17T12:31:00Z model=sonnet tests=src/OcuPilot/Test/AnalyticsTermListTransferEdge.cls,ui/src/app/areas/analytics/term-list-list.page.transfer.spec.ts tests_added=9 mutations_demonstrated=15 first_run_failures=0 clarifications=0 closing_sections_present=true scope=batch1 contended=scripts/ci-throwaway.sh(add-only_2_lines) cycle_iteration=1
+2026-11-17T12:45:35Z	Story 24.10	stage_spawned	stage=code-review spawn_at=2026-11-17T12:45:35Z model=opus agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-code-review-1 cycle_iteration=1
+2026-11-17T13:06:51Z	Story 24.10	cr_complete	spawn_at=2026-11-17T12:46:30Z model=opus resolved=8 fixed_at_source=8 wontfix_accepted=3 routed=1(DW-2702) escalated=1(DW-2703) occurrence=DW-2597 dismissed=19 high=1 med=7 low=7 rows=3 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done(batch1) high_fixed=AD-59_partial_list_script_over_1000_entries scope=batch1 cycle_iteration=1
+2026-11-17T13:06:51Z	Story 24.10	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 to_burndown=DW-2702,DW-2703 scope=batch1 model=claude-opus-5-5
+2026-11-17T13:20:18Z	Story 24.10	integrate_forward	feature=5bd91e50e(bookkeeping+timings_only) head=fc8b5a248 conflicts_resolved=none
+2026-11-17T13:20:18Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.10_batch1 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T13:20:18Z	Story 24.10	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50+analytics-term-list-editor_4/4+a11y-structural-invariants_13/13_on_fresh_merged_throwaway scope=batch1 model=claude-opus-5-5
+2026-11-17T13:20:18Z	Story 24.10	fresh_check	env=recipe(merged_tree_fc8b5a248) tests=14_classes+2_specs result=pass order=forward,reverse scope=batch1 note=AnalyticsTermListSeam_is_a_helper
+2026-11-17T13:20:18Z	Story 24.10	committed	sha=508d9b9f1 code_head=fc8b5a248 ci=pending runs=44091630775 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(add-only)
+2026-11-17T13:20:18Z	Story 24.10	ruling	question=tracker_status_between_batches choice=in-progress(batch2_follows;CR_wrote_done_for_batch1) why=story_done_only_when_both_batches category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T13:20:18Z	Story 24.10	stage_spawned	stage=plan spawn_at=2026-11-17T13:20:18Z model=opus agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-plan-batch2 cycle_iteration=2 scope=batch2_folder_manager

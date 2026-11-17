@@ -450,11 +450,12 @@ development_status:
   24-3-interoperability-parity: done
   24-4-the-agent-gains-the-harvested-tools-and-undo: done
   24-5-unit-test-runner-and-work-queue-viewer: done
-  24-6-the-command-and-class-method-consoles: ready-for-dev
+  24-6-the-command-and-class-method-consoles: done
   24-7-web-terminal: backlog
   24-8-remote-instance-profiles-and-environment-diff: done
   24-9-environment-promote: done
-  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: backlog
+  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: 
+    in-progress
   24-11-listing-groups: backlog
   24-12-quality-measures: backlog
   24-13-analytics-settings: backlog

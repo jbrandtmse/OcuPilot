@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:650 */
+  /** EXPERIENCE.md:651 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8072,6 +8072,32 @@ export const STRINGS = {
   analyticsTermListsEmptyAgent: 'create a term list',
   /** EXPERIENCE.md:607 */
   analyticsTermListEntriesEmptyAgent: 'add an entry to this term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyAction: 'Copy term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportTitle: 'Export term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportTitle: 'Import a term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyTitle: 'Copy term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyNameLabel: 'Name of the copy',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportHelp: 'The file holds the term list\'s properties and every entry, in the CSV form the classic Term List Manager exports. A file already at this name is replaced.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportHelp: 'The file must be a term list export. It creates the term list it names; a term list of that name must not exist.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportShape: 'This file is not a term list export, or it holds no entry.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportChanged: 'The file changed after it was reviewed, so nothing was imported.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListTooLarge: 'The file is larger than OcuPilot imports or exports.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportDone: 'Exported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportDone: 'Imported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyDone: 'Copied <name> to <new>.',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
@@ -8316,6 +8342,68 @@ export const STRINGS = {
   configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
   /** EXPERIENCE.md:604 */
   configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
+  // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
+  // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
+  /** EXPERIENCE.md:594 */
+  explorerCommandLabel: 'Command console',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodLabel: 'Class method console',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunAction: 'Run command',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunAction: 'Call method',
+  /** EXPERIENCE.md:594 */
+  explorerCommandFieldLabel: 'Command',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleHintLead: 'A list in square brackets, such as',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleHintByRefTail: 'to pass a value by reference.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunTitle: 'Run this command?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandRunConsequence: 'This runs ObjectScript as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunTitle: 'Call this class method?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodRunConsequence: 'This runs the method\'s code as you, with your rights, in this namespace. OcuPilot cannot see or undo what it changes.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleByRefLabel: 'By-reference values',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleNoOutput: 'Nothing was written.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleOutputCut: 'The output was cut at 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleReturnCut: 'The return value was cut at 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerConsoleByRefCut: 'Some by-reference values were left out to keep the answer under 32,768 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandOffReason: 'Running commands is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodOffReason: 'Calling class methods is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandOwnCodeReason: 'OcuPilot does not run a command that names OcuPilot.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodOwnCodeReason: 'OcuPilot does not call its own class methods.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodNotFoundReason: 'No compiled class method of that name is in this namespace.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandShapeReason: 'Enter the command on one line, up to 30,000 characters.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodShapeReason: 'Name a class and one of its class methods with letters, digits, dots and %.',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodArgumentsReason: 'Give the arguments as a list in square brackets of at most 20 values: text, numbers, true or false, or a by-reference value.',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt1: 'How do I list a global\'s first subscripts?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt2: 'What does $ZVERSION show?',
+  /** EXPERIENCE.md:594 */
+  explorerCommandPrompt3: 'How do I count a table\'s rows in one command?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt1: 'Which class method returns the instance\'s version?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt2: 'How do I pass an argument by reference?',
+  /** EXPERIENCE.md:594 */
+  explorerClassMethodPrompt3: 'What does a %Status return value mean?',
 } as const;
 
 /**

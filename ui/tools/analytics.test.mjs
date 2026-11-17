@@ -320,9 +320,13 @@ const TERM_LIST_SENTENCES = [
   ['REASONTERMLISTVALUE', 'analyticsRefusalTermListValue'],
   ['REASONTERMLISTREADONLY', 'analyticsRefusalTermListReadonly'],
   ['REASONTERMLISTNOTJOURNALED', 'analyticsRefusalTermListNotJournaled'],
+  // Story 24.10: the term list transfers' three refusals.
+  ['REASONTERMLISTTOOLARGE', 'analyticsRefusalTermListTooLarge'],
+  ['REASONTERMLISTIMPORTSHAPE', 'analyticsRefusalTermListImportShape'],
+  ['REASONTERMLISTIMPORTCHANGED', 'analyticsRefusalTermListImportChanged'],
 ];
 
-const TERM_LIST_TOOLS = ['AnalyticsTermListAdd', 'AnalyticsTermListUpdate', 'AnalyticsTermListDelete', 'AnalyticsTermListEntryAdd', 'AnalyticsTermListEntrySet', 'AnalyticsTermListEntryRemove'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+const TERM_LIST_TOOLS = ['AnalyticsTermListAdd', 'AnalyticsTermListUpdate', 'AnalyticsTermListDelete', 'AnalyticsTermListEntryAdd', 'AnalyticsTermListEntrySet', 'AnalyticsTermListEntryRemove', 'AnalyticsTermListExport', 'AnalyticsTermListImport', 'AnalyticsTermListCopy'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
 
 test('Story 24.2: each term list refusal is one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of REASONTERMLISTFIELDINUSE in AnalyticsError.cls (or of analyticsRefusalTermListFieldInUse in strings.ts) -> this
@@ -350,8 +354,10 @@ test("Story 24.2: the delete's and the remove's consequence codes name one publi
   }
 });
 
-test('Story 24.2: the six tools declare write, the analytics port and the classic Term List Manager, and the port calls only the vendor calls the story names', () => {
-  // Mutation (Rule 19): call %ImportCSV from AnalyticsPort.cls -> this goes red naming the call.
+test('Story 24.2: the six tools declare write, the analytics port and the classic Term List Manager, and the port calls only the vendor calls the stories name', () => {
+  // Mutation (Rule 19): call %ImportCSV from AnalyticsPort.cls -> this goes red naming the call. Story 24.10 adds the three transfer tools, and the
+  // port's %ExportCSV (to a resolved file or inside an output capture) and %ParseCSVRecord; the vendor's %ImportCSV stays out, because it deletes
+  // and recreates a held list and reads lines by the stream's own terminator.
   for (const file of TERM_LIST_TOOLS) {
     const source = readFileSync(file, 'utf8');
     assert.ok(source.includes('Extends OcuPilot.Screen.Tool.AnalyticsTermList'), `${file} extends the term list tool base`);
@@ -362,9 +368,9 @@ test('Story 24.2: the six tools declare write, the analytics port and the classi
   for (const call of ['%CreateTermList(', '%FromObj(', '%SetValue(', '%DeleteTermList(', '%ToObj(']) {
     assert.ok(code.includes(`##class(%DeepSee.TermList).${call}`) || code.includes(`.${call}`), `the port calls ${call}`);
   }
-  for (const never of [/%ImportCSV/, /%ExportCSV/, /%GetTermListNameFromStream/, /%DeepSee\.REST/, /%Api\.DeepSee/, /\/api\/deepsee/i]) {
+  for (const never of [/%ImportCSV/, /%GetTermListNameFromStream/, /%DeepSee\.REST/, /%Api\.DeepSee/, /\/api\/deepsee/i]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.TermList\)\.(%\w+)\(/g)].map((match) => match[1]);
-  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%CreateTermList', '%DeleteTermList', '%FromObj', '%GetTermLists', '%SetValue', '%ToObj'], 'and only those TermList calls');
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%CreateTermList', '%DeleteTermList', '%ExportCSV', '%FromObj', '%GetTermLists', '%ParseCSVRecord', '%SetValue', '%ToObj'], 'and only those TermList calls');
 });

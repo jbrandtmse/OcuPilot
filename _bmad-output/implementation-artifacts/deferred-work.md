@@ -13104,6 +13104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-2-the-analytics-editors.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
 - 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint
+- 2026-11-17T13:04:24Z occurrence=24-10-folder-manager-transfer-and-term-list-import-export-and-copy
 
 ### DW-2611: InteropPort.DefaultReadOnly's true path is not run against a real read-only database; the READONLY refusal is pinned through the seam
 - source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-story
@@ -13485,6 +13486,47 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
 - 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
+- 2026-11-17T02:04:53Z status=resolved-by:24-6-the-command-and-class-method-consoles by=implement note=measured at the action route on ocupilot-b-ci: a 24.5 run wrote 0 OcuPilot rows while a control Event.Record wrote 1; DevToolPort.RunLocked now calls AuditRun (SecurityChange, console unittests, namespace, no tests); pinned by UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests, mutation red
+
+### DW-2694: Class method console: a method with no return value raises <COMMAND> after it ran (InvokeWithArgs calls every method as a function), so the run shows an error and its by-reference values are dropped
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Probed on ocupilot-b-ci: Set x=$ClassMethod("%SYSTEM.OBJ","ShowFlags") prints the flags, then raises <COMMAND>. The fix changes the harvested, hash-pinned InvokeWithArgs (AC8) or adds a second call path beside it.
+- 2026-11-17T08:12:13Z status=decision-pending owner=burndown by=cr note=owner call: deviate from the verbatim harvest (re-pin AC8) for void methods, or accept; fix-risk high (AC8 pin)
+
+### DW-2695: AD-53's fifth unadvertised tool (Story 24.5) still names the unit-test run a named audit gap; since DW-2673 every run writes OcuPilot's own SecurityChange row, and the spine does not say so (Rule 20)
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-53 fifth tool: 'Named audit gap: a run records no vendor audit event'; DevToolPort.RunLocked calls AuditRun (console unittests) before the body since Story 24.6.
+- 2026-11-17T08:12:13Z status=escalated owner=burndown by=cr note=spine amendment (AD-53 fifth tool sentence) for the lead under Rule 20; amending an AD is a veto item
+
+### DW-2696: Audit-row count assertions bound their window with a fixed Hang 0.25 before reading the audit clock, so a row stamped late by a loaded instance can land in the next test's window
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ConsoleGate, ConsoleRoundTrip, ConsoleBoundary and UnitTestRunGate read AuditEvent.Now() after Hang 0.25 and assert exact counts via AuditEvent.RowsCarrying; an id-based lower bound in AuditEvent would remove the timing.
+- 2026-11-17T08:12:13Z status=routed owner=burndown by=cr note=fix once in OcuPilot.Test.AuditEvent (id-based lower bound), not per class
+
+### DW-2697: Class method console: when the return value uses the shared 32,768 budget, the output's cut note still says 32,768 and its marker names the smaller budget; a fully used budget shows 'Nothing was written.' beside the cut note
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ConsoleRun.OnCaptured cuts with ApplyOutputCeiling(text, .t, outputBudget); console.store cutNotes always shows explorerConsoleOutputCut. A fix needs a new shipped string.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=a person reports a class-method answer whose cut note names a different number from its marker
+
+### DW-2698: A command's locks outlive its run, and an argumentless Lock in a command releases the route's AD-34 hold mid-request
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RunConsole rolls back transactions only; Operation.Hold is a process lock (Lock +^OcuPilotProposalTarget), so the person's own Lock commands act on it. Leftover locks are a named limit in the spec.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=two runs of one console in one namespace are observed overlapping, or a leftover lock blocks another person's request
+
+### DW-2699: The class method console's own-code screen checks only the class's first segment, not the arguments, so %SYSTEM.OBJ.Delete with an OcuPilot class name passes it while the same call typed as a command is refused
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DevToolPort.Console: $ZConvert($Piece(tClass,".",1),"L") = OWNSEGMENT; AD-10 as amended names 'a class in an OcuPilot package' as the screen, not the arguments.
+- 2026-11-17T08:12:25Z status=by-design owner=24-6-the-command-and-class-method-consoles by=cr note=AD-10's screen wording; reopens only by an AD-10 or spec amendment
+
+### DW-2700: A console's last answer stays on the page after the namespace is switched and does not say which namespace it ran in
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: console.page.ts holds one ConsoleState per screen store (HELD WeakMap), and ScreenStores.for keys stores by descriptor only.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=a person reads a console answer under a namespace other than the one it ran in
+
+### DW-2701: The Arguments hint borrows STRINGS.permissionWrite as its imperative verb, so rewording that permission label would silently change the hint
+- source: spec-24-6-the-command-and-class-method-consoles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: console.page.ts builds the hint from explorerConsoleHintLead, two code examples, permissionWrite and explorerConsoleHintByRefTail; strings.ts values must be unique, so no second 'Write' key exists.
+- 2026-11-17T08:12:25Z status=wontfix-accepted owner=24-6-the-command-and-class-method-consoles by=cr note=reopen_if=STRINGS.permissionWrite's value changes
 ### DW-2665: An upgrade from a release before the proposal target key (1.0.13 or earlier), run by an account granted OcuPilotAdmin in that same install, would be refused at the target-key step (the grant does not reach the running process); a second install passes (inference, not measured)
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
@@ -13631,3 +13673,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The abandon stays open by owner answer U-89, and its pCount answers a developer naming the victim (ReserveSweepWrite.TestAnAbandonIgnoresAHeldKey asserts count 1). AD-9's 21.35 paragraph says two reads stay open. No product caller reads the count for another user.
 - 2026-11-17T15:41:30Z status=decision-pending owner=burndown by=cr note=human=owner: hide the count from a non-owner non-administrator, or name it in AD-9 as open
+### DW-2702: The lookup table transfer's script form (InteropPort.TransferSnippet) passes the unresolved relative path to $System.OBJ.Export and Load, so the copied-out script does not act on the file the write would
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 24.10's copy of the same branch, run on ocupilot-b-ci, ended not OK with the relative path and wrote the file once resolved through PathPort; 20.5's branch is the same text (inference for Interop's outcome)
+- 2026-11-17T13:04:24Z status=routed owner=burndown by=cr note=AD-59 prevents a script that makes a different change; resolve through ExportFile/PathPort as AnalyticsPort now does
+
+### DW-2703: AD-39's fifth exception names an export's XML lines; Story 24.10's term list export answers CSV lines to the screen, which no spine line names
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AnalyticsTermListExport.WriteOutput returns the CSV lines citing AD-39's fifth exception; the spine's fifth lists 'an export's XML lines'; U-105's three proposed spine lines do not extend it
+- 2026-11-17T13:04:24Z status=escalated owner=burndown by=cr note=add 'a term list export's CSV lines' to AD-39's fifth with U-105's spine lines (spine edit is owner-only in this run)
