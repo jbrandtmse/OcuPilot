@@ -429,3 +429,5 @@
 2026-11-17T01:49:54Z	Story 21.33	gate_step	step=sweep result=green shards=20/20 dir=e21u/21-33/gate4/sweep
 2026-11-17T01:49:54Z	Story 21.33	gate_step	step=smoke result=pass executed=50 passed=50
 2026-11-17T01:50:08Z	Story 21.33	code_head_pushed	sha=570a6d212 run=43998524036 missing=none carries=627c176c4(feature_ebb3e85d8)
+2026-11-17T01:50:47Z	Story 21.35	ad_amended	ad=AD-9 via=U7(comply_first) basis=owner_U-90+spec_gate_validation dw=DW-2651,DW-2652
+2026-11-17T01:50:48Z	Story 21.35	stage_spawned	stage=implement scope=batch1 spawn_at=2026-11-17T01:50:48Z model=sonnet agent_name=21-35-implement-b1 story_base=133a359ef
