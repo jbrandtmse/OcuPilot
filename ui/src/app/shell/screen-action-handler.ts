@@ -167,6 +167,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
   'OcuPilot.Screen.Descriptor.DdlUserMappingList',
+  // Story 21.14: NLS configured defaults, whose Set value its settings page's dialog sends, and Locale definitions, whose Install and Delete type the locale's name and whose Validate its own page's dialog runs.
+  'OcuPilot.Screen.Descriptor.NlsDefaultList',
+  'OcuPilot.Screen.Descriptor.LocaleList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -268,6 +271,9 @@ export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerLis
  */
 export const BACKUP_TASK_LIST = 'OcuPilot.Screen.Descriptor.BackupTaskList';
 export const BACKUP_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.BackupDatabaseList';
+/** Locale definitions (Story 21.14): its Validate is a read its own page's dialog runs, and its Install and Delete type the locale's name. */
+export const LOCALE_LIST = 'OcuPilot.Screen.Descriptor.LocaleList';
+export const LOCALE_VALIDATE = 'validate';
 export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';
 export const BACKUP_ADD_DATABASE = 'add';
@@ -506,6 +512,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
+  // NLS configured defaults' page registers Set value itself, whose dialog sends the value, and Locale definitions' page registers Validate itself, whose dialog reads the locale's checks (Story 21.14).
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': ['set'],
+  [LOCALE_LIST]: [LOCALE_VALIDATE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -609,6 +618,24 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
 const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
 
 /**
+ * The actions that are destructive on one screen only, keyed by descriptor: Install makes another locale the instance's current one, and the word
+ * means nothing destructive elsewhere (Story 21.14).
+ */
+const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
+  [LOCALE_LIST]: ['install'],
+};
+
+/**
+ * Why an action cannot be taken on a row its screen lists, keyed by descriptor and action id: the published sentence, or `''` where the row
+ * allows it. The surfaces draw the action refused with it while that row is selected; the instance refuses the same write again (Story 21.14).
+ */
+const ROW_REASONS: Readonly<Record<string, Readonly<Record<string, (row: Readonly<Record<string, unknown>>) => string>>>> = {
+  [LOCALE_LIST]: {
+    delete: (row) => (row['Custom'] !== true ? STRINGS.localeRefusalSystem : row['Current'] === true ? STRINGS.localeRefusalCurrent : ''),
+  },
+};
+
+/**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
  * keyed by descriptor (AD-8, Story 16.19): read from the instance each time the dialog opens.
  */
@@ -708,6 +735,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.13: DDL that names a deleted mapping's type no longer maps it to its datatype.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
+  // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
+  [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
@@ -1192,10 +1221,16 @@ export class ScreenActionHandler {
         if ((UNDRAWN_ACTIONS[screen.descriptor] ?? []).includes(action.id)) continue;
         // No inert control: a destructive action with no published consequence has no dialog to
         // open, so it registers no handler and no surface draws it (DW-389).
-        if (this.isDestructive(action.id) && this.consequence(screen.descriptor, action.id) === '') {
+        if (this.isDestructive(screen.descriptor, action.id) && this.consequence(screen.descriptor, action.id) === '') {
           continue;
         }
-        this.actions.register(screen.descriptor, action.id, () => this.start(screen, action.id));
+        const rowReason = (ROW_REASONS[screen.descriptor] ?? {})[action.id];
+        this.actions.register(
+          screen.descriptor,
+          action.id,
+          () => this.start(screen, action.id),
+          rowReason === undefined ? undefined : () => this.reasonFor(screen, rowReason)
+        );
       }
     }
   }
@@ -1389,7 +1424,7 @@ export class ScreenActionHandler {
       this.open('warning', descriptor, actionId, target, warning, [], sink);
       return;
     }
-    if (!this.isDestructive(actionId)) {
+    if (!this.isDestructive(descriptor, actionId)) {
       void this.send(descriptor, actionId, target, undefined, sink);
       return;
     }
@@ -1878,8 +1913,15 @@ export class ScreenActionHandler {
     return this.stores.for(descriptor, rates);
   }
 
-  private isDestructive(actionId: string): boolean {
-    return DESTRUCTIVE_ACTIONS.includes(actionId);
+  /** `rowReason`'s sentence for the screen's selected row, or `''` while none is selected. */
+  private reasonFor(screen: ScreenDeclaration, rowReason: (row: Readonly<Record<string, unknown>>) => string): string {
+    const target = this.selected(screen);
+    const row = target === '' ? null : this.row(screen, target);
+    return row === null ? '' : rowReason(row);
+  }
+
+  private isDestructive(descriptor: string, actionId: string): boolean {
+    return DESTRUCTIVE_ACTIONS.includes(actionId) || (DESTRUCTIVE_ON[descriptor] ?? []).includes(actionId);
   }
 
   private warning(descriptor: string, actionId: string): string {

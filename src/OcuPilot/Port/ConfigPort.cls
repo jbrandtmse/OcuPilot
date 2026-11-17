@@ -33,11 +33,18 @@
 /// <code>Modify</code> and <code>Delete</code>, never to its <code>List</code> query, whose <code>Names</code> argument is a pattern.
 /// A <code>GET</code> carrying <parameter>ACTIONKEY</parameter> <code>CREATE</code> is the absence read of a create: a held name is
 /// 409 <code>CONFIG.MAPPING.TAKEN</code> and a free one the 404 a create expects; an endpoint that serves no create reads plain.</p>
+/// <p><b>The NLS configured defaults</b> (<code>NLSDefaults</code>, Story 21.14) list one row per <code>%SYS.NLS.Table</code> category
+/// (<parameter>NLSCATEGORIES</parameter>) and the locale-format switch <code>LocaleFormat</code>. A table row's <code>Value</code> is the
+/// configured table, else the current locale's (<code>CSP</code> else <parameter>NLSCSPDEFAULT</parameter>), and its <code>Source</code>
+/// is <code>config</code> or <code>locale</code>; a table row is read only. <code>LocaleFormat</code> is <code>1</code> while its node
+/// (<code>^SYS("NLS","Config","LocaleFormat")</code>) reads 1, else <code>0</code>, with <code>Source</code> <code>config</code> while the
+/// node is defined; it is the one row a set changes, and the current locale is reloaded once the write has read OK
+/// (<method>ReloadAfterSet</method>). Only this endpoint's rows carry <code>Source</code>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
 /// <method>CreateEntry</method>, <method>DeleteEntry</method>,
-/// <method>SendNode</method>, <method>SendTsql</method>, <method>StoredDialect</method> and
-/// <method>PurgeCachedQueries</method>. Production overrides none of them.</p>
+/// <method>SendNode</method>, <method>SendNlsNode</method>, <method>SendTsql</method>, <method>StoredDialect</method>,
+/// <method>PurgeCachedQueries</method> and <method>ReloadLocale</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
 /// return.</p>
 Class OcuPilot.Port.ConfigPort Extends %RegisteredObject
@@ -60,7 +67,7 @@ Parameter COMPATIBILITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -79,6 +86,8 @@ Parameter ISQLENDPOINT = "ISQL";
 Parameter SYSTEMDDLENDPOINT = "SystemDDL";
 
 Parameter USERDDLENDPOINT = "UserDDL";
+
+Parameter NLSENDPOINT = "NLSDefaults";
 
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
@@ -192,6 +201,16 @@ Parameter BLOCKSIZEREQUIRED = 8192;
 /// <p>The text length a setting whose property declares none is held to.</p>
 Parameter DEFAULTMAXLEN As INTEGER = 255;
 
+/// <p>The <code>%SYS.NLS.Table</code> categories the <code>NLSDefaults</code> endpoint lists, as <code>category=locale property</code>: the
+/// locale property whose table a category inherits while no table is configured. <code>CSP</code> has none and reads
+/// <parameter>NLSCSPDEFAULT</parameter>.</p>
+Parameter NLSCATEGORIES = "Process=TranZCVT,IRISTerminal=TranProgrammer,OtherTerminal=TranTerminal,File=TranSequential,Magtape=TranMagTape,TCPIP=TranTCP,DSMDDP=TranDDP,DTMDCP=TranDTMDCP,SystemCall=TranSystemCall,Printer=TranPrinter,PatternMatch=PatternTable,Identifier=IdentifierTable,Uppercase=UpperCaseTable,Lowercase=LowerCaseTable,Titlecase=TitleCaseTable,Accent=AccentTable,Collation=CollationTable,XYAction=XYTable,CSP=";
+
+Parameter NLSCSPDEFAULT = "UTF8";
+
+/// <p>The one settable row of the <code>NLSDefaults</code> endpoint.</p>
+Parameter NLSFORMATNAME = "LocaleFormat";
+
 /// <p>The subsystem every log line of this port is written under.</p>
 Parameter LOGSUBSYSTEM = "configport";
 
@@ -263,6 +282,21 @@ ClassMethod IsNamed(pEndpoint As %String) As %Boolean
 ClassMethod IsRoster(pEndpoint As %String) As %Boolean
 {
     Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT)
+}
+
+/// <p>Whether <var>pEndpoint</var> lists the NLS configured defaults and the locale-format switch.</p>
+ClassMethod IsNls(pEndpoint As %String) As %Boolean
+{
+    Quit pEndpoint = ..#NLSENDPOINT
+}
+
+/// <p>Whether <var>pName</var> is a <code>%SYS.NLS.Table</code> category <parameter>NLSCATEGORIES</parameter> names.</p>
+ClassMethod IsNlsCategory(pName As %String) As %Boolean
+{
+    For tI = 1:1:$Length(..#NLSCATEGORIES, ",") {
+        If $Piece($Piece(..#NLSCATEGORIES, ",", tI), "=", 1) = pName Quit
+    }
+    Quit ($Piece($Piece(..#NLSCATEGORIES, ",", tI), "=", 1) = pName) && (pName '= "")
 }
 
 /// <p>Serve <var>pEndpoint</var> for request type <var>pType</var>, after the gate.</p>
@@ -415,6 +449,11 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
             Set tSC = ..CollectRoster(pEndpoint, pName, .tData)
             Quit
         }
+        If ..IsNls(pEndpoint) {
+            Set $NAMESPACE = "%SYS"
+            Set tSC = ..CollectNls(pName, .tData)
+            Quit
+        }
         Set tClass = ..VendorClass(pEndpoint)
         If tClass = "" Quit
         If ..IsNamed(pEndpoint) {
@@ -446,6 +485,34 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
         Set tKey = $Order(tData(tKey))
         If tKey = "" Quit
         Do pRows.%Push(..BuildRow(tKey, tData(tKey)))
+    }
+    Quit $$$OK
+}
+
+/// <p>The rows of the <code>NLSDefaults</code> endpoint into <var>pData</var>, or the one named <var>pName</var>, in the shape
+/// <method>BuildRow</method> reads with its sixth item, the <code>Source</code>: each category's configured table, else the current
+/// locale's, and <code>LocaleFormat</code>. In <code>%SYS</code>.</p>
+ClassMethod CollectNls(pName As %String, ByRef pData) As %Status [ Private ]
+{
+    Set tConfig = ##class(%SYS.NLS.Table).%New("Config")
+    Set tLocale = ##class(Config.NLS.Locales).OpenCurrent(.tOpen)
+    If $$$ISERR(tOpen) Quit tOpen
+    If '$IsObject(tLocale) Quit $$$ERROR($$$GeneralError, "the current locale could not be opened")
+    For tI = 1:1:$Length(..#NLSCATEGORIES, ",") {
+        Set tName = $Piece($Piece(..#NLSCATEGORIES, ",", tI), "=", 1)
+        Set tProperty = $Piece($Piece(..#NLSCATEGORIES, ",", tI), "=", 2)
+        If (pName '= "") && (tName '= pName) Continue
+        Set tValue = $Property(tConfig, tName)
+        Set tSource = "config"
+        If tValue = "" {
+            Set tSource = "locale"
+            Set tValue = $Select(tProperty = "": ..#NLSCSPDEFAULT, 1: $Property(tLocale, tProperty))
+        }
+        Set pData(tName) = $ListBuild(tValue, ..Limits(..#NLSENDPOINT, tName), 1, 0, 0, tSource)
+    }
+    If (pName = "") || (pName = ..#NLSFORMATNAME) {
+        Set tNode = $Get(^SYS("NLS", "Config", "LocaleFormat"))
+        Set pData(..#NLSFORMATNAME) = $ListBuild($Select(tNode = 1: 1, 1: 0), ..Limits(..#NLSENDPOINT, ..#NLSFORMATNAME), 0, 0, 0, $Select($Data(^SYS("NLS", "Config", "LocaleFormat")): "config", 1: "locale"))
     }
     Quit $$$OK
 }
@@ -484,7 +551,7 @@ ClassMethod DatatypeLimits() As %List
 }
 
 /// <p>The row of the setting <var>pName</var> from <var>pData</var>, <code>$ListBuild(value, limits, readOnly,
-/// restart, purges)</code>.</p>
+/// restart, purges)</code>, with <code>Source</code> when <var>pData</var> carries a sixth item.</p>
 ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Private ]
 {
     Set tLimits = $List(pData, 2)
@@ -497,6 +564,7 @@ ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Priva
     Do tRow.%Set("Restart", ''$List(pData, 4), "boolean")
     Do tRow.%Set("ReadOnly", ''tReadOnly, "boolean")
     Do tRow.%Set("Purges", ''$List(pData, 5), "boolean")
+    If $ListLength(pData) > 5 Do tRow.%Set("Source", $List(pData, 6), "string")
     Quit tRow
 }
 
@@ -515,6 +583,11 @@ ClassMethod Limits(pEndpoint As %String, pName As %String) As %List
     Set tLimits = ""
     If ..IsRoster(pEndpoint) Quit ..EntryLimits(..RosterEntry(pEndpoint, pName))
     If ..IsNamed(pEndpoint) Quit ..DatatypeLimits()
+    If ..IsNls(pEndpoint) {
+        If pName = ..#NLSFORMATNAME Quit $ListBuild("boolean", "", "", "", "", "")
+        If ..IsNlsCategory(pName) Quit $ListBuild("text", "", "", "", ..#DEFAULTMAXLEN, "")
+        Quit ""
+    }
     Set tClass = ..VendorClass(pEndpoint)
     If tClass = "" Quit ""
     Set tOrigNS = $NAMESPACE
@@ -706,6 +779,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
         Quit ..SendTsql(pName, $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect), pValue)
     }
     If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
+    If ..IsNls(pEndpoint) Quit ..SendNlsNode(pValue)
     If ..IsNamed(pEndpoint) Quit ..ModifyEntry(..VendorClass(pEndpoint), pName, pValue)
     Quit ..VendorModify(..VendorClass(pEndpoint), pName, pValue)
 }
@@ -863,6 +937,23 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
     Quit tSC
 }
 
+/// <p>The one call that changes the locale-format switch: the node <code>^SYS("NLS","Config","LocaleFormat")</code> set to <var>pValue</var>, which
+/// the rules have admitted as <code>0</code> or <code>1</code>, in <code>%SYS</code> by save and restore. Overridable so a fixture can record
+/// the write; production never overrides it.</p>
+ClassMethod SendNlsNode(pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set ^SYS("NLS", "Config", "LocaleFormat") = pValue
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>The <code>%SYSTEM.TSQL</code> setter <parameter>TSQLSETTERS</parameter> names for the TSQL setting <var>pName</var>, or
 /// <code>""</code>.</p>
 ClassMethod TsqlSetter(pName As %String) As %String [ Private ]
@@ -949,6 +1040,66 @@ ClassMethod PurgeCachedQueries() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = $SYSTEM.SQL.PurgeQueries({"allNamespace": 1})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Whether a change of the setting <var>pName</var> of <var>pEndpoint</var> reloads the current locale: the locale-format switch.</p>
+ClassMethod IsReloading(pEndpoint As %String, pName As %String) As %Boolean [ Private ]
+{
+    Quit ..IsNls(pEndpoint) && (pName = ..#NLSFORMATNAME)
+}
+
+/// <p>The reload a set of the setting <var>pName</var> of <var>pEndpoint</var> owes once its write has read OK, run by the set tool's
+/// <method>OcuPilot.Screen.Tool.NlsDefaultSet.AfterWrite</method> for both callers, so a reload that fails is the failure of an applied
+/// write, which the agent's confirm still marks (AD-15). A setting that does not reload owes none. Otherwise, after the write gate, the
+/// setting is read again and the current locale is reloaded in this request (<method>ReloadLocale</method>) when it no longer reads
+/// <var>pBefore</var>, its value before the write; with <var>pKnown</var> 0, no value before the write being known, it is reloaded
+/// whatever it reads. A re-read or a reload that fails is 500 <code>INTERNAL</code>, logged; the setting stays as written.</p>
+ClassMethod ReloadAfterSet(pEndpoint As %String, pName As %String, pBefore As %String, pKnown As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '..IsReloading(pEndpoint, pName) Quit $$$OK
+    Set tSC = ..Admit(pEndpoint, ..#TYPESET, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tMessage = "the current locale could not be reloaded after the setting " _ pName _ " changed"
+    Try {
+        If pKnown {
+            Set tSC = ..Row(pEndpoint, pName, .tRow, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set pHttpStatus = 0
+            If (tRow.%Get("Value") _ "") = (pBefore _ "") Quit
+        }
+        Set tReload = ..ReloadLocale()
+        If $$$ISERR(tReload) Set tSC = ..Fail(tMessage, tReload, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set tSC = ..Fail(tMessage, ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p><method>ReloadAfterSet</method> as a copy-out script step (AD-59): the reload of the current locale for the setting <var>pName</var>
+/// of <var>pEndpoint</var> that reloads, else no step.</p>
+ClassMethod ReloadSteps(pEndpoint As %String, pName As %String) As %DynamicArray
+{
+    If '..IsReloading(pEndpoint, pName) Quit []
+    Quit [(##class(OcuPilot.Port.AdminPort).ObjectScriptStep($ListBuild("Set tSC = ##class(Config.NLS.Locales).Reload()")))]
+}
+
+/// <p>Reload the current locale, as the classic locale page does after the locale-format switch changes, in <code>%SYS</code> by save and
+/// restore. A failed reload is the returned status. Overridable so a fixture can record the call or feed a failure; production never
+/// overrides it.</p>
+ClassMethod ReloadLocale() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Config.NLS.Locales).Reload()
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -1128,8 +1279,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 
 /// <p>The write as a script (AD-59), in <code>%SYS</code>: for a class, its <code>Get</code>, the one key set, and
 /// <code>Modify</code>, the same call the port makes (the purge a key that purges owes is the set tool's step,
-/// <method>PurgeSteps</method>); for a roster endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter. The name and the value are string
-/// literals, so nothing the query or the body carries runs as code. A roster name that is not settable renders no script.</p>
+/// <method>PurgeSteps</method>); for a roster endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter; for the
+/// NLS defaults, the locale-format node set with literal subscripts (the reload it owes is the set tool's step, <method>ReloadSteps</method>). The name and the value are string
+/// literals, so nothing the query or the body carries runs as code. A roster name or an NLS name that is not settable renders no script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -1137,6 +1289,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
     If ..IsNamed(pEndpoint) Quit [($ClassMethod(tAdmin, "ObjectScriptStep", ..EntryLines(pEndpoint, pType, tName, tValue)))]
+    If ..IsNls(pEndpoint) {
+        If tName '= ..#NLSFORMATNAME Quit []
+        Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set ^SYS(""NLS"", ""Config"", ""LocaleFormat"") = " _ $ClassMethod(tAdmin, "Literal", tValue))))]
+    }
     If ..IsRoster(pEndpoint) {
         Set tEntry = ..RosterEntry(pEndpoint, tName)
         If (tEntry = "") || '$List(tEntry, 5) Quit []

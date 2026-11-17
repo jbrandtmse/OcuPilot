@@ -1049,7 +1049,9 @@ export const SOURCE_BACKUP = 'backup';
 export const SOURCE_CONFIG = 'config';
 /** The instance's mirror members, and the mirror state a banner reads, through `OcuPilot.Port.MirrorPort` (AD-29, AD-36, Story 21.12). */
 export const SOURCE_MIRROR = 'mirror';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR];
+/** The instance's locale definitions read through `OcuPilot.Port.LocalePort` (AD-29, AD-36, Story 21.14). */
+export const SOURCE_LOCALE = 'locale';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1250,6 +1252,22 @@ export function mirrorEndpoints() {
 
 /** The one request type a `mirror` source declares. */
 export const MIRROR_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.LocalePort` declares the endpoints a `locale` read names. */
+export const LOCALE_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'LocalePort.cls');
+
+let localeEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.LocalePort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function localeEndpoints() {
+  if (localeEndpointsCache === undefined) {
+    localeEndpointsCache = parseInteropEndpoints(readFileSync(LOCALE_PORT_SOURCE, 'utf8'));
+  }
+  return localeEndpointsCache;
+}
+
+/** The one request type a `locale` source declares. */
+export const LOCALE_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1516,8 +1534,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}' or '${SOURCE_MIRROR}', ` +
-      'the nineteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}' or '${SOURCE_LOCALE}', ` +
+      'the twenty sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1729,6 +1747,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a mirror source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A locale source lists the instance's locale definitions through `OcuPilot.Port.LocalePort`, which answers its endpoint whole behind its own
+  // gate (AD-29, AD-36, Story 21.14): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per parent,
+  // under a fixed query or in parts.
+  if (source.port === SOURCE_LOCALE) {
+    const endpoints = localeEndpoints();
+    if (endpoints === null) return `${LOCALE_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the locale port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== LOCALE_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a locale source, which lists the instance's locale definitions (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a locale source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in

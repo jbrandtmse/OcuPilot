@@ -192,6 +192,9 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
+  // Story 21.14: the NLS defaults' Set value opens the settings page's dialog; the locales' Validate opens its own dialog, and Install and Delete type the name.
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.LocaleList': { validate: STRINGS.licenseKeyValidate, install: STRINGS.localeInstallAction, delete: STRINGS.actionDelete },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
   // Story 24.2: Term lists' New term list opens the dialog that creates a list, its Edit term list the dialog that changes one and its Delete removes one;

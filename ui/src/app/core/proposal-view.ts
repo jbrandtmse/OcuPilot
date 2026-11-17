@@ -417,6 +417,10 @@ export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 export const CONSEQUENCE_CONFIGSETTINGPURGE = 'CONFIG.SETTING.PURGE';
 /** Story 21.13: a DDL mapping's deletion; one published sentence. */
 export const CONSEQUENCE_CONFIGMAPPINGDELETE = 'CONFIG.MAPPING.DELETE';
+/** Story 21.14: a set of the locale-format switch, and a locale's install and delete; each is one published sentence. */
+export const CONSEQUENCE_CONFIGNLSRELOAD = 'CONFIG.NLS.RELOAD';
+export const CONSEQUENCE_LOCALEINSTALL = 'LOCALE.INSTALL';
+export const CONSEQUENCE_LOCALEDELETE = 'LOCALE.DELETE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -544,6 +548,10 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 21.4: a SQL setting whose change purges the cached queries, published once.
   if (code === CONSEQUENCE_CONFIGSETTINGPURGE) return STRINGS.configSettingPurge;
   if (code === CONSEQUENCE_CONFIGMAPPINGDELETE) return STRINGS.configMappingDelete;
+  // Story 21.14: the locale-format switch's reload, and a locale's install and delete.
+  if (code === CONSEQUENCE_CONFIGNLSRELOAD) return STRINGS.nlsDefaultReloadConsequence;
+  if (code === CONSEQUENCE_LOCALEINSTALL) return STRINGS.localeInstallConsequence;
+  if (code === CONSEQUENCE_LOCALEDELETE) return STRINGS.localeDeleteConsequence;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;

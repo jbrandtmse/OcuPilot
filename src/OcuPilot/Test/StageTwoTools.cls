@@ -146,6 +146,8 @@ XData Elsewhere
 <screen name="MirrorMonitor"/>
 <screen name="DdlSystemMappingList"/>
 <screen name="DdlUserMappingList"/>
+<screen name="NlsDefaultList"/>
+<screen name="LocaleList"/>
 <screen name="MemorySettingList"/>
 <screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>

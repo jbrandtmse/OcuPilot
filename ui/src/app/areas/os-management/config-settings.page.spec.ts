@@ -22,6 +22,7 @@ import {
   DDL_USER_MAPPING_LIST,
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
+  NLS_DEFAULT_LIST,
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
@@ -57,6 +58,8 @@ const ROWS = [
   row('FastDistinct', { Value: '1', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Purges: true }),
   row('SaveMAC', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
   row('BIGINT(%1)', { Value: '%Library.BigInt', Kind: 'datatype', Accepts: 'A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters.' }),
+  row('LocaleFormat', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Source: 'locale' }),
+  row('Collation', { Value: 'Cache standard', Kind: 'text', ReadOnly: true, Accepts: 'Shown here and never changed here.', Source: 'config' }),
 ];
 
 const UPDATED: JsonResult<unknown> = {
@@ -349,5 +352,37 @@ describe('the settings page', () => {
       method: 'POST',
       body: JSON.stringify({ action: 'set', id: 'BIGINT(%1)', values: { Value: '%Library.Integer' } }),
     });
+  });
+
+  // Mutation (Rule 19): drop `NLS_DEFAULT_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+  it('serves NLS configured defaults, and offers Set value on the locale-format switch alone', async () => {
+    const { fixture, host, store, actions } = mount([], NLS_DEFAULT_LIST);
+    expect(actions.has(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(true);
+    store.setSelection(['Collation']);
+    expect(actions.reason(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    expect(actions.run(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(false);
+    await settle(fixture);
+    expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+    store.setSelection(['LocaleFormat']);
+    expect(actions.reason(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe('');
+  });
+
+  // Mutation (Rule 19): drop the `reloads` branch from `onOpen`'s statement -> the dialog states the Accepts line alone and this goes red.
+  it('states the reload sentence in the dialog and after an applied change of the locale-format switch', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED], NLS_DEFAULT_LIST);
+    await open(fixture, store, actions, NLS_DEFAULT_LIST, 'LocaleFormat');
+    expect(host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`0 (off) or 1 (on). ${STRINGS.nlsDefaultReloadConsequence}`);
+    (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    confirm(host);
+    await settle(fixture);
+    expect(calls[0]).toEqual({
+      path: '/api/ocupilot/screens/osmgmt.nlsdefaults/action',
+      method: 'POST',
+      body: JSON.stringify({ action: 'set', id: 'LocaleFormat', values: { Value: '1' } }),
+    });
+    expect(host.querySelector('[data-config-setting-reload]')?.textContent?.trim()).toBe(STRINGS.nlsDefaultReloadConsequence);
+    expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
+    expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
   });
 });

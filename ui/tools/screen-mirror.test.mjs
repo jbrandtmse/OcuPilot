@@ -3156,7 +3156,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3485,6 +3485,24 @@ test('Story 21.12: the mirror source refusals agree with the instance corpus', (
   let refusals = 0;
   for (const testCase of corpus.cases) {
     const declaration = structuredClone(monitor.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 5, `the corpus refuses its shapes (${refusals})`);
+});
+
+// Story 21.14: a locale read is one LIST of LocalePort's Locales endpoint with no per-row call, parent list, query or parts. Every case in
+// `OcuPilot.Test.LocaleRead`'s corpus gets its exact sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): let the locale arm of `readProblem` admit any endpoint -> the endpoint case goes red.
+test('Story 21.14: the locale source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'LocaleRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const locales = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.LocaleList');
+  assert.ok(locales !== undefined, 'Locale definitions is declared');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(locales.declaration);
     declaration.read.source = structuredClone(testCase.source);
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;

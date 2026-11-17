@@ -38,6 +38,7 @@ const SENTENCES = [
   ['REASONMAPPINGTAKEN', 'configMappingTaken'],
   ['REASONMAPPINGNAME', 'configMappingName'],
   ['REASONMAPPINGDELETE', 'configMappingDelete'],
+  ['REASONNLSRELOAD', 'nlsDefaultReloadConsequence'],
 ];
 
 function stringValue(key) {

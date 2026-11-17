@@ -13,7 +13,7 @@ import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { BOOLEAN_TYPE, InteropItemSettingDialog } from '../interoperability/interop-item-setting-dialog';
 import { DdlMappingDialog } from './ddl-mapping-dialog';
 
-/** The descriptors this one page serves (Stories 21.3, 21.4 and 21.13). */
+/** The descriptors this one page serves (Stories 21.3, 21.4, 21.13 and 21.14). */
 export const STARTUP_SETTING_LIST = 'OcuPilot.Screen.Descriptor.StartupSettingList';
 export const MEMORY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.MemorySettingList';
 export const COMPATIBILITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.CompatibilitySettingList';
@@ -23,6 +23,7 @@ export const TSQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.TsqlSettingList';
 export const ISQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.IsqlSettingList';
 export const DDL_SYSTEM_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlSystemMappingList';
 export const DDL_USER_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlUserMappingList';
+export const NLS_DEFAULT_LIST = 'OcuPilot.Screen.Descriptor.NlsDefaultList';
 
 const SERVED_LISTS: readonly string[] = [
   STARTUP_SETTING_LIST,
@@ -34,7 +35,11 @@ const SERVED_LISTS: readonly string[] = [
   ISQL_SETTING_LIST,
   DDL_SYSTEM_MAPPING_LIST,
   DDL_USER_MAPPING_LIST,
+  NLS_DEFAULT_LIST,
 ];
+
+/** The one NLS configured default a person changes: the switch that makes new processes take the current locale's formats (Story 21.14). */
+export const NLS_LOCALE_FORMAT = 'LocaleFormat';
 
 /** The declared row action Set value, which this page's dialog sends. */
 export const CONFIG_SET_ACTION = 'set';
@@ -53,6 +58,8 @@ interface SettingTarget {
   readonly kind: string;
   readonly restart: boolean;
   readonly purges: boolean;
+  /** Whether a change reloads the current locale. */
+  readonly reloads: boolean;
   readonly statement: string;
 }
 
@@ -62,7 +69,7 @@ function text(value: unknown): string {
 }
 
 /**
- * Startup, Memory, Compatibility, SQL, SQL Shell, TSQL, ISQL and DDL mapping settings (Stories 21.3, 21.4 and 21.13, AD-5, AD-53): the shared list page over each
+ * Startup, Memory, Compatibility, SQL, SQL Shell, TSQL, ISQL, DDL mapping and NLS configured default settings (Stories 21.3, 21.4, 21.13 and 21.14, AD-5, AD-53): the shared list page over each
  * descriptor's declared table, and over it the Set value dialog.
  *
  * **One page serves the descriptors**, which differ only in the settings they read; it resolves its screen from the URL, as the list page
@@ -79,6 +86,9 @@ function text(value: unknown): string {
  * **New mapping is the user DDL mappings list's primary action**, registered by this page on that screen alone: it opens `DdlMappingDialog`, which
  * posts to the Save route and publishes the create. The system list has none, as the classic page offers no create of a system mapping. A DDL
  * mapping row is never shown and never changed in any other way than its datatype, so its Set value is the dialog above with the row's `Accepts` line.
+ *
+ * **NLS configured defaults offer Set value on the locale-format switch alone**: every table row is read-only and so refused as above. The
+ * switch's dialog and the line after an applied change state that the current locale is reloaded.
  */
 @Component({
   selector: 'app-config-settings-page',
@@ -98,6 +108,9 @@ function text(value: unknown): string {
     }
     @if (shownPurge; as note) {
       <p class="ocu-banner" role="status" data-config-setting-purge>{{ note }}</p>
+    }
+    @if (shownReload; as note) {
+      <p class="ocu-banner" role="status" data-config-setting-reload>{{ note }}</p>
     }
     <app-list-page />
     @if (adding) {
@@ -147,6 +160,9 @@ export class ConfigSettingsPage {
   /** The purge sentence stated after an applied change that purged the cached queries, or `''`. */
   protected readonly purgeNote = signal('');
 
+  /** The reload sentence stated after an applied change of the locale-format switch, or `''`. */
+  protected readonly reloadNote = signal('');
+
   /** Whether the New mapping dialog is open. */
   private readonly addOpen = signal(false);
 
@@ -156,6 +172,10 @@ export class ConfigSettingsPage {
 
   protected get shownPurge(): string {
     return this.purgeNote();
+  }
+
+  protected get shownReload(): string {
+    return this.reloadNote();
   }
 
   protected get openTarget(): SettingTarget | null {
@@ -209,8 +229,10 @@ export class ConfigSettingsPage {
     this.violation.set('');
     this.restartNote.set('');
     this.purgeNote.set('');
+    this.reloadNote.set('');
     const accepts = text(row['Accepts']);
     const purges = row['Purges'] === true;
+    const reloads = this.screen?.descriptor === NLS_DEFAULT_LIST && text(row['Name']) === NLS_LOCALE_FORMAT;
     this.target.set({
       id: selected,
       name: text(row['Name']),
@@ -218,7 +240,15 @@ export class ConfigSettingsPage {
       kind: text(row['Kind']),
       restart: row['Restart'] === true,
       purges,
-      statement: row['Restart'] === true ? `${accepts} ${STRINGS.encryptionStartupRestart}` : purges ? `${accepts} ${STRINGS.configSettingPurge}` : accepts,
+      reloads,
+      statement:
+        row['Restart'] === true
+          ? `${accepts} ${STRINGS.encryptionStartupRestart}`
+          : purges
+            ? `${accepts} ${STRINGS.configSettingPurge}`
+            : reloads
+              ? `${accepts} ${STRINGS.nlsDefaultReloadConsequence}`
+              : accepts,
     });
   }
 
@@ -256,6 +286,7 @@ export class ConfigSettingsPage {
       this.onClose();
       this.restartNote.set(target.restart ? STRINGS.encryptionStartupRestart : '');
       this.purgeNote.set(target.purges && value !== target.current ? STRINGS.configSettingPurge : '');
+      this.reloadNote.set(target.reloads && value !== target.current ? STRINGS.nlsDefaultReloadConsequence : '');
       return;
     }
     const refused = this.handler.lastRefusal();
