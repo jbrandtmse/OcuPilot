@@ -231,3 +231,9 @@
 2026-11-17T00:15:57Z	Story 24.5	cr_complete	spawn_at=2026-11-16T23:25:00Z model=opus resolved=9 fixed_at_source=9 wontfix=1 by_design=1 decision_pending=3(DW-2670,DW-2671,DW-2672) dismissed=14 high=0 med=5 low=9 rows=14 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done note=QA_BuildTestSpec_override_replaced_by_port_checked_class_list
 2026-11-17T00:15:57Z	Story 24.5	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2668,DW-2669 to_decision_sheet=DW-2670,DW-2671,DW-2672 model=claude-opus-5-5
 2026-11-17T00:18:05Z	Story 24.5	integrate_forward	feature=ebb3e85d8(2a542f893,21.33_batch1) conflicts_resolved=sprint-status.yaml(regenerated) method=union
+2026-11-17T00:20:19Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.5_merged_tree run=20261114T1656Z-21,22
+2026-11-17T00:21:26Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.5 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T00:35:06Z	Story 24.5	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=2(QA:package_run_as_least_privileged) evidence=smoke.sh_PASSED+unit-tests+unit-tests-principals_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-17T00:35:06Z	Story 24.5	fresh_check	env=recipe(merged_tree_feature_ebb3e85d8) tests=21_classes+3_specs result=pass order=forward,reverse components=3509 tools=2296
+2026-11-17T00:35:06Z	Story 24.5	committed	sha=984a3c6e0+review code_head=7fc563379(merged_with_feature_ebb3e85d8) ci=pending runs=43988754165 amendments=epics.md_U-77,exclusion-register_DT-03,spine_AD-10_AD-22_AD-53(U-86)
+2026-11-17T00:35:06Z	Story 24.5	story_cycle	plan_to_commit_min=520 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
