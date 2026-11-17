@@ -3,9 +3,10 @@
 /// (<method>WriteProblem</method>), which phrases it for the person or the agent, and <class>OcuPilot.Port.LocalePort</class>, which asks
 /// it again at the write for the confirm and for a screen's action alike (<method>Code</method>). It also answers the screen-only route
 /// <code>GET /locales/:name/validation</code> (<method>HandleValidate</method>).</p>
-/// <p><b>The state is the port's own read</b> of the locale (<code>GET</code>): its row's <code>Custom</code> and <code>Current</code>, and
-/// for an install whether the vendor's own check admits it (<code>Installable</code>, the port's <code>Validation</code>). Nothing here
-/// reads the instance.</p>
+/// <p><b>The state is the port's own read</b> of the locale (<code>GET</code>): its row's <code>Custom</code> and <code>Current</code>.
+/// Whether the vendor's own check admits an install is the port's to ask, inside the confirmed install (<code>pInstallable</code> of
+/// <method>Code</method>); the mint never asks it, because the vendor's check writes some locales' definitions. Nothing here reads the
+/// instance.</p>
 Class OcuPilot.Area.OsMgmt.LocaleRules Extends %RegisteredObject
 {
 
@@ -18,7 +19,7 @@ Parameter DELETE = "DELETE";
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocaleList";
 
 /// <p>The code of the refusal the write <var>pWriteType</var> meets against the locale row <var>pRow</var>, or <code>""</code> when it
-/// may run. An install is refused when <var>pInstallable</var> is false. A delete is refused for a locale InterSystems ships (its name
+/// may run. An install is refused when <var>pInstallable</var>, the vendor's own answer, is false. A delete is refused for a locale InterSystems ships (its name
 /// does not start with <code>y</code>) and then for the current locale.</p>
 ClassMethod Code(pWriteType As %String, pRow As %DynamicObject, pInstallable As %Boolean = 1) As %String
 {
@@ -35,8 +36,7 @@ ClassMethod Code(pWriteType As %String, pRow As %DynamicObject, pInstallable As 
 }
 
 /// <p>The agent's arguments refused by the write's rules against the locale's state, before anything is stored (AD-55): the locale is read
-/// through the tool's own port, an install's <code>Installable</code> through the port's <code>Validation</code>, and <method>Code</method>
-/// asks the question. A locale the port reports absent is its own refusal sentence; any other failed read is an error status.</p>
+/// through the tool's own port and <method>Code</method> asks the question. A locale the port reports absent is its own refusal sentence; any other failed read is an error status.</p>
 /// <p><var>pProblem</var> is the sentence, or <code>""</code> when the write may run.</p>
 ClassMethod WriteProblem(pToolClass As %String, pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
@@ -55,19 +55,7 @@ ClassMethod WriteProblem(pToolClass As %String, pIdValue As %String, pArgs As %D
             Set tSC = tReadSC
             Quit
         }
-        Set tType = $ClassMethod(pToolClass, "WriteType")
-        Set tInstallable = 1
-        If tType = ..#INSTALL {
-            Kill tValidationQuery
-            Set tValidationQuery($ClassMethod(pToolClass, "ReadIdParam")) = pIdValue
-            Set tValidationSC = $ClassMethod(tPort, "Invoke", $Parameter(tPort, "VALIDATIONENDPOINT"), $ClassMethod(pToolClass, "ReadType"), .tValidationQuery, "", .tValidation, .tValidationHttp, .tValidationFault)
-            If $$$ISERR(tValidationSC) {
-                Set tSC = tValidationSC
-                Quit
-            }
-            Set tInstallable = ..Flag(tValidation, "Installable")
-        }
-        Set tCode = ..Code(tType, tRow, tInstallable)
+        Set tCode = ..Code($ClassMethod(pToolClass, "WriteType"), tRow)
         If tCode '= "" Set pProblem = ##class(OcuPilot.Api.LocaleError).ReasonFor(tCode)
     } Catch ex {
         Set pProblem = ""
@@ -78,7 +66,7 @@ ClassMethod WriteProblem(pToolClass As %String, pIdValue As %String, pArgs As %D
 
 /// <p><code>GET /locales/:name/validation</code>: the Validate dialog's read, screen-only. The caller's pairs are the screen's (AD-8), then
 /// <class>OcuPilot.Port.LocalePort</class> reads the locale named by the percent-encoded segment <var>pName</var> and answers
-/// <code>{Name, Valid, Installable, ErrorCount, WarningCount}</code>, no vendor-written line (AD-39). A locale the instance does not list is
+/// <code>{Name, Valid, ErrorCount, WarningCount}</code>, no vendor-written line (AD-39). A locale the instance does not list is
 /// 404 <code>LOCALE.NOTFOUND</code>.</p>
 ClassMethod HandleValidate(pName As %String) As %Status
 {

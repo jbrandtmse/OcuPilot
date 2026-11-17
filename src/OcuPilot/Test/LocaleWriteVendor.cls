@@ -208,4 +208,55 @@ ClassMethod Decimal(pArg As %String = "") As %String
     Quit tAnswer
 }
 
+/// <p>A checksum of everything under <code>^SYS("NLS")</code>, answered, with a copy of the definition node of the locale <var>pName</var> in <var>pNode</var>;
+/// <code>"error"</code> when the read raised.</p>
+ClassMethod NlsState(pName As %String, Output pNode) As %String
+{
+    Kill pNode
+    Set tCrc = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Merge pNode = ^SYS("NLS", "LocalesD", pName)
+        Set tRef = $Name(^SYS("NLS"))
+        For {
+            Set tRef = $Query(@tRef)
+            If (tRef = "") || ($QSubscript(tRef, 1) '= "NLS") Quit
+            Set tCrc = $ZCRC(tRef _ $Char(0) _ $Get(@tRef) _ $Char(0), 7, tCrc)
+        }
+    } Catch {
+        Set tCrc = "error"
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tCrc
+}
+
+/// <p>Put the definition node of the locale <var>pName</var> back to the copy <method>NlsState</method> made in <var>pNode</var>.</p>
+ClassMethod RestoreNlsNode(pName As %String, ByRef pNode)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill ^SYS("NLS", "LocalesD", pName)
+        Merge ^SYS("NLS", "LocalesD", pName) = pNode
+    } Catch {
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+}
+
+/// <p>The vendor's <code>IsInstallable</code> of the locale <var>pArg</var>, which writes the definition of some shipped locales; 1 or 0.</p>
+ClassMethod Installable(pArg As %String = "") As %String
+{
+    Set tAnswer = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tAnswer = ''##class(Config.NLS.Locales).IsInstallable(pArg)
+    } Catch ex {
+        Set tAnswer = "error: " _ ex.DisplayString()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tAnswer
+}
+
 }

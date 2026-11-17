@@ -11,16 +11,17 @@
 /// caller value reaches the vendor's <code>List</code> pattern (AD-21). A row is <code>{Name, Description, Current, Custom}</code>:
 /// <code>Current</code> is the name <code>^%SYS("LOCALE","CURRENT")</code> holds, <code>Custom</code> a name that starts with
 /// <parameter>CUSTOMPREFIX</parameter>.</p>
-/// <p><b>Validation</b> answers <code>{Name, Valid, Installable, ErrorCount, WarningCount}</code> from the vendor's <code>IsValid</code>,
-/// <code>IsLoadable</code> and <code>IsInstallable</code>: <code>Valid</code> reads true when the definition is valid and loadable,
-/// <code>Installable</code> is the vendor's own install check, and the counts are of every error and warning line the three answered. The
-/// lines are vendor-written text and are never answered (AD-39).</p>
-/// <p><b>Every write is judged before any vendor call</b> by <class>OcuPilot.Area.OsMgmt.LocaleRules</class>, the rules the tools' mint asks
-/// too: an install is refused when the vendor's own check refuses it, a delete for a locale InterSystems ships and for the current locale.
-/// An install answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>, the default collation of IRISTEMP around the call; a
+/// <p><b>Validation</b> answers <code>{Name, Valid, ErrorCount, WarningCount}</code> from the vendor's <code>IsValid</code> alone:
+/// <code>Valid</code> is its answer and the counts are of the error and warning lines it answered. It is a read: it never calls
+/// <code>IsInstallable</code>, which writes the locale's definition for some locales. The lines are vendor-written text and are never
+/// answered (AD-39).</p>
+/// <p><b>Every write is judged before any vendor call</b> by <class>OcuPilot.Area.OsMgmt.LocaleRules</class>, which the tools' mint asks
+/// too: a delete is refused for a locale InterSystems ships and for the current locale. An install is refused when the vendor's own
+/// <code>IsInstallable</code> refuses it; that check runs only here, inside the confirmed install, after the write gate
+/// (<method>ReadInstallable</method>). An install answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>, the default collation of IRISTEMP around the call; a
 /// delete answers <code>{Name}</code>. A vendor refusal is logged and answered 500 <code>INTERNAL</code> (AD-39).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>, <method>ReadValidation</method>,
-/// <method>TempCollation</method>, <method>SendInstall</method> and <method>SendDelete</method>. Production overrides none of them.</p>
+/// <method>ReadInstallable</method>, <method>TempCollation</method>, <method>SendInstall</method> and <method>SendDelete</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on return.</p>
 Class OcuPilot.Port.LocalePort Extends %RegisteredObject
 {
@@ -261,50 +262,40 @@ ClassMethod State(pName As %String, Output pRow As %DynamicObject, Output pHttpS
     Quit $$$OK
 }
 
-/// <p>The validation of the locale <var>pName</var>, in <var>pAnswer</var>, from <method>ReadValidation</method>: the two verdicts and the
+/// <p>The validation of the locale <var>pName</var>, in <var>pAnswer</var>, from <method>ReadValidation</method>: the verdict and the
 /// counts of the error and warning lines, never a line (AD-39). A name the list does not hold is 404 <code>LOCALE.NOTFOUND</code>.</p>
 ClassMethod Validation(pName As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pAnswer = ""
     Set tSC = ..State(pName, .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..ReadValidation(pName, .tValid, .tInstallable, .tErrorLines, .tWarningLines)
+    Set tSC = ..ReadValidation(pName, .tValid, .tErrorLines, .tWarningLines)
     If $$$ISERR(tSC) Quit ..Fail("the locale could not be validated", tSC, .pHttpStatus, .pFault)
     Set pAnswer = {}
     Do pAnswer.%Set("Name", pName, "string")
     Do pAnswer.%Set("Valid", ''tValid, "boolean")
-    Do pAnswer.%Set("Installable", ''tInstallable, "boolean")
     Do pAnswer.%Set("ErrorCount", $ListLength(tErrorLines), "number")
     Do pAnswer.%Set("WarningCount", $ListLength(tWarningLines), "number")
     Set pHttpStatus = 200
     Quit $$$OK
 }
 
-/// <p>The vendor's three checks of the locale <var>pName</var>, which write nothing, in <code>%SYS</code> by save and restore:
-/// <var>pValid</var> is true when <code>IsValid</code> and <code>IsLoadable</code> both are, <var>pInstallable</var> is
-/// <code>IsInstallable</code>, <var>pErrors</var> and <var>pWarnings</var> every line the three answered, as <code>%List</code>s, in the
-/// order <code>IsValid</code>, <code>IsLoadable</code>, <code>IsInstallable</code>. Overridable so a fixture can feed an answer;
-/// production never overrides it.</p>
-ClassMethod ReadValidation(pName As %String, Output pValid As %Boolean, Output pInstallable As %Boolean, Output pErrors As %List, Output pWarnings As %List) As %Status
+/// <p>The vendor's <code>IsValid</code> of the locale <var>pName</var>, which writes nothing, in <code>%SYS</code> by save and restore:
+/// <var>pValid</var> is its answer, <var>pErrors</var> and <var>pWarnings</var> the lines it answered, as <code>%List</code>s. Overridable so
+/// a fixture can feed an answer; production never overrides it.</p>
+ClassMethod ReadValidation(pName As %String, Output pValid As %Boolean, Output pErrors As %List, Output pWarnings As %List) As %Status
 {
     Set tSC = $$$OK
     Set pValid = 0
-    Set pInstallable = 0
     Set pErrors = ""
     Set pWarnings = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tValid = ##class(Config.NLS.Locales).IsValid(pName, .tValidErrors, .tValidWarnings)
-        Set tLoadable = ##class(Config.NLS.Locales).IsLoadable(pName, , .tLoadErrors)
-        Set tInstallable = ##class(Config.NLS.Locales).IsInstallable(pName, .tInstallErrors, .tInstallWarnings)
-        Set pValid = ''(tValid && tLoadable)
-        Set pInstallable = ''tInstallable
-        For tI = 1:1:+$Get(tValidErrors) Set pErrors = pErrors _ $ListBuild(tValidErrors(tI))
-        For tI = 1:1:+$Get(tLoadErrors) Set pErrors = pErrors _ $ListBuild(tLoadErrors(tI))
-        For tI = 1:1:+$Get(tInstallErrors) Set pErrors = pErrors _ $ListBuild(tInstallErrors(tI))
-        For tI = 1:1:+$Get(tValidWarnings) Set pWarnings = pWarnings _ $ListBuild(tValidWarnings(tI))
-        For tI = 1:1:+$Get(tInstallWarnings) Set pWarnings = pWarnings _ $ListBuild(tInstallWarnings(tI))
+        Set tValid = ##class(Config.NLS.Locales).IsValid(pName, .tErrors, .tWarnings)
+        Set pValid = ''tValid
+        For tI = 1:1:+$Get(tErrors) Set pErrors = pErrors _ $ListBuild(tErrors(tI))
+        For tI = 1:1:+$Get(tWarnings) Set pWarnings = pWarnings _ $ListBuild(tWarnings(tI))
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -312,15 +303,33 @@ ClassMethod ReadValidation(pName As %String, Output pValid As %Boolean, Output p
     Quit tSC
 }
 
-/// <p>Install the locale <var>pName</var> as the instance's current locale: the locale is read, the rules refuse one the vendor's own check
-/// does not admit, and then <method>SendInstall</method> installs it with the default collation of IRISTEMP read before and after
+/// <p>The vendor's <code>IsInstallable</code> of the locale <var>pName</var>, in <code>%SYS</code> by save and restore. The vendor's check
+/// writes the locale's definition for some locales, so only <method>Install</method> calls it, after the write gate. Overridable so a
+/// fixture can feed an answer and see the call; production never overrides it.</p>
+ClassMethod ReadInstallable(pName As %String, Output pInstallable As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pInstallable = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set pInstallable = ''##class(Config.NLS.Locales).IsInstallable(pName)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Install the locale <var>pName</var> as the instance's current locale: the locale is read, the vendor's own check
+/// (<method>ReadInstallable</method>) is asked, the rules refuse a locale it does not admit, and then <method>SendInstall</method> installs it with the default collation of IRISTEMP read before and after
 /// (<method>TempCollation</method>). Answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>.</p>
 ClassMethod Install(pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = ..State(pName, .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..ReadValidation(pName, .tValid, .tInstallable, .tErrors, .tWarnings)
+    Set tSC = ..ReadInstallable(pName, .tInstallable)
     If $$$ISERR(tSC) Quit ..Fail("the locale could not be checked before its install", tSC, .pHttpStatus, .pFault)
     Set tCode = ##class(OcuPilot.Area.OsMgmt.LocaleRules).Code(##class(OcuPilot.Area.OsMgmt.LocaleRules).#INSTALL, tRow, tInstallable)
     If tCode '= "" Quit ..Refused(tCode, .pHttpStatus, .pFault)

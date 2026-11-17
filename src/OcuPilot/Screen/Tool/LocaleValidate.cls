@@ -1,8 +1,7 @@
-/// <p>The agent's locale validation (Story 21.14, AD-36, AD-39, AD-60): whether one locale of this instance is valid and installable, read as
-/// the vendor's own checks answer it. It is a read tool with a class of its own, bound to Locale definitions
-/// (<class>OcuPilot.Screen.Descriptor.LocaleList</class>): a locale validation writes nothing, so it has no proposal. Its lines are
-/// vendor-written and reach no consumer (AD-39): this tool answers the two verdicts and the <b>counts</b> of the errors and the warnings,
-/// never a line.</p>
+/// <p>The agent's locale validation (Story 21.14, AD-36, AD-39, AD-60): whether one locale of this instance is valid, read as the vendor's
+/// <code>IsValid</code> answers it. It is a read tool with a class of its own, bound to Locale definitions
+/// (<class>OcuPilot.Screen.Descriptor.LocaleList</class>): it has no proposal. Its lines are vendor-written and reach no consumer (AD-39):
+/// this tool answers the verdict and the <b>counts</b> of the errors and the warnings, never a line.</p>
 /// <p><b>It reads through the same entry point the screen's route reads through</b>: <method>OcuPilot.Port.LocalePort.Invoke</method> on its
 /// <code>Validation</code> endpoint, behind the port's own gate (AD-29). The result is built here from the verdicts and the counts alone, so a
 /// field the port later adds never reaches the model.</p>
@@ -13,7 +12,7 @@ Parameter TOOLNAME = "osmgmt.locales.validate";
 
 Parameter KIND = "read";
 
-Parameter DESCRIPTION = "Validate one locale of this instance, named exactly as the Locale definitions list reports it, and read whether it is valid and whether it can be installed, with how many errors and warnings the instance found. It writes nothing. The text of the errors and warnings is not shown, here or on the screen. A name the list does not report is refused.";
+Parameter DESCRIPTION = "Validate one locale of this instance, named exactly as the Locale definitions list reports it, and read whether the instance finds its definition valid, with how many errors and warnings it found. The text of the errors and warnings is not shown, here or on the screen. A name the list does not report is refused.";
 
 /// <p>The screen this tool reads for, whose pairs are this tool's.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocaleList";
@@ -50,19 +49,18 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
     Quit ""
 }
 
-/// <p>The result: <code>{Name, Valid, Installable, Errors, Warnings}</code>, the last two whole numbers.</p>
+/// <p>The result: <code>{Name, Valid, ErrorCount, WarningCount}</code>, the last two whole numbers.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
         "type": "object",
         "properties": {
             "Name": {"type": "string", "description": "The locale validated."},
-            "Valid": {"type": "boolean", "description": "True when the instance finds the locale's definition valid and loadable."},
-            "Installable": {"type": "boolean", "description": "True when the instance's own check admits installing the locale."},
-            "Errors": {"type": "integer", "description": "How many errors the instance found. Their text is not shown."},
-            "Warnings": {"type": "integer", "description": "How many warnings the instance found. Their text is not shown."}
+            "Valid": {"type": "boolean", "description": "True when the instance finds the locale's definition valid."},
+            "ErrorCount": {"type": "integer", "description": "How many errors the instance found. Their text is not shown."},
+            "WarningCount": {"type": "integer", "description": "How many warnings the instance found. Their text is not shown."}
         },
-        "required": ["Name", "Valid", "Installable", "Errors", "Warnings"],
+        "required": ["Name", "Valid", "ErrorCount", "WarningCount"],
         "additionalProperties": false
     }
 }
@@ -95,9 +93,8 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         Set pResult = {}
         Do pResult.%Set("Name", tAnswer.%Get("Name"), "string")
         Do pResult.%Set("Valid", ''tAnswer.%Get("Valid"), "boolean")
-        Do pResult.%Set("Installable", ''tAnswer.%Get("Installable"), "boolean")
-        Do pResult.%Set("Errors", +tAnswer.%Get("ErrorCount"), "number")
-        Do pResult.%Set("Warnings", +tAnswer.%Get("WarningCount"), "number")
+        Do pResult.%Set("ErrorCount", +tAnswer.%Get("ErrorCount"), "number")
+        Do pResult.%Set("WarningCount", +tAnswer.%Get("WarningCount"), "number")
         Set pHttpStatus = 200
         Set pFault = ""
     } Catch ex {

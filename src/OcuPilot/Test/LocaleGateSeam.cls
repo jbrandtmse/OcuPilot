@@ -1,9 +1,10 @@
 /// <p><class>OcuPilot.Port.LocalePort</class> with its pair sets evaluated through <class>OcuPilot.Test.ScreenGate</class>, whose held set a test
 /// declares, so <class>OcuPilot.Test.PortGate</class>, <class>OcuPilot.Test.LocaleRead</class> and <class>OcuPilot.Test.LocaleRules</class> drive the
 /// port's refusal in a process holding <code>%All</code>. The install and the delete are recorded instead of made (<method>Calls</method>), and
-/// <method>VendorRefuses</method> makes them answer an error, so a test sees what the port would send and no locale changes. The vendor's checks
-/// answer what <method>Feed</method> names, the collation of IRISTEMP what <method>Collations</method> names, and a locale <method>HoldLocale</method>
-/// names is listed whether or not the instance holds it. Nothing else differs from the shipped port.</p>
+/// <method>VendorRefuses</method> makes them answer an error, so a test sees what the port would send and no locale changes. The vendor's validity
+/// check answers what <method>Feed</method> names, its install check what <method>FeedInstallable</method> names (every ask recorded, <method>Checks</method>),
+/// the collation of IRISTEMP what <method>Collations</method> names, and a locale <method>HoldLocale</method> names is listed whether or not the instance
+/// holds it. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.LocaleGateSeam Extends OcuPilot.Port.LocalePort
 {
@@ -17,7 +18,7 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
+    Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
 }
 
 /// <p>Answer an error from <method>SendInstall</method> and <method>SendDelete</method> until <method>Reset</method>.</p>
@@ -39,11 +40,30 @@ ClassMethod Calls() As %String
     Quit tOut
 }
 
-/// <p>Make <method>ReadValidation</method> answer <var>pValid</var>, <var>pInstallable</var> and the line lists <var>pErrors</var> and
-/// <var>pWarnings</var> (<code>%List</code>s) whatever the locale, until <method>Reset</method>.</p>
-ClassMethod Feed(pValid As %Boolean, pInstallable As %Boolean, pErrors As %List = "", pWarnings As %List = "")
+/// <p>Make <method>ReadValidation</method> answer <var>pValid</var> and the line lists <var>pErrors</var> and <var>pWarnings</var>
+/// (<code>%List</code>s) whatever the locale, until <method>Reset</method>.</p>
+ClassMethod Feed(pValid As %Boolean, pErrors As %List = "", pWarnings As %List = "")
 {
-    Set ^||OcuPilotLocaleFed = $ListBuild(pValid, pInstallable, pErrors, pWarnings)
+    Set ^||OcuPilotLocaleFed = $ListBuild(pValid, pErrors, pWarnings)
+}
+
+/// <p>Make <method>ReadInstallable</method> answer <var>pInstallable</var> whatever the locale, until <method>Reset</method>.</p>
+ClassMethod FeedInstallable(pInstallable As %Boolean)
+{
+    Set ^||OcuPilotLocaleInstallable = ''pInstallable
+}
+
+/// <p>The locales <method>ReadInstallable</method> was asked about since <method>Reset</method>, comma-joined, answered or not.</p>
+ClassMethod Checks() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotLocaleChecks(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ ^||OcuPilotLocaleChecks(tI)
+    }
+    Quit tOut
 }
 
 /// <p>Make the first <method>TempCollation</method> after this answer <var>pBefore</var> and every later one <var>pAfter</var>, until
@@ -113,16 +133,25 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##super(pMessage, pStatus, pCode)
 }
 
-ClassMethod ReadValidation(pName As %String, Output pValid As %Boolean, Output pInstallable As %Boolean, Output pErrors As %List, Output pWarnings As %List) As %Status
+ClassMethod ReadValidation(pName As %String, Output pValid As %Boolean, Output pErrors As %List, Output pWarnings As %List) As %Status
 {
     If $Data(^||OcuPilotLocaleFed) {
         Set pValid = $List(^||OcuPilotLocaleFed, 1)
-        Set pInstallable = $List(^||OcuPilotLocaleFed, 2)
-        Set pErrors = $List(^||OcuPilotLocaleFed, 3)
-        Set pWarnings = $List(^||OcuPilotLocaleFed, 4)
+        Set pErrors = $List(^||OcuPilotLocaleFed, 2)
+        Set pWarnings = $List(^||OcuPilotLocaleFed, 3)
         Quit $$$OK
     }
-    Quit ##super(pName, .pValid, .pInstallable, .pErrors, .pWarnings)
+    Quit ##super(pName, .pValid, .pErrors, .pWarnings)
+}
+
+ClassMethod ReadInstallable(pName As %String, Output pInstallable As %Boolean) As %Status
+{
+    Set ^||OcuPilotLocaleChecks($Increment(^||OcuPilotLocaleChecks)) = pName
+    If $Data(^||OcuPilotLocaleInstallable) {
+        Set pInstallable = ^||OcuPilotLocaleInstallable
+        Quit $$$OK
+    }
+    Quit ##super(pName, .pInstallable)
 }
 
 ClassMethod TempCollation() As %String

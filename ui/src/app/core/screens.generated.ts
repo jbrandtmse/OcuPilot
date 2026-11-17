@@ -23603,7 +23603,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "row": "locale",
-      "label": "The locales this instance defines: the current one, and the custom ones, whose names start with y and which can be deleted. Validate answers whether a locale is valid and installable. The NLS defaults are in osmgmt.nlsdefaults.",
+      "label": "The locales this instance defines: the current one, and the custom ones, whose names start with y and which can be deleted. Validate answers whether the instance finds a locale valid. The NLS defaults are in osmgmt.nlsdefaults.",
       "source": {
         "port": "locale",
         "endpoint": "Locales",

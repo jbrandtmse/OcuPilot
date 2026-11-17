@@ -78,8 +78,8 @@ ClassMethod VendorList(Output pCurrent As %String) As %String
     Quit tNames
 }
 
-/// <p>The vendor's three checks of <var>pName</var>, <code>valid|loadable|installable</code> as 0 or 1, read in <code>%SYS</code> independently of the
-/// port.</p>
+/// <p>The vendor's <code>IsValid</code> of <var>pName</var>, <code>valid|errors|warnings</code> as 0 or 1 and the two line counts, read in <code>%SYS</code>
+/// independently of the port.</p>
 ClassMethod VendorChecks(pName As %String) As %String
 {
     Set tOut = ""
@@ -87,9 +87,7 @@ ClassMethod VendorChecks(pName As %String) As %String
     Try {
         Set $NAMESPACE = "%SYS"
         Set tValid = ''##class(Config.NLS.Locales).IsValid(pName, .tE1, .tW1)
-        Set tLoadable = ''##class(Config.NLS.Locales).IsLoadable(pName, , .tE2)
-        Set tInstallable = ''##class(Config.NLS.Locales).IsInstallable(pName, .tE3, .tW3)
-        Set tOut = tValid _ "|" _ tLoadable _ "|" _ tInstallable _ "|" _ (+$Get(tE1) + +$Get(tE2) + +$Get(tE3)) _ "|" _ (+$Get(tW1) + +$Get(tW3))
+        Set tOut = tValid _ "|" _ +$Get(tE1) _ "|" _ +$Get(tW1)
     } Catch {
         Set tOut = ""
     }
@@ -155,8 +153,8 @@ Method TestANamedReadComparesExactlyAndNeverAsAPattern()
     Do $$$AssertEquals(##class(OcuPilot.Api.LocaleError).ReasonFor("LOCALE.NOTFOUND"), "There is no locale with that name.", "the refusal's sentence is the published one")
 }
 
-/// <p><b>AC2.</b> Validate through the port and the agent's tool (the screen's route is <method>TestTheValidationRouteAnswersJsonOverTheWire</method>): <code>Valid</code> and <code>Installable</code> match the vendor's own
-/// answers (<code>Valid</code> reads the definition valid and loadable), the tool's result is the two verdicts, the name and the counts
+/// <p><b>AC2.</b> Validate through the port and the agent's tool (the screen's route is <method>TestTheValidationRouteAnswersJsonOverTheWire</method>): <code>Valid</code>
+/// and the counts match the vendor's <code>IsValid</code>, the tool's result is the verdict, the name and the counts
 /// (<method>TestTheToolHoldsNoVendorLine</method> feeds it lines), and a name the list does not hold is 404 <code>LOCALE.NOTFOUND</code> at the tool.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.LocaleValidate</class>'s <code>View</code> answers the count as <code>0</code> -> the counts
 /// assertion goes red.</p>
@@ -165,20 +163,20 @@ Method TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine()
     Set tNames = ..VendorList(.tCurrent)
     Set tChecks = ..VendorChecks(tCurrent)
     Do $$$AssertNotEquals(tChecks, "", "the vendor's checks of the current locale are read")
-    Set tValid = $Piece(tChecks, "|", 1) && $Piece(tChecks, "|", 2)
+    Set tValid = $Piece(tChecks, "|", 1)
     Kill tQuery
     Set tQuery("name") = tCurrent
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Locales", "GET", .tQuery, "", .tRow, .tHttp, .tFault)
     Do ..HoldAll()
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
-    Do $$$AssertEquals(tHttp _ "|" _ tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("Installable"), "200|" _ ''tValid _ "|" _ $Piece(tChecks, "|", 3), "the port's Valid and Installable are the vendor's")
-    Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "the counts are the vendor's")
+    Do $$$AssertEquals(tHttp _ "|" _ tAnswer.%Get("Valid"), "200|" _ ''tValid, "the port's Valid is IsValid's answer")
+    Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), $Piece(tChecks, "|", 2) _ "|" _ $Piece(tChecks, "|", 3), "the counts are IsValid's")
     Set tSC = $ClassMethod(..#VALIDATE, "View", "", {"name": (tCurrent)}, 100, .tResult, .tToolHttp, .tToolFault)
     Do $$$AssertStatusOK(tSC, "the agent's tool answers (" _ $Get(tToolHttp) _ ")")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tResult), "Errors,Installable,Name,Valid,Warnings", "its result is exactly the two verdicts, the name and the two counts")
-    Do $$$AssertEquals(tResult.%Get("Valid") _ "|" _ tResult.%Get("Installable") _ "|" _ tResult.%Get("Errors") _ "|" _ tResult.%Get("Warnings") _ "|" _ tResult.%GetTypeOf("Errors") _ "|" _ tResult.%GetTypeOf("Warnings"), ''tValid _ "|" _ $Piece(tChecks, "|", 3) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5) _ "|number|number", "the tool's verdicts and counts are the vendor's")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tResult), "ErrorCount,Name,Valid,WarningCount", "its result is exactly the verdict, the name and the two counts")
+    Do $$$AssertEquals(tResult.%Get("Valid") _ "|" _ tResult.%Get("ErrorCount") _ "|" _ tResult.%Get("WarningCount") _ "|" _ tResult.%GetTypeOf("ErrorCount") _ "|" _ tResult.%GetTypeOf("WarningCount"), ''tValid _ "|" _ $Piece(tChecks, "|", 2) _ "|" _ $Piece(tChecks, "|", 3) _ "|number|number", "the tool's verdict and counts are IsValid's")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(##class(OcuPilot.Screen.Tool.LocaleValidate).ResultSchema(), tResult, .tProblem), "and conforms to its own result schema: " _ $Get(tProblem))
     Set tSC = $ClassMethod(..#VALIDATE, "View", "", {"name": "nosuchlocale"}, 100, .tAbsent, .tToolHttp, .tToolFault)
     Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ tToolHttp _ "|" _ $Select($IsObject($Get(tToolFault)): tToolFault.%Get("code"), 1: ""), "1|404|LOCALE.NOTFOUND", "the tool refuses a name the list does not hold")
@@ -186,7 +184,7 @@ Method TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine()
     Do $$$AssertEquals(tToolHttp _ "|" _ $Select($IsObject($Get(tToolFault)): tToolFault.%Get("code"), 1: ""), "400|TOOL.ARGUMENTS", "and an argument the schema refuses, before the port is asked")
 }
 
-/// <p><b>AC2.</b> The screen's validation route answers over the wire as the port does: 200 and <code>application/json</code> with the name, the two verdicts and the
+/// <p><b>AC2.</b> The screen's validation route answers over the wire as the port does: 200 and <code>application/json</code> with the name, the verdict and the
 /// counts, a name the list does not hold 404 <code>LOCALE.NOTFOUND</code> in the envelope, and a request that carries no credentials is refused before any read.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Area.OsMgmt.LocaleRules</class>'s <code>HandleValidate</code> answers the fresh row in place of the port's validation -> the verdict
 /// legs go red.</p>
@@ -203,8 +201,8 @@ Method TestTheValidationRouteAnswersJsonOverTheWire()
     Do $$$AssertEquals(tStatus, 200, "the route answers 200: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json: " _ $Get(tHeaders("CONTENT-TYPE")))
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tRaw)
-    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Installable,Name,Valid,WarningCount", "its body is the validation's five members, no line")
-    Do $$$AssertEquals(tAnswer.Name _ "|" _ tAnswer.Valid _ "|" _ tAnswer.Installable _ "|" _ tAnswer.ErrorCount _ "|" _ tAnswer.WarningCount, tCurrent _ "|" _ (''$Piece(tChecks, "|", 1) && ''$Piece(tChecks, "|", 2)) _ "|" _ $Piece(tChecks, "|", 3) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "with the vendor's verdicts and counts")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Name,Valid,WarningCount", "its body is the validation's four members, no line")
+    Do $$$AssertEquals(tAnswer.Name _ "|" _ tAnswer.Valid _ "|" _ tAnswer.ErrorCount _ "|" _ tAnswer.WarningCount, tCurrent _ "|" _ ''$Piece(tChecks, "|", 1) _ "|" _ $Piece(tChecks, "|", 2) _ "|" _ $Piece(tChecks, "|", 3), "with IsValid's verdict and counts")
     Set tUrl = tBase _ $Replace(tRoute, ":name", "nosuchlocale")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tUrl, tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 404, "a name the list does not hold is 404: " _ $Extract($Get(tRaw), 1, 300))
@@ -217,10 +215,9 @@ Method TestTheValidationRouteAnswersJsonOverTheWire()
 }
 
 /// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the port's validation, which the screen's route answers whole, carries none of them:
-/// only the name, the two verdicts and the counts of every line. The verdicts are whatever the checks answered, and a locale that is not valid is not
-/// installable by that alone.</p>
+/// only the name, the verdict and the counts of every line. The verdict is whatever the check answered.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Port.LocalePort</class>'s <code>Validation</code> adds the first error line to its answer -> the member and
-/// no-line assertions go red.</p>
+/// no-line assertions go red; <code>Validation</code> asks <code>ReadInstallable</code> -> the no-check assertion goes red.</p>
 Method TestTheValidationAnswerHoldsNoVendorLine()
 {
     Set tNames = ..VendorList(.tCurrent)
@@ -228,21 +225,22 @@ Method TestTheValidationAnswerHoldsNoVendorLine()
     Set tWarning = "warning line e81a"
     Set tErrors = $ListBuild(tError)
     For tI = 2:1:61 Set tErrors = tErrors _ $ListBuild("error " _ tI)
-    Do $ClassMethod(..#SEAM, "Feed", 0, 1, tErrors, $ListBuild(tWarning, "warning two"))
+    Do $ClassMethod(..#SEAM, "Feed", 0, tErrors, $ListBuild(tWarning, "warning two"))
     Do ..HoldAll()
     Kill tQuery
     Set tQuery("name") = tCurrent
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "the validation answers")
     If '$IsObject($Get(tAnswer)) Quit
-    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Installable,Name,Valid,WarningCount", "its answer is the name, the two verdicts and the two counts")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Name,Valid,WarningCount", "its answer is the name, the verdict and the two counts")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Checks"), "", "and the vendor's install check, which writes some locales' definitions, was not asked")
     Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), "61|2", "the counts are of every line")
     Do $$$AssertTrue(tAnswer.%ToJSON() '[ tError, "no error line is in the answer: " _ tAnswer.%ToJSON())
     Do $$$AssertTrue(tAnswer.%ToJSON() '[ tWarning, "no warning line is in the answer: " _ tAnswer.%ToJSON())
-    Do $$$AssertEquals(tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("Installable"), "0|1", "the verdicts are those the checks answered")
+    Do $$$AssertEquals(tAnswer.%Get("Valid"), 0, "the verdict is the one the check answered")
 }
 
-/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the agent's tool result carries none of them: only the name, the two verdicts and
+/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the agent's tool result carries none of them: only the name, the verdict and
 /// the counts of every line. The lines are fed through <class>OcuPilot.Test.LocaleValidateSeam</class>, so the test does not depend on what the
 /// instance's own locale answers.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.LocaleValidate</class>'s <code>View</code> passes the answer's <code>Warnings</code> lines through -> the
@@ -252,19 +250,20 @@ Method TestTheToolHoldsNoVendorLine()
     Set tNames = ..VendorList(.tCurrent)
     Set tError = "error line 71c4"
     Set tWarning = "warning line 9d2e"
-    Do $ClassMethod(..#SEAM, "Feed", 0, 1, $ListBuild(tError), $ListBuild(tWarning, "warning two"))
+    Do $ClassMethod(..#SEAM, "Feed", 0, $ListBuild(tError), $ListBuild(tWarning, "warning two"))
     Do ..HoldAll()
     Set tSC = $ClassMethod("OcuPilot.Test.LocaleValidateSeam", "View", "", {"name": (tCurrent)}, 100, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the tool answers (" _ $Get(tHttp) _ ")")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tResult.%Get("Valid") _ "|" _ tResult.%Get("Installable") _ "|" _ tResult.%Get("Errors") _ "|" _ tResult.%Get("Warnings"), "0|1|1|2", "the verdicts and the counts of every line")
+    Do $$$AssertEquals(tResult.%Get("Valid") _ "|" _ tResult.%Get("ErrorCount") _ "|" _ tResult.%Get("WarningCount"), "0|1|2", "the verdict and the counts of every line")
     Do $$$AssertTrue(tResult.%ToJSON() '[ tError, "no error line is in the result: " _ tResult.%ToJSON())
     Do $$$AssertTrue(tResult.%ToJSON() '[ tWarning, "no warning line is in the result: " _ tResult.%ToJSON())
 }
 
 /// <p><b>AC2.</b> Every read is refused to a caller holding none of its pairs, naming the first, before any vendor call; a caller holding the read pairs reads
 /// and is refused an install or a delete naming <code>%DB_IRISSYS:WRITE</code>, with nothing recorded.</p>
-/// <p>Mutation (Rule 19): <code>WRITEPAIRS</code> without <code>%DB_IRISSYS:WRITE</code> -> the write rows go red.</p>
+/// <p>Mutation (Rule 19): <code>WRITEPAIRS</code> without <code>%DB_IRISSYS:WRITE</code> -> the write rows go red; <code>Invoke</code> asks <code>ReadInstallable</code>
+/// before the gate for an install -> the install row goes red.</p>
 Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
 {
     For tCase = $ListBuild("Locales", "LIST"), $ListBuild("Locales", "GET"), $ListBuild("Validation", "GET") {
@@ -285,7 +284,7 @@ Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
         Set tQuery("name") = "yzzw"
         Set tSC = $ClassMethod(..#SEAM, "Invoke", "Locales", tType, .tQuery, "", .tOut, .tHttp, .tFault)
         Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
-        Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $ClassMethod(..#SEAM, "Calls"), "403|%DB_IRISSYS:WRITE|", tType _ " is refused naming the write pair, with nothing sent")
+        Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $ClassMethod(..#SEAM, "Calls") _ $ClassMethod(..#SEAM, "Checks"), "403|%DB_IRISSYS:WRITE|", tType _ " is refused naming the write pair, with nothing sent and the vendor's install check not asked")
     }
 }
 

@@ -8,15 +8,15 @@ import { Dialog } from '../../shell/dialog';
 /** The route the dialog reads (AD-55): one locale's checks, answered for the screen alone. */
 export const LOCALE_PATH = '/api/ocupilot/locales';
 
-/** The two verdicts the answer carries, named as the server names them. */
+/** The verdict the answer carries, named as the server names it. */
 export const LOCALE_VALID_MEMBER = 'Valid';
 
 /** How the open dialog stands: the read is out, the locale is valid, it has problems, or the instance refused the read with a sentence. */
 type Verdict = 'reading' | 'valid' | 'problems' | 'refused';
 
 /**
- * Locale definitions' Validate (Story 21.14, AD-39): reads the checks the instance runs on one locale and says in one sentence whether it is
- * valid. It writes nothing, and it shows no line the instance wrote: the answer carries none, so the sentence is all it states.
+ * Locale definitions' Validate (Story 21.14, AD-39): reads the instance's validity check of one locale and says in one sentence whether it
+ * is valid. It shows no line the instance wrote: the answer carries none, so the sentence is all it states.
  *
  * A locale the instance does not list, and any other refusal, is drawn as the instance's own sentence. The dialog closes on Close, Escape and
  * the scrim, each emitting `closed` once.
@@ -79,7 +79,7 @@ export class LocaleValidateDialog implements OnInit {
     void this.read();
   }
 
-  /** Read the locale's checks once; an answer that arrives after the dialog is gone is dropped. */
+  /** Read the locale's validity once; an answer that arrives after the dialog is gone is dropped. */
   private async read(): Promise<void> {
     const result = await this.api.requestJson<Record<string, unknown>>(`${LOCALE_PATH}/${encodeEntityId(this.name())}/validation`);
     if (this.gone) return;

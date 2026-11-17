@@ -1,8 +1,8 @@
 /// <p>Pins every refusal of Story 21.14's locale writes as <class>OcuPilot.Area.OsMgmt.LocaleRules</class> judges it (AC3, AC4; AD-21, AD-29, AD-51, AD-55,
-/// AD-59): an install the vendor's own check refuses is 409 <code>LOCALE.NOTINSTALLABLE</code>, a delete of a locale InterSystems ships is
-/// <code>LOCALE.SYSTEM</code> and of the current locale <code>LOCALE.CURRENT</code>, and a locale the list does not hold is 404
-/// <code>LOCALE.NOTFOUND</code>; each is asked at the port, at the agent's mint and at the screen's own action route, always before the vendor's install or
-/// delete, which <class>OcuPilot.Test.LocaleGateSeam</class> records instead of making. The allowed paths send exactly one call with the locale's name, an
+/// AD-59): a delete of a locale InterSystems ships is <code>LOCALE.SYSTEM</code> and of the current locale <code>LOCALE.CURRENT</code>, and a locale the
+/// list does not hold is 404 <code>LOCALE.NOTFOUND</code>; each is asked at the port, at the agent's mint and at the screen's own action route, always before
+/// the vendor's install or delete, which <class>OcuPilot.Test.LocaleGateSeam</class> records instead of making. An install the vendor's own check refuses is
+/// 409 <code>LOCALE.NOTINSTALLABLE</code> at the port alone, inside the install: the mint never asks that check. The allowed paths send exactly one call with the locale's name, an
 /// install names the collation of IRISTEMP before and after, a vendor refusal is logged and answered 500, and the copy-out scripts name the locale as a literal.</p>
 /// <p><b>Live-safe.</b> No locale is installed or deleted: a delete of a locale that exists is only ever asked through the seam, because the vendor itself refuses
 /// nothing. <b>What it needs from the environment:</b> OcuPilot installed and serving.</p>
@@ -97,22 +97,25 @@ Method TestTheRulesMatrix()
 
 /// <p><b>AC3.</b> At the port an install of a locale the vendor refuses is 409 <code>LOCALE.NOTINSTALLABLE</code> and one the list does not hold is 404, each with
 /// the install seam never called; an install the vendor admits sends one call naming the locale and answers the collation of IRISTEMP before and after.</p>
+/// <p>The vendor's install check is asked once per install that reaches it, and for no unlisted name.</p>
 /// <p>Mutation (Rule 19): <code>Install</code> asks the rules without the installable answer -> the refusal row goes red; <code>SendInstall</code> is called
 /// before the rules -> the calls assertion goes red.</p>
 Method TestAnInstallIsRefusedBeforeTheVendorAndAnswersTheCollationBeforeAndAfter()
 {
     Set tNames = ##class(OcuPilot.Test.LocaleRead).VendorList(.tCurrent)
     Do ..HoldAll()
-    Do $ClassMethod(..#SEAM, "Feed", 1, 0, "", $ListBuild("a warning"))
+    Do $ClassMethod(..#SEAM, "FeedInstallable", 0)
     Do $$$AssertEquals(..Refusal("INSTALL", tCurrent) _ "|" _ $ClassMethod(..#SEAM, "Calls"), "409|LOCALE.NOTINSTALLABLE|", "an install the vendor's check refuses is 409 and calls nothing")
     Do $$$AssertEquals(..Refusal("INSTALL", "NoSuchLocale") _ "|" _ $ClassMethod(..#SEAM, "Calls"), "404|LOCALE.NOTFOUND|", "an unlisted name is 404 and calls nothing")
     Do $$$AssertEquals(..Refusal("INSTALL", $ZConvert(tCurrent, "U")) _ "|" _ $ClassMethod(..#SEAM, "Calls"), "404|LOCALE.NOTFOUND|", "a name in another letter case is not the listed locale")
-    Do $ClassMethod(..#SEAM, "Feed", 1, 1, "", "")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Checks"), tCurrent, "the vendor's install check was asked once, for the listed locale alone")
+    Do $ClassMethod(..#SEAM, "FeedInstallable", 1)
     Do $ClassMethod(..#SEAM, "Collations", "IRIS standard", "German3")
     Kill tQuery
     Set tQuery("name") = tCurrent
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Locales", "INSTALL", .tQuery, "", .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#SEAM, "Calls") _ "|" _ tOut.%Get("Name") _ "|" _ tOut.%Get("TempCollationBefore") _ "|" _ tOut.%Get("TempCollationAfter"), "200|INSTALL|" _ tCurrent _ "|" _ tCurrent _ "|IRIS standard|German3", "an admitted install makes one call and names IRISTEMP's collation before and after")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Checks"), tCurrent _ "," _ tCurrent, "and the vendor's install check was asked once more, for that install")
     Do $ClassMethod(..#SEAM, "VendorRefuses")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Locales", "INSTALL", .tQuery, "", .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#SEAM, "Faults"), "500|INTERNAL|INTERNAL|error", "a vendor refusal is logged and answered 500 INTERNAL")
@@ -142,19 +145,17 @@ Method TestADeleteIsRefusedBeforeTheVendorForASystemAndTheCurrentLocale()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(..#SEAM, "Faults"), "500|INTERNAL|INTERNAL|error", "a vendor refusal is logged and answered 500 INTERNAL")
 }
 
-/// <p><b>AC3, AC4 (AD-55).</b> The agent's mint asks the same rules before anything is stored: a delete of a locale InterSystships or of the current locale is
-/// refused in the published sentence, an unlisted name in the port's 404 sentence, and an install the vendor's check refuses in its own sentence; the ones the
-/// rules admit mint.</p>
-/// <p>Mutation (Rule 19): <code>WriteProblem</code> never reads the installable answer -> the install row goes red.</p>
+/// <p><b>AC3, AC4 (AD-55).</b> The agent's mint asks the same rules before anything is stored: a delete of a locale InterSystems ships or of the current locale is
+/// refused in the published sentence and an unlisted name in the port's 404 sentence; the ones the rules admit mint. An install mints whatever the vendor's install
+/// check would answer, and the mint never asks it (the check writes some locales' definitions).</p>
+/// <p>Mutation (Rule 19): <code>WriteProblem</code> asks the port's <code>ReadInstallable</code> for an install -> the no-check assertion goes red.</p>
 Method TestTheMintAsksTheSameRules()
 {
     Set tNames = ##class(OcuPilot.Test.LocaleRead).VendorList(.tCurrent)
     Do $$$AssertTrue(($Extract(tCurrent) '= "y") && ($Extract($Piece(tNames, ",", 1)) '= "y"), "precondition: the current locale and the first listed one are locales InterSystems ships: " _ tCurrent _ ", " _ $Piece(tNames, ",", 1))
     Do ..HoldAll()
-    Do $ClassMethod(..#SEAM, "Feed", 1, 0, "", "")
-    Do $$$AssertEquals(..Minted(..#INSTALLTOOL, tCurrent), ##class(OcuPilot.Api.LocaleError).ReasonFor("LOCALE.NOTINSTALLABLE"), "an install the vendor refuses is refused at the mint")
-    Do $ClassMethod(..#SEAM, "Feed", 1, 1, "", "")
-    Do $$$AssertEquals(..Minted(..#INSTALLTOOL, tCurrent), "", "one it admits mints")
+    Do $ClassMethod(..#SEAM, "FeedInstallable", 0)
+    Do $$$AssertEquals(..Minted(..#INSTALLTOOL, tCurrent) _ "|" _ $ClassMethod(..#SEAM, "Checks"), "|", "an install mints whatever the vendor's install check would answer, and the mint never asks it")
     Do $$$AssertEquals(..Minted(..#INSTALLTOOL, "NoSuchLocale"), ##class(OcuPilot.Api.LocaleError).ReasonFor("LOCALE.NOTFOUND"), "an unlisted name is refused in the port's sentence")
     Do $$$AssertEquals(..Minted(..#DELETETOOL, tCurrent), ##class(OcuPilot.Api.LocaleError).ReasonFor("LOCALE.SYSTEM"), "a delete of a system locale is refused")
     Do $ClassMethod(..#SEAM, "HoldLocale", "yzzw", "probe", 1, 1)

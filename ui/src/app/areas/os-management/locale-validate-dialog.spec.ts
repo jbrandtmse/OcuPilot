@@ -65,7 +65,7 @@ afterEach(() => {
 describe('the Validate dialog', () => {
   // Mutation (Rule 19): read `Valid` from another member -> a valid locale reads "has problems" and this goes red.
   it('reads the locale\u2019s validation once, titled Validate, and says it is valid', async () => {
-    const { host, paths } = await mount({ kind: 'ok', status: 200, body: { Name: 'enuw', Valid: true, Installable: true, Errors: [], Warnings: [] } });
+    const { host, paths } = await mount({ kind: 'ok', status: 200, body: { Name: 'enuw', Valid: true, ErrorCount: 0, WarningCount: 0 } });
     expect(paths).toEqual(['/api/ocupilot/locales/enuw/validation']);
     expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.licenseKeyValidate);
     expect(host.querySelector('[data-locale-validate-name]')?.textContent?.trim()).toBe('enuw');
@@ -78,7 +78,7 @@ describe('the Validate dialog', () => {
     const { host } = await mount({
       kind: 'ok',
       status: 200,
-      body: { Name: 'deuw', Valid: false, Installable: true, Errors: ['Table is not compiled'], Warnings: ['A warning line'], ErrorCount: 1, WarningCount: 1, Truncated: false },
+      body: { Name: 'deuw', Valid: false, Errors: ['Table is not compiled'], Warnings: ['A warning line'], ErrorCount: 1, WarningCount: 1, Truncated: false },
     });
     expect(result(host)).toBe(STRINGS.localeValidateProblems);
     expect(STRINGS.localeValidateProblems).toBe('This locale has problems.');

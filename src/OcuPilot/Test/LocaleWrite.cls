@@ -2,7 +2,9 @@
 /// screen's own action route (<class>OcuPilot.Test.EcpActionFixture</class>) and by the agent's mint and confirm (<class>OcuPilot.Test.LicenseProbe</class>), with the
 /// current locale reloaded; another locale installed by both callers and the original installed again, the answer naming the collation of IRISTEMP before and
 /// after; a custom locale the class creates deleted by both, and a locale InterSystems ships, the current locale and an unlisted name refused 409 or 404 before the
-/// vendor's delete, which would carry them out; and a configured table read as configured.</p>
+/// vendor's delete, which would carry them out; a configured table read as configured; Validate's verdict and counts read from the vendor's <code>IsValid</code>
+/// for a custom definition it accepts and one it refuses; and Validate and the install mint leaving <code>^SYS("NLS")</code> as it was, on a locale whose vendor install
+/// check writes.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, and a second locale the
 /// instance can install (<parameter>OTHER</parameter>), because the class installs locales, creates and deletes one, sets the locale-format switch and a configured table
 /// and sets the governance policy. Every test restores the current locale, the switch and the configured table it found, and deletes the custom locale it made, on
@@ -35,6 +37,9 @@ Parameter OTHER = "deuw";
 
 Parameter CUSTOM = "yzzw";
 
+/// <p>A custom locale whose name the vendor's <code>IsValid</code> refuses (it is not a <code>y</code>, a language and a character set).</p>
+Parameter REFUSEDCUSTOM = "yzzp";
+
 /// <p>The configured table the read test sets, a <code>CSP</code> translation table every locale of this build lists.</p>
 Parameter CONFIGURED = "CP1252";
 
@@ -64,6 +69,7 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedNode = tNode
     Set ..PreparedCsp = tCsp
     Do ..VendorRemoveCustom()
+    Do ..Sys("RemoveCustom", ..#REFUSEDCUSTOM)
     Quit $$$OK
 }
 
@@ -79,7 +85,7 @@ Method OnAfterOneTest() As %Status
 {
     Kill ^||OcuPilotDatabaseWritePort
     Do ..Restore()
-    Do $$$AssertEquals(..VendorExists(..#CUSTOM), 0, "the custom locale is gone")
+    Do $$$AssertEquals(..VendorExists(..#CUSTOM) _ ..VendorExists(..#REFUSEDCUSTOM), "00", "the custom locales are gone")
     Do $$$AssertEquals(..VendorCurrent() _ "|" _ ..VendorNodeText() _ "|" _ ..VendorCspText(), ..PreparedLocale _ "|" _ ..PreparedNode _ "|" _ ..PreparedCsp, "the current locale, the switch and the configured table are as the class found them")
     Kill tRows
     Merge tRows = ..PreparedPolicy
@@ -104,6 +110,7 @@ Method Restore()
     Set tMoved = (..VendorCurrent() '= ..PreparedLocale)
     If tMoved Do ..VendorInstall(..PreparedLocale)
     Do ..VendorRemoveCustom()
+    Do ..Sys("RemoveCustom", ..#REFUSEDCUSTOM)
     If ..VendorNodeText() '= ..PreparedNode {
         Do ..VendorSetNode(..PreparedNode)
         Set tMoved = 1
@@ -342,6 +349,75 @@ Method TestACustomLocaleIsDeletedOnBothCallersAndTheOthersAreRefused()
     Set tOutcome = ..Agent("OcuPilot.Screen.Tool.LocaleDelete", ..#CUSTOM, {"Name": (..#CUSTOM)}, .tResult)
     Do $$$AssertEquals(tOutcome _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult) _ "|" _ ..VendorExists(..#CUSTOM), "200 |notFound|0", "the agent's confirmed delete removes it too: " _ tOutcome)
     Do $$$AssertEquals(..VendorCurrent() _ "|" _ ..VendorExists(tOriginal), tOriginal _ "|1", "the original locale was never touched")
+}
+
+/// <p><b>AC2.</b> Validate's verdict and counts are the vendor's <code>IsValid</code> answer: for a custom locale made from the current one, which <code>IsValid</code>
+/// accepts, the port reads <code>Valid</code> true; for one whose name it refuses, <code>Valid</code> false with at least one error counted, and in both the answer holds
+/// the vendor's own counts and no line.</p>
+/// <p>Mutation (Rule 19): <code>ReadValidation</code> answers <code>Valid</code> true whatever <code>IsValid</code> says -> the refused-name row goes red.</p>
+Method TestValidateReadsIsValidsAnswerForAnAcceptedAndARefusedDefinition()
+{
+    Do $$$AssertEquals(..VendorCreate(..#CUSTOM), 1, "a custom locale is created from the current one, as the test's own setup")
+    Do $$$AssertEquals(..VendorCreate(..#REFUSEDCUSTOM), 1, "and one whose name IsValid refuses")
+    Set tAccepted = $ClassMethod(..#READ, "VendorChecks", ..#CUSTOM)
+    Set tRefused = $ClassMethod(..#READ, "VendorChecks", ..#REFUSEDCUSTOM)
+    Do $$$AssertEquals($Piece(tAccepted, "|", 1), 1, "IsValid accepts the locale made from the current one")
+    Do $$$AssertEquals($Piece(tRefused, "|", 1) _ "|" _ ($Piece(tRefused, "|", 2) > 0), "0|1", "and refuses the other with at least one error")
+    For tName = ..#CUSTOM, ..#REFUSEDCUSTOM {
+        Kill tQuery
+        Set tQuery("name") = tName
+        Set tSC = $ClassMethod(..#PORT, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp, 200, "the port validates " _ tName)
+        If '$IsObject($Get(tAnswer)) Continue
+        Set tChecks = $Select(tName = ..#CUSTOM: tAccepted, 1: tRefused)
+        Do $$$AssertEquals(tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), tChecks, tName _ ": Valid and the counts are IsValid's own")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Name,Valid,WarningCount", tName _ ": the answer holds no line")
+    }
+}
+
+/// <p><b>AC2, AC3.</b> Validate and the install mint write nothing, on a locale whose vendor install check writes. The control comes first: the vendor's own
+/// <code>IsInstallable</code> of <code>jpnw</code>, one of the nine shipped locales whose check fills two accent-table fields of its definition, moves the checksum of
+/// <code>^SYS("NLS")</code> on this instance, and the node is put back. Then the port's validation of every listed locale, the screen's route, the agent's tool and
+/// the install tool's mint for <code>jpnw</code> leave the checksum as it was. A write to <code>jpnw</code>'s definition is put back.</p>
+/// <p>Mutation (Rule 19): <code>ReadValidation</code> also calls <code>IsInstallable</code> -> the checksum assertion goes red.</p>
+Method TestValidateAndTheInstallMintLeaveTheNlsDefinitionsAsTheyWere()
+{
+    Set tLocale = "jpnw"
+    Set tNames = $ClassMethod(..#READ, "VendorList", .tCurrent)
+    Do $$$AssertTrue(("," _ tNames _ ",") [ ("," _ tLocale _ ","), tLocale _ " is a locale this instance lists")
+    Set tBefore = ..NlsState(tLocale, .tNode)
+    Do $$$AssertNotEquals(tBefore, "error", "the definitions' checksum is read")
+    Do ..Sys("Installable", tLocale)
+    Set tControl = ..NlsState(tLocale, .tControlNode)
+    Do ..RestoreNode(tLocale, .tNode)
+    Do $$$AssertNotEquals(tControl, tBefore, "control: the vendor's install check writes " _ tLocale _ " on this instance, so the checksum below can move")
+    Do $$$AssertEquals(..NlsState(tLocale, .tRestored), tBefore, "and the control's write is put back")
+    For tI = 1:1:$Length(tNames, ",") {
+        Kill tQuery
+        Set tQuery("name") = $Piece(tNames, ",", tI)
+        Set tSC = $ClassMethod(..#PORT, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        If tHttp '= 200 Do $$$AssertEquals(tHttp, 200, "the port validates " _ $Piece(tNames, ",", tI))
+    }
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/locales/" _ ##class(OcuPilot.Kernel.EntityId).Encode(tLocale) _ "/validation", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the screen's route validates " _ tLocale)
+    Set tSC = $ClassMethod("OcuPilot.Screen.Tool.LocaleValidate", "View", "", {"name": (tLocale)}, 100, .tResult, .tToolHttp, .tToolFault)
+    Do $$$AssertEquals(tToolHttp, 200, "the agent's tool validates " _ tLocale)
+    Set tSC = $ClassMethod("OcuPilot.Area.OsMgmt.LocaleRules", "WriteProblem", "OcuPilot.Screen.Tool.LocaleInstall", tLocale, {}, .tProblem)
+    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ tProblem, "1|", "the install tool's mint admits it")
+    Set tAfter = ..NlsState(tLocale, .tNodeAfter)
+    If tAfter '= tBefore Do ..RestoreNode(tLocale, .tNode)
+    Do $$$AssertEquals(tAfter, tBefore, "^SYS(""NLS"") is as it was after Validate on every listed locale and on the other paths, and an install mint")
+}
+
+/// <p><method>LocaleWriteVendor</method>'s <method>NlsState</method>, with the node's copy in <var>pNode</var>.</p>
+ClassMethod NlsState(pName As %String, Output pNode) As %String
+{
+    Quit ##class(OcuPilot.Test.LocaleWriteVendor).NlsState(pName, .pNode)
+}
+
+ClassMethod RestoreNode(pName As %String, ByRef pNode)
+{
+    Do ##class(OcuPilot.Test.LocaleWriteVendor).RestoreNlsNode(pName, .pNode)
 }
 
 }
