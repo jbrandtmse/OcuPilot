@@ -425,3 +425,7 @@
 2026-11-16T22:51:28Z	Story 21.33	gate_step	step=txn_static_check scope=Turn.DeleteExpired result=pass body=SQL_DELETEs(Turn,Step,Nav,Proposal)+Kill_^OcuPilotTurnSignal no_JOB no_Event no_external_IO
 2026-11-16T23:24:37Z	Story 21.33	cr_complete	scope=batch3 model=opus resolved=8 high=0 med=5(GuardedViewForOwner_ended_others_lost_run;GuardedBegin_lock_before_owner;admin_sweep_test;...) deferred=1(DW-2667,burndown) txn=rollback_measured;no_JOB/Event/IO(static) five_paths=unchanged final=done commit=570a6d212
 2026-11-16T23:24:49Z	Story 21.33	gate_step	step=fresh_check+full_sweep scope=batches2+3 head=570a6d212 started=2026-11-16T23:24:49Z dir=e21u/21-33/gate4
+2026-11-16T23:33:30Z	Story 21.33	gate_step	step=fresh_check result=green classes=20/20 specs=9/0 head=570a6d212
+2026-11-17T01:49:54Z	Story 21.33	gate_step	step=sweep result=green shards=20/20 dir=e21u/21-33/gate4/sweep
+2026-11-17T01:49:54Z	Story 21.33	gate_step	step=smoke result=pass executed=50 passed=50
+2026-11-17T01:50:08Z	Story 21.33	code_head_pushed	sha=570a6d212 run=43998524036 missing=none carries=627c176c4(feature_ebb3e85d8)
