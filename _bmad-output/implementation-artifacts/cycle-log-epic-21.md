@@ -448,3 +448,4 @@
 2026-11-17T05:33:30Z	Story 21.35	hold_saved	story=21-35-ocupilot-s-install-records-and-other-users-state-answer-only stage=implement(batch2,complete) patch=none tree=clean
 2026-11-17T05:36:34Z	Story 21.35	cr_pending	scope=batch2 next=opus_CR_of_4529a120a_then_batch3
 2026-11-17T05:36:34Z	Epic 21	hold_complete	shas=4529a120a(code,local-only_by_rule:story_head_not_final),bookkeeping=this_commit patch=none tree=clean throwaway=ocupilot-ci_torn_down_after_push
+2026-11-17T05:37:07Z	Story 21.35	code_head_pushed	sha=4529a120a run=44025335673 missing=none note=mid-story(B1+B2),not_for_merge;pushed_alone_for_Rule32_before_hold_bookkeeping
