@@ -13561,6 +13561,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Both refuse a key another user owns; a key naming no row counts orphans. Keys are 32 random hex; no product caller asks for a key it does not own. Propose.cls:873
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T08:09:47Z occurrence=21-35-ocupilot-s-install-records-and-other-users-state-answer-only note=B2 code review: the same unfiltered count reaches Ledger.GuardedAppend's pSeq, and a subject counts the administrator-owned transcript-access rows filed under its conversation key; the overflow writer's leak of the count through pDropped on a refused save is fixed in this pass
 
 ### DW-2687: Base.GuardedProbeGet reads any subscript of the probe global for any caller
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
@@ -13576,7 +13577,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: StoreOwnerWrite and OwnerStateWriteProbe held-victim-row legs now meet 822 at the open, so they no longer prove a save refuses a forged held row; a leg holding the developer's own row with an edited owner would settle it
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item; resume asks the B2 CR to re-pin it
+- 2026-11-17T08:09:47Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=re-pinned by ReserveSweepWrite.TestAHeldOwnRowNamingAnotherUserIsRefused (own turn and run held with the owner edited: turn reserve, finish and cancel refused 822, abandon marks only the own turn, victim rows unchanged; mutation OwnedSaveRefused answers OK reddens the finish leg)
 ### DW-2685: flake: screen-permissions-agent.browser-spec.mjs AC1 (both tests) timed out (Navigation timeout of 30000 ms with one request in flight) in CI browser shard 4/5
 - source: CI run 44029722214 (feature dispatch head 4f3b7d2fe) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; the head was bookkeeping over green code 8c58f5edf; same navigation-timeout shape as DW-2544
 - 2026-11-17T07:20:51Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake found at the dispatch gate; for the flake-hardening story
+
+### DW-2690: Write.IsRefusedRead maps every AccessDenied status to a non-owner answer, so an owner's read refused 822 for another reason would answer NOTYOURS or UNKNOWN
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Write.cls IsRefusedRead tests the error code only; no current store path answers 822 to an owner (inference); an owner's confirm answering NOTYOURS would make it real
+- 2026-11-17T08:09:47Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=an owner's confirm, cancel or draft of its own live proposal answers NOTYOURS or UNKNOWN
+
+### DW-2691: Base.GuardedStoredValue reads the owner and the value in two escalated frames, so a key re-created between them could answer a value whose owner was not checked
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Base.cls GuardedStoredValue calls GuardedStoredValueAnyCaller twice; the gated keys are unique and 32 random hex characters; a delete and re-mint of the same key between the two reads would make it real
+- 2026-11-17T08:09:48Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a store reuses a key value or a non-unique index is read through GuardedStoredValue
+
+### DW-2692: A %Development holder can hold a proposal target's claim lock through Propose.GuardedTargetHold, delaying other users' confirms of that target
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Propose.GuardedTargetHold is an open read on the Batch 2 roster; the same LOCK on a protected global is likely takeable directly (inference); pre-existing
+- 2026-11-17T08:09:48Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a confirm of a target fails with the in-flight message while no confirm of it is running
+
+### DW-2693: A non-administrator's write of a large stream (an entry's steps, a run's answer) outside Base's frame may fail with PROTECT, because the stream allocates its id in the protected stream global
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: %Stream.GlobalCharacter.SetupTmpGbl takes $sequence on the location for a new stream past its buffer (420000 characters measured, 100000 not); Entry.GuardedAppend and SqlRun.GuardedFinish write outside the frame (inference, unmeasured as a principal)
+- 2026-11-17T08:09:48Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=Entry.GuardedAppend with a 420000-character steps array, run as a %Development principal on its own conversation, answers PROTECT
