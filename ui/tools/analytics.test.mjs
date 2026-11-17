@@ -415,6 +415,16 @@ test("Story 24.10: the folder item delete's consequence code names one published
   assert.ok(experience.includes(`"${stringValue('analyticsFolderItemDeleteConsequence')}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
 });
 
+test('Story 24.11: the port reads listing groups through the two measured pure reads only, and writes none', () => {
+  // Mutation (Rule 19): call %RegisterRecentItem, %SaveToClass or %DeleteListingGroup from AnalyticsPort.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'and only those ListingGroup calls');
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /%DeepSee\.ListingGroupDefinition/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+});
+
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
   // Mutation (Rule 19): call $System.OBJ.Load or an XML reader from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
   for (const file of FOLDER_ITEM_TOOLS) {

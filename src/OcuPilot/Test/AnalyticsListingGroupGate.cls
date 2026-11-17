@@ -195,6 +195,22 @@ Method TestAViewerReadsWhatItsResourcesAdmitAndNoSql()
     Do $$$AssertEquals(..SqlOf(tRaw, "CustomSql"), tSql, "the SQL holder reads it")
 }
 
+/// <p>The listing's SQL text is in no part of a viewer's answers: the whole raw body of the Listing groups screen and of the compiled group's Listings screen, read as the viewer, holds
+/// it nowhere, not in another field or a key either, while the SQL holder's Listings body does hold it, so the absence is a finding and not an unreadable body.</p>
+/// <p>Mutation (Rule 19): make the <code>Description</code> of a Listings row in <method>OcuPilot.Port.AnalyticsPort.Rows</method> carry the listing's SQL as well -- the
+/// <code>SQL</code> field of every other leg still reads empty, and this is the one that goes red.</p>
+Method TestNoPartOfAViewersAnswerCarriesTheSql()
+{
+    Set tP = $Parameter(..#PROBE, "LISTGROUP")
+    Set tSql = $Parameter(..#PROBE, "LISTGROUPSQL")
+    Set tStatus = ..Get("/screens/analytics.listinggrouplistings/read?listinggroup=" _ tP, ..#SQLHOLDER, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ (tRaw [ tSql), "200|1", "the SQL holder's body carries the text, so the legs below can fail")
+    For tPath = "/screens/analytics.listinggrouplistings/read?listinggroup=" _ tP, "/screens/analytics.listinggroups/read?maxRows=100" {
+        Set tStatus = ..Get(tPath, ..#VIEWER, .tRaw)
+        Do $$$AssertEquals(tStatus _ "|" _ (tRaw [ tSql) _ "|" _ (tRaw [ "CustomSql"), $Select(tPath [ "listinggrouplistings": "200|0|1", 1: "200|0|0"), "the viewer's body of " _ $Piece(tPath, "?", 1) _ " is the rows it is admitted to and holds no SQL text")
+    }
+}
+
 /// <p>A principal without the view resource is refused 403 naming <code>%DeepSee_ListingGroup:USE</code> on both screens although it holds the edit and SQL resources: the classic page's
 /// either-of list is narrowed to the view resource.</p>
 /// <p>The screens' route gate refuses before the port, and the agent's tools reach the port's pairs alone, so <method>TestTheAgentsToolsApplyTheSameRules</method> pins the same narrowing for them.</p>
@@ -226,6 +242,10 @@ Method TestTheAgentsToolsApplyTheSameRules()
         If $IsObject(tGroups.%Get("rows")) Do $$$AssertEquals(..NamesOf(tGroups.rows), tP _ "," _ tP _ "Off," _ tP _ "Saved", tUser _ ": the tool's groups are the screen's, the guarded one absent")
         Do $$$AssertEquals(tListings.%Get("http") _ "|" _ tListings.%Get("error"), "200|", tUser _ ": the listings tool answers: " _ tListings.%ToJSON())
         If $IsObject(tListings.%Get("rows")) Do $$$AssertEquals(..SqlIn(tListings.rows, "CustomSql"), $Select(tUser = ..#SQLHOLDER: tSql, 1: ""), tUser _ ": the tool's SQL is the screen's")
+        Do $$$AssertEquals(tProbe.%ToJSON() [ tSql, $Select(tUser = ..#SQLHOLDER: 1, 1: 0), tUser _ ": the SQL text is in the tools' whole answers for the SQL holder and for nobody else")
+        Set tHidden = tProbe.%Get("hiddenListings")
+        Do $$$AssertTrue($IsObject(tHidden), tUser _ ": the guarded group's listings tool answered")
+        If $IsObject(tHidden) Do $$$AssertEquals(tHidden.%Get("http") _ "|" _ tHidden.%Get("error") _ "|" _ $Select($IsObject(tHidden.%Get("rows")): tHidden.rows.%Size(), 1: -1), "200||0", tUser _ ": the guarded group's listings are no rows to the tool either: " _ tHidden.%ToJSON())
     }
     Set tProbe = ..ProbeAs(..#EDITOR)
     Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("username"), "|" _ ..#EDITOR, "the tool probe ran as the editor: " _ tProbe.%ToJSON())
@@ -286,6 +306,7 @@ Method TestAListingsSqlNeedsItsOwnPair()
     If $IsObject(tRows) Do $$$AssertEquals(..SqlIn(tRows, "CustomSql") _ "|" _ ..SqlIn(tRows, "ByAmount"), "|", "without the SQL pair the SQL is empty")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_ListingGroupSQL", "USE")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "ListingGroupListings", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: -1), "200|2", "the listings read answers with the SQL pair held")
     If $IsObject(tRows) Do $$$AssertEquals(..SqlIn(tRows, "CustomSql") _ "|" _ ..SqlIn(tRows, "ByAmount"), tSql _ "|", "with it the custom listing's SQL is answered, and a listing with none still reads empty")
 }
 
@@ -313,8 +334,8 @@ ClassMethod ProbeAs(pUser As %String) As %DynamicObject
     Quit tOut
 }
 
-/// <p>The child process <method>ProbeAs</method> starts: log in as <var>pUsername</var>, run the agent's Listing groups read and the Listings read of the probe's compiled group scoped to
-/// <var>pNamespace</var>, and signal <code>{loggedIn, username, groups, listings}</code> (each as <method>OcuPilot.Test.AnalyticsGate.ToolLeg</method> answers) to process <var>pParent</var>,
+/// <p>The child process <method>ProbeAs</method> starts: log in as <var>pUsername</var>, run the agent's Listing groups read, the Listings read of the probe's compiled group and the Listings read of the group another resource guards, scoped to
+/// <var>pNamespace</var>, and signal <code>{loggedIn, username, groups, listings, hiddenListings}</code> (each as <method>OcuPilot.Test.AnalyticsGate.ToolLeg</method> answers) to process <var>pParent</var>,
 /// or <code>{error}</code> when something raised.</p>
 ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %String)
 {
@@ -330,6 +351,7 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
         Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS")
         Do tOut.%Set("groups", ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.listinggroups.read", {}, tCap))
         Do tOut.%Set("listings", ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.listinggrouplistings.read", {"listinggroup": ($Parameter(..#PROBE, "LISTGROUP"))}, tCap))
+        Do tOut.%Set("hiddenListings", ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.listinggrouplistings.read", {"listinggroup": ($Parameter(..#PROBE, "LISTGROUPHIDDEN"))}, tCap))
     } Catch ex {
         Do tOut.%Set("error", ex.DisplayString())
     }

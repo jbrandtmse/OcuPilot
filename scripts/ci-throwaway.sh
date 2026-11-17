@@ -613,7 +613,7 @@ services:
       # and the cards, through the transfer class's helpers.
       # classes: AnalyticsFolderItemBounds, AnalyticsFolderItemEdge, AnalyticsFolderItemGate, AnalyticsFolderItemRoutes, AnalyticsFolderItemTransfer
       # The listing group classes (Story 24.11) turn analytics on in USER and save and compile marker-named listing group classes there: the read class
-      # drives the two reads at the port, over HTTP and as the agent's tools, and the gate class signs in as probe principals each missing a pair.
+      # drives the two reads at the port, over HTTP and as the agent's tools, and the gate class signs in as probe principals that hold different pairs.
       # classes: AnalyticsListingGroupGate, AnalyticsListingGroupRead
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe

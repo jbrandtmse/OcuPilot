@@ -104,6 +104,34 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `75c3e656
 - **AC5 (declared and rostered).** Given the two descriptors. When the roster tests under Code Map run. Then each holds their rows and the classic page, and removing one row reddens that test alone.
 - **AC6 (leaves USER as found).** Given any new or changed test. When it ends, in either order. Then no marker group class and no `^DeepSee.ListingGroups` node of a marker group remains.
 
+### Review Findings
+
+Code review 2026-11-17 (Batch 1), tier `full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 7 patch, 2 ledgered, 11 rejected.
+
+- [x] [Review][Patch] (med) AC5: removing a new `SCREENS` row reddened nothing; the declaration test now asserts the roster equals every registered analytics read screen but the Cube manager [src/OcuPilot/Test/AnalyticsDescriptor.cls]
+- [x] [Review][Patch] (low) AC4's journal scan missed `BitSET`, `VecSET`, `VecKILL` and the remote and mirror forms (no type is named `BSET`) and keyed on `JobID`; it now counts every type naming SET or KILL and keys on `ProcessID` [src/OcuPilot/Test/AnalyticsProbe.cls:940]
+- [x] [Review][Patch] (low) AC4's scan now covers `analytics.listinggrouplistings.read` too [src/OcuPilot/Test/AnalyticsListingGroupRead.cls]
+- [x] [Review][Patch] (low) The SQL holder's leg of `TestAListingsSqlNeedsItsOwnPair` asserted nothing when its read failed; it now asserts 200 and two rows first [src/OcuPilot/Test/AnalyticsListingGroupGate.cls]
+- [x] [Review][Patch] (low) No static pin on the port's `%DeepSee.ListingGroup` calls, unlike 24.2 and 24.10; `analytics.test.mjs` now pins `%GetListingGroups` and `%GetModel` only [ui/tools/analytics.test.mjs]
+- [x] [Review][Patch] (low) Twin cleanup: `OnAfterOneTest` removes twin classes whatever the test reached; the twin classes and the `Twin` listing joined both leftover rosters, and the dead `Cut` name left `RemoveListingGroups` [src/OcuPilot/Test/AnalyticsListingGroupRead.cls, src/OcuPilot/Test/AnalyticsProbe.cls]
+- [x] [Review][Patch] (low) Stale prose: `AnalyticsDescriptor`'s "seven" header, roster doc and messages, the narrating 24.11 line, `Collect`'s `pCriterion` doc, and the throwaway roster comment's "each missing a pair" [src/OcuPilot/Test/AnalyticsDescriptor.cls, src/OcuPilot/Port/AnalyticsPort.cls, scripts/ci-throwaway.sh]
+- [x] [Review][Defer] (med) A viewer without the SQL pair reads withheld SQL as empty, the same as none, beside the prompt "Which listings use a custom SQL query?" -- DW-2718 decision-pending owner=burndown (a has-SQL flag is a posture call, a reworded prompt a string call)
+- [x] [Review][Defer] (low) Two classes naming one group give two rows with one Name id, and the uncompiled twin's name opens the compiled class's listings -- DW-2719 wontfix-accepted (reopen_if Batch 2 keys a write by group name)
+
+Rejected:
+
+- (false) The listing-group descriptor's doc says its criterion is required while the port answers an empty one with no rows: the doc describes the screen, whose read layer refuses a missing criterion (`READ.CRITERION`); the port's answer is Decided in-stage 6.
+- (false) A twin class can survive with every check green: `AnalyticsProbe.Left` counts every class of the probe package, so `OnAfterAllTests` reddens on one.
+- (low) The "no nameless row" assertion cannot fail if the port's guard is removed, because the vendor's saved list already drops a nameless model: it pins the observable outcome, and the guard only covers a class deleted between two calls.
+- (low) A class edited between the vendor's model load and the port's could slip a newly added group resource for one read: a race of milliseconds; a recheck is an undemonstrable guard.
+- (low) The registry's analytics `read.source.type` sentence still lists cubes, term lists and folder items only: developer-facing, already stale before this story, and `Registry.cls` is contended (Epic 21).
+- (low) `Fields` borrows the SQL explorer's key: EXPERIENCE.md's row publishes the other headings as the words other screens already use.
+- (low) The viewer legs of `TestTheAgentsToolsApplyTheSameRules` sit under `If $IsObject(rows)`: the leg asserts 200 first, and `TestTheScreenAndTheAgentsToolAnswerTheSameRows` asserts rows are present.
+- (low) `TestAPrincipalWithoutTheViewResourceIsRefusedNamingIt` has no mutation of its own: its doc says the route and port gates enforce the same narrowing; the gate mutation is recorded.
+- (low) `TestTheSevenDeclarationsRegister` keeps its name while it checks nine: `SurfaceCoverage` cites it in rows Epic 21 contends, so a rename is not add-only.
+- (spec) The Auto Run Result counts the gate class's tests as 6 (QA made it 7), and its follow-up note cites a twin-order risk QA's two-order test closed: the spec is `oversized`, and this review adds only this subsection and its mutation lines.
+- (low) AC4's journal scan does not cover the HTTP screen reads: ruled earlier, AC4 is scoped to the calling process.
+
 ## Spec Change Log
 
 - 2026-11-17, spec gate: blocked -> ready-for-dev on the runner's rulings (U-108); this spec is Batch 1.
@@ -243,6 +271,16 @@ Story 24.12 also saves and compiles a class, so Question 2's ruling sets its pat
 - mutation (gate): the SQL pair judged as held (`tShowSQL` 1) -> `AnalyticsListingGroupGate` `TestAViewerReadsWhatItsResourcesAdmitAndNoSql`, `TestTheAgentsToolsApplyTheSameRules` and `TestAListingsSqlNeedsItsOwnPair` went red; `LISTINGGROUPPAIRS` made the portal's pair alone -> `TestThePortRefusesBeforeAnyVendorCall` and the editor's tool legs went red.
 - mutation (review patch, twin class): the Listings branch of `Collect` made to take the first saved class of the name, whatever the compiled list says -> `TestTheCompiledClassAnswersWhenTwoClassesNameOneGroup` went red; reverted (`cmp` equal), reloaded, green.
 - Each server mutation was reverted byte-identically (`cmp` against the saved copy) and the tree reloaded into `ocupilot-b-ci`, and the class that went red was green after.
+- (QA) `src/OcuPilot/Test/AnalyticsListingGroupRead.cls`, `src/OcuPilot/Test/AnalyticsListingGroupGate.cls` and `src/OcuPilot/Test/AnalyticsProbe.cls` extended (no new file): the twin test runs with a class name that sorts before and one that sorts after the compiled group's, and checks that only the compiled class's groups row reads compiled; the Listings screen is read under a cap of one and a cap equal to the count; a viewer's whole answers (both screens, both tools) hold no SQL text; the guarded group's listings are no rows to the agent's tool.
+- mutation (QA, twin order): the listings branch made to take the first saved class -> `AnalyticsListingGroupRead` `TestTheCompiledClassAnswersWhenTwoClassesNameOneGroup` went red on the early-twin leg only; made to take the last saved class -> the late-twin leg only; `Compiled` made to ignore the class the compiled list names -> both groups legs.
+- mutation (QA, SQL): the listing's SQL appended to a Listings row's `Description` -> `AnalyticsListingGroupGate` `TestNoPartOfAViewersAnswerCarriesTheSql` and the whole-answer leg of `TestTheAgentsToolsApplyTheSameRules` went red, and no other leg did.
+- mutation (QA, hidden group): the listings branch made to answer a compiled group the saved list omits -> the screen leg and the new tool leg of `AnalyticsListingGroupGate` went red.
+- mutation (QA, cap): the listings loop's stop moved to `pMax - 1` -> `AnalyticsListingGroupRead` `TestACapBoundsTheListAndTheScreenSaysSo` went red on the port and the Listings screen legs.
+- (QA) Each QA mutation was reverted with `cmp` against the saved `AnalyticsPort.cls`, the tree reloaded into `ocupilot-b-ci`, and both classes were green after (Read 7 tests, Gate 7 tests).
+
+- mutation (review, AC5 roster): the Listings row removed from `AnalyticsDescriptor` `SCREENS` -> `TestTheSevenDeclarationsRegister` went red on the new roster-equality assertion (run 889); reverted (`cmp` equal), reloaded, green (run 890).
+- mutation (review, AC4 scan): `Set $Bit(^OcuPilotProbeBit, 3) = 1` added to the listing groups branch of `Collect` -> `TestNoReadMakesAJournaledWrite` went red naming the `BitSET` record, which the old `BSET` prefix could not match (run 892); reverted (`cmp` equal), the global killed, reloaded, green (run 893).
+- mutation (review, Never list): `%RegisterRecentItem` called from the port -> `analytics.test.mjs` "Story 24.11: the port reads listing groups ..." went red ("and only those ListingGroup calls"); reverted (`cmp` equal), green.
 
 ## Auto Run Result
 

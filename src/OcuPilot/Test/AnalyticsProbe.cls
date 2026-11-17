@@ -138,6 +138,9 @@ Parameter LISTGROUPBROKENCLASS = "OcuPilotProbe.Analytics.ListingGroupBroken";
 /// class name sorts before the compiled group's.</p>
 Parameter LISTGROUPTWINCLASS = "OcuPilotProbe.Analytics.AListingGroupTwin";
 
+/// <p>The class <method>CreateTwinListingGroup</method> saves when it is asked for the late twin: the same group name as the early twin, and a class name that sorts after the compiled group's.</p>
+Parameter LISTGROUPTWINLATECLASS = "OcuPilotProbe.Analytics.ZListingGroupTwin";
+
 /// <p>The cube the saved listing group names and the SQL the compiled group's custom listing runs.</p>
 Parameter LISTGROUPNOCUBE = "OcuPilotProbeNoSuchCube";
 
@@ -566,8 +569,8 @@ ClassMethod ListingGroupText(pWhich As %String) As %String [ Private ]
         Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPOFF _ "' targetCubes='" _ ..#VISITS _ "' disabled='true'>" _
             "<listing name='Idle' fieldList='Minutes'/>" _
             "</listingGroup>"
-    } ElseIf pWhich = "twin" {
-        Set tClass = ..#LISTGROUPTWINCLASS
+    } ElseIf (pWhich = "twin") || (pWhich = "twinlate") {
+        Set tClass = $Select(pWhich = "twin": ..#LISTGROUPTWINCLASS, 1: ..#LISTGROUPTWINLATECLASS)
         Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUP _ "' targetCubes='" _ ..#LISTGROUPNOCUBE _ "'>" _
             "<listing name='Twin' fieldList='Amount'/>" _
             "</listingGroup>"
@@ -636,17 +639,19 @@ ClassMethod CreateBrokenListingGroup() As %Status
     Quit tSC
 }
 
-/// <p>Save the twin listing group in <code>USER</code>: a second class that names the compiled group's name. Its compile is attempted and refused, so the vendor
-/// lists two saved classes under that name and compiles one. <method>RemoveListingGroups</method> deletes it.</p>
-ClassMethod CreateTwinListingGroup() As %Status
+/// <p>Save a twin listing group in <code>USER</code>: a second class that names the compiled group's name, its class name sorting before the compiled group's
+/// or, when <var>pLate</var> is true, after it. Its compile is attempted and refused, so the vendor lists two saved classes under that name and compiles one.
+/// <method>RemoveTwinListingGroup</method> and <method>RemoveListingGroups</method> delete it.</p>
+ClassMethod CreateTwinListingGroup(pLate As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#LISTGROUPTWINCLASS, ..ListingGroupText("twin"))
+        Set tClass = $Select(pLate: ..#LISTGROUPTWINLATECLASS, 1: ..#LISTGROUPTWINCLASS)
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ListingGroupText($Select(pLate: "twinlate", 1: "twin")))
         If $$$ISERR(tSC) Quit
         Set $NAMESPACE = ..#NAMESPACE
-        Do $System.OBJ.Compile(..#LISTGROUPTWINCLASS, "ck-d")
+        Do $System.OBJ.Compile(tClass, "ck-d")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -654,15 +659,17 @@ ClassMethod CreateTwinListingGroup() As %Status
     Quit tSC
 }
 
-/// <p>Delete the twin listing group's class from <code>USER</code>; nothing happens when it is not there.</p>
+/// <p>Delete both twin listing groups' classes from <code>USER</code>; nothing happens when they are not there.</p>
 ClassMethod RemoveTwinListingGroup() As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#LISTGROUPTWINCLASS) Do $System.OBJ.Delete(..#LISTGROUPTWINCLASS, "-d")
-        Kill ^DeepSee.ListingGroups("classes", ..#LISTGROUPTWINCLASS)
+        For tClass = ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+            Kill ^DeepSee.ListingGroups("classes", tClass)
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -678,13 +685,13 @@ ClassMethod RemoveListingGroups() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS {
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
             If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
         }
         For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
             Kill ^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))
         }
-        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS {
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
             Kill ^DeepSee.ListingGroups("classes", tClass)
         }
         For tCube = ..#VISITS, ..#LISTGROUPNOCUBE {
@@ -692,7 +699,7 @@ ClassMethod RemoveListingGroups() As %Status
             For {
                 Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
                 If tListing = "" Quit
-                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Cut"), tListing) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
+                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
             }
         }
     } Catch ex {
@@ -916,7 +923,7 @@ ClassMethod JournalMark() As %String
 }
 
 /// <p>The global writes the calling process made since <var>pMark</var> (a <method>JournalMark</method> answer), one entry of <var>pWrites</var> for each
-/// set or kill record of this job, as <code>type global node</code>. Answers their count, or -1 when the journal rolled to another file in between,
+/// set or kill record of this process (every record type whose name holds <code>SET</code> or <code>KILL</code>, the bit, vector, remote and mirror forms included), as <code>type global node</code>. Answers their count, or -1 when the journal rolled to another file in between,
 /// which the scan cannot span. Writes to a database that is not journaled are not seen.</p>
 ClassMethod JournalWrites(pMark As %String, Output pWrites) As %Integer
 {
@@ -930,7 +937,7 @@ ClassMethod JournalWrites(pMark As %String, Output pWrites) As %Integer
     Set tCount = 0
     Set tRecord = tFile.LastRecord
     While $IsObject(tRecord) && (tRecord.Address >= tFrom) {
-        If (tRecord.JobID = $Job) && ($Extract(tRecord.TypeName, 1, 3) = "SET" || ($Extract(tRecord.TypeName, 1, 4) = "KILL") || ($Extract(tRecord.TypeName, 1, 5) = "ZKILL") || ($Extract(tRecord.TypeName, 1, 4) = "BSET")) {
+        If (tRecord.ProcessID = $Job) && ((tRecord.TypeName [ "SET") || (tRecord.TypeName [ "KILL")) {
             Set tCount = tCount + 1
             Set pWrites(tCount) = tRecord.TypeName _ " " _ tRecord.GlobalReference
         }

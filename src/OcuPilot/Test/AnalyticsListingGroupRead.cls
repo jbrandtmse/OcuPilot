@@ -51,6 +51,12 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+/// <p>Remove any twin listing group class a test left, whether or not that test reached its own removal.</p>
+Method OnAfterOneTest() As %Status
+{
+    Quit $ClassMethod(..#PROBE, "RemoveTwinListingGroup")
+}
+
 /// <p>One read of <var>pEndpoint</var> in <code>USER</code> through the port: the rows in <var>pRows</var>, the HTTP status and the fault.
 /// <var>pGroup</var> names the listing group of a Listings read.</p>
 ClassMethod Read(pEndpoint As %String, pGroup As %String = "", pMax As %String = 100, Output pRows, Output pHttp As %Integer, Output pFault) As %Status
@@ -220,25 +226,47 @@ Method TestAGroupsListingsAreTheModelsListings()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tEmpty): tEmpty.%Size(), 1: -1), "200|0", "and so does an empty one")
 }
 
-/// <p>AC1: when a second saved class names the compiled group's name, its listings are the compiled class's, not the second class's, whichever class the vendor lists first.</p>
-/// <p>Mutation (Rule 19): make the listings branch of <method>OcuPilot.Port.AnalyticsPort.Collect</method> always take the first saved class of the name -- the twin's listing
-/// answers and this goes red.</p>
+/// <p>AC1: when a second saved class names the compiled group's name, its listings are the compiled class's, not the second class's, whichever way the two class names
+/// sort, so the answer does not depend on the order the vendor lists the classes in; and of the groups rows that name the group, only the compiled class's reads compiled.</p>
+/// <p>Mutation (Rule 19): make the listings branch of <method>OcuPilot.Port.AnalyticsPort.Collect</method> always take the first saved class of the name -- the early twin's
+/// listing answers and the early leg goes red; make it take the last saved class -- the late leg goes red; make <code>Compiled</code> ignore which class the compiled list
+/// names -- the groups legs go red.</p>
 Method TestTheCompiledClassAnswersWhenTwoClassesNameOneGroup()
 {
     Set tP = $Parameter(..#PROBE, "LISTGROUP")
-    Set tSC = $ClassMethod(..#PROBE, "CreateTwinListingGroup")
-    Do $$$AssertStatusOK(tSC, "the twin group class is saved")
-    Set tSC = ..Read("ListingGroupListings", tP, 100, .tRows, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: -1), "200|2", "the group's listings are still the compiled class's two")
-    Do $$$AssertEquals(..RowNamed(tRows, "Twin"), "", "and none of them is the twin's")
-    Set tSC = ..Read("ListingGroups", "", 100, .tGroups, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp, 200, "the groups read answers with the twin saved")
-    Do $$$AssertEquals(..Nameless(tGroups), 0, "and no row is nameless")
-    Set tSC = $ClassMethod(..#PROBE, "RemoveTwinListingGroup")
-    Do $$$AssertStatusOK(tSC, "the twin is removed again")
+    For tLate = 0, 1 {
+        Set tLabel = $Select(tLate: "the late twin", 1: "the early twin")
+        Set tSC = $ClassMethod(..#PROBE, "CreateTwinListingGroup", tLate)
+        Do $$$AssertStatusOK(tSC, tLabel _ " is saved")
+        Set tSC = ..Read("ListingGroupListings", tP, 100, .tRows, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: -1), "200|2", tLabel _ ": the group's listings are still the compiled class's two")
+        Do $$$AssertEquals(..RowNamed(tRows, "Twin"), "", tLabel _ ": and none of them is the twin's")
+        Do $$$AssertTrue($IsObject(..RowNamed(tRows, "ByAmount")), tLabel _ ": they are the compiled class's own")
+        Set tSC = ..Read("ListingGroups", "", 100, .tGroups, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp, 200, tLabel _ ": the groups read answers")
+        Do $$$AssertEquals(..Nameless(tGroups), 0, tLabel _ ": and no row is nameless")
+        Set tCompiledRows = 0
+        Set tOtherCompiled = 0
+        If $IsObject(tGroups) {
+            Set tIterator = tGroups.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If tRow.%Get("Name") '= tP Continue
+                If tRow.%Get("Class") = $Parameter(..#PROBE, "LISTGROUPCLASS") {
+                    Set tCompiledRows = tCompiledRows + 1
+                    Do $$$AssertEquals(tRow.%Get("Compiled") _ "|" _ tRow.%Get("Listings"), "1|2", tLabel _ ": the compiled class's row reads compiled, with its two listings")
+                } ElseIf tRow.%Get("Compiled") {
+                    Set tOtherCompiled = tOtherCompiled + 1
+                }
+            }
+        }
+        Do $$$AssertEquals(tCompiledRows _ "|" _ tOtherCompiled, "1|0", tLabel _ ": one row is the compiled class's and no other class's row reads compiled")
+        Set tSC = $ClassMethod(..#PROBE, "RemoveTwinListingGroup")
+        Do $$$AssertStatusOK(tSC, tLabel _ " is removed again")
+    }
 }
 
 /// <p>The cap: a maxRows below the count answers that many rows through the port, and the screen reports the read truncated (AD-36).</p>
+/// <p>The Listings screen is cut at one listing and reports it, and a cap equal to the count reports nothing cut.</p>
 /// <p>Mutation (Rule 19): drop the <code>pMax</code> stop of the listings branch in <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the one-listing cap leg goes red.</p>
 Method TestACapBoundsTheListAndTheScreenSaysSo()
 {
@@ -249,6 +277,13 @@ Method TestACapBoundsTheListAndTheScreenSaysSo()
     Do $ClassMethod(..#CONTROL, "Call", "GET", "/screens/analytics.listinggroups/read?maxRows=2", "", .tStatus, .tScreen)
     Do $$$AssertEquals(tStatus, 200, "the screen reads")
     If $IsObject(tScreen) Do $$$AssertEquals(tScreen.%Get("truncated") _ "|" _ $Select($IsObject(tScreen.%Get("rows")): tScreen.rows.%Size(), 1: -1), "1|2", "two rows, and the read says it was cut")
+    Set tListings = "/screens/analytics.listinggrouplistings/read?listinggroup=" _ $Parameter(..#PROBE, "LISTGROUP") _ "&maxRows="
+    Do $ClassMethod(..#CONTROL, "Call", "GET", tListings _ "1", "", .tStatus, .tCut)
+    Do $$$AssertEquals(tStatus, 200, "the Listings screen reads under a cap of one")
+    If $IsObject(tCut) Do $$$AssertEquals(tCut.%Get("truncated") _ "|" _ $Select($IsObject(tCut.%Get("rows")): tCut.rows.%Size(), 1: -1), "1|1", "one listing, and the Listings read says it was cut")
+    Do $ClassMethod(..#CONTROL, "Call", "GET", tListings _ "2", "", .tStatus, .tFit)
+    Do $$$AssertEquals(tStatus, 200, "the Listings screen reads under a cap equal to the count")
+    If $IsObject(tFit) Do $$$AssertEquals(tFit.%Get("truncated") _ "|" _ $Select($IsObject(tFit.%Get("rows")): tFit.rows.%Size(), 1: -1), "0|2", "both listings, and the read says nothing was cut")
 }
 
 /// <p>AC2 (Integration, Rule 1): the Listing groups screen's read and the agent's <code>analytics.listinggroups.read</code> answer the same rows, and so do the
@@ -300,6 +335,7 @@ Method TestNoReadMakesAJournaledWrite()
     }
     Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
     Set tLeg = ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.listinggroups.read", {}, $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS"))
+    Set tListingsLeg = ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.listinggrouplistings.read", {"listinggroup": (tP)}, $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS"))
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Set tReads = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tReadWrites)
     Set tFirst = $Get(tReadWrites(1))
@@ -307,7 +343,7 @@ Method TestNoReadMakesAJournaledWrite()
     Set tSeen = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tAllWrites)
     Kill ^|"USER"|OcuPilotProbeAnalyticsScan
     Set tControl = $Get(tAllWrites(1))
-    Do $$$AssertEquals(tGroupsHttp _ "|" _ tListingsHttp _ "|" _ tLeg.%Get("http"), "200|200,200,200,200,200|200", "the groups read, the five listings reads and the agent's read answer")
+    Do $$$AssertEquals(tGroupsHttp _ "|" _ tListingsHttp _ "|" _ tLeg.%Get("http") _ "|" _ tListingsLeg.%Get("http"), "200|200,200,200,200,200|200|200", "the groups read, the five listings reads and the agent's two reads answer")
     Do $$$AssertEquals(tReads, 0, "the reads made no journaled write" _ $Select(tReads > 0: ": " _ tFirst, 1: ""))
     Do $$$AssertEquals(tSeen, 1, "while the scan sees the control write made after them" _ $Select(tSeen > 0: ": " _ tControl, 1: ""))
 }
@@ -333,7 +369,7 @@ ClassMethod Left() As %String
 {
     Set tLeft = ""
     Set tNames = ""
-    For tClass = "LISTGROUPCLASS", "LISTGROUPSAVEDCLASS", "LISTGROUPHIDDENCLASS", "LISTGROUPOFFCLASS", "LISTGROUPBROKENCLASS" {
+    For tClass = "LISTGROUPCLASS", "LISTGROUPSAVEDCLASS", "LISTGROUPHIDDENCLASS", "LISTGROUPOFFCLASS", "LISTGROUPBROKENCLASS", "LISTGROUPTWINCLASS", "LISTGROUPTWINLATECLASS" {
         Set tNames = tNames _ $ListBuild($Parameter(..#PROBE, tClass))
     }
     Set tPrefix = $ZConvert(..#PREFIX, "U")
@@ -359,7 +395,7 @@ ClassMethod Left() As %String
             For {
                 Set tListing = $Order(^DeepSee.ListingGroups("cubes", tCube, "listing", tListing))
                 If tListing = "" Quit
-                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle"), tListing) Set tLeft = tLeft _ ",listing node " _ tCube _ "/" _ tListing
+                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) Set tLeft = tLeft _ ",listing node " _ tCube _ "/" _ tListing
             }
         }
     } Catch ex {

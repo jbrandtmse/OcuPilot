@@ -692,7 +692,7 @@ ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) 
 
 /// <p>Read <var>pEndpoint</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData</code> is the row count,
 /// and <code>pData(n)</code> row <code>n</code> as a <code>%List</code>, at most <var>pMax</var> rows when that is above zero.
-/// <var>pCriterion</var> is the cube or term list a tab names. A vendor status that is an error is <var>pVendorStatus</var>; an
+/// <var>pCriterion</var> is the cube or term list a tab names, or the listing group whose listings are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
 /// exception is <var>pCaught</var>.</p>
 /// <p><b>Everything between the switch and the restore is in this one method</b> and names only vendor and system classes, because
 /// an <code>OcuPilot.*</code> class is not visible in the target namespace (AD-16). The raw values are shaped into rows by
