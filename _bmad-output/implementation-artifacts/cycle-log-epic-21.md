@@ -442,3 +442,9 @@
 2026-11-17T04:14:16Z	Story 21.35	ad_amended	ad=AD-9(21.35 set wording;21.33 frame=AsAdministrator)+AD-64(item4 store audits once) via=U7(correction_to_validated_design;option_b)
 2026-11-17T04:15:01Z	Story 21.35	ruling	question=B1_review+spine_correction choice=accepted via=orchestrator(U-97_keep) note=GuardedProbeSet_into_Task0_evidence(relayed_to_B2_implement)
 2026-11-17T04:15:01Z	Story 21.35	stage_spawned	stage=implement scope=batch2 spawn_at=2026-11-17T04:15:01Z model=sonnet agent_name=21-35-implement-b2 story_base=046388151
+2026-11-17T04:16:33Z	Epic 21	hold_ordered	reason=owner:account_switch(weekly_95%) via=orchestrator running_stage=21.35_implement_batch2(spawned_~04:05Z) action=no_new_stage;await_return
+2026-11-17T04:16:46Z	Epic 21	ruling	question=hold_vs_running_B2_implement choice=let_finish(U11) via=orchestrator note=owner_asked_whether_to_stop_sooner
+2026-11-17T05:33:30Z	Story 21.35	dev_complete	scope=batch2 build_sha=4529a120a status=in-progress blocking=none
+2026-11-17T05:33:30Z	Story 21.35	hold_saved	story=21-35-ocupilot-s-install-records-and-other-users-state-answer-only stage=implement(batch2,complete) patch=none tree=clean
+2026-11-17T05:36:34Z	Story 21.35	cr_pending	scope=batch2 next=opus_CR_of_4529a120a_then_batch3
+2026-11-17T05:36:34Z	Epic 21	hold_complete	shas=4529a120a(code,local-only_by_rule:story_head_not_final),bookkeeping=this_commit patch=none tree=clean throwaway=ocupilot-ci_torn_down_after_push
