@@ -452,3 +452,6 @@
 2026-11-17T07:22:15Z	Epic 21	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 resumed=redispatch_20261117T0614Z(after_hold_owner_account_switch) model=claude-opus-5-5 hold_file=absent head=728d06088 tree=clean unpushed=none
 2026-11-17T07:22:15Z	Story 21.35	ci_resolved	story=21.35 sha=4529a120a runs=44025335673 result=success failed=none via=none resolved_at=resume note=mid-story_head
 2026-11-17T07:23:46Z	Story 21.35	ledger_harvested	scope=batch2 deferred=4 new=DW-2686,DW-2687,DW-2688,DW-2689 status=open owner=21-35 by=harvest
+2026-11-17T07:23:58Z	Epic 21	integrated	feature=1dbdfbb85 merge=189fb8e4f conflicts=none ledger_dups=0 note=bookkeeping_only(timings,deps_hash,DW-2685)
+2026-11-17T07:23:58Z	Story 21.22	ledger_routed_planned	story=21-22-ci-flake-hardening entries=0 excess=1(DW-2685) by=merge_gate(orchestrator_dispatch_gate) note=routed_story_max=6_reached
+2026-11-17T07:23:58Z	Story 21.35	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-17T07:23:58Z model=opus agent_name=21-35-code-review-b2 cycle_iteration=1 baseline=355d92438 head_code=4529a120a
