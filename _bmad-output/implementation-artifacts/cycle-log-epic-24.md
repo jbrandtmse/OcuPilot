@@ -328,3 +328,6 @@
 2026-11-17T18:45:42Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_24.10) model=claude-opus-5-5
 2026-11-17T18:45:42Z	Epic 24	orchestrator_message	slot-b_dev_off_limits_even_for_reads;stage_tail_updated(no_IRIS_MCP;throwaway_only)
 2026-11-17T18:45:42Z	Story 24.11	stage_spawned	stage=plan spawn_at=2026-11-17T18:45:42Z model=opus agent_name=24-11-listing-groups-plan-1 cycle_iteration=1
+2026-11-17T19:00:22Z	Story 24.11	story_created	spawn_at=2026-11-17T18:47:30Z model=opus path=_bmad-output/implementation-artifacts/spec-24-11-listing-groups.md build_status=blocked(intent_gap_4_questions) epic_context=reused
+2026-11-17T19:00:22Z	Story 24.11	ruling	question=batches,class_write_path(AtelierPort_+%Development),read_pairs_narrowed,strings choice=batches_in_story;AtelierPort;narrow;keep rejected=vendor_SaveToClass+OBJ.Compile(equal_to_classic;against_epic_context_rule) why=stricter_than_classic;24.10_precedent;DevToolPort.Promote_sibling category=veto inbox=U-108 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T19:00:22Z	Story 24.11	spec_validated	service_introducing=true integration_ac=see_spec adr_constrained_acs=AD-51,AD-52,AD-53,AD-61,AD-65,AD-22 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false(batch1_reads) scope=batch1_reads
