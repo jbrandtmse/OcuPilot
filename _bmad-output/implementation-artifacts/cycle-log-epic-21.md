@@ -378,3 +378,21 @@
 2026-11-16T13:25:55Z	Story 21.34	story_inserted	kind=fix_forward via=orchestrator_ruling owns=DW-2650(orchestrator_ledger) priority=before_21.33
 2026-11-16T13:29:06Z	Story 21.34	gate_step	step=reproduction result=red env=fresh(epic21+feature_2ef969841) evidence=backup_3/3_then_interop-editors_22/23(AC2_#6220,<NOTOPEN>CompileDTL+30_pid2228) nullprobe=0_missing(58/66/88;pid2228_gone)
 2026-11-16T13:29:06Z	Story 21.34	stage_spawned	stage=plan+implement spawn_at=2026-11-16T13:29:06Z model=sonnet agent_name=21-34-build-1 cycle_iteration=1 note=urgent;plan+implement_in_one_pass(decide)
+2026-11-16T13:33:11Z	Story 21.34	ruling	question=Rule29_sweep choice=waived_by_orchestrator(explicit) replacement=fresh:class_set_fwd+rev,device_test+mutation,chains(backup->ie;dbo->backup->ie;config-settings->dashboard),smoke lapses_if=any_red_or_scope_beyond(BackupPort,LogSourcePort,kernel_method) category=orchestrator_ruling
+2026-11-16T13:49:19Z	Story 21.34	dev_complete	spawn_at=2026-11-16T13:33:00Z model=sonnet build_sha=3aae36cc1 mutations=4 chain=backup_3/3,interop-editors_23/23(fresh) followup_review_recommended=false deferred=1(low) cycle_iteration=1
+2026-11-16T14:03:00Z	Story 21.34	cr_complete	model=opus scope=short_static high=0 med=0 low=3(patched_c1a02ae13) final=done
+2026-11-16T14:03:00Z	Story 21.34	gate_step	step=waiver_gates result=pass(fresh:c1_backup3/3+ie23/23;c2_dbo6/6+backup3/3+ie23/23;c3_cfg7/7+dashboard3/3;8_classes_fwd+rev;smoke_PASSED;patched_rerun_5_classes+c1_green) sweep=waived(orchestrator)
+2026-11-16T14:03:00Z	Story 21.34	committed	sha=c1a02ae13(carries_21.32_edf36c82d+feature_2ef969841+21.34) ci=pending runs=43881658467
+2026-11-16T14:03:11Z	Story 21.32	ci_resolved	story=21.32 sha=edf36c82d runs=43875203822 result=success via=rerun(gates_node22,DW-2567_occurrence,orchestrator)
+2026-11-16T14:06:20Z	Story 21.33	stage_spawned	stage=implement spawn_at=2026-11-16T14:06:20Z model=sonnet agent_name=21-33-implement-1 cycle_iteration=1 story_base=ed84aea3c scope=batch1_first
+2026-11-16T14:12:57Z	Story 21.35	story_inserted	kind=fix_forward via=owner_answer_U-90 owns=DW-2651,DW-2652 order=after_21.33(plan_after_batch1)
+2026-11-16T14:12:57Z	Story 21.33	owner_decision	id=U-89 answer=kept
+2026-11-16T14:43:02Z	Story 21.34	ci_resolved	story=21.34(+21.32,+feature_2ef969841) sha=c1a02ae13 runs=43881658467 result=success failed=none via=none
+2026-11-16T15:15:34Z	Story 21.33	dev_complete	spawn_at=2026-11-16T14:05:00Z model=sonnet build_sha=4334486d8 scope=batch1 task0=attack_landed(admin_confirm_sent_EVIL) five_paths=unchanged(TestTheOpenPathsStillWork) review=12(5_patched_tests,1_deferred,6_rejected) cycle_iteration=1
+2026-11-16T15:15:34Z	Story 21.33	ruling	question=ship_batch1_alone choice=yes(CR,fresh_check,sweep,smoke,push_batch1_head;batches_2-3_follow) rejected=wait_for_all_batches why=closes_privilege_escalation_now;batches_independent category=decide policy=b9ff703e
+2026-11-16T15:15:34Z	Story 21.33	stage_spawned	stage=code-review spawn_at=2026-11-16T15:15:34Z model=opus agent_name=21-33-code-review-b1 cycle_iteration=1
+2026-11-16T15:46:36Z	Story 21.33	cr_complete	scope=batch1 model=opus resolved=9 deferred=3(DW-2662_AD-9_text,DW-2663,DW-2664) dismissed=15 high=2(claim_target_bound,owner_immutable;patched)+1(DW-2662_AD_text) med=6 low=18 five_paths=unchanged commit=8e6d9de06
+2026-11-16T15:46:36Z	Story 21.33	ad_amended	ad=AD-9 change=open_writes_4->5(claim_sibling_cancel,AD-34) mode=comply_first_U7
+2026-11-16T15:49:52Z	Story 21.33	gate_step	step=fresh_check+full_sweep scope=batch1 head=8e6d9de06 started=2026-11-16T15:49:52Z dir=e21u/21-33/gate1
+2026-11-16T15:59:18Z	Story 21.33	fresh_check	scope=batch1 classes=17_green specs=3_green_fwd+rev result=pass
+2026-11-16T15:59:18Z	Story 21.33	gate_step	step=sweep_stopped_at_shard1 reason=DW-2664_must_settle_in_batch1_head(orchestrator) note=sweep_reruns_after

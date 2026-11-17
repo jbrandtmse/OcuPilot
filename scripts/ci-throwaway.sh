@@ -314,7 +314,7 @@ services:
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
-      # classes: AdminStateWrite
+      # classes: AdminStateWrite, StoreOwnerWrite, AdminPathWrite
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire

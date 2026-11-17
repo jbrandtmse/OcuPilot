@@ -23,6 +23,11 @@
 Class OcuPilot.Kernel.State.Ledger Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>):
+/// a writer refuses a caller who neither owns the row nor holds the administrative resource, and the
+/// deletes and the purge across users are an administrator's.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
 /// <p>The kind a provider-call row carries.</p>
 Parameter KINDLLM = "llm";
 
@@ -236,7 +241,8 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
     Set pSeq = 0
     Set pStored = 0
     Set pLedgerKey = ""
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND Seq > 0", pTurnKey, .tCount)
         If $$$ISERR(tSC) Quit
@@ -267,7 +273,7 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
         Set tRow.RequiredPairs = pRequiredPairs
         Set tRow.RequiredPairsTruncated = ''pRequiredPairsTruncated
         Set tRow.PairsSense = ..Cut(pPairsSense, 16)
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
         Set pLedgerKey = tRow.LedgerKey
@@ -288,13 +294,16 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
 /// <class>OcuPilot.Kernel.Audit.Ledger</class> builds, already cut at a whole-member boundary, and
 /// their truncation flags are that class's own answers; nothing here redacts or cuts anything.</p>
 /// <p>The save is conditional on the version just read (Consistency Conventions: concurrent writes
-/// to OcuPilot's own state). A row that has gone is not an error: a ledger row is not the write,
-/// and the write has already happened.</p>
+/// to OcuPilot's own state). A row that has gone is not an error for an administrator: a ledger row
+/// is not the write, and the write has already happened. Any other caller must own the stored row,
+/// so a key that names none is refused.</p>
 ClassMethod GuardedFinalize(pLedgerKey As %String, pStatus As %String, pCode As %String, pTarget As %String, pFields As %String, pFieldsTruncated As %Boolean, pRequiredPairs As %String, pRequiredPairsTruncated As %Boolean, pPairsSense As %String, pAuditMarked As %String) As %Status
 {
     Set tSC = $$$OK
     Try {
         If pLedgerKey = "" Quit
+        Set tSC = ..KeyOwnerRefused("LedgerKeyIdxExists", pLedgerKey)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..GuardedOpenOneWhere("SELECT ID FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LedgerKey) = ?", pLedgerKey, .tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Quit
@@ -308,7 +317,7 @@ ClassMethod GuardedFinalize(pLedgerKey As %String, pStatus As %String, pCode As 
         Set tRow.RequiredPairsTruncated = ''pRequiredPairsTruncated
         Set tRow.PairsSense = ..Cut(pPairsSense, 16)
         Set tRow.AuditMarked = ..Cut(pAuditMarked, 16)
-        Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
+        Set tSC = ..GuardedSaveOwned(tRow, tExpected)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -323,7 +332,8 @@ ClassMethod GuardedFinalize(pLedgerKey As %String, pStatus As %String, pCode As 
 ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute As %String, Output pDropped As %Integer) As %Status
 {
     Set pDropped = 0
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND Seq = ?", pTurnKey, ..#OVERFLOWSEQ, .tRow)
         If $$$ISERR(tSC) Quit
@@ -331,7 +341,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
             Set tExpected = +tRow.RowVersion
             Set tRow.Dropped = tRow.Dropped + 1
             Set pDropped = tRow.Dropped
-            Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
+            Set tSC = ..GuardedSaveOwned(tRow, tExpected)
             Set tRow = ""
             Quit
         }
@@ -346,7 +356,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
         Set tRow.Status = "ok"
         Set tRow.Dropped = 1
         Set pDropped = 1
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -490,6 +500,7 @@ ClassMethod GuardedRow(pId As %String, Output pValues) As %Status
 /// ledger row outlives its turn (AD-37); this exists so a test removes what it wrote.</p>
 ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", pTurnKey)
 }
 
@@ -497,6 +508,7 @@ ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 /// <method>GuardedDeleteForTurn</method>: a test's cleanup, never a lifecycle rule.</p>
 ClassMethod GuardedDeleteForUser(pUser As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = ?", pUser)
 }
 
@@ -506,6 +518,7 @@ ClassMethod GuardedDeleteForUser(pUser As %String) As %Status
 ClassMethod GuardedPurgeBefore(pIso As %String, Output pRemoved As %Integer) As %Status
 {
     Set pRemoved = 0
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tParams = []
     Do tParams.%Push(pIso, "string")
     Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LoggedAt) < ?", .tParams, .pRemoved)

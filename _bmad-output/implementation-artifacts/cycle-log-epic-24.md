@@ -230,3 +230,4 @@
 2026-11-16T23:23:36Z	Story 24.5	stage_spawned	stage=code-review spawn_at=2026-11-16T23:23:36Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-code-review-1 cycle_iteration=3
 2026-11-17T00:15:57Z	Story 24.5	cr_complete	spawn_at=2026-11-16T23:25:00Z model=opus resolved=9 fixed_at_source=9 wontfix=1 by_design=1 decision_pending=3(DW-2670,DW-2671,DW-2672) dismissed=14 high=0 med=5 low=9 rows=14 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done note=QA_BuildTestSpec_override_replaced_by_port_checked_class_list
 2026-11-17T00:15:57Z	Story 24.5	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2668,DW-2669 to_decision_sheet=DW-2670,DW-2671,DW-2672 model=claude-opus-5-5
+2026-11-17T00:18:05Z	Story 24.5	integrate_forward	feature=ebb3e85d8(2a542f893,21.33_batch1) conflicts_resolved=sprint-status.yaml(regenerated) method=union

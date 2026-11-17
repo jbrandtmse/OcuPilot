@@ -117,6 +117,24 @@ Parameter ADMINPERMISSION As %String = "USE";
 /// <code>$Parameter</code> on the class of the object being saved, never as <code>..#ADMINWRITE</code>.</p>
 Parameter ADMINWRITE As %Boolean = 0;
 
+/// <p>On a store that holds one user's records, the name of the property that carries the owner
+/// (<code>"UserName"</code>), or <code>""</code>. Its public writers and
+/// <method>GuardedSave</method> and <method>GuardedSaveIfCurrent</method> refuse a caller who neither
+/// owns the row nor holds <parameter>ADMINRESOURCE</parameter> (<method>OwnerWriteRefused</method>,
+/// AD-9). Read with <code>$Parameter</code> on the class of the object being saved, never as
+/// <code>..#OWNERWRITE</code>.</p>
+Parameter OWNERWRITE As %String = "";
+
+/// <p>On a store owned through a parent row, the parent's class name, so that the property
+/// <parameter>OWNERWRITE</parameter> names carries the parent's key rather than a user name; the
+/// owner is the parent's own <parameter>OWNERWRITE</parameter> value, read from storage by
+/// <parameter>OWNERPARENTINDEX</parameter>.</p>
+Parameter OWNERPARENT As %String = "";
+
+/// <p>The name of the parent's unique index that finds a parent row by the key
+/// <parameter>OWNERWRITE</parameter> names (<code>"TurnKeyIdx"</code>).</p>
+Parameter OWNERPARENTINDEX As %String = "";
+
 /// <p>Global-mapping prefix pattern for OcuPilot's protected globals (AC3).</p>
 Parameter MAPPINGPATTERN As %String = "OcuPilot*";
 
@@ -210,14 +228,73 @@ ClassMethod AdminWriteRefused(pClassName As %String) As %Status
     Quit $$$ERROR($$$AccessDenied)
 }
 
+/// <p>Whether <var>pUser</var> is the calling process's user: a case-insensitive comparison with
+/// <code>$Username</code>, as IRIS compares user names, and false for <code>""</code>.</p>
+ClassMethod CallerOwns(pUser As %String) As %Boolean
+{
+    If pUser = "" Quit 0
+    Quit $ZConvert(pUser, "U") = $ZConvert($Username, "U")
+}
+
+/// <p>The refusal for a write to a row of the class <var>pClassName</var> owned by
+/// <var>pOwnerValue</var>: <code>$$$OK</code> when the class declares no
+/// <parameter>OWNERWRITE</parameter> or the caller holds <parameter>ADMINRESOURCE</parameter>;
+/// otherwise <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) unless the owner resolves
+/// and is the caller (<method>CallerOwns</method>). An unresolved owner is refused.</p>
+/// <p><var>pOwnerValue</var> is the owner's name, or, for a class that declares
+/// <parameter>OWNERPARENT</parameter>, the parent row's key, whose owner is then read from storage
+/// through the parent class. Called first by every public writer of an owner store, before any
+/// escalation, so a refused call changes nothing.</p>
+ClassMethod OwnerWriteRefused(pClassName As %String, pOwnerValue As %String) As %Status
+{
+    If $Parameter(pClassName, "OWNERWRITE") = "" Quit $$$OK
+    If ..CallerIsAdministrator() Quit $$$OK
+    Set tOwner = pOwnerValue
+    Set tParent = $Parameter(pClassName, "OWNERPARENT")
+    If tParent '= "" {
+        Set tOwner = ""
+        Set tSC = $ClassMethod(tParent, "GuardedStoredValue", $Parameter(pClassName, "OWNERPARENTINDEX") _ "Exists", pOwnerValue, $Parameter(tParent, "OWNERWRITE"), .tOwner, .tFound)
+        If $$$ISERR(tSC) || 'tFound Quit $$$ERROR($$$AccessDenied)
+    }
+    If ..CallerOwns(tOwner) Quit $$$OK
+    Quit $$$ERROR($$$AccessDenied)
+}
+
+/// <p><method>OwnerWriteRefused</method> for the row of this class that the unique key
+/// <var>pKey</var> names under the index method <var>pExistsMethod</var> (<code>&lt;index&gt;Exists</code>):
+/// the owner is read from storage, never from the caller. A key that names no row is refused for a
+/// caller who does not hold <parameter>ADMINRESOURCE</parameter>. Reach it through <code>..</code>
+/// dispatch from a subclass.</p>
+ClassMethod KeyOwnerRefused(pExistsMethod As %String, pKey As %String) As %Status [ Private ]
+{
+    Set tClass = ..%ClassName(1)
+    If $Parameter(tClass, "OWNERWRITE") = "" Quit $$$OK
+    If ..CallerIsAdministrator() Quit $$$OK
+    Set tSC = ..GuardedStoredValue(pExistsMethod, pKey, $Parameter(tClass, "OWNERWRITE"), .tOwner, .tFound)
+    If $$$ISERR(tSC) || 'tFound Quit $$$ERROR($$$AccessDenied)
+    Quit ..OwnerWriteRefused(tClass, tOwner)
+}
+
+/// <p>The refusal for a public object save of a <var>pClassName</var> row: an administrator-owned
+/// or owner-checked store is saved for an administrator only. A store that is neither is saved for
+/// every caller.</p>
+ClassMethod PublicSaveRefused(pClassName As %String) As %Status [ Private ]
+{
+    If $Parameter(pClassName, "OWNERWRITE") = "" Quit ..AdminWriteRefused(pClassName)
+    If ..CallerIsAdministrator() Quit $$$OK
+    Quit $$$ERROR($$$AccessDenied)
+}
+
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
-/// through the escalated frame. An instance of an administrator-owned store
-/// (<parameter>ADMINWRITE</parameter>) is saved for an administrator only
-/// (<method>AdminWriteRefused</method>).</p>
+/// through the escalated frame. An instance of an administrator-owned or owner-checked store
+/// (<parameter>ADMINWRITE</parameter>, <parameter>OWNERWRITE</parameter>) is saved for an
+/// administrator only, and never with an owner other than the stored one
+/// (<method>OwnerChangeRefused</method>).</p>
 ClassMethod GuardedSave(pObject As %Persistent) As %Status
 {
     Try {
-        Set tSC = ..AdminWriteRefused(pObject.%ClassName(1))
+        Set tSC = ..PublicSaveRefused(pObject.%ClassName(1))
+        If $$$ISOK(tSC) Set tSC = ..OwnerChangeRefused(pObject)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -257,7 +334,8 @@ ClassMethod GuardedSave(pObject As %Persistent) As %Status
 ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As %Status
 {
     Try {
-        Set tSC = ..AdminWriteRefused(pObject.%ClassName(1))
+        Set tSC = ..PublicSaveRefused(pObject.%ClassName(1))
+        If $$$ISOK(tSC) Set tSC = ..OwnerChangeRefused(pObject)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -265,10 +343,10 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
     Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
 }
 
-/// <p><method>GuardedSaveIfCurrent</method>'s conditional write without the administrator check, for
-/// the one store writer that is open to every caller
-/// (<method>OcuPilot.Kernel.State.Switch.GuardedRecordWritesMarked</method>). Never called from a
-/// route or a tool.</p>
+/// <p><method>GuardedSaveIfCurrent</method>'s conditional write without the caller check, for a
+/// store writer that has made its own: <method>GuardedSaveOwned</method> and the one writer open to
+/// every caller (<method>OcuPilot.Kernel.State.Switch.GuardedRecordWritesMarked</method>). Never
+/// called from a route or a tool.</p>
 ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -319,6 +397,75 @@ ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer
     ; version the row never carried and be refused for ever.
     If $$$ISERR(tSC) && (tPriorVersion '= "") {
         Set pObject.RowVersion = tPriorVersion
+    }
+    Quit tSC
+}
+
+/// <p><method>GuardedSaveIfCurrent</method>'s conditional write for a store's own writers on an
+/// <parameter>OWNERWRITE</parameter> class: a stored row must still carry the owner-carrying value
+/// storage holds, for every caller (<method>OwnerChangeRefused</method>); and for a caller who does
+/// not hold <parameter>ADMINRESOURCE</parameter>, a row with an id must be stored and its owner must
+/// be the caller (<method>OwnerWriteRefused</method>), so a save never changes an owner and never
+/// writes another user's row. Refused with <code>$$$AccessDenied</code> before any escalated
+/// write.</p>
+ClassMethod GuardedSaveOwned(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
+{
+    Try {
+        Set tSC = $$$OK
+        Set tClass = pObject.%ClassName(1)
+        Set tProperty = $Parameter(tClass, "OWNERWRITE")
+        If tProperty '= "" {
+            Set tSC = ..OwnerChangeRefused(pObject, .tFound)
+            If $$$ISOK(tSC) && '..CallerIsAdministrator() {
+                If (pObject.%Id() '= "") && 'tFound Set tSC = $$$ERROR($$$AccessDenied)
+                If $$$ISOK(tSC) Set tSC = ..OwnerWriteRefused(tClass, $Property(pObject, tProperty))
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedSaveIfCurrentAnyCaller(pObject, pExpected)
+}
+
+/// <p>The refusal for a save of <var>pObject</var> that would change a row's owner: on an
+/// <parameter>OWNERWRITE</parameter> class, <code>$$$AccessDenied</code> when the row is stored and
+/// its owner-carrying value differs from the one <var>pObject</var> holds, whoever the caller is
+/// (AD-9: a save cannot change a row's owner). <var>pFound</var> answers whether the row is
+/// stored; a new object, or a class that declares no owner, answers <code>$$$OK</code>.</p>
+ClassMethod OwnerChangeRefused(pObject As %Persistent, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set pFound = 0
+    Set tClass = pObject.%ClassName(1)
+    Set tProperty = $Parameter(tClass, "OWNERWRITE")
+    If (tProperty = "") || (pObject.%Id() = "") Quit $$$OK
+    Set tSC = ..GuardedStoredOwnerById(tClass, tProperty, pObject.%Id(), .tStored, .pFound)
+    If $$$ISERR(tSC) Quit tSC
+    If pFound && (tStored '= $Property(pObject, tProperty)) Quit $$$ERROR($$$AccessDenied)
+    Quit $$$OK
+}
+
+/// <p>Whether row <var>pId</var> of <var>pClassName</var> exists and, when it does, the stored value
+/// of its property <var>pProperty</var>, read in one escalated frame by global reads. The class and
+/// the property come from the class dictionary through <method>OwnerChangeRefused</method>, never from a
+/// caller's text.</p>
+ClassMethod GuardedStoredOwnerById(pClassName As %String, pProperty As %String, pId As %String, Output pValue As %String, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pValue = ""
+    Set pFound = 0
+    If '$Match(pProperty, "^[A-Za-z][A-Za-z0-9]*$") Quit $$$ERROR($$$AccessDenied)
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '$ClassMethod(pClassName, "%ExistsId", pId) Quit
+        Set pFound = 1
+        Set pValue = $ClassMethod(pClassName, pProperty _ "GetStored", pId)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pValue = ""
+        Set pFound = 0
     }
     Quit tSC
 }
