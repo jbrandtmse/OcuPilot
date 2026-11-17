@@ -679,12 +679,12 @@ class TestEmbeddedPythonRule(FixtureTreeCase):
 
 
 class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
-    """AD-9: `New $ROLES` is refused outside Base and the one test class, except in the install's
-    target-key step, which adds the administrative role it was granted to its own process."""
+    """AD-9: `New $ROLES` is refused outside Base and the one test class, except in the installer's
+    `AsAdministrator`, which adds the administrative role it was granted to its own process."""
 
     INSTALLER = "src/OcuPilot/Install/Installer.cls"
 
-    def installer(self, body: str, method: str = "EnsureProposalTargetKeys", path: str = INSTALLER) -> list[str]:
+    def installer(self, body: str, method: str = "AsAdministrator", path: str = INSTALLER) -> list[str]:
         self.write(
             path,
             "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
@@ -705,6 +705,10 @@ class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
         problems = self.installer("    New $ROLES", method="EnsureGrant")
         self.assertTrue(any("Installer.cls" in p for p in problems), f"expected a refusal, got {problems}")
 
+    def test_new_roles_in_the_former_target_key_step_is_refused(self):
+        problems = self.installer("    New $ROLES", method="EnsureProposalTargetKeys")
+        self.assertTrue(any("Installer.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
     def test_add_roles_in_the_target_key_step_is_refused(self):
         problems = self.installer("    Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
         self.assertTrue(problems, "AddRoles is refused in the target-key step as it is everywhere else")
@@ -721,7 +725,7 @@ class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
         self.write(
             self.INSTALLER,
             "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
-            "ClassMethod EnsureProposalTargetKeys() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
+            "ClassMethod AsAdministrator() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
             "ClassMethod Other() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n}\n",
         )
         problems: list[str] = []

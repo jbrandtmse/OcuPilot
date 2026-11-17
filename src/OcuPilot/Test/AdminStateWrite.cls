@@ -254,9 +254,10 @@ Method TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned()
 }
 
 /// <p>The administrator-owned stores are the classes whose compiled <code>ADMINWRITE</code> is 1,
-/// and each one's own public class methods are exactly its declared reads, refused writes and open
-/// writes. Every refused write is a step the probe runs, and the three refusal tests and
-/// <class>OcuPilot.Test.StoreOwnerWrite</class>'s agent definition test call them through
+/// and each one's own public class methods are exactly its declared reads, refused writes, adjuster writes
+/// and open writes. Every refused write is a step the probe runs, and the three refusal tests,
+/// <class>OcuPilot.Test.StoreOwnerWrite</class>'s agent definition test and
+/// <class>OcuPilot.Test.InstallRecordWrite</class> call them through
 /// <method>PlanKinds</method>; <code>GuardedRecordWritesMarked</code> and
 /// <code>GuardedClearVerification</code> are the writes open to every caller. <code>Base</code>'s own
 /// public class methods, which the five inherit, are exactly <method>BaseSurface</method>'s two halves,
@@ -265,7 +266,7 @@ Method TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned()
 /// <class>OcuPilot.Kernel.State.Policy</class> -> this and the egress and policy test go red.</p>
 Method TestTheAdministratorStoresAreDeclared()
 {
-    Set tStores = $ListBuild("Agent", "Egress", "Hold", "Policy", "Switch")
+    Set tStores = $ListBuild("Access", "Agent", "Demo", "Egress", "Hold", "Policy", "Stamp", "Switch", "Version", "WebApp")
     Set tDeclared = ""
     For tI = 1:1:$ListLength(tStores) {
         Set tDeclared = tDeclared _ $Select(tDeclared = "": "", 1: ",") _ ..#STOREPACKAGE _ $List(tStores, tI)
@@ -275,15 +276,15 @@ Method TestTheAdministratorStoresAreDeclared()
     While tRS.%Next() {
         Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tRS.%GetData(1)
     }
-    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled ADMINWRITE is 1 are the five stores")
+    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled ADMINWRITE is 1 are the ten stores")
     Set tDeclaredWrites = ""
     For tI = 1:1:$ListLength(tStores) {
-        Set tWrites = ..Writes($List(tStores, tI))
+        Set tWrites = ..Writes($List(tStores, tI)) _ ..AdjusterWrites($List(tStores, tI))
         For tJ = 1:1:$ListLength(tWrites) {
             Set tDeclaredWrites = tDeclaredWrites _ $ListBuild($List(tStores, tI) _ "." _ $List(tWrites, tJ))
         }
     }
-    Set tCalled = ..PlanKinds("switch") _ ..PlanKinds("hold") _ ..PlanKinds("egresspolicy") _ ..PlanKinds("agent")
+    Set tCalled = ..PlanKinds("switch") _ ..PlanKinds("hold") _ ..PlanKinds("egresspolicy") _ ..PlanKinds("agent") _ ..PlanKinds("install")
     Do $$$AssertEquals(..SortedJoin(tCalled), ..SortedJoin(tDeclaredWrites), "the refusal tests call every declared write and nothing else")
     For tI = 1:1:$ListLength(tStores) {
         Set tStore = $List(tStores, tI)
@@ -293,12 +294,12 @@ Method TestTheAdministratorStoresAreDeclared()
         While tRS.%Next() {
             Set tPublic = tPublic _ $ListBuild(tRS.%GetData(1))
         }
-        Set tSplit = ..Reads(tStore) _ ..Writes(tStore) _ ..OpenWrites(tStore)
-        Do $$$AssertEquals(..SortedJoin(tPublic), ..SortedJoin(tSplit), tStore _ "'s public class methods are its declared reads, refused writes and open writes")
-        Set tWrites = ..Writes(tStore)
+        Set tSplit = ..Reads(tStore) _ ..Writes(tStore) _ ..AdjusterWrites(tStore) _ ..OpenWrites(tStore)
+        Do $$$AssertEquals(..SortedJoin(tPublic), ..SortedJoin(tSplit), tStore _ "'s public class methods are its declared reads, refused writes, adjuster writes and open writes")
+        Set tWrites = ..Writes(tStore) _ ..AdjusterWrites(tStore)
         For tJ = 1:1:$ListLength(tWrites) {
             Set tKind = tStore _ "." _ $List(tWrites, tJ)
-            Do $$$AssertTrue($ClassMethod($Select(tStore = "Agent": "OcuPilot.Test.OwnerStateWriteProbe", 1: ..#PROBE), "Handles", tKind), tKind _ " is a write the probe calls")
+            Do $$$AssertTrue($ClassMethod(..ProbeFor(tStore), "Handles", tKind), tKind _ " is a write the probe calls")
         }
     }
     Set tPublic = ""
@@ -329,12 +330,14 @@ ClassMethod PlanKinds(pTest As %String) As %List
     If pTest = "switch" Quit $ListBuild("Switch.SetGuarded", "Switch.DeleteGuarded")
     If pTest = "hold" Quit $ListBuild("Hold.GuardedCreate", "Hold.GuardedDeleteId", "Hold.DeleteAllGuarded")
     If pTest = "agent" Quit ##class(OcuPilot.Test.StoreOwnerWrite).AgentWriteKinds()
+    If pTest = "install" Quit ##class(OcuPilot.Test.InstallRecordWrite).WriteKinds()
     Quit $ListBuild("Egress.SetGuarded", "Egress.DeleteGuarded", "Policy.GuardedApply", "Policy.DeleteAllGuarded")
 }
 
 /// <p>The reads <var>pStore</var> declares: its public class methods that write no row.</p>
 ClassMethod Reads(pStore As %String) As %List
 {
+    If ..IsInstallStore(pStore) Quit ##class(OcuPilot.Test.InstallRecordWrite).Reads(pStore)
     If pStore = "Agent" Quit $ListBuild("GuardedByName", "GuardedCredentialOwned", "GuardedIdsByCredentialName", "GuardedIsEnabled", "GuardedList", "GuardedRetentions", "GuardedScreenRows", "GuardedVersion", "ResolveDefault", "ResolveFor", "ScreenRow", "SecurityFields", "SnapshotSecurityFields", "Timestamp")
     If pStore = "Switch" Quit $ListBuild("GuardedVersion", "Resolve", "Timestamp")
     If pStore = "Hold" Quit $ListBuild("GuardedForUser", "GuardedIdForUser", "GuardedList", "GuardedScreenRows", "ScreenRow", "Timestamp")
@@ -346,11 +349,35 @@ ClassMethod Reads(pStore As %String) As %List
 /// privilege.</p>
 ClassMethod Writes(pStore As %String) As %List
 {
+    If ..IsInstallStore(pStore) Quit ##class(OcuPilot.Test.InstallRecordWrite).Writes(pStore)
     If pStore = "Agent" Quit $ListBuild("GuardedCreate", "GuardedUpdate", "GuardedSetVerification", "GuardedMarkCredentialCreated", "GuardedDeleteId", "SetDefaultGuarded", "GuardedRebalanceDefault")
     If pStore = "Switch" Quit $ListBuild("SetGuarded", "DeleteGuarded")
     If pStore = "Hold" Quit $ListBuild("GuardedCreate", "GuardedDeleteId", "DeleteAllGuarded")
     If pStore = "Egress" Quit $ListBuild("SetGuarded", "DeleteGuarded")
     Quit $ListBuild("GuardedApply", "DeleteAllGuarded")
+}
+
+/// <p>The writes <var>pStore</var> admits to a caller who holds one of its adjuster pairs as well as to an
+/// administrator: the screen-access store's two, none for any other store.</p>
+ClassMethod AdjusterWrites(pStore As %String) As %List
+{
+    If ..IsInstallStore(pStore) Quit ##class(OcuPilot.Test.InstallRecordWrite).AdjusterWrites(pStore)
+    Quit ""
+}
+
+/// <p>Whether <var>pStore</var> is one of the five stores <class>OcuPilot.Test.InstallRecordWrite</class> pins: the
+/// install-owned stores and the screen-access store.</p>
+ClassMethod IsInstallStore(pStore As %String) As %Boolean
+{
+    Quit ''$ListFind(##class(OcuPilot.Test.InstallRecordWrite).Stores(), pStore)
+}
+
+/// <p>The probe class that runs <var>pStore</var>'s steps.</p>
+ClassMethod ProbeFor(pStore As %String) As %String
+{
+    If ..IsInstallStore(pStore) Quit ##class(OcuPilot.Test.InstallRecordWrite).#PROBE
+    If pStore = "Agent" Quit "OcuPilot.Test.OwnerStateWriteProbe"
+    Quit ..#PROBE
 }
 
 /// <p>The writes <var>pStore</var> leaves open to every caller.</p>

@@ -1149,7 +1149,7 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; record-after-restore ordering RecordStamp follows. A row that cannot be written fails
         ; the install: an application created with no record is one Uninstall leaves behind.
         Set tFailingStep = "RecordApplicationProvenance"
-        Set tSC = ..RecordApplicationProvenance(pProfile, .tRecordedApps)
+        Set tSC = ..AsAdministrator("provenance", pProfile, .tRecordedApps)
         If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
 
@@ -1398,7 +1398,7 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
         Set tRow.Phase = "installing"
         Set tRow.FailingStep = ""
         Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
-        Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        Set tSC = ..AsAdministrator("saveRow", pProfile, tRow)
         If $$$ISERR(tSC) Quit
         Set pOutcome = "marked"
     } Catch ex {
@@ -1671,7 +1671,7 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
         Set tRow.FailingStep = pFailingStep
         Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
         Set tRow.BuildIdentity = ..BundleIdentity(.pNames)
-        Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        Set tSC = ..AsAdministrator("saveRow", pProfile, tRow)
         If $$$ISERR(tSC) Quit
         Do ..Report(.pReports, $Select(pPhase = "failed": "warn", 1: "info"), "Recorded the version row", {"profile": (pProfile), "phase": (pPhase), "schemaVersion": (pSchemaVersion), "failingStep": (pFailingStep)})
     } Catch ex {
@@ -1815,13 +1815,40 @@ ClassMethod ReadApplicationProvenance(pProfile As %String, ByRef pNames, Output 
 /// <method>EnsureGrant</method> already carries:
 /// <class>OcuPilot.Test.ProposalTargetKey</class> drives it directly. Runs in the install
 /// namespace, where <class>OcuPilot.Kernel.State.Propose</class> is compiled.</p>
-/// <p><b>The one <code>New $ROLES</code> outside <class>OcuPilot.Kernel.State.Base</class> (AD-9).</b>
-/// The grant <method>EnsureGrant</method> makes does not reach the running process, and the rebuild writes
-/// other users' proposal rows, which the store gives an administrator only. The step therefore adds the
-/// administrative role to its own process around the one call, and the frame unwinds when the method
-/// returns. IRIS admits the addition only to a process that can write the system database; a process that
-/// cannot runs the step as it is, and the store's own gate decides.</p>
+/// <p>The step runs through <method>AsAdministrator</method>, which gives it the administrative role the grant
+/// <method>EnsureGrant</method> makes does not give the running process.</p>
 ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..AsAdministrator("targetKeys", "", .tChanged)
+        If $$$ISERR(tSC) Quit
+        If tChanged {
+            Do ..Report(.pReports, "info", "Gave " _ tChanged _ " stored proposal(s) their target key and rebuilt the proposal target index", {"rows": (tChanged)})
+        } Else {
+            Do ..Report(.pReports, "info", "Every stored proposal already carries its target key", {"rows": 0})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Run one install step that writes the install-owned stores or other users' stored proposals, as an
+/// administrator (AD-9). <var>pStep</var> is one of a closed list: <code>targetKeys</code> (the proposal target keys,
+/// <var>pArg</var> answering how many rows were keyed), <code>provenance</code> (the application provenance rows
+/// <var>pArg</var> names, as <method>RecordApplicationProvenance</method> reads them), <code>gatewayMark</code> (the
+/// path <var>pArg</var>), <code>saveRow</code> (the install stamp or version row <var>pArg</var>),
+/// <code>demoRemove</code> (<method>RemoveDemoFixtures</method>, its reports in <var>pReports</var>),
+/// <code>deletePath</code> (the provenance row of the path <var>pArg</var>), <code>deleteStamps</code> and
+/// <code>deleteVersions</code> (the profile's rows). Any other step is refused.</p>
+/// <p><b>The one <code>New $ROLES</code> outside <class>OcuPilot.Kernel.State.Base</class> (AD-9).</b> The grant
+/// <method>EnsureGrant</method> makes does not reach the running process, and those stores give an administrator only,
+/// so the step adds the administrative role to its own process around the one step and the frame unwinds when the
+/// method returns. IRIS admits the addition only to a process that can write the system database; a process that
+/// cannot, or a role that does not exist yet, runs the step as it is, and the store's own gate decides. The role is the
+/// production one for every profile: a probe profile's rows live in the production database.</p>
+ClassMethod AsAdministrator(pStep As %String, pProfile As %String = "", ByRef pArg, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     New $ROLES
@@ -1833,12 +1860,28 @@ ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
                 Set tUnescalated = 1
             }
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged)
-        If $$$ISERR(tSC) Quit
-        If tChanged {
-            Do ..Report(.pReports, "info", "Gave " _ tChanged _ " stored proposal(s) their target key and rebuilt the proposal target index", {"rows": (tChanged)})
+        If pStep = "targetKeys" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.pArg)
+        } ElseIf pStep = "provenance" {
+            Set tSC = ..RecordApplicationProvenance(pProfile, .pArg)
+        } ElseIf pStep = "gatewayMark" {
+            Set tSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedMarkGatewayReported(pArg)
+        } ElseIf pStep = "saveRow" {
+            If $IsObject(pArg) && $ListFind($ListBuild("OcuPilot.Kernel.State.Stamp", "OcuPilot.Kernel.State.Version"), pArg.%ClassName(1)) {
+                Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(pArg)
+            } Else {
+                Set tSC = $$$ERROR($$$GeneralError, "AsAdministrator saves an install stamp or a version row only")
+            }
+        } ElseIf pStep = "demoRemove" {
+            Set tSC = ..RemoveDemoFixtures(pProfile, .pReports)
+        } ElseIf pStep = "deletePath" {
+            Set tSC = ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(pArg)
+        } ElseIf pStep = "deleteStamps" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile(pProfile)
+        } ElseIf pStep = "deleteVersions" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
         } Else {
-            Do ..Report(.pReports, "info", "Every stored proposal already carries its target key", {"rows": 0})
+            Set tSC = $$$ERROR($$$GeneralError, "AsAdministrator runs no step named '" _ pStep _ "'")
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -1901,7 +1944,7 @@ ClassMethod ReportGatewayGap(ByRef pReports, pProfile As %String = "") As %Statu
             While tPath '= "" {
                 Set tAny = 1
                 Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- this web application may 404 until an SMP Save or a Gateway restart", {"path": (tPath)})
-                Do ##class(OcuPilot.Kernel.State.WebApp).GuardedMarkGatewayReported(tPath)
+                Do ..AsAdministrator("gatewayMark", pProfile, tPath)
                 Set tPath = $Order(tPending(tPath))
             }
         }
@@ -4060,7 +4103,7 @@ ClassMethod RecordStamp(ByRef pNames, pGrantOutcome As %String, pGrantedUser As 
         Set tStamp.GrantOutcome = pGrantOutcome
         Set tStamp.GrantedUsername = pGrantedUser
         Set tStamp.GrantCommandHint = pGrantCommand
-        Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tStamp)
+        Set tSC = ..AsAdministrator("saveRow", pNames("profile"), tStamp)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -4550,7 +4593,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; this story's own Design Notes prescribe for OcuPilot.Kernel.State.Stamp.
         Set $NAMESPACE = tOrigNS
         Kill tFixtureReports
-        Do ..RemoveDemoFixtures(pProfile, .tFixtureReports)
+        Do ..AsAdministrator("demoRemove", pProfile, , .tFixtureReports)
         Set tFN = $Order(tFixtureReports(""))
         While tFN '= "" {
             If tFixtureReports(tFN, "level") = "warn" {
@@ -4782,7 +4825,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         If pProfile '= "" {
             Set tRN = $Order(tRemovedApps(""))
             While tRN '= "" {
-                Set tForgetSC = ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(tRemovedApps(tRN))
+                Set tForgetSC = ..AsAdministrator("deletePath", pProfile, tRemovedApps(tRN))
                 If $$$ISERR(tForgetSC) {
                     Do ..LogWarn("Uninstall removed a web application but could not remove its provenance record", {"path": (tRemovedApps(tRN)), "error": ($System.Status.GetErrorText(tForgetSC))})
                 }
@@ -4806,7 +4849,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             ; confirmed uninstall and grow without bound across repeated test runs.
             ; OcuPilot.Kernel.State.Stamp is compiled only into the install namespace,
             ; hence called here, after the restore, like RecordStamp.
-            Set tStampSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile(pProfile)
+            Set tStampSC = ..AsAdministrator("deleteStamps", pProfile)
             If $$$ISERR(tStampSC) {
                 Do ..LogWarn("Uninstall removed every named object but could not purge this profile's install-stamp history", {"profile": (pProfile)})
             }
@@ -4815,7 +4858,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             ; above exists for -- AC11 never lists it either, but leaving it would grow
             ; without bound across repeated probe cycles, exactly like Stamp's did before
             ; Story 1.3's own fix.
-            Set tVerDeleteSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
+            Set tVerDeleteSC = ..AsAdministrator("deleteVersions", pProfile)
             If $$$ISERR(tVerDeleteSC) {
                 Do ..LogWarn("Uninstall removed every named object but could not purge this profile's version row", {"profile": (pProfile)})
             }

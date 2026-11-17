@@ -2,14 +2,43 @@
 title: "Story 21.35: OcuPilot's install records and other users' state answer only to their callers"
 type: 'bugfix'
 created: '2026-11-16'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '6e62e114f736a2aa69a9f3ae0373b3d1ad2440b9'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The `demoRemove` step of `AsAdministrator` has no test leg that seeds a probe Demo row and uninstalls as the installer.
+    evidence: |-
+      `InstallAsAdministrator` never creates a probe Demo row, so a regression of the step would stay green. A seeded row and an uninstall as the installer would settle it.
+    location: >-
+      src/OcuPilot/Test/InstallAsAdministrator.cls
+    severity: low
+  - summary: >-
+      `Base.GuardedProbeSet` is a public writer inherited by every store and is not guarded.
+    evidence: |-
+      It sets one probe global for any caller; `AdminStateWrite.BaseSurface` lists it with the reads and helpers. Pre-existing.
+    location: >-
+      src/OcuPilot/Kernel/State/Base.cls:723
+    severity: low
+  - summary: >-
+      A caller-defined subclass of a guarded store with `ADMINWRITE` = 0 may pass `Base`'s guard, which reads the parameter from the object's class.
+    evidence: |-
+      Inferred from reading `GuardedSave`; pre-existing in every guarded store. A probe that compiles such a subclass as a `%Development` holder would settle it.
+    location: >-
+      src/OcuPilot/Kernel/State/Base.cls
+    severity: medium (unverified)
+  - summary: >-
+      `Access.GuardedPut` does not check the screen name, duplicate pairs or the length of `pDeclared`.
+    evidence: |-
+      A direct adjuster can add rows for unregistered screens and shape the audit's before-set; the actor and the stored set stay true.
+    location: >-
+      src/OcuPilot/Kernel/State/Access.cls:117
+    severity: low
 ---
 
 <intent-contract>
@@ -128,6 +157,26 @@ Each row runs in a child process logged in as a real principal (`AdminStateWrite
 
 ## Review Triage Log
 
+### 2026-11-16 — Review pass
+
+- verdicts: 15 findings — high 0, medium 3, low 8, false 3, maybe-false 1
+- findings:
+  - `[false]` `[reject]` Demo fixture creation is not routed through the frame — `Fixture.Create` runs from `StartPathLocked` as the container's own account (`%All`), which the gate admits; the spec's Design Notes decide this path.
+  - `[false]` `[reject]` The retention sweep is not routed through the frame — the task runs as its saving account (`%All`), as 21.33 measured; `Retention` and `RetentionTask` stay green.
+  - `[low]` `[reject]` The new tests do not drive the port as a principal — `ScreenAccessWire.TestEachAcceptedWriteIsOneSecurityChangeRow` drives the port and counts the audit rows, green after the change; not worth a second test.
+  - `[false]` `[reject]` `GuardedPut` and `GuardedRemove` gained a `pDeclared` argument and the store refuses a changer that is not the caller — both are the spec's own requirements (option b, the `pBy` check).
+  - `[medium]` `[patch]` `GuardedRecord` and `GuardedMarkGatewayReported` carry a refusal line no test leg isolates — the legs now send a recorded path and a path with no row; the removed line turns each red.
+  - `[medium]` `[patch]` The gateway-mark step is unpinned under the installer principal — `InstallAsAdministrator` asserts no unreported application remains; skipping the role for `gatewayMark` alone turns it red.
+  - `[medium]` `[patch]` The mutation record covers `WebApp` and `Access` only — `ADMINWRITE` = 0 on `Stamp`, `Version` and `Demo`, and the two refusal lines, are recorded above. The `demoRemove` step still has no seeded-row leg (deferred).
+  - `[low]` `[defer]` `Base.GuardedProbeSet` is a public writer every store inherits, listed under reads and helpers by `BaseSurface` — pre-existing, writes a probe global only; whether to gate it is `Base`'s decision.
+  - `[maybe-false]` `[defer]` A caller-defined subclass with `ADMINWRITE` = 0 would pass `Base`'s guard, which reads the parameter from the object's own class — pre-existing in every `ADMINWRITE` and `OWNERWRITE` store; it needs a compile right in the install namespace (inference), which a probe would settle.
+  - `[low]` `[defer]` `Access.GuardedPut` does not check the screen name, a duplicate pair or the length of `pDeclared`, so a direct adjuster can add rows and shape the audit's before-set — the actor and the stored set stay true; the spec's Design Notes limit the store's checks to shape, count and the empty set.
+  - `[low]` `[patch]` The `Access` class comment claimed every write is audited once — now says `GuardedPut` and `GuardedRemove` audit, so a write through the port is audited once.
+  - `[low]` `[reject]` A failed audit write is now silent where the port logged it — the store has no logging seam it may call (`Kernel/State` may not name `Port`); the audit seam is `Event.Record` (inference).
+  - `[low]` `[patch]` `ScreenAccessWire`'s mutation recipe names the deleted `ScreenAccessPort.Audit` — now names `Access.Audit`.
+  - `[low]` `[patch]` The `Demo` comment said the installer writes the store — now says it removes rows, and the fixture creates them as the container's account.
+  - `[low]` `[reject]` `saveRow`'s class restriction, the unknown-step refusal and the refused role-addition branch have no test — a private method with no other caller; the closed list is its own pin.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -219,7 +268,39 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 
 **Runner ruling at the spec gate (2026-11-16):** validated. Implementation waits for Story 21.33 to be done. The AD-9 text above is written into the spine at that start, after 21.33's DW-2665 text it builds on, complying first under U7. Screen access: option (b), orchestrator ruling (veto item): the store records the audit event itself, and a write through the port is audited exactly once, pinned by a test.
 
+**Task 0 (pre-fix), Batch 1 (2026-11-16, `ocupilot-ci`).** Run on the baseline product files (`Access`, `WebApp`, `Stamp`, `Version`, `Demo`, `Installer`, `ScreenAccessPort` as at `6e62e114f`) under the final test classes. The read legs (DW-2652) belong to Batches 2 and 3 and were not run.
+
+- `InstallRecordWrite`: 7 of 8 tests red; the administrator test is green. As a real principal holding `%Development:USE` and no `OcuPilotAdmin` or `%All`, every write landed (ok, no 822):
+  - all 23 install-record legs: `WebApp.GuardedRecord`, `GuardedMarkGatewayReported`, `DeleteByPath`, `Stamp.DeleteByProfile`, `GuardedSweep`, `Version.DeleteByProfile`, `Demo.DeleteByProfile`, and a new and an opened `WebApp`, `Stamp`, `Version` and `Demo` row saved through both of `Base`'s public saves; the rows read differently afterwards.
+  - Provenance steering: a foreign application replaced one probe application, the developer's `GuardedRecord("probe", <path>, "created")` landed, and `Uninstall("probe", 1)` deleted the foreign application.
+  - Screen access: a principal with no adjuster pair and no `OcuPilotAdmin` landed `GuardedPut`, `GuardedRemove`, `DeleteAllGuarded` and both `Base` saves of a new and an opened `Access` row (7 of 7 legs). The developer landed an empty set, nine pairs, a malformed pair, an unmalformed pair under a changer that is not itself, and `DeleteAllGuarded`. A held row whose screen was changed in memory renamed the stored row through `GuardedPut`.
+  - A put and a remove through the store wrote no audit row (0 of 4).
+- `InstallAsAdministrator`: green. Installer role, measured by removing each grant in turn on a scratch principal (probe install and uninstall, then deleted):
+  - `%Admin_Secure:USE` (without it: `EnsureDatabaseResource` fails), `%Admin_Manage:USE` (`EnsureDatabase`), `%DB_IRISSYS:RW` (`EnsureDatabase`, and `<PROTECT>` in `LockInstall` without any `%DB_IRISSYS`), `%DB_<install databases>:RW`.
+  - SQL: `SELECT` on `%Dictionary.CompiledClass` (the install's class-dictionary read, `-99` without it) and `SELECT, INSERT, UPDATE, DELETE` on `OcuPilot_Kernel_State` with the grant option (`EnsureSqlPrivileges` fails without it).
+  - Not needed: `%Admin_Operate:USE`, `%Development:USE`. Read-only `%DB_IRISSYS` or `%DB_<install>` fails at `EnsureDatabase` and leaves a database with no configuration entry that `Uninstall` cannot remove (cleaned by hand on `ocupilot-ci`).
+
+**Batch 1 after.** `InstallRecordWrite` 8 of 8, `InstallAsAdministrator` 1 of 1 (probe install, upgrade over a keyless proposal and uninstall as the installer, no `%All`, no `OcuPilotAdmin`; its process is without the role after each step), `AdminStateWrite` 7 of 7 (ten stores), `AdminPathWrite` 5 of 5. The Batch 1 `(loop)` classes are green: `StoreOwnerWrite`, `State`, `Installer`, `InstallLock`, `InstallMark`, `Version`, `Provenance`, `WebApp`, `GatewayGapIpmPath`, `UninstallGuard`, `UninstallResidue`, `UninstallSurvival`, `Escalation`, `IdentityInstall`, `SslReadInstall`, `ProposalTargetKey`, `RetentionTask`, `StampRetention`, `DemoOptIn`, `Demo`, `FixtureNamespace`, `ScreenAccessWire`, `ScreenAccessRefusals`, `ScreenAccessTurn`, `ScreenAccessGate`, `ScreenAccessAgent`, with `Retention`, `InteropUsageGate`, `ScreenRefusal` and `AnalyticsMdxReadGate` (they call `Access`). `MigrateFault`, `UninstallFault`, `EscalationGap`, `FixtureFault` and `ProbeApps` are fixtures that carry no test method. `uv run scripts/check-objectscript.py` 0 problems; `uv run scripts/test_check_objectscript.py` 160 tests OK; `node --test tools/ci.test.mjs` 103 pass.
+
+**Mutations, Batch 1 (Rule 19; each applied, observed red, reverted, tree byte-identical, reloaded).**
+
+- mutation: `WebApp` `ADMINWRITE` = 0 -> `InstallRecordWrite` `TestADeveloperIsRefusedEveryInstallRecordWrite`, `TestAForgedProvenanceRowDoesNotSteerAnUninstall` and `TestTheInstallRecordStoresAreDeclared` red; `AdminStateWrite` `TestTheAdministratorStoresAreDeclared` red.
+- mutation: the `AdminWriteRefused` line removed from `Stamp.DeleteByProfile`, `Stamp.GuardedSweep`, `Version.DeleteByProfile`, `Demo.DeleteByProfile` or `WebApp.DeleteByPath`, one at a time -> `TestADeveloperIsRefusedEveryInstallRecordWrite` red each time. The same line removed from `WebApp.GuardedRecord` (a recorded path is sent) or from `GuardedMarkGatewayReported` (a path with no row is sent) -> `TestADeveloperIsRefusedEveryInstallRecordWrite` red each time. `ADMINWRITE` = 0 on `Stamp`, `Version` or `Demo`, one at a time -> `TestADeveloperIsRefusedEveryInstallRecordWrite` and `TestTheInstallRecordStoresAreDeclared` red each time.
+- mutation: `AsAdministrator` skips its role addition -> `InstallAsAdministrator` and `AdminPathWrite.TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals` red. Skipped for `deleteStamps` alone -> `InstallAsAdministrator` red on the records after uninstall. Skipped for `gatewayMark` alone -> `InstallAsAdministrator` red on the gateway-report assertion.
+- mutation: `Access.WriterRefused` answers OK -> `TestAPrincipalWithoutAnAdjusterPairIsRefusedEveryScreenAccessWrite` red at `GuardedPut` and `GuardedRemove`. `Access.SetRefused` answers OK -> `TestAnAdjusterIsRefusedWhatThePortWouldRefuse` red at the empty, nine-pair, malformed and unknown-permission legs. The `CallerOwns(pBy)` test replaced by 0 -> the forged-changer legs red. The held-screen comparison removed -> `TestAHeldScreenAccessRowCannotBeRenamed` red. `Access` `ADMINWRITE` = 0 -> the `Base` save legs, `DeleteAllGuarded` and the roster red. The check removed from `DeleteAllGuarded` -> that leg red.
+- mutation: the store's `Audit` call made a no-op -> `TestAnAdjusterStoresAndTheStoreAuditsOnce` and `ScreenAccessWire.TestEachAcceptedWriteIsOneSecurityChangeRow` red (no row). A second `Audit` call after the put -> both red (two rows).
+- `scripts/test_check_objectscript.py`: `New $ROLES` in `AsAdministrator` accepted; in `EnsureProposalTargetKeys`, or in a later method, refused.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-progress
 Blocking condition: none
+
+Batch 1 (DW-2651) is done; Batches 2 and 3 are not started.
+
+- **Change.** `WebApp`, `Stamp`, `Version` and `Demo` declare `ADMINWRITE`. `Access` declares it too, and its `GuardedPut` and `GuardedRemove` admit `OcuPilotAdmin` or the adjuster pairs, refuse a set the port would refuse, a changer that is not the caller and a renamed held row, and record the `SecurityChange` audit themselves, once (option b). `Installer.AsAdministrator` is the one `New $ROLES` method outside `Base`, running a closed list of install steps; `ScreenAccessPort` no longer audits.
+- **Files.** `src/OcuPilot/Kernel/State/{Access,WebApp,Stamp,Version,Demo}.cls`, `src/OcuPilot/Install/Installer.cls`, `src/OcuPilot/Port/ScreenAccessPort.cls`, `scripts/check-objectscript.py` and its harness (allowance moved to `AsAdministrator`), `scripts/ci-throwaway.sh` (add-only), new `InstallRecordWrite`, `InstallRecordProbe`, `InstallAsAdministrator`, and edits to `AdminStateWrite`, `AdminPathProbe`, `AdminPathWrite`, `InteropUsageGate`, `ScreenAccessGate`, `ScreenAccessPortGateSeam`, `ScreenAccessWire`.
+- **Review.** 15 findings: 3 medium and 3 low patched, 3 deferred (4 items with the `demoRemove` leg), 6 rejected (3 false, 3 low). Details in the triage log.
+- **Follow-up review recommended: true.** Two medium entries were patched; the unverified risk is the `demoRemove` step, which no test seeds.
+- **Verification.** `LOADERRORS=0`; `InstallRecordWrite` 8 of 8, `InstallAsAdministrator` 1 of 1, `AdminStateWrite` 7 of 7, `ScreenAccessWire`, `ScreenAccessGate`, `Retention`, `ProposalTargetKey` green after the patches; the Batch 1 loop list green in the implement pass; `check-objectscript.py` 0 problems; harness 160 tests; `ci.test.mjs` 103 pass; `lint-docs.sh` 0 issues. Mutations recorded under Verification.
+- **Residual.** A non-`%All` installer's failed-first-install can no longer write its `failed` version row before the admin role exists. The `(once)` sweep, smoke and fresh check are the runner's.

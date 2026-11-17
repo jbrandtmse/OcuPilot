@@ -316,6 +316,7 @@ services:
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
       # classes: AdminStateWrite, StoreOwnerWrite, TranscriptOwnerWrite, AdminPathWrite
       # classes: PrefOwnerWrite, ReserveSweepWrite
+      # classes: InstallRecordWrite, InstallAsAdministrator
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
@@ -650,6 +651,7 @@ services:
       # classes: ContainerStartNamespace
       # classes: SslReadInstall
       # classes: ProposalTargetKey
+      # classes: InstallRecordWrite, InstallAsAdministrator
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

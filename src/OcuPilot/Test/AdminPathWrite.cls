@@ -274,7 +274,7 @@ Method TestAnAdministratorWithoutAllKeysProposalsAndPurgesTheLedger()
 /// <p>A first install by an account that does not hold <code>%All</code>: the install grants it
 /// <code>OcuPilotAdmin</code>, which leaves its running process without the role, and then runs the
 /// target-key step, which passes because no stored proposal lacks its key, as on a new install.</p>
-/// <p>Mutation (Rule 19): the frame removed from <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method>
+/// <p>Mutation (Rule 19): the frame removed from <method>OcuPilot.Install.Installer.AsAdministrator</method>
 /// and <method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method> made to check the
 /// administrator before it reads -> the step is refused <code>822</code> and this goes red, with the
 /// upgrade test and the developer's empty-store leg.</p>
@@ -296,7 +296,7 @@ Method TestAFirstInstallWithoutAllPassesTheTargetKeyStep()
 /// the running process, and the target-key step gives the keyless proposal its key all the same, because the
 /// step adds the role to its own process around the one call. The role is gone when the step returns.</p>
 /// <p>Mutation (Rule 19): the <code>New $ROLES</code> frame and its <code>Set $ROLES</code> removed from
-/// <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method> -> the step is refused
+/// <method>OcuPilot.Install.Installer.AsAdministrator</method> -> the step is refused
 /// <code>822</code>, the proposal keeps no key, and this goes red alone.</p>
 Method TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals()
 {

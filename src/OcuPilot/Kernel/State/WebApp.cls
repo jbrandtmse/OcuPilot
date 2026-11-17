@@ -22,6 +22,12 @@
 Class OcuPilot.Kernel.State.WebApp Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers and <code>Base</code>'s public saves refuse a caller who does not hold the administrative
+/// resource. The installer writes it through its own administrator frame
+/// (<method>OcuPilot.Install.Installer.AsAdministrator</method>).</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The install profile that owns this application: <code>""</code> for production or
 /// <code>"probe"</code> for the disposable test seam. Reads back through SQL as
 /// <code>NULL</code>, not <code>''</code>, for a production row -- see
@@ -126,6 +132,8 @@ ClassMethod GuardedUnreportedForProfile(pProfile As %String, Output pPaths) As %
 /// never rewrites the origin or re-arms the Gateway-gap report.</p>
 ClassMethod GuardedRecord(pProfile As %String, pPath As %String, pOrigin As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedForPath(pPath, .tExisting)
     If $$$ISERR(tSC) Quit tSC
     If $IsObject(tExisting) Quit $$$OK
@@ -143,6 +151,8 @@ ClassMethod GuardedRecord(pProfile As %String, pPath As %String, pOrigin As %Str
 /// there is nothing to mark.</p>
 ClassMethod GuardedMarkGatewayReported(pPath As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedForPath(pPath, .tRow)
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(tRow) Quit $$$OK
@@ -155,6 +165,8 @@ ClassMethod GuardedMarkGatewayReported(pPath As %String) As %Status
 /// <method>GuardedRecord</method>, called once the application itself is gone.</p>
 ClassMethod DeleteByPath(pPath As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     ; Inherited dispatch (..), not ##class(OcuPilot.Kernel.State.Base): GuardedExecuteOneParam
     ; is [ Private ] and IRIS enforces that against the named class -- see
     ; OcuPilot.Kernel.State.Stamp.DeleteByProfile for the same note.

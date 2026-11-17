@@ -20,10 +20,12 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// install step in the install namespace; <code>Roles.AddAdministrator</code> adds the administrative role
 /// to the process's own <code>$ROLES</code>, which IRIS admits only to a process that can write the system
 /// database. Each answers <code>roles</code> and <code>holdsAdmin</code> as the process reads them after
-/// the step.</p>
+/// the step. <code>Install.ProbeInstall</code> and <code>Install.ProbeUninstall</code> run
+/// <method>OcuPilot.Install.Installer.Install</method> and <method>OcuPilot.Install.Installer.Uninstall</method>
+/// (confirmed) for the probe profile, as the principal.</p>
 ClassMethod PathKinds() As %List
 {
-    Quit $ListBuild("Install.EnsureGrant", "Install.EnsureProposalTargetKeys", "Roles.AddAdministrator")
+    Quit $ListBuild("Install.EnsureGrant", "Install.EnsureProposalTargetKeys", "Roles.AddAdministrator", "Install.ProbeInstall", "Install.ProbeUninstall")
 }
 
 /// <p>Run one step of the plan, answered as <code>{kind, ok, code, text, roles, holdsAdmin}</code>
@@ -47,6 +49,10 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         } ElseIf tKind = "Install.EnsureProposalTargetKeys" {
             Set tSC = ##class(OcuPilot.Install.Installer).EnsureProposalTargetKeys(.tReports)
             Do tLeg.%Set("report", $Get(tReports(1, "message")), "string")
+        } ElseIf tKind = "Install.ProbeInstall" {
+            Set tSC = ##class(OcuPilot.Install.Installer).Install("probe")
+        } ElseIf tKind = "Install.ProbeUninstall" {
+            Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
