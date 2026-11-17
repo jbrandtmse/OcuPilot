@@ -435,3 +435,5 @@
 2026-11-17T02:35:13Z	Story 21.33	ci_green_verified	sha=570a6d212 run=43998524036 result=success missing=none
 2026-11-17T03:04:35Z	Epic 21	feature_merged	story=21.33 feature=8c58f5edf staging_of=570a6d212+230e91291 run=44000514418 note=DW-2650_duplicate_removed_on_feature;integrate_at_21.35_batch_boundary_take_feature_ledger_block
 2026-11-17T03:16:19Z	Story 21.35	dev_complete	scope=batch1 build_sha=1472e282d task0=23_install_writes+uninstall_steer+7_access_writes_landed audit_once=pinned rule6=AsAdministrator_only product_q=failed_first_install_version_row(non-%All,pre-EnsureAdminRole)
+2026-11-17T03:21:00Z	Story 21.35	integrated	feature=8c58f5edf merge=3e32ded2d conflict=sprint-status_last_updated(ours) ledger_dups=0 dw2650=feature_block
+2026-11-17T03:22:55Z	Story 21.35	stage_spawned	stage=code-review scope=batch1 spawn_at=2026-11-17T03:22:55Z model=opus agent_name=21-35-code-review-b1
