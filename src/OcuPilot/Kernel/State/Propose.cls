@@ -872,12 +872,14 @@ ClassMethod GuardedRowsForConvo(pConvKey As %String, pUser As %String, Output pB
 }
 
 /// <p>How many rows turn <var>pTurnKey</var> holds. A turn another user owns answers an administrator only: any
-/// other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>).</p>
+/// other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>). A key that names no turn
+/// answers 0 to a caller who is not an administrator, even where proposals are still kept under it.</p>
 ClassMethod GuardedCountForTurn(pTurnKey As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
-    Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey)
+    Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey, .tNamed)
     If $$$ISERR(tSC) Quit tSC
+    If 'tNamed Quit $$$OK
     Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tRows(1))

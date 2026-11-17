@@ -516,10 +516,12 @@ Method TestADeveloperCannotSaveItsOwnProposalThroughBase()
     Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
 }
 
-/// <p>A developer counts an overflow on another user's turn key after the turn is gone and its ledger rows are kept (a
-/// ledger row outlives its turn): the count is refused <code>822</code>, answers no count, and the rows read as they
-/// did.</p>
-/// <p>Mutation (Rule 19): <code>Ledger.GuardedCountOverflow</code> keeps its count on a refusal -> this goes red.</p>
+/// <p>A developer counts an overflow on another user's turn key after the turn is gone and its ledger rows and proposal
+/// are kept (a ledger row outlives its turn): the count is refused <code>822</code> and answers no count, the counts of
+/// the ledger rows and proposals kept under that key answer 0, and the rows read as they did.</p>
+/// <p>Mutation (Rule 19): <code>Ledger.GuardedCountOverflow</code> keeps its count on a refusal, or the unnamed-key
+/// answer is removed from <code>Ledger.GuardedCountForTurn</code> or <code>Propose.GuardedCountForTurn</code> -> that
+/// leg goes red.</p>
 Method TestACountOnAnotherUsersOrphanedLedgerAnswersNothing()
 {
     Set tTurn = ..PreparedIds.%Get("victimTurn")
@@ -528,11 +530,17 @@ Method TestACountOnAnotherUsersOrphanedLedgerAnswersNothing()
     Do $$$AssertEquals(..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tTurn), 0, "the victim's turn is gone")
     Do $$$AssertEquals(..Stored("SELECT Dropped FROM OcuPilot_Kernel_State.Ledger WHERE Seq = 0 AND %EXACT(TurnKey) = ?", tTurn), 1, "and its overflow row is kept")
     Set tBefore = ..Fingerprint()
+    Do $$$AssertTrue(..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tTurn) > 0, "and so is its proposal")
     Set tPlan = [].%Push({"kind": "Ledger.GuardedCountOverflow", "turnKey": (tTurn), "user": (..#DEVUSER)})
+    Do tPlan.%Push({"kind": "OwnerRead.Ledger.GuardedCountForTurn", "turnKey": (tTurn)})
+    Do tPlan.%Push({"kind": "OwnerRead.Propose.GuardedCountForTurn", "turnKey": (tTurn)})
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedCountOverflow ok=0 code=822", "the count on the victim's overflow row is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("dropped"), 0, "and answers no count")
+    For tI = 2:1:3 {
+        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, tI) _ " count=" _ ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, tI).%Get("count"), tPlan.%Get(tI - 1).%Get("kind") _ " ok=1 code= count=0", "leg " _ tI _ " counts nothing kept under the gone turn's key: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
+    }
     Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
 }
 

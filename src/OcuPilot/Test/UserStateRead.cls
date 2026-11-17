@@ -336,15 +336,18 @@ Method AssertAllAnswered(pRun As %DynamicObject, pWhat As %String, pPlan As %Dyn
 
 /// <p>A developer -- <code>%Development:USE</code>, no <code>OcuPilotAdmin</code> -- reads another user's turn through
 /// its key, its signals, its definition and workflow, its owner and its progress view, its steps and its navigation
-/// directive. Each is refused <code>822</code>, hands back no value through any output argument, and the rows read as
-/// they did.</p>
+/// directive, and the directive of another turn of that user that holds none. Each is refused <code>822</code>, hands
+/// back no value through any output argument, and the rows read as they did.</p>
 /// <p>Mutation (Rule 19): the key check removed from <code>Turn.GuardedDropped</code>, <code>GuardedSignals</code>,
-/// <code>Step.GuardedRows</code> or <code>Nav.GuardedPending</code>, or the open in <code>Turn.GuardedDefinitionOf</code>
-/// or <code>GuardedWorkflowOf</code> made without the caller check -> that leg goes red.</p>
+/// <code>Step.GuardedRows</code> or <code>Nav.GuardedPending</code> (the last leg), or the open in
+/// <code>Turn.GuardedDefinitionOf</code> or <code>GuardedWorkflowOf</code> made without the caller check -> that leg
+/// goes red.</p>
 Method TestADeveloperIsRefusedEveryReadOfAnotherUsersTurn()
 {
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#VICTIM, "completed", .tBare), "a second turn of the victim, with no directive, is seeded")
     Set tBefore = ..Fingerprint()
     Set tPlan = ..TurnReads("victim")
+    Do tPlan.%Push({"kind": "UserRead.Nav.GuardedPending", "key": (tBare)})
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Do ..AssertAllRefused(tRun, "the victim's turn", tPlan)
@@ -449,10 +452,12 @@ Method TestARowNamedThroughAnotherStoresClassIsNotHandedBack()
 
 /// <p>The paths the database does not open to the developer stay closed whatever the stores check: for each of the
 /// eight stores a direct open, existence check and read of one stored property of the victim's row, a direct query
-/// of the table, and the extent query.</p>
+/// of the table, and the extent query; and for each store with a single-column unique key, the direct existence
+/// check and open of the victim's row through that index.</p>
 /// <p>Mutation (Rule 19): none of its own; it is the control the read gate is measured against.</p>
 Method TestTheDatabaseRefusesTheDirectPaths()
 {
+    Set tBefore = ..Fingerprint()
     Set tStores = $ListBuild("Turn", "Step", "Nav", "Convo", "Entry", "Pref", "Sharing", "SqlRun")
     Set tProperties = $ListBuild("State", "Name", "Route", "UserName", "Message", "Value", "UserName", "Namespace")
     Set tPlan = []
@@ -466,14 +471,21 @@ Method TestTheDatabaseRefusesTheDirectPaths()
         Do tPlan.%Push({"kind": "Direct.Sql", "table": (tStore)})
         Do tPlan.%Push({"kind": "Direct.Extent", "store": (tStore)})
     }
+    Set tIndexes = $ListBuild($ListBuild("Turn", "TurnKeyIdx", ..PreparedIds.%Get("victimTurn")), $ListBuild("Nav", "NavTurnKeyIdx", ..PreparedIds.%Get("victimTurn")), $ListBuild("Convo", "ConvKeyIdx", ..PreparedIds.%Get("victimConv")), $ListBuild("SqlRun", "RunKeyIdx", ..PreparedIds.%Get("victimRun")), $ListBuild("Sharing", "SharingUserNameIdx", ..#VICTIM))
+    For tI = 1:1:$ListLength(tIndexes) {
+        Set tIndex = $List(tIndexes, tI)
+        Do tPlan.%Push({"kind": "Direct.IndexExists", "store": ($List(tIndex, 1)), "index": ($List(tIndex, 2)), "key": ($List(tIndex, 3))})
+        Do tPlan.%Push({"kind": "Direct.IndexOpen", "store": ($List(tIndex, 1)), "index": ($List(tIndex, 2)), "key": ($List(tIndex, 3))})
+    }
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Set tLegs = ..LegsOf(tRun, "the direct paths", tPlan)
     For tI = 1:1:tLegs.%Size() {
         Set tLeg = tLegs.%Get(tI - 1)
         Do $$$AssertEquals(tLeg.%Get("seen"), "", tLeg.%Get("kind") _ " leg " _ tI _ " hands back nothing: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
-        If tLeg.%Get("kind") '= "Direct.Extent" Do $$$AssertEquals(tLeg.%Get("ok"), 0, tLeg.%Get("kind") _ " leg " _ tI _ " is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
+        If '$ListFind($ListBuild("Direct.Extent", "Direct.IndexExists"), tLeg.%Get("kind")) Do $$$AssertEquals(tLeg.%Get("ok"), 0, tLeg.%Get("kind") _ " leg " _ tI _ " is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
     }
+    Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
 }
 
 /// <p>A developer holds its own entry with a stream pointed at another user's entry stream and reads its own
@@ -532,8 +544,7 @@ Method TestAnOwnerReadsItsOwnRows()
 
 /// <p>An administrator -- <code>OcuPilotAdmin:USE</code>, no <code>%All</code> -- reads the victim's turn,
 /// conversation, settings and run through every read, and every user's preferences and sharing choices.</p>
-/// <p>Mutation (Rule 19): the administrator exemption removed from <code>Base.OwnerWriteRefused</code> -> every leg
-/// goes red.</p>
+/// <p>Mutation (Rule 19): <code>Pref.GuardedUsers</code> refuses every caller -> its leg goes red.</p>
 Method TestAnAdministratorReadsAnotherUsersRows()
 {
     Set tPlan = ..TurnReads("victim")
@@ -622,11 +633,13 @@ Method TestARowThatDoesNotExistAnswersAsItDid()
     Do $$$AssertTrue($IsObject(tLoad) && 'tLoad.%Get("ok") && (tLoad.%Get("code") '= "822"), "a load of a conversation that does not exist fails as not found: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tPlan.%Size()))
 }
 
-/// <p>A step, a directive or an entry whose turn or conversation row is gone is still another user's row: a developer
-/// who reads by that key is handed none of it, because each row's own open refuses a caller who is not the owner. The
-/// control is that the child rows exist while their parents do not.</p>
+/// <p>A step, a directive, an entry or a signal whose turn or conversation row is gone is still another user's: a
+/// developer who reads by that key is handed none of it, because each row's own open refuses a caller who is not the
+/// owner and the turn keys and signals answer nothing under a key that names no row. The control is that the child
+/// rows and the signal exist while their parents do not.</p>
 /// <p>Mutation (Rule 19): the per-row open in <code>Step.GuardedRows</code>, <code>Nav.GuardedPending</code> or
-/// <code>Entry.GuardedRows</code> made through <code>GuardedOpenIdAnyCaller</code> -> that leg goes red.</p>
+/// <code>Entry.GuardedRows</code> made through <code>GuardedOpenIdAnyCaller</code>, or the unnamed-key answer removed from
+/// <code>Entry.GuardedTurnKeys</code> or <code>Turn.GuardedSignals</code> -> that leg goes red.</p>
 Method TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack()
 {
     Set tIds = ..PreparedIds
@@ -642,10 +655,14 @@ Method TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack()
     Do tPlan.%Push({"kind": "UserRead.Nav.GuardedPending", "key": (tTurn)})
     Do tPlan.%Push({"kind": "UserRead.Entry.GuardedRows", "key": (tConv), "context": 0})
     Do tPlan.%Push({"kind": "UserRead.Entry.GuardedRows", "key": (tConv), "context": 1})
+    Do tPlan.%Push({"kind": "UserRead.Entry.GuardedTurnKeys", "key": (tConv)})
+    Do tPlan.%Push({"kind": "UserRead.Turn.GuardedSignals", "key": (tTurn)})
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
-    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM " _ tPackage _ "Step WHERE %EXACT(TurnKey) = ?", tTurn)
-    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM " _ tPackage _ "Nav WHERE %EXACT(TurnKey) = ?", tTurn)
+    Set tKept = (..Stored("SELECT COUNT(*) FROM " _ tPackage _ "Step WHERE %EXACT(TurnKey) = ?", tTurn) > 0) && (..Stored("SELECT COUNT(*) FROM " _ tPackage _ "Entry WHERE %EXACT(ConvoKey) = ?", tConv) > 0) && ($Get(^OcuPilotTurnSignal(tTurn, "renewed")) '= "")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurn)
     Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM " _ tPackage _ "Entry WHERE %EXACT(ConvoKey) = ?", tConv)
+    Do $$$AssertTrue(tKept, "the child rows and the signal were still there when the developer read them")
+    Do $$$AssertTrue('$Data(^OcuPilotTurnSignal(tTurn)) && (..Stored("SELECT COUNT(*) FROM " _ tPackage _ "Nav WHERE %EXACT(TurnKey) = ?", tTurn) = 0), "and are gone after the test")
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Set tLegs = ..LegsOf(tRun, "the orphaned child rows", tPlan)
     For tI = 1:1:tLegs.%Size() {
@@ -737,9 +754,9 @@ ClassMethod OpenReads(pStore As %String) As %List
     Quit ""
 }
 
-/// <p>The public writers of <var>pStore</var>, each gated by its own owner or administrator check
-/// (<class>OcuPilot.Test.TranscriptOwnerWrite</class>, <class>OcuPilot.Test.PrefOwnerWrite</class>,
-/// <class>OcuPilot.Test.ReserveSweepWrite</class>).</p>
+/// <p>The public writers of <var>pStore</var>, each gated by its own owner or administrator check except
+/// <code>Turn.GuardedAbandonForUser</code>, which stays open (<class>OcuPilot.Test.TranscriptOwnerWrite</class>,
+/// <class>OcuPilot.Test.PrefOwnerWrite</class>, <class>OcuPilot.Test.ReserveSweepWrite</class>).</p>
 ClassMethod Writes(pStore As %String) As %List
 {
     If pStore = "Turn" Quit $ListBuild("GuardedAbandonForUser", "GuardedAddDropped", "GuardedBegin", "GuardedDelete", "GuardedFinish", "GuardedForgetStarts", "GuardedProgress", "GuardedReconcile", "GuardedRenew", "GuardedRequestStop", "GuardedReserve", "GuardedSweep", "GuardedSweepStarts")

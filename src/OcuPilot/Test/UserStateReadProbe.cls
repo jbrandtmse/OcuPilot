@@ -26,11 +26,13 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// in memory and asks for its history; <code>UserRead.Convo.HistoryMessages</code> asks for the history of a new
 /// conversation object that names <code>key</code>; <code>Direct.ExistsId</code>, <code>Direct.GetStored</code> and
 /// <code>Direct.Extent</code> are the controls, a direct existence check, a direct read of one stored property and
-/// the extent query of a store; <code>Route.Transcript</code> runs the transcript route's handler for conversation
+/// the extent query of a store, and <code>Direct.IndexExists</code> and <code>Direct.IndexOpen</code> the direct
+/// existence check and open of the row unique index <code>index</code> names for <code>key</code>;
+/// <code>Route.Transcript</code> runs the transcript route's handler for conversation
 /// <code>id</code> and answers the HTTP status it left.</p>
 ClassMethod UserKinds() As %List
 {
-    Quit $ListBuild("UserRead.Turn.GuardedDropped", "UserRead.Turn.GuardedSignals", "UserRead.Turn.GuardedDefinitionOf", "UserRead.Turn.GuardedWorkflowOf", "UserRead.Turn.GuardedForOwner", "UserRead.Turn.GuardedView", "UserRead.Turn.GuardedLiveUsers", "UserRead.Turn.GuardedIsTurnJob", "UserRead.Step.GuardedRows", "UserRead.Nav.GuardedPending", "UserRead.Convo.GuardedOwner", "UserRead.Convo.GuardedOwnerOf", "UserRead.Convo.GuardedView", "UserRead.Convo.GuardedScreenRows", "UserRead.Convo.LoadOrCreate", "UserRead.Convo.HistoryMessages", "UserRead.Entry.GuardedRows", "UserRead.Entry.GuardedTurnKeys", "UserRead.Pref.GuardedListForUser", "UserRead.Pref.GuardedValue", "UserRead.Pref.GuardedCountForUser", "UserRead.Pref.GuardedUsers", "UserRead.Sharing.GuardedForUser", "UserRead.Sharing.GuardedUsers", "UserRead.SqlRun.GuardedViewForOwner", "UserRead.SqlRun.GuardedCancelRequested", "Held.EntryStreamSwap", "Held.RunStreamSwap", "Held.HistoryKeyEdit", "Direct.ExistsId", "Direct.GetStored", "Direct.Extent", "Route.Transcript")
+    Quit $ListBuild("UserRead.Turn.GuardedDropped", "UserRead.Turn.GuardedSignals", "UserRead.Turn.GuardedDefinitionOf", "UserRead.Turn.GuardedWorkflowOf", "UserRead.Turn.GuardedForOwner", "UserRead.Turn.GuardedView", "UserRead.Turn.GuardedLiveUsers", "UserRead.Turn.GuardedIsTurnJob", "UserRead.Step.GuardedRows", "UserRead.Nav.GuardedPending", "UserRead.Convo.GuardedOwner", "UserRead.Convo.GuardedOwnerOf", "UserRead.Convo.GuardedView", "UserRead.Convo.GuardedScreenRows", "UserRead.Convo.LoadOrCreate", "UserRead.Convo.HistoryMessages", "UserRead.Entry.GuardedRows", "UserRead.Entry.GuardedTurnKeys", "UserRead.Pref.GuardedListForUser", "UserRead.Pref.GuardedValue", "UserRead.Pref.GuardedCountForUser", "UserRead.Pref.GuardedUsers", "UserRead.Sharing.GuardedForUser", "UserRead.Sharing.GuardedUsers", "UserRead.SqlRun.GuardedViewForOwner", "UserRead.SqlRun.GuardedCancelRequested", "Held.EntryStreamSwap", "Held.RunStreamSwap", "Held.HistoryKeyEdit", "Direct.ExistsId", "Direct.GetStored", "Direct.Extent", "Direct.IndexExists", "Direct.IndexOpen", "Route.Transcript")
 }
 
 /// <p>Run one step of the plan: the call its <code>kind</code> names, answered as
@@ -86,6 +88,12 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tRS = ##class(%ResultSet).%New(tPackage _ pStep.%Get("store") _ ":Extent")
             Set tSC = tRS.Execute()
             If $$$ISOK(tSC) && tRS.Next() Set tSeen = "extent " _ tRS.GetData(1)
+        } ElseIf tKind = "Direct.IndexExists" {
+            If $ClassMethod(tPackage _ pStep.%Get("store"), pStep.%Get("index") _ "Exists", tKey) Set tSeen = "exists"
+        } ElseIf tKind = "Direct.IndexOpen" {
+            Set tRow = $ClassMethod(tPackage _ pStep.%Get("store"), pStep.%Get("index") _ "Open", tKey, 0, .tSC)
+            If $IsObject($Get(tRow)) Set tSeen = "opened"
+            Set tRow = ""
         } ElseIf tKind = "Route.Transcript" {
             New %request, %response
             Set %request = ##class(%CSP.Request).%New()

@@ -1,11 +1,11 @@
 /// <p>The handler behind <code>GET /transcripts/:id</code> (Story 14.4, AD-9, AD-33, AD-37, AD-46):
 /// one stored conversation, its owner's own or, to an OcuPilot administrator, another user's. Every
 /// caller has cleared <method>OcuPilot.Api.Router.OnPreDispatch</method>.</p>
-/// <p><b>The gate is the ledger's, not this route's.</b> Whether another user's tool results and
-/// screen context reach the caller is <method>OcuPilot.Kernel.Audit.Ledger.GateTurns</method>'s
-/// answer, which also records the read; this handler adds no check of its own and maps that
-/// method's refusal to the same 404 an unknown id gets (AD-33). Messages and replies are sent
-/// either way; proposals never are.</p>
+/// <p><b>The gates are the stores' and the ledger's, not this route's.</b> The conversation store refuses a caller
+/// who neither owns the conversation nor is an administrator, and whether another user's tool results and screen
+/// context reach an administrator is <method>OcuPilot.Kernel.Audit.Ledger.GateTurns</method>'s answer, which also
+/// records the read. This handler adds no check of its own and maps either refusal to the same 404 an unknown id gets
+/// (AD-33). Messages and replies are sent either way; proposals never are.</p>
 Class OcuPilot.Api.Transcripts Extends %RegisteredObject
 {
 
@@ -38,7 +38,7 @@ ClassMethod HandleRead(pId As %String) As %Status
     Try {
         Set tCaller = ..CallerUsername()
         Set tOwnerSC = ##class(OcuPilot.Kernel.State.Convo).GuardedOwnerOf(pId, .tOwner)
-        If ..IsRefusedRead(tOwnerSC) {
+        If ##class(OcuPilot.Kernel.Proposal.Write).IsRefusedRead(tOwnerSC) {
             Set tSC = ..NotFound()
             Quit
         }
@@ -55,7 +55,7 @@ ClassMethod HandleRead(pId As %String) As %Status
         Set tFailedPair = ""
         If 'tOwn {
             Set tKeysSC = ##class(OcuPilot.Kernel.State.Entry).GuardedTurnKeys(pId, .tKeys)
-            If ..IsRefusedRead(tKeysSC) {
+            If ##class(OcuPilot.Kernel.Proposal.Write).IsRefusedRead(tKeysSC) {
                 Set tSC = ..NotFound()
                 Quit
             }
@@ -153,15 +153,6 @@ ClassMethod Copy(pFrom As %DynamicObject, pTo As %DynamicObject, pKey As %String
         Quit
     }
     Do pTo.%Set(pKey, pFrom.%Get(pKey), tType)
-}
-
-/// <p>Whether <var>pStatus</var> is the store's refusal of a read of a conversation the caller does not own
-/// (<code>$$$AccessDenied</code>, vendor <code>ERROR #822</code>), which the route answers as it answers an unknown
-/// conversation.</p>
-ClassMethod IsRefusedRead(pStatus As %Status) As %Boolean [ Private ]
-{
-    If $$$ISOK(pStatus) Quit 0
-    Quit $System.Status.Equals(pStatus, $$$ERRORCODE($$$AccessDenied))
 }
 
 /// <p>The one 404 an unknown conversation and a refused one share (AD-33).</p>

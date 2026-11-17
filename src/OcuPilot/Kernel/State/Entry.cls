@@ -273,12 +273,15 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWi
 /// because <class>OcuPilot.Api.Conversation</class> is what needs it, to attach each turn's
 /// proposals outside the escalated frame (AD-9), and the view's own shape is a published contract
 /// this does not widen.</p>
-/// <p>Answered as <method>GuardedRows</method> is: for a conversation its caller owns and to an administrator only.</p>
+/// <p>Answered as <method>GuardedRows</method> is: for a conversation its caller owns and to an administrator only.
+/// A key that names no conversation answers no keys to a caller who is not an administrator, even where entries are
+/// still kept under it.</p>
 ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
 {
     Kill pKeys
-    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey)
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey, .tNamed)
     If $$$ISERR(tSC) Quit tSC
+    If 'tNamed Quit $$$OK
     Set tSC = ..GuardedPairsWhere("SELECT Seq, TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tRows) {

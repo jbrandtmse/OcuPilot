@@ -552,14 +552,16 @@ ClassMethod GuardedIsTurnJob(pJobId As %String, Output pIsTurnJob As %Boolean) A
 
 /// <p>Turn <var>pKey</var>'s signals: the stop and abandon flags, and the lease's last renewal in
 /// <method>NowSeconds</method> units (<code>""</code> when never set). Answered to the turn's owner and to an
-/// administrator only, as <method>GuardedDropped</method> is.</p>
+/// administrator only, as <method>GuardedDropped</method> is. A key that names no turn answers no signal to a caller
+/// who is not an administrator, even where signals are still kept under it.</p>
 ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAbandon As %Boolean, Output pRenewedAt As %String) As %Status
 {
     Set pStop = 0
     Set pAbandon = 0
     Set pRenewedAt = ""
-    Set tSC = ..NamedOwnerRefused($ClassName(), "TurnKeyIdxExists", pKey)
+    Set tSC = ..NamedOwnerRefused($ClassName(), "TurnKeyIdxExists", pKey, .tNamed)
     If $$$ISERR(tSC) Quit tSC
+    If 'tNamed Quit $$$OK
     Set tSC = ..GuardedTurnSignalGet(pKey, "stop", .tStop)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSignalGet(pKey, "abandon", .tAbandon)

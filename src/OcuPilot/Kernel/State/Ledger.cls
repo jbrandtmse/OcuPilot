@@ -549,13 +549,16 @@ ClassMethod GuardedPurgeBefore(pIso As %String, Output pRemoved As %Integer) As 
 
 /// <p>How many rows turn <var>pTurnKey</var> holds, the overflow row included. A turn or conversation another user
 /// owns answers an administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor
-/// <code>ERROR #822</code>).</p>
+/// <code>ERROR #822</code>). A key that names neither a turn nor a conversation answers 0 to a caller who is not an
+/// administrator, even where ledger rows are still kept under it.</p>
 ClassMethod GuardedCountForTurn(pTurnKey As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
-    Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey)
-    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Convo", "ConvKeyIdxExists", pTurnKey)
+    Set tNamedConvo = 0
+    Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey, .tNamedTurn)
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Convo", "ConvKeyIdxExists", pTurnKey, .tNamedConvo)
     If $$$ISERR(tSC) Quit tSC
+    If 'tNamedTurn && 'tNamedConvo Quit $$$OK
     Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", pTurnKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tRows(1))

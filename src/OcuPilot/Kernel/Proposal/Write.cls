@@ -231,9 +231,9 @@ ClassMethod IsAbnormal(pState As %String) As %Boolean
     Quit $ListFind($ListFromString(..#ABNORMALSTATES), pState) > 0
 }
 
-/// <p>Whether <var>pStatus</var> is the store's refusal of a read of a proposal the caller does not own
-/// (<code>$$$AccessDenied</code>, vendor <code>ERROR #822</code>). A caller that maps it answers the non-owner the
-/// refusal it always did and reads nothing of the row.</p>
+/// <p>Whether <var>pStatus</var> is a store's refusal of a read of a row the caller does not own
+/// (<code>$$$AccessDenied</code>, vendor <code>ERROR #822</code>), such as a proposal or a conversation. A caller that
+/// maps it answers the non-owner the refusal it always did and reads nothing of the row.</p>
 ClassMethod IsRefusedRead(pStatus As %Status) As %Boolean
 {
     If $$$ISOK(pStatus) Quit 0

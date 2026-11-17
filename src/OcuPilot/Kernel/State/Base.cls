@@ -282,13 +282,22 @@ ClassMethod KeyOwnerRefused(pExistsMethod As %String, pKey As %String) As %Statu
 /// <code>ERROR #822</code>) when the row exists and its stored owner is not the caller, or cannot be read.
 /// The owner is read from storage by <method>GuardedStoredValue</method>, never from the caller. Reach it
 /// through <code>..</code> dispatch from a subclass.</p>
-ClassMethod NamedOwnerRefused(pParentClass As %String, pExistsMethod As %String, pKey As %String) As %Status [ Private ]
+/// <p><var>pNamed</var> is 1 when the caller may be answered from rows kept under <var>pKey</var>: for an
+/// administrator, and for anyone else when the key names a row that is the caller's. It is 0 for an empty key and,
+/// for a caller who is not an administrator, for a key that names no row, so a read of rows left under a key whose
+/// row is gone can answer nothing.</p>
+ClassMethod NamedOwnerRefused(pParentClass As %String, pExistsMethod As %String, pKey As %String, Output pNamed As %Boolean) As %Status [ Private ]
 {
+    Set pNamed = 0
     If pKey = "" Quit $$$OK
-    If ..CallerIsAdministrator() Quit $$$OK
+    If ..CallerIsAdministrator() {
+        Set pNamed = 1
+        Quit $$$OK
+    }
     Set tSC = $ClassMethod(pParentClass, "GuardedStoredValueAnyCaller", pExistsMethod, pKey, $Parameter(pParentClass, "OWNERWRITE"), .tOwner, .tFound)
     If $$$ISERR(tSC) Quit $$$ERROR($$$AccessDenied)
     If tFound && '..CallerOwns(tOwner) Quit $$$ERROR($$$AccessDenied)
+    Set pNamed = ''tFound
     Quit $$$OK
 }
 
