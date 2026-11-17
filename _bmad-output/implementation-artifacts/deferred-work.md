@@ -13572,6 +13572,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: OwnerWriteRefused reads the parent's owner via the any-caller stored-value read once per opened row; a timed Entry.GuardedRows over a long conversation as the owner would settle it. Base.cls:253
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T15:18:26Z occurrence=21-35 note=B3:Turn.GuardedSignals,Step.GuardedRows,Nav.GuardedPending,Entry.GuardedRows_each_one_more_escalated_parent_read
 
 ### DW-2689: No test covers a held own row whose owner or key is edited in memory before a store save, reserve, abandon or sweep
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
@@ -13602,3 +13603,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: %Stream.GlobalCharacter.SetupTmpGbl takes $sequence on the location for a new stream past its buffer (420000 characters measured, 100000 not); Entry.GuardedAppend and SqlRun.GuardedFinish write outside the frame (inference, unmeasured as a principal)
 - 2026-11-17T08:09:48Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=Entry.GuardedAppend with a 420000-character steps array, run as a %Development principal on its own conversation, answers PROTECT
+
+### DW-2704: Api/Transcripts.HandleRead's 404 for a refused Entry.GuardedTurnKeys has no test leg
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: B3 build-auto deferred item; the owner-read refusal path of the transcript route is pinned, the turn-keys refusal mapping is not
+- 2026-11-17T15:18:25Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+
+### DW-2705: Entry.GuardedTurnKeys answers the turn keys of an orphaned conversation to any caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A conversation key naming no row passes the owner check; keys are 32 random hex and no product caller asks for one it does not own (same shape as DW-2686)
+- 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+
+### DW-2706: Convo.GuardedScreenRows's SQL scope and its per-row open are not pinned one at a time
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The transcript list's two defences are tested together; removing one alone may stay green
+- 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
