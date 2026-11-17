@@ -259,3 +259,10 @@
 2026-11-17T05:44:29Z	Story 24.6	hold_saved	story=24-6-the-command-and-class-method-consoles stage=implement patch=none tree=clean note=implement_committed_0bac71b0f;qa_cr_fresh_check_not_started
 2026-11-17T05:44:29Z	Epic 24	throwaway_down	project=ocupilot-b-ci reason=hold started_by=runner-24
 2026-11-17T05:44:29Z	Epic 24	hold_complete	shas=0bac71b0f(24.6_code_local_commit,pushed_with_bookkeeping),230e91291(24.5_fix,merged) throwaways_up=none
+2026-11-17T07:23:23Z	Epic 24	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 slot=b redispatch=20261117T0614Z
+2026-11-17T07:23:23Z	Epic 24	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-17T07:23:23Z	Epic 24	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-17T07:23:23Z	Epic 24	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-17T07:23:23Z	Epic 24	slot_binding_verified	mcp_profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap_check=ok head=ad9c71823 tree=clean unpushed=none
+2026-11-17T07:23:23Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=qa_cr_24.6 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T07:23:23Z	Story 24.6	stage_spawned	stage=qa spawn_at=2026-11-17T07:23:23Z model=sonnet agent_name=24-6-the-command-and-class-method-consoles-qa-1 cycle_iteration=2
