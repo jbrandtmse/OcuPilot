@@ -437,3 +437,6 @@
 2026-11-17T03:16:19Z	Story 21.35	dev_complete	scope=batch1 build_sha=1472e282d task0=23_install_writes+uninstall_steer+7_access_writes_landed audit_once=pinned rule6=AsAdministrator_only product_q=failed_first_install_version_row(non-%All,pre-EnsureAdminRole)
 2026-11-17T03:21:00Z	Story 21.35	integrated	feature=8c58f5edf merge=3e32ded2d conflict=sprint-status_last_updated(ours) ledger_dups=0 dw2650=feature_block
 2026-11-17T03:22:55Z	Story 21.35	stage_spawned	stage=code-review scope=batch1 spawn_at=2026-11-17T03:22:55Z model=opus agent_name=21-35-code-review-b1
+2026-11-17T03:30:55Z	Story 21.35	ruling	question=GuardedProbeSet_deferral choice=measure_as_developer;fix_if_reaches_nonadmin_rows;ledger_only_if_harmless via=orchestrator note=relayed_to_B1_CR pDeclared=deferred_ok
+2026-11-17T04:14:16Z	Story 21.35	cr_complete	scope=batch1 model=opus high=2(GuardedProbeSet_fixed;AD-9_wording_runner_fixed) med=6(dup_pair_fixed;helpers_copy_open) low=19 ledgered=DW-2674..2684 version_row=unchanged(measured) frame=unreachable(4_principals) commit=f67606129
+2026-11-17T04:14:16Z	Story 21.35	ad_amended	ad=AD-9(21.35 set wording;21.33 frame=AsAdministrator)+AD-64(item4 store audits once) via=U7(correction_to_validated_design;option_b)
