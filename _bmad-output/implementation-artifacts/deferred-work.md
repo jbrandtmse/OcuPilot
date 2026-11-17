@@ -13473,3 +13473,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Code read (inference): Installer runs EnsureGrant then EnsureProposalTargetKeys in one process; EnsureRetentionTask sets no RunAsUser; Retention and Installer suites run as %All. Batches 2-3 gate more retention calls.
 - 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite
 - 2026-11-16T16:24:29Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=measured on ocupilot-ci: retention task runs as its saving account (irisowner, %All) and purges; OcuPilotAdmin without %All passes rebuild and purge; first install by a non-%All account was refused 822 at EnsureProposalTargetKeys, fixed by checking the administrator only when a row needs a key; pinned by OcuPilot.Test.AdminPathWrite
+
+### DW-2673: A unit-test run (Story 24.5) may record no OcuPilot audit row: Task 0 saw 0 new %SYS.Audit rows in the run window, and OcuPilot's own audit writes through $System.Security.Audit into the same log (inference: not measured whether that run went through the action route)
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
+- 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
