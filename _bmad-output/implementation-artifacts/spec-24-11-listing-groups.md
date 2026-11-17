@@ -2,7 +2,7 @@
 title: 'Story 24.11: Listing groups (Batch 1: the read surface)'
 type: 'feature'
 created: '2026-11-17'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b5199c97eb3a915453398eb55af85d844a0ff5b6'
 baseline_commit: 'b5199c97eb3a915453398eb55af85d844a0ff5b6'
 review_loop_iteration: 0
@@ -132,7 +132,11 @@ Rejected:
 - (spec) The Auto Run Result counts the gate class's tests as 6 (QA made it 7), and its follow-up note cites a twin-order risk QA's two-order test closed: the spec is `oversized`, and this review adds only this subsection and its mutation lines.
 - (low) AC4's journal scan does not cover the HTTP screen reads: ruled earlier, AC4 is scoped to the calling process.
 
+- [ ] [Smoke] `AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite` fails on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6f350eeb2) and passes on a second run: the scan sees `SET ^["^^/durable/iris/mgr/"]%SYS("sql","sys","SQLStatsSettings",1,"curr")`, IRIS's one-time SQL stats initialization, and the control write then also misses ("while the scan sees the control write made after them"). — `src/OcuPilot/Test/AnalyticsListingGroupRead.cls` `TestNoReadMakesAJournaledWrite` — the test must pass on the first run on a fresh instance and on a reused one, without blinding the scan to a real write by the reads (keep the $Bit-write mutation red): e.g. warm the process (one SQL statement and one vendor read) before the scan window opens, and make the control-write check independent of the stats write; then demonstrate both the fresh-instance pass (down/up the throwaway, run the class first) and the mutation.
+
 ## Spec Change Log
+
+- 2026-11-17, fresh check: re-opened for rework iteration 1 (one [Smoke] item: the journal-scan test is not fresh-instance safe).
 
 - 2026-11-17, spec gate: blocked -> ready-for-dev on the runner's rulings (U-108); this spec is Batch 1.
 

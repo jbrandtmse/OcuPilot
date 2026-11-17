@@ -341,3 +341,7 @@
 2026-11-17T22:58:48Z	Story 24.11	stage_spawned	stage=code-review spawn_at=2026-11-17T22:58:48Z model=opus agent_name=24-11-listing-groups-code-review-batch1 cycle_iteration=1
 2026-11-17T23:16:45Z	Story 24.11	cr_complete	spawn_at=2026-11-17T23:00:00Z model=opus resolved=7 fixed_at_source=7 wontfix_accepted=1(DW-2719) decision_pending=1(DW-2718) dismissed=11 high=0 med=2 low=7 rows=20 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done(batch1) scope=batch1 cycle_iteration=1
 2026-11-17T23:16:45Z	Story 24.11	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2719 to_decision_sheet=DW-2718 scope=batch1 model=claude-opus-5-5
+2026-11-17T23:22:09Z	Story 24.11	integrate_forward	feature=bee8f5281(21.35_code) head=6f350eeb2 conflicts_resolved=none
+2026-11-17T23:22:09Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.11_batch1 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T23:22:09Z	Story 24.11	fresh_check	env=recipe(merged_tree_6f350eeb2) tests=12_classes result=fail order=forward failing=AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite(first_run_only:SQLStatsSettings_init;passes_on_rerun) scope=batch1
+2026-11-17T23:22:09Z	Story 24.11	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=fresh_check:TestNoReadMakesAJournaledWrite scope_baseline=6f350eeb2
