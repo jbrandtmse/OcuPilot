@@ -333,3 +333,7 @@
 2026-11-17T19:00:22Z	Story 24.11	spec_validated	service_introducing=true integration_ac=see_spec adr_constrained_acs=AD-51,AD-52,AD-53,AD-61,AD-65,AD-22 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false(batch1_reads) scope=batch1_reads
 2026-11-17T19:25:48Z	Story 24.10	ci_resolved	story=24.10 sha=25cb00f41 runs=44150687350 result=success failed=none via=none resolved_at=next_plan scope=batch2
 2026-11-17T19:25:48Z	Story 24.11	stage_spawned	stage=implement spawn_at=2026-11-17T19:25:48Z model=sonnet agent_name=24-11-listing-groups-implement-batch1 cycle_iteration=1 story_base=15e3348fa scope=batch1_reads
+2026-11-17T22:49:45Z	Epic 24	orchestrator_message	24.10_merged(feature_ff_b5199c97e,bookkeeping_e20fcf855);timings_task_routed_then_dropped;21.35_merged(feature_48882f1f2,code_f2fcef7a4_green)
+2026-11-17T22:49:45Z	Story 24.11	dev_complete	spawn_at=2026-11-17T19:26:00Z model=sonnet build_sha=f13e912a8 baseline_revision=b5199c97e story_base=b5199c97e review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green scope=batch1_reads cycle_iteration=1
+2026-11-17T22:49:45Z	Story 24.11	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none scope=batch1 model=claude-opus-5-5
+2026-11-17T22:49:45Z	Story 24.11	stage_spawned	stage=qa spawn_at=2026-11-17T22:49:45Z model=sonnet agent_name=24-11-listing-groups-qa-batch1 cycle_iteration=1
