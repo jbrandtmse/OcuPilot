@@ -13558,3 +13558,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AnalyticsTermListExport.WriteOutput returns the CSV lines citing AD-39's fifth exception; the spine's fifth lists 'an export's XML lines'; U-105's three proposed spine lines do not extend it
 - 2026-11-17T13:04:24Z status=escalated owner=burndown by=cr note=add 'a term list export's CSV lines' to AD-39's fifth with U-105's spine lines (spine edit is owner-only in this run)
+
+### DW-2708: Folder manager export: AnalyticsPort.AdmitRead (READ on the folder item database) has no negative test
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A probe principal without %DB_USER is refused by the namespace gate before AdmitRead runs; reachable only where ^DeepSee.FolderItemD maps to another database
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a test or install maps ^DeepSee.FolderItemD to a database other than the namespace default
+
+### DW-2709: Folder manager: ReadFolderItem's locked-and-hidden branch (code 3 with %CheckResource false) is not exercised
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every test runs as an account holding every resource, so %CheckResource is always true
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a resource-bound folder item read by a probe principal lacking that resource shows the item
