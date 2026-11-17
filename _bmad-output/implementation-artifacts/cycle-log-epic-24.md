@@ -276,3 +276,5 @@
 2026-11-17T08:35:16Z	Story 24.6	fresh_check	env=recipe(merged_tree_736a381ed) tests=26_classes+3_specs result=pass order=forward,reverse note=DevToolProbe_is_a_helper_not_a_test_class
 2026-11-17T08:35:16Z	Story 24.6	committed	sha=db0850449 code_head=736a381ed(merged_with_feature_1dbdfbb85) ci=pending runs=44047946906 amendments=none
 2026-11-17T08:35:16Z	Story 24.6	story_cycle	plan_to_commit_min=482(incl_hold_04:16-06:14Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-17T08:39:05Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(feature_merge_1dbdfbb85) model=claude-opus-5-5
+2026-11-17T08:39:05Z	Story 24.7	stage_spawned	stage=plan spawn_at=2026-11-17T08:39:05Z model=opus agent_name=24-7-web-terminal-plan-1 cycle_iteration=1
