@@ -449,3 +449,6 @@
 2026-11-17T05:36:34Z	Story 21.35	cr_pending	scope=batch2 next=opus_CR_of_4529a120a_then_batch3
 2026-11-17T05:36:34Z	Epic 21	hold_complete	shas=4529a120a(code,local-only_by_rule:story_head_not_final),bookkeeping=this_commit patch=none tree=clean throwaway=ocupilot-ci_torn_down_after_push
 2026-11-17T05:37:07Z	Story 21.35	code_head_pushed	sha=4529a120a run=44025335673 missing=none note=mid-story(B1+B2),not_for_merge;pushed_alone_for_Rule32_before_hold_bookkeeping
+2026-11-17T07:22:15Z	Epic 21	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 resumed=redispatch_20261117T0614Z(after_hold_owner_account_switch) model=claude-opus-5-5 hold_file=absent head=728d06088 tree=clean unpushed=none
+2026-11-17T07:22:15Z	Story 21.35	ci_resolved	story=21.35 sha=4529a120a runs=44025335673 result=success failed=none via=none resolved_at=resume note=mid-story_head
+2026-11-17T07:23:46Z	Story 21.35	ledger_harvested	scope=batch2 deferred=4 new=DW-2686,DW-2687,DW-2688,DW-2689 status=open owner=21-35 by=harvest

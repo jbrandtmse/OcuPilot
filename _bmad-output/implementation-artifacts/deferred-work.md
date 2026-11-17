@@ -13556,3 +13556,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: PlanKinds(install) and Writes/AdjusterWrites read the same InstallRecordWrite lists; the public-method split still catches a missing method.
 - 2026-11-17T03:59:35Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a write listed in InstallRecordWrite.Writes with no public method leaves the roster test green
+
+### DW-2686: Propose.GuardedCountForTurn and Ledger.GuardedCountForTurn answer a count to any caller for a key that names no turn or conversation
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both refuse a key another user owns; a key naming no row counts orphans. Keys are 32 random hex; no product caller asks for a key it does not own. Propose.cls:873
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+
+### DW-2687: Base.GuardedProbeGet reads any subscript of the probe global for any caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: No code outside Test/ writes ^OcuPilotKernelStateProbe and GuardedProbeSet is an administrator's; pre-existing BaseSurface open read. Base.cls:777
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+
+### DW-2688: A non-administrator's read of a step or entry row costs one more escalated parent-owner read (inference, unmeasured)
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OwnerWriteRefused reads the parent's owner via the any-caller stored-value read once per opened row; a timed Entry.GuardedRows over a long conversation as the owner would settle it. Base.cls:253
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+
+### DW-2689: No test covers a held own row whose owner or key is edited in memory before a store save, reserve, abandon or sweep
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: StoreOwnerWrite and OwnerStateWriteProbe held-victim-row legs now meet 822 at the open, so they no longer prove a save refuses a forged held row; a leg holding the developer's own row with an edited owner would settle it
+- 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item; resume asks the B2 CR to re-pin it
