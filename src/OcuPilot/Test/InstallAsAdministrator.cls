@@ -98,37 +98,20 @@ ClassMethod Cases() As %List
 }
 
 /// <p>Create the installer's role with the install namespace's databases read and write plus
-/// <parameter>INSTALLERGRANTS</parameter>, and its account, then read back that it holds neither <code>%All</code>
-/// nor <code>OcuPilotAdmin</code>.</p>
+/// <parameter>INSTALLERGRANTS</parameter>, and its account, then read back that it holds neither <code>%All</code> nor
+/// <code>OcuPilotAdmin</code> (<method>OcuPilot.Test.AdminPathWrite.EnsurePrincipals</method>). The SQL grants the install
+/// needs are the one step that class does not take, because they name the install's own schemas and run in the install
+/// namespace.</p>
 ClassMethod EnsurePrincipals(pPassword As %String) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ##class(OcuPilot.Test.AdminPathWrite).EnsurePrincipals(pPassword, ..Cases())
+    If $$$ISERR(tSC) Quit tSC
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
-        Set $NAMESPACE = "%SYS"
-        Set tNamespace = ##class(Config.Namespaces).Open(tInstallNs)
-        Set tWrite = ""
-        For tDatabaseName = tNamespace.Routines, tNamespace.Globals {
-            Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tDatabaseName).Directory).ResourceName _ ":RW"
-            If tWrite '[ tResource Set tWrite = tWrite _ $Select(tWrite = "": "", 1: ",") _ tResource
-        }
-        Set tCase = $List(..Cases(), 1)
-        Set tUser = $List(tCase, 1)
-        Set tRole = $List(tCase, 2)
-        If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-        If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-        Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: install as an installer (throwaway)", tWrite _ "," _ $List(tCase, 3), "")
-        If $$$ISERR(tSC) Quit
-        Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot installer test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot armed test class; deleted in its OnAfterAllTests")
-        If $$$ISERR(tSC) Quit
-        If ($SYSTEM.Security.CheckUserPermission(tUser, "%All", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "OcuPilotAdmin", "USE") = 1) {
-            Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal " _ tUser _ "'s grants did not read back as declared")
-            Quit
-        }
         ; The install reads the class dictionary and grants OcuPilot's protected schema to the escalation role, which SQL
         ; allows only a grantor that holds the schema's privileges with the grant option.
-        Set $NAMESPACE = tInstallNs
+        Set tRole = $List($List(..Cases(), 1), 2)
+        Set $NAMESPACE = ##class(OcuPilot.Install.Installer).ResolveNamespace()
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT ON %Dictionary.CompiledClass TO " _ tRole)
         If tRS.%SQLCODE < 0 {
             Set tSC = $$$ERROR($$$GeneralError, "the installer's dictionary grant failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)

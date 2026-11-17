@@ -103,51 +103,19 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The principals, as <code>$ListBuild(user, role, grants)</code>.</p>
+/// <p>The principals, as <method>OcuPilot.Test.AdminStateWrite.EnsurePrincipals</method> takes them:
+/// <code>$ListBuild(user, role, grants, holdsAdministrator, holdsAdjuster)</code>.</p>
 ClassMethod Cases() As %List
 {
-    Quit $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U"), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U"), $ListBuild(..#SECUSER, ..#SECROLE, "%Admin_Secure:U"), $ListBuild(..#PLAINUSER, ..#PLAINROLE, ""))
+    Quit $ListBuild($ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U", 0, 1), $ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U", 1, 0), $ListBuild(..#SECUSER, ..#SECROLE, "%Admin_Secure:U", 0, 1), $ListBuild(..#PLAINUSER, ..#PLAINROLE, "", 0, 0))
 }
 
-/// <p>Create each role of <method>Cases</method> with the install namespace's databases read plus its grants,
-/// and its account, then read back that none holds <code>%All</code>, that only the administrator holds
+/// <p>Create each role of <method>Cases</method> with the install namespace's databases read plus its grants, and its
+/// account, and read back that none holds <code>%All</code>, that only the administrator holds
 /// <code>OcuPilotAdmin</code> and that only the developer and the security principal hold an adjuster pair.</p>
 ClassMethod EnsurePrincipals(pPassword As %String) As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
-        Set $NAMESPACE = "%SYS"
-        Set tNamespace = ##class(Config.Namespaces).Open(tInstallNs)
-        Set tRead = ""
-        For tDatabaseName = tNamespace.Routines, tNamespace.Globals {
-            Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tDatabaseName).Directory).ResourceName _ ":R"
-            If tRead '[ tResource Set tRead = tRead _ $Select(tRead = "": "", 1: ",") _ tResource
-        }
-        Set tCases = ..Cases()
-        For tI = 1:1:$ListLength(tCases) {
-            Set tCase = $List(tCases, tI)
-            Set tUser = $List(tCase, 1)
-            Set tRole = $List(tCase, 2)
-            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: install records (throwaway)", tRead _ $Select($List(tCase, 3) = "": "", 1: "," _ $List(tCase, 3)), "")
-            If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot install record test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot armed test class; deleted in its OnAfterAllTests")
-            If $$$ISERR(tSC) Quit
-            Set tAdmin = ($SYSTEM.Security.CheckUserPermission(tUser, "OcuPilotAdmin", "USE") = 1)
-            Set tAdjuster = (($SYSTEM.Security.CheckUserPermission(tUser, "%Development", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE") = 1))
-            If ($SYSTEM.Security.CheckUserPermission(tUser, "%All", "USE") = 1) || (tAdmin '= (tUser = ..#ADMINUSER)) || (tAdjuster '= ((tUser = ..#DEVUSER) || (tUser = ..#SECUSER))) {
-                Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal " _ tUser _ "'s grants did not read back as declared")
-                Quit
-            }
-        }
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ##class(OcuPilot.Test.AdminStateWrite).EnsurePrincipals(pPassword, ..Cases())
 }
 
 /// <p>Delete every row of the five stores that names a probe profile, path or screen.</p>

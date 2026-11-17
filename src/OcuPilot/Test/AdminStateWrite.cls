@@ -679,7 +679,8 @@ ClassMethod KindsOf(pPlan As %DynamicArray) As %List
 }
 
 /// <p>The principals this class creates, as <method>EnsurePrincipals</method> takes them: each is
-/// <code>$ListBuild(user, role, grants, holdsAdministrator)</code>. <parameter>DEVROLE</parameter>
+/// <code>$ListBuild(user, role, grants, holdsAdministrator)</code>, plus an optional fifth element
+/// <code>holdsAdjuster</code> (<code>%Development:USE</code> or <code>%Admin_Secure:USE</code>). <parameter>DEVROLE</parameter>
 /// holds the install namespace's code and data read and <code>%Development:USE</code>;
 /// <parameter>ADMINROLE</parameter> holds the same read and <code>OcuPilotAdmin:USE</code>.</p>
 ClassMethod DefaultCases() As %List
@@ -712,10 +713,15 @@ ClassMethod RemovePrincipals(pCases As %List, pSuite As %String) As %Status
     Quit tSC
 }
 
-/// <p>Create each throwaway role and the account that holds it, then read the grants back. A case
-/// of <var>pCases</var> (default <method>DefaultCases</method>) holds the install namespace's code
-/// and data read plus its own grants; the account's password is <var>pPassword</var>.</p>
-ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "") As %Status
+/// <p>Create each throwaway role and the account that holds it, then read the grants back. A case of
+/// <var>pCases</var> (default <method>DefaultCases</method>) holds the install namespace's code and data access
+/// <var>pAccess</var> (<code>R</code> or <code>RW</code>) plus its own grants; the account's password is
+/// <var>pPassword</var>. The read-back requires that no account holds <code>%All</code>, that it holds
+/// <code>OcuPilotAdmin</code> as the case's fourth element says and, as the fifth says when the case has one, that it
+/// holds an adjuster pair (<code>%Development:USE</code> or <code>%Admin_Secure:USE</code>); a case without a fifth
+/// element holds <code>%Development:USE</code> exactly when it holds no <code>OcuPilotAdmin</code> and never
+/// <code>%Admin_Secure:USE</code>.</p>
+ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "", pAccess As %String = "R") As %Status
 {
     If pCases = "" Set pCases = ..DefaultCases()
     Set tSC = $$$OK
@@ -728,7 +734,7 @@ ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "") As %Sta
         Set tRead = ""
         For tDatabaseName = tNamespace.Routines, tNamespace.Globals {
             Set tDatabase = ##class(Config.Databases).Open(tDatabaseName)
-            Set tResource = ##class(SYS.Database).%OpenId(tDatabase.Directory).ResourceName _ ":R"
+            Set tResource = ##class(SYS.Database).%OpenId(tDatabase.Directory).ResourceName _ ":" _ pAccess
             If tRead '[ tResource Set tRead = tRead _ $Select(tRead = "": "", 1: ",") _ tResource
         }
         For tCaseIndex = 1:1:$ListLength(pCases) {
@@ -737,13 +743,19 @@ ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "") As %Sta
             Set tRole = $List(tCase, 2)
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the store gate (throwaway)", tRead _ "," _ $List(tCase, 3), "")
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the store gate (throwaway)", tRead _ $Select($List(tCase, 3) = "": "", 1: "," _ $List(tCase, 3)), "")
             If $$$ISERR(tSC) Quit
             Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot store gate test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot armed test class; deleted in its OnAfterAllTests")
             If $$$ISERR(tSC) Quit
             Set tHoldsAdmin = ($SYSTEM.Security.CheckUserPermission(tUser, "OcuPilotAdmin", "USE") = 1)
             Set tHoldsDevelopment = ($SYSTEM.Security.CheckUserPermission(tUser, "%Development", "USE") = 1)
-            If (tHoldsAdmin '= $List(tCase, 4)) || (tHoldsDevelopment = $List(tCase, 4)) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE") = 1) {
+            Set tHoldsSecure = ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE") = 1)
+            If $ListLength(tCase) > 4 {
+                Set tAdjusterWrong = ((tHoldsDevelopment || tHoldsSecure) '= $List(tCase, 5))
+            } Else {
+                Set tAdjusterWrong = ((tHoldsDevelopment = $List(tCase, 4)) || tHoldsSecure)
+            }
+            If ($SYSTEM.Security.CheckUserPermission(tUser, "%All", "USE") = 1) || (tHoldsAdmin '= $List(tCase, 4)) || tAdjusterWrong {
                 Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal " _ tUser _ "'s grants did not read back as declared")
                 Quit
             }

@@ -253,7 +253,7 @@ ClassMethod OwnerWriteRefused(pClassName As %String, pOwnerValue As %String) As 
     Set tParent = $Parameter(pClassName, "OWNERPARENT")
     If tParent '= "" {
         Set tOwner = ""
-        Set tSC = $ClassMethod(tParent, "GuardedStoredValue", $Parameter(pClassName, "OWNERPARENTINDEX") _ "Exists", pOwnerValue, $Parameter(tParent, "OWNERWRITE"), .tOwner, .tFound)
+        Set tSC = $ClassMethod(tParent, "GuardedStoredValueAnyCaller", $Parameter(pClassName, "OWNERPARENTINDEX") _ "Exists", pOwnerValue, $Parameter(tParent, "OWNERWRITE"), .tOwner, .tFound)
         If $$$ISERR(tSC) || 'tFound Quit $$$ERROR($$$AccessDenied)
     }
     If ..CallerOwns(tOwner) Quit $$$OK
@@ -270,7 +270,7 @@ ClassMethod KeyOwnerRefused(pExistsMethod As %String, pKey As %String) As %Statu
     Set tClass = ..%ClassName(1)
     If $Parameter(tClass, "OWNERWRITE") = "" Quit $$$OK
     If ..CallerIsAdministrator() Quit $$$OK
-    Set tSC = ..GuardedStoredValue(pExistsMethod, pKey, $Parameter(tClass, "OWNERWRITE"), .tOwner, .tFound)
+    Set tSC = ..GuardedStoredValueAnyCaller(pExistsMethod, pKey, $Parameter(tClass, "OWNERWRITE"), .tOwner, .tFound)
     If $$$ISERR(tSC) || 'tFound Quit $$$ERROR($$$AccessDenied)
     Quit ..OwnerWriteRefused(tClass, tOwner)
 }
@@ -286,7 +286,7 @@ ClassMethod NamedOwnerRefused(pParentClass As %String, pExistsMethod As %String,
 {
     If pKey = "" Quit $$$OK
     If ..CallerIsAdministrator() Quit $$$OK
-    Set tSC = $ClassMethod(pParentClass, "GuardedStoredValue", pExistsMethod, pKey, $Parameter(pParentClass, "OWNERWRITE"), .tOwner, .tFound)
+    Set tSC = $ClassMethod(pParentClass, "GuardedStoredValueAnyCaller", pExistsMethod, pKey, $Parameter(pParentClass, "OWNERWRITE"), .tOwner, .tFound)
     If $$$ISERR(tSC) Quit $$$ERROR($$$AccessDenied)
     If tFound && '..CallerOwns(tOwner) Quit $$$ERROR($$$AccessDenied)
     Quit $$$OK
@@ -622,7 +622,26 @@ ClassMethod QualifiedTableName(pClassName As %String) As %String [ Private ]
 /// relies on ordinary ObjectScript class-method inheritance, where the implementing
 /// class is fixed by the call site, never on dynamic invocation by name (Story 1.1
 /// declined that surface under AD-8; it is not reintroduced here).</p>
+/// <p>A row of a class that declares <parameter>OWNERWRITE</parameter> is opened for its owner and for an
+/// administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>)
+/// and <var>pObject</var> stays empty (<method>OwnerWriteRefused</method>, which reads the owner through
+/// <parameter>OWNERPARENT</parameter> where the class declares it). An id that names no row answers as a
+/// missing row does for every caller.</p>
 ClassMethod GuardedOpenId(pId As %String, Output pObject As Base) As %Status
+{
+    Set tSC = ..GuardedOpenIdAnyCaller(pId, .pObject)
+    If $$$ISERR(tSC) Quit tSC
+    Set tClass = ..%ClassName(1)
+    Set tProperty = $Parameter(tClass, "OWNERWRITE")
+    If tProperty = "" Quit tSC
+    Set tSC = ..OwnerWriteRefused(tClass, $Property(pObject, tProperty))
+    If $$$ISERR(tSC) Set pObject = $$$NULLOREF
+    Quit tSC
+}
+
+/// <p><method>GuardedOpenId</method> without the owner check, for a store whose own caller check has already
+/// been made, or whose open serves a write open to every caller. Never called from a route or a tool.</p>
+ClassMethod GuardedOpenIdAnyCaller(pId As %String, Output pObject As Base) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pObject = $$$NULLOREF
@@ -668,11 +687,23 @@ ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pTex
     Quit tSC
 }
 
-/// <p>Whether <var>pId</var> exists, through the escalated frame.</p>
+/// <p>Whether <var>pId</var> exists, through the escalated frame. A row of a class that declares
+/// <parameter>OWNERWRITE</parameter> answers its existence to its owner and to an administrator only: any other
+/// caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and <var>pExists</var> is 0. An
+/// id that names no row answers 0 for every caller.</p>
 ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pExists = 0
+    Set tClass = ..%ClassName(1)
+    Set tProperty = $Parameter(tClass, "OWNERWRITE")
+    If (tProperty '= "") && '..CallerIsAdministrator() {
+        Set tSC = ..GuardedStoredOwnerById(tClass, tProperty, pId, .tOwner, .tFound)
+        If $$$ISERR(tSC) || 'tFound Quit tSC
+        Set tSC = ..OwnerWriteRefused(tClass, tOwner)
+        If $$$ISOK(tSC) Set pExists = 1
+        Quit tSC
+    }
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
@@ -693,7 +724,30 @@ ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Stat
 /// <var>pExistsMethod</var> is <code>&lt;index&gt;Exists</code> for an index of the class and
 /// <var>pProperty</var> is a property of it, the call answers <code>$$$AccessDenied</code> before the
 /// escalation and runs nothing.</p>
+/// <p>A row of a class that declares <parameter>OWNERWRITE</parameter> answers to its owner and to an
+/// administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>),
+/// <var>pFound</var> is 0 and <var>pValue</var> is empty. A key that names no row answers as it does for every
+/// caller.</p>
 ClassMethod GuardedStoredValue(pExistsMethod As %String, pKey As %String, pProperty As %String, Output pValue As %String, Output pFound As %Boolean) As %Status
+{
+    Set pValue = ""
+    Set pFound = 0
+    Set tClass = ..%ClassName(1)
+    Set tProperty = $Parameter(tClass, "OWNERWRITE")
+    If (tProperty '= "") && '..CallerIsAdministrator() {
+        Set tSC = ..GuardedStoredValueAnyCaller(pExistsMethod, pKey, tProperty, .tOwner, .tFound)
+        If $$$ISERR(tSC) Quit tSC
+        If tFound {
+            Set tSC = ..OwnerWriteRefused(tClass, tOwner)
+            If $$$ISERR(tSC) Quit tSC
+        }
+    }
+    Quit ..GuardedStoredValueAnyCaller(pExistsMethod, pKey, pProperty, .pValue, .pFound)
+}
+
+/// <p><method>GuardedStoredValue</method> without the owner check, for the owner predicates themselves and for a
+/// store whose own caller check has already been made. Never called from a route or a tool.</p>
+ClassMethod GuardedStoredValueAnyCaller(pExistsMethod As %String, pKey As %String, pProperty As %String, Output pValue As %String, Output pFound As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pValue = ""

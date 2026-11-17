@@ -386,11 +386,15 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
 /// <var>pEndUtc</var> (<property>LoggedAt</property>'s own ISO UTC form) bound it at or after and
 /// at or before, and <var>pAllUsers</var> 1 leaves out the user predicate -- the only way to read
 /// more than one user's rows, which <class>OcuPilot.Kernel.Audit.Ledger</class> asks for only after
-/// its own privilege check.</p>
+/// its own privilege check and which this store answers to an administrator only. A read of
+/// <var>pUser</var>'s rows answers <var>pUser</var> and an administrator only; any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and nothing is read.</p>
 ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pIds, Output pProblem As %String, pRoute As %String = "", pBeginUtc As %String = "", pEndUtc As %String = "", pAllUsers As %Boolean = 0) As %Status
 {
     Kill pIds
     Set pProblem = ""
+    Set tSC = ..WindowReadRefused(pUser, pAllUsers)
+    If $$$ISERR(tSC) Quit tSC
     Set tParams = []
     If pTurnKey '= "" {
         Set tFragment = ..BoundedWhere(..#BOUNDEDKEYED, "", .tParams, .pProblem, "Seq > 0", "%EXACT(UserName) = ?", "%EXACT(TurnKey) = ?")
@@ -409,10 +413,12 @@ ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurn
 
 /// <p>How many of <var>pUser</var>'s calls were counted and not stored over the same selection
 /// <method>GuardedIdsForWindow</method> makes, summed across that user's overflow rows -- or across
-/// every user's, with <var>pAllUsers</var> 1.</p>
+/// every user's, with <var>pAllUsers</var> 1. Refused as <method>GuardedIdsForWindow</method> is.</p>
 ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKey As %String, Output pCount As %Integer, pRoute As %String = "", pBeginUtc As %String = "", pEndUtc As %String = "", pAllUsers As %Boolean = 0) As %Status
 {
     Set pCount = 0
+    Set tSC = ..WindowReadRefused(pUser, pAllUsers)
+    If $$$ISERR(tSC) Quit tSC
     Set tParams = []
     If pTurnKey '= "" {
         Set tFragment = ..BoundedWhere(..#BOUNDEDKEYED, "", .tParams, .tProblem, "Seq = 0", "%EXACT(UserName) = ?", "%EXACT(TurnKey) = ?")
@@ -430,6 +436,15 @@ ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKe
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tRows(1))
     Quit $$$OK
+}
+
+/// <p>The refusal for a windowed read of the rows <var>pUser</var> owns: <code>$$$AccessDenied</code> (vendor
+/// <code>ERROR #822</code>) unless the caller is <var>pUser</var> or holds the administrative resource. A read across
+/// every user (<var>pAllUsers</var> 1) answers an administrator only, whatever <var>pUser</var> names.</p>
+ClassMethod WindowReadRefused(pUser As %String, pAllUsers As %Boolean) As %Status [ Private ]
+{
+    If ''pAllUsers Quit $Select(..CallerIsAdministrator(): $$$OK, 1: $$$ERROR($$$AccessDenied))
+    Quit ..OwnerWriteRefused($ClassName(), pUser)
 }
 
 /// <p>The windowed fragment both reads share: <var>pSeqPredicate</var> (a literal the caller
@@ -468,7 +483,8 @@ ClassMethod PushWindowValues(pParams As %DynamicArray, pUser As %String, pRoute 
 /// which is right for a caller that holds an id it must find and wrong for one walking ids it read
 /// a moment ago: a row deleted in between would make the whole read unavailable rather than one row
 /// absent. So a failure to open is classified against existence first, and only a row that still
-/// exists yields an error.</p>
+/// exists yields an error. A row another user owns answers an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>).</p>
 ClassMethod GuardedRow(pId As %String, Output pValues) As %Status
 {
     Kill pValues
@@ -530,10 +546,15 @@ ClassMethod GuardedPurgeBefore(pIso As %String, Output pRemoved As %Integer) As 
     Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LoggedAt) < ?", .tParams, .pRemoved)
 }
 
-/// <p>How many rows turn <var>pTurnKey</var> holds, the overflow row included.</p>
+/// <p>How many rows turn <var>pTurnKey</var> holds, the overflow row included. A turn or conversation another user
+/// owns answers an administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor
+/// <code>ERROR #822</code>).</p>
 ClassMethod GuardedCountForTurn(pTurnKey As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
+    Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", pTurnKey)
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Convo", "ConvKeyIdxExists", pTurnKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", pTurnKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tRows(1))

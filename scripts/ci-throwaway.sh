@@ -317,6 +317,7 @@ services:
       # classes: AdminStateWrite, StoreOwnerWrite, TranscriptOwnerWrite, AdminPathWrite
       # classes: PrefOwnerWrite, ReserveSweepWrite
       # classes: InstallRecordWrite, InstallAsAdministrator
+      # classes: OwnerStateRead
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
