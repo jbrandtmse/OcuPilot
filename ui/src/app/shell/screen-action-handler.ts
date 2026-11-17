@@ -155,6 +155,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
+  // Story 24.10: the Folder items, whose Delete types the item's name and whose Export and Import dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -532,6 +534,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update', 'copy', 'export', 'export-browser', 'import', 'import-local'],
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
+  // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
@@ -740,6 +744,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
+  // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
@@ -833,6 +839,8 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.2: a delete types the term list's name and a remove the entry's key.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**

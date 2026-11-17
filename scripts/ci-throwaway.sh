@@ -610,6 +610,11 @@ services:
       # classes: AnalyticsTermListTransfer
       # The transfer edge class (Story 24.10) pins the transfers' file replacement, text bound, parse rules and the person's refusals, in the same directory.
       # classes: AnalyticsTermListTransferEdge
+      # The folder manager classes (Story 24.10, Batch 2) turn analytics on in USER and write marker-named folder items and files there: the transfer class
+      # drives the export, import and delete at the port through the same seam, the routes class both callers over HTTP, and the gate class signs in as
+      # probe principals each missing a pair or WRITE on the folder item database. The edge class adds the hidden item, the text bound, the bystander
+      # and the cards, through the transfer class's helpers.
+      # classes: AnalyticsFolderItemBounds, AnalyticsFolderItemEdge, AnalyticsFolderItemGate, AnalyticsFolderItemRoutes, AnalyticsFolderItemTransfer
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in

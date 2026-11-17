@@ -13683,6 +13683,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AnalyticsTermListExport.WriteOutput returns the CSV lines citing AD-39's fifth exception; the spine's fifth lists 'an export's XML lines'; U-105's three proposed spine lines do not extend it
 - 2026-11-17T13:04:24Z status=escalated owner=burndown by=cr note=add 'a term list export's CSV lines' to AD-39's fifth with U-105's spine lines (spine edit is owner-only in this run)
 
+### DW-2708: Folder manager export: AnalyticsPort.AdmitRead (READ on the folder item database) has no negative test
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A probe principal without %DB_USER is refused by the namespace gate before AdmitRead runs; reachable only where ^DeepSee.FolderItemD maps to another database
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a test or install maps ^DeepSee.FolderItemD to a database other than the namespace default
+
+### DW-2709: Folder manager: ReadFolderItem's locked-and-hidden branch (code 3 with %CheckResource false) is not exercised
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every test runs as an account holding every resource, so %CheckResource is always true
+- 2026-11-17T17:56:57Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=harvest note=reopen_if=a resource-bound folder item read by a probe principal lacking that resource shows the item
+
+### DW-2710: Batch 2's proposed AD-65 line omits %GetFolderItemClasses, which the port calls on every folder item import read, write and script, and no AD-15 case records that the vendor audits no folder item write
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AnalyticsPort.FolderItemClasses calls %DeepSee.UserLibrary.Utils.%GetFolderItemClasses; AD-65's Rule enumerates the only reads the port may call, and the spec's proposed AD-65 line (U-106) names %Export, %Import, %DeleteFolderItem and %FolderItemExists only
+- 2026-11-17T18:23:40Z status=escalated owner=burndown by=cr note=add %GetFolderItemClasses and the vendor-not-audited case to U-106's AD-65/AD-15 lines (spine edit is owner-only)
+
+### DW-2711: The Folder items import status line reads 'Imported 1 folder items.' for one item: the line has no singular
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: folder-item-list.page.ts onImport fills analyticsFolderItemImportDone with count=1; the project adds a singular at 1 (Story 19.18), as DW-2658 records for 24.9
+- 2026-11-17T18:23:40Z status=decision-pending owner=burndown by=cr note=string:Imported 1 folder item. (a new shipped string, owner-only; the import status line is part of U-107)
+
+### DW-2712: AnalyticsFolderItemExport and AnalyticsFolderItemImport repeat about 90 and 120 lines of AnalyticsTermListExport and AnalyticsTermListImport (file arguments, PortQuery, ScreenActionDelta, WriteOutput, Consequence) under the spec's weak reason that wording and rows differ
+- source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: diff of the two pairs without doc comments: the exports differ in TOOLNAME, DESCRIPTION, READTYPE, READANSWERS and one schema sentence; the imports also in StateDiff, WriteOutput and TargetName
+- 2026-11-17T18:23:40Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=cr note=reopen_if=a third analytics transfer tool copies the same file-argument methods; lift them into a shared transfer helper then
 ### DW-2713: flake: InteropItemRun.TestTheStartHelperWaitsForTheProductionsOwnUpdate saw the probe production's operation hold no job after the start in CI instance shard 6/8
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; same start-timing family as DW-2535 (resolved by 20.25); 21.35 touches no interop code

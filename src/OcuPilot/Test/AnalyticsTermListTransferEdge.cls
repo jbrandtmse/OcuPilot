@@ -132,7 +132,7 @@ Method TestAnExportReplacesAFileAlreadyAtItsName()
 
 /// <p>AC1, AC2: a server file past the text bound is refused <code>TOOLARGE</code> by an import and by the read composed for it, and a local text
 /// of exactly the bound is read, so it is judged by its shape and not refused for its size.</p>
-/// <p>Mutation (Rule 19): make the server file's too-large branch of <method>OcuPilot.Port.AnalyticsPort.TermListImportText</method> never run -- the
+/// <p>Mutation (Rule 19): make the server file's too-large branch of <method>OcuPilot.Port.AnalyticsPort.ImportText</method> never run -- the
 /// server leg goes red; and compare the local text with <code>&gt;=</code> -- the limit leg goes red.</p>
 Method TestAnImportFilePastTheTextBoundIsRefusedAndOneAtTheBoundIsRead()
 {

@@ -456,7 +456,7 @@ Method TestAPathThatIsNotAllowedIsRefusedOnItsField()
 
 /// <p>AC4: a database that is read-only or not journaled refuses an import and a copy before any vendor call, and does not refuse an export, which
 /// reads only.</p>
-/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitTermList</method>'s journal check -- the not-journaled legs go red.</p>
+/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitJournaled</method>'s journal check -- the not-journaled legs go red.</p>
 Method TestTheDestinationRefusesAnImportAndACopyButNotAnExport()
 {
     Set tName = ..#MARKER _ "Dest"

@@ -206,6 +206,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     export: STRINGS.taskExportAction,
     copy: STRINGS.analyticsTermListCopyAction,
   },
+  // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {
     add: STRINGS.webAppPctAccessAdd,
     set: STRINGS.analyticsEntryChangeAction,

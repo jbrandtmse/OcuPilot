@@ -11,11 +11,14 @@ import { STRINGS } from '../../core/strings';
 import { rowFor } from '../../core/table-model';
 import { reasonForField } from '../../core/violations';
 import { ListPage } from '../../shell/list-page';
-import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { ExplorerExportDialog, type ExportChoice } from '../system-explorer/explorer-export-dialog';
 import { ExplorerImportDialog, type ImportChoice } from '../system-explorer/explorer-import-dialog';
 import { TERM_LIST_COPY_ACTION, TermListCopyDialog } from './term-list-copy-dialog';
 import { TERM_LIST_LIST, TERM_LIST_UPDATE_ACTION, TermListDialog } from './term-list-dialog';
+import { DIALOG_SINK, PATH_VALUE, ROOT_VALUE, fill, linesOf, textOf } from './transfer-actions';
+
+export { fill };
 
 /** The declared primary action id: the command bar's New term list, which opens the dialog. */
 export const TERM_LIST_ADD_ACTION = 'add';
@@ -27,43 +30,14 @@ export const TERM_LIST_IMPORT_ACTION = 'import';
 export const TERM_LIST_IMPORT_LOCAL_ACTION = 'import-local';
 export const TERM_LIST_IMPORT_TARGET = 'import';
 
-/** The two values a server file travels in, under the names the tools declare (AD-56). */
-const ROOT_VALUE = 'root';
-const PATH_VALUE = 'path';
-
 /** The type an export saved by this browser is given, and the extensions an import's file picker offers. */
 const EXPORT_FILE_TYPE = 'text/csv';
 const IMPORT_ACCEPT = '.csv,.txt';
-
-/** A request the page sends, whose refusal the open dialog draws rather than the list's banner (AD-39). */
-const DIALOG_SINK: ActionSink = { setRefusal: () => undefined };
-
-/**
- * `template` with each `<placeholder>` of `values` replaced in one pass, so a value -- a term list name that itself holds a placeholder or
- * a `$` pattern -- is inserted as it is.
- */
-export function fill(template: string, values: Readonly<Record<string, string>>): string {
-  return template.replace(/<(\w+)>/g, (match: string, key: string) => (Object.hasOwn(values, key) ? values[key] : match));
-}
 
 /** The file an export to this browser is saved as: the list's name, with each character a file name cannot hold made `_`. */
 export function exportFileName(name: string): string {
   const safe = Array.from(name, (character) => (character.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(character) ? '_' : character)).join('');
   return `${safe === '' ? 'term-list' : safe}.csv`;
-}
-
-/** The lines an export to this browser answered in its `output`, or `[]`. */
-function linesOf(output: unknown): readonly string[] {
-  if (output === null || typeof output !== 'object') return [];
-  const lines = (output as Record<string, unknown>)['lines'];
-  return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
-}
-
-/** The `Name` an import answered in its `output`, or `''`. */
-function nameOf(output: unknown): string {
-  if (output === null || typeof output !== 'object') return '';
-  const name = (output as Record<string, unknown>)['Name'];
-  return typeof name === 'string' ? name : '';
 }
 
 /**
@@ -309,7 +283,7 @@ export class TermListListPage {
     const values: Readonly<Record<string, string>> = choice.source === 'server' ? { [ROOT_VALUE]: choice.root, [PATH_VALUE]: choice.path } : { fileName: choice.fileName, content: choice.content };
     this.beginSend();
     const sent = await this.handler.sendFor(TERM_LIST_LIST, server ? TERM_LIST_IMPORT_ACTION : TERM_LIST_IMPORT_LOCAL_ACTION, TERM_LIST_IMPORT_TARGET, values, DIALOG_SINK, scope);
-    const created = nameOf(this.handler.lastOutput());
+    const created = textOf(this.handler.lastOutput(), 'Name');
     this.endSend(sent, sent ? fill(STRINGS.analyticsTermListImportDone, { name: created }) : '');
   }
 

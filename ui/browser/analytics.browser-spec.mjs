@@ -22,6 +22,8 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -50,6 +52,8 @@ const RELATIONSHIPS = `${CUBES}/relationships`;
 const TERM_LISTS = 'analytics/term-lists';
 const ENTRIES = `${TERM_LISTS}/entries`;
 const FOLDER_ITEMS = 'analytics/folder-items';
+const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
+const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
   { route: GROUP, label: STRINGS.analyticsTabMeasures },
   { route: DIMENSIONS, label: STRINGS.analyticsTabDimensions },
@@ -61,6 +65,7 @@ const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
 let browser = null;
 let created = false;
+let localDirectory = '';
 
 /** Run one probe call in the throwaway and answer its marker. */
 function probe(name, expression) {
@@ -183,7 +188,9 @@ before(async () => {
 
 after(async () => {
   try {
+    if (localDirectory !== '') rmSync(localDirectory, { recursive: true, force: true });
     if (created && /-ci$/.test(config.container)) {
+      runIris(config.container, [`Do ##class(${FOLDER_PROBE}).Sweep()`]);
       const removed = probe('ANGONE', `$System.Status.IsOK(##class(${PROBE}).Remove())_##class(${PROBE}).Gone()`);
       assert.equal(removed.value, '11', `the probe is removed and USER is left as found: ${removed.output}`);
     }
@@ -368,5 +375,137 @@ test('AC5: each of the seven screens passes the structural and contrast checks a
     } finally {
       await context.close();
     }
+  }
+});
+
+/** Wait until no row's first cell starts with `name`. */
+function rowGone(page, name) {
+  return page.waitForFunction(
+    (rowSelector, wanted) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)),
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    name
+  );
+}
+
+/** The first cell's whole text of the row whose first cell starts with `prefix`: a row the instance has just changed carries its marker and read-back there. */
+function firstCell(page, prefix) {
+  return page.evaluate(
+    (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).map((row) => row.querySelector('[role="gridcell"]')?.textContent.trim()).find((text) => text?.startsWith(wanted)),
+    ROW_SELECTOR,
+    prefix
+  );
+}
+
+/** Select the row whose first cell starts with `name`, open its menu and choose the entry labeled `label`; answers the menu's labels. */
+async function rowAction(page, name, label) {
+  await clickRowCentre(page, { text: await firstCell(page, name), cell: 3 });
+  await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+  const labels = await page.$$eval('[role="menu"] [role="menuitem"] .ocu-data-table-menu-label', (items) => items.map((item) => item.textContent.trim()));
+  assert.ok(labels.includes(label), `the row menu offers ${label}; it offers ${JSON.stringify(labels)}`);
+  await page.evaluate((wanted) => {
+    Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'))
+      .find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted)
+      .click();
+  }, label);
+  return labels;
+}
+
+/** Wait until the page's transfer status line reads `line`. */
+function statusReads(page, line) {
+  return page.waitForFunction((wanted) => document.querySelector('[data-folder-item-transfer-status]')?.textContent.trim() === wanted, { timeout: config.navigationTimeoutMs }, line);
+}
+
+/** Record the files this browser is asked to save, without leaving the page. */
+function captureDownloads(page) {
+  return page.evaluate(() => {
+    window.__ocuSaved = [];
+    const create = URL.createObjectURL.bind(URL);
+    let blob = null;
+    URL.createObjectURL = (made) => {
+      blob = made;
+      return create(made);
+    };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download && blob !== null) {
+        const kept = blob;
+        const name = this.download;
+        void kept.text().then((text) => window.__ocuSaved.push({ name, type: kept.type, text }));
+        return;
+      }
+      click.call(this);
+    };
+  });
+}
+
+// Story 24.10, Batch 2. Mutation (Rule 19): send the export's output lines nowhere in `OcuPilot.Screen.Tool.AnalyticsFolderItemExport.WriteOutput` (reload the class) -> no file is
+// saved and the export leg goes red; read `Name` in place of `Count` in `folder-item-list.page.ts`, rebuild and redeploy -> the import's status line goes red.
+test('Story 24.10: a folder item is exported to this browser, deleted by typing its full name, and imported back from the file this computer holds', async () => {
+  localDirectory = mkdtempSync(join(tmpdir(), 'epic-24-2410b-'));
+  runIris(config.container, [`Set x=##class(${FOLDER_PROBE}).Item("${FOLDER_ITEM}")`]);
+  assert.equal(probe('FIHELD', `##class(${FOLDER_PROBE}).Exists("${FOLDER_ITEM}")`).value, '1', 'the item is saved');
+  const { context, page } = await signedInAt(browser, config, url(FOLDER_ITEMS), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await captureDownloads(page);
+    const menu = await rowAction(page, FOLDER_ITEM, STRINGS.taskExportAction);
+    assert.deepEqual(menu, [STRINGS.taskExportAction, STRINGS.actionDelete], 'the row menu offers Export and Delete');
+    await page.waitForSelector('app-explorer-export-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-export-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsFolderItemExportTitle.replace('<name>', FOLDER_ITEM), 'the export dialog is titled by the item');
+    assert.equal(await page.$eval('[data-explorer-export-replaces]', (node) => node.textContent.trim()), STRINGS.analyticsFolderItemExportHelp, 'and says what the file holds and that a file at the name is replaced');
+    await page.waitForSelector('.ocu-dialog-body .ocu-path-picker select', { timeout: config.navigationTimeoutMs });
+    await page.click('input[data-explorer-export-destination="browser"]');
+    await page.waitForFunction(() => document.querySelector('.ocu-dialog-body .ocu-path-picker') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-export-confirm]');
+    await statusReads(page, STRINGS.analyticsTermListExportDone.replace('<name>', FOLDER_ITEM));
+    await page.waitForFunction(() => window.__ocuSaved.length === 1, { timeout: config.navigationTimeoutMs });
+    const saved = await page.evaluate(() => window.__ocuSaved[0]);
+    assert.equal(saved.name, 'OcuProbeFI2410-Browse-dashboard.xml', 'the browser saves the full name, its slash and dot made dashes, as <name>.xml');
+    assert.equal(saved.type, 'application/xml');
+    assert.ok(saved.text.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<dashboard ') && saved.text.includes('name="Browse" folderName="OcuProbeFI2410"'), 'the file is the vendor\'s XML export of that one item');
+
+    await rowAction(page, FOLDER_ITEM, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.analyticsFolderItemDeleteConsequence, 'Delete states its consequence and asks for the full name typed');
+    await page.type('.ocu-typed-name-field', FOLDER_ITEM);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowGone(page, FOLDER_ITEM);
+    await statusReads(page, STRINGS.analyticsFolderItemDeleteDone.replace('<name>', FOLDER_ITEM));
+    assert.equal(probe('FIGONE', `##class(${FOLDER_PROBE}).Exists("${FOLDER_ITEM}")`).value, '0', 'and the vendor reads the item gone');
+
+    const local = join(localDirectory, 'Browse.xml');
+    writeFileSync(local, saved.text, 'utf8');
+    await page.waitForFunction(
+      (wanted) => Array.from(document.querySelectorAll('.ocu-command-bar-action')).some((button) => button.textContent.trim() === wanted && button.getAttribute('aria-disabled') === null),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.actionImport
+    );
+    await page.evaluate((wanted) => {
+      Array.from(document.querySelectorAll('.ocu-command-bar-action')).find((button) => button.textContent.trim() === wanted).click();
+    }, STRINGS.actionImport);
+    await page.waitForSelector('app-explorer-import-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-import-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsFolderItemImportTitle, 'the import dialog is titled in the folder items\' words');
+    assert.equal(await page.$eval('[data-explorer-import-replaces]', (node) => node.textContent.trim()), STRINGS.analyticsFolderItemImportHelp, 'it states that the file creates the items it holds');
+    await page.waitForSelector('.ocu-dialog-body .ocu-path-picker select', { timeout: config.navigationTimeoutMs });
+    await page.click('input[data-explorer-import-source="local"]');
+    await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('input[data-explorer-import-file]', (input) => input.getAttribute('accept')), '.xml,.dfi', 'the file input offers .xml and .dfi files');
+    await (await page.$('input[data-explorer-import-file]')).uploadFile(local);
+    await page.waitForFunction(() => document.querySelector('[data-explorer-import-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-import-confirm]');
+    await statusReads(page, STRINGS.analyticsFolderItemImportDone.replace('<count>', '1'));
+    assert.equal(probe('FIBACK', `##class(${FOLDER_PROBE}).Exists("${FOLDER_ITEM}")`).value, '1', 'the item is back, and Folder items lists it');
+    await page.waitForFunction(
+      (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      FOLDER_ITEM
+    );
+  } finally {
+    await context.close();
+    runIris(config.container, [`Do ##class(${FOLDER_PROBE}).Sweep()`]);
   }
 });

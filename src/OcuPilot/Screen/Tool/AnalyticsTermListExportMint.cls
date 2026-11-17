@@ -1,7 +1,7 @@
-/// <p>The mint Analytics' term list export declares as its <method>OcuPilot.Screen.Tool.Write.MintClass</method> (AD-6, AD-21, Story 24.10): the
+/// <p>The mint Analytics' term list export and folder item export declare as their <method>OcuPilot.Screen.Tool.Write.MintClass</method> (AD-6, AD-21, Story 24.10): the
 /// kernel's own mint, after the file the proposal names is resolved as the write will resolve it.</p>
 /// <p>Refused before anything else is read: file arguments the tool refuses, with 400 <code>TOOL.ARGUMENTS</code>; then the port's own refusal of the
-/// file (<method>OcuPilot.Port.AnalyticsPort.CheckTermListExport</method>), answered unchanged, so the agent reads the <code>PATH.*</code> or
+/// file (<method>OcuPilot.Port.AnalyticsPort.CheckExport</method>), answered unchanged, so the agent reads the <code>PATH.*</code> or
 /// <code>EXPLORER.EXPORT.DIRECTORY</code> code on its field. It is <class>OcuPilot.Screen.Tool.InteropLookupTableExportMint</class>'s order over the
 /// analytics port.</p>
 Class OcuPilot.Screen.Tool.AnalyticsTermListExportMint Extends OcuPilot.Kernel.Proposal.Mint
@@ -21,7 +21,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tPort = $ClassMethod(pToolClass, "PortClass")
-        Set tSC = $ClassMethod(tPort, "CheckTermListExport", pArgs.%Get($Parameter(tPort, "ROOTKEY")), pArgs.%Get($Parameter(tPort, "PATHKEY")), .pHttpStatus, .pFault)
+        Set tSC = $ClassMethod(tPort, "CheckExport", $ClassMethod(pToolClass, "Endpoint"), pArgs.%Get($Parameter(tPort, "ROOTKEY")), pArgs.%Get($Parameter(tPort, "PATHKEY")), .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Set pHttpStatus = 0
         Set pFault = ""

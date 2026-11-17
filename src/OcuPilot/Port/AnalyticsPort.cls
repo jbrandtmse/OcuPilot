@@ -73,9 +73,17 @@
 /// <method>TermListViolations</method> and writes through the same seams as the editor, one transaction for the whole list (<method>WriteWholeList</method>);
 /// a copy writes the source's read the same way. Both create a list that is not held and never overwrite one. A server file is a
 /// <class>OcuPilot.Port.PathPort</class> resolution (<method>PathPortClass</method>); a local file's text is the caller's value and is stored nowhere.</p>
+/// <p><b>The folder manager (Story 24.10, AD-21, AD-65).</b> The <code>FolderItems</code> endpoint also serves three reads (<code>FOLDERITEM</code>,
+/// <code>EXPORTITEM</code> and <code>IMPORTFILE</code>) and three writes (<code>EXPORT</code>, <code>IMPORT</code> and <code>DELETE</code>), through
+/// <method>InvokeFolderItem</method>. An export is the vendor's own XML (<code>%Export</code>) of one item, to a server file or as lines for the browser; it
+/// reads only. An import reads its text first (<method>FolderItemsInText</method>: folder item elements only, never a class, a routine or a folder),
+/// refuses a name the instance already holds, and writes with <code>%Import</code> in one transaction, so it creates every item of the file or none; it never
+/// loads or compiles a document and never replaces. A delete is <code>%DeleteFolderItem</code>, refused for a locked item. Each write is gated by
+/// <parameter>FOLDERPAIRS</parameter> and, beyond the read gate, by <method>AdmitFolderItem</method>; the vendor audits none of them, so each records
+/// OcuPilot's own <code>ConfigChange</code> row.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
-/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>PathPortClass</method> and the <code>VendorTermList*</code> calls. Production overrides none.</p>
+/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -168,6 +176,12 @@ Parameter TYPEIMPORT = "IMPORT";
 
 Parameter TYPECOPY = "COPY";
 
+/// <p>The folder item single-object read (Story 24.10): one item by its full name.</p>
+Parameter TYPEFOLDERITEM = "FOLDERITEM";
+
+/// <p>The folder item read composed for the export: the item, echoing the file the query names.</p>
+Parameter TYPEEXPORTITEM = "EXPORTITEM";
+
 /// <p>The query keys a transfer carries: the server file, the local file, the digest an import was reviewed with and the copy's new name.
 /// <parameter>IMPORTID</parameter> is the target a person's import names when the file's list is not read in the browser.</p>
 Parameter ROOTKEY = "root";
@@ -187,7 +201,7 @@ Parameter IMPORTID = "import";
 /// <p>The endpoint and type pairs that send no body and take their arguments through the query (AD-51 as amended by Story 12.3): the term list
 /// export, whose file the port reads from its query, the import, whose file or local text and reviewed digest it reads from its query, and the
 /// copy, whose new name it reads from its query (Story 24.10).</p>
-Parameter COMPOSEDTYPES = "TermLists/EXPORT,TermLists/IMPORT,TermLists/COPY";
+Parameter COMPOSEDTYPES = "TermLists/EXPORT,TermLists/IMPORT,TermLists/COPY,FolderItems/EXPORT,FolderItems/IMPORT";
 
 /// <p>An export to a server file replaces a file already there: PathPort's overwrite, which this port declares as a constant, never a caller value.</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
@@ -197,6 +211,27 @@ Parameter SNIPPETENTRIES As INTEGER = 1000;
 
 /// <p>The global the term lists live in: the destination <method>AdmitTermList</method> judges.</p>
 Parameter TERMLISTGLOBAL = "^DeepSee.TermList";
+
+/// <p>The global the folder items live in, whose database a folder item import or delete needs WRITE on.</p>
+Parameter FOLDERITEMGLOBAL = "^DeepSee.FolderItemD";
+
+Parameter ENTITYFOLDERITEM = "folder-item";
+
+Parameter VERBFOLDERITEMEXPORT = "analytics.folderitems.export";
+
+Parameter VERBFOLDERITEMIMPORT = "analytics.folderitems.import";
+
+Parameter VERBFOLDERITEMDELETE = "analytics.folderitems.delete";
+
+/// <p>The most folder items one import file may hold, counted before any write.</p>
+Parameter MAXIMPORTITEMS As INTEGER = 100;
+
+/// <p>The declaration the vendor's export writes at the head of a file, which its export to a stream leaves out, so an export to this browser reads as the
+/// file does.</p>
+Parameter XMLDECLARATION = "<?xml version=""1.0"" encoding=""UTF-8""?>";
+
+/// <p>The flags an import file is parsed with: the SAX defaults and no document type definition, so no entity of the file is ever resolved.</p>
+Parameter XMLPARSEFLAGS As INTEGER = 155;
 
 /// <p>The audit entity types and the verbs, the tools' own names, of the term list writes (AD-15).</p>
 Parameter ENTITYTERMLIST = "term-list";
@@ -356,6 +391,8 @@ Parameter REASONCUBEREQUIRED = "Name the cube.";
 
 Parameter REASONTERMLISTREQUIRED = "Name the term list.";
 
+Parameter REASONFOLDERITEMREQUIRED = "Name the folder item.";
+
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
 /// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -396,13 +433,15 @@ ClassMethod Pairs(pEndpoint As %String) As %List
 }
 
 /// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint; and, on the
-/// cube manager, <code>STATE</code>, <code>BUILD</code> and <code>SYNCHRONIZE</code>, and on the two term list endpoints their single-object read and three writes each.</p>
+/// cube manager, <code>STATE</code>, <code>BUILD</code> and <code>SYNCHRONIZE</code>, on the two term list endpoints their single-object read and writes, and on the
+/// folder items (<method>IsFolderItemType</method>) their three reads and three writes.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
     If pEndpoint = ..#ENDPOINTTERMLISTS Quit (pType = ..#TYPETERMLIST) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || ..IsTermListTransfer(pType)
     If pEndpoint = ..#ENDPOINTTERMLISTENTRIES Quit (pType = ..#TYPETERMLISTENTRY) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..IsFolderItemType(pType)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
 }
 
@@ -489,9 +528,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tWrite = ..IsWrite(pType) || ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))) || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
+        Set tChanges = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+        If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeFolderItem(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If ..IsTermListType(pType) {
             Set tSC = ..InvokeTermList(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
@@ -562,6 +606,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     Set tSC = ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) || 'pWrite Quit tSC
     If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
+    If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..AdmitFolderItem(pNamespace, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
 
@@ -2122,11 +2167,12 @@ ClassMethod Absent(Output pHttpStatus As %Integer, Output pFault As %DynamicObje
     Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
 }
 
-/// <p><code>objectscript</code> for the cube manager's two writes and the term list editor's six; <code>""</code> for every read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for the cube manager's two writes, the term list editor's nine and the folder manager's three; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ..IsWrite(pType) Quit "objectscript"
     If ((pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES)) && ..IsTermListWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
     Quit ""
 }
 
@@ -2140,7 +2186,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tPart = ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery)
+        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
@@ -2206,7 +2252,7 @@ ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicA
 }
 
 /// <p>The lines <method>TermListSnippet</method> adds for a transfer (Story 24.10): an export is the vendor's own <code>%ExportCSV</code> of a list that is
-/// held, to the server file the query names, resolved as the write resolves it (<method>TermListExportFile</method>), or to the current device; an
+/// held, to the server file the query names, resolved as the write resolves it (<method>ExportFile</method>), or to the current device; an
 /// import and a copy are <method>WholeListSnippet</method> of the list the file holds, or the source's read. An import file that cannot be read as a
 /// term list export or holds another list than the one named, one whose text is not the reviewed <parameter>DIGESTKEY</parameter>, a source that is
 /// not held, and a server file the export cannot resolve are each a script that only sets the refusal. A local file's text is never in a script, so
@@ -2217,7 +2263,7 @@ ClassMethod TransferSnippet(pType As %String, pId As %String, ByRef pQuery) As %
     Set tNL = $Char(10)
     Set tList = "##class(%DeepSee.TermList)"
     If pType = ..#TYPEIMPORT {
-        Set tSC = ..TermListImportText(.pQuery, .tText, .tHttp, .tFault)
+        Set tSC = ..ImportText(##class(OcuPilot.Api.AnalyticsError).#TERMLISTTOOLARGE, .pQuery, .tText, .tHttp, .tFault)
         If $$$ISERR(tSC) || '..TermListParse(tText, .tData) || ((pId '= ..#IMPORTID) && (pId '= tData("name"))) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTIMPORTSHAPE) _ ")"
         If $Get(pQuery(..#DIGESTKEY)) '= ..TextDigest(tText) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTIMPORTCHANGED) _ ")"
         Quit ..WholeListSnippet(..Literal(tData("name")), .tData)
@@ -2235,7 +2281,7 @@ ClassMethod TransferSnippet(pType As %String, pId As %String, ByRef pQuery) As %
     Set tSource = ""
     If tPath '= "" {
         Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
-        Set tSC = ..TermListExportFile($Get(pQuery(..#ROOTKEY)), tPath, .tResolved, .tHttp, .tFault)
+        Set tSC = ..ExportFile($Get(pQuery(..#ROOTKEY)), tPath, .tResolved, .tHttp, .tFault)
         If $$$ISERR(tSC) Quit tSource _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
         Set tFile = ..Literal(tResolved)
     }
@@ -2287,11 +2333,20 @@ ClassMethod Literal(pValue As %String) As %String [ Private ]
 /// Names no vendor class.</p>
 ClassMethod AdmitTermList(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    Set tSC = ..AdmitDestination(pNamespace, ..#TERMLISTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTREADONLY, .pHttpStatus, .pFault)
+    Quit ..AdmitJournaled(pNamespace, ..#TERMLISTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTREADONLY, ##class(OcuPilot.Api.AnalyticsError).#TERMLISTNOTJOURNALED, .pHttpStatus, .pFault)
+}
+
+/// <p>The destination gate of a write that makes several vendor calls (AD-29, AD-65), after the namespace gate: WRITE on the database
+/// <var>pGlobal</var> maps to, which must be mounted read-write (409 <var>pReadOnlyCode</var>), and that database journaled (409
+/// <var>pNotJournaledCode</var>), so that the write is all or nothing. A database whose journal state the instance cannot read is 400
+/// <code>PORT.VALIDATION</code>. The term list editor and the folder manager each bind their own global and codes. Names no vendor class.</p>
+ClassMethod AdmitJournaled(pNamespace As %String, pGlobal As %String, pReadOnlyCode As %String, pNotJournaledCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = ..AdmitDestination(pNamespace, pGlobal, pReadOnlyCode, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tJournaled = 0
-    If '..DestinationJournaled(pNamespace, ..#TERMLISTGLOBAL, .tJournaled) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
-    If 'tJournaled Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#TERMLISTNOTJOURNALED, .pHttpStatus, .pFault)
+    If '..DestinationJournaled(pNamespace, pGlobal, .tJournaled) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If 'tJournaled Quit ..Conflict(pNotJournaledCode, .pHttpStatus, .pFault)
     Quit $$$OK
 }
 
@@ -2819,13 +2874,21 @@ ClassMethod ConflictFor(pCode As %String, Output pHttpStatus As %Integer, Output
 /// instance cannot name the database. Names no vendor class.</p>
 ClassMethod AdmitTermListRead(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Quit ..AdmitRead(pNamespace, ..#TERMLISTGLOBAL, .pHttpStatus, .pFault)
+}
+
+/// <p>The read half of a transfer's destination gate (AD-29, AD-65), after the namespace gate: READ on the database <var>pGlobal</var> maps to,
+/// which an export needs and which changes nothing. 400 <code>PORT.VALIDATION</code> when the instance cannot name the database. Names no
+/// vendor class.</p>
+ClassMethod AdmitRead(pNamespace As %String, pGlobal As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
     Set pHttpStatus = 0
     Set pFault = ""
     Set tFailedPair = ""
     Set tResource = ""
     Set tReadOnly = 0
     Set tMounted = 0
-    If '..DestinationDatabase(pNamespace, ..#TERMLISTGLOBAL, .tResource, .tReadOnly, .tMounted) || (tResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If '..DestinationDatabase(pNamespace, pGlobal, .tResource, .tReadOnly, .tMounted) || (tResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
     If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tResource, ..#READPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     Quit $$$OK
 }
@@ -2833,7 +2896,7 @@ ClassMethod AdmitTermListRead(pNamespace As %String, Output pHttpStatus As %Inte
 /// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved through <method>PathPortClass</method> as a <code>file</code> with
 /// <parameter>EXPORTOVERWRITES</parameter>, each refusal on its field, then <code>EXPLORER.EXPORT.DIRECTORY</code> when the resolved name's
 /// directory does not exist; a directory is never created. On success <var>pResolved</var> is the path.</p>
-ClassMethod TermListExportFile(pRoot As %String, pPath As %String, Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResolved = ""
     Set tPathPort = ..PathPortClass()
@@ -2849,21 +2912,20 @@ ClassMethod TermListExportFile(pRoot As %String, pPath As %String, Output pResol
     Quit $$$OK
 }
 
-/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked as <method>PerformExport</method> checks it before its
-/// vendor call, for a mint that must refuse what the write would: the endpoint's pairs, then <method>TermListExportFile</method>. Nothing is
-/// written.</p>
-ClassMethod CheckTermListExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked as the write checks it before its vendor call, for a mint
+/// that must refuse what the write would: the pairs of <var>pEndpoint</var>, then <method>ExportFile</method>. Nothing is written.</p>
+ClassMethod CheckExport(pEndpoint As %String, pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
         Set tFailedPair = ""
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(..#ENDPOINTTERMLISTS), .tFailedPair) {
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint), .tFailedPair) {
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSC = ..TermListExportFile(pRoot, pPath, .tResolved, .pHttpStatus, .pFault)
+        Set tSC = ..ExportFile(pRoot, pPath, .tResolved, .pHttpStatus, .pFault)
     } Catch ex {
         Set tSC = ..Fail("the export's file could not be checked", ex.AsStatus(), .pHttpStatus, .pFault)
     }
@@ -2871,15 +2933,15 @@ ClassMethod CheckTermListExport(pRoot As %String, pPath As %String, Output pHttp
 }
 
 /// <p>The text of the file an import names in <var>pQuery</var>, in <var>pText</var>: the server file <parameter>ROOTKEY</parameter> and
-/// <parameter>PATHKEY</parameter> name, resolved through <method>PathPortClass</method> as a <code>source</code> and read as UTF-8 text
-/// (<method>OcuPilot.Port.AtelierPort.ReadText</method>), or the local file <parameter>FILENAMEKEY</parameter> and
+/// <parameter>PATHKEY</parameter> name, resolved through <method>PathPortClass</method> as a <code>source</code> (<var>pResolved</var> is its path)
+/// and read as UTF-8 text (<method>OcuPilot.Port.AtelierPort.ReadText</method>), or the local file <parameter>FILENAMEKEY</parameter> and
 /// <parameter>CONTENTKEY</parameter> send. Refused before any vendor call: 400 <code>PORT.VALIDATION</code> when both files or neither is named,
 /// or a local file's name is longer than 255 characters or holds <code>/</code>, <code>\</code> or a control character; the resolve's own refusal on
-/// its field; and 409 <code>ANALYTICS.TERMLIST.TOOLARGE</code> for text longer than
-/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
-ClassMethod TermListImportText(ByRef pQuery, Output pText As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// its field; and 409 <var>pTooLargeCode</var> for text longer than <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
+ClassMethod ImportText(pTooLargeCode As %String, ByRef pQuery, Output pText As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pResolved As %String) As %Status [ Private ]
 {
     Set pText = ""
+    Set pResolved = ""
     Set tRoot = $Get(pQuery(..#ROOTKEY))
     Set tPath = $Get(pQuery(..#PATHKEY))
     Set tFileName = $Get(pQuery(..#FILENAMEKEY))
@@ -2891,20 +2953,31 @@ ClassMethod TermListImportText(ByRef pQuery, Output pText As %String, Output pHt
         If (tFileName = "") || ($Length(tFileName) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || (tFileName [ "/") || (tFileName [ "\") || ($ZStrip(tFileName, "*C") '= tFileName) {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.InteropPort).#REASONIMPORTFILENAME, .pHttpStatus, .pFault)
         }
-        If $Length(tContent) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#TERMLISTTOOLARGE, .pHttpStatus, .pFault)
+        If $Length(tContent) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
         Set pText = tContent
         Quit $$$OK
     }
     Set tPathPort = ..PathPortClass()
-    Set tSC = $ClassMethod(tPathPort, "Resolve", tRoot, tPath, $Parameter(tPathPort, "KINDSOURCE"), ..#ROOTKEY, ..#PATHKEY, .tResolved, .pHttpStatus, .pFault)
+    Set tSC = $ClassMethod(tPathPort, "Resolve", tRoot, tPath, $Parameter(tPathPort, "KINDSOURCE"), ..#ROOTKEY, ..#PATHKEY, .pResolved, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(tResolved, .pText, .tTooLarge)
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(pResolved, .pText, .tTooLarge)
     If $$$ISERR(tSC) Quit ..Fail("the import's file could not be read", tSC, .pHttpStatus, .pFault)
     If tTooLarge {
         Set pText = ""
-        Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#TERMLISTTOOLARGE, .pHttpStatus, .pFault)
+        Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
     }
     Quit $$$OK
+}
+
+/// <p><var>pText</var> as a binary stream of its UTF-8 bytes, rewound.</p>
+ClassMethod Utf8Stream(pText As %String) As %Stream.GlobalBinary
+{
+    Set tBytes = ##class(%Stream.GlobalBinary).%New()
+    For tAt = 1:30000:$Length(pText) {
+        Do tBytes.Write($ZConvert($Extract(pText, tAt, tAt + 29999), "O", "UTF8"))
+    }
+    Do tBytes.Rewind()
+    Quit tBytes
 }
 
 /// <p><var>pText</var>'s SHA-256 over its UTF-8 bytes, as lower-case hex; <code>""</code> when it cannot be taken.</p>
@@ -2912,12 +2985,7 @@ ClassMethod TextDigest(pText As %String) As %String
 {
     Set tDigest = ""
     Try {
-        Set tBytes = ##class(%Stream.GlobalBinary).%New()
-        Set tLength = $Length(pText)
-        For tAt = 1:30000:tLength {
-            Do tBytes.Write($ZConvert($Extract(pText, tAt, tAt + 29999), "O", "UTF8"))
-        }
-        Do tBytes.Rewind()
+        Set tBytes = ..Utf8Stream(pText)
         Set tHash = $System.Encryption.SHAHashStream(256, tBytes, .tHashSC)
         If $$$ISOK(tHashSC) Set tDigest = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
     } Catch {
@@ -3060,13 +3128,13 @@ ClassMethod FieldsOf(ByRef pData) As %DynamicArray [ Private ]
     Quit tFields
 }
 
-/// <p>The import file a query names, examined (Story 24.10): its text (<method>TermListImportText</method>), its digest, and its reading
+/// <p>The import file a query names, examined (Story 24.10): its text (<method>ImportText</method>), its digest, and its reading
 /// (<method>TermListParse</method>) into <var>pData</var>. 409 <code>ANALYTICS.TERMLIST.IMPORTSHAPE</code> when the text is not a term list export
 /// with an entry, or names a list other than <var>pId</var>, unless <var>pId</var> is <parameter>IMPORTID</parameter>. Nothing is written.</p>
 ClassMethod TermListImportFile(pId As %String, ByRef pQuery, Output pText As %String, Output pData, Output pDigest As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pDigest = ""
-    Set tSC = ..TermListImportText(.pQuery, .pText, .pHttpStatus, .pFault)
+    Set tSC = ..ImportText(##class(OcuPilot.Api.AnalyticsError).#TERMLISTTOOLARGE, .pQuery, .pText, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tShaped = ..TermListParse(pText, .pData)
     If 'tShaped || ((pId '= ..#IMPORTID) && (pId '= pData("name"))) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#TERMLISTIMPORTSHAPE, .pHttpStatus, .pFault)
@@ -3110,7 +3178,7 @@ ClassMethod ReadExportList(pNamespace As %String, pName As %String, pAction As %
 }
 
 /// <p>Export the term list <var>pName</var> in the vendor's own CSV (<code>%ExportCSV</code>): to the server file <parameter>ROOTKEY</parameter>
-/// and <parameter>PATHKEY</parameter> name, resolved and checked by <method>TermListExportFile</method> before the call, the answer
+/// and <parameter>PATHKEY</parameter> name, resolved and checked by <method>ExportFile</method> before the call, the answer
 /// <code>{Name, Namespace, root, path}</code>; or, naming neither, as lines for the browser, the answer <code>{Name, Namespace, lines}</code>, 409
 /// <code>ANALYTICS.TERMLIST.TOOLARGE</code> past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters. It reads only
 /// (<method>AdmitTermListRead</method>), writes nothing but the file, and records OcuPilot's own audit row.</p>
@@ -3127,7 +3195,7 @@ ClassMethod PerformExport(pNamespace As %String, pName As %String, ByRef pQuery,
     If 'tHeld Quit ..ListAbsent(.pHttpStatus, .pFault)
     Set tResolved = ""
     If tToFile {
-        Set tSC = ..TermListExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
+        Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
     }
     Set tCaught = ""
@@ -3553,6 +3621,628 @@ ClassMethod VendorTermListDelete(pNamespace As %String, pName As %String, Output
         Set pCaught = ex
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pType</var> is one of the folder manager's three writes (Story 24.10): an export, an import or a delete.</p>
+ClassMethod IsFolderItemWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEDELETE)
+}
+
+/// <p>Whether <var>pType</var> is one of the folder items' typed calls: the reads <code>FOLDERITEM</code>, <code>EXPORTITEM</code> and
+/// <code>IMPORTFILE</code>, and the three writes.</p>
+ClassMethod IsFolderItemType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEFOLDERITEM) || (pType = ..#TYPEEXPORTITEM) || (pType = ..#TYPEIMPORTFILE) || ..IsFolderItemWrite(pType)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a folder item and so needs
+/// the destination's gate (<method>AdmitFolderItem</method>): an import or a delete, and the single-object read or the import's file read composed for one.
+/// An export reads only. Pure.</p>
+ClassMethod ChangesFolderItems(pType As %String, pAction As %String = "") As %Boolean
+{
+    If pType = ..#TYPEEXPORT Quit 0
+    If (pType = ..#TYPEIMPORT) || (pType = ..#TYPEDELETE) Quit 1
+    If (pAction = "") || (pAction = ..#TYPEEXPORT) Quit 0
+    Quit (pType = ..#TYPEFOLDERITEM) || (pType = ..#TYPEIMPORTFILE)
+}
+
+/// <p>The folder manager's destination gate for an import or a delete (Story 24.10, AD-29, AD-65): <method>AdmitJournaled</method> over the database
+/// <parameter>FOLDERITEMGLOBAL</parameter> maps to, with the folder items' own refusal codes. Names no vendor class.</p>
+ClassMethod AdmitFolderItem(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AdmitJournaled(pNamespace, ..#FOLDERITEMGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMREADONLY, ##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMNOTJOURNALED, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pName</var> can be a folder item's full name: 1 to 600 characters with no control character. Pure.</p>
+ClassMethod FolderItemShaped(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= 600) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether the existence answer <var>pCode</var> of <code>%FolderItemExists</code> is an item the caller may see: 1, or 3 for a locked one. 0 is no item
+/// and 2 an item the caller's resources hide, which this port reads as absent. Pure.</p>
+ClassMethod FolderItemVisible(pCode As %Integer) As %Boolean
+{
+    Quit (pCode = 1) || (pCode = 3)
+}
+
+/// <p>404 <code>ANALYTICS.FOLDERITEM.ABSENT</code>: the folder item is not there, or not shown to the caller.</p>
+ClassMethod FolderItemAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>The folder item <var>pName</var> as the vendor reports it in <var>pNamespace</var>, switched by explicit save and restore (AD-16), into
+/// <var>pData</var>: <code>code</code> is <code>%FolderItemExists</code>'s answer (0 none, 1 visible, 2 held but hidden from the caller, 3 locked), and for 1
+/// and 3 the item's <code>name</code> as stored, <code>type</code>, <code>owner</code>, <code>modified</code> (the vendor's UTC stamp) and
+/// <code>locked</code>. A locked item the caller's resources hide reads 2, since the vendor answers 3 before it checks them. An exception is
+/// <var>pCaught</var>. A seam: a fixture overrides it to observe the call.</p>
+ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("code") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCode = ##class(%DeepSee.UserLibrary.Utils).%FolderItemExists(pName, .tId)
+        If (tCode = 1) || (tCode = 3) {
+            Set tItem = ##class(%DeepSee.UserLibrary.FolderItem).%OpenId(tId)
+            If '$IsObject(tItem) {
+                Set tCode = 0
+            } ElseIf (tCode = 3) && 'tItem.%CheckResource() {
+                Set tCode = 2
+            } Else {
+                Set pData("name") = tItem.fullName
+                Set pData("type") = tItem.%GetTypeName()
+                Set pData("owner") = tItem.owner
+                Set pData("modified") = tItem.timeModified
+                Set pData("locked") = ''tItem.locked
+            }
+            Set tItem = ""
+        }
+        Set pData("code") = tCode
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p><method>ReadFolderItem</method> of <var>pName</var>, a name that cannot be a folder item answering none, with a fault as the answer's error
+/// status.</p>
+ClassMethod FolderItemFacts(pNamespace As %String, pName As %String, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pData("code") = 0
+    If '..FolderItemShaped(pName) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadFolderItem(pNamespace, pName, .pData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the folder item could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The folder item read into <var>pData</var> as a row: <code>{Name, Type, Owner, Modified, Locked, Namespace}</code>, <code>Modified</code> the instance's
+/// local <code>YYYY-MM-DD HH:MM:SS</code> as the list shows it. Pure.</p>
+ClassMethod FolderItemRow(pNamespace As %String, ByRef pData) As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pData("name"), "string")
+    Do tRow.%Set("Type", pData("type"), "string")
+    Do tRow.%Set("Owner", pData("owner"), "string")
+    Do tRow.%Set("Modified", ..LocalStamp(pData("modified")), "string")
+    Do tRow.%Set("Locked", ''pData("locked"), "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The folder item classes of <var>pNamespace</var> as the vendor lists them (<code>%GetFolderItemClasses</code>), switched by explicit save and
+/// restore (AD-16), into <var>pClasses</var>: <code>pClasses(&lt;xml element name&gt;)</code> is <code>$ListBuild(class, item type extension, XML
+/// namespace)</code>. A class with no element name or no item type names no item and is left out. A fault, or a vendor error, is <var>pCaught</var>. A
+/// seam: a fixture overrides it.</p>
+ClassMethod FolderItemClasses(pNamespace As %String, Output pClasses, Output pCaught As %Exception.AbstractException)
+{
+    Kill pClasses
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemClasses(.tList)
+        If $$$ISERR(tSC) {
+            Set pCaught = ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        } Else {
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tList(tAt))
+                If tAt = "" Quit
+                Set tClass = $List(tList(tAt), 1)
+                Set tXml = $List(tList(tAt), 2)
+                Set tType = $Parameter(tClass, "ITEMTYPE")
+                If (tXml '= "") && (tType '= "") Set pClasses(tXml) = $ListBuild(tClass, tType, $Parameter(tClass, "NAMESPACE"))
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>Read the import text <var>pText</var> as folder items (Story 24.10) and answer whether it is a file this port imports; <var>pCode</var> says why not,
+/// <code>SHAPE</code> or <code>TOOLARGE</code> (more than <parameter>MAXIMPORTITEMS</parameter> items). <var>pClasses</var> is
+/// <method>FolderItemClasses</method>' answer. It parses with <class>%XML.TextReader</class> alone (no document type definition is read, and nothing is
+/// instantiated, so no folder is created) and accepts exactly two shapes:</p>
+/// <ul>
+/// <li>one folder item element as the root, which is what the export writes;</li>
+/// <li>an <code>Export</code> root whose every child is a <code>Document</code> named <code>*.DFI</code> holding exactly one folder item element, which is
+/// the classic page's export.</li>
+/// </ul>
+/// <p>A class, a routine, another document type, a <code>folder</code> element, an element in another XML namespace than its class's, an item with no name
+/// or one the vendor cannot address, or a name held twice (without regard to case) is <code>SHAPE</code>. <var>pItems</var> is the count and
+/// <code>pItems(n)</code> the full name of item <code>n</code>, in file order: the folder, <code>/</code>, the name, <code>.</code> and the item type.
+/// Reads nothing from the instance and writes nothing.</p>
+ClassMethod FolderItemsInText(pText As %String, ByRef pClasses, Output pItems, Output pCode As %String) As %Boolean
+{
+    Kill pItems
+    Set pItems = 0
+    Set pCode = "SHAPE"
+    Try {
+        Set tSC = ##class(%XML.TextReader).ParseStream(..Utf8Stream(pText), .tReader, , ..#XMLPARSEFLAGS)
+        If $$$ISERR(tSC) Quit
+        Set tMode = ""
+        Set tDocs = 0
+        Set tDocItems = 0
+        Set tBad = 0
+        Set tBig = 0
+        While 'tBad && 'tBig && tReader.Read() {
+            If tReader.NodeType '= "element" Continue
+            Set tDepth = tReader.Depth
+            Set tName = tReader.LocalName
+            Set tIsItem = 0
+            If tDepth = 1 {
+                If $Data(pClasses(tName)) {
+                    Set tMode = "item"
+                    Set tIsItem = 1
+                } ElseIf (tName = "Export") && (tReader.NamespaceUri = "") {
+                    Set tMode = "wrapper"
+                } Else {
+                    Set tBad = 1
+                }
+            } ElseIf tMode = "wrapper" {
+                If tDepth = 2 {
+                    Set tDocName = ""
+                    If tReader.MoveToAttributeName("name") Set tDocName = tReader.Value
+                    Do tReader.MoveToElement()
+                    If (tName '= "Document") || (tReader.NamespaceUri '= "") || ($ZConvert($Extract(tDocName, *-3, *), "U") '= ".DFI") || (tDocs && 'tDocItems) Set tBad = 1
+                    Set tDocs = tDocs + 1
+                    Set tDocItems = 0
+                } ElseIf tDepth = 3 {
+                    If (tReader.Path '= ("/Export/Document/" _ tName)) || '$Data(pClasses(tName)) {
+                        Set tBad = 1
+                    } Else {
+                        Set tIsItem = 1
+                        Set tDocItems = tDocItems + 1
+                        If tDocItems > 1 Set tBad = 1
+                    }
+                }
+            }
+            If 'tIsItem || tBad Continue
+            Set tInfo = pClasses(tName)
+            Set tItemName = ""
+            Set tFolder = ""
+            If tReader.MoveToAttributeName("name") Set tItemName = tReader.Value
+            Do tReader.MoveToElement()
+            If tReader.MoveToAttributeName("folderName") Set tFolder = tReader.Value
+            Do tReader.MoveToElement()
+            If (tReader.NamespaceUri '= $List(tInfo, 3)) || (tItemName = "") || ($Length(tItemName) > ..#NAMEMAX) || ($Length(tFolder) > ..#NAMEMAX) || (tItemName [ "/") || ($ZStrip(tItemName _ tFolder, "*C") '= (tItemName _ tFolder)) {
+                Set tBad = 1
+                Continue
+            }
+            Set tFull = tFolder _ $Select(tFolder = "": "", 1: "/") _ tItemName _ "." _ $List(tInfo, 2)
+            If $Data(tSeen($ZConvert(tFull, "U"))) {
+                Set tBad = 1
+                Continue
+            }
+            Set tSeen($ZConvert(tFull, "U")) = ""
+            If pItems >= ..#MAXIMPORTITEMS {
+                Set tBig = 1
+                Continue
+            }
+            Set pItems = pItems + 1
+            Set pItems(pItems) = tFull
+        }
+        If tBig {
+            Set pCode = "TOOLARGE"
+            Quit
+        }
+        If tBad || (pItems < 1) || ((tMode = "wrapper") && (tDocs && 'tDocItems)) Quit
+        Set pCode = ""
+    } Catch {
+        Set pCode = "SHAPE"
+    }
+    If pCode '= "" {
+        Kill pItems
+        Set pItems = 0
+    }
+    Quit pCode = ""
+}
+
+/// <p>The import file a query names, examined (Story 24.10): its text (<method>ImportText</method>), its items (<method>FolderItemsInText</method>) and its
+/// digest. 409 <code>ANALYTICS.FOLDERITEM.IMPORTSHAPE</code> when the text is not folder items only, or its first item is not <var>pId</var>, unless
+/// <var>pId</var> is <parameter>IMPORTID</parameter>; 409 <code>TOOLARGE</code> for text past the bound or a file of more items than
+/// <parameter>MAXIMPORTITEMS</parameter>. Nothing is written.</p>
+ClassMethod FolderItemImportFile(pNamespace As %String, pId As %String, ByRef pQuery, Output pText As %String, Output pItems, Output pDigest As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pResolved As %String) As %Status [ Private ]
+{
+    Kill pItems
+    Set pItems = 0
+    Set pDigest = ""
+    Set tSC = ..ImportText(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTOOLARGE, .pQuery, .pText, .pHttpStatus, .pFault, .pResolved)
+    If $$$ISERR(tSC) Quit tSC
+    Do ..FolderItemClasses(pNamespace, .tClasses, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the folder item classes could not be read", .pHttpStatus, .pFault)
+    Set tShaped = ..FolderItemsInText(pText, .tClasses, .pItems, .tCode)
+    If tCode = "TOOLARGE" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTOOLARGE, .pHttpStatus, .pFault)
+    If 'tShaped || ((pId '= ..#IMPORTID) && (pId '= pItems(1))) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMIMPORTSHAPE, .pHttpStatus, .pFault)
+    Set pDigest = ..TextDigest(pText)
+    If pDigest = "" Quit ..Fail("the import file's digest could not be taken", $$$ERROR($$$GeneralError, "digest"), .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>Whether the instance holds any of the items <var>pItems</var> names (<var>pTaken</var>), in any letter case and whoever may see it
+/// (<code>%FolderItemExists</code> other than 0).</p>
+ClassMethod FolderItemsTaken(pNamespace As %String, ByRef pItems, Output pTaken As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pTaken = 0
+    Set tSC = $$$OK
+    For tAt = 1:1:pItems {
+        Set tSC = ..FolderItemFacts(pNamespace, pItems(tAt), .tData, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If +tData("code") {
+            Set pTaken = 1
+            Quit
+        }
+    }
+    Quit tSC
+}
+
+/// <p>Serve the folder items' typed calls after <method>Invoke</method>'s gate (Story 24.10): the reads <code>FOLDERITEM</code> (one item as
+/// <method>FolderItemRow</method>), <code>EXPORTITEM</code> and <code>IMPORTFILE</code>, and the writes <code>EXPORT</code>, <code>IMPORT</code> and
+/// <code>DELETE</code>. The item is named under <parameter>IDKEY</parameter>, its full name kept exactly (AD-13); an import names the literal
+/// <parameter>IMPORTID</parameter> or the first item its file holds. A read carrying <parameter>ACTIONKEY</parameter> is composed for that write: an item
+/// that is not there is 404 <code>ANALYTICS.FOLDERITEM.ABSENT</code> and a delete's read of a locked item is 409 <code>LOCKED</code>; a plain read of an item
+/// that is not there is 404 <code>PORT.NOTFOUND</code>.</p>
+ClassMethod InvokeFolderItem(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#IDKEY))
+    If tName = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONFOLDERITEMREQUIRED, .pHttpStatus, .pFault)
+    Set tWrite = ..IsFolderItemWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsFolderItemWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If pType = ..#TYPEEXPORTITEM Quit ..ReadExportItem(pNamespace, tName, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEEXPORT Quit ..PerformFolderExport(pNamespace, tName, .pQuery, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEIMPORTFILE Quit ..ReadFolderImportFile(pNamespace, tName, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEIMPORT Quit ..PerformFolderImport(pNamespace, tName, .pQuery, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEDELETE Quit ..PerformFolderDelete(pNamespace, tName, .pResult, .pHttpStatus, .pFault)
+    Quit ..ReadFolderItemRow(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The single-object read <code>FOLDERITEM</code>: the item <var>pName</var> as <method>FolderItemRow</method>. 404 when it is not there or not shown
+/// to the caller, <code>ANALYTICS.FOLDERITEM.ABSENT</code> with <var>pAction</var> (the read composed for a write); with <var>pAction</var>
+/// <code>DELETE</code> a locked item is 409 <code>ANALYTICS.FOLDERITEM.LOCKED</code>, as the write refuses it.</p>
+ClassMethod ReadFolderItemRow(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..FolderItemFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemVisible(tData("code")) Quit $Select(pAction '= "": ..FolderItemAbsent(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    If (pAction = ..#TYPEDELETE) && (tData("code") = 3) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMLOCKED, .pHttpStatus, .pFault)
+    Set pRow = ..FolderItemRow(pNamespace, .tData)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The folder item <var>pName</var> as a read of the export: the row <method>ReadFolderItemRow</method> answers, with the file the query names under
+/// <parameter>ROOTKEY</parameter> and <parameter>PATHKEY</parameter>, both empty when none. Gated by <method>AdmitRead</method>.</p>
+ClassMethod ReadExportItem(pNamespace As %String, pName As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..AdmitRead(pNamespace, ..#FOLDERITEMGLOBAL, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..FolderItemFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemVisible(tData("code")) Quit $Select(pAction '= "": ..FolderItemAbsent(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set pRow = ..FolderItemRow(pNamespace, .tData)
+    Do pRow.%Set(..#ROOTKEY, $Get(pQuery(..#ROOTKEY)), "string")
+    Do pRow.%Set(..#PATHKEY, $Get(pQuery(..#PATHKEY)), "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Export the folder item <var>pName</var> as the vendor's own XML (<code>%Export</code>): to the server file <parameter>ROOTKEY</parameter> and
+/// <parameter>PATHKEY</parameter> name, resolved and checked by <method>ExportFile</method> before the call, the answer <code>{Name, Namespace, root,
+/// path}</code>; or, naming neither, as lines for the browser, the answer <code>{Name, Namespace, lines}</code>, 409
+/// <code>ANALYTICS.FOLDERITEM.TOOLARGE</code> past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters. It reads only
+/// (<method>AdmitRead</method>), writes nothing but the file, and records OcuPilot's own audit row. An item that is not there, or not shown to the caller, is 404
+/// <code>ANALYTICS.FOLDERITEM.ABSENT</code>.</p>
+ClassMethod PerformFolderExport(pNamespace As %String, pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..AdmitRead(pNamespace, ..#FOLDERITEMGLOBAL, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tToFile = (tRoot '= "") || (tPath '= "")
+    Set tSC = ..FolderItemFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemVisible(tData("code")) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    Set tResolved = ""
+    If tToFile {
+        Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tCaught = ""
+    Set tTooLarge = 0
+    Set tVendorSC = ..VendorFolderItemExport(pNamespace, tData("name"), tResolved, .tLines, .tTooLarge, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the folder item export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTOOLARGE, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the folder item export failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("folderItem", tData("name"), "string")
+    Do tEffects.%Set("toFile", ''tToFile, "boolean")
+    Do ..AuditWrite(..#VERBFOLDERITEMEXPORT, tData("name"), tEffects, ..#ENTITYFOLDERITEM)
+    Set pResult = {}
+    Do pResult.%Set("Name", tData("name"), "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If tToFile {
+        Do pResult.%Set(..#ROOTKEY, tRoot, "string")
+        Do pResult.%Set(..#PATHKEY, tPath, "string")
+    } Else {
+        Do pResult.%Set("lines", tLines)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's export of the folder item <var>pName</var> in <var>pNamespace</var> (<code>%Export</code> with no console output), switched by explicit
+/// save and restore (AD-16): to the file <var>pFile</var> when it is not empty, else into a stream whose lines are <var>pLines</var> (an array of strings)
+/// unless they pass <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters, which is <var>pTooLarge</var>; the first is
+/// <parameter>XMLDECLARATION</parameter>. An exception is <var>pCaught</var>. A seam: a fixture overrides it to observe or fail the call.</p>
+ClassMethod VendorFolderItemExport(pNamespace As %String, pName As %String, pFile As %String, Output pLines As %DynamicArray, Output pTooLarge As %Boolean, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pLines = ""
+    Set pTooLarge = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tStream = $Select(pFile = "": ##class(%Stream.TmpCharacter).%New(), 1: "")
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserLibrary.Utils).%Export(pName, $Select(pFile = "": tStream, 1: pFile), 0)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    If (pFile '= "") || $$$ISERR(tSC) || $IsObject(pCaught) Quit tSC
+    Set pLines = []
+    Do pLines.%Push(..#XMLDECLARATION, "string")
+    Set tTotal = $Length(..#XMLDECLARATION) + 1
+    Do tStream.Rewind()
+    While 'tStream.AtEnd {
+        Set tLine = tStream.ReadLine(##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS)
+        Set tTotal = tTotal + $Length(tLine) + 1
+        If tTotal > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
+            Set pTooLarge = 1
+            Set pLines = ""
+            Quit
+        }
+        Do pLines.%Push(tLine, "string")
+    }
+    Quit $$$OK
+}
+
+/// <p>The import file <var>pQuery</var> names as a read (Story 24.10): <code>{Items, Count, Digest, Present, Namespace, root, path, fileName,
+/// content}</code>, <code>Items</code> the full names the file holds in file order, <code>Count</code> how many, <code>Digest</code> the text's SHA-256,
+/// <code>Present</code> whether the instance holds any of them, and <code>root</code>, <code>path</code> and <code>fileName</code> as the query carried
+/// them, <code>content</code> always empty. <var>pId</var> is the first item the file must hold, or <parameter>IMPORTID</parameter>. With
+/// <var>pAction</var> (the read composed for the import) a name already held is refused 409 <code>TAKEN</code>, as the write refuses it.</p>
+ClassMethod ReadFolderImportFile(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..FolderItemImportFile(pNamespace, pId, .pQuery, .tText, .tItems, .tDigest, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..FolderItemsTaken(pNamespace, .tItems, .tTaken, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If (pAction '= "") && tTaken Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTAKEN, .pHttpStatus, .pFault)
+    Set tNames = []
+    For tAt = 1:1:tItems {
+        Do tNames.%Push(tItems(tAt), "string")
+    }
+    Set pRow = {}
+    Do pRow.%Set("Items", tNames)
+    Do pRow.%Set("Count", tItems, "number")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Do pRow.%Set("Present", ''tTaken, "boolean")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set(..#ROOTKEY, $Get(pQuery(..#ROOTKEY)), "string")
+    Do pRow.%Set(..#PATHKEY, $Get(pQuery(..#PATHKEY)), "string")
+    Do pRow.%Set(..#FILENAMEKEY, $Get(pQuery(..#FILENAMEKEY)), "string")
+    Do pRow.%Set(..#CONTENTKEY, "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Create every folder item an import file holds (Story 24.10, AD-54). In order, each refusal before any vendor write: the file is examined
+/// (<method>FolderItemImportFile</method>, 409 <code>IMPORTSHAPE</code> or <code>TOOLARGE</code>); its digest must be the reviewed
+/// <parameter>DIGESTKEY</parameter> of the query, else 409 <code>ANALYTICS.FOLDERITEM.IMPORTCHANGED</code>; then no item of the file may be held, else 409
+/// <code>TAKEN</code>. The items are then written by one <method>VendorFolderItemImport</method> inside one transaction, rolled back when it fails or
+/// creates other than the items the file names, so every item is created or none, and a folder the import would create goes with them. OcuPilot's own audit
+/// row counts the items and names the first, and never holds a definition. The answer is the first item read again, with <code>Count</code>.</p>
+ClassMethod PerformFolderImport(pNamespace As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..FolderItemImportFile(pNamespace, pId, .pQuery, .tText, .tItems, .tDigest, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$Data(pQuery(..#DIGESTKEY)) || (pQuery(..#DIGESTKEY) '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMIMPORTCHANGED, .pHttpStatus, .pFault)
+    Set tSC = ..FolderItemsTaken(pNamespace, .tItems, .tTaken, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tTaken Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTAKEN, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tLoaded = 0
+    TSTART
+    Set tVendorSC = ..VendorFolderItemImport(pNamespace, tText, .tLoaded, .tCaught)
+    Set tFailed = $IsObject(tCaught) || $$$ISERR(tVendorSC)
+    Set tShort = 'tFailed && (tLoaded '= tItems)
+    If tFailed || tShort {
+        TROLLBACK 1
+    } Else {
+        TCOMMIT
+    }
+    If tShort Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMIMPORTSHAPE, .pHttpStatus, .pFault)
+    If tFailed {
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        Quit ..Statused(tVendorSC, "the folder item import failed", .pHttpStatus, .pFault)
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("folderItem", tItems(1), "string")
+    Do tEffects.%Set("items", tItems, "number")
+    Do ..AuditWrite(..#VERBFOLDERITEMIMPORT, tItems(1), tEffects, ..#ENTITYFOLDERITEM)
+    Set tSC = ..FolderItemFacts(pNamespace, tItems(1), .tAfter, .tAfterHttp, .tAfterFault)
+    If $$$ISOK(tSC) && ..FolderItemVisible(tAfter("code")) {
+        Set pResult = ..FolderItemRow(pNamespace, .tAfter)
+    } Else {
+        Set pResult = {}
+        Do pResult.%Set("Name", tItems(1), "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+    }
+    Do pResult.%Set("Count", tItems, "number")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's import of the text <var>pText</var> in <var>pNamespace</var> (<code>%Import</code> of its UTF-8 bytes, replacing nothing, killing nothing
+/// and printing nothing), switched by explicit save and restore (AD-16); <var>pLoaded</var> is how many items it saved. An exception is
+/// <var>pCaught</var>. The caller holds the transaction. A seam: a fixture overrides it to observe the call or to fail after it.</p>
+ClassMethod VendorFolderItemImport(pNamespace As %String, pText As %String, Output pLoaded As %Integer, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pLoaded = 0
+    Set tSC = $$$OK
+    Set tBytes = ..Utf8Stream(pText)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tLoaded
+        Set tSC = ##class(%DeepSee.UserLibrary.Utils).%Import(tBytes, 0, 0, 0, "", .tLoaded)
+        Set pLoaded = +$Get(tLoaded)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Delete the folder item <var>pName</var> (Story 24.10): the vendor's <code>%DeleteFolderItem</code>, which removes the item for every user. Each refusal
+/// before any vendor write: the item not there or not shown to the caller is 404 <code>ANALYTICS.FOLDERITEM.ABSENT</code>, and a locked one 409
+/// <code>LOCKED</code>. The call runs in one transaction, rolled back when it fails or deletes nothing. OcuPilot's own audit row names the item. The answer
+/// is <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformFolderDelete(pNamespace As %String, pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..FolderItemFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemVisible(tData("code")) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    If tData("code") = 3 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMLOCKED, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tCount = 0
+    TSTART
+    Set tVendorSC = ..VendorFolderItemDelete(pNamespace, tData("name"), .tCount, .tCaught)
+    Set tFailed = $IsObject(tCaught) || $$$ISERR(tVendorSC)
+    If tFailed || ('tCount) {
+        TROLLBACK 1
+    } Else {
+        TCOMMIT
+    }
+    If tFailed {
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        Quit ..Statused(tVendorSC, "the folder item delete failed", .pHttpStatus, .pFault)
+    }
+    If 'tCount Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("folderItem", tData("name"), "string")
+    Do ..AuditWrite(..#VERBFOLDERITEMDELETE, tData("name"), tEffects, ..#ENTITYFOLDERITEM)
+    Set pResult = {}
+    Do pResult.%Set("Name", tData("name"), "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's delete of the folder item <var>pName</var> in <var>pNamespace</var> (<code>%DeleteFolderItem</code>), switched by explicit save and
+/// restore (AD-16); <var>pCount</var> is how many items it deleted. An exception is <var>pCaught</var>. The caller holds the transaction. A seam: a
+/// fixture overrides it to observe or fail the call.</p>
+ClassMethod VendorFolderItemDelete(pNamespace As %String, pName As %String, Output pCount As %Integer, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pCount = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserLibrary.Utils).%DeleteFolderItem(pName, .tCount)
+        Set pCount = +$Get(tCount)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for a folder item write <var>pType</var> of the item the id <var>pId</var> names (Story 24.10), the vendor calls
+/// <method>InvokeFolderItem</method> makes. An export is <code>%Export</code> of an item that is there, to the server file the query names, resolved as the
+/// write resolves it (<method>ExportFile</method>), or to the current device; an import is every item of the file checked free, then <code>%Import</code> of the
+/// server file in one transaction; a delete is the item checked there and not locked, then <code>%DeleteFolderItem</code> in one. A file that cannot be read as
+/// folder items or holds another first item than the one named, a file that is not the reviewed text, and a file the export cannot resolve are each a script that
+/// only sets the refusal. A local file's text is never in a script, so an import of one that reads as folder items has no script form: <code>""</code>.</p>
+ClassMethod FolderItemSnippet(pType As %String, pId As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tUtils = "##class(%DeepSee.UserLibrary.Utils)"
+    If pType = ..#TYPEIMPORT {
+        Set tShape = tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMIMPORTSHAPE) _ ")"
+        Set tSC = ..ImportText(##class(OcuPilot.Api.AnalyticsError).#FOLDERITEMTOOLARGE, .pQuery, .tText, .tHttp, .tFault, .tResolved)
+        If $$$ISERR(tSC) Quit tShape
+        Do ..FolderItemClasses($Get(pQuery(..#NAMESPACEKEY)), .tClasses, .tCaught)
+        If $IsObject(tCaught) || '..FolderItemsInText(tText, .tClasses, .tItems, .tCode) || ((pId '= ..#IMPORTID) && (pId '= tItems(1))) Quit tShape
+        If $Get(pQuery(..#DIGESTKEY)) '= ..TextDigest(tText) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMIMPORTCHANGED) _ ")"
+        If tResolved = "" Quit ""
+        Set tScript = tNL _ " TSTART" _ tNL _ " Set tSC = 1"
+        For tAt = 1:1:tItems {
+            Set tScript = tScript _ tNL _ " If $System.Status.IsOK(tSC), " _ tUtils _ ".%FolderItemExists(" _ ..Literal(tItems(tAt)) _ ") Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMTAKEN) _ ")"
+        }
+        Quit tScript _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tUtils _ ".%Import(" _ ..Literal(tResolved) _ ", 0, 0)" _ tNL _ " If $System.Status.IsOK(tSC) { TCOMMIT } Else { TROLLBACK 1 }"
+    }
+    Set tName = ..Literal(pId)
+    Set tAbsent = "$System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMABSENT) _ ")"
+    Set tHeld = " Set tExists = " _ tUtils _ ".%FolderItemExists(" _ tName _ "), tSC = $Select((tExists = 1) || (tExists = 3): 1, 1: " _ tAbsent _ ")"
+    If pType = ..#TYPEDELETE {
+        Quit tNL _ tHeld _ tNL _ " If $System.Status.IsOK(tSC), tExists = 3 Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONFOLDERITEMLOCKED) _ ")" _ tNL _ " TSTART" _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tUtils _ ".%DeleteFolderItem(" _ tName _ ")" _ tNL _ " If $System.Status.IsOK(tSC) { TCOMMIT } Else { TROLLBACK 1 }"
+    }
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    If tPath = "" {
+        Quit tNL _ tHeld _ tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()" _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tUtils _ ".%Export(" _ tName _ ", tStream, 0)" _ tNL _ " If $System.Status.IsOK(tSC) Do tStream.OutputToDevice()"
+    }
+    Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
+    Set tSC = ..ExportFile($Get(pQuery(..#ROOTKEY)), tPath, .tResolved, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSource _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    Quit tSource _ tNL _ tHeld _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tUtils _ ".%Export(" _ tName _ ", " _ ..Literal(tResolved) _ ", 0)"
 }
 
 }

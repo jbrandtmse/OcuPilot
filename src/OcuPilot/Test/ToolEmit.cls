@@ -260,12 +260,14 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsTermListAction") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsTermListAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsFolderItemAction") {
             ; Story 24.2: the term list editor's six writes declare WRITE on the database ^DeepSee.TermList maps to and READ on the routines
-            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
+            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65). Story 24.10: the folder
+            ; manager's three declare the same over the database ^DeepSee.FolderItemD maps to.
+            Set tOwnGlobal = $Select($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsFolderItemAction"): ##class(OcuPilot.Port.AnalyticsPort).#FOLDERITEMGLOBAL, 1: ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL)
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, tOwnGlobal, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list or folder item database resolves")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
             ; Story 24.10: the export reads only (READ on the term list database) and names the file system's resource, which it writes through.
             For tOwnPair = $ListBuild(tTermResource, $Parameter(tTool.class, "DESTINATIONPERMISSION")), $ListBuild(tRoutineResource, "READ"), $ListBuild($Parameter(tTool.class, "FILERESOURCE"), "USE") {

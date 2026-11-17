@@ -72,6 +72,9 @@ Parameter LOCALEDISABLED = "osmgmt.locales.install,osmgmt.locales.delete";
 /// other four term list writes ship enabled.</p>
 Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
 
+/// <p>Story 24.10: the folder item delete, the one folder manager line the baseline ships off.</p>
+Parameter FOLDERITEMDISABLED = "analytics.folderitems.delete";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -200,6 +203,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#FOLDERITEMDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
@@ -211,7 +215,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete, the lookup table import, the two DDL mapping deletes and the locale install and delete disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete, the lookup table import, the folder item delete and the two DDL mapping deletes and the locale install and delete disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 
