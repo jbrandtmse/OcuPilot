@@ -11,11 +11,10 @@
 /// caller value reaches the vendor's <code>List</code> pattern (AD-21). A row is <code>{Name, Description, Current, Custom}</code>:
 /// <code>Current</code> is the name <code>^%SYS("LOCALE","CURRENT")</code> holds, <code>Custom</code> a name that starts with
 /// <parameter>CUSTOMPREFIX</parameter>.</p>
-/// <p><b>Validation</b> answers <code>{Name, Valid, Installable, Errors, Warnings, ErrorCount, WarningCount, Truncated}</code> from the
-/// vendor's <code>IsValid</code>, <code>IsLoadable</code> and <code>IsInstallable</code>, which write nothing: <code>Valid</code> reads
-/// true when the definition is valid and loadable, <code>Installable</code> is the vendor's own install check. At most
-/// <parameter>LINESMAX</parameter> lines, errors first, are answered, with <code>Truncated</code> true when more existed; the counts are of
-/// every line. The lines are vendor-written text and reach the screen only (AD-39).</p>
+/// <p><b>Validation</b> answers <code>{Name, Valid, Installable, ErrorCount, WarningCount}</code> from the vendor's <code>IsValid</code>,
+/// <code>IsLoadable</code> and <code>IsInstallable</code>: <code>Valid</code> reads true when the definition is valid and loadable,
+/// <code>Installable</code> is the vendor's own install check, and the counts are of every error and warning line the three answered. The
+/// lines are vendor-written text and are never answered (AD-39).</p>
 /// <p><b>Every write is judged before any vendor call</b> by <class>OcuPilot.Area.OsMgmt.LocaleRules</class>, the rules the tools' mint asks
 /// too: an install is refused when the vendor's own check refuses it, a delete for a locale InterSystems ships and for the current locale.
 /// An install answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>, the default collation of IRISTEMP around the call; a
@@ -65,11 +64,6 @@ Parameter DEFAULTMAXROWS As INTEGER = 1000;
 
 /// <p>The most locales one read of the instance's list holds.</p>
 Parameter LOCALESMAXROWS As INTEGER = 5000;
-
-/// <p>The most validation lines, errors first, an answer carries, and the most characters of one line.</p>
-Parameter LINESMAX As INTEGER = 50;
-
-Parameter LINEMAX As INTEGER = 500;
 
 /// <p>What a custom locale's name starts with: the vendor keeps only these across an upgrade.</p>
 Parameter CUSTOMPREFIX = "y";
@@ -267,9 +261,8 @@ ClassMethod State(pName As %String, Output pRow As %DynamicObject, Output pHttpS
     Quit $$$OK
 }
 
-/// <p>The validation of the locale <var>pName</var>, in <var>pAnswer</var>, from <method>ReadValidation</method>: the lines are cut to
-/// <parameter>LINESMAX</parameter>, errors first, each to <parameter>LINEMAX</parameter> characters with control characters removed. A name
-/// the list does not hold is 404 <code>LOCALE.NOTFOUND</code>.</p>
+/// <p>The validation of the locale <var>pName</var>, in <var>pAnswer</var>, from <method>ReadValidation</method>: the two verdicts and the
+/// counts of the error and warning lines, never a line (AD-39). A name the list does not hold is 404 <code>LOCALE.NOTFOUND</code>.</p>
 ClassMethod Validation(pName As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pAnswer = ""
@@ -277,36 +270,14 @@ ClassMethod Validation(pName As %String, Output pAnswer As %DynamicObject, Outpu
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..ReadValidation(pName, .tValid, .tInstallable, .tErrorLines, .tWarningLines)
     If $$$ISERR(tSC) Quit ..Fail("the locale could not be validated", tSC, .pHttpStatus, .pFault)
-    Set tErrors = []
-    Set tWarnings = []
-    Set tLeft = ..#LINESMAX
-    For tI = 1:1:$ListLength(tErrorLines) {
-        If tLeft < 1 Quit
-        Do tErrors.%Push(..Line($List(tErrorLines, tI)), "string")
-        Set tLeft = tLeft - 1
-    }
-    For tI = 1:1:$ListLength(tWarningLines) {
-        If tLeft < 1 Quit
-        Do tWarnings.%Push(..Line($List(tWarningLines, tI)), "string")
-        Set tLeft = tLeft - 1
-    }
     Set pAnswer = {}
     Do pAnswer.%Set("Name", pName, "string")
     Do pAnswer.%Set("Valid", ''tValid, "boolean")
     Do pAnswer.%Set("Installable", ''tInstallable, "boolean")
-    Do pAnswer.%Set("Errors", tErrors)
-    Do pAnswer.%Set("Warnings", tWarnings)
     Do pAnswer.%Set("ErrorCount", $ListLength(tErrorLines), "number")
     Do pAnswer.%Set("WarningCount", $ListLength(tWarningLines), "number")
-    Do pAnswer.%Set("Truncated", ($ListLength(tErrorLines) + $ListLength(tWarningLines) > ..#LINESMAX), "boolean")
     Set pHttpStatus = 200
     Quit $$$OK
-}
-
-/// <p>One vendor line cut to <parameter>LINEMAX</parameter> characters, control characters removed.</p>
-ClassMethod Line(pLine As %String) As %String [ Private ]
-{
-    Quit $Extract($ZStrip(pLine, "*C"), 1, ..#LINEMAX)
 }
 
 /// <p>The vendor's three checks of the locale <var>pName</var>, which write nothing, in <code>%SYS</code> by save and restore:

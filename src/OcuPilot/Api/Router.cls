@@ -1980,7 +1980,7 @@ ClassMethod DdlMappingCreate() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /locales/:name/validation</code> (Story 21.14): Locale definitions' Validate dialog,
-/// screen-only (AD-39's named exception for a locale validation's lines).</p>
+/// screen-only.</p>
 ClassMethod LocaleValidation(pName As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.LocaleRules).HandleValidate(pName)

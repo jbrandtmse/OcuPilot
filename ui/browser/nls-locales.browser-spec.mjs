@@ -6,12 +6,13 @@
  * (`Collation`) draws Set value unavailable with the published sentence and opens no dialog. On Locale definitions, Validate on the current locale
  * shows "This locale is valid." and no line the instance wrote; Delete is drawn unavailable with the published sentence on a locale
  * InterSystems ships; Install of the current locale and Delete of a custom locale each ask the typed name, state their published consequence and
- * apply, with the screen announcing the change and the instance reading it. A person's confirmed write is not governance's to refuse; the
- * agent's refusal is pinned by `OcuPilot.Test.LocaleRead`.
+ * are accepted, with the screen announcing the change; the deleted locale is gone from the instance. That an install changes the current locale
+ * is pinned by the armed `OcuPilot.Test.LocaleWrite`. A person's confirmed write is not governance's to refuse; the agent's refusal is pinned
+ * by `OcuPilot.Test.LocaleRead`.
  *
  * **It changes the locale-format switch** through the shipped screen, so it runs on a throwaway only; the `after` hook puts the node back to what
  * it found and reloads the current locale, whatever the tests answered. It creates one custom locale, `yzzw`, for Delete to remove, and removes
- * it again if a test left it; its Install is of the current locale (a reload), so it installs no other locale.
+ * it first and again after, in case a run left it; its Install is of the current locale (a reload), so it installs no other locale.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/nls-locales.browser-spec.mjs` (after `npm run build` and the bundle copied into the throwaway).
@@ -123,6 +124,7 @@ before(async () => {
   assert.match(current.value ?? '', /^\w+$/, `the instance has a current locale: ${current.output}`);
   foundCurrent = current.value;
   touched = true;
+  assert.equal(vendor('NLSCLEAR', 'RemoveCustom', CUSTOM).value, '1', `a custom locale ${CUSTOM} a stopped run left is removed first`);
   assert.equal(vendor('NLSMAKE', 'Create', CUSTOM).value, '1', `the custom locale ${CUSTOM} is created from the current one`);
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -261,7 +263,7 @@ async function confirmWith(page, name) {
 
 // Mutation (Rule 19): drop `LOCALE_LIST` from `DESTRUCTIVE_ON` in `screen-action-handler.ts` (rebuilt and redeployed) -> no typed-name dialog opens and this goes red; drop
 // the `delete` entry of `ROW_REASONS` the same way -> the system-locale Delete case goes red.
-test('Install of the current locale asks its name, states the consequence and applies, leaving the current locale as it was', async () => {
+test('Install of the current locale asks its name, states the consequence and is accepted, leaving the current locale as it was', async () => {
   const { context, page } = await signedInAt(browser, config, route('locales'), VIEWPORTS.wide);
   try {
     await answered(page);
@@ -272,7 +274,7 @@ test('Install of the current locale asks its name, states the consequence and ap
     assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.localeInstallConsequence, 'the dialog states what an install does');
     await confirmWith(page, foundCurrent);
     assert.ok((await announcement(page, `${foundCurrent} was updated`)).startsWith(`${foundCurrent} was updated`), 'the screen announces the install');
-    assert.equal(storedCurrent().value, foundCurrent, 'and the instance holds its current locale');
+    assert.equal(storedCurrent().value, foundCurrent, 'and the instance is still on the locale it was on');
   } finally {
     await context.close();
   }

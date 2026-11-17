@@ -125,6 +125,7 @@ Method TestAnInstallIsRefusedBeforeTheVendorAndAnswersTheCollationBeforeAndAfter
 Method TestADeleteIsRefusedBeforeTheVendorForASystemAndTheCurrentLocale()
 {
     Set tNames = ##class(OcuPilot.Test.LocaleRead).VendorList(.tCurrent)
+    Do $$$AssertTrue(($Extract(tCurrent) '= "y") && ($Extract($Piece(tNames, ",", 1)) '= "y"), "precondition: the current locale and the first listed one are locales InterSystems ships: " _ tCurrent _ ", " _ $Piece(tNames, ",", 1))
     Do ..HoldAll()
     Do $$$AssertEquals(..Refusal("DELETE", tCurrent) _ "|" _ $ClassMethod(..#SEAM, "Calls"), "409|LOCALE.SYSTEM|", "the current system locale is a locale InterSystems ships")
     Do $$$AssertEquals(..Refusal("DELETE", $Piece(tNames, ",", 1)) _ "|" _ $ClassMethod(..#SEAM, "Calls"), "409|LOCALE.SYSTEM|", "so is every other listed one")
@@ -148,6 +149,7 @@ Method TestADeleteIsRefusedBeforeTheVendorForASystemAndTheCurrentLocale()
 Method TestTheMintAsksTheSameRules()
 {
     Set tNames = ##class(OcuPilot.Test.LocaleRead).VendorList(.tCurrent)
+    Do $$$AssertTrue(($Extract(tCurrent) '= "y") && ($Extract($Piece(tNames, ",", 1)) '= "y"), "precondition: the current locale and the first listed one are locales InterSystems ships: " _ tCurrent _ ", " _ $Piece(tNames, ",", 1))
     Do ..HoldAll()
     Do $ClassMethod(..#SEAM, "Feed", 1, 0, "", "")
     Do $$$AssertEquals(..Minted(..#INSTALLTOOL, tCurrent), ##class(OcuPilot.Api.LocaleError).ReasonFor("LOCALE.NOTINSTALLABLE"), "an install the vendor refuses is refused at the mint")

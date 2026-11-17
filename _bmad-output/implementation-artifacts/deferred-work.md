@@ -13692,3 +13692,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
+
+### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
+- 2026-11-17T21:35:37Z status=decision-pending owner=burndown by=cr note=product call: what Valid means without compiling (IsValid alone, or IsValid and IsLoadable), and whether the dialog states Installable
+- 2026-11-17T21:45:05Z status=routed owner=21-14-nls-configured-defaults-and-locale-definitions by=unattended note=decided_veto_U-109:Valid=IsValid_alone,no_Installable_in_Validate;built_in_21.14_rework_1
+
+### DW-2716: The NLS defaults filter matches the Source column's stored values, not the words it draws
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: applyView (ui/src/app/core/screen-read.ts) filters on the raw config/locale, mirroring the server's ApplyView; typing 'Configured' finds no row.
+- 2026-11-17T21:35:43Z status=wontfix-accepted owner=21-14-nls-configured-defaults-and-locale-definitions by=cr note=reopen_if=a person reports that filtering on Source by its drawn word finds no row
+
+### DW-2717: LocaleRules repeats the private Flag, IsRefusal and RenderRefusal helpers other rules classes hold
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: LocaleRules.Flag is BackupRules.Flag inlined; RenderRefusal is JournalRecordDetail.RenderRefusal; each rules class keeps its own private copy.
+- 2026-11-17T21:35:43Z status=wontfix-accepted owner=21-14-nls-configured-defaults-and-locale-definitions by=cr note=reopen_if=a fourth rules class copies the same helpers or two copies diverge

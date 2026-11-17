@@ -54,7 +54,7 @@ ClassMethod Collations(pBefore As %String, pAfter As %String)
 }
 
 /// <p>List the locale <var>pName</var> with <var>pDescription</var>, current when <var>pCurrent</var> and custom when <var>pCustom</var>, in
-/// <method>LocaleRows</method> until <method>Reset</method>, whether or not the instance holds it; every other row is the instance's, with
+/// <method>LocaleRows</method> until <method>Reset</method>, in place of any instance row of that name; every other row is the instance's, with
 /// <code>Current</code> cleared when the held locale is current.</p>
 ClassMethod HoldLocale(pName As %String, pDescription As %String, pCurrent As %Boolean, pCustom As %Boolean)
 {
@@ -85,12 +85,14 @@ ClassMethod LocaleRows(Output pRows As %DynamicArray) As %Status [ Private ]
         If tName = "" Quit
         If $List(^||OcuPilotLocaleHeld(tName), 2) Set tHeldCurrent = 1
     }
-    If tHeldCurrent {
-        Set tIterator = pRows.%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tRow) {
-            Do tRow.%Set("Current", 0, "boolean")
-        }
+    Set tKept = []
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $Data(^||OcuPilotLocaleHeld(tRow.%Get("Name"))) Continue
+        If tHeldCurrent Do tRow.%Set("Current", 0, "boolean")
+        Do tKept.%Push(tRow)
     }
+    Set pRows = tKept
     Set tName = ""
     For {
         Set tName = $Order(^||OcuPilotLocaleHeld(tName))

@@ -1,8 +1,8 @@
 /// <p>The agent's locale validation (Story 21.14, AD-36, AD-39, AD-60): whether one locale of this instance is valid and installable, read as
 /// the vendor's own checks answer it. It is a read tool with a class of its own, bound to Locale definitions
-/// (<class>OcuPilot.Screen.Descriptor.LocaleList</class>): a locale validation writes nothing, so it has no proposal, and its lines, which
-/// the vendor writes, reach the screen's dialog only (AD-39). This tool answers the two verdicts and the <b>counts</b> of the errors and the
-/// warnings, never a line.</p>
+/// (<class>OcuPilot.Screen.Descriptor.LocaleList</class>): a locale validation writes nothing, so it has no proposal. Its lines are
+/// vendor-written and reach no consumer (AD-39): this tool answers the two verdicts and the <b>counts</b> of the errors and the warnings,
+/// never a line.</p>
 /// <p><b>It reads through the same entry point the screen's route reads through</b>: <method>OcuPilot.Port.LocalePort.Invoke</method> on its
 /// <code>Validation</code> endpoint, behind the port's own gate (AD-29). The result is built here from the verdicts and the counts alone, so a
 /// field the port later adds never reaches the model.</p>
@@ -13,7 +13,7 @@ Parameter TOOLNAME = "osmgmt.locales.validate";
 
 Parameter KIND = "read";
 
-Parameter DESCRIPTION = "Validate one locale of this instance, named exactly as the Locale definitions list reports it, and read whether it is valid and whether it can be installed, with how many errors and warnings the instance found. It writes nothing. The text of the errors and warnings is shown on the Locale definitions screen only: ask the person to open Validate there. A name the list does not report is refused.";
+Parameter DESCRIPTION = "Validate one locale of this instance, named exactly as the Locale definitions list reports it, and read whether it is valid and whether it can be installed, with how many errors and warnings the instance found. It writes nothing. The text of the errors and warnings is not shown, here or on the screen. A name the list does not report is refused.";
 
 /// <p>The screen this tool reads for, whose pairs are this tool's.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocaleList";
@@ -59,8 +59,8 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "Name": {"type": "string", "description": "The locale validated."},
             "Valid": {"type": "boolean", "description": "True when the instance finds the locale's definition valid and loadable."},
             "Installable": {"type": "boolean", "description": "True when the instance's own check admits installing the locale."},
-            "Errors": {"type": "integer", "description": "How many errors the instance found. Their text is shown on the Locale definitions screen only."},
-            "Warnings": {"type": "integer", "description": "How many warnings the instance found. Their text is shown on the Locale definitions screen only."}
+            "Errors": {"type": "integer", "description": "How many errors the instance found. Their text is not shown."},
+            "Warnings": {"type": "integer", "description": "How many warnings the instance found. Their text is not shown."}
         },
         "required": ["Name", "Valid", "Installable", "Errors", "Warnings"],
         "additionalProperties": false

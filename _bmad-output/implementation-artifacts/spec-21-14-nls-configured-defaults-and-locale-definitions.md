@@ -2,7 +2,7 @@
 title: 'Story 21.14: NLS configured defaults and locale definitions'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6ce74f058c368f72f837d96cf1233b831926294b'
 baseline_commit: '6ce74f058c368f72f837d96cf1233b831926294b'
 review_loop_iteration: 0
@@ -33,8 +33,8 @@ deferred: []
 | Defaults read | `GET` NLS defaults | One row per `%SYS.NLS.Table` category (19) plus `LocaleFormat`; `Value` the effective table, `Source` `config` or `locale`; table rows `ReadOnly` | none |
 | Locale-format set | `LocaleFormat` 1, by both callers, then restored | `^SYS("NLS","Config","LocaleFormat")` reads 1, the current locale is reloaded, `readBack` matches | a table row: 400 `CONFIG.SETTING.READONLY` |
 | Locales read | `GET` locales | One row per `Config.NLS.Locales:List` entry (36 on slot A): `Name`, `Description`, `Current`, `Custom` (name starts `y`) | none |
-| Validate | a listed locale | `{Name, Valid, Installable, Errors[], Warnings[]}` from `IsValid`, `IsLoadable` and `IsInstallable`; nothing written; the lines reach the screen only, the agent's read answers their counts | 404 `LOCALE.NOTFOUND` for an unlisted name |
-| Install | a listed locale, key `true` | it becomes current; the answer names the IRISTEMP default collation before and after | 409 `LOCALE.NOTINSTALLABLE` when `IsInstallable` refuses (its lines are Validate's) |
+| Validate | a listed locale | `{Name, Valid, ErrorCount, WarningCount}`: `Valid` is `IsValid`'s answer; the counts are `IsValid`'s; no vendor line reaches the screen or the agent; nothing written (`IsInstallable` is not called: it writes) | 404 `LOCALE.NOTFOUND` for an unlisted name |
+| Install | a listed locale, key `true` | it becomes current; the answer names the IRISTEMP default collation before and after | 409 `LOCALE.NOTINSTALLABLE` when `IsInstallable`, run only inside the confirmed install after the write pairs, refuses before the vendor's `Install` |
 | Delete | a custom, non-current locale, key `true` | it is gone; read-back reads 404 | 409 `LOCALE.SYSTEM` for a system locale, 409 `LOCALE.CURRENT` for the current one |
 
 ## Runner rulings at the plan halt (2026-11-15, unattended)
@@ -89,15 +89,33 @@ deferred: []
 **Acceptance Criteria:**
 
 - AC1. Given the NLS defaults screen and tool on `ocupilot-ci`, when read, then each of the 20 rows holds the vendor's configured table else the current locale's, with its `Source`; and when `LocaleFormat` is set by both callers, it round-trips over the node with the locale reloaded and `readBack` matching, while a table row's set is refused `CONFIG.SETTING.READONLY` before any vendor call.
-- AC2. Given the locale list, when read and when one locale is validated by the screen and by the agent, then the rows match `Config.NLS.Locales:List` and the current locale, Validate's `Valid` and `Installable` match the vendor's answers, the agent's result carries no vendor line, and an unlisted name is 404 `LOCALE.NOTFOUND`.
-- AC3. Given Install's key `true`, when another locale is installed by both callers and the original reinstalled, then each round-trips over `Config.NLS.Locales` (`Current` reads it, `readBack` matches, the answer names IRISTEMP's collation before and after); with the default baseline, governance refuses it; a locale `IsInstallable` refuses is 409 before any vendor call.
+- AC2. Given the locale list, when read and when one locale is validated by the screen and by the agent, then the rows match `Config.NLS.Locales:List` and the current locale, Validate's `Valid` matches `IsValid`'s answer and Validate writes nothing (`^SYS("NLS")` checksum unchanged for every listed locale), the agent's result carries no vendor line, and an unlisted name is 404 `LOCALE.NOTFOUND`.
+- AC3. Given Install's key `true`, when another locale is installed by both callers and the original reinstalled, then each round-trips over `Config.NLS.Locales` (`Current` reads it, `readBack` matches, the answer names IRISTEMP's collation before and after); with the default baseline, governance refuses it; a locale `IsInstallable` refuses is 409 before the vendor's `Install`, and `IsInstallable` runs only inside the confirmed install at the port (never at mint or in Validate).
 - AC4. Given Delete's key `true`, when a `y` locale the test created is deleted by both callers, then it is gone and read-back reads 404; a system locale and the current locale are refused 409 `LOCALE.SYSTEM` and `LOCALE.CURRENT` before any vendor call.
 - AC5. Given these configure the server's locales rather than OcuPilot's own interface, when both screens and the Validate dialog render, then every label, value word, refusal and consequence is an English `strings.ts` value pinned equal to its `ConfigError` or `LocaleError` sentence.
+
+### Review Findings
+
+Code review 2026-11-17 (four layers, full-opus; 33 rows, 10 entries: high 2, med 4, low 4).
+
+- [ ] [Review][Decision] HIGH (ruled 2026-11-17, option A, veto U-109): drop `IsInstallable` from Validate and from `LocaleRules.WriteProblem` (the mint); `Validation` answers `{Name, Valid, ErrorCount, WarningCount}` with `Valid` = `IsValid` (DW-2715 decided the same way); `IsInstallable` runs only in `LocalePort`'s confirmed Install after `WRITEPAIRS`, refusing 409 `LOCALE.NOTINSTALLABLE` before `Install`; the dialog, the tool text, `LocaleValidate.DESCRIPTION`, the dialog's doc comment and the shared strings say nothing about installability; pin with a test that Validate and the mint leave `^SYS("NLS")`'s checksum unchanged on one of the nine locales (`jpnw`), restored after. Finding: the vendor's `IsInstallable` writes, so Validate and the install mint write without a confirmation — measured on `ocupilot-ci`: for 9 of 36 shipped locales (`chsw`, `chtw`, `jpnw`, `jpuw`, `jpww`, `korw`, `zdsw`, `zdtw`, `zduw`) `IsInstallable` sets `^SYS("NLS","LocalesD",<name>)` (two empty accent-table fields filled with `Unicode`) and records the vendor's `%System/%System/ConfigurationChange` "Modify Locale"; `IsValid` and `IsLoadable` write nothing. The screen route, the agent's read tool `osmgmt.locales.validate` and `LocaleRules.WriteProblem` (the install mint) all reach it. Task 0 (b) measured `enuw` and `deuw` only. The probe's writes were restored from the journal's old values (`^SYS("NLS")` checksum back to its start). Needs a ruling: see the stage's Clarification.
+- [ ] [Review][Patch] MED (rework): pin `ReadValidation` after the ruling: an armed `LocaleWrite` case on a `yzzw` whose definition `IsValid` refuses reads `Valid` 0 with a non-zero `ErrorCount`, and one `IsValid` accepts reads `Valid` 1, each with a mutation line [`src/OcuPilot/Port/LocalePort.cls` `ReadValidation`].
+- [x] [Review][Patch] HIGH: the Validate route answered the vendor's error and warning lines to the browser (AD-39 has no exception for them; the spec gate ruled compliance) [`LocalePort.cls` `Validation`] — the answer is now `{Name, Valid, Installable, ErrorCount, WarningCount}`; `LocaleRead.TestTheValidationAnswerHoldsNoVendorLine` replaces the truncation case.
+- [x] [Review][Patch] MED: doc comments cited an AD-39 exception that does not exist, and the agent's tool text sent the agent to screen text that is never shown [`Router.cls`, `LocaleRules.cls`, `LocalePort.cls`, `LocaleValidate.cls`].
+- [x] [Review][Patch] MED: `LocaleGateSeam.HoldLocale` appended its row after a same-named instance row, so a leftover `yzzw` answered first, and two `LocaleRules` cases assumed a system current locale unasserted [`LocaleGateSeam.cls`, `LocaleRules.cls`].
+- [x] [Review][Patch] LOW: the browser spec created `yzzw` without removing a stopped run's copy first, and its Install case claimed the instance reads the change [`nls-locales.browser-spec.mjs`].
+- [x] [Review][Patch] LOW: `LocaleWriteVendor`'s header named `LocaleWrite` as its only caller [`LocaleWriteVendor.cls`].
+- [x] [Review][Defer] MED: Validate reads "This locale has problems." for 31 of 36 shipped locales on a fresh instance (uncompiled tables fail `IsLoadable`), and the dialog never states `Installable` — deferred: DW-2715, decision-pending (product call).
+- [x] [Review][Defer] LOW: the Source filter matches `config`/`locale`, not the drawn words — deferred: DW-2716, wontfix-accepted.
+- [x] [Review][Defer] LOW: `LocaleRules` repeats the private `Flag`, `IsRefusal`, `RenderRefusal` helpers of `BackupRules` and `JournalRecordDetail` — deferred: DW-2717, wontfix-accepted.
+
+Rejected: an undefined `^%SYS("LOCALE","CURRENT")` (set at install; theoretical); a switch node holding a truthy non-1 value (the port and rules write only 0 or 1); Install warnings not shown (AD-39 ruling); `WriteProblem`'s GET-to-validation race (rare, adds a branch); `Code` failing open on an unknown type (callers are fixed); an empty alert on a transport fault (project-wide pattern, rare); IRISTEMP's collation not shown after an install (needs a new string; rare action); AC3's "`readBack` matches" against AD-58's `nothingSent` (spec wording; fix edits the spec); `LocaleFormat` unset reading "From the locale" (the classic page classifies it the same way); the client naming `LocaleFormat` as the reloading row (one row); `NlsDefaultRead`'s literal category map (a roster pin stays literal); stale comments in `Prohibited.cls` (contended file, add-only); the browser Validate "no line" check (the route now answers none, and the component spec pins the dialog).
 
 ## Spec Change Log
 
 - 2026-11-15 (lead): plan halt ruled (split, Q2, Q3); status reset to draft for re-plan.
 - 2026-11-15 (re-plan): intent narrowed to the rulings (Load table, its strings and `LOCALE.TABLE` removed; the stale empty rulings heading dropped). Validate also answers `Installable`, and the Install refusal carries no vendor lines; Validate is where the person reads them (AD-39; Design Notes).
+- 2026-11-17 (runner, rework 1, veto U-109): the vendor's `IsInstallable` writes for 9 of 36 shipped locales, so Validate answers `Valid` = `IsValid` plus counts and no `Installable`, and `IsInstallable` runs only inside the confirmed install (AC2, AC3 and the I/O rows amended; DW-2715 decided).
 - 2026-11-17 (runner): Batch 1 built and staged; its commit was refused by the screen-mirror hook, so Batches 1 and 2 land in one commit (ruling under Execution, batch 2); status reset from blocked to in-progress.
 
 ## Review Triage Log
@@ -189,6 +207,7 @@ deferred: []
 - mutation: AC1 `CollectNls` answers the locale's table even when a configured one is set -> `LocaleWrite.TestAConfiguredTableWinsOverTheLocalesAndSaysConfig` red; reverted byte-identical, reloaded.
 - mutation: AC1 `ConfigPort.ReloadAfterSet` reloads nothing -> `NlsDefaultRead.TestTheSwitchReachesTheNodeSeamAndTheReloadRunsOnlyWhenItMoved` red; reverted byte-identical, reloaded.
 - mutation: AC2 `LocaleValidate.View` adds the answer's first `Warnings` line to its result -> `LocaleRead.TestTheToolHoldsNoVendorLine` (lines fed through `LocaleValidateSeam`) and `TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine` (key set) red; reverted byte-identical, reloaded.
+- mutation: AC2 `LocalePort.Validation` adds the first error line to its answer -> `LocaleRead.TestTheValidationAnswerHoldsNoVendorLine` red (the code review's pin of the route's answer); reverted byte-identical, reloaded.
 - mutation: AC3 `osmgmt.locales.install` `true` in `Baseline` -> `LocaleRead.TestTheInstallAndDeleteKeysShipDisabledAndTheAgentIsRefusedAtDispatch` red; reverted byte-identical, reloaded.
 - mutation: AC3 `LocaleRules.Code` ignores the installable verdict -> `LocaleRules.TestTheRulesMatrix`, `TestTheMintAsksTheSameRules` and `TestAnInstallIsRefusedBeforeTheVendorAndAnswersTheCollationBeforeAndAfter` red; reverted byte-identical, reloaded.
 - mutation: AC4 the `y` check dropped from `LocaleRules.Code`'s delete -> `LocaleRules.TestTheRulesMatrix`, `TestADeleteIsRefusedBeforeTheVendorForASystemAndTheCurrentLocale` and `TestTheMintAsksTheSameRules` red (the current-locale check still held, so nothing was deleted); reverted byte-identical, reloaded.

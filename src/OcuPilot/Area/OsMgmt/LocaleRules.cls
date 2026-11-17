@@ -76,10 +76,10 @@ ClassMethod WriteProblem(pToolClass As %String, pIdValue As %String, pArgs As %D
     Quit tSC
 }
 
-/// <p><code>GET /locales/:name/validation</code>: the Validate dialog's read, screen-only (AD-39's named case for a locale validation's
-/// lines). The caller's pairs are the screen's (AD-8), then <class>OcuPilot.Port.LocalePort</class> reads the locale named by the
-/// percent-encoded segment <var>pName</var> and answers <code>{Name, Valid, Installable, Errors, Warnings, ErrorCount, WarningCount,
-/// Truncated}</code>. A locale the instance does not list is 404 <code>LOCALE.NOTFOUND</code>.</p>
+/// <p><code>GET /locales/:name/validation</code>: the Validate dialog's read, screen-only. The caller's pairs are the screen's (AD-8), then
+/// <class>OcuPilot.Port.LocalePort</class> reads the locale named by the percent-encoded segment <var>pName</var> and answers
+/// <code>{Name, Valid, Installable, ErrorCount, WarningCount}</code>, no vendor-written line (AD-39). A locale the instance does not list is
+/// 404 <code>LOCALE.NOTFOUND</code>.</p>
 ClassMethod HandleValidate(pName As %String) As %Status
 {
     Set tSC = $$$OK

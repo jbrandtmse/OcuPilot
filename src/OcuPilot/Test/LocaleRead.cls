@@ -1,7 +1,6 @@
 /// <p>Pins Story 21.14's locale list, its validation, the gate and the governance defaults (AC2, AC3's and AC4's refusals; AD-21, AD-22, AD-29, AD-36, AD-39,
 /// AD-53): Locale definitions read through <class>OcuPilot.Port.LocalePort</class> and the screens' own read executor, a locale named exactly and never
-/// as a pattern, Validate through the screen's route and the agent's tool with the tool's result holding no vendor line, the lines cut to the port's bound,
-/// every read and write refused to a caller short of a pair before any vendor call, and the install and delete keys shipping disabled.</p>
+/// as a pattern, Validate through the screen's route and the agent's tool with neither answer holding a vendor line, every read and write refused to a caller short of a pair before any vendor call, and the install and delete keys shipping disabled.</p>
 /// <p><b>Live-safe:</b> it reads, installs and deletes nothing (the port's seams record the calls it never makes), and stores a governance policy only to
 /// restore it. <b>What it needs from the environment:</b> OcuPilot installed and serving, and the web application answering at the test port.</p>
 Class OcuPilot.Test.LocaleRead Extends %UnitTest.TestCase
@@ -174,7 +173,7 @@ Method TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine()
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals(tHttp _ "|" _ tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("Installable"), "200|" _ ''tValid _ "|" _ $Piece(tChecks, "|", 3), "the port's Valid and Installable are the vendor's")
-    Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount") _ "|" _ tAnswer.%Get("Errors").%Size() _ "|" _ tAnswer.%Get("Warnings").%Size(), $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "the counts are the vendor's and every line is answered")
+    Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "the counts are the vendor's")
     Set tSC = $ClassMethod(..#VALIDATE, "View", "", {"name": (tCurrent)}, 100, .tResult, .tToolHttp, .tToolFault)
     Do $$$AssertStatusOK(tSC, "the agent's tool answers (" _ $Get(tToolHttp) _ ")")
     If $$$ISERR(tSC) Quit
@@ -187,8 +186,8 @@ Method TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine()
     Do $$$AssertEquals(tToolHttp _ "|" _ $Select($IsObject($Get(tToolFault)): tToolFault.%Get("code"), 1: ""), "400|TOOL.ARGUMENTS", "and an argument the schema refuses, before the port is asked")
 }
 
-/// <p><b>AC2.</b> The screen's validation route answers over the wire as the port does: 200 and <code>application/json</code> with the name, the two verdicts, the counts
-/// and the lines, a name the list does not hold 404 <code>LOCALE.NOTFOUND</code> in the envelope, and a request that carries no credentials is refused before any read.</p>
+/// <p><b>AC2.</b> The screen's validation route answers over the wire as the port does: 200 and <code>application/json</code> with the name, the two verdicts and the
+/// counts, a name the list does not hold 404 <code>LOCALE.NOTFOUND</code> in the envelope, and a request that carries no credentials is refused before any read.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Area.OsMgmt.LocaleRules</class>'s <code>HandleValidate</code> answers the fresh row in place of the port's validation -> the verdict
 /// legs go red.</p>
 Method TestTheValidationRouteAnswersJsonOverTheWire()
@@ -204,8 +203,8 @@ Method TestTheValidationRouteAnswersJsonOverTheWire()
     Do $$$AssertEquals(tStatus, 200, "the route answers 200: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json: " _ $Get(tHeaders("CONTENT-TYPE")))
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tRaw)
-    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Errors,Installable,Name,Truncated,Valid,WarningCount,Warnings", "its body is the validation's eight members")
-    Do $$$AssertEquals(tAnswer.Name _ "|" _ tAnswer.Valid _ "|" _ tAnswer.Installable _ "|" _ tAnswer.ErrorCount _ "|" _ tAnswer.WarningCount _ "|" _ tAnswer.Errors.%Size() _ "|" _ tAnswer.Warnings.%Size(), tCurrent _ "|" _ (''$Piece(tChecks, "|", 1) && ''$Piece(tChecks, "|", 2)) _ "|" _ $Piece(tChecks, "|", 3) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "with the vendor's verdicts, counts and every line")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Installable,Name,Valid,WarningCount", "its body is the validation's five members, no line")
+    Do $$$AssertEquals(tAnswer.Name _ "|" _ tAnswer.Valid _ "|" _ tAnswer.Installable _ "|" _ tAnswer.ErrorCount _ "|" _ tAnswer.WarningCount, tCurrent _ "|" _ (''$Piece(tChecks, "|", 1) && ''$Piece(tChecks, "|", 2)) _ "|" _ $Piece(tChecks, "|", 3) _ "|" _ $Piece(tChecks, "|", 4) _ "|" _ $Piece(tChecks, "|", 5), "with the vendor's verdicts and counts")
     Set tUrl = tBase _ $Replace(tRoute, ":name", "nosuchlocale")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tUrl, tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 404, "a name the list does not hold is 404: " _ $Extract($Get(tRaw), 1, 300))
@@ -217,28 +216,30 @@ Method TestTheValidationRouteAnswersJsonOverTheWire()
     Do $$$AssertEquals(tStatus, 401, "a request with no credentials is refused before any read")
 }
 
-/// <p><b>AC2 (AD-36, AD-39).</b> The answer's lines are cut to <parameter>OcuPilot.Port.LocalePort.LINESMAX</parameter>, errors first, with
-/// <code>Truncated</code> true and the counts those of every line; a line is cut to <parameter>LINEMAX</parameter> characters with control characters
-/// removed; the verdicts are whatever the vendor's checks answered, and a locale that is not valid is not installable by that alone.</p>
-/// <p>Mutation (Rule 19): <code>Validation</code> pushes every line -> the cut assertion goes red.</p>
-Method TestTheLinesAreCutAndTruncationIsSaid()
+/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the port's validation, which the screen's route answers whole, carries none of them:
+/// only the name, the two verdicts and the counts of every line. The verdicts are whatever the checks answered, and a locale that is not valid is not
+/// installable by that alone.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.LocalePort</class>'s <code>Validation</code> adds the first error line to its answer -> the member and
+/// no-line assertions go red.</p>
+Method TestTheValidationAnswerHoldsNoVendorLine()
 {
     Set tNames = ..VendorList(.tCurrent)
-    Set tErrors = ""
-    For tI = 1:1:60 Set tErrors = tErrors _ $ListBuild("error " _ tI _ $Char(7))
-    Set tErrors = tErrors _ $ListBuild($Extract($Translate($Justify("", 600), " ", "x"), 1, 600))
-    Do $ClassMethod(..#SEAM, "Feed", 0, 1, tErrors, $ListBuild("warning one", "warning two"))
+    Set tError = "error line 5b0f"
+    Set tWarning = "warning line e81a"
+    Set tErrors = $ListBuild(tError)
+    For tI = 2:1:61 Set tErrors = tErrors _ $ListBuild("error " _ tI)
+    Do $ClassMethod(..#SEAM, "Feed", 0, 1, tErrors, $ListBuild(tWarning, "warning two"))
     Do ..HoldAll()
     Kill tQuery
     Set tQuery("name") = tCurrent
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "the validation answers")
-    Do $$$AssertEquals(tAnswer.%Get("Errors").%Size() _ "|" _ tAnswer.%Get("Warnings").%Size() _ "|" _ tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount") _ "|" _ tAnswer.%Get("Truncated"), "50|0|61|2|1", "fifty lines, errors first, truncated, and the counts are of every line")
-    Do $$$AssertEquals(tAnswer.%Get("Errors").%Get(0), "error 1", "a control character is removed from a line")
+    If '$IsObject($Get(tAnswer)) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Keys(tAnswer), "ErrorCount,Installable,Name,Valid,WarningCount", "its answer is the name, the two verdicts and the two counts")
+    Do $$$AssertEquals(tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), "61|2", "the counts are of every line")
+    Do $$$AssertTrue(tAnswer.%ToJSON() '[ tError, "no error line is in the answer: " _ tAnswer.%ToJSON())
+    Do $$$AssertTrue(tAnswer.%ToJSON() '[ tWarning, "no warning line is in the answer: " _ tAnswer.%ToJSON())
     Do $$$AssertEquals(tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("Installable"), "0|1", "the verdicts are those the checks answered")
-    Do $ClassMethod(..#SEAM, "Feed", 1, 0, $ListBuild($Extract($Translate($Justify("", 600), " ", "x"), 1, 600)), "")
-    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Validation", "GET", .tQuery, "", .tLong, .tHttp, .tFault)
-    Do $$$AssertEquals($Length(tLong.%Get("Errors").%Get(0)) _ "|" _ tLong.%Get("Truncated") _ "|" _ tLong.%Get("Installable"), $Parameter(..#PORT, "LINEMAX") _ "|0|0", "a line is cut to the port's bound and a short answer is not truncated")
 }
 
 /// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the agent's tool result carries none of them: only the name, the two verdicts and

@@ -1,7 +1,7 @@
 /// <p>The vendor calls <class>OcuPilot.Test.LocaleWrite</class> makes as its own setup, teardown and independent reads, each switching to <code>%SYS</code> by save and
 /// restore and answering a string (<code>"error: ..."</code> when the call raised). <b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no
 /// tests. It is the only test class that writes a locale, the switch's node or a configured table directly, and only the armed <class>OcuPilot.Test.LocaleWrite</class>
-/// calls it.</p>
+/// and the throwaway-only browser spec <file>ui/browser/nls-locales.browser-spec.mjs</file> call it.</p>
 Class OcuPilot.Test.LocaleWriteVendor Extends %RegisteredObject
 {
 

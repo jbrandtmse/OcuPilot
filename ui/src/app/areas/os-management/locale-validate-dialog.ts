@@ -16,7 +16,7 @@ type Verdict = 'reading' | 'valid' | 'problems' | 'refused';
 
 /**
  * Locale definitions' Validate (Story 21.14, AD-39): reads the checks the instance runs on one locale and says in one sentence whether it is
- * valid. It writes nothing, and it shows no line the instance wrote: the answer's lines are never drawn, so the sentence is all it states.
+ * valid. It writes nothing, and it shows no line the instance wrote: the answer carries none, so the sentence is all it states.
  *
  * A locale the instance does not list, and any other refusal, is drawn as the instance's own sentence. The dialog closes on Close, Escape and
  * the scrim, each emitting `closed` once.
