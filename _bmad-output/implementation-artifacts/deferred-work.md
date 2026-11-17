@@ -13682,3 +13682,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AnalyticsTermListExport.WriteOutput returns the CSV lines citing AD-39's fifth exception; the spine's fifth lists 'an export's XML lines'; U-105's three proposed spine lines do not extend it
 - 2026-11-17T13:04:24Z status=escalated owner=burndown by=cr note=add 'a term list export's CSV lines' to AD-39's fifth with U-105's spine lines (spine edit is owner-only in this run)
+
+### DW-2713: flake: InteropItemRun.TestTheStartHelperWaitsForTheProductionsOwnUpdate saw the probe production's operation hold no job after the start in CI instance shard 6/8
+- source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; same start-timing family as DW-2535 (resolved by 20.25); 21.35 touches no interop code
+- 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
+
+### DW-2714: flake: analytics-mdx.browser-spec.mjs AC1 waited 145 s for the first query's answer in CI browser shard 2/5
+- source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
+- 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
