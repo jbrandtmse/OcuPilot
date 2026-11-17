@@ -18,6 +18,18 @@
 Class OcuPilot.Kernel.State.Turn Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>): a
+/// writer refuses a caller who neither owns the turn nor holds the administrative resource, and the sweeps
+/// and the start-record clears across users are an administrator's. Two writes stay open, because a product
+/// path makes them on another user's behalf: <method>GuardedAbandonForUser</method>, and the sweep of
+/// expired turns <method>GuardedReserve</method> makes.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
+/// <p>The <class>OcuPilot.Kernel.InstanceLimits</class> method that names the limits class the instance's own rule
+/// reads: the sweep a reserve makes uses it for any caller who does not hold the administrative resource, never the
+/// limits class that caller passed (<method>OcuPilot.Kernel.State.Base.InstanceLimitsClass</method>).</p>
+Parameter LIMITSSOURCE As %String = "ForTurns";
+
 Parameter STATEQUEUED = "queued";
 
 Parameter STATERUNNING = "running";
@@ -196,6 +208,8 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
     Set pLimited = 0
     Set pRetrySeconds = 0
     Set pSweepStatus = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSlotLock(pUser, 0, .tHeld)
     If $$$ISERR(tSC) Quit tSC
     If 'tHeld {
@@ -227,7 +241,7 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
         Set tRow.DefinitionId = pDefinitionId
         Set tRow.State = ..#STATEQUEUED
         Set tRow.QueuedAt = ..Timestamp(tStamp)
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set tKey = tRow.TurnKey
         Set tRow = ""
@@ -236,7 +250,7 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
         Set tSC = ..GuardedTurnStartRecord(pUser, tNow, tKey)
         If $$$ISERR(tSC) Quit
         Set pKey = tKey
-        Set pSweepStatus = ..GuardedSweep(pLimitsClass)
+        Set pSweepStatus = ..SweepAnyCaller(pLimitsClass)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -261,6 +275,7 @@ ClassMethod IsoOfSeconds(pSeconds As %Integer) As %String
 /// For tests and fixtures; production never forgets a start before its window ends.</p>
 ClassMethod GuardedForgetStarts(pUser As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedTurnStartsKill(pUser)
 }
 
@@ -270,6 +285,7 @@ ClassMethod GuardedForgetStarts(pUser As %String) As %Status
 /// class with no positive window removes nothing and answers an error.</p>
 ClassMethod GuardedSweepStarts(pLimitsClass As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tWindow = +$Parameter(pLimitsClass, "TURNLIMITWINDOWSECONDS")
     If tWindow <= 0 Quit $$$ERROR($$$GeneralError, "the limits class names no turns-an-hour window")
     Quit ..GuardedTurnStartsSweep(..NowSeconds() - tWindow)
@@ -280,6 +296,8 @@ ClassMethod GuardedSweepStarts(pLimitsClass As %String) As %Status
 /// progress, and nothing is written.</p>
 ClassMethod GuardedReconcile(pUser As %String, pLostCode As %String, pLimitsClass As %String) As %Status
 {
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSlotLock(pUser, 0, .tHeld)
     If $$$ISERR(tSC) || 'tHeld Quit tSC
     Try {
@@ -318,7 +336,7 @@ ClassMethod ReconcileHeld(pUser As %String, pLostCode As %String, pLimitsClass A
             Set tRow.State = ..#STATEABANDONED
             Set tRow.Code = pLostCode
             Set tRow.EndedAt = ..Timestamp()
-            Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+            Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
         }
         Set tRow = ""
         If $$$ISERR(tSC) Quit
@@ -341,6 +359,8 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
 {
     Set pBegun = 0
     Set pStartedSeconds = ""
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSlotLock(pUser, +$Parameter(pLimitsClass, "QUEUEDSECONDS"), .tHeld)
     If $$$ISERR(tSC) || 'tHeld Quit tSC
     Try {
@@ -358,7 +378,7 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
         ; contextRouteTruncated column, so a flag nothing reads would only look like one.
         Set tRow.ContextRoute = ..Cap(pContextRoute, ..#ROUTEMAXLENGTH)
         Set tRow.Workflow = ..Cap(pWorkflow, ..#WORKFLOWMAXLENGTH)
-        Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+        Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
         Set tRow = ""
         If $$$ISERR(tSC) Quit
         Set pBegun = 1
@@ -375,6 +395,8 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
 /// <var>pEgress</var> leaves the stored fact as it is.</p>
 ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputTokens As %Integer, pOutputTokens As %Integer, pEgress As %String = "") As %Status
 {
+    Set tSC = ..KeyOwnerRefused("TurnKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     If ..IsTerminal(tRow.State) Quit $$$OK
@@ -382,7 +404,7 @@ ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputToke
     Set tRow.InputTokens = +pInputTokens
     Set tRow.OutputTokens = +pOutputTokens
     If pEgress '= "" Set tRow.Egress = pEgress
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
 }
@@ -392,11 +414,13 @@ ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputToke
 ClassMethod GuardedAddDropped(pKey As %String, Output pDropped As %Integer) As %Status
 {
     Set pDropped = 0
+    Set tSC = ..KeyOwnerRefused("TurnKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     Set tRow.StepsDropped = tRow.StepsDropped + 1
     Set pDropped = tRow.StepsDropped
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
 }
@@ -418,7 +442,11 @@ ClassMethod GuardedDropped(pKey As %String, Output pDropped As %Integer) As %Sta
 /// released on every path.</p>
 ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, pCode As %String, pLimitHit As %String, pReply As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..KeyOwnerRefused("TurnKeyIdxExists", pKey)
+    If $$$ISERR(tSC) {
+        If ..CallerOwns(pUser) Do ..GuardedTurnSlotUnlock(pUser)
+        Quit tSC
+    }
     Try {
         Set tSC = ..OpenByKey(pKey, .tRow)
         If $$$ISERR(tSC) || '$IsObject(tRow) Quit
@@ -433,7 +461,7 @@ ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, 
         Set tRow.ErrorSeq = +pErrorSeq
         Set tRow.Citations = pCitations
         Set tRow.EndedAt = ..Timestamp()
-        Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+        Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -446,6 +474,8 @@ ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, 
 /// established that the authenticated caller owns the turn and that it has not ended.</p>
 ClassMethod GuardedRenew(pKey As %String) As %Status
 {
+    Set tSC = ..KeyOwnerRefused("TurnKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedTurnSignalSet(pKey, "renewed", ..NowSeconds())
 }
 
@@ -454,6 +484,8 @@ ClassMethod GuardedRenew(pKey As %String) As %Status
 ClassMethod GuardedRequestStop(pKey As %String, pUser As %String, Output pFound As %Boolean) As %Status
 {
     Set pFound = 0
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedForOwner(pKey, pUser, .tFound, .tValues)
     If $$$ISERR(tSC) || 'tFound Quit tSC
     If ..IsTerminal(tValues("state")) Quit $$$OK
@@ -466,14 +498,10 @@ ClassMethod GuardedRequestStop(pKey As %String, pUser As %String, Output pFound 
 ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
-    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(UserName) = ? AND State IN ('queued', 'running') ORDER BY ID", pUser, .tIds)
+    Set tSC = ..GuardedIdsWhere("SELECT TurnKey FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(UserName) = ? AND State IN ('queued', 'running') ORDER BY ID", pUser, .tKeys)
     If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:+$Get(tIds) {
-        Set tSC = ..GuardedOpenId(tIds(tI), .tRow)
-        If $$$ISERR(tSC) Quit
-        Set tKey = tRow.TurnKey
-        Set tRow = ""
-        Set tSC = ..GuardedTurnSignalSet(tKey, "abandon", 1)
+    For tI = 1:1:+$Get(tKeys) {
+        Set tSC = ..GuardedTurnSignalSet(tKeys(tI), "abandon", 1)
         If $$$ISERR(tSC) Quit
         Set pCount = pCount + 1
     }
@@ -687,21 +715,58 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
 }
 
 /// <p>Delete every terminal turn that ended retention seconds ago or more, with everything
-/// <method>GuardedDelete</method> removes beside it.</p>
+/// <method>GuardedDelete</method> removes beside it. An administrator's: the retention task runs it.</p>
 ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
 {
-    Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tIds)
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
+    Quit ..SweepAnyCaller(pLimitsClass)
+}
+
+/// <p><method>GuardedSweep</method> without the caller check: the sweep <method>GuardedReserve</method>
+/// makes, which removes every user's expired terminal turns by the instance's own retention rule. It
+/// writes nothing else.</p>
+/// <p>A caller who does not hold the administrative resource sweeps by the retention of the instance's own limits
+/// class (<parameter>LIMITSSOURCE</parameter>), whatever limits class it passed. Each turn's state and end time are read
+/// from storage by one statement, never from an opened row a caller may hold, and the delete repeats both.</p>
+ClassMethod SweepAnyCaller(pLimitsClass As %String) As %Status [ Private ]
+{
+    Set tLimits = ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE)
+    Set tSC = ..GuardedRowsNoParam("SELECT TurnKey, EndedAt FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tRows)
     If $$$ISERR(tSC) Quit tSC
-    Set tCutoff = ..NowSeconds() - $Parameter(pLimitsClass, "RETENTIONSECONDS")
-    For tI = 1:1:+$Get(tIds) {
-        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
-        If $$$ISERR(tOpenSC) Continue
-        Set tKey = tRow.TurnKey
-        Set tEnded = ..SecondsOf(..Text(tRow.EndedAt))
-        Set tRow = ""
+    Set tCutoff = ..NowSeconds() - $Parameter(tLimits, "RETENTIONSECONDS")
+    For tI = 1:1:tRows {
+        Set tEndedAt = ..Text(tRows(tI, 2))
+        Set tEnded = ..SecondsOf(tEndedAt)
         If (tEnded = "") || (tEnded > tCutoff) Continue
-        Set tSC = ..GuardedDelete(tKey)
+        Set tSC = ..DeleteExpired(tRows(tI, 1), tEndedAt)
         If $$$ISERR(tSC) Quit
+    }
+    Quit tSC
+}
+
+/// <p>Delete turn <var>pKey</var> with everything <method>DeleteAnyCaller</method> removes, in one transaction, only
+/// while its row still reads a terminal state and the end time <var>pEndedAt</var> the sweep read.</p>
+ClassMethod DeleteExpired(pKey As %String, pEndedAt As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tInTx = 0
+    Try {
+        TSTART
+        Set tInTx = 1
+        Set tParams = [].%Push(pKey).%Push(pEndedAt)
+        Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ? AND State IN ('completed', 'stopped', 'abandoned', 'failed') AND %EXACT(EndedAt) = ?", .tParams, .tRows)
+        If $$$ISERR(tSC) Quit
+        If tRows {
+            Set tSC = ..DeleteChildren(pKey)
+            If $$$ISERR(tSC) Quit
+        }
+        TCOMMIT
+        Set tInTx = 0
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tInTx {
+        TROLLBACK 1
     }
     Quit tSC
 }
@@ -712,15 +777,31 @@ ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
 /// while the conversation entry and the ledger rows stay.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedDeleteForTurn(pKey)
+    Set tSC = ..KeyOwnerRefused("TurnKeyIdxExists", pKey)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ##class(OcuPilot.Kernel.State.Nav).GuardedDeleteForTurn(pKey)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(pKey)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..GuardedTurnSignalKill(pKey)
+    Quit ..DeleteAnyCaller(pKey)
+}
+
+/// <p><method>GuardedDelete</method> without the caller check, for a delete whose caller has made its own: the
+/// turn's rows, then the turn. The children's public deletes are an administrator's, so this class's own statements
+/// remove them.</p>
+ClassMethod DeleteAnyCaller(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteChildren(pKey)
     If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pKey)
+}
+
+/// <p>Delete the steps, the navigation directive, the proposals and the signals of turn <var>pKey</var>.</p>
+ClassMethod DeleteChildren(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Nav WHERE %EXACT(TurnKey) = ?", pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardedTurnSignalKill(pKey)
 }
 
 /// <p>The row for <var>pKey</var>, matched exactly, or <code>$$$NULLOREF</code>.</p>

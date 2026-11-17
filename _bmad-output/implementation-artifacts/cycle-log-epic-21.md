@@ -396,3 +396,29 @@
 2026-11-16T15:49:52Z	Story 21.33	gate_step	step=fresh_check+full_sweep scope=batch1 head=8e6d9de06 started=2026-11-16T15:49:52Z dir=e21u/21-33/gate1
 2026-11-16T15:59:18Z	Story 21.33	fresh_check	scope=batch1 classes=17_green specs=3_green_fwd+rev result=pass
 2026-11-16T15:59:18Z	Story 21.33	gate_step	step=sweep_stopped_at_shard1 reason=DW-2664_must_settle_in_batch1_head(orchestrator) note=sweep_reruns_after
+2026-11-16T16:27:30Z	Story 21.33	gate_step	step=DW-2664_settled fix=a7e5d04fa(rebuild_checks_admin_only_when_writing) measured=retention_task_as_irisowner_pass;admin_without_%All_pass;first_install_without_%All_failed->fixed new_test=AdminPathWrite(3) mutations=4 open=DW-2665(inference)
+2026-11-16T16:28:51Z	Story 21.33	gate_step	step=gates_stopped reason=DW-2665_fix_in_batch1(orchestrator)
+2026-11-16T16:38:17Z	Story 21.33	gate_step	step=DW-2665_red_before(822,row_keyless) fix=needs_AD-9_text asked=orchestrator(A_allow_text+rule6_widen|B_release_note) meanwhile=fresh_check+sweep_on_46f695b40(dir_gate3)
+2026-11-16T16:38:50Z	Story 21.33	ruling	question=DW-2665_timing choice=batch2(A_design) via=orchestrator note=no_cut_until_batch2_on_feature;batch1_head_without_it
+2026-11-16T16:50:35Z	Story 21.33	fresh_check	scope=batch1(46f695b40) classes=19_green specs=3_green_fwd+rev result=pass
+2026-11-16T16:53:32Z	Story 21.35	stage_spawned	stage=plan spawn_at=2026-11-16T16:53:32Z model=opus agent_name=21-35-plan-1 cycle_iteration=1
+2026-11-16T17:08:40Z	Story 21.35	story_created	spawn_at=2026-11-16T16:53:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md build_status=ready-for-dev eta=10-12h waits_for=21.33_done
+2026-11-16T17:08:40Z	Story 21.35	spec_validated	owned_ledger=DW-2651(batch1),DW-2652(batch2-3) ad_text=deferred_to_start(builds_on_DW-2665) asked=AD-64_screen_access(a|b|c) behaviour_changes_listed=4
+2026-11-16T17:10:36Z	Story 21.35	ruling	question=screen_access_direct_write choice=b(store_audits;port_write_audited_once,pinned) via=orchestrator(veto_item)
+2026-11-16T18:52:52Z	Story 21.33	gate_step	step=full_sweep scope=batch1 result=pass shards=20/20 head=a7e5d04fa
+2026-11-16T18:52:52Z	Story 21.33	smoke_complete	scope=batch1 method=cli result=pass(fresh-ish:PASSED_no_skip)
+2026-11-16T18:52:52Z	Story 21.33	committed	sha=a7e5d04fa(batch1:4334486d8,8e6d9de06,a7e5d04fa) ci=pending runs=43933412899 note=story_stays_in-progress(batches_2-3)
+2026-11-16T18:58:17Z	Story 21.33	ad_amended	ad=AD-9 batch=2 item=DW-2665(installer_target-key_frame) marker=[AMENDED_2026-11-16,Story_21.33_Batch_2_spec_gate,owner_answer_U-82,DW-2665] note=owner_veto_item_filed_by_orchestrator
+2026-11-16T18:58:17Z	Epic 21	integrate_forward	from=feature_8074a73c5 to=386d388be conflicts=1(sprint-status_stamp) checks=ci.test.mjs_103
+2026-11-16T18:58:23Z	Story 21.33	stage_spawned	stage=implement scope=batch2 spawn_at=2026-11-16T18:58:23Z model=sonnet agent_name=21-33-implement-b2 cycle_iteration=2 story_base=187dee479
+2026-11-16T19:06:30Z	Epic 21	owner_decision	ids=U-73(keep),U-93(keep),U-96(keep),U-97(keep) via=inbox(relayed)
+2026-11-16T19:06:30Z	Story 21.33	ci_red_classified	run=43933412899 job=gates_node24 test=ci.test.mjs_DW-2123_budget class=flake(DW-2565) action=orchestrator_rerun note=batch1_merges_via_staging/OCU-1-21.33b1_2a542f893
+2026-11-16T20:46:46Z	Story 21.33	dev_complete	scope=batch2 build_sha=d30e55097 task0=28_legs_landed dw2665=red(run40)->green;rule6_one_method;developer_<PROTECT>+822 dw2663=fixed five_paths=unchanged review=13(4_patched_tests) cycle_iteration=2
+2026-11-16T20:46:46Z	Epic 21	integrate_forward	from=feature_ebb3e85d8(2a542f893) to=627c176c4 conflicts=1(stamp)
+2026-11-16T20:46:46Z	Story 21.33	ruling	question=gate_batches_2_and_3_together choice=yes(one_fresh_check+sweep+head_after_batch3) rejected=separate_heads why=no_release_cut_between(orchestrator);saves_a_sweep category=decide policy=b9ff703e
+2026-11-16T20:46:46Z	Story 21.33	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-16T20:46:46Z model=opus agent_name=21-33-code-review-b2 cycle_iteration=2
+2026-11-16T21:25:50Z	Story 21.33	cr_complete	scope=batch2 model=opus resolved=10 high=1(DW-2666_reserve_sweep_caller_inputs;unpatched,orchestrator) med=3_patched low=19 five_paths=unchanged dw2665=<PROTECT>+822;unwind_tested;rule6_one_method commit=9bbe57702
+2026-11-16T21:26:14Z	Story 21.33	ruling	question=DW-2666 choice=A(batch3,turn+SqlRun_reserve_sweeps) via=orchestrator(decide,not_U-89_breach) conditions=limits_from_Loop.LimitsClass,state_by_SQL,red_before/green_after+mutations,open_path_still_sweeps,other_helpers_listed
+2026-11-16T21:26:14Z	Story 21.33	stage_spawned	stage=implement scope=batch3+DW-2666 spawn_at=2026-11-16T21:26:14Z model=sonnet agent_name=21-33-implement-b3 cycle_iteration=3 story_base=47730e1d8
+2026-11-16T22:47:50Z	Story 21.33	dev_complete	scope=batch3+DW-2666 build_sha=2ba8d0051 task0=landed dw2666=7/11_red->11/11_green helpers_changed=Turn.SweepAnyCaller,SqlRun_sweep,SqlRun.Reconcile,SqlRun.GuardedViewForOwner,Turn.GuardedAbandonForUser(neutral) new_class=Kernel.InstanceLimits five_paths=unchanged cycle_iteration=3
+2026-11-16T22:47:50Z	Story 21.33	stage_spawned	stage=code-review scope=batch3 spawn_at=2026-11-16T22:47:50Z model=opus agent_name=21-33-code-review-b3 cycle_iteration=3

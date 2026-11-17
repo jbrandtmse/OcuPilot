@@ -53,7 +53,9 @@ prose into one checker.
 6. **Escalation containment (AD-9, Story 1.3, AC6).** `New $ROLES` and
    `$SYSTEM.Security.AddRoles` may appear only in `OcuPilot/Kernel/State/Base.cls` and
    `OcuPilot/Test/State.cls` — the tree's one escalation point and the one test class
-   that impersonates a denied user to prove it. Every other file is refused the moment
+   that impersonates a denied user to prove it — and `New $ROLES` (never `AddRoles`) in
+   `OcuPilot/Install/Installer.cls`'s `EnsureProposalTargetKeys` alone, the install step AD-9
+   gives the administrative role it was granted. Every other file is refused the moment
    either token appears in it, mechanically enforcing AD-9's "the storage classes, and
    only the storage classes" rather than leaving it to review.
 
@@ -639,6 +641,16 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# AD-9's one use of `New $ROLES` outside Base: the install's target-key step adds the administrative role
+# to its own process around one call. The exception is the token `New $ROLES` in that one method of that
+# one file; `AddRoles` is refused there as everywhere else.
+ESCALATION_METHOD_ALLOWED = {
+    "src/OcuPilot/Install/Installer.cls": "EnsureProposalTargetKeys",
+}
+NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
+ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)
+METHOD_DECLARATION_RE = re.compile(r"^(?:Class)?Method\s+([A-Za-z0-9_%]+)", re.IGNORECASE)
+
 # The one OcuPilot package folder that must never contain a storage class escalating outside
 # the two files above; kept as its own constant so this rule cannot silently drift from the
 # roster's package set if that ever grows.
@@ -795,12 +807,21 @@ def check_escalation_containment(problems: list[str]) -> None:
         text = read_text(p)
         if text is None:
             continue
+        method = ""
         for i, raw in iter_code_lines(text):
-            if ESCALATION_RE.search(raw) and rel not in ESCALATION_ALLOWED:
-                problems.append(
-                    f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
-                    f"{' or '.join(sorted(ESCALATION_ALLOWED))} (AD-9, AC6)"
-                )
+            declaration = METHOD_DECLARATION_RE.match(raw)
+            if declaration:
+                method = declaration.group(1)
+            if not ESCALATION_RE.search(raw) or rel in ESCALATION_ALLOWED:
+                continue
+            is_new_roles_only = NEW_ROLES_RE.search(raw) is not None and ADD_ROLES_RE.search(raw) is None
+            if is_new_roles_only and ESCALATION_METHOD_ALLOWED.get(rel) == method:
+                continue
+            problems.append(
+                f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
+                f"{' or '.join(sorted(ESCALATION_ALLOWED))}, or 'New $ROLES' in "
+                f"{', '.join(f'{f} {m}' for f, m in sorted(ESCALATION_METHOD_ALLOWED.items()))} (AD-9, AC6)"
+            )
 
 
 # --- Restraint containment (AD-30, AD-40, Story 3.7) ----------------------------------

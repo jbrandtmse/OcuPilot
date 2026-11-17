@@ -148,7 +148,7 @@ Method TestADeveloperIsRefusedTheAgentDefinitionWrites()
         Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
         If tI = 1 Do ..AssertPrincipal(tRun)
         Set tAfter = ..AgentState()
-        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), tKind _ " ok=0 code=822", tKind _ " is refused 822: " _ ..Detail(tRun))
+        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), tKind _ " ok=0 code=822", tKind _ " is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
         Do $$$AssertEquals(tAfter, tBefore, tKind _ " leaves the definitions as they were; before " _ tBefore _ " after " _ tAfter)
     }
 }
@@ -173,7 +173,7 @@ Method TestAClearedVerificationStoresNoHeldEdit()
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
     Do ..AssertPrincipal(tRun)
     Set tAfter = ..AgentState()
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Agent.GuardedClearVerification ok=1 code=", "the observation is recorded for a developer: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Agent.GuardedClearVerification ok=1 code=", "the observation is recorded for a developer: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT Enabled || '|' || ConnectionVerified FROM OcuPilot_Kernel_State.Agent WHERE ID = " _ tTarget), "0|0", "the definition serves no turn")
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'"), tOther, "and the default marker moved to the lowest-id enabled definition")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tTarget, .tRow), "the cleared definition opens")
@@ -213,7 +213,7 @@ Method TestADeveloperIsRefusedAVictimsLedgerAndProposalRows()
         If tI = 1 Do ..AssertPrincipal(tRun)
         Set tAfter = ..VictimState()
         Set tExpected = $Select(tKind = "Propose.GuardedExpireStale.All": "Propose.GuardedExpireStale", 1: tKind) _ " ok=0 code=822"
-        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), tExpected, tKind _ " is refused 822: " _ ..Detail(tRun))
+        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), tExpected, tKind _ " is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
         Do $$$AssertEquals(tAfter, tBefore, tKind _ " leaves the victim's rows as they were; before " _ tBefore _ " after " _ tAfter)
     }
 }
@@ -231,7 +231,7 @@ Method TestADeveloperWritesItsOwnProposalAndLedgerRows()
     Do ..AssertPrincipal(tRun)
     For tI = 1:1:tPlan.%Size() {
         Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, tI)
-        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "step " _ tI _ " is accepted for the owner: " _ ..DetailOf(tRun, tI))
+        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "step " _ tI _ " is accepted for the owner: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tClaimKey, "State") _ "|" _ ##class(OcuPilot.Test.ProposalFixture).Field(tClaimKey, "Burned"), "confirmed|1", "the claimed proposal is confirmed")
     Do $$$AssertTrue(##class(OcuPilot.Test.ProposalFixture).Field(tClaimKey, "ReadBack") [ "ok", "and carries the read-back")
@@ -263,7 +263,7 @@ Method TestAnAdministratorWritesAVictimsRowsAndTheDefinitions()
     Do ..AssertPrincipal(tRun, ..#ADMINUSER, 1)
     For tI = 1:1:tPlan.%Size() {
         Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, tI)
-        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "step " _ tI _ " is accepted for the administrator: " _ ..DetailOf(tRun, tI))
+        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "step " _ tI _ " is accepted for the administrator: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposalKey, "State") _ "|" _ ##class(OcuPilot.Test.ProposalFixture).Field(tProposalKey, "ClosedReason"), "canceled|you", "the victim's proposal is closed")
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(UserName) = '" _ ..#VICTIM _ "'"), 2, "and the minted one is stored for the victim")
@@ -273,7 +273,7 @@ Method TestAnAdministratorWritesAVictimsRowsAndTheDefinitions()
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#ADMINUSER, tDelete, ..#PROBE)
     For tI = 1:1:tDelete.%Size() {
         Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, tI)
-        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "delete " _ tI _ " is accepted for the administrator: " _ ..DetailOf(tRun, tI))
+        Do $$$AssertTrue($IsObject(tLeg) && tLeg.%Get("ok"), "delete " _ tI _ " is accepted for the administrator: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
     }
     Do $$$AssertEquals(..VictimState(), "[][]", "and the victim's rows are gone")
 }
@@ -317,7 +317,7 @@ Method EditThenConfirm(pVia As %String)
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
     Do ..AssertPrincipal(tRun)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tAfter), "the proposal reads back")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Propose.EditSave ok=0 code=822", "the developer's save through " _ pVia _ " is refused 822: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Propose.EditSave ok=0 code=822", "the developer's save through " _ pVia _ " is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals($Get(tAfter("arguments")) _ "|" _ $Get(tAfter("payload")) _ "|" _ $Get(tAfter("fingerprint")), $Get(tBefore("arguments")) _ "|" _ $Get(tBefore("payload")) _ "|" _ $Get(tBefore("fingerprint")), "the stored arguments, payload and fingerprint are as they were; payload before " _ $Get(tBefore("payload")) _ " after " _ $Get(tAfter("payload")))
     Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite(..#FRESH)
     Set tSC = $ClassMethod("OcuPilot.Test.ConfirmFixture", "Confirm", tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
@@ -373,13 +373,13 @@ Method TestAForgedOwnerIsRefusedAndTheStoredOwnerStands()
     Set tPlan = [{"kind": "Ledger.ForgedOverflow", "id": (tVictimRow), "turnKey": (..#VICTIMTURN), "heldUser": (..#DEVUSER), "user": (..#DEVUSER)}, {"kind": "Ledger.ForgedOverflow", "id": (tOwnRow), "turnKey": (..#DEVTURN), "heldUser": (..#VICTIM), "user": (..#DEVUSER)}]
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "the victim's row held as the developer's is refused 822: " _ ..DetailOf(tRun, 1))
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedOverflow ok=0 code=822", "the developer's row held as the victim's is refused 822: " _ ..DetailOf(tRun, 2))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "the victim's row held as the developer's is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedOverflow ok=0 code=822", "the developer's row held as the victim's is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 2))
     Set tPlan = [{"kind": "Ledger.ForgedOverflow", "id": (tVictimRow), "turnKey": (..#VICTIMTURN), "heldUser": (..#ADMINUSER), "user": (..#ADMINUSER)}, {"kind": "Ledger.ForgedSave", "id": (tVictimRow), "heldUser": (..#ADMINUSER)}]
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#ADMINUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun, ..#ADMINUSER, 1)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "an administrator's writer save of the victim's row held under another owner is refused 822: " _ ..DetailOf(tRun, 1))
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedSave ok=0 code=822", "and so is its public save: " _ ..DetailOf(tRun, 2))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.ForgedOverflow ok=0 code=822", "an administrator's writer save of the victim's row held under another owner is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.ForgedSave ok=0 code=822", "and so is its public save: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 2))
     Do $$$AssertEquals(..OverflowState(), tBefore, "the stored owners, counts and versions are as they were; before " _ tBefore _ " after " _ ..OverflowState())
 }
 
@@ -397,7 +397,7 @@ Method TestAClaimCancelsOnlyItsOwnTargetsSiblings()
     Set tStep = {"kind": "Propose.GuardedClaimAndClose", "key": (tOwnKey), "version": (##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "RowVersion")), "target": (..#TARGET)}
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Propose.GuardedClaimAndClose ok=0 code=822", "the claim naming another target is refused 822: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Propose.GuardedClaimAndClose ok=0 code=822", "the claim naming another target is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tVictimKey, "State"), "live", "the victim's proposal is still live")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "State") _ "|" _ ##class(OcuPilot.Test.ProposalFixture).Field(tOwnKey, "Burned"), "live|0", "and the developer's is not claimed")
 }
@@ -416,7 +416,7 @@ Method TestADeveloperIsRefusedACountOntoAVictimsOverflowRow()
     Do $$$AssertTrue(tBefore [ ..#VICTIMTURN, "and it reads back: " _ tBefore)
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Ledger.GuardedCountOverflow", "turnKey": (..#VICTIMTURN), "user": (..#DEVUSER)}], ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedCountOverflow ok=0 code=822", "the developer's count is refused 822: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedCountOverflow ok=0 code=822", "the developer's count is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(..OverflowState(), tBefore, "and the victim's overflow row is as it was; before " _ tBefore _ " after " _ ..OverflowState())
 }
 
@@ -433,9 +433,9 @@ Method TestTheOwnerComparisonIgnoresCaseAndRefusesAnEmptyName()
     Do tPlan.%Push({"kind": "Ledger.GuardedAppend", "user": "", "turnKey": (..#DEVTURN)})
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedAppend ok=1 code=", "the lower-case name is accepted: " _ ..DetailOf(tRun, 1))
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.GuardedAppend ok=1 code=", "the upper-case name is accepted: " _ ..DetailOf(tRun, 2))
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 3), "Ledger.GuardedAppend ok=0 code=822", "the empty name is refused 822: " _ ..DetailOf(tRun, 3))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedAppend ok=1 code=", "the lower-case name is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Ledger.GuardedAppend ok=1 code=", "the upper-case name is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 2))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 3), "Ledger.GuardedAppend ok=0 code=822", "the empty name is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 3))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = '" _ ..#DEVTURN _ "'"), 2, "and only the two accepted rows are stored")
 }
 
@@ -449,10 +449,10 @@ Method TestAFinalizeOfAKeyThatNamesNoRowIsRefusedForAStranger()
     Set tPlan = [{"kind": "Ledger.GuardedFinalize", "key": (tKey)}]
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedFinalize ok=0 code=822", "the developer is refused 822: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedFinalize ok=0 code=822", "the developer is refused 822: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#ADMINUSER, tPlan, ..#PROBE)
     Do ..AssertPrincipal(tRun, ..#ADMINUSER, 1)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedFinalize ok=1 code=", "the administrator is answered OK: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedFinalize ok=1 code=", "the administrator is answered OK: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LedgerKey) = '" _ tKey _ "'"), 0, "and no row is stored")
 }
 
@@ -490,7 +490,7 @@ Method AssertAbandonForDeletedUser()
     If $$$ISERR(tSC) Quit
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Turn.GuardedAbandonForUser", "user": (..#VICTIM)}], ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Turn.GuardedAbandonForUser ok=1 code=", "the abandon is accepted: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Turn.GuardedAbandonForUser ok=1 code=", "the abandon is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("count"), 1, "it names the one running turn")
     Do $$$AssertEquals($Get(^OcuPilotTurnSignal(tTurn, "abandon")), 1, "which carries the abandon signal")
 }
@@ -510,7 +510,7 @@ Method AssertReserveSweepsExpiredTurns()
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Turn.GuardedReserve", "user": (..#DEVUSER)}], ..#PROBE)
     Do ..AssertPrincipal(tRun)
     Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Turn.GuardedReserve ok=1 code=", "the reserve is accepted: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Turn.GuardedReserve ok=1 code=", "the reserve is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("key") '= "") && 'tLeg.%Get("busy") && tLeg.%Get("sweepOk"), "it stores the developer's turn and the sweep reports success")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).TurnCountForTurn(tTurn), 0, "and the victim's expired turn is swept")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCountForTurn(tTurn), 0, "with the proposal minted on it")
@@ -526,7 +526,7 @@ Method AssertRunReserveSweepsEndedRuns()
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "SqlRun.GuardedReserve", "user": (..#DEVUSER)}], ..#PROBE)
     Do ..AssertPrincipal(tRun)
     Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.GuardedReserve ok=1 code=", "the reserve is accepted: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.GuardedReserve ok=1 code=", "the reserve is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("key") '= "") && tLeg.%Get("sweepOk"), "it stores the developer's run and the sweep reports success")
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tKey _ "'"), 0, "and the victim's ended run is swept")
 }
@@ -545,7 +545,7 @@ Method AssertCloseExpiresLapsedProposals(pKind As %String)
     Set tStep = {"kind": (pKind), "key": (tOwn), "user": (..#DEVUSER), "convKey": (..#DEVCONV), "reason": "you"}
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [(tStep)], ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), pKind _ " ok=1 code=", pKind _ " is accepted: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), pKind _ " ok=1 code=", pKind _ " is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tOwn, "State"), "canceled", "the developer's proposal is canceled")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tLapsed, "State"), "expired", pKind _ " also expires the victim's lapsed proposal")
 }
@@ -559,7 +559,7 @@ Method AssertCredentialFindingDisablesDefinition()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(tTarget), "the target is the default")
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Agent.GuardedClearVerification", "id": (tTarget)}], ..#PROBE)
     Do ..AssertPrincipal(tRun)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Agent.GuardedClearVerification ok=1 code=", "the finding is recorded: " _ ..Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Agent.GuardedClearVerification ok=1 code=", "the finding is recorded: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT Enabled || '|' || ConnectionVerified FROM OcuPilot_Kernel_State.Agent WHERE ID = " _ tTarget), "0|0", "the definition is disabled")
     Do $$$AssertNotEquals(##class(OcuPilot.Test.AdminStateWrite).Stored("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'"), tTarget, "and the default marker has moved off it")
 }
@@ -574,22 +574,24 @@ Method AssertCredentialFindingDisablesDefinition()
 /// <method>OcuPilot.Test.AdminStateWrite.BaseSurface</method>.</p>
 /// <p>Mutation (Rule 19): <code>Parameter OWNERWRITE</code> emptied on
 /// <class>OcuPilot.Kernel.State.Ledger</class> -> this, the victim rows test and the forged-owner test
-/// go red.</p>
+/// go red. The classes this class does not cover are the ones <class>OcuPilot.Test.TranscriptOwnerWrite</class>
+/// and <class>OcuPilot.Test.PrefOwnerWrite</class> name.</p>
 Method TestTheOwnerStoresAreDeclared()
 {
     Set tStores = $ListBuild("Ledger", "Propose")
-    Set tOwnerRan = ..PlanKinds(..OwnerPlan("", 0, "", ""))
-    Set tAdministratorRan = ..PlanKinds(..AdministratorPlan())
+    Set tOwnerRan = ##class(OcuPilot.Test.AdminStateWrite).KindsOf(..OwnerPlan("", 0, "", ""))
+    Set tAdministratorRan = ##class(OcuPilot.Test.AdminStateWrite).KindsOf(..AdministratorPlan())
     Set tDeclared = ""
-    For tI = 1:1:$ListLength(tStores) {
-        Set tDeclared = tDeclared _ $Select(tDeclared = "": "", 1: ",") _ ..#STOREPACKAGE _ $List(tStores, tI)
+    Set tAllStores = tStores _ ##class(OcuPilot.Test.TranscriptOwnerWrite).Stores() _ ##class(OcuPilot.Test.PrefOwnerWrite).Stores()
+    For tI = 1:1:$ListLength(tAllStores) {
+        Set tDeclared = tDeclared _ $ListBuild(..#STOREPACKAGE _ $List(tAllStores, tI))
     }
     Set tFound = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT parent FROM %Dictionary.CompiledParameter WHERE Name = 'OWNERWRITE' AND _Default IS NOT NULL AND _Default <> '' ORDER BY parent")
     While tRS.%Next() {
-        Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tRS.%GetData(1)
+        Set tFound = tFound _ $ListBuild(tRS.%GetData(1))
     }
-    Do $$$AssertEquals(tFound, tDeclared, "the classes whose compiled OWNERWRITE is not empty are the two stores")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tFound), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tDeclared), "the classes whose compiled OWNERWRITE is not empty are this class's two stores, the transcript stores and the preference, sharing and run stores")
     For tI = 1:1:$ListLength(tStores) {
         Set tStore = $List(tStores, tI)
         Set tClass = ..#STOREPACKAGE _ tStore
@@ -609,7 +611,6 @@ Method TestTheOwnerStoresAreDeclared()
     Set tHandled = ""
     Set tAll = ..VictimKinds() _ tOwnerRan _ tAdministratorRan _ ..OpenKinds() _ ..AgentWriteKinds()
     For tI = 1:1:$ListLength(tAll) {
-        If $List(tAll, tI) = "Propose.GuardedDeleteForTurn" Continue
         If '$ClassMethod(..#PROBE, "Handles", $List(tAll, tI)) Set tHandled = tHandled _ " " _ $List(tAll, tI)
     }
     Do $$$AssertEquals(tHandled, "", "every step the tests name is one the probe runs")
@@ -628,7 +629,7 @@ Method AssertCalled(pStore As %String, pMethods As %List, pKinds As %List, pMess
 /// <p>The steps a stranger is refused on another user's rows, one child process each.</p>
 ClassMethod VictimKinds() As %List
 {
-    Quit $ListBuild("Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Propose.GuardedMint", "Propose.GuardedRecordReadBack", "Propose.GuardedClaimAndClose", "Propose.GuardedClose", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Propose.GuardedDeleteForUser")
+    Quit $ListBuild("Ledger.GuardedAppend", "Ledger.GuardedFinalize", "Ledger.GuardedCountOverflow", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Ledger.GuardedPurgeBefore", "Propose.GuardedDeleteForTurn", "Propose.GuardedMint", "Propose.GuardedRecordReadBack", "Propose.GuardedClaimAndClose", "Propose.GuardedClose", "Propose.GuardedCloseLiveForConvo", "Propose.GuardedCloseLiveForUser", "Propose.GuardedExpireStale", "Propose.GuardedRebuildTargetKeys", "Propose.GuardedDeleteForUser")
 }
 
 /// <p>The steps the owner of the rows makes, in the order <method>OwnerPlan</method> runs them.</p>
@@ -641,7 +642,7 @@ ClassMethod OwnerKinds() As %List
 /// <method>AdministratorPlan</method> runs them.</p>
 ClassMethod AdministratorKinds() As %List
 {
-    Quit $ListBuild("Propose.GuardedRebuildTargetKeys", "Ledger.GuardedPurgeBefore", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Propose.GuardedDeleteForUser")
+    Quit $ListBuild("Propose.GuardedRebuildTargetKeys", "Ledger.GuardedPurgeBefore", "Ledger.GuardedDeleteForTurn", "Ledger.GuardedDeleteForUser", "Propose.GuardedDeleteForTurn", "Propose.GuardedDeleteForUser")
 }
 
 /// <p>The plan the developer runs against its own rows: one step for each of
@@ -685,22 +686,10 @@ ClassMethod AdministratorPlan() As %DynamicArray
     Quit tPlan
 }
 
-/// <p>The kinds of the steps of <var>pPlan</var>, as a list.</p>
-ClassMethod PlanKinds(pPlan As %DynamicArray) As %List
-{
-    Set tKinds = ""
-    For tI = 0:1:pPlan.%Size() - 1 {
-        Set tKinds = tKinds _ $ListBuild(pPlan.%Get(tI).%Get("kind"))
-    }
-    Quit tKinds
-}
-
-/// <p>The open writes the open-path test reaches. <code>Propose.GuardedDeleteForTurn</code> is reached
-/// through the turn reserve's sweep, which removes the proposal minted on the swept turn; it stays open
-/// until the turn store's own gate.</p>
+/// <p>The open writes the open-path test reaches.</p>
 ClassMethod OpenKinds() As %List
 {
-    Quit $ListBuild("Agent.GuardedClearVerification", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve", "Propose.GuardedDeleteForTurn")
+    Quit $ListBuild("Agent.GuardedClearVerification", "Turn.GuardedAbandonForUser", "Turn.GuardedReserve", "SqlRun.GuardedReserve")
 }
 
 /// <p>The agent definition writers a developer is refused; the administrator roster test reads them.</p>
@@ -727,13 +716,12 @@ ClassMethod OwnerWrites(pStore As %String) As %List
 ClassMethod AdministratorWrites(pStore As %String) As %List
 {
     If pStore = "Ledger" Quit $ListBuild("GuardedDeleteForTurn", "GuardedDeleteForUser", "GuardedPurgeBefore")
-    Quit $ListBuild("GuardedRebuildTargetKeys", "GuardedDeleteForUser")
+    Quit $ListBuild("GuardedRebuildTargetKeys", "GuardedDeleteForTurn", "GuardedDeleteForUser")
 }
 
 /// <p>The writes <var>pStore</var> leaves open to every caller.</p>
 ClassMethod OpenWrites(pStore As %String) As %List
 {
-    If pStore = "Propose" Quit $ListBuild("GuardedDeleteForTurn")
     Quit ""
 }
 
@@ -851,20 +839,6 @@ Method SeedOwn(Output pClaimKey As %String, Output pCloseKey As %String, Output 
     Set tSC = ##class(OcuPilot.Kernel.State.Ledger).GuardedAppend(..#DEVTURN, ..#DEVUSER, "probe", "tool", "probe.own", "", "", "", 0, "ok", "", 0, 0, "", ..#LIMITS, .tSeq, .tStored, 0, "", .pLedgerKey)
     Do $$$AssertStatusOK(tSC, "and a ledger row")
     Quit $$$ISOK(tSC) && tStored
-}
-
-/// <p>The step <var>pIndex</var> of <var>pRun</var> as <method>Detail</method> gives the first.</p>
-ClassMethod DetailOf(pRun As %DynamicObject, pIndex As %Integer) As %String
-{
-    Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(pRun, pIndex)
-    Quit ##class(OcuPilot.Test.AdminStateWrite).LegText(pRun, pIndex) _ $Select($IsObject(tLeg) && (tLeg.%Get("text") '= ""): " " _ tLeg.%Get("text"), 1: "")
-}
-
-/// <p>The first step of <var>pRun</var> as <method>OcuPilot.Test.AdminStateWrite.LegText</method> gives
-/// it, with the status text it carries.</p>
-ClassMethod Detail(pRun As %DynamicObject) As %String
-{
-    Quit ..DetailOf(pRun, 1)
 }
 
 /// <p>The probe definitions as one string, by SQL: each row's id, name, instructions, flags, marker

@@ -17,11 +17,13 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// <method>OcuPilot.Install.Installer.EnsureGrant</method> makes, <code>Security.Users.AddRoles</code>
 /// of the administrative role to the process's own user in <code>%SYS</code> (the installer's method
 /// cannot be dispatched from <code>%SYS</code> by a caller outside its own frame); <code>Install.EnsureProposalTargetKeys</code> runs that
-/// install step in the install namespace. Each answers <code>roles</code> and <code>holdsAdmin</code>
-/// as the process reads them after the step.</p>
+/// install step in the install namespace; <code>Roles.AddAdministrator</code> adds the administrative role
+/// to the process's own <code>$ROLES</code>, which IRIS admits only to a process that can write the system
+/// database. Each answers <code>roles</code> and <code>holdsAdmin</code> as the process reads them after
+/// the step.</p>
 ClassMethod PathKinds() As %List
 {
-    Quit $ListBuild("Install.EnsureGrant", "Install.EnsureProposalTargetKeys")
+    Quit $ListBuild("Install.EnsureGrant", "Install.EnsureProposalTargetKeys", "Roles.AddAdministrator")
 }
 
 /// <p>Run one step of the plan, answered as <code>{kind, ok, code, text, roles, holdsAdmin}</code>
@@ -40,6 +42,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set $NAMESPACE = "%SYS"
             Set tSC = ##class(Security.Users).AddRoles($Username, .tRoles)
             Set $NAMESPACE = tOrigNS
+        } ElseIf tKind = "Roles.AddAdministrator" {
+            Set $ROLES = $ROLES _ "," _ $Parameter("OcuPilot.Kernel.State.Base", "ADMINRESOURCE")
         } ElseIf tKind = "Install.EnsureProposalTargetKeys" {
             Set tSC = ##class(OcuPilot.Install.Installer).EnsureProposalTargetKeys(.tReports)
             Do tLeg.%Set("report", $Get(tReports(1, "message")), "string")

@@ -15,6 +15,11 @@
 Class OcuPilot.Kernel.State.Sharing Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>): a writer
+/// refuses a caller who neither is the user it names nor holds the administrative resource, and the deletes across users
+/// are an administrator's.</p>
+Parameter OWNERWRITE As %String = "UserName";
+
 /// <p>The user this row's choice is for. Unique, so one user carries at most one row.</p>
 /// <p>The length is <class>Security.Users</class>'s own <code>Name</code> length on this build, so
 /// a name the instance accepts is a name this column holds.</p>
@@ -54,7 +59,8 @@ ClassMethod GuardedForUser(pUserName As %String, Output pFound As %Boolean, Outp
 /// place otherwise.</p>
 ClassMethod GuardedSetForUser(pUserName As %String, pShare As %Boolean) As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUserName)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         Set tSC = ..GuardedOpenOneWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Sharing WHERE UserName = ? ORDER BY ID", pUserName, .tRow)
         If $$$ISERR(tSC) Quit
@@ -63,7 +69,7 @@ ClassMethod GuardedSetForUser(pUserName As %String, pShare As %Boolean) As %Stat
             Set tRow.UserName = pUserName
         }
         Set tRow.Share = ''pShare
-        Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+        Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -72,9 +78,10 @@ ClassMethod GuardedSetForUser(pUserName As %String, pShare As %Boolean) As %Stat
 }
 
 /// <p>Remove every user's row, so the instance default is in force for every user again. For test
-/// set-up and tear-down only.</p>
+/// set-up and tear-down only; an administrator's.</p>
 ClassMethod DeleteAllGuarded() As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Sharing")
 }
 
@@ -93,9 +100,10 @@ ClassMethod GuardedUsers(Output pUsers) As %Status
 }
 
 /// <p>Delete every row of <var>pUserName</var>, matched exactly as <method>GuardedUsers</method>
-/// answered it: the retention sweep's, for an account the instance no longer holds (AD-37).</p>
+/// answered it: the retention sweep's, for an account the instance no longer holds (AD-37). An administrator's.</p>
 ClassMethod GuardedDeleteForUser(pUserName As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Sharing WHERE %EXACT(UserName) = ?", pUserName)
 }
 
