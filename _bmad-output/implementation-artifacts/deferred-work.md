@@ -13325,6 +13325,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Base.GuardedSave/GuardedSaveIfCurrent escalate any object; ProviderPort.cls:187 writes Agent.GuardedClearVerification during a turn, so admin-gating Agent is not a one-line change (21.30 plan, code read)
 - 2026-11-16T06:43:58Z status=decision-pending owner=burndown by=spec_gate note=security: orchestrator/owner to decide scope (sibling of DW-2634)
 - 2026-11-16T12:43:38Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=re-owned to Story 21.33 on owner answer U-82 (A)
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batches 1-3: Agent is ADMINWRITE; ledger proposal turn conversation pref sharing run are OWNERWRITE; tests StoreOwnerWrite TranscriptOwnerWrite PrefOwnerWrite
 
 ### DW-2639: Switch.GuardedRecordWritesMarked admits any caller, so a %Development holder can set the observed marking fact and hide or show the unmarked-writes banner (AD-15)
 - source: spec-21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a.md | severity: low | fix-risk: low | footprint: in-epic
@@ -13421,6 +13422,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
 - 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
+- 2026-11-16T23:19:06Z occurrence=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
@@ -13432,6 +13434,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
 - 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
 - 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+- 2026-11-17T02:02:03Z status=resolved-by:21-34-a-backup-action-leaves-the-web-process-s-null-device-open owner=21-34-a-backup-action-leaves-the-web-process-s-null-device-open by=orchestrator note=BackupPort_null_device_fix_c1a02ae13;feature_run43888708331_green_incl_shard4;duplicate_heading_from_epic21_branch_removed_at_merge
 
 ### DW-2668: A Run's answer counts a skipped test method as failed when the caller holds SQL privileges
 - source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
@@ -13462,11 +13465,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
 - 2026-11-16T15:42:19Z status=decision-pending owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=orchestrator: amend AD-9 open-write list (claim sibling cancel) or rule otherwise
 - 2026-11-16T15:45:12Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=lead note=AD-9's open writes now name the claim's sibling cancel on its own stored target (comply first, U7; orchestrator told); the review bound the claim target to the stored TargetRef
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=claim cancels siblings of its own stored target only; AD-9 names it; TestAClaimCancelsOnlyItsOwnTargetsSiblings
 
 ### DW-2663: Propose.GuardedMint, Ledger.GuardedAppend and GuardedCountOverflow check only the user argument, so a developer can write its own rows onto another user's turn or conversation key: a proposal counts against that turn's guided-workflow write cap (Dispatch via GuardedCountForTurn) and ledger rows consume its per-turn row cap
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Code read (inference, not reproduced): GuardedCountForTurn and the ledger's TurnKey counts have no owner filter; the fix needs the turn's stored owner by TurnKeyIdx, which Batch 2 makes an owner store. Same root as the spec's third deferred: item.
 - 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: check the turn and conversation owner in these writers
+- 2026-11-16T22:43:54Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batch 2: turn and conversation owner checked in Propose.GuardedMint and Ledger writers; TestADeveloperCannotSpendAVictimsTurnCaps
 
 ### DW-2664: Ledger.GuardedPurgeBefore and Propose.GuardedRebuildTargetKeys now need OcuPilotAdmin in the calling process; the retention task's run-as user and an install by a non-%All administrator (EnsureGrant does not change the running process) are not pinned to hold it
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
@@ -13478,3 +13483,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
 - 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
+### DW-2665: An upgrade from a release before the proposal target key (1.0.13 or earlier), run by an account granted OcuPilotAdmin in that same install, would be refused at the target-key step (the grant does not reach the running process); a second install passes (inference, not measured)
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
+- 2026-11-16T16:27:30Z status=decision-pending owner=burndown by=lead note=orchestrator: release-note line or a fix in Batch 2
+- 2026-11-16T16:28:51Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=fix in Batch 1 (orchestrator): run the installer/start-path target-key rebuild under the protected role; measure with a seeded keyless row
+- 2026-11-16T16:38:50Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=Batch 2 (ruling): A's design; AD-9 text at Batch 2's spec gate citing U-82 and DW-2665 (owner veto item); no release cut until Batch 2 is on feature
+- 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batch 2: New ROLES frame in Installer.EnsureProposalTargetKeys, rule 6 admits it; AdminPathWrite
+
+### DW-2666: A non-administrator's Turn.GuardedReserve still runs the cross-user sweep on a retention it controls: a limits class with no RETENTIONSECONDS, or a held copy of another user's ended turn with EndedAt back-dated, deletes that user's unexpired turns with their steps, directive, proposals and signals
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci as a %Development principal without OcuPilotAdmin or %All (code review runs 87, 91): SweepAnyCaller takes the cutoff from the caller's pLimitsClass and EndedAt from GuardedOpenId, which answers the caller's held object. SqlRun's reserve sweep has the same shape (Batch 3).
+- 2026-11-16T21:14:16Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=HIGH, unpatched: the fix edits the reserve sweep U-89 froze; orchestrator ruling
+- 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=instance limits class and SQL-read state for a non-administrator in both reserve sweeps; ReserveSweepWrite 11 tests red-before green-after
+
+### DW-2667: A caller of the reserve stores directly chooses its own caps: SqlRun.GuardedReserve's pMaxRunning is checked against every user's live runs, its kind is free text and its busy check matches the name exactly, and Turn.GuardedReserve takes its own hour limit and window
+- source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: code read 2026-11-16 (inference, not reproduced): a %Development holder reserving with a large pMaxRunning and begun runs can fill BackgroundRun.MaxRunning so other users' reserves answer full; frontmatter deferred item 3 is the turn half
+- 2026-11-16T23:19:06Z status=escalated owner=burndown by=cr note=changing a reserve beyond the DW-2666 ruling needs an orchestrator ruling (U-89)

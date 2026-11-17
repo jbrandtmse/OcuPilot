@@ -706,6 +706,58 @@ class TestEmbeddedPythonRule(FixtureTreeCase):
         self.assertEqual(problems, [])
 
 
+class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
+    """AD-9: `New $ROLES` is refused outside Base and the one test class, except in the install's
+    target-key step, which adds the administrative role it was granted to its own process."""
+
+    INSTALLER = "src/OcuPilot/Install/Installer.cls"
+
+    def installer(self, body: str, method: str = "EnsureProposalTargetKeys", path: str = INSTALLER) -> list[str]:
+        self.write(
+            path,
+            "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
+            f"ClassMethod {method}() As %Status\n{{\n    Set tSC = $$$OK\n{body}\n    Quit tSC\n}}\n\n"
+            "ClassMethod Other() As %Status\n{\n    Quit $$$OK\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_the_target_key_step_is_accepted(self):
+        self.assertEqual(self.installer("    New $ROLES\n    Set $ROLES = $ROLES _ \",OcuPilotAdmin\""), [])
+
+    def test_the_abbreviated_spelling_is_accepted_in_the_same_method(self):
+        self.assertEqual(self.installer("    N $ROLES"), [])
+
+    def test_new_roles_in_another_installer_method_is_refused(self):
+        problems = self.installer("    New $ROLES", method="EnsureGrant")
+        self.assertTrue(any("Installer.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_add_roles_in_the_target_key_step_is_refused(self):
+        problems = self.installer("    Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "AddRoles is refused in the target-key step as it is everywhere else")
+
+    def test_a_line_carrying_both_tokens_in_the_target_key_step_is_refused(self):
+        problems = self.installer("    New $ROLES Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "a line that also escalates through AddRoles is refused")
+
+    def test_new_roles_in_a_same_named_method_of_another_file_is_refused(self):
+        problems = self.installer("    New $ROLES", path="src/OcuPilot/Kernel/Other.cls")
+        self.assertTrue(any("Other.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_new_roles_in_a_method_after_the_target_key_step_is_refused(self):
+        self.write(
+            self.INSTALLER,
+            "Class OcuPilot.Install.Installer Extends %RegisteredObject\n{\n\n"
+            "ClassMethod EnsureProposalTargetKeys() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
+            "ClassMethod Other() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        self.assertEqual(len(problems), 1, f"expected the later method alone refused, got {problems}")
+        self.assertIn("Installer.cls:12:", problems[0])
+
+
 class TestHandlerWireTestRule(FixtureTreeCase):
     """Consistency Conventions: "every handler gets an HTTP integration test asserting status,
     content type and body shape" -- a rule in a document until Story 1.17, and a route added with

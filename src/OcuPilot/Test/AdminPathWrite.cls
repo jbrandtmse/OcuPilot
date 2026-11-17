@@ -36,6 +36,12 @@ Parameter INSTALLERUSER = "OcuPilotAdminPathInstaller";
 
 Parameter INSTALLERROLE = "OcuPilotAdminPathInstallerRole";
 
+/// <p>Holds <code>%Development:USE</code> and the install namespace's databases read and write, and
+/// no <code>OcuPilotAdmin</code> and no write on the system database.</p>
+Parameter DEVUSER = "OcuPilotAdminPathDev";
+
+Parameter DEVROLE = "OcuPilotAdminPathDevRole";
+
 /// <p>The owner of every ledger row the class seeds; no account has this name.</p>
 Parameter PROBEUSER = "OcuPilotProbeAdminPath";
 
@@ -76,6 +82,13 @@ Method OnAfterAllTests() As %Status
     Quit ##class(OcuPilot.Test.AdminStateWrite).RemovePrincipals(..Cases(), "OcuPilot.Test.AdminPathWrite")
 }
 
+/// <p>Recreate the principals: an earlier test's grant to the installer stays with the account, and a
+/// test of the grant starts from an account that does not hold the role.</p>
+Method OnBeforeOneTest() As %Status
+{
+    Quit ..EnsurePrincipals(..PreparedPassword)
+}
+
 Method OnAfterOneTest() As %Status
 {
     Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = ?", ..#PROBEUSER)
@@ -88,7 +101,7 @@ Method OnAfterOneTest() As %Status
 /// <p>The principals, as <code>$ListBuild(user, role, grants)</code>.</p>
 ClassMethod Cases() As %List
 {
-    Quit $ListBuild($ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U"), $ListBuild(..#INSTALLERUSER, ..#INSTALLERROLE, "%Admin_Secure:U,%DB_IRISSYS:RW"))
+    Quit $ListBuild($ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U"), $ListBuild(..#INSTALLERUSER, ..#INSTALLERROLE, "%Admin_Secure:U,%DB_IRISSYS:RW"), $ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U"))
 }
 
 /// <p>Create each role of <method>Cases</method> with the install namespace's databases read and
@@ -261,9 +274,10 @@ Method TestAnAdministratorWithoutAllKeysProposalsAndPurgesTheLedger()
 /// <p>A first install by an account that does not hold <code>%All</code>: the install grants it
 /// <code>OcuPilotAdmin</code>, which leaves its running process without the role, and then runs the
 /// target-key step, which passes because no stored proposal lacks its key, as on a new install.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method>
-/// checks the administrator before it reads -> the step is refused <code>822</code> and this goes
-/// red alone.</p>
+/// <p>Mutation (Rule 19): the frame removed from <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method>
+/// and <method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method> made to check the
+/// administrator before it reads -> the step is refused <code>822</code> and this goes red, with the
+/// upgrade test and the developer's empty-store leg.</p>
 Method TestAFirstInstallWithoutAllPassesTheTargetKeyStep()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged), "every stored proposal is given its key first")
@@ -275,6 +289,51 @@ Method TestAFirstInstallWithoutAllPassesTheTargetKeyStep()
     Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("holdsAdmin"), 1: ""), 0, "and leaves the running process without the role")
     Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#INSTALLERUSER, "OcuPilotAdmin", "USE"), 1, "while the account now holds it")
     Do $$$AssertEquals(..LegText(tRun, 2), "Install.EnsureProposalTargetKeys ok=1 code=", "the target-key step passes")
+}
+
+/// <p>An upgrade from a release whose proposals carry no target key, by an account that does not hold
+/// <code>%All</code> and is granted <code>OcuPilotAdmin</code> in the same install: the grant does not reach
+/// the running process, and the target-key step gives the keyless proposal its key all the same, because the
+/// step adds the role to its own process around the one call. The role is gone when the step returns.</p>
+/// <p>Mutation (Rule 19): the <code>New $ROLES</code> frame and its <code>Set $ROLES</code> removed from
+/// <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method> -> the step is refused
+/// <code>822</code>, the proposal keeps no key, and this goes red alone.</p>
+Method TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals()
+{
+    Set tKey = ..SeedKeyless()
+    If tKey = "" Quit
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#INSTALLERUSER, [{"kind": "Install.EnsureGrant"}, {"kind": "Install.EnsureProposalTargetKeys"}], ..#PROBE)
+    Do $$$AssertEquals(tRun.%Get("username") _ "|" _ tRun.%Get("holdsAdmin") _ "|" _ (tRun.%Get("roles") [ "%All"), ..#INSTALLERUSER _ "|0|0", "the child runs as the installer, without OcuPilotAdmin or %All")
+    Do $$$AssertEquals(..LegText(tRun, 1), "Install.EnsureGrant ok=1 code=", "the grant is made")
+    Do $$$AssertEquals(..LegText(tRun, 2), "Install.EnsureProposalTargetKeys ok=1 code=", "the target-key step passes")
+    Do $$$AssertTrue(..TargetKey(tKey) '= "", "the keyless proposal has its key")
+    Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 2)
+    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("holdsAdmin"), 1: ""), 0, "and the process is without the role again when the step returns")
+}
+
+/// <p>A developer -- <code>%Development:USE</code> and the install namespace's databases, no write on the
+/// system database -- calls the public target-key step over a keyless proposal. IRIS refuses its own
+/// addition of the administrative role to its process with <code>&lt;PROTECT&gt;</code>, so the step runs as
+/// the developer, the store answers <code>822</code>, and the proposal keeps no key. On a store with no
+/// keyless proposal the same call is accepted.</p>
+/// <p>Mutation (Rule 19): <code>Propose.GuardedRebuildTargetKeys</code> drops its administrator check ->
+/// the step is accepted, the proposal is keyed, and this goes red alone. The same method made to check
+/// the administrator before it reads -> the empty-store leg goes red, with the install test above.</p>
+Method TestADeveloperCallingTheTargetKeyStepIsRefused()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged), "every stored proposal is given its key first")
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Install.EnsureProposalTargetKeys"}], ..#PROBE)
+    Do $$$AssertEquals(..LegText(tRun, 1), "Install.EnsureProposalTargetKeys ok=1 code=", "a developer's call over a store with nothing to key is accepted")
+    Set tKey = ..SeedKeyless()
+    If tKey = "" Quit
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Roles.AddAdministrator"}, {"kind": "Install.EnsureProposalTargetKeys"}], ..#PROBE)
+    Do $$$AssertEquals(tRun.%Get("username") _ "|" _ tRun.%Get("holdsAdmin") _ "|" _ (tRun.%Get("roles") [ "%All"), ..#DEVUSER _ "|0|0", "the child runs as the developer, without OcuPilotAdmin or %All")
+    Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1)
+    Do $$$AssertTrue($IsObject(tLeg) && 'tLeg.%Get("ok") && (tLeg.%Get("text") [ "PROTECT"), "IRIS refuses the developer's own addition of the role with <PROTECT>: " _ ..LegText(tRun, 1))
+    Do $$$AssertEquals(..LegText(tRun, 2) _ "|" _ ..TargetKey(tKey), "Install.EnsureProposalTargetKeys ok=0 code=822 " _ ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 2).%Get("text") _ "|", "the step is refused 822 and the proposal keeps no key")
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#INSTALLERUSER, [{"kind": "Roles.AddAdministrator"}], ..#PROBE)
+    Do $$$AssertEquals(..LegText(tRun, 1), "Roles.AddAdministrator ok=1 code=", "while an account that can write the system database is admitted the same addition")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("holdsAdmin"), 1, "and holds the administrative role after it")
 }
 
 }

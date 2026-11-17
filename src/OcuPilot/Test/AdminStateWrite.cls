@@ -627,6 +627,30 @@ ClassMethod LegText(pRun As %DynamicObject, pIndex As %Integer) As %String
     Quit tText
 }
 
+/// <p>The step <var>pIndex</var> of <var>pRun</var> as <method>Detail</method> gives the first.</p>
+ClassMethod DetailOf(pRun As %DynamicObject, pIndex As %Integer) As %String
+{
+    Set tLeg = ..Leg(pRun, pIndex)
+    Quit ..LegText(pRun, pIndex) _ $Select($IsObject(tLeg) && (tLeg.%Get("text") '= ""): " " _ tLeg.%Get("text"), 1: "")
+}
+
+/// <p>The first step of <var>pRun</var> as <method>OcuPilot.Test.AdminStateWrite.LegText</method> gives
+/// it, with the status text it carries.</p>
+ClassMethod Detail(pRun As %DynamicObject) As %String
+{
+    Quit ..DetailOf(pRun, 1)
+}
+
+/// <p>The kinds of the steps of the plan <var>pPlan</var>, as a list.</p>
+ClassMethod KindsOf(pPlan As %DynamicArray) As %List
+{
+    Set tKinds = ""
+    For tI = 0:1:pPlan.%Size() - 1 {
+        Set tKinds = tKinds _ $ListBuild(pPlan.%Get(tI).%Get("kind"))
+    }
+    Quit tKinds
+}
+
 /// <p>The principals this class creates, as <method>EnsurePrincipals</method> takes them: each is
 /// <code>$ListBuild(user, role, grants, holdsAdministrator)</code>. <parameter>DEVROLE</parameter>
 /// holds the install namespace's code and data read and <code>%Development:USE</code>;

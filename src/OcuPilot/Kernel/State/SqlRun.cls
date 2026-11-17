@@ -19,9 +19,21 @@
 /// are counted and the row inserted while it is held.</p>
 /// <p><b>A <code>failed</code> row with no answer is a lost run.</b> The caller names its code: this
 /// package does not name the API's vocabulary (AD-9's re-entry rule). The limits are read from the
-/// class name the caller passes, <class>OcuPilot.Kernel.Agent.Limits</class> in production.</p>
+/// class name the caller passes, <class>OcuPilot.Kernel.Agent.Limits</class> in production; a caller
+/// who does not hold the administrative resource is read the instance's own
+/// (<parameter>LIMITSSOURCE</parameter>).</p>
+/// <p><b>A store of one user's records</b> (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>): a writer
+/// refuses a caller who neither owns the run nor holds the administrative resource, and the sweep and the purge of
+/// other users' rows are an administrator's. <method>GuardedReserve</method>'s own sweep of expired runs stays open,
+/// because a product path makes it on every user's behalf.</p>
 Class OcuPilot.Kernel.State.SqlRun Extends OcuPilot.Kernel.State.Base
 {
+
+Parameter OWNERWRITE As %String = "UserName";
+
+/// <p>The <class>OcuPilot.Kernel.InstanceLimits</class> method that names the limits class the instance's own rule
+/// reads; see <method>OcuPilot.Kernel.State.Base.InstanceLimitsClass</method>.</p>
+Parameter LIMITSSOURCE As %String = "ForRuns";
 
 Parameter STATEQUEUED = "queued";
 
@@ -106,8 +118,10 @@ ClassMethod IsTerminal(pState As %String) As %Boolean
 /// one remains; <var>pFull</var> is 1 when the live rows of every kind number <var>pMaxRunning</var>
 /// or more; otherwise the user's ended rows of that kind are deleted and the row inserted. Neither
 /// refusal inserts anything. The section is released before the
-/// expired rows are swept (<method>GuardedSweep</method>), whether or not a row was inserted; the
-/// sweep's status is <var>pSweepStatus</var>, and it never fails the reserve.</p>
+/// expired rows are swept (<method>SweepAnyCaller</method>), whether or not a row was inserted; the
+/// sweep's status is <var>pSweepStatus</var>, and it never fails the reserve. A caller who neither is
+/// <var>pUser</var> nor holds the administrative resource is refused; a caller who does not hold it reconciles and
+/// sweeps by the instance's own limits (<parameter>LIMITSSOURCE</parameter>), not <var>pLimitsClass</var>.</p>
 /// <p>A reserve section another process holds past <parameter>CAPLOCKTIMEOUT</parameter> seconds is
 /// an error status, with nothing inserted.</p>
 ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning As %Integer, pLimitsClass As %String, Output pKey As %String, Output pBusyKey As %String, Output pFull As %Boolean, Output pSweepStatus As %Status, pKind As %String = "sql") As %Status
@@ -116,6 +130,9 @@ ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning 
     Set pBusyKey = ""
     Set pFull = 0
     Set pSweepStatus = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tLimits = ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE)
     Set tSC = ..GuardedSqlRunLock(..#RESERVEKEY, ..#CAPLOCKTIMEOUT, .tHeld)
     If $$$ISERR(tSC) Quit tSC
     If 'tHeld Quit $$$ERROR($$$GeneralError, "the background run reserve section stayed held")
@@ -124,7 +141,7 @@ ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning 
         If $$$ISERR(tSC) Quit
         Set tLive = 0
         For tI = 1:1:+$Get(tIds) {
-            Set tSC = ..Reconcile(tIds(tI), pLimitsClass, .tState, .tOwner, .tRunKey, .tKind)
+            Set tSC = ..Reconcile(tIds(tI), tLimits, .tState, .tOwner, .tRunKey, .tKind)
             If $$$ISERR(tSC) Quit
             If '..IsTerminal(tState) && (tState '= "") {
                 Set tLive = tLive + 1
@@ -149,14 +166,14 @@ ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning 
         Set tRow.Namespace = pNamespace
         Set tRow.State = ..#STATEQUEUED
         Set tRow.QueuedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
+        Set tSC = ..GuardedSaveOwned(tRow, 0)
         If $$$ISOK(tSC) Set pKey = tRow.RunKey
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Do ..GuardedSqlRunUnlock(..#RESERVEKEY)
-    Set pSweepStatus = ..GuardedSweep(pLimitsClass)
+    Set pSweepStatus = ..SweepAnyCaller(pLimitsClass)
     Quit tSC
 }
 
@@ -169,6 +186,10 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, Output pBegun As %Bo
 {
     Set pBegun = 0
     Set pCancel = 0
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..KeyOwnerRefused("RunKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedSqlRunLock(pKey, 0, .tHeld)
     If $$$ISERR(tSC) || 'tHeld Quit tSC
     Try {
@@ -181,7 +202,7 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, Output pBegun As %Bo
             Set tRow.StartedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
             Set tRow.JobId = $Job
             Set tCancel = ''tRow.CancelRequested
-            Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+            Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
             If ..IsStaleSave(tSC) {
                 Set tSC = $$$OK
                 Continue
@@ -208,7 +229,11 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, Output pBegun As %Bo
 /// path.</p>
 ClassMethod GuardedFinish(pKey As %String, pState As %String, pAnswerJson As %String = "") As %Status
 {
-    Set tSC = $$$OK
+    Set tSC = ..KeyOwnerRefused("RunKeyIdxExists", pKey)
+    If $$$ISERR(tSC) {
+        Do ..GuardedSqlRunUnlock(pKey)
+        Quit tSC
+    }
     Try {
         For tTry = 1:1:..#WRITETRIES {
             Set tRow = ""
@@ -223,7 +248,7 @@ ClassMethod GuardedFinish(pKey As %String, pState As %String, pAnswerJson As %St
                 If $$$ISERR(tSC) Quit
             }
             Set tRow.EndedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-            Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+            Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
             If ..IsStaleSave(tSC) {
                 Set tSC = $$$OK
                 Continue
@@ -251,7 +276,8 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
     Set pJobId = ""
     Set pLive = 0
     Set tState = ""
-    Set tSC = $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Try {
         For tTry = 1:1:..#WRITETRIES {
             Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
@@ -264,7 +290,7 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
             Set pJobId = ..Text(tRow.JobId)
             If ..IsTerminal(tState) || tRow.CancelRequested Quit
             Set tRow.CancelRequested = 1
-            Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+            Set tSC = ..GuardedSaveOwned(tRow, +tRow.RowVersion)
             If ..IsStaleSave(tSC) {
                 Set tSC = $$$OK
                 Continue
@@ -290,16 +316,19 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
 /// <code>{id, status, startedAt, endedAt, cancelRequested, result?, refusal?}</code>:
 /// <code>status</code> is <code>running</code> for a queued or running row, else the row's state;
 /// <code>result</code> is an ended run's stored answer, and <code>refusal</code> a failed run's stored
-/// envelope, each present only when one is stored.</p>
+/// envelope, each present only when one is stored. The lost run is ended only for a caller who is
+/// <var>pUser</var> or holds the administrative resource.</p>
 ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass As %String, Output pFound As %Boolean, Output pView As %DynamicObject, pKind As %String = "sql") As %Status
 {
     Set pFound = 0
     Set pView = ""
     Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
     If $$$ISERR(tSC) || (tId = "") Quit tSC
-    Set tSC = ..Reconcile(tId, pLimitsClass, .tState, .tOwner, .tRunKey)
-    If $$$ISERR(tSC) Quit tSC
-    If tState = "" Quit $$$OK
+    If ..CallerOwns(pUser) || ..CallerIsAdministrator() {
+        Set tSC = ..Reconcile(tId, ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE), .tState, .tOwner, .tRunKey)
+        If $$$ISERR(tSC) Quit tSC
+        If tState = "" Quit $$$OK
+    }
     Set tSC = ..GuardedOpenId(tId, .tRow)
     If $$$ISERR(tSC) Quit tSC
     Set tView = {}
@@ -337,36 +366,49 @@ ClassMethod GuardedCancelRequested(pKey As %String, Output pRequested As %Boolea
 
 /// <p>Delete every terminal run that ended more than the retention seconds of <var>pLimitsClass</var>
 /// before <var>pNowSeconds</var> (<method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units, now
-/// when empty), after ending every lost run (<method>Reconcile</method>, against the real clock).</p>
+/// when empty), after ending every lost run (<method>Reconcile</method>, against the real clock). An
+/// administrator's: the retention task runs it.</p>
 ClassMethod GuardedSweep(pLimitsClass As %String, pNowSeconds As %String = "") As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
+    Quit ..SweepAnyCaller(pLimitsClass, pNowSeconds)
+}
+
+/// <p><method>GuardedSweep</method> without the caller check: the sweep <method>GuardedReserve</method> makes, by
+/// the instance's own rule. A caller who does not hold the administrative resource sweeps and reconciles by the
+/// limits of the instance's own limits class (<parameter>LIMITSSOURCE</parameter>), whatever limits class it passed.
+/// Each run's end time is read from storage by one statement, never from an opened row a caller may hold, and the delete
+/// repeats the state and the end time.</p>
+ClassMethod SweepAnyCaller(pLimitsClass As %String, pNowSeconds As %String = "") As %Status [ Private ]
+{
+    Set tLimits = ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE)
     Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE State IN ('queued', 'running') ORDER BY ID", .tLive)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tLive) {
-        Set tSC = ..Reconcile(tLive(tI), pLimitsClass, .tState, .tOwner, .tRunKey)
+        Set tSC = ..Reconcile(tLive(tI), tLimits, .tState, .tOwner, .tRunKey)
         If $$$ISERR(tSC) Quit
     }
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE State IN ('ended', 'canceled', 'failed') ORDER BY ID", .tIds)
+    Set tSC = ..GuardedRowsNoParam("SELECT ID, EndedAt FROM OcuPilot_Kernel_State.SqlRun WHERE State IN ('ended', 'canceled', 'failed') ORDER BY ID", .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set tNow = $Select(pNowSeconds = "": ##class(OcuPilot.Kernel.State.Turn).NowSeconds(), 1: +pNowSeconds)
-    Set tCutoff = tNow - $Parameter(pLimitsClass, "RETENTIONSECONDS")
-    For tI = 1:1:+$Get(tIds) {
-        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
-        If $$$ISERR(tOpenSC) Continue
-        Set tEnded = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(..Text(tRow.EndedAt))
-        Set tRow = ""
+    Set tCutoff = tNow - $Parameter(tLimits, "RETENTIONSECONDS")
+    For tI = 1:1:tRows {
+        Set tEndedAt = ..Text(tRows(tI, 2))
+        Set tEnded = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(tEndedAt)
         If (tEnded = "") || (tEnded >= tCutoff) Continue
-        Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE ID = ?", tIds(tI))
+        Set tParams = [].%Push(tRows(tI, 1)).%Push(tEndedAt)
+        Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE ID = ? AND State IN ('ended', 'canceled', 'failed') AND %EXACT(EndedAt) = ?", .tParams, .tCount)
         If $$$ISERR(tSC) Quit
     }
     Quit tSC
 }
 
 /// <p>Delete every terminal run of <var>pUser</var>, matched exactly; a live run is left. For tests
-/// and fixtures, which leave no run row behind them.</p>
+/// and fixtures, which leave no run row behind them. An administrator's.</p>
 ClassMethod GuardedForgetUser(pUser As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ? AND State IN ('ended', 'canceled', 'failed')", pUser)
 }
 
@@ -378,43 +420,37 @@ ClassMethod GuardedForgetUser(pUser As %String) As %Status
 /// <var>pRunKey</var> are the row's state, owner and key as this call leaves them; <var>pState</var> is
 /// <code>""</code> when the row is gone. <var>pKind</var> is the row's kind, <parameter>KINDSQL</parameter>
 /// for a row that stores none.</p>
+/// <p>The row is read from storage and ended by one conditional <code>UPDATE</code> that writes the state, the end
+/// time and the version and nothing else, so an object a caller holds decides nothing. <var>pLimitsClass</var> is the
+/// one the caller of this private method settled (<method>SweepAnyCaller</method>, <method>GuardedReserve</method>).</p>
 ClassMethod Reconcile(pId As %String, pLimitsClass As %String, Output pState As %String, Output pOwner As %String, Output pRunKey As %String, Output pKind As %String) As %Status [ Private ]
 {
     Set (pState, pOwner, pRunKey, pKind) = ""
-    Set tRow = ""
-    Set tSC = ..GuardedOpenId(pId, .tRow)
-    If $$$ISERR(tSC) || '$IsObject(tRow) Quit $$$OK
-    Set pState = tRow.State
-    Set pOwner = tRow.UserName
-    Set pRunKey = tRow.RunKey
-    Set pKind = $Select(..Text(tRow.Kind) = "": ..#KINDSQL, 1: tRow.Kind)
+    Set tSC = ..GuardedRowsWhere("SELECT State, UserName, RunKey, Kind, QueuedAt, CancelRequested, RowVersion FROM OcuPilot_Kernel_State.SqlRun WHERE ID = ?", pId, .tRows)
+    If $$$ISERR(tSC) || 'tRows Quit $$$OK
+    Set pState = tRows(1, 1)
+    Set pOwner = tRows(1, 2)
+    Set pRunKey = tRows(1, 3)
+    Set pKind = $Select(..Text(tRows(1, 4)) = "": ..#KINDSQL, 1: tRows(1, 4))
     Set tSuspect = (pState = ..#STATERUNNING)
     If pState = ..#STATEQUEUED {
-        Set tQueued = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(..Text(tRow.QueuedAt))
+        Set tQueued = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(..Text(tRows(1, 5)))
         Set tSuspect = (tQueued = "") || ((##class(OcuPilot.Kernel.State.Turn).NowSeconds() - tQueued) > +$Parameter(pLimitsClass, "QUEUEDSECONDS"))
     }
-    If 'tSuspect {
-        Set tRow = ""
-        Quit $$$OK
-    }
+    If 'tSuspect Quit $$$OK
     Set tSC = ..LockHeld(pRunKey, .tHeld)
-    If $$$ISERR(tSC) || tHeld {
-        Set tRow = ""
-        Quit tSC
-    }
-    Set tEnded = $Select(tRow.CancelRequested: ..#STATECANCELED, 1: ..#STATEFAILED)
-    Set tRow.State = tEnded
-    Set tRow.EndedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
-    Set tRow = ""
-    If ..IsStaleSave(tSC) {
-        Set tSC = ..GuardedOpenId(pId, .tRow)
-        If $$$ISOK(tSC) && $IsObject(tRow) Set pState = tRow.State
-        Set tRow = ""
+    If $$$ISERR(tSC) || tHeld Quit tSC
+    Set tEnded = $Select(+tRows(1, 6): ..#STATECANCELED, 1: ..#STATEFAILED)
+    Set tParams = [].%Push(tEnded).%Push(##class(OcuPilot.Kernel.State.Turn).Timestamp()).%Push(pId).%Push(pState).%Push(+tRows(1, 7))
+    Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.SqlRun SET State = ?, EndedAt = ?, RowVersion = COALESCE(RowVersion, 0) + 1 WHERE ID = ? AND State = ? AND COALESCE(RowVersion, 0) = ?", .tParams, .tCount)
+    If $$$ISERR(tSC) Quit tSC
+    If tCount {
+        Set pState = tEnded
         Quit $$$OK
     }
-    If $$$ISOK(tSC) Set pState = tEnded
-    Quit tSC
+    Set tSC = ..GuardedIdsWhere("SELECT State FROM OcuPilot_Kernel_State.SqlRun WHERE ID = ?", pId, .tNow)
+    If $$$ISOK(tSC) Set pState = $Get(tNow(1))
+    Quit $$$OK
 }
 
 /// <p>Whether a process holds run <var>pKey</var>'s lock, asked by taking it without waiting and

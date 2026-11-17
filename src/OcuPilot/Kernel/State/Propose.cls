@@ -21,9 +21,9 @@ Class OcuPilot.Kernel.State.Propose Extends OcuPilot.Kernel.State.Base [ SqlTabl
 
 /// <p>A store of one user's records (<parameter>OcuPilot.Kernel.State.Base.OWNERWRITE</parameter>):
 /// a writer refuses a caller who neither owns the row nor holds the administrative resource, and the
-/// writes across users are an administrator's, except the expiry of lapsed rows a close makes, the
-/// sibling cancel a claim makes (<method>GuardedClaimAndClose</method>), and, until the turn store is
-/// gated, <method>GuardedDeleteForTurn</method>.</p>
+/// writes across users are an administrator's, except the expiry of lapsed rows a close makes and the
+/// sibling cancel a claim makes (<method>GuardedClaimAndClose</method>). A proposal minted on a turn or
+/// conversation another user owns is refused.</p>
 Parameter OWNERWRITE As %String = "UserName";
 
 /// <p>A proposal awaiting the user's decision: the only state a claim admits.</p>
@@ -286,6 +286,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
     Set pToken = ""
     Set pExpiresAt = ""
     Set tSC = ..OwnerWriteRefused($ClassName(), $Get(pValues("user")))
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Turn", "TurnKeyIdxExists", $Get(pValues("turnKey")))
+    If $$$ISOK(tSC) Set tSC = ..NamedOwnerRefused("OcuPilot.Kernel.State.Convo", "ConvKeyIdxExists", $Get(pValues("convKey")))
     If $$$ISERR(tSC) Quit tSC
     Try {
         If $Length($Get(pValues("targetRef"))) > ..#TARGETREFMAX {
@@ -856,11 +858,11 @@ ClassMethod GuardedCountForTurn(pTurnKey As %String, Output pCount As %Integer) 
 }
 
 /// <p>Delete every proposal of turn <var>pTurnKey</var>. A proposal outlives its turn's job by
-/// construction (AD-6); this runs when the turn row itself is deleted
-/// (<method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>, which a turn reserve's sweep of expired
-/// turns reaches for every caller). Open to every caller until the turn store is gated.</p>
+/// construction (AD-6); the turn's own delete removes them with the turn row
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>). An administrator's.</p>
 ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey)
 }
 

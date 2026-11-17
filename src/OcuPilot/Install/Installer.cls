@@ -1815,10 +1815,24 @@ ClassMethod ReadApplicationProvenance(pProfile As %String, ByRef pNames, Output 
 /// <method>EnsureGrant</method> already carries:
 /// <class>OcuPilot.Test.ProposalTargetKey</class> drives it directly. Runs in the install
 /// namespace, where <class>OcuPilot.Kernel.State.Propose</class> is compiled.</p>
+/// <p><b>The one <code>New $ROLES</code> outside <class>OcuPilot.Kernel.State.Base</class> (AD-9).</b>
+/// The grant <method>EnsureGrant</method> makes does not reach the running process, and the rebuild writes
+/// other users' proposal rows, which the store gives an administrator only. The step therefore adds the
+/// administrative role to its own process around the one call, and the frame unwinds when the method
+/// returns. IRIS admits the addition only to a process that can write the system database; a process that
+/// cannot runs the step as it is, and the store's own gate decides.</p>
 ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
 {
     Set tSC = $$$OK
+    New $ROLES
     Try {
+        If '##class(OcuPilot.Kernel.State.Base).CallerIsAdministrator() {
+            Try {
+                Set $ROLES = $ROLES _ "," _ ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE
+            } Catch exAdd {
+                Set tUnescalated = 1
+            }
+        }
         Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged)
         If $$$ISERR(tSC) Quit
         If tChanged {
