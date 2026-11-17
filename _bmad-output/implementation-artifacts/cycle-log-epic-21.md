@@ -431,3 +431,7 @@
 2026-11-17T01:50:08Z	Story 21.33	code_head_pushed	sha=570a6d212 run=43998524036 missing=none carries=627c176c4(feature_ebb3e85d8)
 2026-11-17T01:50:47Z	Story 21.35	ad_amended	ad=AD-9 via=U7(comply_first) basis=owner_U-90+spec_gate_validation dw=DW-2651,DW-2652
 2026-11-17T01:50:48Z	Story 21.35	stage_spawned	stage=implement scope=batch1 spawn_at=2026-11-17T01:50:48Z model=sonnet agent_name=21-35-implement-b1 story_base=133a359ef
+2026-11-17T01:54:09Z	Story 21.35	ruling	question=AD-9_text_U7 choice=confirmed via=orchestrator(U-90_A,U-97_keep) note=21.33_merge_ff_or_staging_by_orchestrator
+2026-11-17T02:35:13Z	Story 21.33	ci_green_verified	sha=570a6d212 run=43998524036 result=success missing=none
+2026-11-17T03:04:35Z	Epic 21	feature_merged	story=21.33 feature=8c58f5edf staging_of=570a6d212+230e91291 run=44000514418 note=DW-2650_duplicate_removed_on_feature;integrate_at_21.35_batch_boundary_take_feature_ledger_block
+2026-11-17T03:16:19Z	Story 21.35	dev_complete	scope=batch1 build_sha=1472e282d task0=23_install_writes+uninstall_steer+7_access_writes_landed audit_once=pinned rule6=AsAdministrator_only product_q=failed_first_install_version_row(non-%All,pre-EnsureAdminRole)
