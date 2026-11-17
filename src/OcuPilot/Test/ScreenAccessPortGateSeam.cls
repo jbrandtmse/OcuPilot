@@ -23,7 +23,7 @@ ClassMethod ResourceDefined(pName As %String) As %Boolean
         Set tPair = $Get(^||OcuPilotAccessRace("pair"))
         Kill ^||OcuPilotAccessRace
         Set tSC = ##class(OcuPilot.Kernel.State.Access).GuardedGet(tScreen, .tPairs, .tVersion, .tFound)
-        If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Kernel.State.Access).GuardedPut(tScreen, $Select(tFound: tPairs _ ",", 1: "") _ tPair, tVersion, "race")
+        If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Kernel.State.Access).GuardedPut(tScreen, $Select(tFound: tPairs _ ",", 1: "") _ tPair, tVersion, $Username)
         Set ^||OcuPilotAccessRace("stored") = $$$ISOK(tSC)
     }
     Quit ##super(pName)

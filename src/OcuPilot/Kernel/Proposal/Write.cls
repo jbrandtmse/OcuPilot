@@ -134,6 +134,10 @@ ClassMethod Claim(pProposalId As %String, pToken As %String, pUser As %String, O
             Quit
         }
         Set tSC = $ClassMethod(..StoreClass(), "GuardedByToken", pToken, .tFound, .tValues)
+        If ..IsRefusedRead(tSC) {
+            Set tSC = ..Refuse(..#NOTYOURS, .pCode)
+            Quit
+        }
         If $$$ISERR(tSC) Quit
         If 'tFound || (tValues("proposalId") '= pProposalId) {
             Set tSC = ..Refuse(..#UNKNOWN, .pCode)
@@ -189,6 +193,10 @@ ClassMethod ClaimById(pProposalId As %String, pUser As %String, Output pProposal
             Quit
         }
         Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
+        If ..IsRefusedRead(tSC) {
+            Set tSC = ..Refuse(..#NOTYOURS, .pCode)
+            Quit
+        }
         If $$$ISERR(tSC) Quit
         If 'tFound {
             Set tSC = ..Refuse(..#UNKNOWN, .pCode)
@@ -221,6 +229,15 @@ ClassMethod IsAbnormal(pState As %String) As %Boolean
 {
     If pState = "" Quit 0
     Quit $ListFind($ListFromString(..#ABNORMALSTATES), pState) > 0
+}
+
+/// <p>Whether <var>pStatus</var> is a store's refusal of a read of a row the caller does not own
+/// (<code>$$$AccessDenied</code>, vendor <code>ERROR #822</code>), such as a proposal or a conversation. A caller that
+/// maps it answers the non-owner the refusal it always did and reads nothing of the row.</p>
+ClassMethod IsRefusedRead(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.Equals(pStatus, $$$ERRORCODE($$$AccessDenied))
 }
 
 /// <p>The refusal <var>pCode</var> as a status, with the code in <var>pCode</var> for a caller

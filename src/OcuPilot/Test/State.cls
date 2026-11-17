@@ -252,7 +252,7 @@ ClassMethod AttemptGuardedAccess(pUsername As %String, Output pSetSC As %Status,
     Try {
         Do $SYSTEM.Security.Login(pUsername)
         Set pWhoAmI = $Username
-        Set pSetSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeSet("escalationProbe", "written-through-the-escalated-path")
+        Set pSetSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeSet("escalationProbe", "written-by-the-denied-user")
         Set pGetSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeGet("escalationProbe", .pValue)
     } Catch ex {
         Set pSetSC = ex.AsStatus()
@@ -597,10 +597,12 @@ Method TestResolveGrantedUserRendersDeletedAccountAsNoLongerPresent()
 /// <p>AD-9 / AC5 -- <b>the escalation itself is what grants access, and this is the one
 /// assertion in the suite that can prove it.</b> The denied user of AC4, whose direct
 /// read and write of <code>^OcuPilotKernelStateProbe</code> both raise
-/// <code>&lt;PROTECT&gt;</code>, reaches the same global successfully <i>through</i>
-/// <class>OcuPilot.Kernel.State.Base</class>'s guarded methods -- so the privileged
+/// <code>&lt;PROTECT&gt;</code>, reads the same global successfully <i>through</i>
+/// <class>OcuPilot.Kernel.State.Base</class>'s guarded read -- so the privileged
 /// routine application, not the caller's own roles, is demonstrably what opens
-/// <code>%DB_OCUPILOT</code>.</p>
+/// <code>%DB_OCUPILOT</code>. Its guarded write is refused <code>822</code>, because
+/// <method>OcuPilot.Kernel.State.Base.GuardedProbeSet</method> serves an administrator only, so the
+/// suite writes the value the denied user reads.</p>
 /// <p><b>Why the other escalated-success assertions in this class cannot do this job.</b>
 /// The suite's own connection authenticates as <code>_SYSTEM</code>, which holds
 /// <code>%All</code> (verified: <code>$ROLES</code> reads
@@ -621,13 +623,15 @@ Method TestEscalationIsWhatGrantsTheDeniedUserAccess()
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
 
     Do ..AttemptGlobalAccess(..#DENIALUSER, .tGetCode, .tSetCode)
-    Do $$$AssertEquals(tSetCode, 202, "the control: the same user's DIRECT write of an ^OcuPilot global raises <PROTECT> (code 202)")
+    Do $$$AssertEquals(tGetCode _ "|" _ tSetCode, "202|202", "the control: the same user's DIRECT read and write of an ^OcuPilot global raise <PROTECT> (code 202)")
 
+    Set tSeed = "seeded-by-the-suite-" _ $ZTimeStamp
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Base).GuardedProbeSet("escalationProbe", tSeed), "the suite, an administrator, writes the node through the guarded write")
     Do ..AttemptGuardedAccess(..#DENIALUSER, .tSetSC, .tGetSC, .tValue, .tWhoAmI)
     Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect -- the guarded calls below ran as the denied user, not as the suite's own %All identity")
-    Do $$$AssertStatusOK(tSetSC, "the same denied user's GUARDED write succeeds -- the escalation, not the caller's roles, is what grants access")
-    Do $$$AssertStatusOK(tGetSC, "the same denied user's GUARDED read succeeds")
-    Do $$$AssertEquals(tValue, "written-through-the-escalated-path", "the guarded read sees exactly what the guarded write stored")
+    Do $$$AssertEquals($Piece($System.Status.GetErrorCodes(tSetSC), ",", 1), 822, "the same denied user's GUARDED write is refused 822: it does not hold OcuPilotAdmin")
+    Do $$$AssertStatusOK(tGetSC, "the same denied user's GUARDED read succeeds -- the escalation, not the caller's roles, is what grants access")
+    Do $$$AssertEquals(tValue, tSeed, "the guarded read sees what the suite stored, and the refused write changed nothing")
 }
 
 /// <p>AD-9's first ordering-rule half -- the guarding role is present in

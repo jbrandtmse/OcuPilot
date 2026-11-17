@@ -419,8 +419,7 @@ development_status:
   21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list: done
   21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: done
   21-34-a-backup-action-leaves-the-web-process-s-null-device-open: done
-  21-35-ocupilot-s-install-records-and-other-users-state-answer-only: 
-    ready-for-dev
+  21-35-ocupilot-s-install-records-and-other-users-state-answer-only: done
   epic-21-retrospective: optional
 
   epic-22: done

@@ -425,10 +425,14 @@ ClassMethod GuardedAddDropped(pKey As %String, Output pDropped As %Integer) As %
     Quit tSC
 }
 
-/// <p>The steps counted past the cap on turn <var>pKey</var> so far.</p>
+/// <p>The steps counted past the cap on turn <var>pKey</var> so far. A turn another user owns answers an administrator
+/// only: any other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>). A key that names
+/// no turn answers as it does for every caller.</p>
 ClassMethod GuardedDropped(pKey As %String, Output pDropped As %Integer) As %Status
 {
     Set pDropped = 0
+    Set tSC = ..NamedOwnerRefused($ClassName(), "TurnKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISOK(tSC) && $IsObject(tRow) Set pDropped = +tRow.StepsDropped
     Set tRow = ""
@@ -547,12 +551,17 @@ ClassMethod GuardedIsTurnJob(pJobId As %String, Output pIsTurnJob As %Boolean) A
 }
 
 /// <p>Turn <var>pKey</var>'s signals: the stop and abandon flags, and the lease's last renewal in
-/// <method>NowSeconds</method> units (<code>""</code> when never set).</p>
+/// <method>NowSeconds</method> units (<code>""</code> when never set). Answered to the turn's owner and to an
+/// administrator only, as <method>GuardedDropped</method> is. A key that names no turn answers no signal to a caller
+/// who is not an administrator, even where signals are still kept under it.</p>
 ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAbandon As %Boolean, Output pRenewedAt As %String) As %Status
 {
     Set pStop = 0
     Set pAbandon = 0
     Set pRenewedAt = ""
+    Set tSC = ..NamedOwnerRefused($ClassName(), "TurnKeyIdxExists", pKey, .tNamed)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tNamed Quit $$$OK
     Set tSC = ..GuardedTurnSignalGet(pKey, "stop", .tStop)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSignalGet(pKey, "abandon", .tAbandon)
@@ -566,7 +575,9 @@ ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAb
 
 /// <p>The definition id turn <var>pKey</var> was reserved under (<property>DefinitionId</property>),
 /// frozen at its start (Story 19.11, AD-42), or <code>""</code> for an unknown key or a row that
-/// holds none.</p>
+/// holds none. Answered to the turn's owner and to an administrator only: the open of the row refuses any other
+/// caller <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and nothing is read
+/// (<method>OcuPilot.Kernel.State.Base.GuardedOpenId</method>).</p>
 ClassMethod GuardedDefinitionOf(pKey As %String, Output pDefinitionId As %String) As %Status
 {
     Set pDefinitionId = ""
@@ -581,7 +592,8 @@ ClassMethod GuardedDefinitionOf(pKey As %String, Output pDefinitionId As %String
 }
 
 /// <p>The guided workflow id turn <var>pKey</var> ran under (<property>Workflow</property>), or
-/// <code>""</code> for an ordinary turn, an unknown key or a row that holds none (AD-66).</p>
+/// <code>""</code> for an ordinary turn, an unknown key or a row that holds none (AD-66). Answered as
+/// <method>GuardedDefinitionOf</method> is.</p>
 ClassMethod GuardedWorkflowOf(pKey As %String, Output pWorkflow As %String) As %Status
 {
     Set pWorkflow = ""
@@ -599,10 +611,15 @@ ClassMethod GuardedWorkflowOf(pKey As %String, Output pWorkflow As %String) As %
 /// is 0 for an unknown key and for another user's turn alike. <var>pValues</var> carries
 /// <code>state</code>, <code>code</code>, <code>user</code> and <code>route</code>, the screen route
 /// the turn was begun from (<property>ContextRoute</property>).</p>
+/// <p>Answered to <var>pUser</var> and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>). A caller who names itself and another user's turn
+/// is answered not found.</p>
 ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As %Boolean, Output pValues) As %Status
 {
     Set pFound = 0
     Kill pValues
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ? AND %EXACT(UserName) = ?", pKey, pUser, .tIds)
     If $$$ISERR(tSC) Quit tSC
     If $Get(tIds(1)) = "" Quit $$$OK

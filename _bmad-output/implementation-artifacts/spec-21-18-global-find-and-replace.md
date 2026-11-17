@@ -254,7 +254,7 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.GlobalReplace` -- expected green. Then the same command, one class per call, for:
   - `GlobalRead`, `GlobalWrite`, `Prohibited`;
   - `PortGate`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`;

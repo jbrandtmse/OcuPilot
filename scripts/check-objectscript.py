@@ -54,8 +54,8 @@ prose into one checker.
    `$SYSTEM.Security.AddRoles` may appear only in `OcuPilot/Kernel/State/Base.cls` and
    `OcuPilot/Test/State.cls` — the tree's one escalation point and the one test class
    that impersonates a denied user to prove it — and `New $ROLES` (never `AddRoles`) in
-   `OcuPilot/Install/Installer.cls`'s `EnsureProposalTargetKeys` alone, the install step AD-9
-   gives the administrative role it was granted. Every other file is refused the moment
+   `OcuPilot/Install/Installer.cls`'s `AsAdministrator` alone, the one frame in which AD-9 gives an
+   install step the administrative role it was granted. Every other file is refused the moment
    either token appears in it, mechanically enforcing AD-9's "the storage classes, and
    only the storage classes" rather than leaving it to review.
 
@@ -641,11 +641,11 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# AD-9's one use of `New $ROLES` outside Base: the install's target-key step adds the administrative role
-# to its own process around one call. The exception is the token `New $ROLES` in that one method of that
+# AD-9's one use of `New $ROLES` outside Base: the installer's `AsAdministrator` adds the administrative role
+# to its own process around one install step. The exception is the token `New $ROLES` in that one method of that
 # one file; `AddRoles` is refused there as everywhere else.
 ESCALATION_METHOD_ALLOWED = {
-    "src/OcuPilot/Install/Installer.cls": "EnsureProposalTargetKeys",
+    "src/OcuPilot/Install/Installer.cls": "AsAdministrator",
 }
 NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
 ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)

@@ -17,9 +17,9 @@
 /// check, so the prohibited set decides it.</li>
 /// <li><code>PUT</code> applies <parameter>ADDKEY</parameter> or <parameter>REMOVEKEY</parameter> over the
 /// stored set read now (<method>Apply</method>), writes the store while its row still carries the version
-/// that read saw, and records <code>SecurityChange</code> with the pairs before and after (AD-15).</li>
+/// that read saw; the store records <code>SecurityChange</code> with the pairs before and after (AD-15).</li>
 /// <li><code>DELETE</code> removes the adjustment, refused 409 <code>ACCESS.NOTADJUSTED</code> when there is
-/// none, and records <code>SecurityChange</code>.</li>
+/// none; the store records <code>SecurityChange</code>.</li>
 /// </ul>
 /// <p>The rules: a set holds 1 to <parameter>OcuPilot.Api.AccessError.MAXPAIRS</parameter> pairs, each
 /// <code>resource:permission</code> with the permission READ, WRITE or USE and a resource the instance
@@ -77,13 +77,6 @@ Parameter REASONNOTIMPLEMENTED = "This instance does not implement that operatio
 Parameter REASONSCREEN = "Name the screen.";
 
 Parameter REASONCHANGE = "Name one pair to add or one pair to remove.";
-
-/// <p>The entity type and verbs the audit row carries.</p>
-Parameter ENTITYTYPE = "screen-permission";
-
-Parameter VERBUPDATED = "updated";
-
-Parameter VERBRESET = "reset";
 
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
@@ -333,13 +326,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Quit
             }
             Set tDeclared = $ClassMethod(tDescriptor, "PrivilegePairs")
-            Set tRemoveSC = ##class(OcuPilot.Kernel.State.Access).GuardedRemove(tScreen, tVersion)
+            Set tAfter = ..Texts(tDeclared)
+            Set tRemoveSC = ##class(OcuPilot.Kernel.State.Access).GuardedRemove(tScreen, tVersion, ..SpecOf(tAfter))
             If $$$ISERR(tRemoveSC) {
                 Set tSC = ..Stored(tRemoveSC, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tAfter = ..Texts(tDeclared)
-            Do ..Audit(..#VERBRESET, tScreen, tCurrent, tAfter)
             Set pResult = ..Row(tScreen, tAfter, 0, "", tAfter)
             Set pHttpStatus = 200
             Quit
@@ -354,12 +346,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Violate(tViolation, .pHttpStatus, .pFault)
             Quit
         }
-        Set tPutSC = ##class(OcuPilot.Kernel.State.Access).GuardedPut(tScreen, ..SpecOf(tNew), $Select(tFound: tVersion, 1: 0), $Username)
+        Set tPutSC = ##class(OcuPilot.Kernel.State.Access).GuardedPut(tScreen, ..SpecOf(tNew), $Select(tFound: tVersion, 1: 0), $Username, ..SpecOf(tCurrent))
         If $$$ISERR(tPutSC) {
             Set tSC = ..Stored(tPutSC, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Audit(..#VERBUPDATED, tScreen, tCurrent, tNew)
         Set pResult = ..Row(tScreen, tNew, 1, $Select(tAdd '= "": tAdd, 1: tRemove), tNew)
         Set pHttpStatus = 200
     } Catch ex {
@@ -380,22 +371,6 @@ ClassMethod Row(pScreen As %String, pPairs As %List, pAdjusted As %Boolean, pPai
     Do tRow.%Set("Pair", pPair, "string")
     Do tRow.%Set("Result", ..ArrayOf(pResult))
     Quit tRow
-}
-
-/// <p>Record <code>SecurityChange</code> for one accepted write: the pairs before and after, as
-/// comma-separated texts. It never fails the write (AD-15).</p>
-ClassMethod Audit(pVerb As %String, pScreen As %String, pOld As %List, pNew As %List) [ Private ]
-{
-    Try {
-        Set tPairs = {}
-        Do tPairs.%Set("old", ..SpecOf(pOld), "string")
-        Do tPairs.%Set("new", ..SpecOf(pNew), "string")
-        Set tChanges = {}
-        Do tChanges.%Set("pairs", tPairs)
-        Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pScreen, tChanges, 1)
-    } Catch ex {
-        Do ..LogFault("the screen permission change could not be audited", ex.AsStatus())
-    }
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39). Overridable so a fixture can capture

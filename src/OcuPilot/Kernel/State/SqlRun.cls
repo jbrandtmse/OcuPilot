@@ -316,19 +316,21 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
 /// <code>{id, status, startedAt, endedAt, cancelRequested, result?, refusal?}</code>:
 /// <code>status</code> is <code>running</code> for a queued or running row, else the row's state;
 /// <code>result</code> is an ended run's stored answer, and <code>refusal</code> a failed run's stored
-/// envelope, each present only when one is stored. The lost run is ended only for a caller who is
-/// <var>pUser</var> or holds the administrative resource.</p>
+/// envelope, each present only when one is stored.</p>
+/// <p>Asked for <var>pUser</var> by that user or an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no view. A caller who names itself and
+/// another user's run is answered not found.</p>
 ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass As %String, Output pFound As %Boolean, Output pView As %DynamicObject, pKind As %String = "sql") As %Status
 {
     Set pFound = 0
     Set pView = ""
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
     If $$$ISERR(tSC) || (tId = "") Quit tSC
-    If ..CallerOwns(pUser) || ..CallerIsAdministrator() {
-        Set tSC = ..Reconcile(tId, ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE), .tState, .tOwner, .tRunKey)
-        If $$$ISERR(tSC) Quit tSC
-        If tState = "" Quit $$$OK
-    }
+    Set tSC = ..Reconcile(tId, ..InstanceLimitsClass(pLimitsClass, ..#LIMITSSOURCE), .tState, .tOwner, .tRunKey)
+    If $$$ISERR(tSC) Quit tSC
+    If tState = "" Quit $$$OK
     Set tSC = ..GuardedOpenId(tId, .tRow)
     If $$$ISERR(tSC) Quit tSC
     Set tView = {}
@@ -355,10 +357,13 @@ ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass 
 
 /// <p>Whether the owner has asked run <var>pKey</var> to stop, read from the stored row by one
 /// statement and never from an object held across the call, so a job that polls it sees a cancel
-/// written by another process. <var>pRequested</var> is 0 for an unknown key.</p>
+/// written by another process. <var>pRequested</var> is 0 for an unknown key. Answered for a run its caller owns and
+/// to an administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>).</p>
 ClassMethod GuardedCancelRequested(pKey As %String, Output pRequested As %Boolean) As %Status
 {
     Set pRequested = 0
+    Set tSC = ..NamedOwnerRefused($ClassName(), "RunKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT CancelRequested FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ?", pKey, .tFlags)
     If $$$ISOK(tSC) Set pRequested = ''+$Get(tFlags(1))
     Quit tSC

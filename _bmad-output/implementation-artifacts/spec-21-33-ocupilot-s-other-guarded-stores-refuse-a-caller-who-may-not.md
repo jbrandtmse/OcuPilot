@@ -409,7 +409,7 @@ Proposed AD-9 text, appended after 21.33's paragraph:
 
 **Commands.** Run one command per foreground call with `timeout: 600000`, against `ocupilot-ci` only, and never put two test calls in one message.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<Class>`, one class per call -- expected: green after the fix (red legs at Task 0).
   - Batch 1: `StoreOwnerWrite`, `AdminStateWrite`, `State`, `AgentState`, `AgentWire`, `AgentWireSecurity`, `AgentConnectionWire`, `AgentCredential`, `TurnProviderFault`, `ProposalMint`, `ProposalConfirm`, `ProposalClose`, `ProposalRace`, `ProposalWire`, `DraftExecute`, `Ledger`, `LedgerWire`, `TranscriptsWire`, `DeveloperFloorTurn`, `ExplorerSaveTurn`, `Retention`, `Installer`, `Demo`.
   - Batch 2: `TranscriptOwnerWrite`, `TurnStore`, `TurnWire`, `TurnConversation`, `TurnNavigate`, `NavSettleJob`, `TurnHourLimit`, `TurnLoop`, `Convo`, `TranscriptStore`, `ConversationRestore`, `DeveloperFloorTurn`, `Retention`.

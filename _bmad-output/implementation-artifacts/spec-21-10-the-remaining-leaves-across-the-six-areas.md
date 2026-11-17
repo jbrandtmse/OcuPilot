@@ -302,7 +302,7 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 **Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message:
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<Class>` -- expected: green. Run once for each of `EncryptionStartupDescriptor`, `EncryptionStartupKmipWrite`, `ProposalTargetKey`, `SystemSecuritySettingRead`, `SystemSecuritySettingWrite`, `PhoneProviderRead`, `PhoneProviderWrite`, `AuditExportWrite`, `AuditingUpdate`, and every shared-surface class above.
 - `(loop)` `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/` -- expected: within the 2500/4000 kB budgets.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/<file>.browser-spec.mjs` -- expected: green. One call per file: `system-security`, `phone-providers`, `auditing-write`, `auditing-screen`, `language-servers`.
