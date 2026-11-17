@@ -140,7 +140,7 @@ No proposed ledger entries.
 
 **Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.TaskMailAuditMask`, then the same command for each shared-surface class above and for `PortGate`, one class per call -- expected: green.
 - `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh`, `cd ui && node --test tools/ci.test.mjs` -- expected: clean and green.
 - `(once)` `cd ui && npm run test:tools` -- expected: green.

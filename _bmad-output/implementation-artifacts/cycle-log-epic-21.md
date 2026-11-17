@@ -470,3 +470,7 @@
 2026-11-17T15:53:20Z	Story 21.35	cr_complete	scope=batch3 spawn_at=2026-11-17T15:20Z model=opus high=0 med=4(orphan-key_child_reads;Transcripts_copy_of_IsRefusedRead;orphan_test_cleanup;Nav_key_check_unpinned;all_patched) low=4 rows=30 unresolved_high_med=0 resolved=DW-2705,DW-2686(orphan_part) new=DW-2707(decision-pending,burndown) final=done commit=8e652b28d closing_sections_present=true
 2026-11-17T15:53:20Z	Story 21.35	ledger_adjudicated	owned=8 resolved=3(DW-2651,DW-2652,DW-2705) reowned=0 terminal=5(DW-2686,2687,2688,2704,2706:wontfix-accepted) set_aside=DW-2707(decision_sheet)
 2026-11-17T15:53:20Z	Story 21.35	gate_step	step=fresh_check+full_sweep+smoke head=8e652b28d started=2026-11-17T15:53:20Z dir=e21u/21-35/gate
+2026-11-17T16:04:01Z	Story 21.35	fresh_check	env=recipe(ci-throwaway_rebuild) tests=12_classes+6_specs result=pass order=forward,reverse(specs) head=8e652b28d dir=e21u/21-35/gate/fresh
+2026-11-17T16:04:33Z	Story 21.35	ci_resolved	story=21.35 sha=88f29266d runs=44112829789 result=success failed=none via=none resolved_at=gate note=B3_built_head
+2026-11-17T18:00:11Z	Story 21.35	gate_step	step=sweep result=green shards=20/20 dir=e21u/21-35/gate/sweep head=8e652b28d
+2026-11-17T18:00:11Z	Story 21.35	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5

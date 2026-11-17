@@ -134,7 +134,7 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 
 **Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only; never two test calls in one message.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.LocaleImportRules`, one class per call, then each of `LocaleExportRules`, `LocaleTransferWrite`, `LocaleRead`, `LocaleRules`, `LocaleWrite`, `PortGate`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadTool`, `ReadDescriptions`, `ToolEmit`, `ToolDispatch`, `ToolRoundTrip`, `ToolWrite`, `Descriptor`, `Navigation`, `ClassicPageGate`, `MappingDescriptor`, `StageTwoTools`, `Wire`, `WireAreaAnyScreen`, `WireSecurityRead`, `LanguageServerWire`, `TeardownGuard` -- expected: green.
 - `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` -- expected: clean.
 - `(loop)` `cd ui && node --test tools/strings.test.mjs tools/screen-mirror.test.mjs tools/navigation.test.mjs tools/ci.test.mjs tools/proposal-view.test.mjs` and every `ui/tools` test the sweep changes -- expected: green.

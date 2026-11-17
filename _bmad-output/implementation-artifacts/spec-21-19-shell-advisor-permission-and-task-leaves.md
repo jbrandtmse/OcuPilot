@@ -192,7 +192,7 @@ Every test added or changed passes on a fresh environment, in either order. Each
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
-- `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` (loop) -- expected: `LOADERRORS=0`, no compile error.
+- `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` (loop) -- expected: `LOADERRORS=0`, no compile error.
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<Class>` (loop), once for each of: `AdvisorRead`, `AdvisorWrite`, `ConfigSettingRead` (or `TaskMailSettingRead`), `TaskMailSettingRules`, `TaskMailSettingWrite`, `ConfigSettingRules`, `ConfigSettingWrite`, `SqlSettingRead`, `WebAppCreate`, `WebAppWire`, and every shared-surface class above -- expected: all green.
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/` (loop) -- expected: within the 2500/4000 kB budgets.
 - `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/<file>.browser-spec.mjs` (loop), one call per file: `security-advisor`, `config-settings`, `web-applications-create`, `users-create`, `roles-create`, `web-applications-class-access`, `language-servers` -- expected: green.
