@@ -17,9 +17,10 @@ import { rowKey } from '../../core/table-model';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
+import { WarningDialog } from '../../shell/warning-dialog';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { createSearchRead } from './code-search.store';
-import { DevToolState, GENERATED_PARAM, PROMOTE_ACTION, SPEC_PARAM, TARGET_PARAM, promoteLines, promoteOutputOf, promoteStatus } from './dev-tool.store';
+import { DevToolState, GENERATED_PARAM, LEVEL_PARAM, PROMOTE_ACTION, RUN_ACTION, SPEC_PARAM, TARGET_PARAM, TESTS_PARAM, levelLabel, promoteLines, promoteOutputOf, promoteStatus } from './dev-tool.store';
 
 /** The screen this page renders and the store its read writes. */
 interface DevToolView {
@@ -61,14 +62,55 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
  * (`data-explorer-write`, as the Classes list's do), and an applied promote clears the checks; the list re-reads by its own
  * change event.
  *
+ * **Unit tests is the one screen with a run mode** (Story 24.5), where the descriptor declares `run`: the form takes the tests
+ * and what they name, the runs list reads on arrival with no search, and Run opens a warning dialog that names the
+ * consequence -- the tests' own code runs as the signed-in person -- and sends nothing until it is confirmed. A refusal shows
+ * the instance's sentence, which is the switched-off one while an administrator has not switched running on in Governance
+ * policy. The agent's route to the action does not exist (AD-10), so no action is registered for the row menu or the command bar.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
  */
 @Component({
   selector: 'app-dev-tool-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, ScreenActionDialogs],
+  imports: [DataTable, ScreenActionDialogs, WarningDialog],
   template: `<section class="ocu-list-page" [attr.aria-busy]="busy">
     @if (view; as current) {
+      @if (hasRun) {
+        <form class="ocu-criteria-form" data-ocu-devtool="form" (submit)="onAskRun($event)">
+          <div class="ocu-criteria-fields">
+            <div class="ocu-criteria-field">
+              <label class="ocu-criteria-label" for="ocu-devtool-tests">{{ testsLabel }}</label>
+              <input
+                class="ocu-criteria-input"
+                id="ocu-devtool-tests"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="256"
+                data-ocu-devtool="tests"
+                [value]="testsValue"
+                (input)="onTests($event)"
+              />
+            </div>
+            <div class="ocu-criteria-field">
+              <label class="ocu-criteria-label" for="ocu-devtool-level">{{ levelFieldLabel }}</label>
+              <select class="ocu-criteria-select" id="ocu-devtool-level" data-ocu-devtool="level" (change)="onLevel($event)">
+                @for (option of levelOptions; track option) {
+                  <option [value]="option" [selected]="option === levelValue">{{ levelText(option) }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <p class="ocu-criteria-hint">{{ testsHint }}</p>
+          <div class="ocu-criteria-controls">
+            <button type="submit" class="ocu-button-primary" data-ocu-devtool="run" [attr.aria-disabled]="runBlocked">{{ STRINGS.explorerUnitTestsRunAction }}</button>
+          </div>
+        </form>
+        @if (hasRunRefusal) {
+          <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-devtool="run-refusal">{{ runRefusalText }}</p>
+        }
+      } @else {
       <form class="ocu-criteria-form" data-ocu-devtool="form" (submit)="onSearch($event)">
         <div class="ocu-criteria-fields">
           @if (hasTarget) {
@@ -108,6 +150,7 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
           </label>
         </div>
       </form>
+      }
       <p class="ocu-explorer-status" role="status" data-ocu-devtool="status">{{ statusLine }}</p>
       @if (hasPromote) {
         <p class="ocu-explorer-status" role="status" data-explorer-write="status">{{ promoteStatusLine }}</p>
@@ -136,6 +179,14 @@ function heldFor(store: ScreenStore | null, targeted = false): DevToolState {
       }
       @if (hasPromote) {
         <app-screen-action-dialogs [descriptor]="current.screen.descriptor" />
+      }
+      @if (confirming) {
+        <app-warning-dialog
+          [verb]="STRINGS.explorerUnitTestsRunTitle"
+          [consequence]="STRINGS.explorerUnitTestsRunConsequence"
+          (confirmed)="onProceed()"
+          (cancelled)="onCancelRun()"
+        />
       }
     }
   </section>`,
@@ -183,7 +234,12 @@ export class DevToolPage {
     this.refresh.bind(screen, this.boundRead(screen));
 
     const arrival = this.arrivals?.take(screen.route) ?? null;
-    if (arrival !== null) {
+    if (this.hasRun) {
+      // The runs list needs no search: it reads on arrival, and an agent's arrival only fills the form.
+      if (arrival !== null) this.state.useRunArrival(arrival);
+      this.state.listRuns();
+      if (!this.refresh.hasLoaded()) this.readNow();
+    } else if (arrival !== null) {
       if (this.state.useArrival(arrival)) this.readNow();
     } else if (this.state.searched() && !this.refresh.hasLoaded()) {
       this.readNow();
@@ -206,7 +262,12 @@ export class DevToolPage {
     const stopArrivals =
       this.arrivals?.subscribe(() => {
         const next = this.arrivals?.take(screen.route) ?? null;
-        if (next !== null && this.state.useArrival(next)) this.readNow();
+        if (next === null) return;
+        if (this.hasRun) {
+          this.state.useRunArrival(next);
+          return;
+        }
+        if (this.state.useArrival(next)) this.readNow();
       }) ?? null;
     const stopState = this.state.subscribe(() => this.bump());
     const stopStore = store.subscribe(() => this.bump());
@@ -215,6 +276,7 @@ export class DevToolPage {
     inject(DestroyRef).onDestroy(() => {
       stopRefreshAction();
       stopPromote?.();
+      this.state.cancelRun();
       // The handler is the app's, so a dialog left open would outlive the page it was opened on.
       if (this.handler.pending()?.descriptor === screen.descriptor) this.handler.cancelPending();
       stopArrivals?.();
@@ -251,6 +313,65 @@ export class DevToolPage {
   protected get generatedLabel(): string {
     const field = this.criterion(GENERATED_PARAM);
     return field === undefined ? '' : stringFor(field.labelKey);
+  }
+
+  /** Whether this screen declares Run (Unit tests), which draws the Run form and the warning dialog. */
+  protected get hasRun(): boolean {
+    return this.view?.screen.rowActions.some((action) => action.id === RUN_ACTION) === true;
+  }
+
+  protected get testsLabel(): string {
+    const field = this.criterion(TESTS_PARAM);
+    return field === undefined ? '' : stringFor(field.labelKey);
+  }
+
+  protected get testsHint(): string {
+    return this.criterion(TESTS_PARAM)?.hint ?? '';
+  }
+
+  protected get levelFieldLabel(): string {
+    const field = this.criterion(LEVEL_PARAM);
+    return field === undefined ? '' : stringFor(field.labelKey);
+  }
+
+  /** The values the level choice declares, in its order. */
+  protected get levelOptions(): readonly string[] {
+    return this.criterion(LEVEL_PARAM)?.options ?? [];
+  }
+
+  protected levelText(option: string): string {
+    return levelLabel(option);
+  }
+
+  protected get testsValue(): string {
+    this.generation();
+    return this.state.tests();
+  }
+
+  protected get levelValue(): string {
+    this.generation();
+    return this.state.level();
+  }
+
+  /** Whether Run is drawn unavailable: no tests are named, or a run is in flight. */
+  protected get runBlocked(): boolean {
+    this.generation();
+    return this.state.tests().trim() === '' || this.state.running();
+  }
+
+  protected get confirming(): boolean {
+    this.generation();
+    return this.state.confirming();
+  }
+
+  protected get hasRunRefusal(): boolean {
+    this.generation();
+    return this.state.runRefusal() !== '';
+  }
+
+  protected get runRefusalText(): string {
+    this.generation();
+    return this.state.runRefusal();
   }
 
   /** Whether this screen declares Promote, which draws the status line and the output pane. */
@@ -359,6 +480,31 @@ export class DevToolPage {
 
   protected onTarget(event: Event): void {
     this.state.setTarget((event.target as HTMLSelectElement).value);
+  }
+
+  protected onTests(event: Event): void {
+    this.state.setTests((event.target as HTMLInputElement).value);
+  }
+
+  protected onLevel(event: Event): void {
+    this.state.setLevel((event.target as HTMLSelectElement).value);
+  }
+
+  /** Run: open the warning dialog, which names the consequence. Nothing is sent before Proceed. */
+  protected onAskRun(event: Event): void {
+    event.preventDefault();
+    this.state.askRun();
+  }
+
+  protected onCancelRun(): void {
+    this.state.cancelRun();
+  }
+
+  /** Proceed: send the run once. The runs list re-reads by the change event an applied run publishes. */
+  protected onProceed(): void {
+    const screen = this.view?.screen;
+    if (screen === undefined) return;
+    void this.state.proceed(this.handler, screen.descriptor, this.scope.namespace());
   }
 
   protected onGenerated(event: Event): void {

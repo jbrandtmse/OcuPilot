@@ -201,3 +201,48 @@
 2026-11-16T15:17:41Z	Story 24.9	cr_complete	spawn_at=2026-11-16T14:48:00Z model=opus resolved=9 fixed_at_source=9 high_fixed=AD-59_snippet_mirrors_promote wontfix=3 decision_pending=1(DW-2658) ledger_resolved=DW-2655,DW-2656 confirmed=DW-2653 annotated=DW-2657 dismissed=14 high=1 med=5 low=23 rows=29 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done
 2026-11-16T15:17:41Z	Story 24.9	ledger_adjudicated	owned=2 resolved=2(DW-2655,DW-2656) reowned=0 terminal=DW-2653 born_terminal=DW-2659,DW-2660,DW-2661 to_decision_sheet=DW-2658 model=claude-opus-5-5
 2026-11-16T15:25:55Z	Story 24.9	integrate_forward	feature=c1a02ae13 conflicts_resolved=sprint-status.yaml,GovernanceBaseline,ReadTool,ToolRoundTrip,ToolWrite method=union counts_rederived=ReadTool471,GovernanceBaseline68,ToolWrite87(inference) checks=check-objectscript0,lint-docs0,tools2296
+2026-11-16T15:27:26Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.9_merged_tree run=20261114T1656Z-21,22
+2026-11-16T15:28:05Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.9 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-16T15:35:24Z	Epic 24	orchestrator_ruling	subject=feature_green_c1a02ae13 run=43888708331 carries=21.32(DW-2646),21.34(DW-2650) effect=shard4_signatures_cleared,any_new_shard4_red_is_new
+2026-11-16T15:35:24Z	Story 24.9	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+namespace-promote_browser_spec+NamespacePromoteRoute_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-16T15:35:24Z	Story 24.9	fresh_check	env=recipe(merged_tree_feature_680e3450b) tests=16_classes+2_specs result=pass order=forward,reverse classes_tests=246 components=3503 tools=2296
+2026-11-16T15:35:24Z	Story 24.9	committed	sha=e768ee889 code_head=e34cedcd7(merged_with_feature_680e3450b) ci=pending runs=43897913630 amendments=none
+2026-11-16T15:35:24Z	Story 24.9	story_cycle	plan_to_commit_min=330 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-16T15:36:37Z	Story 24.5	story_unparked	via=inbox id=U-86 effect=re-plan(people_only:no_agent_run_tool;off_by_default_gate_for_people;confirm_with_consequence) spec_status=draft
+2026-11-16T15:36:37Z	Story 24.5	stage_spawned	stage=plan spawn_at=2026-11-16T15:36:37Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-plan-3 cycle_iteration=3 story_base=94374df3b
+2026-11-16T16:05:12Z	Story 24.5	story_created	spawn_at=2026-11-16T15:37:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-5-unit-test-runner-and-work-queue-viewer.md build_status=ready-for-dev epic_context=reused cycle_iteration=3
+2026-11-16T16:05:12Z	Story 24.5	orchestrator_ruling	subject=spine_AD-22_AD-53_and_contended_files answer=write_AD-22_narrow_and_AD-53_citing_U-86(veto_for_owner_filed_by_orchestrator),proceed_additive_Prohibited_own_arm,ScreenAction_one_block
+2026-11-16T16:05:12Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-10(paragraph),AD-22(PERSONGATE_exception),AD-53(fifth_unadvertised_tool) lint=preexisting_low_only proposed_kept=AD-29_binds,AD-61,AD-7
+2026-11-16T16:05:12Z	Story 24.5	ruling	question=strings_gate_refusals choice=keep rejected=none why=owner_answer_U-86_shape_plain_language category=veto reversal=reword_or_regate inbox=U-95 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T16:05:12Z	Story 24.5	stage_spawned	stage=implement spawn_at=2026-11-16T16:05:12Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-implement-1 cycle_iteration=3
+2026-11-16T16:28:46Z	Story 24.9	ci_result	sha=e34cedcd7 run=43897913630 attempt=2 result=success attempt1=gates_node22_cancelled(DW-2567_hang,orchestrator_rerun)
+2026-11-16T16:28:50Z	Story 24.9	merged_to_feature	feature=e34cedcd7(fast-forward) by=orchestrator
+2026-11-16T19:19:39Z		owner_decision	id=U-87 Story_24.9 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-92 Story_24.9 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-94 Story_24.5 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T19:19:39Z		owner_decision	id=U-95 Story_24.5 via=inbox by=owner(relayed_by_orchestrator) answer=keep effect=none
+2026-11-16T20:39:55Z	Epic 24	orchestrator_note	feature_green=2a542f893 run=43942954432 carries=21.33_batch1(Kernel/State/Base,Agent/Propose/Ledger_stores_owner-or-admin) bookkeeping=ebb3e85d8 action=integrate_before_24.5_code_head,rerun_store-writing_classes
+2026-11-16T22:48:35Z	Story 24.5	dev_complete	spawn_at=2026-11-16T16:05:00Z model=sonnet build_sha=984a3c6e0(finalized_by_runner_after_string_ruling) baseline_revision=792ddf914 review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green cycle_iteration=3 clarification=two_forced_strings(ruled_keep_U-98) note=orphaned_impl_subagent_resumed_and_overlapped;sweep_rerun_after
+2026-11-16T22:48:35Z	Story 24.5	ruling	question=forced_strings(third_prompt,agent_phrase) choice=keep why=plain_language_registry_requires category=veto reversal=reword inbox=U-98 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-16T22:48:35Z	Story 24.5	spine_updated	reason=owner_answer_U-86 ads=AD-53(named_audit_gap_measured_Task0_item6)
+2026-11-16T22:48:35Z	Story 24.5	stage_spawned	stage=qa spawn_at=2026-11-16T22:48:35Z model=sonnet agent_name=24-5-unit-test-runner-and-work-queue-viewer-qa-1 cycle_iteration=3
+2026-11-16T23:23:36Z	Story 24.5	qa_complete	spawn_at=2026-11-16T22:48:00Z model=sonnet tests=ui/browser/unit-tests-principals.browser-spec.mjs tests_added=1(7_tests) mutations_demonstrated=7 first_run_failures=2(product_defects_fixed:ResolveTests_NoPriv,BuildTestSpec_package_override) clarifications=0 closing_sections_present=true
+2026-11-16T23:23:36Z	Story 24.5	stage_spawned	stage=code-review spawn_at=2026-11-16T23:23:36Z model=opus agent_name=24-5-unit-test-runner-and-work-queue-viewer-code-review-1 cycle_iteration=3
+2026-11-17T00:15:57Z	Story 24.5	cr_complete	spawn_at=2026-11-16T23:25:00Z model=opus resolved=9 fixed_at_source=9 wontfix=1 by_design=1 decision_pending=3(DW-2670,DW-2671,DW-2672) dismissed=14 high=0 med=5 low=9 rows=14 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done note=QA_BuildTestSpec_override_replaced_by_port_checked_class_list
+2026-11-17T00:15:57Z	Story 24.5	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2668,DW-2669 to_decision_sheet=DW-2670,DW-2671,DW-2672 model=claude-opus-5-5
+2026-11-17T00:18:05Z	Story 24.5	integrate_forward	feature=ebb3e85d8(2a542f893,21.33_batch1) conflicts_resolved=sprint-status.yaml(regenerated) method=union
+2026-11-17T00:20:19Z	Epic 24	throwaway_rebuild_started	project=ocupilot-b-ci reason=fresh_check_24.5_merged_tree run=20261114T1656Z-21,22
+2026-11-17T00:21:26Z	Epic 24	throwaway_up	project=ocupilot-b-ci reason=fresh_check_24.5 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T00:35:06Z	Story 24.5	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=2(QA:package_run_as_least_privileged) evidence=smoke.sh_PASSED+unit-tests+unit-tests-principals_on_fresh_merged_throwaway model=claude-opus-5-5
+2026-11-17T00:35:06Z	Story 24.5	fresh_check	env=recipe(merged_tree_feature_ebb3e85d8) tests=21_classes+3_specs result=pass order=forward,reverse components=3509 tools=2296
+2026-11-17T00:35:06Z	Story 24.5	committed	sha=984a3c6e0+review code_head=7fc563379(merged_with_feature_ebb3e85d8) ci=pending runs=43988754165 amendments=epics.md_U-77,exclusion-register_DT-03,spine_AD-10_AD-22_AD-53(U-86)
+2026-11-17T00:35:06Z	Story 24.5	story_cycle	plan_to_commit_min=520 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-17T00:35:35Z	Story 24.6	owner_decision	id=U-78 at=2026-11-16T06:22:11Z#243 via=inbox by=owner(relayed) answer=C_then_A condition=DW-2634_fix_on_feature(met,orchestrator_2026-11-16)
+2026-11-17T00:35:35Z	Story 24.6	story_unparked	via=inbox id=U-78 effect=epics.md_marker(24.6,24.7),spec_status_draft,re-plan_on_PERSONGATE
+2026-11-17T00:35:35Z	Story 24.6	stage_spawned	stage=plan spawn_at=2026-11-17T00:35:35Z model=opus agent_name=24-6-the-command-and-class-method-consoles-plan-2 cycle_iteration=2 story_base=7f8a812ea
+2026-11-17T01:01:14Z	Story 24.6	story_created	spawn_at=2026-11-17T00:37:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-6-the-command-and-class-method-consoles.md build_status=ready-for-dev epic_context=reused cycle_iteration=2
+2026-11-17T01:01:14Z	Story 24.6	orchestrator_ruling	subject=AD-39_eighth_exception,HarvestPort_Handler_contended,audit_test answer=write_AD-39_citing_U-78(veto_U-101),proceed_one_block_each_run_epic21_harvest_classes_fwd_rev,audit_test_three_proofs_incl_24.5_runner_if_DW-2673_confirms
+2026-11-17T01:01:14Z	Story 24.6	spine_updated	reason=owner_answer_U-78 ads=AD-10(consoles),AD-22(two_keys),AD-53(sixth_seventh_tools),AD-39(eighth_exception) lint=preexisting_low_only
+2026-11-17T01:01:14Z	Story 24.6	ruling	question=strings_keys_gate_audit choice=keep why=owner_answer_U-78_shape_stricter_than_vendor_terminal category=veto reversal=reword_or_regate inbox=U-102 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T01:01:14Z	Epic 24	owner_decision	id=U-99/U-100 note=orchestrator_reworded_audit_gap_after_runner_correction;DW-2673_routed_to_24.6
+2026-11-17T01:01:14Z	Story 24.6	stage_spawned	stage=implement spawn_at=2026-11-17T01:01:14Z model=sonnet agent_name=24-6-the-command-and-class-method-consoles-implement-1 cycle_iteration=2

@@ -225,6 +225,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
+  // Story 24.5: Unit tests, the runs list with its Run form; one run's methods are the shared list page.
+  'OcuPilot.Screen.Descriptor.ExplorerUnitTests': () => import('../areas/system-explorer/dev-tool.page').then((m) => m.DevToolPage),
   'OcuPilot.Screen.Descriptor.ExplorerCompare': () => import('../areas/system-explorer/code-compare.page').then((m) => m.CodeComparePage),
   'OcuPilot.Screen.Descriptor.ExplorerMacro': () => import('../areas/system-explorer/macro-lookup.page').then((m) => m.MacroLookupPage),
   // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.

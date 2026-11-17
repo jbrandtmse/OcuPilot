@@ -103,6 +103,8 @@ XData Titles
 "explorerSqlTablesLabel": "SQL tables",
 "explorerSqlViewLabel": "SQL view",
 "explorerSqlViewsLabel": "SQL views",
+"explorerUnitTestRunLabel": "Unit test run",
+"explorerUnitTestsLabel": "Unit tests",
 "globalMappingFormLabel": "Global mapping",
 "globalMappingListLabel": "Global mappings",
 "globalStatisticsLabel": "Global and routine statistics",

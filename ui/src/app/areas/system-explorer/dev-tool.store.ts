@@ -1,5 +1,5 @@
 /**
- * System Explorer's Code metrics, Document hashes and Compare namespaces state (AD-19, Stories 24.1 and 24.8): what the form holds,
+ * System Explorer's Code metrics, Document hashes, Compare namespaces and Unit tests state (AD-19, Stories 24.1, 24.8 and 24.5): what the form holds,
  * over the search last sent and the one `RefreshRead` the page binds, which `SentSearchState` holds.
  *
  * **Framework-free.** It imports nothing from Angular; `dev-tool.page.ts` holds one per screen store,
@@ -13,6 +13,7 @@
 
 import type { ScreenArrival } from '../../core/screen-arrival';
 import { STRINGS } from '../../core/strings';
+import type { ActionRefusal, ActionSink, ActionValues } from '../../shell/screen-action-handler';
 import { SentSearchState } from './code-search.store';
 import { fillPlaceholders } from './code-list.store';
 
@@ -24,6 +25,30 @@ export const TARGET_PARAM = 'target';
 /** The generated choice's two values. */
 export const GENERATED_NO = 'no';
 export const GENERATED_YES = 'yes';
+
+/** The action Unit tests declares (Story 24.5), its one target and its two declared values (AD-56 (ii)). */
+export const RUN_ACTION = 'run';
+export const RUN_TARGET = 'unittests';
+export const TESTS_PARAM = 'tests';
+export const LEVEL_PARAM = 'level';
+
+/** What a run's target names, in the order the level choice lists them; `class` is the form's default. */
+export const LEVEL_PACKAGE = 'package';
+export const LEVEL_CLASS = 'class';
+export const LEVEL_METHOD = 'method';
+
+/** The level choice's published label for `level`, which the form shows in place of the value the instance takes. */
+export function levelLabel(level: string): string {
+  if (level === LEVEL_PACKAGE) return STRINGS.explorerUnitTestsLevelPackage;
+  if (level === LEVEL_METHOD) return STRINGS.explorerSqlColumnMethod;
+  return STRINGS.explorerClassDocumentLabel;
+}
+
+/** What sends the run's screen action and reports the refusal it was last answered with: the shell's action handler. */
+export interface RunSender {
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink, scope?: string): Promise<boolean>;
+  lastRefusal(): ActionRefusal | null;
+}
 
 /**
  * The form's pattern and generated choice, and the other namespace when `targeted`, over Search's sent search,
@@ -69,6 +94,102 @@ export class DevToolState extends SentSearchState {
 
   setIncludeGenerated(on: boolean): void {
     this.generatedValue = on ? GENERATED_YES : GENERATED_NO;
+    this.notify();
+  }
+
+  private testsValue = '';
+
+  private levelValue = LEVEL_CLASS;
+
+  private confirmingValue = false;
+
+  private runningValue = false;
+
+  private runRefusalValue = '';
+
+  /** The tests the Run form names: a package, a class or `Class:Method`. */
+  tests(): string {
+    return this.testsValue;
+  }
+
+  setTests(value: string): void {
+    this.testsValue = value;
+    this.notify();
+  }
+
+  /** What the tests name, one of `LEVEL_PACKAGE`, `LEVEL_CLASS` and `LEVEL_METHOD`. */
+  level(): string {
+    return this.levelValue;
+  }
+
+  setLevel(value: string): void {
+    this.levelValue = value;
+    this.notify();
+  }
+
+  /** Whether the warning dialog is open: Run was pressed and nothing is sent until it is confirmed. */
+  confirming(): boolean {
+    return this.confirmingValue;
+  }
+
+  /** Whether a confirmed run is in flight. */
+  running(): boolean {
+    return this.runningValue;
+  }
+
+  /** The sentence the instance refused the last confirmed run with, or `''`. */
+  runRefusal(): string {
+    return this.runRefusalValue;
+  }
+
+  /** The runs list is read from the first read on, with no search: Unit tests lists what the namespace recorded. */
+  listRuns(): void {
+    if (!this.searched()) this.send({});
+  }
+
+  /** Open the warning dialog and send nothing: answers false, opening nothing, with no tests named or a run in flight. */
+  askRun(): boolean {
+    if (this.testsValue.trim() === '' || this.runningValue) return false;
+    this.runRefusalValue = '';
+    this.confirmingValue = true;
+    this.notify();
+    return true;
+  }
+
+  /** Close the warning dialog. Nothing was sent. */
+  cancelRun(): void {
+    if (!this.confirmingValue) return;
+    this.confirmingValue = false;
+    this.notify();
+  }
+
+  /**
+   * Send the confirmed run as the screen action, once: the tests and the level, in the namespace the screen was opened in. A
+   * refusal keeps the sentence the instance gave, `EXPLORER.UNITTEST.OFF` included, and the form as it was. Answers whether the
+   * run was applied; the runs list re-reads by the change event the handler publishes.
+   */
+  async proceed(sender: RunSender, descriptor: string, scope: string): Promise<boolean> {
+    if (!this.confirmingValue) return false;
+    this.confirmingValue = false;
+    this.runningValue = true;
+    this.runRefusalValue = '';
+    this.notify();
+    let refused = '';
+    const sink: ActionSink = { setRefusal: (reason) => (refused = reason) };
+    const values: ActionValues = { [TESTS_PARAM]: this.testsValue.trim(), [LEVEL_PARAM]: this.levelValue };
+    const applied = await sender.sendFor(descriptor, RUN_ACTION, RUN_TARGET, values, sink, scope);
+    this.runningValue = false;
+    if (!applied) this.runRefusalValue = sender.lastRefusal()?.reason || refused || STRINGS.connectivityRequestRefused;
+    this.notify();
+    return applied;
+  }
+
+  /** Show an agent arrival's tests and level in the Run form; nothing is run. */
+  useRunArrival(arrival: ScreenArrival): void {
+    const criteria = arrival.criteria;
+    this.testsValue = typeof criteria[TESTS_PARAM] === 'string' ? criteria[TESTS_PARAM] : '';
+    const level = criteria[LEVEL_PARAM];
+    this.levelValue = level === LEVEL_PACKAGE || level === LEVEL_METHOD ? level : LEVEL_CLASS;
     this.notify();
   }
 

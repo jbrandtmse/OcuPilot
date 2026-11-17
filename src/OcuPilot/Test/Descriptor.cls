@@ -216,6 +216,8 @@ XData ReadShapes
 <screen name="ExplorerCodeMetrics" filter="" sort="Documents,Lines" kinds="Documents:name,Lines:number,Code:number,CodePercent:number,SourceCode:number,TestCode:number,Comments:number,CommentPercent:number,Blank:number,BlankPercent:number"/>
 <screen name="ExplorerDocumentHashes" filter="Document,Hash" sort="Document,Modified" kinds="Document:name,Hash:text,Modified:text"/>
 <screen name="ExplorerNamespaceDiff" filter="Document,Change" sort="Document,Modified" kinds="Document:name,Change:text,Modified:text,OtherModified:text"/>
+<screen name="ExplorerUnitTests" filter="Run,Started" sort="Run,Started,Duration,Failed" kinds="Run:name,Started:text,Duration:number,Methods:number,Passed:number,Failed:number"/>
+<screen name="ExplorerUnitTestRun" filter="Class,Method,Result" sort="Class,Method,Result,Duration" kinds="Class:identifier,Method:name,Result:status,Duration:number,Failure:text"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
 <screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>

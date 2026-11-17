@@ -101,6 +101,34 @@ class FixtureTreeCase(unittest.TestCase):
         )
 
 
+class TestVendorRootAdmittedInOneFile(FixtureTreeCase):
+    """`^UnitTestRoot` is a rename-checklist token, admitted in the unit-test port alone (Story 24.5)."""
+
+    PORT = "src/OcuPilot/Port/DevToolPort.cls"
+    OTHER = "src/OcuPilot/Port/OtherPort.cls"
+
+    def body(self, name: str) -> str:
+        return (
+            f"Class OcuPilot.Port.{name} Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run()\n{\n    Set tOld = $Get(^UnitTestRoot)\n}\n\n}\n"
+        )
+
+    def test_the_unit_test_port_may_name_the_root(self):
+        self.write(self.PORT, self.body("DevToolPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertEqual(problems, [], f"expected the port admitted, got {problems}")
+
+    def test_any_other_file_naming_the_root_is_refused(self):
+        self.write(self.OTHER, self.body("OtherPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("OtherPort.cls" in p and "^UnitTestRoot" in p for p in problems),
+            f"expected the other file refused, got {problems}",
+        )
+
+
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
     class that gets a data global -- extends `%Persistent`, directly or transitively through

@@ -13434,6 +13434,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
 - 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
 - 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+- 2026-11-17T02:02:03Z status=resolved-by:21-34-a-backup-action-leaves-the-web-process-s-null-device-open owner=21-34-a-backup-action-leaves-the-web-process-s-null-device-open by=orchestrator note=BackupPort_null_device_fix_c1a02ae13;feature_run43888708331_green_incl_shard4;duplicate_heading_from_epic21_branch_removed_at_merge
+
+### DW-2668: A Run's answer counts a skipped test method as failed when the caller holds SQL privileges
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: UnitTestRun.Run takes passed/failed from the harvested ParseTestResults, which counts every status but 1 as failed; the runs list and CountResults count status 2 as neither
+- 2026-11-17T00:00:04Z status=by-design owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=spec Task step 5 prescribes ParseTestResults and AC7 keeps it unchanged; the screen shows the runs list's counts
+
+### DW-2669: A run whose test class fails before any method (OnBeforeAllTests, no instance) records 0 methods and the screen shows no reason
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the manager records such errors on TestCase/TestSuite ErrorDescription; ReadRuns and ReadMethods read TestMethod rows only, so the run reads Methods 0, Failed 0
+- 2026-11-17T00:00:05Z status=wontfix-accepted owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=reopen_if=a person reports a run listed with 0 methods whose class has test methods
+
+### DW-2670: The Run dialog names neither the tests it will run nor the instance-wide SQL statistics reset
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the dialog opens before the STATE read and shows only the fixed consequence; RunTest resets the SQL statistics flags instance-wide (Manager.cls:497,738-741); the agent can pre-fill the form
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:add the target and level to the dialog, and 'It also resets the instance's SQL statistics settings.'
+
+### DW-2671: The run's methods list shows the runs list's empty state, which says no runs are recorded
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ExplorerUnitTestRun.cls:33 emptyStateKey explorerUnitTestsEmpty reads 'No unit-test runs are recorded in this namespace.' on one run's methods list
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:'This run recorded no test methods.' as the methods list's own empty state
+
+### DW-2672: Exclusion register EX-57 (UnitTest Portal) still says no OcuPilot link exists, while Unit tests now shows the run record
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: docs/exclusion-register.md:230 EX-57 reads 'No OcuPilot link exists yet; the classic portal serves it.'; Story 24.5 ships the runs and methods lists over %UnitTest_Result
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=catalog call: retire EX-57 as served by DT-02, or keep it for the classic portal's other pages
 ### DW-2662: AD-9's 21.33 list of open writes omits a confirm's claim cancelling every user's live proposals on its target (AD-34); a %Development holder can mint its own proposal on any target through the store and claim it to cancel other users' live proposals there
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-16 as a %Development principal (scratch probe, removed): own mint on a victim's target + GuardedClaimAndClose left the victim's live proposal canceled/sibling. The caller-supplied-target variant is patched in review; this residual needs the AD text or a store rule.
@@ -13453,6 +13479,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T15:42:19Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=cr note=Batch 2: pin retention task identity and the installer's first-run order, or rule it a %All prerequisite
 - 2026-11-16T16:24:29Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=measured on ocupilot-ci: retention task runs as its saving account (irisowner, %All) and purges; OcuPilotAdmin without %All passes rebuild and purge; first install by a non-%All account was refused 822 at EnsureProposalTargetKeys, fixed by checking the administrator only when a row needs a key; pinned by OcuPilot.Test.AdminPathWrite
 
+### DW-2673: A unit-test run (Story 24.5) may record no OcuPilot audit row: Task 0 saw 0 new %SYS.Audit rows in the run window, and OcuPilot's own audit writes through $System.Security.Audit into the same log (inference: not measured whether that run went through the action route)
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
+- 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
 ### DW-2665: An upgrade from a release before the proposal target key (1.0.13 or earlier), run by an account granted OcuPilotAdmin in that same install, would be refused at the target-key step (the grant does not reach the running process); a second install passes (inference, not measured)
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-2664 rework: first-install path measured; old-release upgrade path inferred
@@ -13460,11 +13490,6 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T16:28:51Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=fix in Batch 1 (orchestrator): run the installer/start-path target-key rebuild under the protected role; measure with a seeded keyless row
 - 2026-11-16T16:38:50Z status=open owner=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=orchestrator note=Batch 2 (ruling): A's design; AD-9 text at Batch 2's spec gate citing U-82 and DW-2665 (owner veto item); no release cut until Batch 2 is on feature
 - 2026-11-16T22:43:55Z status=resolved-by:21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not by=implement note=Batch 2: New ROLES frame in Installer.EnsureProposalTargetKeys, rule 6 admits it; AdminPathWrite
-### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
-- source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
-- evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
-- 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
-- 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
 
 ### DW-2666: A non-administrator's Turn.GuardedReserve still runs the cross-user sweep on a retention it controls: a limits class with no RETENTIONSECONDS, or a held copy of another user's ended turn with EndedAt back-dated, deletes that user's unexpired turns with their steps, directive, proposals and signals
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: in-story

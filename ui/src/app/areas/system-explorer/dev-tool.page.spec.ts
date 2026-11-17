@@ -18,7 +18,7 @@ import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DevToolPage } from './dev-tool.page';
 
 /**
- * Code metrics, Document hashes and (Story 24.8) Compare namespaces over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
+ * Code metrics, Document hashes, (Story 24.8) Compare namespaces and (Story 24.5) Unit tests over the shipped descriptors, with the real `RefreshService`, `ScreenStores`, `ChangeBus` and
  * `ScreenArrivals` and a stubbed HTTP answer (Story 24.1): nothing read before a search, the search's exact criteria, the rows the
  * read answered held by the screen's store, a refused search shown with the instance's reason in place of the rows, an agent's
  * arrival run once, and a re-read when a class in the namespace changes.
@@ -27,6 +27,7 @@ import { DevToolPage } from './dev-tool.page';
 const METRICS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics') as ScreenDeclaration;
 const HASHES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes') as ScreenDeclaration;
 const DIFF = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff') as ScreenDeclaration;
+const TESTS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerUnitTests') as ScreenDeclaration;
 
 const HASH_ROWS = [
   { Document: 'Demo.One.cls', Hash: 'A'.repeat(64), Modified: '2026-11-15 05:26:40.7' },
@@ -387,5 +388,98 @@ describe('System Explorer Compare namespaces, Promote', () => {
     const box = rows[0]?.querySelector('.ocu-data-table-check') as HTMLElement | null;
     expect(box?.getAttribute('aria-disabled')).toBe('true');
     expect(box?.getAttribute('aria-description')).toBe(STRINGS.explorerPromoteIneligible);
+  });
+});
+
+const RUN_ROWS = [{ Run: 7, Started: '2026-11-16 10:00:00', Duration: 1.5, Methods: 2, Passed: 1, Failed: 1, Finished: '2026-11-16 10:00:01' }];
+
+/** Name the tests and what they name, then press Run and let the page answer. */
+async function pressRun(ctx: Awaited<ReturnType<typeof mount>>, tests: string, level = 'class'): Promise<void> {
+  const input = ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement;
+  input.value = tests;
+  input.dispatchEvent(new Event('input'));
+  const select = ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement;
+  select.value = level;
+  select.dispatchEvent(new Event('change'));
+  (ctx.host.querySelector('[data-ocu-devtool="run"]') as HTMLButtonElement).click();
+  await ctx.settle();
+}
+
+function dialogButtons(ctx: Awaited<ReturnType<typeof mount>>): readonly HTMLButtonElement[] {
+  return Array.from(ctx.host.querySelectorAll('app-warning-dialog button')) as HTMLButtonElement[];
+}
+
+describe('System Explorer Unit tests', () => {
+  it("draws the Run form from the descriptor's criteria, reads the runs on arrival with no search, and registers no action for a menu", async () => {
+    const ctx = await mount(TESTS, { rows: RUN_ROWS });
+    expect(ctx.paths).toEqual(['/api/ocupilot/screens/explorer.unittests/read?maxRows=1000']);
+    expect(ctx.host.querySelector('label[for="ocu-devtool-tests"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsTestsLabel);
+    expect(ctx.host.querySelector('.ocu-criteria-hint')?.textContent?.trim()).toBe('A package, a class, or Class:Method');
+    expect(ctx.host.querySelector('label[for="ocu-devtool-level"]')?.textContent?.trim()).toBe(STRINGS.actionRun);
+    const select = ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => `${option.value}=${option.textContent?.trim()}`)).toEqual([
+      `package=${STRINGS.explorerUnitTestsLevelPackage}`,
+      `class=${STRINGS.explorerClassDocumentLabel}`,
+      `method=${STRINGS.explorerSqlColumnMethod}`,
+    ]);
+    expect(select.value).toBe('class');
+    expect(ctx.host.querySelector('[data-ocu-devtool="run"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunAction);
+    expect(ctx.host.querySelector('[data-ocu-devtool="submit"]')).toBeNull();
+    expect(ctx.host.querySelector('app-data-table')).not.toBeNull();
+    expect(ctx.stores.for(TESTS.descriptor, TESTS.refreshRates).data()).toEqual(RUN_ROWS);
+    expect(ctx.actions.has(TESTS.descriptor, 'run')).toBe(false);
+  });
+
+  it('opens the warning dialog on Run, with the consequence named, and sends nothing: Cancel sends nothing either', async () => {
+    // Mutation (Rule 19): send the action from `onAskRun` without the dialog -> the request assertions go red.
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: applied({ run: 8, passed: 1, failed: 0 }) });
+    await pressRun(ctx, 'Demo.Tests');
+    expect(ctx.host.querySelector('app-warning-dialog .ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunTitle);
+    expect(ctx.host.querySelector('app-warning-dialog .ocu-warning-consequence')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestsRunConsequence);
+    expect(ctx.promoteRequests).toEqual([]);
+    const cancel = dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionCancel);
+    cancel?.click();
+    await ctx.settle();
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.promoteRequests).toEqual([]);
+  });
+
+  it('names no tests, opens no dialog', async () => {
+    const ctx = await mount(TESTS, { rows: RUN_ROWS });
+    await pressRun(ctx, '   ');
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.promoteRequests).toEqual([]);
+  });
+
+  it('sends the run once Proceed is pressed, with the tests and the level as typed, and shows no refusal', async () => {
+    // Mutation (Rule 19): leave `level` out of the values `proceed` sends -> the request assertion goes red.
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: applied({ run: 8, passed: 1, failed: 0 }) });
+    await pressRun(ctx, 'Demo.Tests:TestOne', 'method');
+    dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionProceed)?.click();
+    await ctx.settle();
+    expect(ctx.promoteRequests).toEqual([{ path: '/api/ocupilot/screens/explorer.unittests/action', body: { action: 'run', id: 'unittests', values: { tests: 'Demo.Tests:TestOne', level: 'method' } } }]);
+    expect(ctx.host.querySelector('app-warning-dialog')).toBeNull();
+    expect(ctx.host.querySelector('[data-ocu-devtool="run-refusal"]')).toBeNull();
+  });
+
+  it("shows the instance's reason when the run is refused, the switched-off sentence included, and keeps the form", async () => {
+    // Mutation (Rule 19): draw the generic sentence alone in `proceed` -> the reason assertion goes red.
+    const refused: JsonResult<unknown> = { kind: 'error', status: 403, code: 'EXPLORER.UNITTEST.OFF', reason: STRINGS.explorerUnitTestOffReason, detail: null };
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, action: refused });
+    await pressRun(ctx, 'Demo.Tests');
+    dialogButtons(ctx).find((button) => button.textContent?.trim() === STRINGS.actionProceed)?.click();
+    await ctx.settle();
+    expect(ctx.host.querySelector('[data-ocu-devtool="run-refusal"]')?.textContent?.trim()).toBe(STRINGS.explorerUnitTestOffReason);
+    expect((ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement).value).toBe('Demo.Tests');
+    expect(ctx.promoteRequests).toHaveLength(1);
+  });
+
+  it("shows an agent's arrival in the Run form and runs nothing", async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: TESTS.route, criterion: '', criteria: { tests: 'Demo.Tests', level: 'package' } });
+    const ctx = await mount(TESTS, { rows: RUN_ROWS, arrivals });
+    expect((ctx.host.querySelector('[data-ocu-devtool="tests"]') as HTMLInputElement).value).toBe('Demo.Tests');
+    expect((ctx.host.querySelector('[data-ocu-devtool="level"]') as HTMLSelectElement).value).toBe('package');
+    expect(ctx.promoteRequests).toEqual([]);
   });
 });

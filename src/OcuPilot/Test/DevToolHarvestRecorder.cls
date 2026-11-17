@@ -1,7 +1,9 @@
 /// <p><class>OcuPilot.Port.HarvestPort</class> that records each <method>Invoke</method>'s handler, method, pairs and
 /// query in <code>^||OcuPilotDevToolRecorder</code> before it runs the call, so a test reads whether a body was
-/// asked for and what it was sent. After <method>SetDry</method> it answers an empty success and runs no body, so a
-/// test can lift the port's document cap without a scan.</p>
+/// asked for and what it was sent, and, for a call that names a namespace, what that namespace's unit-test root held while
+/// the call ran. After <method>SetDry</method> it answers an empty success and runs no body, so a test can lift the port's
+/// document cap without a scan; after <method>SetAnswer</method> it answers that result, and after
+/// <method>SetOpenTransaction</method> it opens a transaction first and leaves it open, as a test's own code can.</p>
 Class OcuPilot.Test.DevToolHarvestRecorder Extends OcuPilot.Port.HarvestPort
 {
 
@@ -10,12 +12,27 @@ ClassMethod Clear()
 {
     Kill ^||OcuPilotDevToolRecorder
     Kill ^||OcuPilotDevToolRecorderDry
+    Kill ^||OcuPilotDevToolRecorderAnswer
+    Kill ^||OcuPilotDevToolRecorderOpenTx
 }
 
 /// <p>Answer every later call an empty success, without running its body, until <method>Clear</method>.</p>
 ClassMethod SetDry()
 {
     Set ^||OcuPilotDevToolRecorderDry = 1
+}
+
+/// <p>Answer every later call <var>pJson</var>, a JSON object, as the body's result, without running its body, until
+/// <method>Clear</method> (Story 24.5: a unit-test run is never started from a test).</p>
+ClassMethod SetAnswer(pJson As %String)
+{
+    Set ^||OcuPilotDevToolRecorderAnswer = pJson
+}
+
+/// <p>Open a transaction before each later armed answer and leave it open, until <method>Clear</method>.</p>
+ClassMethod SetOpenTransaction()
+{
+    Set ^||OcuPilotDevToolRecorderOpenTx = 1
 }
 
 /// <p>How many calls were recorded since <method>Clear</method>.</p>
@@ -51,14 +68,32 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
     }
     Do tCall.%Set("pairs", tPairText, "string")
     Do tCall.%Set("query", tQuery)
+    Set tRootNamespace = $Get(pQuery("namespace"))
+    If tRootNamespace '= "" Do tCall.%Set("root", $Get(^|tRootNamespace|UnitTestRoot), "string")
     Set tIndex = $Increment(^||OcuPilotDevToolRecorder)
     Set ^||OcuPilotDevToolRecorder(tIndex) = tCall.%ToJSON()
+    If $Data(^||OcuPilotDevToolRecorderAnswer) {
+        If $Get(^||OcuPilotDevToolRecorderOpenTx) TStart
+        Set pResult = ##class(%DynamicObject).%FromJSON(^||OcuPilotDevToolRecorderAnswer)
+        Set pHttpStatus = 200
+        Set pFault = ""
+        Set pConsole = []
+        Quit $$$OK
+    }
     If $Get(^||OcuPilotDevToolRecorderDry) {
         Set pResult = {"documents": [], "count": 0}
         Set pHttpStatus = 200
         Set pFault = ""
         Set pConsole = []
         Quit $$$OK
+    }
+    ; No test starts a unit-test run: a call of that body with no armed answer is refused here, before the body.
+    If pHandler = "OcuPilot.Port.Harvest.UnitTestRun" {
+        Set pResult = ""
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "OcuPilot.Test.DevToolHarvestRecorder: the unit-test body is never run from a test")
+        Set pConsole = []
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DevToolHarvestRecorder: the unit-test body is never run from a test")
     }
     Quit ##super(pHandler, pMethod, pPairs, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .pConsole, pArgs...)
 }

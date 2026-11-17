@@ -450,8 +450,8 @@ development_status:
   24-2-the-analytics-editors: done
   24-3-interoperability-parity: done
   24-4-the-agent-gains-the-harvested-tools-and-undo: done
-  24-5-unit-test-runner-and-work-queue-viewer: backlog
-  24-6-the-command-and-class-method-consoles: backlog
+  24-5-unit-test-runner-and-work-queue-viewer: done
+  24-6-the-command-and-class-method-consoles: ready-for-dev
   24-7-web-terminal: backlog
   24-8-remote-instance-profiles-and-environment-diff: done
   24-9-environment-promote: done

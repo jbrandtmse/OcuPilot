@@ -33,7 +33,7 @@ Why the envelope is coupled to `%Atelier` (what OcuPilot is replacing):
 | `REST/SystemConfig.cls` | 291 | CPF get/set/export | Stage 2 |
 | `REST/Command.cls` | 376 | ObjectScript execution + classmethod invocation; `Redirects()` I/O-mnemonic labels | Stage 5 |
 | `REST/Global.cls` | 279 | global CRUD | Stage 5 |
-| `REST/UnitTest.cls` | 333 | `%UnitTest` runs | Stage 5 |
+| `REST/UnitTest.cls` | 668 | `%UnitTest` runs | Stage 5 |
 | `REST/Analytics.cls` | 364 | DeepSee | Stage 4 rider |
 | `REST/Health.cls` | 532 | composite health check (9 areas) | Stage 4/5 |
 | `REST/MessageResend.cls` | 619 | resend + preview, the double-gate reference | Stage 4 |

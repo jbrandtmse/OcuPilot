@@ -333,6 +333,8 @@ const KERNEL_REFUSALS = [
   ['PROVIDERSSL', 'sslRefusalProviderNamed'],
   // Story 21.12: removing a mirror together with taking its databases out of mirroring, which either caller is refused before any vendor call.
   ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
+  // Story 24.5: a call of the unit-test runner through a tool the agent can reach, which either caller is refused with.
+  ['PERSONONLY', 'personOnlyRefusal'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -661,6 +663,14 @@ const ATELIER_REFUSALS = [
   // Story 24.1: Code metrics' and Document hashes' wide-pattern and too-many-documents refusals.
   ['REASONSPECWIDE', 'explorerSpecWideReason'],
   ['REASONSPECTOOMANY', 'explorerSpecTooManyReason'],
+  // Story 24.5: the unit-test run's seven refusals, the switched-off sentence among them.
+  ['REASONUNITTESTOFF', 'explorerUnitTestOffReason'],
+  ['REASONUNITTESTNOTFOUND', 'explorerUnitTestNotFoundReason'],
+  ['REASONUNITTESTTOOMANY', 'explorerUnitTestTooManyReason'],
+  ['REASONUNITTESTPRODUCTION', 'explorerUnitTestProductionReason'],
+  ['REASONUNITTESTBUSY', 'explorerUnitTestBusyReason'],
+  ['REASONUNITTESTOWNCODE', 'explorerUnitTestOwnCodeReason'],
+  ['REASONUNITTESTNORESULT', 'explorerUnitTestNoResultReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -700,6 +710,11 @@ const DEVTOOL_REFUSALS = [
   ['OUTCOMEADDED', 'explorerPromoteAdded'],
   ['OUTCOMEFAILED', 'explorerPromoteFailed'],
   ['OUTCOMENOTATTEMPTED', 'explorerPromoteNotAttempted'],
+  // Story 24.5: the unit-test run's argument refusal and what a recorded method's result reads.
+  ['REASONTESTSSHAPE', 'explorerUnitTestsShapeReason'],
+  ['RESULTPASSED', 'explorerUnitTestsPassed'],
+  ['RESULTFAILED', 'explorerPromoteFailed'],
+  ['RESULTSKIPPED', 'explorerUnitTestsSkipped'],
 ];
 
 test("Story 24.1: each of Code metrics' and Document hashes' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {

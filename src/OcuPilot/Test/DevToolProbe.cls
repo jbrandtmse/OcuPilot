@@ -5,7 +5,9 @@
 /// <method>Remove</method>, which names only these.</p>
 /// <p>Story 24.8's pair of probe packages, <method>MakePair</method> and <method>RemovePair</method>, follow the same
 /// rules for the package <code>OcuProbe248</code>, and Story 24.9's <method>MakeStoragePair</method> and
-/// <method>RemoveStoragePair</method> for <code>OcuProbe249</code>.</p>
+/// <method>RemoveStoragePair</method> for <code>OcuProbe249</code>. Story 24.5's <method>MakeTests</method>,
+/// <method>RemoveTests</method> and <method>RemoveRun</method> save, remove and clear the run of the unit-test classes
+/// <code>OcuProbe245.Mixed</code> and <code>OcuProbe245P.Prod</code>.</p>
 Class OcuPilot.Test.DevToolProbe Extends %RegisteredObject
 {
 
@@ -229,6 +231,88 @@ ClassMethod RemoveStoragePair(pHere As %String = "USER", pThere As %String = "HS
     For tNamespace = pHere, pThere {
         Set tRemoveSC = ..RemoveDocuments(tNamespace, ..#STORAGEPACKAGE, "")
         If $$$ISERR(tRemoveSC) Set tSC = $$$ADDSC(tSC, tRemoveSC)
+    }
+    Quit tSC
+}
+
+/// <p>The package of the probe test class, which holds one passing and one failing method.</p>
+Parameter TESTSPACKAGE = "OcuProbe245";
+
+/// <p>The package of the probe production test, which extends <class>%UnitTest.TestProduction</class>.</p>
+Parameter TESTSPRODUCTIONPACKAGE = "OcuProbe245P";
+
+/// <p>The description of the probe's failing assertion.</p>
+Parameter FAILEDDESCRIPTION = "the probe assertion that fails";
+
+/// <p>Save and compile <code>OcuProbe245.Mixed</code> (<code>TestPasses</code> passes, <code>TestFails</code> fails one
+/// assertion described by <parameter>FAILEDDESCRIPTION</parameter>), <code>OcuProbe245.Plain</code>, which is no test, and
+/// <code>OcuProbe245P.Prod</code> in <var>pNamespace</var>. None is run.</p>
+ClassMethod MakeTests(pNamespace As %String = "USER") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCRLF = $Char(13, 10)
+        Set tQuote = $Char(34)
+        Set tMixed = "Class " _ ..#TESTSPACKAGE _ ".Mixed Extends %UnitTest.TestCase" _ tCRLF _ "{" _ tCRLF
+        Set tMixed = tMixed _ "Method TestPasses()" _ tCRLF _ "{" _ tCRLF _ "    Do $$$AssertTrue(1, " _ tQuote _ "the probe assertion that passes" _ tQuote _ ")" _ tCRLF _ "}" _ tCRLF
+        Set tMixed = tMixed _ "Method TestFails()" _ tCRLF _ "{" _ tCRLF _ "    Do $$$AssertTrue(0, " _ tQuote _ ..#FAILEDDESCRIPTION _ tQuote _ ")" _ tCRLF _ "}" _ tCRLF
+        ; A lower-case prefix the manager does not collect as a test.
+        Set tMixed = tMixed _ "Method testLower()" _ tCRLF _ "{" _ tCRLF _ "}" _ tCRLF _ "}" _ tCRLF
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#TESTSPACKAGE _ ".Mixed", tMixed)
+        If $$$ISERR(tSC) Quit
+        Set tPlain = "Class " _ ..#TESTSPACKAGE _ ".Plain Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ "}" _ tCRLF
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#TESTSPACKAGE _ ".Plain", tPlain)
+        If $$$ISERR(tSC) Quit
+        Set tProduction = "Class " _ ..#TESTSPRODUCTIONPACKAGE _ ".Prod Extends %UnitTest.TestProduction" _ tCRLF _ "{" _ tCRLF _ "Parameter PRODUCTION = " _ tQuote _ ..#TESTSPRODUCTIONPACKAGE _ ".Production" _ tQuote _ ";" _ tCRLF _ "}" _ tCRLF
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#TESTSPRODUCTIONPACKAGE _ ".Prod", tProduction)
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = pNamespace
+        Set tSC = $System.OBJ.Compile(..#TESTSPACKAGE _ ".Mixed," _ ..#TESTSPACKAGE _ ".Plain," _ ..#TESTSPRODUCTIONPACKAGE _ ".Prod", "ck-d")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove both probe test packages from <var>pNamespace</var> and report any class that survives.</p>
+ClassMethod RemoveTests(pNamespace As %String = "USER") As %Status
+{
+    Set tSC = ..RemoveDocuments(pNamespace, ..#TESTSPACKAGE, "")
+    Set tProductionSC = ..RemoveDocuments(pNamespace, ..#TESTSPRODUCTIONPACKAGE, "")
+    If $$$ISERR(tProductionSC) Set tSC = $$$ADDSC(tSC, tProductionSC)
+    Quit tSC
+}
+
+/// <p>The newest unit-test run <var>pNamespace</var> records, as its index, or 0 for none.</p>
+ClassMethod NewestRun(pNamespace As %String = "USER") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tIndex = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tIndex = +$Order(^UnitTest.Result(""), -1)
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tIndex
+}
+
+/// <p>Delete the run <var>pIndex</var> and everything it recorded from <var>pNamespace</var>. A run that is not there
+/// is deleted already.</p>
+ClassMethod RemoveRun(pNamespace As %String, pIndex As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If ##class(%UnitTest.Result.TestInstance).%ExistsId(pIndex) Set tSC = ##class(%UnitTest.Result.TestInstance).%DeleteId(pIndex)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
     }
     Quit tSC
 }

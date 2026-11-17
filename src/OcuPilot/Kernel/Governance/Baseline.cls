@@ -218,6 +218,7 @@ XData Keys [ MimeType = application/json ]
   "explorer.docdb.create": true,
   "explorer.docdb.delete": false,
   "explorer.namespacediff.promote": false,
+  "explorer.unittests.run": false,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,
