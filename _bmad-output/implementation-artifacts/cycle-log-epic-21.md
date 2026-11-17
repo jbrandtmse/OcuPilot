@@ -467,3 +467,6 @@
 2026-11-17T15:18:55Z	Story 21.35	code_head_pushed	sha=88f29266d run=44112829789 missing=none note=B3_built,pre-review
 2026-11-17T15:18:55Z	Story 21.35	adr_verifications_complete	result=none_required note=AD-9/AD-8_checked_by_real-principal_tests_in_CR
 2026-11-17T15:18:55Z	Story 21.35	stage_spawned	stage=code-review scope=batch3 spawn_at=2026-11-17T15:18:55Z model=opus agent_name=21-35-code-review-b3 cycle_iteration=2 baseline=b4046f504
+2026-11-17T15:53:20Z	Story 21.35	cr_complete	scope=batch3 spawn_at=2026-11-17T15:20Z model=opus high=0 med=4(orphan-key_child_reads;Transcripts_copy_of_IsRefusedRead;orphan_test_cleanup;Nav_key_check_unpinned;all_patched) low=4 rows=30 unresolved_high_med=0 resolved=DW-2705,DW-2686(orphan_part) new=DW-2707(decision-pending,burndown) final=done commit=8e652b28d closing_sections_present=true
+2026-11-17T15:53:20Z	Story 21.35	ledger_adjudicated	owned=8 resolved=3(DW-2651,DW-2652,DW-2705) reowned=0 terminal=5(DW-2686,2687,2688,2704,2706:wontfix-accepted) set_aside=DW-2707(decision_sheet)
+2026-11-17T15:53:20Z	Story 21.35	gate_step	step=fresh_check+full_sweep+smoke head=8e652b28d started=2026-11-17T15:53:20Z dir=e21u/21-35/gate

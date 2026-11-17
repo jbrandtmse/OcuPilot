@@ -13415,6 +13415,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 21.33 plan code read
 - 2026-11-16T13:00:00Z status=decision-pending owner=burndown by=spec_gate note=orchestrator decision; sibling of DW-2638
 - 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=Batch1_1472e282d+f67606129:InstallRecordWrite,InstallAsAdministrator_pin_each_refusal_and_the_installer_frame;measured_as_real_principals
 
 ### DW-2652: Base's public reads (GuardedOpenId, GuardedExistsId, GuardedStoredValue) and key-addressed reads let a %Development holder read another user's turns, conversations, proposals and ledger rows
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -13423,6 +13424,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T07:51:20Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reopened;21.24_purge_incomplete;run43819841054_shard4_config-settings_then_dashboard_AC2_SQLCODE-428_%SYS.TASK_UPCOMINGTASKSFILTER;database-operations_and_ecp-settings_passed;epic-runner-21_fixes_in_next_code_head_with_21.30
 - 2026-11-16T14:12:57Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=lead note=re-owned to Story 21.35 on owner answer U-90 (A)
 - 2026-11-16T23:19:06Z occurrence=21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=Batch2_4529a120a+a9ae32d6e,Batch3_88f29266d+review:OwnerStateRead,UserStateRead,ReserveSweepWrite_held-row_legs;measured_as_developer_principal
 
 ### DW-2648: flake: agent-picker browser spec legs 1-3 failed in CI shard 4/5 on a navigation timeout with /ocupilot/permissions/users?ns=HSCUSTOM in flight 30 s; the same sha and split passed on the epic branch
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
@@ -13562,17 +13564,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Both refuse a key another user owns; a key naming no row counts orphans. Keys are 32 random hex; no product caller asks for a key it does not own. Propose.cls:873
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
 - 2026-11-17T08:09:47Z occurrence=21-35-ocupilot-s-install-records-and-other-users-state-answer-only note=B2 code review: the same unfiltered count reaches Ledger.GuardedAppend's pSeq, and a subject counts the administrator-owned transcript-access rows filed under its conversation key; the overflow writer's leak of the count through pDropped on a refused save is fixed in this pass
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=orphan-count_part_fixed_in_B3_review(OwnerStateRead.TestACountOnAnotherUsersOrphanedLedgerAnswersNothing);residual_GuardedAppend_pSeq_and_a_subject_counting_admin_transcript-access_rows_under_its_own_conversation_key_reveal_counts_only;reopen_if=a_non-owner_non-administrator_reads_a_count_of_rows_under_a_key_another_user_owns
 
 ### DW-2687: Base.GuardedProbeGet reads any subscript of the probe global for any caller
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: No code outside Test/ writes ^OcuPilotKernelStateProbe and GuardedProbeSet is an administrator's; pre-existing BaseSurface open read. Base.cls:777
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=reopen_if=any_class_outside_src/OcuPilot/Test_writes_^OcuPilotKernelStateProbe(grep_src)
 
 ### DW-2688: A non-administrator's read of a step or entry row costs one more escalated parent-owner read (inference, unmeasured)
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: OwnerWriteRefused reads the parent's owner via the any-caller stored-value read once per opened row; a timed Entry.GuardedRows over a long conversation as the owner would settle it. Base.cls:253
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item
 - 2026-11-17T15:18:26Z occurrence=21-35 note=B3:Turn.GuardedSignals,Step.GuardedRows,Nav.GuardedPending,Entry.GuardedRows_each_one_more_escalated_parent_read
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=reopen_if=a_timed_Entry.GuardedRows_or_Step.GuardedRows_over_a_200-row_parent_as_its_owner_takes_over_2x_the_administrator's_time
 
 ### DW-2689: No test covers a held own row whose owner or key is edited in memory before a store save, reserve, abandon or sweep
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
@@ -13608,13 +13613,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: B3 build-auto deferred item; the owner-read refusal path of the transcript route is pinned, the turn-keys refusal mapping is not
 - 2026-11-17T15:18:25Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:38Z status=wontfix-accepted by=adjudication note=route_now_calls_the_shared_Write.IsRefusedRead(B3_review);reopen_if=TranscriptsWire_or_a_principal_probe_shows_a_non-404_answer_to_a_non-owner_turn-keys_read
 
 ### DW-2705: Entry.GuardedTurnKeys answers the turn keys of an orphaned conversation to any caller
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A conversation key naming no row passes the owner check; keys are 32 random hex and no product caller asks for one it does not own (same shape as DW-2686)
 - 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:38Z status=resolved-by:21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=adjudication note=B3_review_patch:Base.NamedOwnerRefused_row_output;UserStateRead.TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack
 
 ### DW-2706: Convo.GuardedScreenRows's SQL scope and its per-row open are not pinned one at a time
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The transcript list's two defences are tested together; removing one alone may stay green
 - 2026-11-17T15:18:26Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B3 build-auto deferred item
+- 2026-11-17T15:51:39Z status=wontfix-accepted by=adjudication note=reopen_if=removing_either_the_SQL_user_scope_or_the_per-row_open_check_alone_shows_another_user's_row_in_Convo.GuardedScreenRows(mutation_probe)
+
+### DW-2707: Turn.GuardedAbandonForUser hands any caller the number of another user's live turns, a third open answer beside AD-9's two open reads
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The abandon stays open by owner answer U-89, and its pCount answers a developer naming the victim (ReserveSweepWrite.TestAnAbandonIgnoresAHeldKey asserts count 1). AD-9's 21.35 paragraph says two reads stay open. No product caller reads the count for another user.
+- 2026-11-17T15:41:30Z status=decision-pending owner=burndown by=cr note=human=owner: hide the count from a non-owner non-administrator, or name it in AD-9 as open

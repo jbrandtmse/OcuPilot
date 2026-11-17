@@ -250,6 +250,18 @@ Code review of Batch 2 (`4529a120a` against `355d92438`), 2026-11-17. Measured o
 - [x] [Review][Patch] LOW: `LeftOver` counts the seeded steps and entries; four doc comments with a wrong mutation, check or outcome are corrected (`OwnerStateRead` twice, `ReserveSweepWrite.TestAnAbandonIgnoresAHeldKey`, `Ledger.GuardedIdsForWindow`); the triage reason for cancel is corrected.
 - [x] [Review][Defer] LOW: DW-2686 gains an occurrence (`GuardedAppend`'s `pSeq`, transcript-access rows); DW-2690 to DW-2693 are filed.
 
+Code review of Batch 3 (`88f29266d` against `b4046f504`), 2026-11-17, the story's closing review. Measured on `ocupilot-ci` as the developer principal against seeded victim rows.
+
+- [x] [Review][Patch] MED: a read with no per-row open answered what was still kept under a key whose row was gone. Measured on the tree without the patch: `Entry.GuardedTurnKeys` handed the developer the victim's turn key (orphaned conversation), `Turn.GuardedSignals` the victim's lease time (turn row gone, signals kept), and `Ledger.GuardedCountForTurn` and `Propose.GuardedCountForTurn` the victim's counts (a ledger row outlives its turn). `Base.NamedOwnerRefused` now answers whether the key names a row the caller may be answered from, and the four reads answer nothing for a key that names no row to a non-administrator. Pinned by the new legs of `UserStateRead.TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack` and `OwnerStateRead.TestACountOnAnotherUsersOrphanedLedgerAnswersNothing` (closes DW-2705 and DW-2686's count half) [src/OcuPilot/Kernel/State/Base.cls, Entry.cls, Turn.cls, Ledger.cls, Propose.cls]
+- [x] [Review][Patch] MED (Rule 31): `Api/Transcripts.IsRefusedRead` copied `Write.IsRefusedRead`. The route now calls `Write`'s, whose doc names any row, and the class header no longer says the ledger's gate is the only one [src/OcuPilot/Api/Transcripts.cls, src/OcuPilot/Kernel/Proposal/Write.cls]
+- [x] [Review][Patch] MED (Rule 19): the orphan test left the victim turn's signal nodes on the instance. It now deletes the turn through `Turn.GuardedDelete`, asserts the signal and directive are gone, and asserts the child rows and signal still existed when the developer read them [src/OcuPilot/Test/UserStateRead.cls]
+- [x] [Review][Patch] MED (Rule 19): `Nav.GuardedPending`'s key check was unpinned, because the opened-row check refuses the same leg. A victim turn with no directive is now a leg of the turn test; removing the key check turns it red [src/OcuPilot/Test/UserStateRead.cls]
+- [x] [Review][Patch] LOW (Rule 19): the administrator test's only mutation failed at seeding. `Pref.GuardedUsers` refusing every caller now turns its leg red (recorded) [src/OcuPilot/Test/UserStateRead.cls]
+- [x] [Review][Patch] LOW: the direct-path control had no index legs and no fingerprint. It now opens and checks five unique indexes as the developer (all hand back nothing) and compares the rows before and after [src/OcuPilot/Test/UserStateRead.cls, UserStateReadProbe.cls]
+- [x] [Review][Patch] LOW: two doc comments were wrong: `Nav.GuardedPending` on a directive whose turn is gone, and `UserStateRead.Writes`, which called every writer gated [src/OcuPilot/Kernel/State/Nav.cls, src/OcuPilot/Test/UserStateRead.cls]
+- [x] [Review][Defer] LOW, decision-pending (DW-2707): `Turn.GuardedAbandonForUser` answers the number of another user's live turns, a third open answer beside AD-9's two open reads. The abandon is open by owner answer U-89; hiding the count, or naming it in AD-9, is the owner's call.
+- Rejected: `NamedOwnerRefused` maps an owner-lookup failure to 822, so the owner's internal error becomes a 404 (fail-closed by design, Batch 2); an empty `pUser` is refused 822 (no product caller passes one); `Test/Retention` ignores `Pref.GuardedUsers`'s status (it runs as `%All`, an administrator); held-row owner and key edits (the stores keep no reference property but the three streams, and every owner check reads the stored value); the roster reads `MethodDefinition` (measured: the compiled public set is the defined set plus `Base`'s 21, which `BaseSurface` pins); an `Entry.GuardedRows` refusal in the transcript route answers 500 (reached only if an administrator loses the role mid-request); an orphan cleanup skipped when `RunAs` throws (`LeftOver` counts the rows by key and goes red); `UserStateRead`'s length (accepted for `OwnerStateRead` on the same grounds).
+
 ## Spec Change Log
 
 
@@ -522,7 +534,7 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 - mutation: the key check removed from `Turn.GuardedDropped` -> `TestADeveloperIsRefusedEveryReadOfAnotherUsersTurn` red at leg 1; from `GuardedSignals` -> leg 2 red.
 - mutation: `Turn.GuardedDefinitionOf` or `GuardedWorkflowOf` opens with `GuardedOpenIdAnyCaller` -> the turn test red at leg 3 or leg 4.
 - mutation: the user check removed from `Turn.GuardedForOwner` -> `TestADeveloperIsRefusedAReadNamingAnotherUserWhoHoldsNoRow` red at legs 1 and 2 (the turn test stays green, because the open refuses a row that exists). Refusing the developer's own name instead -> `TestARowThatDoesNotExistAnswersAsItDid`, `TestAnOwnerReadsItsOwnRows` and `TestAnAdministratorReadsAnotherUsersRows` red.
-- mutation: the key check removed from `Step.GuardedRows` -> the turn test red at leg 7; from `Nav.GuardedPending` -> leg 8 red.
+- mutation: the key check removed from `Step.GuardedRows` -> the turn test red at leg 7; from `Nav.GuardedPending` -> leg 9 red (a victim turn with no directive; leg 8 stays refused by the opened-row check, run 283).
 - mutation: the key check removed from `Entry.GuardedRows` -> the conversation test red at legs 5 to 7 and `TestAHeldRowCannotReadAnotherRowsStreamOrConversation` red at leg 4; from `GuardedTurnKeys` -> leg 8 red.
 - mutation: the user check removed from `Convo.GuardedOwner` -> the conversation test red at leg 1 and the no-row test red at legs 3 and 4; the key check removed from `GuardedOwnerOf` -> leg 2 red; `GuardedOwnerOf` refusing a key that names no conversation -> `TestARowThatDoesNotExistAnswersAsItDid` red at leg 7.
 - mutation: `Convo.LoadOrCreate`'s load branch unchecked -> the conversation test red at leg 4.
@@ -544,6 +556,14 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 - mutation: the per-row open of `Step.GuardedRows` or `Entry.GuardedRows` made through `GuardedOpenIdAnyCaller` -> the same test red at leg 1, or at legs 3 and 4.
 - mutation: `Convo.GuardedScreenRows` gives every row a title (`If tUser = tCaller` replaced by `If 1`) -> `TestTheTranscriptListIsScopedToTheCaller` red at its no-victim-title assertion.
 - mutation: the `UserStateRead` line removed from `scripts/ci-throwaway.sh` -> `ui/tools/ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red (102 of 103 pass).
+
+**Stage code review, Batch 3 (2026-11-17, `ocupilot-ci`), the story's closing pass.**
+
+- Inventory from `%Dictionary.CompiledMethod`: the eight stores' public methods are 82 of their own (Turn 30, Step 6, Nav 4, Convo 9, Entry 5, Pref 14, Sharing 5, SqlRun 9) plus `Base`'s 21 each; no other superclass contributes. The only non-datatype properties are the three streams. Writers that hand back a value check the caller first, except `Turn.GuardedAbandonForUser` (DW-2707).
+- After the patches: `UserStateRead` 16 (run 285), `OwnerStateRead` 15 (run 309), `TranscriptsWire` 7, `TranscriptGate` 8, `TurnLoop` 11, `TurnConversation` 11, `ProposalConfirm` 24, `ConversationRestore` 4, `ProcessControl` 15, `TurnStore` 11, `TurnNavigate` 15, `AnalyticsMdxRead` 15, `Ledger` 11, `ToolDispatch` 19, `WorkflowLoop` 10. Product paths the build did not name: `ToolWrite` 33 (the user-delete tool), `ToolRoundTrip` 2, `SwitchState` 13, `Guardrails` 12, `GuardrailsWire` 2, `SwitchesWire` 24, `ReadOnlyForYou` 10, `MarkingRestraint` 4, `RetentionTask` 4, `RemovalRowsSweep` 7. `check-objectscript.py` 0 problems.
+- mutation: the unnamed-key answer removed from `Entry.GuardedTurnKeys` -> `TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack` red at leg 5 (run 283); from `Turn.GuardedSignals` -> leg 6 red (run 284).
+- mutation: `Pref.GuardedUsers` refuses every caller -> `TestAnAdministratorReadsAnotherUsersRows` red at leg 24 (run 284).
+- mutation: the unnamed-key answer removed from `Ledger.GuardedCountForTurn` and `Propose.GuardedCountForTurn` -> `TestACountOnAnotherUsersOrphanedLedgerAnswersNothing` red at legs 2 and 3 (run 308).
 
 ## Auto Run Result
 
