@@ -239,6 +239,26 @@ In every refusal row the recorder records no body call, and the root global and 
 - **AC7.** Given the harvested methods, when they are compared with the sibling's after the rename table, then they are identical, and `uv run scripts/check-objectscript.py` passes.
 - **AC8.** Given the work-queue viewer, when this story lands, then the register holds DT-03 as not planned with the U-77 reason, the catalog marks it P4, and `exclusion-register.test.mjs` passes.
 
+### Review Findings
+
+Code review 2026-11-16, four layers (blind, edge case, verification gap, acceptance), review tier full-opus. No high. Patches applied and re-run on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] [med] A package run's checks and its run used two class lists: the port checked `%Dictionary.CompiledClass`, the body re-listed `%Dictionary.ClassDefinition` and fell back to `:<package>`. The port now sends the checked classes and the body runs them; the QA override of `BuildTestSpec` is gone [DevToolPort.cls `RunLocked`, Harvest/UnitTestRun.cls `Run`]
+- [x] [Review][Patch] [med] A method that failed on an error (no failed assertion) showed an empty Failure; it now carries the error the manager recorded (measured: `<DIVIDE>` records `ErrorDescription`, 0 failed asserts) [DevToolPort.cls `ReadMethods`]
+- [x] [Review][Patch] [med] A transaction the tests leave open held the root restore and OcuPilot's later writes; the port rolls back to the run's starting level before logging or restoring [DevToolPort.cls `RunLocked`]
+- [x] [Review][Patch] [med] The fallback-count test removed its suite-namespace run inline; cleanup moved to `OnAfterOneTest` [Test/UnitTestRecord.cls]
+- [x] [Review][Patch] [med] Browser AC1/AC2 counted runs from the file's `before()`; each test now takes its own start [ui/browser/unit-tests.browser-spec.mjs]
+- [x] [Review][Patch] [low] `Class:testX` resolved but the manager collects `Test*` only, so it recorded an empty run with 200; the prefix is now case-exact (404) [DevToolPort.cls `ResolveTests`]
+- [x] [Review][Patch] [low] Doc sentences "only system classes run while switched" corrected; the person-only test's unreadable-registry claim removed [DevToolPort.cls, Test/UnitTestPersonOnly.cls]
+- [x] [Review][Patch] [low] The `CountResults` call site had no mutation line; mutation applied, line under Verification
+- [x] [Review][Defer] [low] Skipped counted as failed in the Run's answer when privileged -- DW-2668 `by-design`
+- [x] [Review][Defer] [low] A class that fails before any method lists 0 methods with no reason -- DW-2669 `wontfix-accepted`
+- [x] [Review][Defer] [low] The Run dialog names neither the tests nor the SQL statistics reset -- DW-2670 `decision-pending` (string)
+- [x] [Review][Defer] [low] The methods list reuses the runs list's empty state -- DW-2671 `decision-pending` (string)
+- [x] [Review][Defer] [low] EX-57 still says no OcuPilot link exists -- DW-2672 `decision-pending` (catalog)
+
+Rejected: preview legs pin non-success honestly (false); concurrent outside run counted, a probing STATE read colliding, test code releasing the lock, `Halt`, `$Roles` (spec-named limits or AD-10's named gap, unlikely); `PERSONONLY` failing open on an unresolvable registry (such a tool is never dispatched); the textual root-global guard (tests use extended references legitimately); client-only confirmation (AD-53); the in-flight Run guard untested (the run lock bounds it); NORESULT logging no vendor status (rare, log-only); `PERSONGATE` reasons only from `AtelierError` (real only when 24.6/24.7 add a code elsewhere); the spec's "spine was not edited" sentence (fix edits the spec); the epics preamble (the story carries its U-77 marker); the swallowed row-count wait (`waitForRows` follows); a run of nothing reporting success (closed by the first patch); commit the QA fixes with their spec (the lead's commit).
+
 ## Spec Change Log
 
 - 2026-11-16, re-plan (iteration 3), owner answer U-86 "A". The intent contract was rewritten on the runner's re-plan directive:
@@ -406,7 +426,7 @@ Written at the spec gate on 2026-11-16, citing owner answer U-86: the AD-10 para
 
 **Shared surfaces:** `USER`'s `^UnitTest.Result` and root global; System Explorer side-bar position 17; the registered and unadvertised tool rosters; the governance baseline and the stored policy; the prohibited code roster and EXPERIENCE.md's Fixed strings; the devtool endpoint refusal sentence. Every test added or changed passes on a fresh environment, in either order.
 
-**Kept apart from the suite's own runs:** no ObjectScript test starts a run. The record test writes rows in `USER` only, while `ci-unit-test.sh` reads `HSCUSTOM`'s newest index. The browser spec's run is a `%UnitTest` run, so it gets its own `(loop)` call and never runs beside a `ci-runner` call. Tests that store a governance key restore the policy they found.
+**Kept apart from the suite's own runs:** no ObjectScript test starts a run. The record test writes rows in `USER`, and one run in the suite's own namespace that `OnAfterOneTest` removes, putting that counter back, before `ci-unit-test.sh` reads the newest index. The browser spec's run is a `%UnitTest` run, so it gets its own `(loop)` call and never runs beside a `ci-runner` call. Tests that store a governance key restore the policy they found.
 
 **Commands:**
 
@@ -428,6 +448,20 @@ Written at the spec gate on 2026-11-16, citing owner answer U-86: the AD-10 para
 - `mutation:` AC1 (the root left alone when it names an existing directory): `RootBegin` made to set the manager directory always (`If 0 && pHad`) -> `UnitTestRunGate.TestTheRootGlobalIsSetOnlyWhenNeededAndPutBackAsItWas` red on the install-directory row ("the root while it ran, from '/usr/irissys/'").
 - `mutation:` AC2 (the run body's fallback counts): `CountResults` passed count taken from status 0 -> `UnitTestRecord.TestTheRunBodysFallbackCountsAreRightForARunAndForOneMethod` red on the failing-method and passing-method legs.
 - `mutation:` AC8: DT-03's catalog tier set back to P3 -> `exclusion-register.test.mjs` 2 of 17 red ("the register holds exactly the catalog P4 rows", "the extract's Stage 5 rows are the catalog's P4 rows").
+
+**QA (real least-privileged principals over the shipped routes).** `(QA)` `ui/browser/unit-tests-principals.browser-spec.mjs`, 7 tests, green on `ocupilot-b-ci`; run beside no `ci-runner` call. Two defects the administrator-only specs could not see were found and fixed: a package run by a principal holding every pair answered 500 (`DevToolPort.ResolveTests` used a checked statement) and then recorded a run of nothing, 0 passed and 0 failed (the harvested `BuildTestSpec` falls back silently to `:<package>` when its checked statement is refused; `UnitTestRun.BuildTestSpec` now overrides it for a package, the harvested method untouched).
+
+- `mutation:` off by default: the `PERSONGATE` ask in `ScreenAction.Run` made unreachable (`If 0 &&`) -> "off by default" red (`200 !== 403`, and the run landed).
+- `mutation:` the principal's package run (code review): `UnitTestRun.Run` builds a package's spec with `BuildTestSpec` instead of the port's `classes` -> "a package and a method run as the principal" red (`passed 0, failed 0`).
+- `mutation:` the run body's fallback (code review): the `CountResults` call in `UnitTestRun.Run` deleted -> "on" and "a package and a method" red (`passed 0, failed 0`), "busy" red after them.
+- `mutation:` the same test: `DevToolPort.ResolveTests` given its checked statement back -> red (`500 !== 200`).
+- `mutation:` the pairs: `AtelierPort.WritePairs` made to answer `NamespacePairs` -> "the pairs" red (`500 !== 403`).
+- `mutation:` the refusal rows: the production refusal in `DevToolPort.UnitTest` made unreachable (`If 0 &&`) -> "the refusal rows" red (`OcuProbe245P.Prod` answered 200 and ran).
+- `mutation:` busy: the lock ask in the run and its state read removed -> "busy" red (`200 !== 409`).
+- `mutation:` the agent: `ExplorerUnitTestRun` `ADVERTISED 1` -> "the agent" red ("and no tool that runs them").
+- `mutation:` (code review, `UnitTestRunGate`, one reload) the rollback after the body call in `RunLocked` removed -> `TestATransactionTheTestsLeaveOpenIsRolledBack` red; the package `classes` key dropped -> `TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly` red ("and sends the one test class the checks passed"); the method prefix made case-blind again -> the `OcuProbe245.Mixed:testLower` refusal row red (200, a body call).
+- `mutation:` (code review) the recorded error dropped from `ReadMethods` -> `UnitTestRecord.TestAMethodThatStoppedOnAnErrorCarriesTheError` red ("the error alone").
+- Each reverted byte-identically (`cmp`) and the tree reloaded, `LOADERRORS=0`. Not covered over the route: `TOOMANY` (its cap is a seam override in `UnitTestRunGate`) and `NORESULT`. The `/impact` and `/dryrun` previews of this action never answer 200 (asserted), so they cannot reach the key ask or a run.
 
 ## Auto Run Result
 

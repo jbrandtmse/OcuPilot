@@ -13428,3 +13428,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: interop-editors.browser-spec.mjs:441 'and then that it compiled' actual ERROR #6220; 18 specs ran before it in the leg (backup, dashboard, analytics*, agent-picker, ...)
 - 2026-11-16T12:43:10Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=unchanged_rerun;if_red_again_bisect_the_leg
 - 2026-11-16T13:18:29Z status=routed owner=burndown by=orchestrator note=not_flake;rerun_red_same;<NOTOPEN>CompileDTL+30^%Api.InteropEditors=DW-2395_signature;a_spec_earlier_in_shard4_leaves_the_web_process_null_device_closed;introduced_by_merge_2ef969841(24.3,24.4,24.8)(inference);epic-runner-24_bisects_and_fixes
+
+### DW-2668: A Run's answer counts a skipped test method as failed when the caller holds SQL privileges
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: UnitTestRun.Run takes passed/failed from the harvested ParseTestResults, which counts every status but 1 as failed; the runs list and CountResults count status 2 as neither
+- 2026-11-17T00:00:04Z status=by-design owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=spec Task step 5 prescribes ParseTestResults and AC7 keeps it unchanged; the screen shows the runs list's counts
+
+### DW-2669: A run whose test class fails before any method (OnBeforeAllTests, no instance) records 0 methods and the screen shows no reason
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the manager records such errors on TestCase/TestSuite ErrorDescription; ReadRuns and ReadMethods read TestMethod rows only, so the run reads Methods 0, Failed 0
+- 2026-11-17T00:00:05Z status=wontfix-accepted owner=24-5-unit-test-runner-and-work-queue-viewer by=cr note=reopen_if=a person reports a run listed with 0 methods whose class has test methods
+
+### DW-2670: The Run dialog names neither the tests it will run nor the instance-wide SQL statistics reset
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the dialog opens before the STATE read and shows only the fixed consequence; RunTest resets the SQL statistics flags instance-wide (Manager.cls:497,738-741); the agent can pre-fill the form
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:add the target and level to the dialog, and 'It also resets the instance's SQL statistics settings.'
+
+### DW-2671: The run's methods list shows the runs list's empty state, which says no runs are recorded
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ExplorerUnitTestRun.cls:33 emptyStateKey explorerUnitTestsEmpty reads 'No unit-test runs are recorded in this namespace.' on one run's methods list
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=string:'This run recorded no test methods.' as the methods list's own empty state
+
+### DW-2672: Exclusion register EX-57 (UnitTest Portal) still says no OcuPilot link exists, while Unit tests now shows the run record
+- source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: docs/exclusion-register.md:230 EX-57 reads 'No OcuPilot link exists yet; the classic portal serves it.'; Story 24.5 ships the runs and methods lists over %UnitTest_Result
+- 2026-11-17T00:00:05Z status=decision-pending owner=burndown by=cr note=catalog call: retire EX-57 as served by DT-02, or keep it for the classic portal's other pages

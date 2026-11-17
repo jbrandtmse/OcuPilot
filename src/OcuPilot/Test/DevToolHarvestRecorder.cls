@@ -2,7 +2,8 @@
 /// query in <code>^||OcuPilotDevToolRecorder</code> before it runs the call, so a test reads whether a body was
 /// asked for and what it was sent, and, for a call that names a namespace, what that namespace's unit-test root held while
 /// the call ran. After <method>SetDry</method> it answers an empty success and runs no body, so a test can lift the port's
-/// document cap without a scan; after <method>SetAnswer</method> it answers that result.</p>
+/// document cap without a scan; after <method>SetAnswer</method> it answers that result, and after
+/// <method>SetOpenTransaction</method> it opens a transaction first and leaves it open, as a test's own code can.</p>
 Class OcuPilot.Test.DevToolHarvestRecorder Extends OcuPilot.Port.HarvestPort
 {
 
@@ -12,6 +13,7 @@ ClassMethod Clear()
     Kill ^||OcuPilotDevToolRecorder
     Kill ^||OcuPilotDevToolRecorderDry
     Kill ^||OcuPilotDevToolRecorderAnswer
+    Kill ^||OcuPilotDevToolRecorderOpenTx
 }
 
 /// <p>Answer every later call an empty success, without running its body, until <method>Clear</method>.</p>
@@ -25,6 +27,12 @@ ClassMethod SetDry()
 ClassMethod SetAnswer(pJson As %String)
 {
     Set ^||OcuPilotDevToolRecorderAnswer = pJson
+}
+
+/// <p>Open a transaction before each later armed answer and leave it open, until <method>Clear</method>.</p>
+ClassMethod SetOpenTransaction()
+{
+    Set ^||OcuPilotDevToolRecorderOpenTx = 1
 }
 
 /// <p>How many calls were recorded since <method>Clear</method>.</p>
@@ -65,6 +73,7 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
     Set tIndex = $Increment(^||OcuPilotDevToolRecorder)
     Set ^||OcuPilotDevToolRecorder(tIndex) = tCall.%ToJSON()
     If $Data(^||OcuPilotDevToolRecorderAnswer) {
+        If $Get(^||OcuPilotDevToolRecorderOpenTx) TStart
         Set pResult = ##class(%DynamicObject).%FromJSON(^||OcuPilotDevToolRecorderAnswer)
         Set pHttpStatus = 200
         Set pFault = ""

@@ -256,7 +256,9 @@ ClassMethod MakeTests(pNamespace As %String = "USER") As %Status
         Set tQuote = $Char(34)
         Set tMixed = "Class " _ ..#TESTSPACKAGE _ ".Mixed Extends %UnitTest.TestCase" _ tCRLF _ "{" _ tCRLF
         Set tMixed = tMixed _ "Method TestPasses()" _ tCRLF _ "{" _ tCRLF _ "    Do $$$AssertTrue(1, " _ tQuote _ "the probe assertion that passes" _ tQuote _ ")" _ tCRLF _ "}" _ tCRLF
-        Set tMixed = tMixed _ "Method TestFails()" _ tCRLF _ "{" _ tCRLF _ "    Do $$$AssertTrue(0, " _ tQuote _ ..#FAILEDDESCRIPTION _ tQuote _ ")" _ tCRLF _ "}" _ tCRLF _ "}" _ tCRLF
+        Set tMixed = tMixed _ "Method TestFails()" _ tCRLF _ "{" _ tCRLF _ "    Do $$$AssertTrue(0, " _ tQuote _ ..#FAILEDDESCRIPTION _ tQuote _ ")" _ tCRLF _ "}" _ tCRLF
+        ; A lower-case prefix the manager does not collect as a test.
+        Set tMixed = tMixed _ "Method testLower()" _ tCRLF _ "{" _ tCRLF _ "}" _ tCRLF _ "}" _ tCRLF
         Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#TESTSPACKAGE _ ".Mixed", tMixed)
         If $$$ISERR(tSC) Quit
         Set tPlain = "Class " _ ..#TESTSPACKAGE _ ".Plain Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ "}" _ tCRLF

@@ -164,18 +164,19 @@ test('AC4 and AC6: Run names its consequence first, Cancel adds no run, and with
     await waitForMapAnswered(page, config.navigationTimeoutMs);
     await page.waitForSelector(TESTS_FIELD, { timeout: config.navigationTimeoutMs });
     await resetGovernancePolicy();
+    const start = newestRun();
     await pressRun(page, MIXED, 'class');
     assert.equal(await page.$eval(`${DIALOG} .ocu-warning-consequence`, (node) => node.textContent.trim()), STRINGS.explorerUnitTestsRunConsequence, 'the dialog names the consequence');
     assert.equal(await page.$eval(`${DIALOG} .ocu-dialog-title`, (node) => node.textContent.trim()), STRINGS.explorerUnitTestsRunTitle, 'under its title');
     await pressDialog(page, STRINGS.actionCancel);
     await page.waitForSelector(DIALOG, { hidden: true, timeout: config.navigationTimeoutMs });
-    assert.equal(newestRun(), baseline, 'Cancel added no run');
+    assert.equal(newestRun(), start, 'Cancel added no run');
 
     await pressRun(page, MIXED, 'class');
     await pressDialog(page, STRINGS.actionProceed);
     await page.waitForSelector(REFUSAL, { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval(REFUSAL, (node) => node.textContent.trim()), STRINGS.explorerUnitTestOffReason, 'the instance\'s own switched-off sentence');
-    assert.equal(newestRun(), baseline, 'and no run was added');
+    assert.equal(newestRun(), start, 'and no run was added');
   } finally {
     await context.close();
   }
@@ -190,6 +191,7 @@ test('AC1 and AC2: with the key on, Run adds the run with its counts, its method
     await waitForMapAnswered(page, config.navigationTimeoutMs);
     await page.waitForSelector(TESTS_FIELD, { timeout: config.navigationTimeoutMs });
     await setGovernanceKey(KEY, 'enabled');
+    const start = newestRun();
     const rowsBefore = (await page.$$(ROW_SELECTOR)).length;
     await pressRun(page, MIXED, 'class');
     await pressDialog(page, STRINGS.actionProceed);
@@ -198,7 +200,7 @@ test('AC1 and AC2: with the key on, Run adds the run with its counts, its method
     await page.waitForFunction((count, selector) => document.querySelectorAll(selector).length > count, { timeout: config.navigationTimeoutMs }, rowsBefore, ROW_SELECTOR);
     assert.equal(await page.$(REFUSAL), null, 'no refusal is shown');
     const run = newestRun();
-    assert.equal(run, baseline + 1, 'one run was added');
+    assert.equal(run, start + 1, 'one run was added');
     const cells = await page.$$eval(`${ROW_SELECTOR}:first-child [role="gridcell"]`, (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.equal(cells[0], String(run), 'the newest run is the first row');
     assert.equal(cells[3], '2', 'two methods');

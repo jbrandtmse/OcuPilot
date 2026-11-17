@@ -191,7 +191,8 @@ Method TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun()
 /// <p>Matrix, Run class, and AC4's second half: with the key on, one Run is one body call to
 /// <code>UnitTestRun.Run</code> carrying the port's three keys alone, in the namespace the screen is scoped to, under the
 /// pairs of the gate and the namespace including WRITE; the root global holds the manager directory while it runs and none
-/// after; the answer is <code>{run, passed, failed}</code> as the body gave it; and a method-level Run sends the method.</p>
+/// after; the answer is <code>{run, passed, failed}</code> as the body gave it; a method-level Run sends the method; and a
+/// package-level Run sends the classes the port checked, so the body runs those and no others.</p>
 /// <p>Mutation (Rule 19): skip the root restore in <method>OcuPilot.Port.DevToolPort.RootEnd</method> -- the root assertion goes
 /// red here and in the browser spec.</p>
 Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
@@ -214,6 +215,29 @@ Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
     Do $$$AssertStatusOK(..Act(..#MIXED _ ":TestPasses", "method", .tMethodStatus, .tMethodAnswer), "a method-level Run answers")
     Set tMethodCall = $ClassMethod(..#RECORDER, "CallAt", 1)
     Do $$$AssertEquals(tMethodStatus _ "|" _ tMethodCall.query.target _ "|" _ tMethodCall.query.level, "200|OcuProbe245.Mixed:TestPasses|method", "and sends the method")
+    Do $ClassMethod(..#RECORDER, "Clear")
+    Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 9, "passed": 1, "failed": 1}.%ToJSON())
+    Do $$$AssertStatusOK(..Act("OcuProbe245", "package", .tPackageStatus, .tPackageAnswer), "a package-level Run answers")
+    Set tPackageCall = $ClassMethod(..#RECORDER, "CallAt", 1)
+    Do $$$AssertEquals(tPackageStatus _ "|" _ tPackageCall.query.level _ "|" _ tPackageCall.query.classes, "200|package|OcuProbe245.Mixed", "and sends the one test class the checks passed")
+}
+
+/// <p>A run whose tests leave a transaction open is rolled back to the level it began at before the root global is put back,
+/// so the root, the lock and OcuPilot's own writes after it are outside the tests' transaction.</p>
+/// <p>Mutation (Rule 19): remove the rollback after the body call in <method>OcuPilot.Port.DevToolPort.RunLocked</method> --
+/// this goes red.</p>
+Method TestATransactionTheTestsLeaveOpenIsRolledBack()
+{
+    Do ..EnableKey()
+    Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 7, "passed": 1, "failed": 1}.%ToJSON())
+    Do $ClassMethod(..#RECORDER, "SetOpenTransaction")
+    Set tLevel = $TLevel
+    Do $$$AssertStatusOK(..Act(..#MIXED, "class", .tStatus, .tAnswer), "the route answers a run that leaves a transaction open")
+    Set tLeft = $TLevel - tLevel
+    While $TLevel > tLevel {
+        TRollback 1
+    }
+    Do $$$AssertEquals(tStatus _ "|" _ tLeft _ "|" _ ..RootNow() _ "|" _ ..LockFree(), "200|0|0||1", "the Run applies, no transaction is left open, and the root and the lock are back")
 }
 
 /// <p>The matrix's refusals through the route, each with the key on: its status and code, no body call, and the root and the
@@ -224,7 +248,7 @@ Method TestEveryRefusalRowAnswersItsStatusAndCodeAndRecordsNoCall()
 {
     Do ..EnableKey()
     Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 7, "passed": 1, "failed": 1}.%ToJSON())
-    For tRow = "OcuProbe245P.Prod|class|409|EXPLORER.UNITTEST.PRODUCTION", "OcuProbe245P|package|409|EXPLORER.UNITTEST.PRODUCTION", "OcuProbe245.Nope|class|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245.Plain|class|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245.Mixed:TestNope|method|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245Nothing|package|404|EXPLORER.UNITTEST.NOTFOUND", "%Library|class|400|PORT.VALIDATION", "a..b|class|400|PORT.VALIDATION", "A:B:C|method|400|PORT.VALIDATION", "*|class|400|PORT.VALIDATION", "OcuProbe245.Mixed|weird|400|PORT.VALIDATION", "OcuProbe245.Mixed|method|400|PORT.VALIDATION", "OcuPilot.Test.Prohibited|class|400|EXPLORER.UNITTEST.OWNCODE", "OCUPILOT|package|400|EXPLORER.UNITTEST.OWNCODE" {
+    For tRow = "OcuProbe245.Mixed:testLower|method|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245P.Prod|class|409|EXPLORER.UNITTEST.PRODUCTION", "OcuProbe245P|package|409|EXPLORER.UNITTEST.PRODUCTION", "OcuProbe245.Nope|class|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245.Plain|class|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245.Mixed:TestNope|method|404|EXPLORER.UNITTEST.NOTFOUND", "OcuProbe245Nothing|package|404|EXPLORER.UNITTEST.NOTFOUND", "%Library|class|400|PORT.VALIDATION", "a..b|class|400|PORT.VALIDATION", "A:B:C|method|400|PORT.VALIDATION", "*|class|400|PORT.VALIDATION", "OcuProbe245.Mixed|weird|400|PORT.VALIDATION", "OcuProbe245.Mixed|method|400|PORT.VALIDATION", "OcuPilot.Test.Prohibited|class|400|EXPLORER.UNITTEST.OWNCODE", "OCUPILOT|package|400|EXPLORER.UNITTEST.OWNCODE" {
         Set tTests = $Piece(tRow, "|", 1)
         Set tLevel = $Piece(tRow, "|", 2)
         Do $$$AssertStatusOK(..Act(tTests, tLevel, .tStatus, .tAnswer), tTests _ ": the route answers")

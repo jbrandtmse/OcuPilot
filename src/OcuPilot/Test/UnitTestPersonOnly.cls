@@ -83,7 +83,7 @@ Method TestTheToolIsInNoListTheAgentSees()
 }
 
 /// <p>A tool the registry lists as advertised whose class declares <code>PERSONGATE</code> is refused
-/// <code>PROHIBITED.PERSONONLY</code> for the run's target, before any type arm, as is a registry that cannot be read; the
+/// <code>PROHIBITED.PERSONONLY</code> for the run's target, before any type arm; the
 /// shipped tool, which the registry leaves out unless asked, passes; and the shared operation gate refuses it 403 when the
 /// registry lists it, and passes it when the shipped registry answers.</p>
 /// <p>Mutation (Rule 19): remove the <code>PERSONONLY</code> arm from <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>

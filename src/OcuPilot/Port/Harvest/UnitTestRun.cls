@@ -8,9 +8,10 @@ Class OcuPilot.Port.Harvest.UnitTestRun Extends OcuPilot.Port.Harvest.UnitTest
 
 /// <p>Run the tests <code>target</code> names at <code>level</code> (<code>package</code>, <code>class</code> or
 /// <code>method</code>, where a method target reads <code>Class:Method</code>) in <code>namespace</code>, which the
-/// body switches to by save and restore. The answer is <code>{run, passed, failed}</code>, <code>run</code> the index
-/// of the run the manager recorded, or <code>0</code> when it recorded none. A method-level run counts only that
-/// method.</p>
+/// body switches to by save and restore. A package runs the comma-separated <code>classes</code> the port checked, in one
+/// suite; a class or a method runs the spec <method>BuildTestSpec</method> builds. The answer is <code>{run, passed,
+/// failed}</code>, <code>run</code> the index of the run the manager recorded, or <code>0</code> when it recorded none. A
+/// method-level run counts only that method.</p>
 ClassMethod Run() As %Status
 {
     Set tSC = $$$OK
@@ -29,9 +30,11 @@ ClassMethod Run() As %Status
                 Quit
             }
         }
+        Set tClasses = $Get(%request.Data("classes",1))
         Set tFilter = $Select(tLevel = "method": $Piece(tTarget, ":", 2), 1: "")
+        Set tSpec = $Select((tLevel = "package") && (tClasses '= ""): ":" _ $Translate(tClasses, ",", ";"), 1: ..BuildTestSpec(tTarget, tLevel))
         Set tBefore = +$Order(^UnitTest.Result(""), -1)
-        Do ##class(%UnitTest.Manager).RunTest(..BuildTestSpec(tTarget, tLevel), "/noload/nodelete/norecursive")
+        Do ##class(%UnitTest.Manager).RunTest(tSpec, "/noload/nodelete/norecursive")
         Set tAfter = +$Order(^UnitTest.Result(""), -1)
         Set tResult = {}
         If tAfter <= tBefore {

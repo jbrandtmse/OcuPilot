@@ -4,7 +4,8 @@
 /// <class>OcuPilot.Port.Harvest.UnitTest</class> carries, held equal to the sibling's by a hash of each method's code.
 /// <b>No test starts a run.</b></p>
 /// <p>Needs the namespace <code>USER</code>. Every test builds its runs in it and removes them, and puts the result counter back
-/// as it found it, in <method>OnAfterOneTest</method>.</p>
+/// as it found it, in <method>OnAfterOneTest</method>; the one run built in the namespace the suite runs in is removed, and
+/// that namespace's counter put back, there too.</p>
 Class OcuPilot.Test.UnitTestRecord Extends %UnitTest.TestCase
 {
 
@@ -24,6 +25,15 @@ Property CounterHad As %Boolean;
 
 Property CounterWas As %String(MAXLEN = "");
 
+/// <p>The run built in the namespace the suite runs in, or <code>0</code>, and that namespace and its counter as found.</p>
+Property HereRun As %Integer;
+
+Property HereNamespace As %String(MAXLEN = "");
+
+Property HereCounterHad As %Boolean;
+
+Property HereCounterWas As %String(MAXLEN = "");
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -31,6 +41,10 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..BuiltRuns = ""
     Set ..CounterHad = 0
     Set ..CounterWas = ""
+    Set ..HereRun = 0
+    Set ..HereNamespace = ""
+    Set ..HereCounterHad = 0
+    Set ..HereCounterWas = ""
     Quit $$$OK
 }
 
@@ -40,6 +54,10 @@ Method OnBeforeOneTest() As %Status
     Set ..BuiltRuns = ""
     Set ..CounterHad = ($Data(^|tNs|UnitTest.Result) # 2)
     Set ..CounterWas = $Get(^|tNs|UnitTest.Result)
+    Set ..HereRun = 0
+    Set ..HereNamespace = $NAMESPACE
+    Set ..HereCounterHad = ($Data(^UnitTest.Result) # 2)
+    Set ..HereCounterWas = $Get(^UnitTest.Result)
     Do $ClassMethod(..#FIXTURE, "Clear")
     Quit $$$OK
 }
@@ -54,6 +72,15 @@ Method OnAfterOneTest() As %Status
         Set ^|tNs|UnitTest.Result = ..CounterWas
     } Else {
         ZKill ^|tNs|UnitTest.Result
+    }
+    If ..HereRun > 0 {
+        Set tHere = ..HereNamespace
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveRun", tHere, ..HereRun), "run " _ ..HereRun _ " is removed from " _ tHere)
+        If ..HereCounterHad {
+            Set ^|tHere|UnitTest.Result = ..HereCounterWas
+        } Else {
+            ZKill ^|tHere|UnitTest.Result
+        }
     }
     Do $ClassMethod(..#FIXTURE, "Clear")
     Quit $$$OK
@@ -92,6 +119,7 @@ ClassMethod BuildRun(pNamespace As %String, pSpec As %String) As %Integer
                 Set tMethod.Status = tMethodSpec.status
                 Set tMethod.Duration = tMethodSpec.duration
                 Set tMethod.TestCase = tCase
+                If tMethodSpec.%IsDefined("error") Set tMethod.ErrorAction = "TestMethod", tMethod.ErrorDescription = tMethodSpec.error
                 Set tAssertIterator = tMethodSpec.asserts.%GetIterator()
                 While tAssertIterator.%GetNext(.tAssertAt, .tAssertSpec) {
                     Set tAssert = ##class(%UnitTest.Result.TestAssert).%New()
@@ -227,16 +255,14 @@ Method TestTheCapsBoundBothReadsAndTheFailureTextIsCut()
 
 /// <p>The counts the run body falls back to when the privilege-checked parse is refused: a run's passed and failed methods, a
 /// skipped one neither, and only the named method when a filter is given. The run is built in the namespace this test runs in,
-/// because the body is an OcuPilot class and <code>USER</code> holds none; it is removed, and the result counter put back,
-/// before the test ends.</p>
+/// because the body is an OcuPilot class and <code>USER</code> holds none; it is removed, and the result counter put back, in
+/// <method>OnAfterOneTest</method>.</p>
 /// <p>Mutation (Rule 19): swap the two statuses in <method>OcuPilot.Port.Harvest.UnitTestRun.CountResults</method> -- this
 /// goes red.</p>
 Method TestTheRunBodysFallbackCountsAreRightForARunAndForOneMethod()
 {
-    Set tHere = $NAMESPACE
-    Set tHad = ($Data(^UnitTest.Result) # 2)
-    Set tWas = $Get(^UnitTest.Result)
-    Set tRun = ..BuildRun(tHere, ..MixedSpec())
+    Set tRun = ..BuildRun($NAMESPACE, ..MixedSpec())
+    Set ..HereRun = tRun
     Do $$$AssertTrue(tRun > 0, "a run is saved: " _ tRun)
     If tRun > 0 {
         Do ##class(OcuPilot.Port.Harvest.UnitTestRun).CountResults(tRun, "", .tAllPassed, .tAllFailed)
@@ -247,13 +273,23 @@ Method TestTheRunBodysFallbackCountsAreRightForARunAndForOneMethod()
         Do $$$AssertEquals($Get(tFailsPassed) _ "|" _ $Get(tFailsFailed), "0|1", "the failing method alone counts one failed")
         Do $$$AssertEquals($Get(tPassesPassed) _ "|" _ $Get(tPassesFailed), "1|0", "the passing method alone counts one passed")
         Do $$$AssertEquals($Get(tNonePassed) _ "|" _ $Get(tNoneFailed), "0|0", "the skipped method alone counts neither")
-        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveRun", tHere, tRun), "the run is removed")
     }
-    If tHad {
-        Set ^UnitTest.Result = tWas
-    } Else {
-        ZKill ^UnitTest.Result
-    }
+}
+
+/// <p>A method that failed by stopping on an error, with no failed assertion, carries the error the manager recorded as its
+/// failure text; a method with a failed assertion carries its assertions alone, since the manager records a description of its
+/// own for that method too.</p>
+/// <p>Mutation (Rule 19): drop the recorded error from the failure text in
+/// <method>OcuPilot.Port.DevToolPort.ReadMethods</method> -- this goes red.</p>
+Method TestAMethodThatStoppedOnAnErrorCarriesTheError()
+{
+    Set tStopped = {"name": "TestStops", "status": 0, "duration": 0.1, "asserts": [], "error": " <UNDEFINED>zTestStops+1"}
+    Set tBoth = {"name": "TestBoth", "status": 0, "duration": 0.1, "asserts": [[0, "a problem"]], "error": "There are failed TestAsserts"}
+    Set tRun = ..Build({"time": "2026-11-16 10:00:00", "duration": 1, "cases": [{"name": "OcuProbe245.Errors", "methods": [(tStopped), (tBoth)]}]}.%ToJSON())
+    Do $$$AssertStatusOK(..Read("UnitTestMethods", "run", tRun, "", .tRows, .tHttp, .tFault), "the methods read answers")
+    If '$IsObject($Get(tRows)) Quit
+    Do $$$AssertEquals(tRows.%Get(0).Method _ "|" _ tRows.%Get(0).Failure, "TestBoth|a problem", "the failed assertion alone")
+    Do $$$AssertEquals(tRows.%Get(1).Method _ "|" _ tRows.%Get(1).Result _ "|" _ tRows.%Get(1).Failure, "TestStops|Failed|<UNDEFINED>zTestStops+1", "the error alone, without its leading space")
 }
 
 /// <p>The run and the record reads take the endpoint's own request types only: a record read asked as <code>RUN</code> and the

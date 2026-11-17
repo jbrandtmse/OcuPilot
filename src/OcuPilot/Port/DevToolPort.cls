@@ -592,7 +592,7 @@ ClassMethod UnitTest(pEndpoint As %String, pType As %String, ByRef pQuery, pPair
         Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#UNITTESTBUSY, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTBUSY, .pHttpStatus, .pFault)
     }
     Try {
-        Set tSC = ..RunLocked(tNamespace, tTests, tLevel, pPairs _ tNamespacePairs, .pResult, .pHttpStatus, .pFault)
+        Set tSC = ..RunLocked(tNamespace, tTests, tLevel, tNames, pPairs _ tNamespacePairs, .pResult, .pHttpStatus, .pFault)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Fail("the unit-test run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
@@ -618,8 +618,9 @@ ClassMethod TestsShapeOK(pTests As %String, pLevel As %String) As %Boolean
 /// <class>%UnitTest.TestProduction</class> test in <var>pProduction</var>. A package names every non-abstract
 /// <class>%UnitTest.TestCase</class> subclass under <code>&lt;package&gt;.</code>; a class names itself when it is one;
 /// a method names its class when that class is one and has a compiled method of that name beginning with
-/// <code>Test</code>. A target that names nothing answers an empty list. Only system classes run while the namespace is
-/// switched, and it is restored first in the <code>Catch</code>.</p>
+/// <code>Test</code>, in that case, as the manager collects them. A target that names nothing answers an empty list. While
+/// the namespace is switched only system classes and <method>IsTestClass</method> are called, and it is restored first in
+/// the <code>Catch</code>.</p>
 ClassMethod ResolveTests(pNamespace As %String, pTests As %String, pLevel As %String, Output pNames As %List, Output pProduction As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -630,9 +631,11 @@ ClassMethod ResolveTests(pNamespace As %String, pTests As %String, pLevel As %St
         Set $NAMESPACE = pNamespace
         If pLevel = "package" {
             Set tStatement = ##class(%SQL.Statement).%New()
-            Set tSC = tStatement.%Prepare("SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH ? AND Abstract = 0 ORDER BY Name")
-            If $$$ISERR(tSC) Quit
-            Set tResult = tStatement.%Execute(pTests _ ".")
+            Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH ? AND Abstract = 0 ORDER BY Name", pTests _ ".")
+            If '$IsObject(tResult) {
+                Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+                Quit
+            }
             If tResult.%SQLCODE < 0 {
                 Set tSC = $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
                 Quit
@@ -655,7 +658,7 @@ ClassMethod ResolveTests(pNamespace As %String, pTests As %String, pLevel As %St
                 Set tMethodOK = 1
                 If pLevel = "method" {
                     Set tMethod = $Piece(pTests, ":", 2)
-                    Set tMethodOK = ($ZConvert($Extract(tMethod, 1, 4), "L") = "test") && ##class(%Dictionary.CompiledMethod).%ExistsId(tName _ "||" _ tMethod)
+                    Set tMethodOK = ($Extract(tMethod, 1, 4) = "Test") && ##class(%Dictionary.CompiledMethod).%ExistsId(tName _ "||" _ tMethod)
                 }
                 If tMethodOK && ..IsTestClass(tName, .tProductionClass) {
                     Set pNames = $ListBuild(tName)
@@ -692,23 +695,30 @@ ClassMethod IsTestClass(pName As %String, Output pProduction As %Boolean) As %Bo
 }
 
 /// <p>Run <var>pTests</var> at <var>pLevel</var> in <var>pNamespace</var> with the lock held, answering <code>{run, passed,
-/// failed}</code> in <var>pResult</var>. The namespace's root global is set for the run when it does not name an existing
-/// directory and put back on every path (<method>RootBegin</method>, <method>RootEnd</method>). A run that recorded no
-/// result is 500 <parameter>OcuPilot.Api.AtelierError.UNITTESTNORESULT</parameter>, logged.</p>
-ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %String, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// failed}</code> in <var>pResult</var>. A package run sends the body <var>pNames</var>, the classes the checks passed, so
+/// the classes that run are the classes checked. The namespace's root global is set for the run when it does not name an
+/// existing directory and put back on every path (<method>RootBegin</method>, <method>RootEnd</method>), after any
+/// transaction the tests left open is rolled back to the level the run began at. A run that recorded no result is 500
+/// <parameter>OcuPilot.Api.AtelierError.UNITTESTNORESULT</parameter>, logged.</p>
+ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %String, pNames As %List, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
     Set tChanged = 0
     Set tHad = 0
     Set tOld = ""
+    Set tLevel = $TLevel
     Try {
         Do ..RootBegin(pNamespace, .tChanged, .tHad, .tOld)
         Kill tQuery
         Set tQuery("target") = pTests
         Set tQuery("level") = pLevel
         Set tQuery("namespace") = pNamespace
+        If pLevel = "package" Set tQuery("classes") = $ListToString(pNames, ",")
         Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERUNITTEST, ..#METHODUNITTEST, pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
+        While $TLevel > tLevel {
+            TRollback 1
+        }
         If $$$ISERR(tBodySC) {
             Set pHttpStatus = tHttp
             Set pFault = tFault
@@ -727,6 +737,9 @@ ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %Strin
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
+        While $TLevel > tLevel {
+            TRollback 1
+        }
         Set tSC = ..Fail("the unit-test run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Do ..RootEnd(pNamespace, tChanged, tHad, tOld)
@@ -810,7 +823,8 @@ ClassMethod Record(pEndpoint As %String, pNamespace As %String, ByRef pQuery, Ou
 }
 
 /// <p>At most <var>pMax</var> runs, newest first, as <code>{Run, Started, Duration, Methods, Passed, Failed, Finished}</code>
-/// rows pushed onto <var>pRows</var>. Runs in the current namespace; only system classes are named.</p>
+/// rows pushed onto <var>pRows</var>. Runs in the current namespace; it names system classes only and calls
+/// <method>FinishedAt</method>.</p>
 ClassMethod ReadRuns(pMax As %Integer, pRows As %DynamicArray) As %Status [ Private ]
 {
     Set tCount = "(SELECT COUNT(*) FROM %UnitTest_Result.TestMethod tm JOIN %UnitTest_Result.TestCase tc ON tm.TestCase = tc.ID JOIN %UnitTest_Result.TestSuite ts ON tc.TestSuite = ts.ID WHERE ts.TestInstance = ti.ID"
@@ -835,20 +849,20 @@ ClassMethod ReadRuns(pMax As %Integer, pRows As %DynamicArray) As %Status [ Priv
 
 /// <p>At most <var>pMax</var> methods of run <var>pRun</var>, in class and method order, as <code>{Class, Method, Result,
 /// Duration, Failure}</code> rows pushed onto <var>pRows</var>. <code>Failure</code> is the descriptions of the method's
-/// failed assertions joined by <code>; </code> and cut at <parameter>FAILUREMAX</parameter> characters. Runs in the current
-/// namespace; only system classes are named.</p>
+/// failed assertions joined by <code>; </code>, or, for a failed method with none, the error the manager recorded for it, cut
+/// at <parameter>FAILUREMAX</parameter> characters. Runs in the current namespace; it names system classes only.</p>
 ClassMethod ReadMethods(pMax As %Integer, pRun As %Integer, pRows As %DynamicArray) As %Status [ Private ]
 {
     Kill tMethods
     Set tStatement = ##class(%SQL.Statement).%New()
-    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? tc.Name, tm.Name, tm.Status, tm.Duration, tm.ID FROM %UnitTest_Result.TestMethod tm JOIN %UnitTest_Result.TestCase tc ON tm.TestCase = tc.ID JOIN %UnitTest_Result.TestSuite ts ON tc.TestSuite = ts.ID WHERE ts.TestInstance = ? ORDER BY tc.Name, tm.Name", pMax, pRun)
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? tc.Name, tm.Name, tm.Status, tm.Duration, tm.ID, tm.ErrorDescription FROM %UnitTest_Result.TestMethod tm JOIN %UnitTest_Result.TestCase tc ON tm.TestCase = tc.ID JOIN %UnitTest_Result.TestSuite ts ON tc.TestSuite = ts.ID WHERE ts.TestInstance = ? ORDER BY tc.Name, tm.Name", pMax, pRun)
     If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
     If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
     Set tCount = 0
     Set tSC = $$$OK
     While tResult.%Next(.tSC) {
         Set tCount = tCount + 1
-        Set tMethods(tCount) = $ListBuild(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3), tResult.%GetData(4), tResult.%GetData(5))
+        Set tMethods(tCount) = $ListBuild(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3), tResult.%GetData(4), tResult.%GetData(5), tResult.%GetData(6))
     }
     If $$$ISERR(tSC) Quit tSC
     For tAt = 1:1:tCount {
@@ -870,6 +884,7 @@ ClassMethod ReadMethods(pMax As %Integer, pRun As %Integer, pRows As %DynamicArr
                 If $Length(tFailure) > ..#FAILUREMAX Quit
             }
             If $$$ISERR(tSC) Quit
+            If tFailure = "" Set tFailure = $ZStrip($ListGet(tMethods(tAt), 6), "<>W")
         }
         Set tRow = {}
         Do tRow.%Set("Class", $List(tMethods(tAt), 1), "string")
