@@ -580,9 +580,8 @@ ClassMethod ConsoleEndpoints() As %List
 /// namespace, else 404 <parameter>OcuPilot.Api.AtelierError.CLASSMETHODNOTFOUND</parameter>.</li>
 /// </ol>
 /// <p>The run then calls <parameter>HANDLERCONSOLE</parameter> through the harvest port with the pairs of the gate and the
-/// namespace, rolls back any transaction the code left open to the level the run began at, and writes the audit row
-/// (<method>AuditRun</method>) for a run whose body answered. No <code>OcuPilot.*</code> class is called while the namespace is
-/// switched.</p>
+/// namespace, after writing the audit row (<method>AuditRun</method>), and rolls back any transaction the code left open to the
+/// level the run began at. No <code>OcuPilot.*</code> class is called while the namespace is switched.</p>
 ClassMethod Console(pEndpoint As %String, pType As %String, ByRef pQuery, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -724,9 +723,9 @@ ClassMethod ClassMethodFound(pNamespace As %String, pClass As %String, pMethod A
 }
 
 /// <p>Run the console's body for the input the checks passed, in <var>pNamespace</var>, under <var>pPairs</var>, answering what the
-/// body rendered in <var>pResult</var>. Any transaction the code left open is rolled back to the level the run began at, on
-/// every path, before anything else is written. A run whose body answered writes its audit row; one the harvest port refused
-/// or whose body raised writes none.</p>
+/// body rendered in <var>pResult</var>. The audit row is written before the body is entered, so a run whose code ends its own
+/// process or breaks the port's answer is recorded all the same. Any transaction the code left open is rolled back to the level
+/// the run began at, on every path, before anything else is written.</p>
 ClassMethod RunConsole(pCommand As %Boolean, pNamespace As %String, pText As %String, pClass As %String, pMethod As %String, pArgs As %String, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -742,6 +741,11 @@ ClassMethod RunConsole(pCommand As %Boolean, pNamespace As %String, pText As %St
             Set tQuery("method") = pMethod
             If pArgs '= "" Set tQuery("args") = pArgs
         }
+        If pCommand {
+            Do ..AuditRun(..#IDVALUECOMMAND, pNamespace, "", "")
+        } Else {
+            Do ..AuditRun(..#IDVALUECLASSMETHOD, pNamespace, pClass, pMethod)
+        }
         Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERCONSOLE, $Select(pCommand: ..#METHODCOMMAND, 1: ..#METHODCLASSMETHOD), pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
         While $TLevel > tLevel {
             TRollback 1
@@ -751,11 +755,6 @@ ClassMethod RunConsole(pCommand As %Boolean, pNamespace As %String, pText As %St
             Set pFault = tFault
             Set tSC = tBodySC
             Quit
-        }
-        If pCommand {
-            Do ..AuditRun(..#IDVALUECOMMAND, pNamespace, "", "")
-        } Else {
-            Do ..AuditRun(..#IDVALUECLASSMETHOD, pNamespace, pClass, pMethod)
         }
         Set pResult = tAnswer
         Set pHttpStatus = 200
@@ -994,7 +993,8 @@ ClassMethod IsTestClass(pName As %String, Output pProduction As %Boolean) As %Bo
 /// failed}</code> in <var>pResult</var>. A package run sends the body <var>pNames</var>, the classes the checks passed, so
 /// the classes that run are the classes checked. The namespace's root global is set for the run when it does not name an
 /// existing directory and put back on every path (<method>RootBegin</method>, <method>RootEnd</method>), after any
-/// transaction the tests left open is rolled back to the level the run began at. A run that recorded no result is 500
+/// transaction the tests left open is rolled back to the level the run began at. The run's audit row (<method>AuditRun</method>)
+/// is written before the body is entered. A run that recorded no result is 500
 /// <parameter>OcuPilot.Api.AtelierError.UNITTESTNORESULT</parameter>, logged.</p>
 ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %String, pNames As %List, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -1011,6 +1011,7 @@ ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %Strin
         Set tQuery("level") = pLevel
         Set tQuery("namespace") = pNamespace
         If pLevel = "package" Set tQuery("classes") = $ListToString(pNames, ",")
+        Do ..AuditRun(..#IDVALUE, pNamespace, "", "")
         Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERUNITTEST, ..#METHODUNITTEST, pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
         While $TLevel > tLevel {
             TRollback 1
@@ -1021,7 +1022,6 @@ ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %Strin
             Set tSC = tBodySC
             Quit
         }
-        Do ..AuditRun(..#IDVALUE, pNamespace, "", "")
         If '$IsObject($Get(tAnswer)) || (+tAnswer.%Get("run") < 1) {
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTNORESULT, .pHttpStatus, .pFault)
             Do ..LogFault("the unit-test run recorded no result", tSC, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT)

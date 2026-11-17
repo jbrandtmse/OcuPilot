@@ -229,9 +229,10 @@ Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
 }
 
 /// <p>A run whose body answered writes one OcuPilot <code>SecurityChange</code> row that names the console <code>unittests</code> and
-/// the namespace and never the tests it named; a run the port refused, and a run whose body faulted, write none.</p>
-/// <p>Mutation (Rule 19): remove the <code>AuditRun</code> call from <method>OcuPilot.Port.DevToolPort.RunLocked</method> -- the
-/// row count goes red.</p>
+/// the namespace and never the tests it named; a run the port refused writes none, and a run whose body faulted writes its row
+/// all the same, since the row is written before the body is entered.</p>
+/// <p>Mutation (Rule 19): remove the <code>AuditRun</code> call from <method>OcuPilot.Port.DevToolPort.RunLocked</method>, or move
+/// it below the harvest status check -- the row count goes red.</p>
 Method TestARunWritesOneAuditRowThatNamesNoTests()
 {
     Do ..EnableKey()
@@ -242,12 +243,12 @@ Method TestARunWritesOneAuditRowThatNamesNoTests()
     Do $ClassMethod(..#RECORDER, "Clear")
     Do $ClassMethod(..#RECORDER, "SetFault")
     Do $$$AssertStatusOK(..Act(..#MIXED, "class", .tFaultStatus, .tFault), "a run whose body faults is answered")
-    Do $$$AssertEquals(tFaultStatus _ "|" _ ##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests"""), "500|0", "500, and writes no row")
+    Do $$$AssertEquals(tFaultStatus _ "|" _ ##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests"""), "500|1", "500, and still writes its row")
     Do $ClassMethod(..#RECORDER, "Clear")
     Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 7, "passed": 1, "failed": 1}.%ToJSON())
     Do $$$AssertStatusOK(..Act(..#MIXED, "class", .tStatus, .tAnswer), "the route answers")
     Do $$$AssertEquals(tStatus, 200, "the Run is applied")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests""", .tData, """namespace"":""USER"""), 1, "one row names the console and the namespace")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests""", .tData, """namespace"":""USER"""), 2, "each of the two runs that reached the body wrote one row naming the console and the namespace")
     Do $$$AssertTrue(tData '[ "OcuProbe245", "and not the tests: " _ tData)
 }
 

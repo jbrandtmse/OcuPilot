@@ -141,6 +141,15 @@ describe('System Explorer Command console', () => {
     expect(ctx.host.querySelector('[data-ocu-console="refusal"]')).toBeNull();
   });
 
+  it('sends a command typed with a trailing line break as one line', async () => {
+    const ctx = await mount(COMMAND, applied({ output: 'ok', truncated: false, error: '' }));
+    type(ctx.host, '[data-ocu-console="command"]', 'Write "ok"\r\n');
+    await pressRun(ctx);
+    dialogButton(ctx, STRINGS.actionProceed)?.click();
+    await ctx.settle();
+    expect(ctx.requests.map((request) => request.body['values'])).toEqual([{ command: 'Write "ok"' }]);
+  });
+
   it("shows the instance's reason when the run is switched off, and keeps the command", async () => {
     // Mutation (Rule 19): draw the generic sentence alone in `proceed` -> the reason assertion goes red.
     const off: JsonResult<unknown> = { kind: 'error', status: 403, code: 'EXPLORER.COMMAND.OFF', reason: STRINGS.explorerCommandOffReason, detail: null };

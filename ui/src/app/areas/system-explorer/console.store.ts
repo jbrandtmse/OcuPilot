@@ -195,9 +195,12 @@ export class ConsoleState {
     this.notify();
   }
 
-  /** The values a confirmed run sends, under the names its tool declares. */
+  /**
+   * The values a confirmed run sends, under the names its tool declares. A command's trailing line breaks are left off, so a
+   * line ending in Enter is still one line.
+   */
   private values(): ActionValues {
-    if (this.kind === 'command') return { [COMMAND_VALUE]: this.commandValue };
+    if (this.kind === 'command') return { [COMMAND_VALUE]: this.commandValue.replace(/[\r\n]+$/, '') };
     return { [CLASS_VALUE]: this.classValue.trim(), [METHOD_VALUE]: this.methodValue.trim(), [ARGS_VALUE]: this.argsValue.trim() === '' ? NO_ARGUMENTS : this.argsValue.trim() };
   }
 

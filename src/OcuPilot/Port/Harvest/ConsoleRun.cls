@@ -51,11 +51,13 @@ ClassMethod Command() As %Status
     Quit tSC
 }
 
-/// <p>Run <var>pCommand</var> in a frame of its own, so the command's variables are never the caller's. Answers the text of the
-/// error the command raised, or <code>""</code>.</p>
+/// <p>Run <var>pCommand</var> in a frame of its own, so the command's variables are never the caller's. The harvest port's
+/// request, response and session variables are made new for the run, so a command that kills or sets them changes only its own
+/// copies. Answers the text of the error the command raised, or <code>""</code>.</p>
 ClassMethod Execute(pCommand As %String) As %String [ Private ]
 {
     Set tError = ""
+    New %request, %response, %session
     Try {
         Xecute pCommand
     } Catch exCommand {
@@ -90,7 +92,7 @@ ClassMethod ClassMethod() As %Status
                 Quit
             }
         }
-        Set tCallSC = ..InvokeWithArgs(tClass, tMethod, tArgs, .tReturn, .tByRefValues, .tArgCount, .tTruncated, .tByRefTruncated, .tOutputBudget)
+        Set tCallSC = ..Call(tClass, tMethod, tArgs, .tReturn, .tByRefValues, .tArgCount, .tTruncated, .tByRefTruncated, .tOutputBudget)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -128,6 +130,14 @@ ClassMethod ClassMethod() As %Status
     Quit tSC
 }
 
+/// <p>Call <method>InvokeWithArgs</method> with the harvest port's request, response and session variables made new, so a
+/// method that kills or sets them changes only its own copies. The arguments and outputs are <method>InvokeWithArgs</method>'s.</p>
+ClassMethod Call(pClass As %String, pMethod As %String, pArgs, Output pReturn, Output pByRefValues As %DynamicObject, Output pArgCount As %Integer, Output pTruncated As %Boolean, Output pByRefTruncated As %Boolean, Output pOutputBudget As %Integer) As %Status [ Private ]
+{
+    New %request, %response, %session
+    Quit ..InvokeWithArgs(pClass, pMethod, pArgs, .pReturn, .pByRefValues, .pArgCount, .pTruncated, .pByRefTruncated, .pOutputBudget)
+}
+
 /// <p>Add the captured device output to the answer: <var>pLines</var> joined with line feeds, read up to one character past the
 /// answer's <code>outputBudget</code>, cut to that budget (<method>ApplyOutputCeiling</method>), as <code>output</code>. The
 /// cut is ORed into <code>truncated</code>, and the budget leaves the answer. The output is the person's own code's and
@@ -140,7 +150,7 @@ ClassMethod OnCaptured(pLines As %DynamicArray, pResult As %DynamicObject) As %S
     Set tIterator = pLines.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tLine) {
         If tIndex > 0 Set tText = tText _ $Char(10)
-        Set tText = $Extract(tText _ tLine, 1, tBudget + 1)
+        Set tText = tText _ $Extract(tLine, 1, tBudget + 1 - $Length(tText))
         If $Length(tText) > tBudget Quit
     }
     Set tTruncated = +pResult.%Get("truncated")

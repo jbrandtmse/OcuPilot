@@ -134,6 +134,7 @@ Method TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun()
             Do $$$AssertStatusOK(..ActMethod(..#ECHO, "Echo", "[""hi""]", .tStatus, .tAnswer), tConsole _ ": the route answers")
         }
         Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tAnswer), "403|" _ $Piece(tRow, "|", 2), tConsole _ ": refused as switched off")
+        Do $$$AssertTrue($IsObject(tAnswer), tConsole _ ": the refusal is an envelope")
         If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.reason, $Piece(tRow, "|", 3), tConsole _ ": with the published sentence")
         Do $$$AssertEquals($ClassMethod(..#RECORDER, "Calls") _ "|" _ $ClassMethod(..#FIXTURE, "Invokes") _ "|" _ ..Rows(tConsole), "0|0|0", tConsole _ ": no read, no body call and no row")
         Do ..EnableKey(tConsole)
@@ -158,6 +159,7 @@ Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
     Do $ClassMethod(..#RECORDER, "SetAnswer", {"output": "ok", "truncated": false, "error": ""}.%ToJSON())
     Do $$$AssertStatusOK(..ActCommand("W ""ok""", .tStatus, .tAnswer), "the command route answers")
     Do $$$AssertEquals(tStatus, 200, "the command Run is applied")
+    Do $$$AssertTrue($IsObject(tAnswer), "the command answer is JSON")
     If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.output.%ToJSON(), "{""output"":""ok"",""truncated"":false,""error"":""""}", "and answers the output the body gave")
     Do $$$AssertEquals($ClassMethod(..#RECORDER, "Calls"), 1, "one body call")
     Set tCall = $ClassMethod(..#RECORDER, "CallAt", 1)
@@ -166,21 +168,23 @@ Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
     Do $$$AssertTrue(tCall.pairs [ "%Development:USE", "under the screen's pair")
     Do $$$AssertTrue(tCall.pairs [ "WRITE", "and WRITE on the routines database")
     Do $ClassMethod(..#RECORDER, "Clear")
-    Do $ClassMethod(..#RECORDER, "SetAnswer", {"returnValue": "2", "argCount": 1, "byRefValues": {}, "output": "hi", "truncated": false, "byRefTruncated": false, "returnValueTruncated": false, "error": ""}.%ToJSON())
+    Do $ClassMethod(..#RECORDER, "SetAnswer", {"returnValue": "2", "argCount": 1, "byRefValues": {}, "output": "hi", "truncated": true, "byRefTruncated": true, "returnValueTruncated": true, "error": ""}.%ToJSON())
     Do $$$AssertStatusOK(..ActMethod(..#ECHO, "Echo", "[""hi""]", .tMethodStatus, .tMethodAnswer), "the class method route answers")
     Do $$$AssertEquals(tMethodStatus, 200, "the class method Run is applied")
+    Do $$$AssertTrue($IsObject(tMethodAnswer), "the class method answer is JSON")
     If $IsObject(tMethodAnswer) Do $$$AssertEquals(tMethodAnswer.output.returnValue _ "|" _ tMethodAnswer.output.output _ "|" _ tMethodAnswer.output.argCount, "2|hi|1", "and answers the return value, the output and the count the body gave")
+    If $IsObject(tMethodAnswer) Do $$$AssertEquals(tMethodAnswer.output.truncated _ "|" _ tMethodAnswer.output.byRefTruncated _ "|" _ tMethodAnswer.output.returnValueTruncated, "1|1|1", "and each cut flag the body gave")
     Set tMethodCall = $ClassMethod(..#RECORDER, "CallAt", 1)
     Do $$$AssertEquals(tMethodCall.handler _ "." _ tMethodCall.method, "OcuPilot.Port.Harvest.ConsoleRun.ClassMethod", "it is the class method body")
     Do $$$AssertEquals(tMethodCall.query.%ToJSON(), "{""args"":""[\""hi\""]"",""class"":""OcuProbe246.Echo"",""method"":""Echo"",""namespace"":""USER""}", "carrying the port's four keys alone")
     Do $$$AssertEquals(..Rows("command") _ "|" _ ..Rows("classmethod"), "1|1", "and each Run wrote its one row, the port's own, whatever the body is")
 }
 
-/// <p>A run whose harvest call faults is answered 500 and writes no row, for either console: the row records a run that reached
-/// a body and answered.</p>
-/// <p>Mutation (Rule 19): move the <code>AuditRun</code> call above the harvest status check in
+/// <p>A run whose harvest call faults is answered 500 and still writes its row, for either console: the row is written before the
+/// body is entered, so code that ends its own process or breaks the port's answer is recorded all the same.</p>
+/// <p>Mutation (Rule 19): move the <code>AuditRun</code> calls below the harvest status check in
 /// <method>OcuPilot.Port.DevToolPort.RunConsole</method> -- the row count goes red.</p>
-Method TestARunWhoseBodyFaultedWritesNoRow()
+Method TestARunWhoseBodyFaultedStillWritesItsRow()
 {
     Do ..EnableKey("command")
     Do ..EnableKey("classmethod")
@@ -189,7 +193,7 @@ Method TestARunWhoseBodyFaultedWritesNoRow()
     Do $$$AssertEquals(tStatus, 500, "a command whose body faulted is 500")
     Do $$$AssertStatusOK(..ActMethod(..#ECHO, "Echo", "[""hi""]", .tMethodStatus, .tMethodAnswer), "the class method route answers")
     Do $$$AssertEquals(tMethodStatus, 500, "a class method whose body faulted is 500")
-    Do $$$AssertEquals($ClassMethod(..#RECORDER, "Calls") _ "|" _ ..Rows(), "2|0", "both bodies were asked for, and no row was written")
+    Do $$$AssertEquals($ClassMethod(..#RECORDER, "Calls") _ "|" _ ..Rows("command") _ "|" _ ..Rows("classmethod"), "2|1|1", "both bodies were asked for, and each run wrote its row")
 }
 
 /// <p>The matrix's refusals through the route, each with both keys on: its status and code, no body call and no row. Every
@@ -207,11 +211,13 @@ Method TestEveryRefusalRowAnswersItsStatusAndCodeAndRecordsNoCall()
         Set tOwn = $ZConvert(tCommand, "L") [ "ocupilot"
         Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tAnswer), $Select(tOwn: "400|EXPLORER.COMMAND.OWNCODE", 1: "400|PORT.VALIDATION"), "command " _ $Extract(tCommand, 1, 20) _ ": its status and code")
     }
-    For tRow = "a..b|Echo|[]|400|PORT.VALIDATION", "OcuProbe246.Echo|1x|[]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|{}|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|not json|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[null]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[[1]]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":false}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":""yes"",""value"":1}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":true,""value"":null}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]|400|PORT.VALIDATION", "OcuPilot.Test.Prohibited|Run|[]|400|EXPLORER.CLASSMETHOD.OWNCODE", "OCUPILOT.Kernel.Utils|Run|[]|400|EXPLORER.CLASSMETHOD.OWNCODE", "OcuProbe246.Nope|Echo|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Nope|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Instance|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Hidden|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND" {
+    For tRow = "a..b|Echo|[]|400|PORT.VALIDATION", "OcuProbe246.Echo|1x|[]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|{}|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|not json|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[null]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[[1]]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":false}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":""yes"",""value"":1}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":true,""value"":null}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":true,""value"":{""a"":1}}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[{""byRef"":true,""value"":[1]}]|400|PORT.VALIDATION", "OcuProbe246.Echo|Echo|[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]|400|PORT.VALIDATION", "OcuPilot.Test.Prohibited|Run|[]|400|EXPLORER.CLASSMETHOD.OWNCODE", "OCUPILOT.Kernel.Utils|Run|[]|400|EXPLORER.CLASSMETHOD.OWNCODE", "OcuProbe246.Nope|Echo|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Nope|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Instance|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND", "OcuProbe246.Echo|Hidden|[]|404|EXPLORER.CLASSMETHOD.NOTFOUND" {
         Do $$$AssertStatusOK(..ActMethod($Piece(tRow, "|", 1), $Piece(tRow, "|", 2), $Piece(tRow, "|", 3), .tMethodStatus, .tMethodAnswer), $Piece(tRow, "|", 1) _ "." _ $Piece(tRow, "|", 2) _ ": the route answers")
         Do $$$AssertEquals(tMethodStatus _ "|" _ ..CodeOf(tMethodAnswer), $Piece(tRow, "|", 4) _ "|" _ $Piece(tRow, "|", 5), $Piece(tRow, "|", 1) _ "." _ $Piece(tRow, "|", 2) _ " " _ $Piece(tRow, "|", 3) _ ": its status and code")
     }
     Do $$$AssertEquals($ClassMethod(..#RECORDER, "Calls") _ "|" _ ..Rows() _ "|" _ $ClassMethod(..#FIXTURE, "LogCount"), "0|0|0", "no body call, no row, and none of the refusals logged")
+    Do $$$AssertStatusOK(..ActCommand($Translate($Justify("", 30000), " ", "x"), .tLongStatus, .tLongAnswer), "a command of exactly 30,000 characters is sent")
+    Do $$$AssertEquals(tLongStatus _ "|" _ $ClassMethod(..#RECORDER, "Calls"), "200|1", "and passes the shape check to its body")
 }
 
 /// <p>Matrix, Gate: a caller without <code>%Development:USE</code>, or with it but without WRITE on the routines database, is

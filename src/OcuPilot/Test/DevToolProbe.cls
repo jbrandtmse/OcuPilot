@@ -294,7 +294,8 @@ Parameter CONSOLECLASS = "OcuProbe246.Echo";
 
 /// <p>Save and compile <code>OcuProbe246.Echo</code> in <var>pNamespace</var>: <code>Echo(pText, ByRef pOut)</code> writes
 /// <var>pText</var>, sets <var>pOut</var> to it and a <code>!</code>, and returns its length; <code>Big()</code> returns 40,000
-/// characters; <code>Fails()</code> divides by zero; <code>Instance()</code> is an instance method and <code>Hidden()</code> a
+/// characters; <code>Fails()</code> divides by zero; <code>Opens()</code> leaves a transaction open; <code>Wrecks()</code> kills and
+/// sets the harvest port's response and request variables; <code>Instance()</code> is an instance method and <code>Hidden()</code> a
 /// private class method, which a console never calls. None is run.</p>
 ClassMethod MakeConsoleProbe(pNamespace As %String = "USER") As %Status
 {
@@ -307,6 +308,8 @@ ClassMethod MakeConsoleProbe(pNamespace As %String = "USER") As %Status
         Set tText = tText _ "ClassMethod Big() As %String" _ tCRLF _ "{" _ tCRLF _ "    Quit $Translate($Justify("""", 40000), "" "", ""x"")" _ tCRLF _ "}" _ tCRLF
         Set tText = tText _ "ClassMethod Both() As %String" _ tCRLF _ "{" _ tCRLF _ "    W $Translate($Justify("""", 40000), "" "", ""y"")" _ tCRLF _ "    Quit $Translate($Justify("""", 30000), "" "", ""x"")" _ tCRLF _ "}" _ tCRLF
         Set tText = tText _ "ClassMethod Fails() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    W ""before"", !" _ tCRLF _ "    Quit 1 / 0" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Opens() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    TStart" _ tCRLF _ "    Set ^||ocu246 = 1" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
+        Set tText = tText _ "ClassMethod Wrecks() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    Kill %response" _ tCRLF _ "    Set %request = """"" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
         Set tText = tText _ "Method Instance() As %Integer" _ tCRLF _ "{" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF
         Set tText = tText _ "ClassMethod Hidden() As %Integer [ Private ]" _ tCRLF _ "{" _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF _ "}" _ tCRLF
         Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, ..#CONSOLECLASS, tText)

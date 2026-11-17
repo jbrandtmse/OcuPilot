@@ -343,7 +343,8 @@ Method TestRenderOutsideThePortRecordsNothing()
     Do $$$AssertEquals($Select($IsObject($Get(tLines)): tLines.%Size(), 1: -1), 0, "nothing was written")
 }
 
-/// <p>No class that extends the base writes the response itself, and the scan found one.</p>
+/// <p>No class that extends the base writes the response itself, and the scan found one. A line that is only a
+/// <code>New</code> of variable names, which hides the port's response from code the body runs, is not a use of it.</p>
 Method TestNoHarvestedBodyNamesTheResponseWriter()
 {
     Set tBase = "OcuPilot.Port.Harvest.Handler"
@@ -362,8 +363,14 @@ Method TestNoHarvestedBodyNamesTheResponseWriter()
             While 'tMethod.Implementation.AtEnd {
                 Set tText = tText _ tMethod.Implementation.Read(32000)
             }
+            Set tScan = ""
+            For tLine = 1:1:$Length(tText, $Char(10)) {
+                Set tCode = $ZStrip($Piece(tText, $Char(10), tLine), "<>WC")
+                If $Match(tCode, "(?i)new\s+[%A-Za-z0-9, ]+") Continue
+                Set tScan = tScan _ tCode _ $Char(10)
+            }
             For tToken = "OcuPilot.Api.Response", "OcuPilot.Api.Error", "%response" {
-                Do $$$AssertTrue(tText '[ tToken, tClass _ "." _ tMethods.%GetData(1) _ " does not name " _ tToken)
+                Do $$$AssertTrue(tScan '[ tToken, tClass _ "." _ tMethods.%GetData(1) _ " does not name " _ tToken)
             }
         }
     }

@@ -138,6 +138,8 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     If tCapturing {
         Try {
+            ; The capture's mnemonic goes back on the device it was set on, whichever device the body left current.
+            If $IO '= tDevice Use tDevice
             Set tEndSC = $$EndCapture^%SYS.Capture(tCookie, .tLines)
         } Catch exEnd {
             If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
