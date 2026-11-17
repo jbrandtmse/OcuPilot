@@ -2,6 +2,8 @@
 /// destination's journal and mount state answered as a test arms them, so <class>OcuPilot.Test.AnalyticsTermListEdit</class> and
 /// <class>OcuPilot.Test.AnalyticsTermListGate</class> drive the port's refusals and its rollback in process. Every call that is not failed
 /// is made on the vendor, in <code>USER</code>.</p>
+/// <p>Since Story 24.10 it counts the folder manager's three vendor calls too (<code>VendorFolderItem*</code>), <code>failimport</code> answers an error
+/// after the vendor's import of folder items has returned, and <code>readonly</code> applies to the folder item database as to the term list one.</p>
 /// <p><method>Arm</method> names the mode: <code>failsecond</code> (the second <code>%SetValue</code> since <method>Reset</method> answers an
 /// error), <code>throwsecond</code> (it raises an exception instead), <code>failthird</code> (the third <code>%SetValue</code> answers an error, which an import or a copy of a list with entries reaches), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
 /// read) or <code>readonly</code> (it reads as mounted read-only). <method>Calls</method> counts the vendor calls made, an export's included.</p>
@@ -97,6 +99,38 @@ ClassMethod VendorTermListDelete(pNamespace As %String, pName As %String, Output
     Quit ##super(pNamespace, pName, .pCaught)
 }
 
+ClassMethod VendorFolderItemExport(pNamespace As %String, pName As %String, pFile As %String, Output pLines As %DynamicArray, Output pTooLarge As %Boolean, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pLines = ""
+    Set pTooLarge = 0
+    Set tSC = ..Count("export")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##super(pNamespace, pName, pFile, .pLines, .pTooLarge, .pCaught)
+}
+
+/// <p>The vendor's import, then, armed <code>failimport</code>, an error answered after it returned, so the port's transaction holds the items the
+/// vendor saved when it rolls back.</p>
+ClassMethod VendorFolderItemImport(pNamespace As %String, pText As %String, Output pLoaded As %Integer, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pLoaded = 0
+    Set tSC = ..Count("import")
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##super(pNamespace, pText, .pLoaded, .pCaught)
+    If $$$ISOK(tSC) && '$IsObject(pCaught) && ($Get(^||OcuPilotTermListSeam("mode")) = "failimport") Quit $$$ERROR($$$GeneralError, "armed failure after the import returned")
+    Quit tSC
+}
+
+ClassMethod VendorFolderItemDelete(pNamespace As %String, pName As %String, Output pCount As %Integer, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pCount = 0
+    Set tSC = ..Count("delete")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##super(pNamespace, pName, .pCount, .pCaught)
+}
+
 /// <p>The armed journal state of the term list database, else the instance's own.</p>
 ClassMethod DestinationJournaled(pNamespace As %String, pGlobal As %String, Output pJournaled As %Boolean) As %Boolean
 {
@@ -116,7 +150,7 @@ ClassMethod DestinationJournaled(pNamespace As %String, pGlobal As %String, Outp
 ClassMethod DestinationDatabase(pNamespace As %String, pGlobal As %String, Output pResource As %String, Output pReadOnly As %Boolean, Output pMounted As %Boolean) As %Boolean
 {
     Set tResolved = ##super(pNamespace, pGlobal, .pResource, .pReadOnly, .pMounted)
-    If (pGlobal = ..#TERMLISTGLOBAL) && ($Get(^||OcuPilotTermListSeam("mode")) = "readonly") Set pReadOnly = 1
+    If ((pGlobal = ..#TERMLISTGLOBAL) || (pGlobal = ..#FOLDERITEMGLOBAL)) && ($Get(^||OcuPilotTermListSeam("mode")) = "readonly") Set pReadOnly = 1
     Quit tResolved
 }
 

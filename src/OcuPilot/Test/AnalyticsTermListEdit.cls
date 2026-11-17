@@ -395,7 +395,7 @@ Method TestTheLongestNameKeyAndFieldAreStored()
 /// <p>The ruling of the spec gate: each of the six writes is refused 409 <code>NOTJOURNALED</code> with the ruled sentence before any vendor call
 /// or transaction when the term list database is not journaled, and 400 <code>PORT.VALIDATION</code> when its journal state cannot be read.
 /// <method>OcuPilot.Port.AnalyticsPort.JournaledFrom</method> reads the flag the instance sets, measured on a database with journaling off.</p>
-/// <p>Mutation (Rule 19): drop the journal test in <method>OcuPilot.Port.AnalyticsPort.AdmitTermList</method> -- every refusal leg goes red; make
+/// <p>Mutation (Rule 19): drop the journal test in <method>OcuPilot.Port.AnalyticsPort.AdmitJournaled</method> -- every refusal leg goes red; make
 /// <method>OcuPilot.Port.AnalyticsPort.DestinationJournaled</method> always answer journaled -- the last leg goes red.</p>
 Method TestAWriteIsRefusedWhenTheDatabaseIsNotJournaled()
 {

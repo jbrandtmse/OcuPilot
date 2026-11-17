@@ -161,6 +161,49 @@ Parameter TERMLISTIMPORTCHANGED = "ANALYTICS.TERMLIST.IMPORTCHANGED";
 
 Parameter REASONTERMLISTIMPORTCHANGED = "The file changed after it was reviewed, so nothing was imported.";
 
+/// <p>409: an import file names a folder item the namespace already holds, in any letter case and whoever may see it (Story 24.10).</p>
+Parameter FOLDERITEMTAKEN = "ANALYTICS.FOLDERITEM.TAKEN";
+
+Parameter REASONFOLDERITEMTAKEN = "This namespace already holds a folder item with a name in this file. Names are compared without regard to case.";
+
+/// <p>404: the folder item is not there, or not shown to the caller.</p>
+Parameter FOLDERITEMABSENT = "ANALYTICS.FOLDERITEM.ABSENT";
+
+Parameter REASONFOLDERITEMABSENT = "This folder item no longer exists.";
+
+/// <p>409: a delete of a locked folder item.</p>
+Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
+
+Parameter REASONFOLDERITEMLOCKED = "This folder item is locked, so it cannot be deleted.";
+
+/// <p>409: the database that holds the namespace's folder items is read-only or not mounted.</p>
+Parameter FOLDERITEMREADONLY = "ANALYTICS.FOLDERITEM.READONLY";
+
+Parameter REASONFOLDERITEMREADONLY = "The database that holds this namespace's folder items is read-only, so nothing was written.";
+
+/// <p>409: the database that holds the namespace's folder items is not journaled, so an import could be left half done.</p>
+Parameter FOLDERITEMNOTJOURNALED = "ANALYTICS.FOLDERITEM.NOTJOURNALED";
+
+Parameter REASONFOLDERITEMNOTJOURNALED = "Folder items can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace's folder items.";
+
+/// <p>409: a folder item file or export holds more than the product transfers (Story 24.10).</p>
+Parameter FOLDERITEMTOOLARGE = "ANALYTICS.FOLDERITEM.TOOLARGE";
+
+Parameter REASONFOLDERITEMTOOLARGE = "The file is larger than OcuPilot imports or exports.";
+
+/// <p>409: an import file holds no folder item, or holds something other than folder items.</p>
+Parameter FOLDERITEMIMPORTSHAPE = "ANALYTICS.FOLDERITEM.IMPORTSHAPE";
+
+Parameter REASONFOLDERITEMIMPORTSHAPE = "This file holds no folder item, or something other than folder items.";
+
+/// <p>409: the import file no longer reads as it did when it was reviewed.</p>
+Parameter FOLDERITEMIMPORTCHANGED = "ANALYTICS.FOLDERITEM.IMPORTCHANGED";
+
+Parameter REASONFOLDERITEMIMPORTCHANGED = "The file changed after it was reviewed, so nothing was imported.";
+
+/// <p>The consequence code of the folder item delete.</p>
+Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
+
 /// <p>The consequence codes of the term list delete and the entry remove.</p>
 Parameter TERMLISTDELETE = "ANALYTICS.TERMLIST.DELETE";
 
@@ -198,6 +241,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TERMLISTTOOLARGE Quit ..#REASONTERMLISTTOOLARGE
     If pCode = ..#TERMLISTIMPORTSHAPE Quit ..#REASONTERMLISTIMPORTSHAPE
     If pCode = ..#TERMLISTIMPORTCHANGED Quit ..#REASONTERMLISTIMPORTCHANGED
+    If pCode = ..#FOLDERITEMTAKEN Quit ..#REASONFOLDERITEMTAKEN
+    If pCode = ..#FOLDERITEMABSENT Quit ..#REASONFOLDERITEMABSENT
+    If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
+    If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
+    If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
+    If pCode = ..#FOLDERITEMTOOLARGE Quit ..#REASONFOLDERITEMTOOLARGE
+    If pCode = ..#FOLDERITEMIMPORTSHAPE Quit ..#REASONFOLDERITEMIMPORTSHAPE
+    If pCode = ..#FOLDERITEMIMPORTCHANGED Quit ..#REASONFOLDERITEMIMPORTCHANGED
     Quit ""
 }
 
@@ -225,6 +276,12 @@ ClassMethod CubeConsequenceCodes() As %List
 ClassMethod TermListCodes() As %List
 {
     Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED, ..#TERMLISTTOOLARGE, ..#TERMLISTIMPORTSHAPE, ..#TERMLISTIMPORTCHANGED)
+}
+
+/// <p>The folder item transfers' and delete's eight refusal codes (Story 24.10), as a <class>%List</class>.</p>
+ClassMethod FolderItemCodes() As %List
+{
+    Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

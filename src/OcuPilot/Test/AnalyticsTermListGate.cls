@@ -181,7 +181,7 @@ Method TestEachTransferIsRefusedNamingTheFailedPair()
 
 /// <p>AC3: with the term list database mounted read-only, each of the six writes is refused 409 <code>ANALYTICS.TERMLIST.READONLY</code> before
 /// any vendor call, and the term lists are as they were.</p>
-/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitDestination</method> in <method>OcuPilot.Port.AnalyticsPort.AdmitTermList</method> -- the
+/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.AnalyticsPort.AdmitDestination</method> in <method>OcuPilot.Port.AnalyticsPort.AdmitJournaled</method> -- the
 /// six legs go red.</p>
 Method TestAReadOnlyDatabaseIsRefusedBeforeAnyVendorCall()
 {

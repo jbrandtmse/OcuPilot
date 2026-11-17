@@ -2,13 +2,28 @@
 title: 'Story 24.10: Folder manager transfer and term-list import, export and copy (Batch 2: the folder manager)'
 type: 'feature'
 created: '2026-11-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '85c9187f55ceee75060e1cc694bb9aff64ea30c3'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The port's AdmitRead (READ on the folder item database, for the export) has no negative test.
+    evidence: |-
+      A probe principal holding the Folder Manager's pairs and the file system's resource but no %DB_USER right was refused by the namespace gate (NS.DENIED, failedPair %DB_USER:READ) before AdmitRead ran, so the check is reachable only where ^DeepSee.FolderItemD is mapped to a database other than the namespace's default. Pinning it needs a mapped layout or a gate seam.
+    location: >-
+      src/OcuPilot/Port/AnalyticsPort.cls AdmitRead
+    severity: low (unverified)
+  - summary: >-
+      The locked-and-hidden branch of ReadFolderItem (code 3 with %CheckResource false, read as 2) is not exercised.
+    evidence: |-
+      Every test runs as an account holding every resource, so %CheckResource is always true; a locked item whose resource the caller lacks would need a probe principal and a resource-bound item.
+    location: >-
+      src/OcuPilot/Port/AnalyticsPort.cls ReadFolderItem
+    severity: low (unverified)
 ---
 
 <intent-contract>
@@ -139,6 +154,24 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `37b3429e
 
 ## Review Triage Log
 
+### 2026-11-17 - Review pass
+
+- verdicts: 13 findings - high 0, medium 3, low 6, false 2, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` Hidden items (`%FolderItemExists` 2) never exercised - added `AnalyticsFolderItemEdge.TestAnItemTheCallerCannotSeeIsAbsentAndItsNameIsTaken` over a seam that answers an item hidden; mutation recorded.
+  - `[medium]` `[patch]` Folder import's text bound never tested with the folder code - added the over-bound (local, server, composed read, write) and at-bound legs.
+  - `[medium]` `[patch]` "Never pKill" guarded only by a source-text regex - added a bystander item that must survive an import; mutation recorded.
+  - `[maybe-false]` `[defer]` The port's `AdmitRead` has no negative test - a principal without READ on `^DeepSee.FolderItemD`'s database is refused first by the namespace gate (measured: `NS.DENIED` naming `%DB_USER:READ`), so the check is reachable only where the folder item global is mapped to another database; deferred with the evidence.
+  - `[low]` `[patch]` Import and delete cards unasserted - added the card legs to `AnalyticsFolderItemEdge`.
+  - `[low]` `[patch]` Two test comments claimed a `TYPED_NAME_ROWS` mutation reddens a test - comments corrected; the entry stays unpinned, as recorded above.
+  - `[low]` `[reject]` `TYPED_NAME_ROWS` entry unpinned - the dialog types the name whether or not the entry is declared, as for the term lists; no user-visible harm.
+  - `[low]` `[reject]` Several AC legs have no `mutation:` line of their own - Rule 19 asks one per AC; AC3, AC4 and AC7 each have one above.
+  - `[low]` `[reject]` Component spec `settle()` waits on fixed sleeps - jsdom only, no flake seen, fix adds machinery.
+  - `[low]` `[reject]` AC5 and the classic file are driven at the port only - the routes call the same port methods, which the route legs cover for the `%Export` form.
+  - `[maybe-false]` `[defer]` A locked item hidden from the caller reads 2 through the `%CheckResource` guard in `ReadFolderItem`; the test caller holds every resource, so the guard is unexercised.
+  - `[false]` `[reject]` Intent audit: the port's delete does not compare `Modified` - the reviewed state is the proposal fingerprint (`Name,Type,Owner,Modified,Locked,Namespace`), which the confirm compares.
+  - `[false]` `[reject]` Intent audit: `ci-throwaway.sh` is a CI file - the spec names it as an add-only edit; the edit adds one roster line.
+
 ## Design Notes
 
 **Measured** (plan, 2026-11-17, `ocupilot-b-ci`, USER; the probe classes, items, folders and `/tmp/e2410b/` were removed):
@@ -245,9 +278,34 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `37b3429e
 - AC7: one `SurfaceCoverage` row is removed → that test alone.
 - AC8: the probe directory is left behind → `OnAfterAllTests`.
 
+**Mutations run (Rule 19)** on `ocupilot-b-ci` (the throwaway's source copy, reloaded and compiled with its subclasses; each reverted by `rsync --checksum` and `diff -r`, byte-identical; client ones in the worktree, reverted by `cmp`, rebuilt and redeployed):
+
+- mutation: `VendorFolderItemExport` ignores its file -> `AnalyticsFolderItemTransfer` `TestAnExportWritesTheVendorsXmlToAFileAndToTheBrowser` (file, escaping and lines legs) went red.
+- mutation: `VendorFolderItemImport` answers OK without `%Import` -> `TestAnExportImportsBackAsTheSameItem` and `TestTheClassicPagesFileImportsBothItems` went red.
+- mutation: `VendorFolderItemDelete` skips `%DeleteFolderItem` -> `TestADeleteRemovesAnUnlockedItemAndRefusesALockedOrAbsentOne` went red.
+- mutation: the taken check of `PerformFolderImport` made `If 0 &&` -> `TestATakenNameAndAChangedFileWriteNothing` went red alone; its digest comparison made `If 0 &&` -> the changed legs of the same test went red.
+- mutation: `FolderItemsInText` taking a document not named `*.DFI`, a `Document` with no item and a non-item child of a `Document` as no breach (three guards, each alone left the leg green) -> `TestAFileThatHoldsMoreThanFolderItemsCreatesNothing` (the mixed file) went red.
+- mutation: `PerformFolderImport` rolls back in place of `TCOMMIT` -> `AnalyticsFolderItemRoutes` `TestTheAgentsThreeProposalsConfirmAndTheImportedItemReads` (the screen's read, AC6) and the person's import legs went red; its `TROLLBACK` made `If 0 {` -> `TestAnImportThatFailsAfterTheVendorReturnedLeavesNothing` went red alone.
+- mutation: `PerformFolderDelete`'s locked check made `If 0 &&` and `PerformFolderExport`'s `AuditWrite` dropped -> `TestADeleteRemovesAnUnlockedItemAndRefusesALockedOrAbsentOne` and `TestEachWriteIsAudited` went red.
+- mutation: the delete's `%DeleteFolderItem` dropped from `FolderItemSnippet` -> `TestEachWritesScriptFormMakesTheSameChange` went red.
+- mutation: `AdmitJournaled`'s journal refusal made `If 0 &&` -> `AnalyticsFolderItemGate` `TestAReadOnlyOrUnjournaledDatabaseIsRefusedBeforeAnyVendorCall` (nonjournaled legs) went red.
+- mutation: `AnalyticsFolderItemExport.WriteOutput` answers nothing and the import arm of `Prohibited` removed -> the person's export and the agent's import legs of `AnalyticsFolderItemRoutes` went red.
+- mutation: the import row removed from `SurfaceCoverage`, the export row from `ClassicPageGate.OWNPAIRS`, the import entry from `MappingDescriptor.CLASSICROSTER`, and `analytics.folderitems.export` shipped `false` in `Baseline.cls` -> each of those four tests went red, alone.
+- mutation: `Sweep` of `AnalyticsFolderItemTransfer` no longer deleting an item -> its `OnAfterAllTests` went red.
+- mutation (client): `endSend` reading `root` for the path, the import count read as `'0'`, the bus test on `'created'` and `exportFileName` keeping `/`, each alone -> `folder-item-list.page.spec.ts` went red (four tests); `'export'` dropped from the Folder items' `UNDRAWN_ACTIONS` entry -> `screen-action-handler-folderitem.spec.ts` went red; the Folder items' `DESTRUCTIVE_CONSEQUENCES` entry dropped, rebuilt and redeployed -> `analytics.browser-spec.mjs` (the Story 24.10 test, its row menu) went red, and green after the revert, rebuild and redeploy. The `TYPED_NAME_ROWS` entry dropped left the handler spec and the browser spec green: the dialog types the item's name whether or not the entry is declared, so that entry is unproven by any mutation (the spec's Code Map lists it, as it does for the term lists').
+
+- mutation (review pass, `AnalyticsFolderItemEdge`, throwaway source copy reloaded, reverted by `rsync --checksum` and `diff -r`, byte-identical): `FolderItemVisible` answering 1 for 2 -> `TestAnItemTheCallerCannotSeeIsAbsentAndItsNameIsTaken` went red; the vendor import's `pKill` argument made 1 -> `TestAnImportLeavesEveryOtherItemAsItWas` went red; `FolderItemImportFile` passing the term list's too-large code -> `TestAnImportFilePastTheTextBoundIsTooLargeAndOneAtTheBoundIsRead` went red; `AnalyticsFolderItemImport.StateDiff` pushing no `Items` row -> `TestTheImportsAndTheDeletesCardsNameWhatTheyActOn` went red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Batch 2 of Story 24.10 is planned: the folder manager's export, import and delete. The plan measured the vendor's export, import and delete on `ocupilot-b-ci` and records the results under Design Notes › Measured. Three veto items wait for the runner: the import refuses non-item content, the import creates only, and the proposed strings. The proposed spine lines are kept for the owner. The batch fits one pass.
+Batch 2 of Story 24.10 is implemented: the folder manager's export, import and delete over `%DeepSee.UserLibrary.Utils`, reachable by the person's row actions and by the agent's confirmed proposals.
+
+- **Port, errors, tools, governance:** `AnalyticsPort` gains the `FolderItems` reads `FOLDERITEM`, `EXPORTITEM` and `IMPORTFILE`, the writes `EXPORT`, `IMPORT` and `DELETE`, the import's `%XML.TextReader` parse (`FolderItemsInText`), the `VendorFolderItem*` seams and the script forms; Batch 1's helpers are lifted (`AdmitJournaled`, `AdmitRead`, `ExportFile`, `CheckExport`, `ImportText`, `Utf8Stream`). `AnalyticsError` has the eight codes. New tools `AnalyticsFolderItem{Action,Export,Import,Delete}`; `Baseline.cls` ships export and import `true` and delete `false`; `Prohibited` covers `folder-item`.
+- **Client:** new `folder-item-list.page.ts` and `transfer-actions.ts` (lifted from the term list page), the action, outlet and proposal maps, `strings.ts`, regenerated `screens.generated.ts`, and the EXPERIENCE.md strings row.
+- **Tests:** `AnalyticsFolderItemTransfer` (11), `AnalyticsFolderItemRoutes` (4), `AnalyticsFolderItemGate` (2), and from the review pass `AnalyticsFolderItemEdge` (4) with `AnalyticsFolderItemHiddenSeam`; the roster classes, `analytics.test.mjs`, two component specs and the browser spec are updated; `ci-throwaway.sh` gains one add-only roster line.
+- **Review:** 13 findings, no high. Patches applied: 3 medium (hidden items, the folder import's text bound, a bystander item that must survive an import) and 2 low (card rows, two false comments), each with a recorded mutation. Deferred: 2 (the export's `AdmitRead` is shadowed by the namespace gate, the locked-and-hidden branch). Rejected: 6, with reasons in the Review Triage Log. Follow-up review recommended: the three patched mediums are new tests over unchanged product code, so the unverified risk is limited to those tests' hermeticity on a fresh instance.
+- **Verification:** the (loop) classes and rosters green on `ocupilot-b-ci`; `npm run test:tools` 2,299 green; `npm run test:components`, `npm run build` (initial bundle 2.10 MB) and `analytics.browser-spec.mjs` green before the review pass, whose client edits were comments only; `check-objectscript` and `lint-docs` clean; the (once) sweep, shards 1 to 17 of 17, green after the last patch.
+- **Residual risks:** `analyticsFolderItemsEmptyAgent` (`'import folder items'`, the Folder items empty-state hint the registry now requires) is a string outside the proposed set, held as a veto item for the owner's wording. Epic 21 also changed `Baseline.cls`, `Prohibited.cls`, the roster tests (`ToolWrite`, `ReadTool`, `ToolEmit`, `Governance`, `GovernanceBaseline`, `SurfaceCoverage`, `Prohibited`, `ToolRoundTrip`), `strings.ts`, `screens.generated.ts`, `screen-outlet.ts` and `ci-throwaway.sh`; the roster counts (93 to 96, 479 to 482) and the `strings.ts` line cite will conflict at integrate-forward.

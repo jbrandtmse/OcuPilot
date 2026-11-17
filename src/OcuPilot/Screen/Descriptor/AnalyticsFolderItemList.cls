@@ -4,7 +4,10 @@
 /// before the row cap applies.</p>
 /// <p><b>Its id is the item's full name</b>, folder and extension included, kept exactly (AD-13), and its scope is <code>namespace</code>.</p>
 /// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Folder Manager admits <code>%DeepSee_Admin</code> or <code>%Development</code>, and a pair set is an AND, so
-/// this screen names the narrower audience (AD-8, AD-65). It offers no action and does not refresh (AD-43).</p>
+/// this screen names the narrower audience (AD-8, AD-65). It does not refresh (AD-43).</p>
+/// <p><b>Its row actions are the folder manager's</b> (Story 24.10): Export, to a server file or to this browser; Import, from a server file or a file this browser reads, which creates the
+/// folder items the file holds and replaces none; and Delete, which types the item's name. Each is a tool of <class>OcuPilot.Screen.Tool.AnalyticsFolderItemAction</class>'s family, reached by the
+/// person here and by the agent's proposal.</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsFolderItemList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,7 +30,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Owner", "Modified", "Favorite"], "secretFields": []},
   "emptyStateKey": "analyticsFolderItemsEmpty",
   "commandAliases": ["folder items", "folder item"],
@@ -54,8 +57,8 @@ XData Declaration
       {"field": "Modified", "labelKey": "analyticsColumnModified", "kind": "text"},
       {"field": "Favorite", "labelKey": "analyticsColumnFavorite", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsFolderItemsEmptyAgent"
   },
   "toolIdentifier": "analytics.folderitems"
 }

@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:651 */
+  /** EXPERIENCE.md:652 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8098,6 +8098,34 @@ export const STRINGS = {
   analyticsTermListImportDone: 'Imported <name>.',
   /** EXPERIENCE.md:609 */
   analyticsTermListCopyDone: 'Copied <name> to <new>.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemExportTitle: 'Export folder item <name>',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportTitle: 'Import folder items',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemExportHelp: 'The file holds the folder item\'s definition, in the XML form the classic Folder Manager imports. A file already at this name is replaced.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportHelp: 'The file must hold folder items only, as OcuPilot or the classic Folder Manager exports them. It creates each item it holds; no item of that name may exist.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemTaken: 'This namespace already holds a folder item with a name in this file. Names are compared without regard to case.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemAbsent: 'This folder item no longer exists.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemLocked: 'This folder item is locked, so it cannot be deleted.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemReadonly: 'The database that holds this namespace\'s folder items is read-only, so nothing was written.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemNotJournaled: 'Folder items can be changed only in a journaled database, so that a change is never left half done. Journaling is off for the database that holds this namespace\'s folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsRefusalFolderItemImportShape: 'This file holds no folder item, or something other than folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemDeleteConsequence: 'Deleting this folder item removes it for every user, and dashboards that show it can no longer display it. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemImportDone: 'Imported <count> folder items.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemDeleteDone: 'Deleted <name>.',
+  /** EXPERIENCE.md:610 */
+  analyticsFolderItemsEmptyAgent: 'import folder items',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
