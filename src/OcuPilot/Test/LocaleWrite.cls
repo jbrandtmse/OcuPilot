@@ -85,6 +85,7 @@ Method OnAfterOneTest() As %Status
 {
     Kill ^||OcuPilotDatabaseWritePort
     Do ..Restore()
+    Do ..Sys("RestoreLocales", 1)
     Do $$$AssertEquals(..VendorExists(..#CUSTOM) _ ..VendorExists(..#REFUSEDCUSTOM), "00", "the custom locales are gone")
     Do $$$AssertEquals(..VendorCurrent() _ "|" _ ..VendorNodeText() _ "|" _ ..VendorCspText(), ..PreparedLocale _ "|" _ ..PreparedNode _ "|" _ ..PreparedCsp, "the current locale, the switch and the configured table are as the class found them")
     Kill tRows
@@ -375,28 +376,32 @@ Method TestValidateReadsIsValidsAnswerForAnAcceptedAndARefusedDefinition()
     }
 }
 
-/// <p><b>AC2, AC3.</b> Validate and the install mint write nothing, on a locale whose vendor install check writes. The control comes first: the vendor's own
-/// <code>IsInstallable</code> of <code>jpnw</code>, one of the nine shipped locales whose check fills two accent-table fields of its definition, moves the checksum of
-/// <code>^SYS("NLS")</code> on this instance, and the node is put back. Then the port's validation of every listed locale, the screen's route, the agent's tool and
-/// the install tool's mint for <code>jpnw</code> leave the checksum as it was. A write to <code>jpnw</code>'s definition is put back.</p>
-/// <p>Mutation (Rule 19): <code>ReadValidation</code> also calls <code>IsInstallable</code> -> the checksum assertion goes red.</p>
+/// <p><b>AC2, AC3.</b> Validate and the install mint write nothing, on a locale whose vendor install check writes. Every locale's definition is copied first and put
+/// back after the test on every path (<method>OnAfterOneTest</method>). The control comes next: the vendor's own <code>IsInstallable</code> of <code>jpnw</code>, one of
+/// the nine shipped locales whose check fills two accent-table fields of its definition, moves the checksum of <code>^SYS("NLS")</code> on this instance, and the
+/// definitions are put back. Then the port's validation of every listed locale, each <code>Valid</code> and count equal to the vendor's <code>IsValid</code>, the
+/// screen's route, the agent's tool and the install tool's mint for <code>jpnw</code> leave the checksum as it was.</p>
+/// <p>Mutation (Rule 19): <code>ReadValidation</code> also calls <code>IsInstallable</code> -> the checksum assertion goes red; <code>ReadValidation</code> also requires
+/// <code>IsLoadable</code> -> the per-locale verdict assertion goes red.</p>
 Method TestValidateAndTheInstallMintLeaveTheNlsDefinitionsAsTheyWere()
 {
     Set tLocale = "jpnw"
     Set tNames = $ClassMethod(..#READ, "VendorList", .tCurrent)
     Do $$$AssertTrue(("," _ tNames _ ",") [ ("," _ tLocale _ ","), tLocale _ " is a locale this instance lists")
-    Set tBefore = ..NlsState(tLocale, .tNode)
-    Do $$$AssertNotEquals(tBefore, "error", "the definitions' checksum is read")
+    Set tBefore = ..Sys("SnapLocales")
+    Do $$$AssertNotEquals(tBefore, "error", "the definitions are copied and their checksum read")
     Do ..Sys("Installable", tLocale)
-    Set tControl = ..NlsState(tLocale, .tControlNode)
-    Do ..RestoreNode(tLocale, .tNode)
+    Set tControl = ..Sys("NlsState")
     Do $$$AssertNotEquals(tControl, tBefore, "control: the vendor's install check writes " _ tLocale _ " on this instance, so the checksum below can move")
-    Do $$$AssertEquals(..NlsState(tLocale, .tRestored), tBefore, "and the control's write is put back")
+    Do $$$AssertEquals(..Sys("RestoreLocales"), tBefore, "and the control's write is put back")
     For tI = 1:1:$Length(tNames, ",") {
+        Set tName = $Piece(tNames, ",", tI)
         Kill tQuery
-        Set tQuery("name") = $Piece(tNames, ",", tI)
+        Set tQuery("name") = tName
         Set tSC = $ClassMethod(..#PORT, "Invoke", "Validation", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
-        If tHttp '= 200 Do $$$AssertEquals(tHttp, 200, "the port validates " _ $Piece(tNames, ",", tI))
+        Set tGot = tHttp _ "|" _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("Valid") _ "|" _ tAnswer.%Get("ErrorCount") _ "|" _ tAnswer.%Get("WarningCount"), 1: "")
+        Set tWant = "200|" _ $ClassMethod(..#READ, "VendorChecks", tName)
+        If tGot '= tWant Do $$$AssertEquals(tGot, tWant, "the port validates " _ tName _ " with IsValid's own verdict and counts")
     }
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/locales/" _ ##class(OcuPilot.Kernel.EntityId).Encode(tLocale) _ "/validation", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the screen's route validates " _ tLocale)
@@ -404,20 +409,7 @@ Method TestValidateAndTheInstallMintLeaveTheNlsDefinitionsAsTheyWere()
     Do $$$AssertEquals(tToolHttp, 200, "the agent's tool validates " _ tLocale)
     Set tSC = $ClassMethod("OcuPilot.Area.OsMgmt.LocaleRules", "WriteProblem", "OcuPilot.Screen.Tool.LocaleInstall", tLocale, {}, .tProblem)
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ tProblem, "1|", "the install tool's mint admits it")
-    Set tAfter = ..NlsState(tLocale, .tNodeAfter)
-    If tAfter '= tBefore Do ..RestoreNode(tLocale, .tNode)
-    Do $$$AssertEquals(tAfter, tBefore, "^SYS(""NLS"") is as it was after Validate on every listed locale and on the other paths, and an install mint")
-}
-
-/// <p><method>LocaleWriteVendor</method>'s <method>NlsState</method>, with the node's copy in <var>pNode</var>.</p>
-ClassMethod NlsState(pName As %String, Output pNode) As %String
-{
-    Quit ##class(OcuPilot.Test.LocaleWriteVendor).NlsState(pName, .pNode)
-}
-
-ClassMethod RestoreNode(pName As %String, ByRef pNode)
-{
-    Do ##class(OcuPilot.Test.LocaleWriteVendor).RestoreNlsNode(pName, .pNode)
+    Do $$$AssertEquals(..Sys("NlsState"), tBefore, "^SYS(""NLS"") is as it was after Validate on every listed locale and on the other paths, and an install mint")
 }
 
 }

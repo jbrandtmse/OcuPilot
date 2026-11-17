@@ -15,7 +15,7 @@
 /// <code>Valid</code> is its answer and the counts are of the error and warning lines it answered. It is a read: it never calls
 /// <code>IsInstallable</code>, which writes the locale's definition for some locales. The lines are vendor-written text and are never
 /// answered (AD-39).</p>
-/// <p><b>Every write is judged before any vendor call</b> by <class>OcuPilot.Area.OsMgmt.LocaleRules</class>, which the tools' mint asks
+/// <p><b>Every write is judged before the vendor's install or delete</b> by <class>OcuPilot.Area.OsMgmt.LocaleRules</class>, which the tools' mint asks
 /// too: a delete is refused for a locale InterSystems ships and for the current locale. An install is refused when the vendor's own
 /// <code>IsInstallable</code> refuses it; that check runs only here, inside the confirmed install, after the write gate
 /// (<method>ReadInstallable</method>). An install answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>, the default collation of IRISTEMP around the call; a

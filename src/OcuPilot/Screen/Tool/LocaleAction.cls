@@ -3,7 +3,7 @@
 /// locale is named by <method>IdArgument</method>, in the port's <code>name</code> query key.</p>
 /// <p><b>Its rules are the port's</b>: the mint refuses what <class>OcuPilot.Area.OsMgmt.LocaleRules</class> refuses against the locale's
 /// state (<method>ArgumentProblem</method>), and the port asks the same rules again at the write, for the confirm and for a screen's action
-/// alike, before any vendor call.</p>
+/// alike, before the vendor's install or delete. An install's own check is the port's alone, at the write.</p>
 /// <p><b>Its pairs</b> are its screen's, then <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter> where the screen's
 /// set lacks them, then the custom resource of each <parameter>CLASSICPAGES</parameter> page (AD-8, AD-44). It is a sibling of
 /// <class>OcuPilot.Screen.Tool.BackupAction</class>, not a subclass: its port, state and rules differ, and subclassing would couple the

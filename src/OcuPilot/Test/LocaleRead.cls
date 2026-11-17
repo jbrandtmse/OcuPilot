@@ -78,7 +78,7 @@ ClassMethod VendorList(Output pCurrent As %String) As %String
     Quit tNames
 }
 
-/// <p>The vendor's <code>IsValid</code> of <var>pName</var>, <code>valid|errors|warnings</code> as 0 or 1 and the two line counts, read in <code>%SYS</code>
+/// <p>The vendor's <code>IsValid</code> of <var>pName</var>, as <code>valid|errors|warnings</code>: the verdict as 0 or 1, then its error and warning line counts, read in <code>%SYS</code>
 /// independently of the port.</p>
 ClassMethod VendorChecks(pName As %String) As %String
 {
@@ -214,7 +214,7 @@ Method TestTheValidationRouteAnswersJsonOverTheWire()
     Do $$$AssertEquals(tStatus, 401, "a request with no credentials is refused before any read")
 }
 
-/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the port's validation, which the screen's route answers whole, carries none of them:
+/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's <code>IsValid</code> answers, the port's validation, which the screen's route answers whole, carries none of them:
 /// only the name, the verdict and the counts of every line. The verdict is whatever the check answered.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Port.LocalePort</class>'s <code>Validation</code> adds the first error line to its answer -> the member and
 /// no-line assertions go red; <code>Validation</code> asks <code>ReadInstallable</code> -> the no-check assertion goes red.</p>
@@ -240,7 +240,7 @@ Method TestTheValidationAnswerHoldsNoVendorLine()
     Do $$$AssertEquals(tAnswer.%Get("Valid"), 0, "the verdict is the one the check answered")
 }
 
-/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's checks answer, the agent's tool result carries none of them: only the name, the verdict and
+/// <p><b>AC2 (AD-39).</b> Whatever lines the vendor's <code>IsValid</code> answers, the agent's tool result carries none of them: only the name, the verdict and
 /// the counts of every line. The lines are fed through <class>OcuPilot.Test.LocaleValidateSeam</class>, so the test does not depend on what the
 /// instance's own locale answers.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.LocaleValidate</class>'s <code>View</code> passes the answer's <code>Warnings</code> lines through -> the

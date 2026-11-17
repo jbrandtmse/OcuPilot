@@ -208,16 +208,13 @@ ClassMethod Decimal(pArg As %String = "") As %String
     Quit tAnswer
 }
 
-/// <p>A checksum of everything under <code>^SYS("NLS")</code>, answered, with a copy of the definition node of the locale <var>pName</var> in <var>pNode</var>;
-/// <code>"error"</code> when the read raised.</p>
-ClassMethod NlsState(pName As %String, Output pNode) As %String
+/// <p>A checksum of everything under <code>^SYS("NLS")</code>; <code>"error"</code> when the read raised.</p>
+ClassMethod NlsState(pArg As %String = "") As %String
 {
-    Kill pNode
     Set tCrc = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Merge pNode = ^SYS("NLS", "LocalesD", pName)
         Set tRef = $Name(^SYS("NLS"))
         For {
             Set tRef = $Query(@tRef)
@@ -231,17 +228,42 @@ ClassMethod NlsState(pName As %String, Output pNode) As %String
     Quit tCrc
 }
 
-/// <p>Put the definition node of the locale <var>pName</var> back to the copy <method>NlsState</method> made in <var>pNode</var>.</p>
-ClassMethod RestoreNlsNode(pName As %String, ByRef pNode)
+/// <p>Copy every locale's definition (<code>^SYS("NLS","LocalesD")</code>) into this process, with the <method>NlsState</method> checksum it was taken
+/// at, for <method>RestoreLocales</method>; the checksum is answered.</p>
+ClassMethod SnapLocales(pArg As %String = "") As %String
 {
+    Set tCrc = ..NlsState()
+    Kill ^||OcuPilotLocaleNlsSnap
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Kill ^SYS("NLS", "LocalesD", pName)
-        Merge ^SYS("NLS", "LocalesD", pName) = pNode
-    } Catch {
+        Merge ^||OcuPilotLocaleNlsSnap("copy") = ^SYS("NLS", "LocalesD")
+        Set ^||OcuPilotLocaleNlsSnap = tCrc
+    } Catch ex {
+        Kill ^||OcuPilotLocaleNlsSnap
+        Set tCrc = "error"
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tCrc
+}
+
+/// <p>Put every locale's definition back to <method>SnapLocales</method>'s copy when <code>^SYS("NLS")</code> no longer checksums as it did, and drop the copy
+/// when <var>pArg</var> is 1. Does nothing when no copy was taken. Answers the checksum after.</p>
+ClassMethod RestoreLocales(pArg As %String = "") As %String
+{
+    If '$Data(^||OcuPilotLocaleNlsSnap) Quit ..NlsState()
+    If ..NlsState() '= ^||OcuPilotLocaleNlsSnap {
+        Set tOrigNS = $NAMESPACE
+        Try {
+            Set $NAMESPACE = "%SYS"
+            Kill ^SYS("NLS", "LocalesD")
+            Merge ^SYS("NLS", "LocalesD") = ^||OcuPilotLocaleNlsSnap("copy")
+        } Catch {
+        }
+        If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    }
+    If pArg = 1 Kill ^||OcuPilotLocaleNlsSnap
+    Quit ..NlsState()
 }
 
 /// <p>The vendor's <code>IsInstallable</code> of the locale <var>pArg</var>, which writes the definition of some shipped locales; 1 or 0.</p>

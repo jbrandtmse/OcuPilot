@@ -3,7 +3,7 @@
 /// (<class>OcuPilot.Screen.Descriptor.LocaleList</class>): it has no proposal. Its lines are vendor-written and reach no consumer (AD-39):
 /// this tool answers the verdict and the <b>counts</b> of the errors and the warnings, never a line.</p>
 /// <p><b>It reads through the same entry point the screen's route reads through</b>: <method>OcuPilot.Port.LocalePort.Invoke</method> on its
-/// <code>Validation</code> endpoint, behind the port's own gate (AD-29). The result is built here from the verdicts and the counts alone, so a
+/// <code>Validation</code> endpoint, behind the port's own gate (AD-29). The result is built here from the verdict and the counts alone, so a
 /// field the port later adds never reaches the model.</p>
 Class OcuPilot.Screen.Tool.LocaleValidate Extends OcuPilot.Screen.Tool.Base
 {
