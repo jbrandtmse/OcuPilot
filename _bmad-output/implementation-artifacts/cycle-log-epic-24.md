@@ -297,3 +297,10 @@
 2026-11-17T12:45:35Z	Story 24.10	stage_spawned	stage=code-review spawn_at=2026-11-17T12:45:35Z model=opus agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-code-review-1 cycle_iteration=1
 2026-11-17T13:06:51Z	Story 24.10	cr_complete	spawn_at=2026-11-17T12:46:30Z model=opus resolved=8 fixed_at_source=8 wontfix_accepted=3 routed=1(DW-2702) escalated=1(DW-2703) occurrence=DW-2597 dismissed=19 high=1 med=7 low=7 rows=3 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done(batch1) high_fixed=AD-59_partial_list_script_over_1000_entries scope=batch1 cycle_iteration=1
 2026-11-17T13:06:51Z	Story 24.10	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 to_burndown=DW-2702,DW-2703 scope=batch1 model=claude-opus-5-5
+2026-11-17T13:20:18Z	Story 24.10	integrate_forward	feature=5bd91e50e(bookkeeping+timings_only) head=fc8b5a248 conflicts_resolved=none
+2026-11-17T13:20:18Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.10_batch1 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-17T13:20:18Z	Story 24.10	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50+analytics-term-list-editor_4/4+a11y-structural-invariants_13/13_on_fresh_merged_throwaway scope=batch1 model=claude-opus-5-5
+2026-11-17T13:20:18Z	Story 24.10	fresh_check	env=recipe(merged_tree_fc8b5a248) tests=14_classes+2_specs result=pass order=forward,reverse scope=batch1 note=AnalyticsTermListSeam_is_a_helper
+2026-11-17T13:20:18Z	Story 24.10	committed	sha=508d9b9f1 code_head=fc8b5a248 ci=pending runs=44091630775 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(add-only)
+2026-11-17T13:20:18Z	Story 24.10	ruling	question=tracker_status_between_batches choice=in-progress(batch2_follows;CR_wrote_done_for_batch1) why=story_done_only_when_both_batches category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T13:20:18Z	Story 24.10	stage_spawned	stage=plan spawn_at=2026-11-17T13:20:18Z model=opus agent_name=24-10-folder-manager-transfer-and-term-list-import-export-and-copy-plan-batch2 cycle_iteration=2 scope=batch2_folder_manager

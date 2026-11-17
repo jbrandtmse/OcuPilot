@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-17-2026 05:05'
+last_updated: '11-17-2026 13:20'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -455,7 +455,8 @@ development_status:
   24-7-web-terminal: backlog
   24-8-remote-instance-profiles-and-environment-diff: done
   24-9-environment-promote: done
-  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: done
+  24-10-folder-manager-transfer-and-term-list-import-export-and-copy: 
+    in-progress
   24-11-listing-groups: backlog
   24-12-quality-measures: backlog
   24-13-analytics-settings: backlog
