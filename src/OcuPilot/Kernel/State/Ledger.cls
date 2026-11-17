@@ -332,7 +332,7 @@ ClassMethod GuardedFinalize(pLedgerKey As %String, pStatus As %String, pCode As 
 /// <p>Count one call of turn <var>pTurnKey</var> past the row cap: open the turn's own
 /// <parameter>KINDOVERFLOW</parameter> row, raise <property>Dropped</property> by one against the
 /// version just read, or create it with <property>Dropped</property> 1. <var>pDropped</var> is the
-/// new count.</p>
+/// new count, or 0 when the call fails.</p>
 ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute As %String, Output pDropped As %Integer) As %Status
 {
     Set pDropped = 0
@@ -367,6 +367,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
+    If $$$ISERR(tSC) Set pDropped = 0
     Quit tSC
 }
 
@@ -381,7 +382,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
 /// the cutoff by <method>BoundedWhere</method>, the row cap and the predicates by
 /// <method>OcuPilot.Kernel.State.Base.GuardedIdsBounded</method>, and the fragment holds only
 /// <code>?</code>.</p>
-/// <p>A windowed read also takes four selections, each ignored by a keyed read:
+/// <p>A windowed read also takes four selections, each but <var>pAllUsers</var> ignored by a keyed read:
 /// <var>pRoute</var> matches <property>Route</property> exactly, <var>pBeginUtc</var> and
 /// <var>pEndUtc</var> (<property>LoggedAt</property>'s own ISO UTC form) bound it at or after and
 /// at or before, and <var>pAllUsers</var> 1 leaves out the user predicate -- the only way to read

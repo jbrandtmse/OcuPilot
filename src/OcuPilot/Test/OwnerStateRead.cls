@@ -100,12 +100,17 @@ ClassMethod Clean()
     }
 }
 
-/// <p>How many rows of the stores this class seeds survive <method>Clean</method>.</p>
-ClassMethod LeftOver() As %Integer
+/// <p>How many rows of the stores this class seeds survive <method>Clean</method>: the rows that name either user,
+/// and the steps and entries of the turns and conversations this test seeded.</p>
+Method LeftOver() As %Integer
 {
     Set tCount = 0
     For tTable = "Proposal", "Ledger", "Turn", "Convo" {
         Set tCount = tCount + ..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State." _ tTable _ " WHERE UserName IN ('" _ ..#VICTIM _ "', '" _ ..#DEVUSER _ "')")
+    }
+    For tWho = "victim", "own" {
+        If ..PreparedIds.%Get(tWho _ "Turn") '= "" Set tCount = tCount + ..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", ..PreparedIds.%Get(tWho _ "Turn"))
+        If ..PreparedIds.%Get(tWho _ "Conv") '= "" Set tCount = tCount + ..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", ..PreparedIds.%Get(tWho _ "Conv"))
     }
     Quit tCount
 }
@@ -212,6 +217,8 @@ Method ProposalReads(pWho As %String) As %DynamicArray
     Do tSteps.%Push({"kind": "OwnerRead.Propose.GuardedCountForTurn", "turnKey": (tIds.%Get(pWho _ "Turn"))})
     Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Propose", "id": (tIds.%Get(pWho _ "ProposalId"))})
     Do tSteps.%Push({"kind": "OwnerRead.Exists", "store": "Propose", "id": (tIds.%Get(pWho _ "ProposalId"))})
+    Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Base", "id": (tIds.%Get(pWho _ "ProposalId"))})
+    Do tSteps.%Push({"kind": "OwnerRead.Exists", "store": "Base", "id": (tIds.%Get(pWho _ "ProposalId"))})
     Do tSteps.%Push({"kind": "OwnerRead.StoredValue", "store": "Propose", "method": "ProposalKeyIdxExists", "key": (tIds.%Get(pWho _ "Proposal")), "property": "TargetRef"})
     Do tSteps.%Push({"kind": "OwnerRead.StoredValue", "store": "Propose", "method": "ProposalKeyIdxExists", "key": (tIds.%Get(pWho _ "Proposal")), "property": "UserName"})
     Quit tSteps
@@ -233,12 +240,14 @@ Method LedgerReads(pWho As %String) As %DynamicArray
     Do tSteps.%Push({"kind": "OwnerRead.Ledger.GuardedCountForTurn", "turnKey": (tIds.%Get(pWho _ "Turn"))})
     Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Ledger", "id": (tIds.%Get(pWho _ "LedgerId"))})
     Do tSteps.%Push({"kind": "OwnerRead.Exists", "store": "Ledger", "id": (tIds.%Get(pWho _ "LedgerId"))})
+    Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Base", "id": (tIds.%Get(pWho _ "LedgerId"))})
     Do tSteps.%Push({"kind": "OwnerRead.StoredValue", "store": "Ledger", "method": "LedgerKeyIdxExists", "key": (tIds.%Get(pWho _ "LedgerKey")), "property": "Name"})
     Quit tSteps
 }
 
 /// <p>The reads that name another store's row owned by <var>pWho</var>: a turn, a step (whose owner is its turn's),
-/// a conversation and an entry (whose owner is its conversation's), through <code>Base</code>'s three public reads.</p>
+/// a conversation and an entry (whose owner is its conversation's), through <code>Base</code>'s three public reads,
+/// and the turn and the entry opened through <code>Base</code> itself, whose extent holds every store's rows.</p>
 Method BaseReads(pWho As %String) As %DynamicArray
 {
     Set tIds = ..PreparedIds
@@ -247,6 +256,8 @@ Method BaseReads(pWho As %String) As %DynamicArray
         Do tSteps.%Push({"kind": "OwnerRead.Open", "store": (tStore), "id": (tIds.%Get(pWho _ tStore _ "Id"))})
         Do tSteps.%Push({"kind": "OwnerRead.Exists", "store": (tStore), "id": (tIds.%Get(pWho _ tStore _ "Id"))})
     }
+    Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Base", "id": (tIds.%Get(pWho _ "TurnId"))})
+    Do tSteps.%Push({"kind": "OwnerRead.Open", "store": "Base", "id": (tIds.%Get(pWho _ "EntryId"))})
     Do tSteps.%Push({"kind": "OwnerRead.StoredValue", "store": "Turn", "method": "TurnKeyIdxExists", "key": (tIds.%Get(pWho _ "Turn")), "property": "State"})
     Do tSteps.%Push({"kind": "OwnerRead.StoredValue", "store": "Convo", "method": "ConvKeyIdxExists", "key": (tIds.%Get(pWho _ "Conv")), "property": "UserName"})
     Quit tSteps
@@ -290,10 +301,11 @@ Method AssertAllAnswered(pRun As %DynamicObject, pWhat As %String, pPlan As %Dyn
 
 /// <p>A developer -- <code>%Development:USE</code>, no <code>OcuPilotAdmin</code> -- reads another user's proposal
 /// through the store's key, token, version, turn, conversation and count reads and through <code>Base</code>'s
-/// opens. Each is refused <code>822</code>, hands back no value, and the rows read as they did.</p>
-/// <p>Mutation (Rule 19): <code>KeyOwnerRefused</code> or the owner check removed from
-/// <code>Propose.GuardedByKey</code> -> its leg goes red; the owner check removed from
-/// <code>Base.GuardedOpenId</code> -> the open leg goes red.</p>
+/// opens, the opens through <code>Base</code> itself included. Each is refused <code>822</code>, hands back no value, and
+/// the rows read as they did.</p>
+/// <p>Mutation (Rule 19): <code>RowReadRefused</code> removed from <code>Propose.GuardedByKey</code> -> its leg goes
+/// red; the owner check removed from <code>Base.GuardedOpenId</code> -> the open legs go red; it read from the class
+/// called rather than the row's -> the <code>Base</code> open leg goes red.</p>
 Method TestADeveloperIsRefusedEveryReadOfAnotherUsersProposal()
 {
     Set tBefore = ..Fingerprint()
@@ -330,7 +342,8 @@ Method TestADeveloperIsRefusedAReadNamingAnotherUsersKey()
 /// <p>A developer reads another user's ledger rows through the store's row, window, dropped-count and count reads and
 /// through <code>Base</code>'s opens. Each is refused <code>822</code> with no value.</p>
 /// <p>Mutation (Rule 19): the user check removed from <code>Ledger.GuardedIdsForWindow</code> or
-/// <code>GuardedDroppedFor</code> -> that leg goes red.</p>
+/// <code>GuardedDroppedFor</code> -> that leg goes red; the turn check removed from
+/// <code>Ledger.GuardedCountForTurn</code> -> the count leg goes red.</p>
 Method TestADeveloperIsRefusedEveryReadOfAnotherUsersLedgerRows()
 {
     Set tBefore = ..Fingerprint()
@@ -344,8 +357,8 @@ Method TestADeveloperIsRefusedEveryReadOfAnotherUsersLedgerRows()
 /// <p>A developer reads another user's turn, step (owned through its turn), conversation and entry (owned through
 /// its conversation) through
 /// <code>Base</code>'s three public reads. Each is refused <code>822</code> with no value.</p>
-/// <p>Mutation (Rule 19): the parent lookup removed from the owner check of a store that declares
-/// <code>OWNERPARENT</code> -> the step legs go red.</p>
+/// <p>Mutation (Rule 19): the owner check removed from <code>Base.GuardedOpenId</code> or
+/// <code>GuardedExistsId</code> -> the open or existence legs go red.</p>
 Method TestADeveloperIsRefusedBaseReadsOfAnotherUsersOtherRows()
 {
     Set tBefore = ..Fingerprint()
@@ -390,7 +403,8 @@ Method TestAnOwnerReadsItsOwnRows()
 
 /// <p>An administrator -- <code>OcuPilotAdmin:USE</code>, no <code>%All</code> -- reads the victim's proposal,
 /// ledger rows, turn, step and conversation, and the ledger across every user.</p>
-/// <p>Mutation (Rule 19): the administrator exemption removed from the read gate -> every leg goes red.</p>
+/// <p>Mutation (Rule 19): <code>Ledger.WindowReadRefused</code> refuses an administrator's read across every user ->
+/// the two all-users legs go red.</p>
 Method TestAnAdministratorReadsAnotherUsersRows()
 {
     Set tPlan = ..ProposalReads("victim")
@@ -457,6 +471,69 @@ Method TestTheDatabaseRefusesTheDirectPaths()
         Set tLeg = tLegs.%Get(tI - 1)
         Do $$$AssertTrue('tLeg.%Get("ok") && (tLeg.%Get("seen") = ""), tLeg.%Get("kind") _ " leg " _ tI _ " is refused and hands back nothing: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI) _ " seen=" _ tLeg.%Get("seen"))
     }
+    Set tHeld = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 5)
+    Do $$$AssertTrue($IsObject(tHeld) && tHeld.%Get("opened"), "the developer opened its own proposal, so the stream read is what was refused")
+}
+
+/// <p>A developer holds its own proposal with the arguments pointed at another user's stored arguments and reads its
+/// own proposal: the read is refused <code>822</code> and hands back nothing, and the rows read as they did. An open
+/// returns the object the caller holds, so the store reads only the stream the row stores.</p>
+/// <p>Mutation (Rule 19): the stored-stream comparison removed from <code>Base.GuardedStreamText</code> -> this goes
+/// red with the victim's arguments.</p>
+Method TestAHeldRowCannotReadAnotherRowsStream()
+{
+    Set tVictim = ##class(OcuPilot.Kernel.State.Propose).%OpenId(..PreparedIds.%Get("victimProposalId"))
+    Do $$$AssertTrue($IsObject(tVictim), "the victim's proposal was seeded")
+    Set tStream = $Select($IsObject(tVictim): tVictim.ArgumentsGetObjectId(), 1: "")
+    Set tVictim = ""
+    Do $$$AssertTrue(tStream '= "", "and stores its arguments as a stream")
+    Set tBefore = ..Fingerprint()
+    Set tPlan = [].%Push({"kind": "Held.StreamSwap", "id": (..PreparedIds.%Get("ownProposalId")), "key": (..PreparedIds.%Get("ownProposal")), "stream": (tStream)})
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
+    Do $$$AssertTrue(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("opened"), "the developer holds its own proposal: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Do ..AssertAllRefused(tRun, "a held proposal pointed at the victim's arguments", tPlan)
+    Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
+}
+
+/// <p>A developer opens its own proposal, marks it confirmed in memory and saves it through <code>Base</code>'s two
+/// public saves: each is refused <code>822</code> and the row reads as it did. An owner store's rows are written
+/// through its own writers; <code>Base</code>'s public saves serve an administrator only.</p>
+/// <p>Mutation (Rule 19): <code>Base.PublicSaveRefused</code> answers <code>$$$OK</code> for an owner store -> this goes
+/// red.</p>
+Method TestADeveloperCannotSaveItsOwnProposalThroughBase()
+{
+    Set tBefore = ..Fingerprint()
+    Set tPlan = []
+    Do tPlan.%Push({"kind": "Held.BaseSave", "id": (..PreparedIds.%Get("ownProposalId")), "via": "save"})
+    Do tPlan.%Push({"kind": "Held.BaseSave", "id": (..PreparedIds.%Get("ownProposalId")), "via": "saveIfCurrent"})
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
+    For tI = 1:1:2 {
+        Do $$$AssertTrue(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, tI).%Get("opened"), "the developer opens its own proposal: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
+        Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, tI), "Held.BaseSave ok=0 code=822", "and the public save of it is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, tI))
+    }
+    Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
+}
+
+/// <p>A developer counts an overflow on another user's turn key after the turn is gone and its ledger rows are kept (a
+/// ledger row outlives its turn): the count is refused <code>822</code>, answers no count, and the rows read as they
+/// did.</p>
+/// <p>Mutation (Rule 19): <code>Ledger.GuardedCountOverflow</code> keeps its count on a refusal -> this goes red.</p>
+Method TestACountOnAnotherUsersOrphanedLedgerAnswersNothing()
+{
+    Set tTurn = ..PreparedIds.%Get("victimTurn")
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", tTurn)
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tTurn)
+    Do $$$AssertEquals(..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tTurn), 0, "the victim's turn is gone")
+    Do $$$AssertEquals(..Stored("SELECT Dropped FROM OcuPilot_Kernel_State.Ledger WHERE Seq = 0 AND %EXACT(TurnKey) = ?", tTurn), 1, "and its overflow row is kept")
+    Set tBefore = ..Fingerprint()
+    Set tPlan = [].%Push({"kind": "Ledger.GuardedCountOverflow", "turnKey": (tTurn), "user": (..#DEVUSER)})
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Ledger.GuardedCountOverflow ok=0 code=822", "the count on the victim's overflow row is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("dropped"), 0, "and answers no count")
+    Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
 }
 
 /// <p>The callers that map a refused read to today's answer map only <code>822</code>: any other failure of the store's
@@ -507,9 +584,10 @@ Method TestTheRouteAnswersAreUnchangedForANonOwner()
     Do $$$AssertEquals(..Fingerprint(), tBefore, "and the rows read as they did")
 }
 
-/// <p>The public reads of the proposal and ledger stores and of <code>Base</code> are split into owner reads,
-/// administrator reads and open reads, the split equals the stores' compiled public class methods less their
-/// writes, and every owner and administrator read is a step the probe runs.</p>
+/// <p>The public reads of the proposal and ledger stores and of <code>Base</code> are split into owner reads (which an
+/// administrator also makes for any user) and open reads, the split equals the stores' public class methods less their
+/// writes, every owner read is a step the probe runs, and neither store defines a public instance method or a
+/// query.</p>
 /// <p>Mutation (Rule 19): a public read added to <code>Propose</code> or <code>Ledger</code> that no list names ->
 /// this test goes red.</p>
 Method TestTheReadsAreSplitIntoOwnerAdministratorAndOpen()
@@ -529,9 +607,8 @@ Method TestTheReadsAreSplitIntoOwnerAdministratorAndOpen()
             Set tKind = "OwnerRead." _ tStore _ "." _ $List(..OwnerReads(tStore), tI)
             Do $$$AssertTrue($ClassMethod(..#PROBE, "Handles", tKind), tKind _ " is a read the probe runs")
         }
-        For tI = 1:1:$ListLength(..AdministratorReads(tStore)) {
-            Do $$$AssertTrue($ListFind(..OwnerReads(tStore), $List(..AdministratorReads(tStore), tI)) > 0, tStore _ "." _ $List(..AdministratorReads(tStore), tI) _ " is an owner read that serves every user to an administrator only")
-        }
+        Do $$$AssertEquals(..Stored("SELECT COUNT(*) FROM %Dictionary.MethodDefinition WHERE parent = ? AND ClassMethod = 0 AND Private = 0", tClass), 0, tStore _ " defines no public instance method")
+        Do $$$AssertEquals(..Stored("SELECT COUNT(*) FROM %Dictionary.QueryDefinition WHERE parent = ?", tClass), 0, tStore _ " defines no class query")
     }
     Set tPublic = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.MethodDefinition WHERE parent = 'OcuPilot.Kernel.State.Base' AND ClassMethod = 1 AND Private = 0")
@@ -541,7 +618,6 @@ Method TestTheReadsAreSplitIntoOwnerAdministratorAndOpen()
     Set tSplit = ..OwnerReads("Base") _ ..OpenReads("Base") _ ..BaseHelpers() _ ##class(OcuPilot.Test.AdminStateWrite).BaseSurface(1)
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tPublic), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(tSplit), "Base's public class methods are its owner reads, open reads, helpers and refused saves")
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).SortedJoin(##class(OcuPilot.Test.AdminStateWrite).BaseSurface(0)), ##class(OcuPilot.Test.AdminStateWrite).SortedJoin(..OwnerReads("Base") _ ..OpenReads("Base") _ ..BaseHelpers()), "and the suite's roster of Base's non-saving methods is those three")
-    Do $$$AssertEquals($ListLength(..OwnerReads("Base")), 3, "Base has three owner reads")
     For tI = 1:1:$ListLength(..OwnerReads("Base")) {
         Set tMethod = $List(..OwnerReads("Base"), tI)
         Set tKind = "OwnerRead." _ $Case(tMethod, "GuardedOpenId": "Open", "GuardedExistsId": "Exists", :"StoredValue")
@@ -556,14 +632,6 @@ ClassMethod OwnerReads(pStore As %String) As %List
     If pStore = "Propose" Quit $ListBuild("GuardedByToken", "GuardedByKey", "GuardedRowVersion", "GuardedRowsForTurn", "GuardedRowsForConvo", "GuardedCountForTurn")
     If pStore = "Ledger" Quit $ListBuild("GuardedIdsForWindow", "GuardedDroppedFor", "GuardedRow", "GuardedCountForTurn")
     Quit $ListBuild("GuardedExistsId", "GuardedOpenId", "GuardedStoredValue")
-}
-
-/// <p>The owner reads of <var>pStore</var> that also serve every user to an administrator alone, when asked with
-/// <code>pAllUsers</code> 1.</p>
-ClassMethod AdministratorReads(pStore As %String) As %List
-{
-    If pStore = "Ledger" Quit $ListBuild("GuardedIdsForWindow", "GuardedDroppedFor")
-    Quit ""
 }
 
 /// <p>The public methods of <var>pStore</var> that read nothing of a user's rows: lock keys, a state projection,

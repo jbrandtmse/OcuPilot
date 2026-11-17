@@ -1,4 +1,4 @@
-Include %occErrors
+Include (%occErrors, %occInclude)
 
 /// <p>The tree's <b>only</b> escalation point (AD-9). Abstract persistent base providing
 /// guarded save / open / exists and guarded global access, each performing
@@ -339,6 +339,8 @@ ClassMethod GuardedSaveAnyCaller(pObject As %Persistent) As %Status [ Private ]
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..StreamChangeRefused(pObject)
+        If $$$ISERR(tSC) Quit
         Set tSC = pObject.%Save()
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -393,6 +395,8 @@ ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..StreamChangeRefused(pObject)
+        If $$$ISERR(tSC) Quit
         Set tNext = +pExpected + 1
         If pObject.%Id() = "" {
             Set tPriorVersion = pObject.RowVersion
@@ -434,6 +438,49 @@ ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer
     ; version the row never carried and be refused for ever.
     If $$$ISERR(tSC) && (tPriorVersion '= "") {
         Set pObject.RowVersion = tPriorVersion
+    }
+    Quit tSC
+}
+
+/// <p>The refusal for a save of <var>pObject</var> that would point one of its stream properties at a stream its row
+/// does not store: <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) when a stream property holds a
+/// stream whose class or location is not the property's own, or names a stream id other than the stored one that is
+/// not a stream this process is writing anew (an id its location allocated, with no stream saved under it). Called inside the escalated frame of the two saves every write funnels through, because
+/// the stored id and the stream are read from protected storage, so a row the caller holds cannot be made to name,
+/// read or overwrite another row's stream.</p>
+ClassMethod StreamChangeRefused(pObject As %Persistent) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tClass = $ClassName(pObject)
+        Set tId = pObject.%Id()
+        Set tTemplate = ""
+        Set tProperty = ""
+        For {
+            Set tProperty = $$$comMemberNext(tClass, $$$cCLASSproperty, tProperty)
+            If tProperty = "" Quit
+            If $Extract($$$comMemberKeyGet(tClass, $$$cCLASSproperty, tProperty, $$$cPROPtype), 1, 8) '= "%Stream." Continue
+            Set tStored = $Select(tId = "": "", 1: $ClassMethod(tClass, tProperty _ "GetStored", tId))
+            Set tHeld = $Method(pObject, tProperty _ "GetObjectId")
+            Set tStream = $Property(pObject, tProperty)
+            If '$IsObject(tStream) Continue
+            If '$IsObject(tTemplate) Set tTemplate = $ClassMethod(tClass, "%New")
+            Set tOwn = $Property(tTemplate, tProperty)
+            Set tLocation = tOwn.%Location
+            If ($ClassName(tStream) '= $ClassName(tOwn)) || (tStream.%Location '= tLocation) {
+                Set tSC = $$$ERROR($$$AccessDenied)
+                Quit
+            }
+            If (tHeld = "") || (tHeld = tStored) Continue
+            ; A stream whose id is not the stored one is admitted only as one this process is writing anew: an id the
+            ; location has already allocated, with no stream saved under it yet.
+            If (tLocation = "") || (+tHeld '= tHeld) || (tHeld > +$Get(@tLocation)) || ($Data(@tLocation@(tHeld)) # 2) {
+                Set tSC = $$$ERROR($$$AccessDenied)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
     }
     Quit tSC
 }
@@ -626,12 +673,13 @@ ClassMethod QualifiedTableName(pClassName As %String) As %String [ Private ]
 /// administrator only: any other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>)
 /// and <var>pObject</var> stays empty (<method>OwnerWriteRefused</method>, which reads the owner through
 /// <parameter>OWNERPARENT</parameter> where the class declares it). An id that names no row answers as a
-/// missing row does for every caller.</p>
+/// missing row does for every caller. The check reads the opened row's own class, so an open through
+/// <class>Base</class> or any class whose extent holds an owner store's rows is gated as that store's is.</p>
 ClassMethod GuardedOpenId(pId As %String, Output pObject As Base) As %Status
 {
     Set tSC = ..GuardedOpenIdAnyCaller(pId, .pObject)
     If $$$ISERR(tSC) Quit tSC
-    Set tClass = ..%ClassName(1)
+    Set tClass = $ClassName(pObject)
     Set tProperty = $Parameter(tClass, "OWNERWRITE")
     If tProperty = "" Quit tSC
     Set tSC = ..OwnerWriteRefused(tClass, $Property(pObject, tProperty))
@@ -669,6 +717,9 @@ ClassMethod GuardedOpenIdAnyCaller(pId As %String, Output pObject As Base) As %S
 /// <file>scripts/check-objectscript.py</file>), never by who is holding the reference, so the
 /// read has to happen inside a method compiled into this class's own routine. Answers
 /// <code>""</code> for a null object, an unknown or non-stream property, or an empty stream.</p>
+/// <p>The object may be one the caller holds, which an open returns as it is in memory, so only the stream the row
+/// stores is read: a stream whose id differs from the stored one, or whose class or location differs from the
+/// property's own, is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and nothing is read.</p>
 ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pText As %String) As %Status [ Private ]
 {
     Set pText = ""
@@ -678,8 +729,20 @@ ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pTex
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
         If '$IsObject(pObject) Quit
+        Set tClass = $ClassName(pObject)
+        Set tId = pObject.%Id()
+        Set tStoredId = $Select(tId = "": "", 1: $ClassMethod(tClass, pProperty _ "GetStored", tId))
+        If $Method(pObject, pProperty _ "GetObjectId") '= tStoredId {
+            Set tSC = $$$ERROR($$$AccessDenied)
+            Quit
+        }
         Set tStream = $Property(pObject, pProperty)
         If '$IsObject(tStream) Quit
+        Set tOwn = $Property($ClassMethod(tClass, "%New"), pProperty)
+        If ($ClassName(tStream) '= $ClassName(tOwn)) || (tStream.%Location '= tOwn.%Location) {
+            Set tSC = $$$ERROR($$$AccessDenied)
+            Quit
+        }
         If tStream.Size > 0 Set pText = tStream.Read(tStream.Size)
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -690,12 +753,21 @@ ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pTex
 /// <p>Whether <var>pId</var> exists, through the escalated frame. A row of a class that declares
 /// <parameter>OWNERWRITE</parameter> answers its existence to its owner and to an administrator only: any other
 /// caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and <var>pExists</var> is 0. An
-/// id that names no row answers 0 for every caller.</p>
+/// id that names no row answers 0 for every caller. As with <method>GuardedOpenId</method>, the check reads the
+/// stored row's own class (<method>GuardedRowClass</method>).</p>
 ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pExists = 0
     Set tClass = ..%ClassName(1)
+    If '..CallerIsAdministrator() && ($Parameter(tClass, "OWNERWRITE") = "") {
+        Set tSC = ..GuardedRowClass(pId, .tClass, .tFound)
+        If $$$ISERR(tSC) || 'tFound Quit tSC
+        If $Parameter(tClass, "OWNERWRITE") = "" {
+            Set pExists = 1
+            Quit tSC
+        }
+    }
     Set tProperty = $Parameter(tClass, "OWNERWRITE")
     If (tProperty '= "") && '..CallerIsAdministrator() {
         Set tSC = ..GuardedStoredOwnerById(tClass, tProperty, pId, .tOwner, .tFound)
@@ -711,6 +783,27 @@ ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Stat
         Set pExists = ..%ExistsId(pId)
     } Catch ex {
         Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether row <var>pId</var> of this class's extent exists and, when it does, the class it was stored as
+/// (<code>%OnDetermineClass</code>), read in one escalated frame. Never called from a route or a tool.</p>
+ClassMethod GuardedRowClass(pId As %String, Output pClass As %String, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pClass = ..%ClassName(1)
+    Set pFound = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '..%ExistsId(pId) Quit
+        Set tSC = ..%OnDetermineClass($ListBuild(pId), .pClass)
+        If $$$ISOK(tSC) Set pFound = 1
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pFound = 0
     }
     Quit tSC
 }

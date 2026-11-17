@@ -24,10 +24,14 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// claim and transcript-gate paths a person's request reaches and answer the HTTP status and code each maps
 /// to; <code>Direct.OpenId</code> and <code>Direct.Sql</code> are the controls, a direct open and a direct
 /// query of the protected tables; <code>Held.Stream</code> opens the principal's own proposal and reads its
-/// stream outside the escalated frame.</p>
+/// stream outside the escalated frame; <code>Held.StreamSwap</code> holds the principal's own proposal <code>id</code>
+/// with its arguments pointed at stream <code>stream</code> and reads proposal <code>key</code>;
+/// <code>Held.BaseSave</code> opens the principal's own proposal <code>id</code>, marks it confirmed in memory and
+/// saves it through <code>Base</code>'s public save (<code>via</code> <code>save</code> or
+/// <code>saveIfCurrent</code>). Each answers <code>opened</code>.</p>
 ClassMethod ReadKinds() As %List
 {
-    Quit $ListBuild("OwnerRead.Open", "OwnerRead.Exists", "OwnerRead.StoredValue", "OwnerRead.Propose.GuardedByKey", "OwnerRead.Propose.GuardedByToken", "OwnerRead.Propose.GuardedRowVersion", "OwnerRead.Propose.GuardedRowsForTurn", "OwnerRead.Propose.GuardedRowsForConvo", "OwnerRead.Propose.GuardedCountForTurn", "OwnerRead.Ledger.GuardedRow", "OwnerRead.Ledger.GuardedIdsForWindow", "OwnerRead.Ledger.GuardedDroppedFor", "OwnerRead.Ledger.GuardedCountForTurn", "Route.Confirm", "Route.Cancel", "Route.Draft", "Route.Claim", "Route.ClaimById", "Route.TranscriptGate", "Direct.OpenId", "Direct.Sql", "Held.Stream")
+    Quit $ListBuild("OwnerRead.Open", "OwnerRead.Exists", "OwnerRead.StoredValue", "OwnerRead.Propose.GuardedByKey", "OwnerRead.Propose.GuardedByToken", "OwnerRead.Propose.GuardedRowVersion", "OwnerRead.Propose.GuardedRowsForTurn", "OwnerRead.Propose.GuardedRowsForConvo", "OwnerRead.Propose.GuardedCountForTurn", "OwnerRead.Ledger.GuardedRow", "OwnerRead.Ledger.GuardedIdsForWindow", "OwnerRead.Ledger.GuardedDroppedFor", "OwnerRead.Ledger.GuardedCountForTurn", "Route.Confirm", "Route.Cancel", "Route.Draft", "Route.Claim", "Route.ClaimById", "Route.TranscriptGate", "Direct.OpenId", "Direct.Sql", "Held.Stream", "Held.StreamSwap", "Held.BaseSave")
 }
 
 /// <p>Run one step of the plan: the call its <code>kind</code> names, answered as
@@ -48,7 +52,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tClass = tPackage _ pStep.%Get("store")
             Set tSC = $ClassMethod(tClass, "GuardedOpenId", pStep.%Get("id"), .tRow)
             Do tLeg.%Set("opened", ''$IsObject($Get(tRow)), "boolean")
-            If $IsObject($Get(tRow)) Set tSeen = ..Describe(tClass, tRow)
+            If $IsObject($Get(tRow)) Set tSeen = ..Describe($ClassName(tRow), tRow)
             Set tRow = ""
         } ElseIf tKind = "OwnerRead.Exists" {
             Set tSC = $ClassMethod(tPackage _ pStep.%Get("store"), "GuardedExistsId", pStep.%Get("id"), .tExists)
@@ -130,8 +134,26 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             } ElseIf tRS.%Next() {
                 Set tSeen = "count " _ tRS.%GetData(1)
             }
+        } ElseIf tKind = "Held.StreamSwap" {
+            Set tSC = $ClassMethod(tPropose, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            Do tLeg.%Set("opened", ''$$$ISOK(tSC), "boolean")
+            If $$$ISOK(tSC) {
+                Do tRow.ArgumentsSetObjectId(pStep.%Get("stream"))
+                Set tSC = $ClassMethod(tPropose, "GuardedByKey", pStep.%Get("key"), .tFound, .tValues)
+                Set tSeen = ..ProposalSeen(.tValues)
+            }
+            Set tRow = ""
+        } ElseIf tKind = "Held.BaseSave" {
+            Set tSC = $ClassMethod(tPropose, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            Do tLeg.%Set("opened", ''$$$ISOK(tSC), "boolean")
+            If $$$ISOK(tSC) {
+                Set tRow.State = "confirmed"
+                Set tSC = ..SaveThroughBase(tRow, pStep.%Get("via") = "save")
+            }
+            Set tRow = ""
         } ElseIf tKind = "Held.Stream" {
             Set tSC = $ClassMethod(tPropose, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            Do tLeg.%Set("opened", ''$$$ISOK(tSC), "boolean")
             If $$$ISOK(tSC) {
                 Try {
                     Set tText = tRow.Arguments.Read(100)

@@ -934,13 +934,14 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("impact") = ..Text(pRow.Impact)
     Set pValues("targetName") = ..Text(pRow.TargetName)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
-    If $$$ISERR(tSC) Quit tSC
+    If $$$ISOK(tSC) Set tSC = ..GuardedStreamText(pRow, "Payload", .tPayload)
+    If $$$ISOK(tSC) Set tSC = ..GuardedStreamText(pRow, "Diff", .tDiff)
+    If $$$ISERR(tSC) {
+        Kill pValues
+        Quit tSC
+    }
     Set pValues("arguments") = tArguments
-    Set tSC = ..GuardedStreamText(pRow, "Payload", .tPayload)
-    If $$$ISERR(tSC) Quit tSC
     Set pValues("payload") = tPayload
-    Set tSC = ..GuardedStreamText(pRow, "Diff", .tDiff)
-    If $$$ISERR(tSC) Quit tSC
     Set pValues("diff") = tDiff
     Quit $$$OK
 }

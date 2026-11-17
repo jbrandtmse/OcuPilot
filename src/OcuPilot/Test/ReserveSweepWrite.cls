@@ -260,7 +260,8 @@ Method TestAViewOfAnotherUsersRunEndsNothing()
 }
 
 /// <p>A developer tries to hold a victim's running turn in memory with its key set to a bystander's running turn before
-/// it abandons the victim's turns: the open is refused <code>822</code> and neither turn carries an abandon signal.</p>
+/// it abandons the victim's turns: the open is refused <code>822</code>, the victim's turn carries the abandon signal and
+/// the bystander's does not.</p>
 /// <p>Mutation (Rule 19): the owner check removed from <code>Base.GuardedOpenId</code> -> the open leg goes red.</p>
 Method TestAnAbandonIgnoresAHeldKey()
 {
@@ -273,6 +274,73 @@ Method TestAnAbandonIgnoresAHeldKey()
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("count"), 1, "it names the victim's one running turn")
     Do $$$AssertEquals($Get(^OcuPilotTurnSignal(tVictim, "abandon")), 1, "the victim's turn carries the abandon signal")
     Do $$$AssertEquals($Get(^OcuPilotTurnSignal(tBystander, "abandon")), "", "and the bystander's turn does not")
+}
+
+/// <p>A developer holds its own running turn or run with its owner set to another user in memory and reserves, finishes
+/// and cancels: the turn reserve, the finish and the cancel are refused <code>822</code>, the run reserve leaves the
+/// victim's queued run alone, an abandon with its own turn's key set to the victim's marks only its own turn, and the victim's
+/// turn and run read as they did.</p>
+/// <p>Mutation (Rule 19): <code>Base.OwnedSaveRefused</code> answers <code>$$$OK</code> -> the finish leg goes red.</p>
+Method TestAHeldOwnRowNamingAnotherUserIsRefused()
+{
+    Do ..SeedTurn(..#DEVUSER, "running", .tOwnTurn)
+    Do ..SeedTurn(..#VICTIM, "running", .tVictimTurn)
+    Do ..ReserveRun(..#DEVUSER, "sql", .tOwnRun)
+    Do ..ReserveRun(..#VICTIM, "sql", .tVictimRun)
+    Do ..SetRun(tOwnRun, "running", 5)
+    Do ..SetRun(tVictimRun, "queued", 5)
+    Set tOwnTurnId = ..Stored("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = '" _ tOwnTurn _ "'")
+    Set tOwnRunId = ..Stored("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tOwnRun _ "'")
+    Set tVictimSql = "SELECT (SELECT State || '|' || UserName || '|' || RowVersion FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = '" _ tVictimTurn _ "') || '#' || State || '|' || UserName || '|' || RowVersion FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tVictimRun _ "'"
+    Set tVictimBefore = ..Stored(tVictimSql)
+    Set tRun = ..Reserve("Turn.ReserveWith", {"limits": (..#LIMITS), "id": (tOwnTurnId), "heldField": "UserName", "heldValue": (..#VICTIM)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("openCode"), "", "the developer holds its own turn")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Turn.ReserveWith ok=0 code=822", "the turn reserve over it is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Set tRun = ..Reserve("SqlRun.HeldFinish", {"id": (tOwnRunId), "key": (tOwnRun), "heldField": "UserName", "heldValue": (..#VICTIM)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("openCode"), "", "the developer holds its own run")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.HeldFinish ok=0 code=822", "the finish that would save it under the victim's name is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Set tRun = ..Reserve("SqlRun.ForgedCancel", {"id": (tOwnRunId), "key": (tOwnRun), "heldUser": (..#VICTIM), "runKind": "sql"})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.ForgedCancel ok=0 code=822", "and so is the cancel: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Set tRun = ..Reserve("SqlRun.ReserveWith", {"limits": (..#LIMITS), "id": (tOwnRunId), "heldField": "UserName", "heldValue": (..#VICTIM)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("openCode"), "", "the developer holds its own run again")
+    Set tRun = ..Reserve("Turn.HeldAbandon", {"id": (tOwnTurnId), "heldKey": (tVictimTurn)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("count"), 1, "the abandon names the developer's one running turn: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Do $$$AssertEquals($Get(^OcuPilotTurnSignal(tVictimTurn, "abandon")), "", "and the victim's turn carries no abandon signal")
+    Set tVictimAfter = ..Stored(tVictimSql)
+    Do $$$AssertTrue((tVictimBefore '= "") && (tVictimAfter = tVictimBefore), "the victim's turn and run read as they did: " _ tVictimBefore _ " -> " _ tVictimAfter)
+    Set tOwnNames = ..Stored("SELECT UserName FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = '" _ tOwnTurn _ "'") _ "|" _ ..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tOwnRun _ "' AND %EXACT(UserName) <> '" _ ..#DEVUSER _ "'")
+    Do $$$AssertEquals(tOwnNames, ..#DEVUSER _ "|0", "and the developer's own turn, and its run while it is kept, still carry its name: " _ tOwnNames)
+}
+
+/// <p>A developer holds its own running run with its answer pointed at another user's stored answer, or with a new
+/// answer written under that answer's stream id, and finishes it: each finish is refused <code>822</code>, the
+/// developer's run stores no answer and the victim's answer reads as it did, so a held row cannot be saved naming, or
+/// writing over, another row's stream.</p>
+/// <p>Mutation (Rule 19): <code>Base.StreamChangeRefused</code> admits a stream id already saved -> both finishes go
+/// red.</p>
+Method TestAHeldRunCannotTakeAnotherRowsStream()
+{
+    Do ..ReserveRun(..#DEVUSER, "sql", .tOwnRun)
+    Do ..ReserveRun(..#VICTIM, "sql", .tVictimRun)
+    Do ..SetRun(tOwnRun, "running", 5)
+    Do ..SetRun(tVictimRun, "running", 5)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.SqlRun).GuardedFinish(tVictimRun, "ended", "{""secret"":""victim-answer""}"), "the victim's run ends with an answer")
+    Set tVictim = ##class(OcuPilot.Kernel.State.SqlRun).%OpenId(..Stored("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tVictimRun _ "'"))
+    Set tStream = $Select($IsObject(tVictim): tVictim.AnswerGetObjectId(), 1: "")
+    Set tVictim = ""
+    Do $$$AssertTrue(tStream '= "", "and stores it as a stream")
+    Set tOwnRunId = ..Stored("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tOwnRun _ "'")
+    Set tRun = ..Reserve("SqlRun.HeldFinish", {"id": (tOwnRunId), "key": (tOwnRun), "stream": (tStream)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1).%Get("openCode"), "", "the developer holds its own run")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.HeldFinish ok=0 code=822", "the finish naming the victim's answer is refused: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Set tRun = ..Reserve("SqlRun.HeldFinish", {"id": (tOwnRunId), "key": (tOwnRun), "forgeId": (tStream)})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "SqlRun.HeldFinish ok=0 code=822", "and so is a finish writing a new answer under the victim's stream id: " _ ##class(OcuPilot.Test.AdminStateWrite).Detail(tRun))
+    Set tOwn = ##class(OcuPilot.Kernel.State.SqlRun).%OpenId(tOwnRunId)
+    Do $$$AssertEquals($Select($IsObject(tOwn): tOwn.State _ "|" _ tOwn.AnswerGetObjectId(), 1: "absent"), "running|", "the developer's run is still running and stores no answer")
+    Set tOwn = ""
+    Set tVictim = ##class(OcuPilot.Kernel.State.SqlRun).%OpenId(..Stored("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = '" _ tVictimRun _ "'"))
+    Do $$$AssertEquals($Select($IsObject(tVictim): tVictim.AnswerGetObjectId() _ "|" _ tVictim.Answer.Read(), 1: "absent"), tStream _ "|{""secret"":""victim-answer""}", "and the victim's answer reads as it did")
+    Set tVictim = ""
 }
 
 /// <p>A developer's turn sweep deletes only a turn that still reads, at its delete, the terminal state and the end time
