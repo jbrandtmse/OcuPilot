@@ -134,6 +134,21 @@ Rejected:
 
 - [x] [Smoke] `AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite` fails on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6f350eeb2) and passes on a second run: the scan sees `SET ^["^^/durable/iris/mgr/"]%SYS("sql","sys","SQLStatsSettings",1,"curr")`, IRIS's one-time SQL stats initialization, and the control write then also misses ("while the scan sees the control write made after them"). — `src/OcuPilot/Test/AnalyticsListingGroupRead.cls` `TestNoReadMakesAJournaledWrite` — the test must pass on the first run on a fresh instance and on a reused one, without blinding the scan to a real write by the reads (keep the $Bit-write mutation red): e.g. warm the process (one SQL statement and one vendor read) before the scan window opens, and make the control-write check independent of the stats write; then demonstrate both the fresh-instance pass (down/up the throwaway, run the class first) and the mutation.
 
+Re-review 2026-11-17 (rework iteration 1), tier `full-opus`, four layers. 0 decision-needed, 3 patch, 0 deferred, 11 rejected. The `[Smoke]` item is confirmed fixed: at `c557e4a6d` the class's first run on a rebuilt `ocupilot-b-ci` was green and the `$Bit` mutation red; after the patch below, the same again (Verification).
+
+- [x] [Review][Patch] (med) The warm-up ran every read under test before the window, so a write a read makes only on its first call was not seen: a per-group lazy write in `Collect` stayed green at `c557e4a6d`. The test now scans one pass, the first calls included, and does not charge the SQL engine's own records (`^rINDEXSQL`, `^%SYS("sql")`), measured on a fresh instance: the statistics settings node and the statement index of the agent tools' first SQL. [src/OcuPilot/Test/AnalyticsListingGroupRead.cls:327]
+- [x] [Review][Patch] (low) The no-write leg named only the newest record (the probe walks the journal backward); it now lists every record it charges. [src/OcuPilot/Test/AnalyticsListingGroupRead.cls:336]
+- [x] [Review][Patch] (low) A journal roll-over read "(records: -1)" on the control leg; it now says the journal rolled. [src/OcuPilot/Test/AnalyticsListingGroupRead.cls:348]
+
+Rejected (re-review):
+
+- (low) The warm-up pass's answers were never asserted: the warm-up is gone with the first patch.
+- (low) A periodic SQL statistics write could land in the window: the engine's records are excluded by name, whenever they are written.
+- (low) The fresh-instance pass was shown on code before the rework's review patches, and not shown to meet the failing condition: this review rebuilt the throwaway at the final code; the one-pass first run there met the engine records (red before the exclusion), then green.
+- (spec) The rework's triage header counts 3 lows for 5 rows; the Auto Run Result carries two status blocks and its rework paragraph describes the warm-up; the control-write mutation line has no run numbers; the residual-risks line; the rework grew a spec flagged `oversized`: spec-only edits, and the spec is `oversized`.
+- (spec) The cycle log's two `spawn_at` values for the rework's implement stage: lead bookkeeping.
+- (spec) Frontmatter `status: done` against the tracker's `review` and the two-batch rule: the lead's call.
+
 ## Spec Change Log
 
 - 2026-11-17, fresh check: re-opened for rework iteration 1 (one [Smoke] item: the journal-scan test is not fresh-instance safe).
@@ -296,7 +311,7 @@ Story 24.12 also saves and compiles a class, so Question 2's ruling sets its pat
 
 - mutation (review, AC5 roster): the Listings row removed from `AnalyticsDescriptor` `SCREENS` -> `TestTheSevenDeclarationsRegister` went red on the new roster-equality assertion (run 889); reverted (`cmp` equal), reloaded, green (run 890).
 - mutation (review, AC4 scan): `Set $Bit(^OcuPilotProbeBit, 3) = 1` added to the listing groups branch of `Collect` -> `TestNoReadMakesAJournaledWrite` went red naming the `BitSET` record, which the old `BSET` prefix could not match (run 892); reverted (`cmp` equal), the global killed, reloaded, green (run 893).
-- mutation (AC4 scan, fresh-instance rework): `Set $Bit(^OcuPilotProbeBit, 3) = 1` added to the listing groups branch of `Collect` (the throwaway's copy only) -> `TestNoReadMakesAJournaledWrite` went red naming the `BitSET` record with the reads run twice and the window on the second pass; reverted (`cmp` equal), the global killed, reloaded, green. On a rebuilt throwaway the class's first run is green (run 1); with the mutation it was red (run 2) and after the revert green (run 3).
+- mutation (re-review, AC4 scan, one pass with the SQL engine's `^rINDEXSQL` and `^%SYS("sql")` records excluded): on a rebuilt `ocupilot-b-ci` the class's first run is green (run 1) and a reused run green (run 2); a per-group lazy write `If (tGroup '= "") && '$Data(^OcuPilotProbeOnce(tGroup)) Set ^OcuPilotProbeOnce(tGroup) = 1` in the listings branch of `Collect` (the throwaway's copy only) -> `TestNoReadMakesAJournaledWrite` red naming the `Off` and `Hidden` group nodes (run 3); `Set $Bit(^OcuPilotProbeBit, 3) = 1` in the groups branch -> red naming `BitSET` (run 4); reverted (`cmp` equal), both globals killed, reloaded, green (run 5).
 - mutation (AC4 scan, control write): the `Set ^|"USER"|OcuPilotProbeAnalyticsScan = 1` line removed from the throwaway's copy of the class -> `TestNoReadMakesAJournaledWrite` went red on the control assertion alone; restored (`cmp` equal), reloaded, green.
 - mutation (review, Never list): `%RegisterRecentItem` called from the port -> `analytics.test.mjs` "Story 24.11: the port reads listing groups ..." went red ("and only those ListingGroup calls"); reverted (`cmp` equal), green.
 

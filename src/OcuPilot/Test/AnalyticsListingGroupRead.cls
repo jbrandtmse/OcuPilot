@@ -319,19 +319,23 @@ Method TestTheScreenAndTheAgentsToolAnswerTheSameRows()
     }
 }
 
-/// <p>AC4: no read of the matrix makes a journaled write in the calling process. The reads run twice: the first pass is a warm-up, so the SQL statistics
-/// settings record the SQL engine writes on a fresh instance is not charged to them, and the second pass is the one the journal window covers. A write a read makes only
-/// on its first call in a process is therefore not seen. The scan is proved able to see a write: a control write made inside the same window is found by name among its
+/// <p>AC4: no read of the matrix makes a journaled write in the calling process. The journal window covers every read, their first calls included. The
+/// records it does not charge to them are the SQL engine's own: its statement index (<code>^rINDEXSQL</code>) and its <code>^%SYS("sql")</code> bookkeeping,
+/// which a statement's first run on a fresh instance writes. The scan is proved able to see a write: a control write made inside the same window is found by name among its
 /// records, and the reads before it found none. It covers the process's journaled databases; a write to a database that is not journaled is not seen.</p>
 /// <p>Mutation (Rule 19): make the groups branch of <method>OcuPilot.Port.AnalyticsPort.Collect</method> set a global node in <code>USER</code> -- the no-write leg goes red.</p>
 Method TestNoReadMakesAJournaledWrite()
 {
     ; The framework journals each assertion it records, so nothing is asserted until both scans are done.
-    Set tWarm = ..ReadEverything()
     Set tMark = $ClassMethod(..#PROBE, "JournalMark")
     Set tAnswers = ..ReadEverything()
-    Set tReads = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tReadWrites)
-    Set tFirst = $Get(tReadWrites(1))
+    Set tTotal = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tReadWrites)
+    Set tReads = $Select(tTotal < 0: tTotal, 1: 0)
+    Set tFirst = ""
+    For tI = 1:1:tTotal {
+        Set tRecord = tReadWrites(tI)
+        If (tRecord '[ "]rINDEXSQL(") && (tRecord '[ "]%SYS(""sql"",") Set tReads = tReads + 1, tFirst = tFirst _ $Select(tFirst = "": "", 1: "; ") _ tRecord
+    }
     Set ^|"USER"|OcuPilotProbeAnalyticsScan = 1
     Set tTotal = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tAllWrites)
     Kill ^|"USER"|OcuPilotProbeAnalyticsScan
@@ -342,7 +346,7 @@ Method TestNoReadMakesAJournaledWrite()
     }
     Do $$$AssertEquals(tAnswers, "200|200,200,200,200,200|200|200", "the groups read, the five listings reads and the agent's two reads answer")
     Do $$$AssertEquals(tReads, 0, "the reads made no journaled write" _ $Select(tReads > 0: ": " _ tFirst, tReads < 0: " (the journal rolled to another file)", 1: ""))
-    Do $$$AssertEquals(tSeen, 1, "while the scan finds the control write made after them" _ $Select(tSeen '= 1: " (records: " _ tTotal _ ")", 1: ": " _ tControl))
+    Do $$$AssertEquals(tSeen, 1, "while the scan finds the control write made after them" _ $Select(tTotal < 0: " (the journal rolled to another file)", tSeen '= 1: " (records: " _ tTotal _ ")", 1: ": " _ tControl))
 }
 
 /// <p>Every read the AC4 scan covers: the groups read, the listings read of each probe group and of a group that does not exist, and the agent's two read tools.
