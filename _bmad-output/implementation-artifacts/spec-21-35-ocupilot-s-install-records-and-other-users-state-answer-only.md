@@ -153,7 +153,24 @@ Each row runs in a child process logged in as a real principal (`AdminStateWrite
 - Given each batch, when the existing suites in its `(loop)` list run, then they stay green, including the installer, uninstall, retention, screen-access, turn, transcript and confirm suites.
 - Given each check removed in turn (the five `ADMINWRITE` flags, `AsAdministrator`'s frame, `Access`'s caller and set checks, each read gate), when the owning test class runs, then its pinning test goes red.
 
+### Review Findings
+
+Code review of Batch 1 (`1472e282d` against `6e62e114f`, HEAD `3e32ded2d`), 2026-11-16. Measured on `ocupilot-ci`.
+
+- [x] [Review][Patch] HIGH: `Base.GuardedProbeSet` let a non-administrator write any subscript and any size into the protected database. It now refuses a caller without `OcuPilotAdmin:USE` with 822. Pinned by `InstallRecordWrite.TestOnlyAnAdministratorWritesTheProbeGlobal`. `State.TestEscalationIsWhatGrantsTheDeniedUserAccess` now proves the escalation through the guarded read [src/OcuPilot/Kernel/State/Base.cls]
+- [ ] [Review][Patch] HIGH (Rule 6), owner: runner. AD-9's 21.35 paragraph says the screen-access store refuses "a set its port would refuse". The store refuses an empty set, more than 8 pairs, a malformed pair and, since this pass, a duplicate pair. It does not refuse an undefined resource or a non-adjustable screen, as the Decided note intends. Narrow the AD sentence to "a set whose shape, size or emptiness, or a pair named twice, its port would refuse". In the same edit, update two stale spine sentences: AD-9's 21.33 paragraph (the frame is now `AsAdministrator`) and AD-64 item 4 (the store records `SecurityChange`). The Decided note's reason "that check needs `%SYS`" is wrong: `$System.Security.ResourceExists` runs in the caller's process. Adding the check could refuse a port write whose declared set names a resource another edition lacks (inference) [_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md]
+- [ ] [Review][Patch] MED (Rule 31), rework: `InstallRecordWrite.EnsurePrincipals` and `InstallAsAdministrator.EnsurePrincipals` near-copy `AdminStateWrite.EnsurePrincipals` and `AdminPathWrite.EnsurePrincipals`. They differ only in the databases' permission, the extra grants and the read-back predicate. Extend the sibling with those as arguments, or state the reason at each copy [src/OcuPilot/Test/InstallRecordWrite.cls, src/OcuPilot/Test/InstallAsAdministrator.cls]
+- [ ] [Review][Patch] LOW, rework: the Auto Run Result's Residual ("can no longer write its `failed` version row") is wrong. Measured: the parent and this commit both write the row. Replace the sentence.
+- [x] [Review][Patch] MED: the `demoRemove` step had no test. `InstallAsAdministrator` now seeds a probe demo row and asserts the installer's uninstall removes it [src/OcuPilot/Test/InstallAsAdministrator.cls]
+- [x] [Review][Patch] MED: nothing pinned that a refused or stale screen-access write records no audit row. Pinned by the developer-actor zero-row assertions and the two stale legs [src/OcuPilot/Test/InstallRecordWrite.cls]
+- [x] [Review][Patch] MED: nothing pinned that an update's audit records the stored set as the set before, whatever the caller sends. Pinned by a forged `declared` on an update [src/OcuPilot/Test/InstallRecordWrite.cls]
+- [x] [Review][Patch] MED: `SetRefused`'s resource-pattern clause had no leg. Added the `bad name:USE` leg [src/OcuPilot/Test/InstallRecordWrite.cls]
+- [x] [Review][Patch] MED: the store accepted a set naming one pair twice, which the port refuses. `SetRefused` now refuses it, compared without regard to case. Measured: all 222 adjustable screens' declared sets and every stored row pass, so the port's answers are unchanged [src/OcuPilot/Kernel/State/Access.cls]
+- [x] [Review][Patch] LOW: `Access.PERMISSIONS` and `RESOURCEPATTERN` are now held equal to the port's; `InstallAsAdministrator.Stored` delegates to `InstallRecordWrite.Stored`; the upgrade and uninstall legs assert the installer holds no role; `OnAfterAllTests` revokes in the install namespace; the dead `tUnescalated` is gone; six comments with wrong counts or callers are corrected.
+- [x] [Review][Defer] LOW and theoretical items are filed in the ledger (see Decisions in the stage report).
+
 ## Spec Change Log
+
 
 ## Review Triage Log
 
@@ -290,6 +307,18 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 - mutation: `Access.WriterRefused` answers OK -> `TestAPrincipalWithoutAnAdjusterPairIsRefusedEveryScreenAccessWrite` red at `GuardedPut` and `GuardedRemove`. `Access.SetRefused` answers OK -> `TestAnAdjusterIsRefusedWhatThePortWouldRefuse` red at the empty, nine-pair, malformed and unknown-permission legs. The `CallerOwns(pBy)` test replaced by 0 -> the forged-changer legs red. The held-screen comparison removed -> `TestAHeldScreenAccessRowCannotBeRenamed` red. `Access` `ADMINWRITE` = 0 -> the `Base` save legs, `DeleteAllGuarded` and the roster red. The check removed from `DeleteAllGuarded` -> that leg red.
 - mutation: the store's `Audit` call made a no-op -> `TestAnAdjusterStoresAndTheStoreAuditsOnce` and `ScreenAccessWire.TestEachAcceptedWriteIsOneSecurityChangeRow` red (no row). A second `Audit` call after the put -> both red (two rows).
 - `scripts/test_check_objectscript.py`: `New $ROLES` in `AsAdministrator` accepted; in `EnsureProposalTargetKeys`, or in a later method, refused.
+
+**Code review, Batch 1 (2026-11-16, `ocupilot-ci`).**
+
+- Version row: a first probe install by an installer without `%All`, `OcuPilotAdmin` or `%Admin_Secure:USE` fails at `EnsureDatabaseResource`. On the parent's product files and on this commit alike, it writes a `failed` row (`FailingStep` `EnsureDatabaseResource`). The process holds no role before or after. No change. Unchanged on both trees: `Uninstall("probe", 1)` leaves that `failed` row behind.
+- Frame reachability: four non-installer principals (`%Development`; `%Admin_Secure`; `%Development` with `%DB_IRISSYS:R` and the install databases read-write; `%Development` with `%Admin_Manage` and `%Admin_Operate`) called `AsAdministrator` directly (`<PRIVATE METHOD>`), `ReportGatewayGap`, `EnsureProposalTargetKeys`, `MarkInstalling` for both profiles, `Install`, `Uninstall`, `StartPath` and `Set $ROLES` (`<PROTECT>`). None held `OcuPilotAdmin` after any step, and the probe's records and production's phase were unchanged.
+- Task 0, `GuardedProbeSet`: the developer principal's direct set of `^OcuPilotKernelStateProbe` raises `<PROTECT>`. Before the fix, `GuardedProbeSet` on `Base` and on a store wrote a 3,000,000-character node and overwrote `migrationStepV2` in `/durable/iris/mgr/ocupilot/`. After the fix, each call is refused 822 and nothing is written. Callers: `Test/State` and `Test/MigrateFault` (as the suite), both green.
+- Port sets: all 222 adjustable screens' declared sets (of 232 descriptors) and every stored row pass the store's shape, count and duplicate checks.
+- Green after the patches: `InstallRecordWrite` 9 of 9, `InstallAsAdministrator` 1, `AdminStateWrite` 7, `State` 12, `Version` 19, `InstallMark` 6, `ScreenAccessGate` 9, `ScreenAccessWire` 8, `ScreenAccessRefusals` 5, `ScreenAccessTurn` 2, `AdminPathWrite` 5.
+- mutation: the caller check removed from `Base.GuardedProbeSet` -> `InstallRecordWrite.TestOnlyAnAdministratorWritesTheProbeGlobal` and `State.TestEscalationIsWhatGrantsTheDeniedUserAccess` red.
+- mutation: `AsAdministrator` skips its role addition for `demoRemove` alone -> `InstallAsAdministrator` red (the uninstall stops with the demo row left).
+- mutation: the duplicate clause, then the resource-pattern clause, removed from `Access.SetRefused` -> `TestAnAdjusterIsRefusedWhatThePortWouldRefuse` red at the `twice` and `badname` legs.
+- mutation: `GuardedPut`'s audit made unconditional -> the seed-screen zero-audit pin and the put count red; `GuardedRemove`'s audit moved above its stale check -> the reset count red; the update's stored read removed -> the before-set assertion red (`TestAnAdjusterStoresAndTheStoreAuditsOnce`).
 
 ## Auto Run Result
 

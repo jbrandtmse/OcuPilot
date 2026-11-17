@@ -1857,7 +1857,7 @@ ClassMethod AsAdministrator(pStep As %String, pProfile As %String = "", ByRef pA
             Try {
                 Set $ROLES = $ROLES _ "," _ ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE
             } Catch exAdd {
-                Set tUnescalated = 1
+                ; IRIS refused the addition: the step runs as the caller, and the store decides.
             }
         }
         If pStep = "targetKeys" {

@@ -9,7 +9,7 @@
 /// <code>%All</code> identity. The installer principal is this class's own.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot's production install, and
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>INSTALLARMING</parameter> reading <code>1</code>, because the
-/// class runs the probe profile's install and uninstall and creates and deletes two users and roles.
+/// class runs the probe profile's install and uninstall and creates and deletes a user and a role.
 /// <method>OnBeforeAllTests</method> refuses anywhere either does not.</p>
 Class OcuPilot.Test.InstallAsAdministrator Extends %UnitTest.TestCase
 {
@@ -61,6 +61,8 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterAllTests() As %Status
 {
     Set tRole = ..#INSTALLERROLE
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ##class(OcuPilot.Install.Installer).ResolveNamespace()
     Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT ON %Dictionary.CompiledClass FROM " _ tRole)
     Set tSC = ##class(OcuPilot.Install.Installer).StateTables(.tTables)
     Set tSchema = ""
@@ -69,6 +71,7 @@ Method OnAfterAllTests() As %Status
         If tSchema = "" Quit
         Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE ALL ON SCHEMA " _ tSchema _ " FROM " _ tRole _ " CASCADE")
     }
+    Set $NAMESPACE = tOrigNS
     Quit ##class(OcuPilot.Test.AdminStateWrite).RemovePrincipals(..Cases(), "OcuPilot.Test.InstallAsAdministrator")
 }
 
@@ -162,13 +165,7 @@ Method CleanProbe()
 /// <code>""</code>.</p>
 ClassMethod Stored(pSql As %String, pValue As %String = "") As %String
 {
-    If pValue = "" {
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
-    } Else {
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pValue)
-    }
-    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit ""
-    Quit tRS.%GetData(1)
+    Quit ##class(OcuPilot.Test.InstallRecordWrite).Stored(pSql, pValue)
 }
 
 /// <p>The rows the probe profile has recorded: its provenance rows, stamp rows and version phase, as
@@ -204,12 +201,13 @@ Method SeedKeyless() As %String
 /// <p>An installer holding neither <code>%All</code> nor <code>OcuPilotAdmin</code> installs the probe profile,
 /// installs it again over a stored proposal that lacks its target key, and uninstalls it. Each completes, the
 /// install writes the provenance, stamp and version rows, the second gives the proposal its key, the uninstall
-/// removes the rows and the applications, and the installer's process is without the administrative role after each
-/// step.</p>
+/// removes the rows, the applications and a demo inventory row seeded for the profile, and the installer's process is
+/// without the administrative role after each step.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Install.Installer.AsAdministrator</method> skips its role addition ->
 /// the first install fails and this goes red; the same method made to skip it for the <code>deleteStamps</code> step
 /// alone -> the uninstall leaves the stamp rows and the last records assertion goes red; the same method made to skip it for the
-/// <code>gatewayMark</code> step alone -> the gateway-report assertion goes red.</p>
+/// <code>gatewayMark</code> step alone -> the gateway-report assertion goes red; the same method made to skip it for the
+/// <code>demoRemove</code> step alone -> the uninstall keeps the demo inventory row and goes red.</p>
 Method TestAProbeInstallUpgradeAndUninstallCompleteAsTheInstaller()
 {
     Set tInstaller = ..#INSTALLERUSER
@@ -226,11 +224,23 @@ Method TestAProbeInstallUpgradeAndUninstallCompleteAsTheInstaller()
     If tKey = "" Quit
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(tInstaller, [{"kind": "Install.ProbeInstall"}], ..#PROBE)
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminPathWrite).LegText(tRun, 1), "Install.ProbeInstall ok=1 code=", "the install over a keyless proposal completes: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1)
+    Do $$$AssertEquals(tRun.%Get("holdsAdmin") _ "|" _ $Select($IsObject(tLeg): tLeg.%Get("holdsAdmin"), 1: ""), "0|0", "the installer starts and ends the upgrade without the administrative role")
     Do $$$AssertEquals(..Records(), tRoster _ "|2|installed", "and added a stamp")
     Do $$$AssertTrue(..Stored("SELECT TargetKey FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ProposalKey) = ?", tKey) '= "", "and the keyless proposal has its key")
 
+    Set tDemo = ##class(OcuPilot.Kernel.State.Demo).%New()
+    Set tDemo.Profile = "probe"
+    Set tDemo.Kind = "errorentry"
+    Set tDemo.Name = "probe install-admin error entry"
+    Set tDemo.Scope = "HSCUSTOM"
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Base).GuardedSave(tDemo), "a demo inventory row is seeded for the probe profile, of a kind with no object to remove")
+    Set tDemo = ""
     Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(tInstaller, [{"kind": "Install.ProbeUninstall"}], ..#PROBE)
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminPathWrite).LegText(tRun, 1), "Install.ProbeUninstall ok=1 code=", "the probe uninstall completes: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Set tLeg = ##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 1)
+    Do $$$AssertEquals(tRun.%Get("holdsAdmin") _ "|" _ $Select($IsObject(tLeg): tLeg.%Get("holdsAdmin"), 1: ""), "0|0", "the installer starts and ends the uninstall without the administrative role")
+    Do $$$AssertEquals(..Stored("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?", "probe"), 0, "and removed the probe's demo inventory row, which the installer's process can delete only as an administrator")
     Do $$$AssertEquals(..Records(), "0|0|", "and removed the probe's provenance, stamp and version rows")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProbeApps).Existing(), "", "and its applications")
 }

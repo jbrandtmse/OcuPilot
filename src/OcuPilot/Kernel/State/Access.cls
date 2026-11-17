@@ -2,9 +2,9 @@
 /// screen's <code>toolIdentifier</code>, holding the pairs that replace the screen's declared
 /// <code>privileges</code>. A screen with no row requires its declared set. The store is instance-wide
 /// and is not <class>OcuPilot.Kernel.State.Pref</class>'s per-user store.</p>
-/// <p><b>Nothing here is a gate.</b> <method>OcuPilot.Screen.Gate.RequiredPairs</method> is the one
+/// <p><b>No screen's requirement is decided here.</b> <method>OcuPilot.Screen.Gate.RequiredPairs</method> is the one
 /// reader that turns a row into a requirement, and <class>OcuPilot.Port.ScreenAccessPort</class> the one
-/// product writer. This class stores and answers, and names no <code>Screen</code>, <code>Port</code> or
+/// product writer. This class stores, answers and refuses writers, and names no <code>Screen</code>, <code>Port</code> or
 /// <code>Api</code> class (AD-9).</p>
 /// <p><b>Who may write.</b> <method>GuardedPut</method> and <method>GuardedRemove</method> admit a caller who holds
 /// <code>OcuPilotAdmin:USE</code> or one of <parameter>WRITERPAIRS</parameter>, the pairs the port's gate admits (AD-64),
@@ -201,8 +201,9 @@ ClassMethod WriterRefused() As %Status [ Private ]
 }
 
 /// <p>The refusal for a set the port would refuse by its shape: <code>$$$AccessDenied</code> when
-/// <var>pPairs</var> is empty, holds more than <parameter>MAXPAIRS</parameter> pairs, or holds a member that is not
-/// a resource of <parameter>RESOURCEPATTERN</parameter>, a colon and one of <parameter>PERMISSIONS</parameter>.
+/// <var>pPairs</var> is empty, holds more than <parameter>MAXPAIRS</parameter> pairs, holds a member that is not
+/// a resource of <parameter>RESOURCEPATTERN</parameter>, a colon and one of <parameter>PERMISSIONS</parameter>, or
+/// holds one pair twice, compared without regard to case as the port compares them.
 /// It does not ask whether a resource is defined: the port does, and an undefined resource lowers no
 /// requirement.</p>
 ClassMethod SetRefused(pPairs As %String) As %Status [ Private ]
@@ -212,10 +213,11 @@ ClassMethod SetRefused(pPairs As %String) As %Status [ Private ]
     Set tBad = 0
     For tI = 1:1:tCount {
         Set tPair = $Piece(pPairs, ",", tI)
-        If ($Length(tPair, ":") '= 2) || '$Match($Piece(tPair, ":", 1), ..#RESOURCEPATTERN) || '$ListFind($ListFromString(..#PERMISSIONS), $Piece(tPair, ":", 2)) {
+        If ($Length(tPair, ":") '= 2) || '$Match($Piece(tPair, ":", 1), ..#RESOURCEPATTERN) || '$ListFind($ListFromString(..#PERMISSIONS), $Piece(tPair, ":", 2)) || $Data(tSeen($ZConvert(tPair, "U"))) {
             Set tBad = 1
             Quit
         }
+        Set tSeen($ZConvert(tPair, "U")) = ""
     }
     If tBad Quit $$$ERROR($$$AccessDenied)
     Quit $$$OK

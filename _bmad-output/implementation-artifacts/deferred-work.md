@@ -13501,3 +13501,58 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: code read 2026-11-16 (inference, not reproduced): a %Development holder reserving with a large pMaxRunning and begun runs can fill BackgroundRun.MaxRunning so other users' reserves answer full; frontmatter deferred item 3 is the turn half
 - 2026-11-16T23:19:06Z status=escalated owner=burndown by=cr note=changing a reserve beyond the DW-2666 ruling needs an orchestrator ruling (U-89)
+
+### DW-2674: ReportGatewayGap drops the status of its gateway-mark step, so a refused mark is silent
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Installer.ReportGatewayGap discards AsAdministrator(gatewayMark)'s status, as the earlier direct call did; InstallAsAdministrator pins the installer's path.
+- 2026-11-17T03:59:30Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=an install leaves a WebApp row at GatewayReported=0 and logs no warn
+
+### DW-2675: Retention's stamp sweep is refused when the task's saving account does not hold OcuPilotAdmin
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Stamp.GuardedSweep now calls AdminWriteRefused; the task runs as the account that saved it, which EnsureGrant grants OcuPilotAdmin (inference).
+- 2026-11-17T03:59:30Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a retention task run reports the install-stamp sweep failed with ERROR #822
+
+### DW-2676: A held Version object edited in memory reaches AsAdministrator's saveRow in the same process
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: MarkInstalling and EnsureVersion open the row by %OpenId; only a process that can write IRISSYS gains the role (measured), and it can grant itself any role.
+- 2026-11-17T03:59:30Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a process without IRISSYS write could add the administrative role
+
+### DW-2677: A subclass of Installer can override a step that AsAdministrator dispatches through .. and run it with the role
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Needs compile rights in the install code database (outside AD-9's rule) and IRISSYS write for the addition; four non-installers measured <PROTECT>.
+- 2026-11-17T03:59:31Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a non-IRISSYS writer could add the administrative role
+
+### DW-2678: A store refusal of a set the screen-access port built would answer 500 rather than a written reason
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Measured: all 222 adjustable screens' declared sets and every stored row pass Access.SetRefused, and the port's gate equals the store's writer check.
+- 2026-11-17T03:59:31Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a descriptor declares a pair outside the pattern, or one pair twice
+
+### DW-2679: Fixture.Create saves demo inventory rows outside AsAdministrator's frame
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Decided note: the fixture runs as the container's own account, which holds %All, at the start path and in the smoke.
+- 2026-11-17T03:59:32Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Design Notes, Decided in-stage
+
+### DW-2680: AsAdministrator's demoRemove step wraps all of Fixture.Remove, not only the inventory purge
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's closed step list names RemoveDemoFixtures; the role holds only OcuPilotAdmin, so the %SYS deletes gain nothing (inference).
+- 2026-11-17T03:59:32Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Tasks, Batch 1 step list
+
+### DW-2681: Access.GuardedPut takes a changer argument it only checks against the caller
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec requires the pBy check; the port passes $Username; CallerOwns compares without regard to case.
+- 2026-11-17T03:59:33Z status=by-design owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=spec Tasks, Batch 1 Access bullet
+
+### DW-2682: InstallRecordWrite's administrator test purges every screen adjustment and trims every profile's stamps
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestAnAdministratorWritesTheInstallRecords runs Access.DeleteAllGuarded and Stamp.GuardedSweep as an administrator; its assertions use only its own rows.
+- 2026-11-17T03:59:33Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a class after InstallRecordWrite in one CI leg fails on a missing screen adjustment or stamp
+
+### DW-2683: InstallRecordWrite's fingerprint counts whole tables, so any concurrent writer would redden a refusal test
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Fingerprint includes COUNT(*) of the five tables; nothing writes them during a test run today (inference).
+- 2026-11-17T03:59:34Z status=wontfix-theoretical owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=real if a writer such as the retention task's sweep ran during an InstallRecordWrite test
+
+### DW-2684: AdminStateWrite's call-coverage assertion derives both sides from InstallRecordWrite for the five new stores
+- source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PlanKinds(install) and Writes/AdjusterWrites read the same InstallRecordWrite lists; the public-method split still catches a missing method.
+- 2026-11-17T03:59:35Z status=wontfix-accepted owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=cr note=reopen_if=a write listed in InstallRecordWrite.Writes with no public method leaves the roster test green

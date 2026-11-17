@@ -60,6 +60,9 @@ Parameter REMOVESCREEN = "probe.install.remove";
 /// <p>The prefix of every screen the class names.</p>
 Parameter SCREENPREFIX = "probe.";
 
+/// <p>The subscript of the probe global <code>^OcuPilotKernelStateProbe</code> this class writes.</p>
+Parameter PROBEKEY = "probeInstallRecord";
+
 Property PreparedPassword As %String;
 
 Property PreparedIds As %DynamicObject;
@@ -155,6 +158,7 @@ ClassMethod Clean()
         Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM " _ tPackage _ tTable _ " WHERE Profile %STARTSWITH 'probe' AND Profile <> 'probe'")
     }
     Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM " _ tPackage _ "ScreenAccess WHERE Screen %STARTSWITH ?", ..#SCREENPREFIX)
+    Kill ^OcuPilotKernelStateProbe(..#PROBEKEY)
 }
 
 /// <p>Seed one row of each store under the seed profile and the seed screen, as the suite's own identity, and
@@ -228,7 +232,7 @@ ClassMethod Fingerprint() As %String
     Quit tText
 }
 
-/// <p>The stores this class pins: the five that declare <code>ADMINWRITE</code> beside the original four.</p>
+/// <p>The stores this class pins: the five that declare <code>ADMINWRITE</code> beside the original five.</p>
 ClassMethod Stores() As %List
 {
     Quit $ListBuild("WebApp", "Stamp", "Version", "Demo", "Access")
@@ -365,11 +369,15 @@ Method TestAPrincipalWithoutAnAdjusterPairIsRefusedEveryScreenAccessWrite()
 /// <p>A developer, who holds an adjuster pair, is still refused what the screen-access port would refuse and
 /// what only an administrator may do: an empty set, nine pairs, a malformed pair, a changer that is not itself,
 /// <code>DeleteAllGuarded</code>, a save through <code>Base</code>, and a held row whose screen it changed in
-/// memory. Each is refused <code>822</code> and the rows read as they did.</p>
+/// memory. A resource name of the wrong shape and one pair named twice are refused as well. Each is refused
+/// <code>822</code>, the rows read as they did, and no refused put records a security-change row.</p>
 /// <p>Mutation (Rule 19): the set check skipped -> the empty, nine-pair and malformed legs go red; the changer
-/// check removed -> the forged-changer leg goes red; the held-screen check removed -> the held-row leg goes red.</p>
+/// check removed -> the forged-changer leg goes red; the held-screen check removed -> the held-row leg goes red;
+/// the resource-pattern clause or the duplicate clause removed from <code>SetRefused</code> -> that leg goes red;
+/// the store's audit made unconditional in <code>GuardedPut</code> -> the audit assertion goes red.</p>
 Method TestAnAdjusterIsRefusedWhatThePortWouldRefuse()
 {
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBefore = ..Fingerprint()
     Set tNine = ""
     For tI = 1:1:9 Set tNine = tNine _ $Select(tNine = "": "", 1: ",") _ "%Admin_Secure:USE"
@@ -378,6 +386,8 @@ Method TestAnAdjusterIsRefusedWhatThePortWouldRefuse()
     Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.nine", "pairs": (tNine), "version": 0, "by": "self"})
     Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.malformed", "pairs": "nocolon", "version": 0, "by": "self"})
     Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.bogus", "pairs": "%Admin_Secure:BOGUS", "version": 0, "by": "self"})
+    Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.badname", "pairs": "bad name:USE", "version": 0, "by": "self"})
+    Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.twice", "pairs": "%Admin_Secure:USE,%admin_secure:USE", "version": 0, "by": "self"})
     Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": "probe.install.forged", "pairs": "%Admin_Secure:USE", "version": 0, "by": (..#ADMINUSER)})
     Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": (..#SEEDSCREEN), "pairs": "%Admin_Secure:USE,%Development:USE", "version": 1, "by": (..#ADMINUSER)})
     Do tPlan.%Push({"kind": "Access.HeldRename", "id": (..PreparedIds.%Get("Access")), "heldScreen": "probe.install.renamed", "screen": (..#SEEDSCREEN), "pairs": "%Admin_Secure:USE,%Development:USE", "version": 1})
@@ -388,15 +398,22 @@ Method TestAnAdjusterIsRefusedWhatThePortWouldRefuse()
     Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
     Do ..AssertAllRefused(tRun, "an adjuster's refused write")
     Do $$$AssertEquals(..Fingerprint(), tBefore, "and the stores read as they did")
+    For tScreen = "probe.install.empty", "probe.install.nine", "probe.install.malformed", "probe.install.bogus", "probe.install.badname", "probe.install.twice", "probe.install.forged", ..#SEEDSCREEN {
+        Set tRows = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(1), ##class(OcuPilot.Test.AuditRecord).IdMarker(tScreen), .tData, """actor"":""" _ ..#DEVUSER _ """")
+        Do $$$AssertEquals(tRows, 0, tScreen _ ": a refused put records no security-change row by the developer")
+    }
 }
 
 /// <p>The developer and the security principal store a valid set through <code>GuardedPut</code> and remove
 /// it, as the port's callers do. Each accepted write is one <code>SecurityChange</code> row naming the writer, the
 /// pairs before and after, and the verb: <code>updated</code> for a put, <code>reset</code> for a remove.</p>
+/// <p>A put and a remove refused as stale record nothing, and an update records the stored set as the set before,
+/// whatever before-set the caller sends.</p>
 /// <p>Mutation (Rule 19): the store's audit call removed -> the audit legs go red with
 /// <class>OcuPilot.Test.ScreenAccessWire</class>; the port made to audit as well -> this stays green and
 /// <method>OcuPilot.Test.ScreenAccessWire.TestEachAcceptedWriteIsOneSecurityChangeRow</method> goes red on two
-/// rows.</p>
+/// rows; <code>GuardedRemove</code>'s audit moved above its stale check -> the reset count goes red; the update's
+/// read of the stored set removed from <code>GuardedPut</code> -> the before-set assertion goes red.</p>
 Method TestAnAdjusterStoresAndTheStoreAuditsOnce()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
@@ -405,10 +422,13 @@ Method TestAnAdjusterStoresAndTheStoreAuditsOnce()
         Set tPlan = []
         Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": (tScreen), "pairs": "%Admin_Secure:USE", "version": 0, "by": "self"})
         Do tPlan.%Push({"kind": "Access.GuardedRemove", "screen": (tScreen), "version": 1})
+        Do tPlan.%Push({"kind": "Access.GuardedPut", "screen": (tScreen), "pairs": "%Admin_Secure:USE", "version": 7, "by": "self"})
+        Do tPlan.%Push({"kind": "Access.GuardedRemove", "screen": (tScreen), "version": 1})
         Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(tUser, tPlan, ..#PROBE)
         Do ..AssertPrincipal(tRun, tUser, 0)
         Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Access.GuardedPut ok=1 code=", tUser _ ": a valid set is stored")
         Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 2), "Access.GuardedRemove ok=1 code=", tUser _ ": and removed")
+        Do $$$AssertEquals(+##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 3).%Get("ok") _ "|" _ +##class(OcuPilot.Test.AdminStateWrite).Leg(tRun, 4).%Get("ok"), "0|0", tUser _ ": a put and a remove of a version the row no longer carries are refused")
         Set tData = ##class(OcuPilot.Test.AuditRecord).RowFor(tSince, 1, tScreen, "updated", .tRows)
         Do $$$AssertEquals(tRows, 1, tUser _ ": the put is one security-change row")
         If tRows = 1 {
@@ -416,8 +436,37 @@ Method TestAnAdjusterStoresAndTheStoreAuditsOnce()
             Do $$$AssertEquals(tRow.actor _ "|" _ tRow.target.type _ "|" _ tRow.changes.pairs.new, tUser _ "|screen-permission|%Admin_Secure:USE", tUser _ ": naming the writer, the screen-permission and the stored set")
         }
         Do ##class(OcuPilot.Test.AuditRecord).RowFor(tSince, 1, tScreen, "reset", .tRows)
-        Do $$$AssertEquals(tRows, 1, tUser _ ": the remove is one security-change row")
+        Do $$$AssertEquals(tRows, 1, tUser _ ": the remove is one security-change row, and the stale legs record none")
     }
+    Set tScreen = "probe.install.audit.update"
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.ScreenAccess (Screen, Pairs, ChangedBy, ChangedAt, RowVersion) VALUES (?, '%Admin_Secure:USE', 'seed', '1990-01-01T00:00:00Z', 1)", tScreen)
+    Do $$$AssertEquals(tRS.%ROWCOUNT, 1, "a stored adjustment is seeded without an audit row")
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, [{"kind": "Access.GuardedPut", "screen": (tScreen), "pairs": "%Admin_Secure:USE,%Development:USE", "version": 1, "by": "self", "declared": "%Forged:USE"}], ..#PROBE)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Access.GuardedPut ok=1 code=", "the developer updates it, sending a before-set of its own: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Set tData = ##class(OcuPilot.Test.AuditRecord).RowFor(tSince, 1, tScreen, "updated", .tRows)
+    Do $$$AssertEquals(tRows, 1, "the update is one security-change row")
+    If tRows = 1 {
+        Set tRow = ##class(%DynamicAbstractObject).%FromJSON(tData)
+        Do $$$AssertEquals(tRow.changes.pairs.old _ "|" _ tRow.changes.pairs.new, "%Admin_Secure:USE|%Admin_Secure:USE,%Development:USE", "naming the stored set as the set before, not the caller's")
+    }
+}
+
+/// <p>The developer writes nothing into the protected database through <code>Base.GuardedProbeSet</code>, called on
+/// <code>Base</code> or inherited by a store; each call is refused <code>822</code> and the node stays unset. An
+/// administrator who holds <code>OcuPilotAdmin:USE</code> and not <code>%All</code> writes it.</p>
+/// <p>Mutation (Rule 19): the caller check removed from <method>OcuPilot.Kernel.State.Base.GuardedProbeSet</method>
+/// -> the developer's legs land and this goes red.</p>
+Method TestOnlyAnAdministratorWritesTheProbeGlobal()
+{
+    Set tPlan = [{"kind": "Base.GuardedProbeSet", "class": "OcuPilot.Kernel.State.Base", "key": (..#PROBEKEY), "value": "developer"}, {"kind": "Base.GuardedProbeSet", "class": "OcuPilot.Kernel.State.WebApp", "key": (..#PROBEKEY), "value": "developer"}]
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#DEVUSER, tPlan, ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#DEVUSER, 0)
+    Do ..AssertAllRefused(tRun, "the developer's probe-global write")
+    Do $$$AssertEquals($Data(^OcuPilotKernelStateProbe(..#PROBEKEY)), 0, "and the node stays unset")
+    Set tRun = ##class(OcuPilot.Test.AdminStateWrite).RunAs(..#ADMINUSER, [{"kind": "Base.GuardedProbeSet", "class": "OcuPilot.Kernel.State.Base", "key": (..#PROBEKEY), "value": "administrator"}], ..#PROBE)
+    Do ..AssertPrincipal(tRun, ..#ADMINUSER, 1)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdminStateWrite).LegText(tRun, 1), "Base.GuardedProbeSet ok=1 code=", "the administrator's write is accepted: " _ ##class(OcuPilot.Test.AdminStateWrite).DetailOf(tRun, 1))
+    Do $$$AssertEquals($Get(^OcuPilotKernelStateProbe(..#PROBEKEY)), "administrator", "and lands")
 }
 
 /// <p>A developer opens the seeded screen-access row, changes its screen in memory to another and holds it across
@@ -526,6 +575,8 @@ Method TestTheInstallRecordStoresAreDeclared()
     }
     Do $$$AssertEquals($Parameter(..#STOREPACKAGE _ "Access", "MAXPAIRS"), ##class(OcuPilot.Api.AccessError).#MAXPAIRS, "the store's pair bound is the port's")
     Do $$$AssertEquals($Parameter(..#STOREPACKAGE _ "Access", "WRITERPAIRS"), $Replace(##class(OcuPilot.Screen.Gate).#ADJUSTERRESOURCES, ",", ":USE,") _ ":USE", "the store's adjuster pairs are the port's gate")
+    Do $$$AssertEquals($Parameter(..#STOREPACKAGE _ "Access", "PERMISSIONS"), ##class(OcuPilot.Port.ScreenAccessPort).#PERMISSIONS, "the store's permissions are the port's")
+    Do $$$AssertEquals($Parameter(..#STOREPACKAGE _ "Access", "RESOURCEPATTERN"), ##class(OcuPilot.Port.ScreenAccessPort).#RESOURCEPATTERN, "the store's resource shape is the port's")
 }
 
 }

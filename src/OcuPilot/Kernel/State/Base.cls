@@ -381,7 +381,8 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
 
 /// <p><method>GuardedSaveIfCurrent</method>'s conditional write without the caller check, for a
 /// store writer that has made its own: <method>GuardedSaveOwned</method> and the one writer open to
-/// every caller (<method>OcuPilot.Kernel.State.Switch.GuardedRecordWritesMarked</method>). Never
+/// every caller (<method>OcuPilot.Kernel.State.Switch.GuardedRecordWritesMarked</method>), and
+/// <method>OcuPilot.Kernel.State.Access.GuardedPut</method> after its own adjuster check. Never
 /// called from a route or a tool.</p>
 ClassMethod GuardedSaveIfCurrentAnyCaller(pObject As Base, pExpected As %Integer = 0) As %Status [ Private ]
 {
@@ -720,8 +721,12 @@ ClassMethod GuardedStoredValue(pExistsMethod As %String, pKey As %String, pPrope
 /// through the escalated frame. This gives <class>OcuPilot.Test.State</class> a
 /// global-side proof of AD-9 alongside <method>GuardedSave</method>'s table-side proof
 /// (AC4, AC5) -- production code has no reason to call this outside that test.</p>
+/// <p>Refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) to a caller who does not hold
+/// <parameter>ADMINRESOURCE</parameter> (<method>CallerIsAdministrator</method>), before the escalation, so it
+/// writes nothing into the protected database for anyone else (AD-9).</p>
 ClassMethod GuardedProbeSet(pKey As %String, pValue As %String) As %Status
 {
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = $$$OK
     New $ROLES
     Try {

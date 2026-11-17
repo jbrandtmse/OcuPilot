@@ -260,7 +260,7 @@ Method TestADeveloperStillWritesAStoreThatIsNotAdministratorOwned()
 /// <class>OcuPilot.Test.InstallRecordWrite</class> call them through
 /// <method>PlanKinds</method>; <code>GuardedRecordWritesMarked</code> and
 /// <code>GuardedClearVerification</code> are the writes open to every caller. <code>Base</code>'s own
-/// public class methods, which the five inherit, are exactly <method>BaseSurface</method>'s two halves,
+/// public class methods, which the ten inherit, are exactly <method>BaseSurface</method>'s two halves,
 /// and each of its saves is a step the probe runs.</p>
 /// <p>Mutation (Rule 19): <code>Parameter ADMINWRITE = 1</code> removed from
 /// <class>OcuPilot.Kernel.State.Policy</class> -> this and the egress and policy test go red.</p>

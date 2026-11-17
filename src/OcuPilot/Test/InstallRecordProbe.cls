@@ -23,10 +23,12 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// the same way; <code>Access.HeldRename</code> opens the screen-access row <code>id</code>, changes its
 /// <code>Screen</code> in memory to <code>heldScreen</code> and holds it across <code>GuardedPut</code>;
 /// <code>Access.GuardedPut</code> sends <code>by</code> as the changer, or the principal's own name when it
-/// reads <code>self</code>.</p>
+/// reads <code>self</code>, and <code>declared</code> as the set before; <code>Base.GuardedProbeSet</code> calls
+/// <code>GuardedProbeSet</code> on the class <code>class</code> names with <code>key</code> and
+/// <code>value</code>.</p>
 ClassMethod InstallKinds() As %List
 {
-    Quit $ListBuild("WebApp.GuardedRecord", "WebApp.GuardedMarkGatewayReported", "WebApp.DeleteByPath", "Stamp.DeleteByProfile", "Stamp.GuardedSweep", "Version.DeleteByProfile", "Demo.DeleteByProfile", "Access.GuardedPut", "Access.GuardedRemove", "Access.DeleteAllGuarded", "Access.HeldRename", "Base.SaveNew", "Base.SaveOpened")
+    Quit $ListBuild("WebApp.GuardedRecord", "WebApp.GuardedMarkGatewayReported", "WebApp.DeleteByPath", "Stamp.DeleteByProfile", "Stamp.GuardedSweep", "Version.DeleteByProfile", "Demo.DeleteByProfile", "Access.GuardedPut", "Access.GuardedRemove", "Access.DeleteAllGuarded", "Access.HeldRename", "Base.SaveNew", "Base.SaveOpened", "Base.GuardedProbeSet")
 }
 
 /// <p>Run one step of the plan: the guarded call its <code>kind</code> names, answered as
@@ -55,7 +57,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tSC = $ClassMethod(tPackage _ "Demo", "DeleteByProfile", pStep.%Get("profile"))
         } ElseIf tKind = "Access.GuardedPut" {
             Set tBy = $Select(pStep.%Get("by") = "self": $Username, 1: pStep.%Get("by"))
-            Set tSC = $ClassMethod(tPackage _ "Access", "GuardedPut", pStep.%Get("screen"), pStep.%Get("pairs"), +pStep.%Get("version"), tBy)
+            Set tSC = $ClassMethod(tPackage _ "Access", "GuardedPut", pStep.%Get("screen"), pStep.%Get("pairs"), +pStep.%Get("version"), tBy, pStep.%Get("declared"))
         } ElseIf tKind = "Access.GuardedRemove" {
             Set tSC = $ClassMethod(tPackage _ "Access", "GuardedRemove", pStep.%Get("screen"), +pStep.%Get("version"))
         } ElseIf tKind = "Access.DeleteAllGuarded" {
@@ -67,6 +69,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
                 Set tSC = $ClassMethod(tPackage _ "Access", "GuardedPut", pStep.%Get("screen"), pStep.%Get("pairs"), +pStep.%Get("version"), $Username)
             }
             Set tRow = ""
+        } ElseIf tKind = "Base.GuardedProbeSet" {
+            Set tSC = $ClassMethod(pStep.%Get("class"), "GuardedProbeSet", pStep.%Get("key"), pStep.%Get("value"))
         } ElseIf tKind = "Base.SaveNew" {
             Set tRow = ..NewRow(pStep.%Get("store"), pStep.%Get("via"))
             Set tSC = ..SaveThroughBase(tRow, pStep.%Get("via") = "save")
