@@ -2,9 +2,10 @@
 title: 'Story 24.11: Listing groups (Batch 1: the read surface)'
 type: 'feature'
 created: '2026-11-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b5199c97eb3a915453398eb55af85d844a0ff5b6'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-2-the-analytics-editors.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md'
@@ -83,10 +84,10 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `75c3e656
 
 **Execution:**
 
-- [ ] **Task 0, on `ocupilot-b-ci` only:** a journal scan for writes by this process around `%GetListingGroups(.l, 0)`, `(.l, 1)` and `%GetModel` over the marker groups. Repeat it with one group whose XData is malformed, and record what the vendor answers. Record both under Design Notes › Measured.
-- [ ] `src/OcuPilot/Port/AnalyticsPort.cls`: the two endpoints, their pairs, `Collect` and `Rows` branches, and the `SQL` rule.
-- [ ] The two descriptors, the `EntityType` values, `strings.ts` (Proposed strings, once ruled), the regenerated mirror, and the EXPERIENCE.md row.
-- [ ] Tests:
+- [x] **Task 0, on `ocupilot-b-ci` only:** a journal scan for writes by this process around `%GetListingGroups(.l, 0)`, `(.l, 1)` and `%GetModel` over the marker groups. Repeat it with one group whose XData is malformed, and record what the vendor answers. Record both under Design Notes › Measured.
+- [x] `src/OcuPilot/Port/AnalyticsPort.cls`: the two endpoints, their pairs, `Collect` and `Rows` branches, and the `SQL` rule.
+- [x] The two descriptors, the `EntityType` values, `strings.ts` (Proposed strings, once ruled), the regenerated mirror, and the EXPERIENCE.md row.
+- [x] Tests:
   - `Test/AnalyticsProbe.cls`: the fixture methods.
   - New `Test/AnalyticsListingGroupRead.cls`: the matrix at the port and over `GET /screens/<id>/read`.
   - New `Test/AnalyticsListingGroupGate.cls`: the pairs, the SQL rule and the hidden group, with probe principals.
@@ -107,6 +108,24 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `75c3e656
 - 2026-11-17, spec gate: blocked -> ready-for-dev on the runner's rulings (U-108); this spec is Batch 1.
 
 ## Review Triage Log
+
+### 2026-11-17 -- Review pass
+
+- verdicts: 13 findings -- high 0, medium 2, low 7, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Two classes naming one group: the Listings branch's choice had no test -- `AnalyticsProbe.CreateTwinListingGroup`/`RemoveTwinListingGroup` and `TestTheCompiledClassAnswersWhenTwoClassesNameOneGroup` added; mutation recorded below.
+  - `[low]` `[patch]` The unreadable-group guard's test filtered by prefix -- an `AnalyticsListingGroupRead.Nameless` assertion over the whole read added.
+  - `[medium]` `[patch]` The editor's tool refusals accepted any status of 400 or more -- both legs now assert `403|AUTH.NOPRIVILEGE|%DeepSee_ListingGroup:USE` and that the leg answered.
+  - `[low]` `[reject]` AC6's leftover check reads only the registry node in `Probe.Left` -- `Probe.Remove` deletes the classes through `RemoveListingGroups`, and the Read class's own check covers them; not worth a second check.
+  - `[low]` `[patch]` AC2 comparisons sat inside an `If $IsObject` -- a presence assertion now precedes each block.
+  - `[low]` `[reject]` Journal switch makes the scan answer -1 -- it reddens, never passes, so it is loud.
+  - `[false]` `[reject]` AC4's scan misses the HTTP screen read -- the spec scopes AC4 to the calling process.
+  - `[low]` `[reject]` The Listings `truncated` flag is asserted by row count at the port only -- the flag is `Read.cls`'s, shared with the groups screen, which asserts it.
+  - `[false]` `[reject]` AC1 compares to the vendor model, not the class text -- AC1 says "equals the model `%GetModel` reads from the class".
+  - `[low]` `[reject]` AD-60 sanitizer not exercised by the new tests -- no sanitizer code is touched; the tool path is the existing one.
+  - `[false]` `[reject]` The journal scan does not cover the web process -- same as the AC4 row above.
+  - `[false]` `[reject]` Other browser specs counting the Analytics side bar were not searched -- searched: the cube manager and term list specs find entries by label, not position.
+  - `[low]` `[reject]` No browser assertion on the SQL cell -- the Listings table has no SQL column; the SQL rule is pinned at the port and over HTTP.
 
 ## Design Notes
 
@@ -155,12 +174,26 @@ Story 24.12 also saves and compiles a class, so Question 2's ruling sets its pat
 - **Compile.** It set `^DeepSee.ListingGroups` `groups`, `classes` and `cubes` nodes. A compile refused for a missing cube (#5001, "Target cube does not exist") or a listing name the cube holds ("Listing is already defined in target cube") still leaves `%Dictionary.CompiledClass` present. So `Compiled` is read from the vendor's compiled list, never from the class dictionary.
 - **Delete.** `%DeleteListingGroup` killed the class and every metadata node through the projection.
 
+**Measured** (Task 0, 2026-11-17, `ocupilot-b-ci`, USER; probe groups and classes removed afterwards):
+
+- **Journal scan.** `AnalyticsProbe.JournalMark` and `JournalWrites` list the set and kill records this job wrote after a mark. A control `Set` made after the reads was the one record the scan found, so the scan sees a write. `%GetListingGroups(.l, 0)`, `(.l, 1)` and `%GetModel` over the four marker groups wrote none. The unit-test framework journals each assertion it records, so the tests assert only after the scans.
+- **Malformed XData.** Three groups were read: unclosed XML (saved through `%Dictionary.XDataDefinition`, because `SetTextFromString` refuses XData that does not parse), well-formed XML with another root element, and `disabled='perhaps'`. Called directly, `%LoadFromClass` answers the parse error as its status. `%GetModel` passes that argument without a dot, so its own status stays OK and it answers an empty model: no name, no listings. `%GetListingGroups(.l, 0)` skips a model with no name, answers OK and lists the other groups; the scan found no write. A malformed group is therefore no row on either screen, and breaks no other read.
+- **Lists.** `(.l, 0)` lists a saved group whose compile was refused (the cube is missing) and a disabled group, which compiles without registering; `(.l, 1)` lists only the registered ones. A group whose `resource` the caller holds nothing on is absent from `(.l, 0)`.
+- **Pairs.** `%DeepSee_Portal:USE` is public, so no principal can lack it; the port's refusal naming it is pinned in process.
+
 **Decided in-stage (plan).**
 
 1. `Compiled` comes from the vendor's compiled list, as measured above.
 2. An unknown group answers no rows, as Term list entries does.
 3. `Joins` and `Formats` are read because the classic form shows join info, and Batch 2's round trip needs every model field (inference: `formatList` is not on the classic form).
 4. The read tool names come from the registry's `<toolIdentifier>.read`, so there are no tool classes.
+
+**Decided in-stage (implement).**
+
+5. `Caption` is the vendor list's caption (the display name, else the name); `Cubes` is the model's `targetCubes` as written, not the list's upper-cased copy.
+6. A criterion that names no group, or none, answers no rows, so the port adds no refusal sentence. Two classes that name one group answer from the compiled one, else the first saved.
+7. The SQL pair is judged in `Invoke` through the gate class, where it is visible (AD-16), and `Rows` takes `pShowSQL`, which defaults to 0. Listing groups sits at side-bar position 9, after the Cube manager; both descriptors declare `%DeepSee_ListingGroup:USE` as their own pair, and `%DeepSee_ListingGroupSQL:USE` is not a pair of either screen.
+8. The tests need no write tool: `AnalyticsProbe` makes the group classes from class text, and `CreateBrokenListingGroup` makes the refused-attribute variant, the one `SetTextFromString` accepts.
 
 **Governing ADs (Rule 6):**
 
@@ -200,7 +233,25 @@ Story 24.12 also saves and compiles a class, so Question 2's ruling sets its pat
 
 **Mutations:** one `mutation:` line per AC, written by the implement stage.
 
+- mutation (AC1): `Compiled` pushed as 1 for every row in `AnalyticsPort.Collect` -> `AnalyticsListingGroupRead` `TestTheGroupsAreTheModelsOfTheirClasses` went red on the saved and disabled groups; `Compiled` read from `%Dictionary.CompiledClass` instead of the vendor's compiled list -> the same legs went red; `joinInfo` pushed empty -> `TestAGroupsListingsAreTheModelsListings` (Joins) went red; the criterion not upper-cased -> its listings legs, the cap leg and the integration leg went red.
+- mutation (AC2): `Screen/Tool/Read.cls` `View` made to pass no criteria -> `TestTheScreenAndTheAgentsToolAnswerTheSameRows` went red (the Listings tool answered 400 `READ.CRITERION`).
+- mutation (AC3): the Compiled column removed from `AnalyticsListingGroupList`, the mirror regenerated, the bundle rebuilt and copied into `ocupilot-b-ci` -> the browser spec's Listing groups leg went red; reverted, regenerated (the three generated files `cmp` equal), rebuilt and redeployed, it is green.
+- mutation (AC4): a `Set` of a global in USER added to the groups branch of `Collect` -> `TestNoReadMakesAJournaledWrite` went red naming the record; `TestACapBoundsTheListAndTheScreenSaysSo`'s one-listing leg went red when the listings branch lost its `pMax` stop.
+- mutation (AC5): `analytics.listinggroups.read` removed from `ReadTool`'s names, the Listings row from `Descriptor`'s committed table, its row from `SurfaceCoverage` and the Listing groups row from `StageTwoTools` -> each of those four tests went red, alone; the Listing groups descriptor's `classicPage` made `%DeepSee.UI.ListingGroupManagerx` -> `AnalyticsDescriptor` went red.
+- mutation (AC6): `RemoveListingGroups` made to delete no class -> `TestRemovingTheListingGroupsLeavesNothing` went red.
+- mutation (gate): the SQL pair judged as held (`tShowSQL` 1) -> `AnalyticsListingGroupGate` `TestAViewerReadsWhatItsResourcesAdmitAndNoSql`, `TestTheAgentsToolsApplyTheSameRules` and `TestAListingsSqlNeedsItsOwnPair` went red; `LISTINGGROUPPAIRS` made the portal's pair alone -> `TestThePortRefusesBeforeAnyVendorCall` and the editor's tool legs went red.
+- mutation (review patch, twin class): the Listings branch of `Collect` made to take the first saved class of the name, whatever the compiled list says -> `TestTheCompiledClassAnswersWhenTwoClassesNameOneGroup` went red; reverted (`cmp` equal), reloaded, green.
+- Each server mutation was reverted byte-identically (`cmp` against the saved copy) and the tree reloaded into `ocupilot-b-ci`, and the class that went red was green after.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the four questions were ruled at the spec gate, U-108)
+Status: done
+Blocking condition: none
+
+**Changed.** `AnalyticsPort` gains the `ListingGroups` and `ListingGroupListings` reads (pairs `LISTINGGROUPPAIRS`, the SQL answered only to `LISTINGGROUPSQLPAIRS`); two read-only descriptors, the `listing-group` and `listing-group-listing` entity types, 14 strings and the EXPERIENCE.md row (the one later citation, `strings.ts` :652, moved to :653); `AnalyticsProbe` gains the listing group fixtures (compiled, saved, guarded, disabled, broken and twin groups, their removal, the journal scan helpers); new `AnalyticsListingGroupRead` (7 tests) and `AnalyticsListingGroupGate` (6), both armed and rostered in `scripts/ci-throwaway.sh`; one browser spec; the rosters under Code Map, `ToolRoundTrip`, `ToolNavigateContract`, `analytics-links.browser-spec.mjs`, `structural-walk.mjs` and the regenerated mirror.
+
+**Review.** 13 findings: 2 medium and 3 low patched (the twin-class test, the tool refusals pinned to 403 and the failed pair, a nameless-row check, presence assertions before the AC2 comparisons), 4 low rejected with reasons, 4 false. Nothing deferred. Patched by verdict: medium 2, low 3, so a follow-up review is recommended (`followup_review_recommended: true`): the twin test relies on the vendor listing the two classes of one name in the order measured on this build.
+
+**Verified on `ocupilot-b-ci`.** The `(loop)` classes green (the two new classes after the review patches: 7 and 6 tests); the `(once)` sweep, shards 1 to 17 of 17, every shard green with 0 failed and no probe leftovers; `test:tools` 2,300 and `test:components` 3,538 green and `npm run build` green with the initial bundle at 2.11 MB (before the review patches, which touch no client file); `analytics.browser-spec.mjs` 7 of 7 and `analytics-links.browser-spec.mjs` 6 of 6 on the redeployed bundle; `check-objectscript` and `lint-docs` clean. Mutations are under Verification.
+
+**Residual risks.** The journal scan covers journaled databases of the calling process only. `ci-timings.json` has no row for the two new classes. The full browser suite is left to CI.

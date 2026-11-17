@@ -83,7 +83,12 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('PORTALPAIRS'), '%DeepSee_Portal:USE');
   assert.equal(parameter('TERMLISTPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
-  assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager');
+  assert.equal(parameter('LISTINGGROUPPAIRS'), '%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE');
+  assert.equal(parameter('LISTINGGROUPSQLPAIRS'), '%DeepSee_ListingGroupSQL:USE');
+  assert.equal(
+    parameter('ENDPOINTS'),
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings'
+  );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');

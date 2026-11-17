@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:652 */
+  /** EXPERIENCE.md:653 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8126,6 +8126,34 @@ export const STRINGS = {
   analyticsFolderItemDeleteDone: 'Deleted <name>.',
   /** EXPERIENCE.md:610 */
   analyticsFolderItemsEmptyAgent: 'import folder items',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsLabel: 'Listing groups',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsLabel: 'Listings',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupCriterion: 'Listing group',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnTargetCubes: 'Target cubes',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnCompiled: 'Compiled',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnDataConnector: 'Data connector',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsEmpty: 'No listing group in this namespace is visible to you.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsEmpty: 'This listing group no longer exists, or it has no listings.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt1: 'Summarize the listing groups in this namespace.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt2: 'Which listing groups are not compiled?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt3: 'Which cubes do these listing groups add listings to?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt1: 'Summarize the listings in this group.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt2: 'Which listings use a custom SQL query?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt3: 'Which listings need a resource to open?',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

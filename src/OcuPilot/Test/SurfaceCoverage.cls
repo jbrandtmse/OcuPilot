@@ -318,6 +318,8 @@ XData Coverage
 <screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsTermListEntryList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsFolderItemList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsListingGroupList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
+<screen name="AnalyticsListingGroupListingList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
 <screen name="AnalyticsArchitectLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsAnalyzerLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsUserPortalLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>

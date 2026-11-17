@@ -1,3 +1,4 @@
+/// <p>Story 24.11 adds the Listing groups screen and its Listings screen to the roster, read-only, under the Listing Group Manager's view resource.</p>
 /// <p>Pins Story 20.11's seven declarations (AD-5, AD-8, AD-29, AD-36, AD-44, AD-65): the <code>analytics</code> source kind's
 /// refusals, which <file>ui/tools/screen-mirror.test.mjs</file> runs off this class's <code>Cases</code> block as well; the
 /// Cubes list, its three tabs, Term lists, a term list's entries and Folder items declared as the story names them; each
@@ -14,7 +15,7 @@ Parameter PACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>The seven screens, <code>&lt;descriptor&gt;|&lt;route&gt;|&lt;position&gt;|&lt;archetype&gt;|&lt;pairs&gt;|&lt;own pair&gt;|&lt;entity&gt;|&lt;id parts&gt;|&lt;endpoint&gt;|&lt;criterion&gt;|&lt;tool&gt;|&lt;classic page&gt;|&lt;tab position&gt;|&lt;parent&gt;</code>,
 /// pairs separated by <code>/</code>.</p>
-Parameter SCREENS = "AnalyticsCubeList|analytics/cubes|1|list|%DeepSee_Portal:USE||cube||Cubes||analytics.cubes|%DeepSee.UI.ModelBrowser||;AnalyticsCubeMeasuresTab|analytics/cubes/document|0|detail|%DeepSee_Portal:USE||cube||Measures|cube|analytics.cubemeasures|%DeepSee.UI.ModelBrowser|1|analytics/cubes;AnalyticsCubeDimensionsTab|analytics/cubes/dimensions|0|detail|%DeepSee_Portal:USE||cube||Dimensions|cube|analytics.cubedimensions|%DeepSee.UI.ModelBrowser|2|analytics/cubes;AnalyticsCubeRelationshipsTab|analytics/cubes/relationships|0|detail|%DeepSee_Portal:USE||cube||Relationships|cube|analytics.cuberelationships|%DeepSee.UI.ModelBrowser|3|analytics/cubes;AnalyticsTermListList|analytics/term-lists|2|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list||TermLists||analytics.termlists|%DeepSee.UI.TermListManager||;AnalyticsTermListEntryList|analytics/term-lists/entries|0|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list-entry|TermList,Key|TermListEntries|termlist|analytics.termlistentries|%DeepSee.UI.TermListManager||analytics/term-lists;AnalyticsFolderItemList|analytics/folder-items|3|list|%DeepSee_Portal:USE/%Development:USE|%Development:USE|folder-item||FolderItems||analytics.folderitems|%DeepSee.UI.FolderManager||";
+Parameter SCREENS = "AnalyticsCubeList|analytics/cubes|1|list|%DeepSee_Portal:USE||cube||Cubes||analytics.cubes|%DeepSee.UI.ModelBrowser||;AnalyticsCubeMeasuresTab|analytics/cubes/document|0|detail|%DeepSee_Portal:USE||cube||Measures|cube|analytics.cubemeasures|%DeepSee.UI.ModelBrowser|1|analytics/cubes;AnalyticsCubeDimensionsTab|analytics/cubes/dimensions|0|detail|%DeepSee_Portal:USE||cube||Dimensions|cube|analytics.cubedimensions|%DeepSee.UI.ModelBrowser|2|analytics/cubes;AnalyticsCubeRelationshipsTab|analytics/cubes/relationships|0|detail|%DeepSee_Portal:USE||cube||Relationships|cube|analytics.cuberelationships|%DeepSee.UI.ModelBrowser|3|analytics/cubes;AnalyticsTermListList|analytics/term-lists|2|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list||TermLists||analytics.termlists|%DeepSee.UI.TermListManager||;AnalyticsTermListEntryList|analytics/term-lists/entries|0|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list-entry|TermList,Key|TermListEntries|termlist|analytics.termlistentries|%DeepSee.UI.TermListManager||analytics/term-lists;AnalyticsFolderItemList|analytics/folder-items|3|list|%DeepSee_Portal:USE/%Development:USE|%Development:USE|folder-item||FolderItems||analytics.folderitems|%DeepSee.UI.FolderManager||;AnalyticsListingGroupList|analytics/listing-groups|9|list|%DeepSee_Portal:USE/%DeepSee_ListingGroup:USE|%DeepSee_ListingGroup:USE|listing-group||ListingGroups||analytics.listinggroups|%DeepSee.UI.ListingGroupManager||;AnalyticsListingGroupListingList|analytics/listing-groups/listings|0|list|%DeepSee_Portal:USE/%DeepSee_ListingGroup:USE|%DeepSee_ListingGroup:USE|listing-group-listing|ListingGroup,Name|ListingGroupListings|listinggroup|analytics.listinggrouplistings|%DeepSee.UI.ListingGroupManager||analytics/listing-groups";
 
 /// <p>The corpus both engines run: each case replaces the declaration's <code>read.source</code>, sets
 /// <code>read.criteria</code> when it carries one, and names the sentence the registry's <code>check</code>
@@ -51,7 +52,7 @@ XData Cases
     {"name": "TermListEntries", "check": "read", "source": {"port": "analytics", "endpoint": "TermListEntries", "type": "LIST"}, "expected": null},
     {"name": "FolderItems", "check": "read", "source": {"port": "analytics", "endpoint": "FolderItems", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "analytics", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the analytics port's endpoints ('Cubes', 'Measures', 'Dimensions', 'Relationships', 'TermLists', 'TermListEntries', 'FolderItems', 'CubeManager') (AD-65)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "analytics", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the analytics port's endpoints ('Cubes', 'Measures', 'Dimensions', 'Relationships', 'TermLists', 'TermListEntries', 'FolderItems', 'CubeManager', 'ListingGroups', 'ListingGroupListings') (AD-65)"},
     {"name": "a type other than LIST", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "GET"}, "expected": "read.source.type 'GET' is declared on an analytics source, which lists the namespace's cubes, term lists and folder items (AD-36)"},
     {"name": "rowGet", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Caption"], "derived": []}}, "expected": "read.source.rowGet is declared on an analytics source, which answers its list whole (AD-36)"},
     {"name": "forEach", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST", "forEach": ["Measures"]}, "expected": "read.source.forEach is declared on an analytics source, which answers its list whole (AD-36)"},
@@ -150,7 +151,7 @@ Method TestTheSevenDeclarationsRegister()
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $Get(tProblem), "1|", "the registry validates the roster with the seven: " _ $Get(tProblem))
     Set tArea = ##class(OcuPilot.Screen.Area).Find("analytics")
     Do $$$AssertEquals($Select($IsObject(tArea): tArea.appliesWhen, 1: ""), "analytics", "the area the seven inherit applies when the namespace reports analytics")
-    For tType = "cube", "term-list", "term-list-entry", "folder-item" {
+    For tType = "cube", "term-list", "term-list-entry", "folder-item", "listing-group", "listing-group-listing" {
         Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), tType _ " is a declared entity type")
     }
 }
@@ -162,7 +163,7 @@ Method TestTheSevenDeclarationsRegister()
 Method TestEachClassicPageIsThePortalsOwn()
 {
     Kill tPortal
-    For tPage = "ModelBrowser", "TermListManager", "FolderManager" {
+    For tPage = "ModelBrowser", "TermListManager", "FolderManager", "ListingGroupManager" {
         Set tName = "%DeepSee.UI." _ tPage
         Set tPortal(##class(%SYS.Portal.Resources).NormalizePage("/csp/user/_DeepSee.UI." _ tPage _ ".zen")) = 0
         Do $$$AssertTrue($Data(tPortal(tName)), tName _ ": the portal's own resolver answers it for the page's file")
