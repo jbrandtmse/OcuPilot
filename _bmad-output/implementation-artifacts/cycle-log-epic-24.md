@@ -246,3 +246,16 @@
 2026-11-17T01:01:14Z	Story 24.6	ruling	question=strings_keys_gate_audit choice=keep why=owner_answer_U-78_shape_stricter_than_vendor_terminal category=veto reversal=reword_or_regate inbox=U-102 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-17T01:01:14Z	Epic 24	owner_decision	id=U-99/U-100 note=orchestrator_reworded_audit_gap_after_runner_correction;DW-2673_routed_to_24.6
 2026-11-17T01:01:14Z	Story 24.6	stage_spawned	stage=implement spawn_at=2026-11-17T01:01:14Z model=sonnet agent_name=24-6-the-command-and-class-method-consoles-implement-1 cycle_iteration=2
+2026-11-17T01:17:53Z	Story 24.5	ci_result	sha=7fc563379 run=43988754165 result=failure cause=own_defect(a11y-structural-invariants_AC5_unresolved_system-explorer/unit-tests/methods) fix=walk_SKIP_entry
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-98 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-100 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-101 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T01:17:53Z	Epic 24	owner_decision	id=U-102 via=inbox by=owner(relayed) answer=keep effect=none
+2026-11-17T02:06:20Z	Story 24.5	ci_result	sha=230e91291 run=43994767652 result=success fix=walk_SKIP
+2026-11-17T02:20:44Z	Story 24.5	merged_to_feature	feature=230e91291(fast-forward) by=orchestrator
+2026-11-17T04:16:22Z	Epic 24	hold_ordered	reason=owner:account_switch(weekly_usage_95pct,requested_at=2026-11-17T04:16:07Z) running_stage=24.6_implement(sweep_shard_8_of_17) action=no_new_stage
+2026-11-17T05:44:11Z	Story 24.6	dev_complete	spawn_at=2026-11-17T01:00:00Z model=sonnet build_sha=0bac71b0f baseline_revision=230e91291(rebased_by_stage_after_runner_ff) review_loop_iteration=0 followup_review_recommended=true deferred=0 sweep=17/17_green cycle_iteration=2 task0=capture_survives_USER(pass) DW-2673=resolved(24.5_run_wrote_0_rows;now_SecurityChange_row)
+2026-11-17T05:44:11Z	Story 24.6	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-17T05:44:29Z	Story 24.6	hold_saved	story=24-6-the-command-and-class-method-consoles stage=implement patch=none tree=clean note=implement_committed_0bac71b0f;qa_cr_fresh_check_not_started
+2026-11-17T05:44:29Z	Epic 24	throwaway_down	project=ocupilot-b-ci reason=hold started_by=runner-24
+2026-11-17T05:44:29Z	Epic 24	hold_complete	shas=0bac71b0f(24.6_code_local_commit,pushed_with_bookkeeping),230e91291(24.5_fix,merged) throwaways_up=none
