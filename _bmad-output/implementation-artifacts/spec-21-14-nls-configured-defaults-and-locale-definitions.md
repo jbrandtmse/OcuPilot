@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-11-15'
 status: 'done'
 baseline_revision: '6ce74f058c368f72f837d96cf1233b831926294b'
+baseline_commit: '6ce74f058c368f72f837d96cf1233b831926294b'
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
