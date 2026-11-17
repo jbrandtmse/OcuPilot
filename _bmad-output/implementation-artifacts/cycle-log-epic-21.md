@@ -474,3 +474,6 @@
 2026-11-17T16:04:33Z	Story 21.35	ci_resolved	story=21.35 sha=88f29266d runs=44112829789 result=success failed=none via=none resolved_at=gate note=B3_built_head
 2026-11-17T18:00:11Z	Story 21.35	gate_step	step=sweep result=green shards=20/20 dir=e21u/21-35/gate/sweep head=8e652b28d
 2026-11-17T18:00:11Z	Story 21.35	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-17T18:04:30Z	Epic 21	integrated	feature=17b0bc8b8 merge=cbde8563a conflicts_resolved=sprint-status.yaml(last_updated,ours) ledger_dups=0 ci_test=103/103 check-objectscript=0 note=feature_moved_by_code(24.6,24.10_B1);staging_head
+2026-11-17T18:04:30Z	Story 21.35	committed	sha=8e652b28d staging_head=cbde8563a submodules= ci=pending runs=44143834574 amendments=none
+2026-11-17T18:04:30Z	Story 21.35	story_cycle	plan_to_commit_min=n/a(multi-session) implement_passes=4(B1,B2,B3_dead,B3) reviews=4 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
