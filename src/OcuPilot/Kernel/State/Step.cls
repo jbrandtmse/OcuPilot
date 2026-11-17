@@ -214,9 +214,14 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
 /// reason, failedPair, failedScreen}</code> (Story 4.5). <code>result</code> is the parsed <code>{rowsReturned,
 /// rowsSent, truncated}</code> object when the step recorded one, else JSON null; every other new
 /// field is the empty string when the step carries none.</p>
+/// <p>Answered for a turn its caller owns and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no row. A key that names no turn answers
+/// no rows.</p>
 ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? ORDER BY Seq", pKey, .tIds)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tIds) {

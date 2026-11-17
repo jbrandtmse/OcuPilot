@@ -383,8 +383,8 @@ Method TestLoweringOpensTheScreenAndThePortsOwnCheckStillRefuses()
 /// <p><b>Audit (AC5)</b> -- each accepted write is one <code>SecurityChange</code> row naming the screen and
 /// the pairs before and after: an add and a remove are <code>updated</code>, a reset is <code>reset</code>.</p>
 /// <p>Mutation (Rule 19): remove the <code>Event.Record</code> call from
-/// <method>OcuPilot.Port.ScreenAccessPort.Audit</method> -- every leg goes red; swap the reset's sets before
-/// and after in <method>OcuPilot.Port.ScreenAccessPort.Invoke</method> -- the reset leg does.</p>
+/// <method>OcuPilot.Kernel.State.Access.Audit</method> -- every leg goes red; swap the reset's sets before
+/// and after in <method>OcuPilot.Kernel.State.Access.GuardedRemove</method>'s audit call -- the reset leg does.</p>
 Method TestEachAcceptedWriteIsOneSecurityChangeRow()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")

@@ -36,6 +36,8 @@ Index SharingUserNameIdx On UserName [ Unique ];
 /// <p><b>Matched the way the unique index matches</b>, which is case-insensitively (IRIS SQL
 /// string comparison folds case by default and <code>SharingUserNameIdx</code> collates the same
 /// way).</p>
+/// <p>Answered to <var>pUserName</var> and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no choice.</p>
 ClassMethod GuardedForUser(pUserName As %String, Output pFound As %Boolean, Output pShare As %Boolean) As %Status
 {
     Set pFound = 0
@@ -43,6 +45,8 @@ ClassMethod GuardedForUser(pUserName As %String, Output pFound As %Boolean, Outp
     Set tSC = $$$OK
     Try {
         If pUserName = "" Quit
+        Set tSC = ..OwnerWriteRefused($ClassName(), pUserName)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..GuardedOpenOneWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Sharing WHERE UserName = ? ORDER BY ID", pUserName, .tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Quit
@@ -86,10 +90,12 @@ ClassMethod DeleteAllGuarded() As %Status
 }
 
 /// <p>Every user this store holds a row for, as stored: <var>pUsers(name)</var>. The retention
-/// sweep asks, for each, whether the account still exists (AD-37).</p>
+/// sweep asks, for each, whether the account still exists (AD-37). An administrator's: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no name.</p>
 ClassMethod GuardedUsers(Output pUsers) As %Status
 {
     Kill pUsers
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = ..GuardedIdsWhereNoParam("SELECT DISTINCT %EXACT(UserName) FROM OcuPilot_Kernel_State.Sharing", .tRows)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tRows) {

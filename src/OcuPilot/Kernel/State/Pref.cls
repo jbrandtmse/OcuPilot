@@ -171,12 +171,16 @@ Parameter COUNTFORUSERSQL As %String = "SELECT COUNT(*) FROM OcuPilot_Kernel_Sta
 /// <p>No rows is the ordinary answer, never an error. A row whose id disappears between the
 /// enumeration and the open -- another tab clearing the list -- is skipped rather than failing the
 /// read.</p>
+/// <p>Answered to <var>pUserName</var> and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no row.</p>
 ClassMethod GuardedListForUser(pUserName As %String, pKind As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []
     Set tSC = $$$OK
     Try {
         If pUserName = "" Quit
+        Set tSC = ..OwnerWriteRefused($ClassName(), pUserName)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..IdsForUser(pUserName, pKind, .tIds)
         If $$$ISERR(tSC) Quit
         For tI = 1:1:+$Get(tIds) {
@@ -368,12 +372,15 @@ ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %St
 /// <var>pValue</var>, or <code>""</code> when no row holds one.</p>
 /// <p><b>Read on every call.</b> The row's reference is dropped before this returns, so the next
 /// call opens it afresh rather than being handed the copy still in memory.</p>
+/// <p>Answered to <var>pUserName</var> and to an administrator only, as <method>GuardedListForUser</method> is.</p>
 ClassMethod GuardedValue(pUserName As %String, pKind As %String, pName As %String, Output pValue As %String) As %Status
 {
     Set pValue = ""
     Set tSC = $$$OK
     Try {
         If pUserName = "" Quit
+        Set tSC = ..OwnerWriteRefused($ClassName(), pUserName)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..OpenByKey(pUserName, pKind, pName, .tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Quit
@@ -436,10 +443,14 @@ ClassMethod GuardedTrim(pUserName As %String, pKind As %String, pKeep As %Intege
 }
 
 /// <p>How many rows of <var>pKind</var> <var>pUserName</var> holds. For tests and for a caller
-/// that wants the count without the rows.</p>
+/// that wants the count without the rows. Answered to <var>pUserName</var> and to an administrator only, as
+/// <method>GuardedListForUser</method> is.</p>
 ClassMethod GuardedCountForUser(pUserName As %String, pKind As %String, Output pCount As %Integer) As %Status
 {
     Set pCount = 0
+    If pUserName = "" Quit $$$OK
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUserName)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..IdsForUser(pUserName, pKind, .tIds)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tIds)
@@ -502,10 +513,12 @@ ClassMethod Text(pValue As %String) As %String [ Private ]
 }
 
 /// <p>Every user this store holds a row for, as stored: <var>pUsers(name)</var>. The retention
-/// sweep asks, for each, whether the account still exists (AD-37).</p>
+/// sweep asks, for each, whether the account still exists (AD-37). An administrator's: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no name.</p>
 ClassMethod GuardedUsers(Output pUsers) As %Status
 {
     Kill pUsers
+    If '..CallerIsAdministrator() Quit $$$ERROR($$$AccessDenied)
     Set tSC = ..GuardedIdsWhereNoParam("SELECT DISTINCT %EXACT(UserName) FROM OcuPilot_Kernel_State.Pref", .tRows)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tRows) {

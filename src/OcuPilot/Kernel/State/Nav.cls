@@ -115,7 +115,9 @@ ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String,
 /// <var>pSeq</var>, <var>pRoute</var>, <var>pEntityId</var>, <var>pCriterion</var> and
 /// <var>pCriteria</var> (the criteria JSON) are <code>0</code>/<code>""</code> when the turn holds
 /// no directive at all. <var>pSettled</var> is 1 once <var>pOutcome</var> and
-/// <var>pCode</var> carry an answer.</p>
+/// <var>pCode</var> carry an answer. Answered for a turn its caller owns and to an administrator only: any other
+/// caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and every output stays empty. A
+/// directive whose turn row is gone is refused the same way to every caller but an administrator.</p>
 ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRoute As %String, Output pEntityId As %String, Output pSettled As %Boolean, Output pOutcome As %String, Output pCode As %String, Output pCriterion As %String, Output pCriteria As %String) As %Status
 {
     Set pSeq = 0
@@ -126,9 +128,13 @@ ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRou
     Set pSettled = 0
     Set pOutcome = ""
     Set pCode = ""
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISERR(tSC) Quit tSC
     If $IsObject(tRow) {
+        Set tSC = ..OwnerWriteRefused($ClassName(), pKey)
+        If $$$ISERR(tSC) Quit tSC
         Set pSeq = +tRow.Seq
         Set pRoute = ..Text(tRow.Route)
         Set pEntityId = ..Text(tRow.EntityId)

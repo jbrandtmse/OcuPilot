@@ -104,44 +104,20 @@ ClassMethod Cases() As %List
     Quit $ListBuild($ListBuild(..#ADMINUSER, ..#ADMINROLE, "OcuPilotAdmin:U"), $ListBuild(..#INSTALLERUSER, ..#INSTALLERROLE, "%Admin_Secure:U,%DB_IRISSYS:RW"), $ListBuild(..#DEVUSER, ..#DEVROLE, "%Development:U"))
 }
 
-/// <p>Create each role of <method>Cases</method> with the install namespace's databases read and
-/// write plus its grants, and its account, then read back that neither holds <code>%All</code> and
-/// that only the administrator holds <code>OcuPilotAdmin</code>.</p>
-ClassMethod EnsurePrincipals(pPassword As %String) As %Status
+/// <p>Create each role of <var>pCases</var> (default <method>Cases</method>) through
+/// <method>OcuPilot.Test.AdminStateWrite.EnsurePrincipals</method> with the install namespace's databases read and
+/// write plus its grants, and its account, and read back that none holds <code>%All</code> and that only the account
+/// named <parameter>ADMINUSER</parameter> holds <code>OcuPilotAdmin</code>.</p>
+ClassMethod EnsurePrincipals(pPassword As %String, pCases As %List = "") As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
-        Set $NAMESPACE = "%SYS"
-        Set tNamespace = ##class(Config.Namespaces).Open(tInstallNs)
-        Set tWrite = ""
-        For tDatabaseName = tNamespace.Routines, tNamespace.Globals {
-            Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tDatabaseName).Directory).ResourceName _ ":RW"
-            If tWrite '[ tResource Set tWrite = tWrite _ $Select(tWrite = "": "", 1: ",") _ tResource
-        }
-        Set tCases = ..Cases()
-        For tI = 1:1:$ListLength(tCases) {
-            Set tCase = $List(tCases, tI)
-            Set tUser = $List(tCase, 1)
-            Set tRole = $List(tCase, 2)
-            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: administrator paths (throwaway)", tWrite _ "," _ $List(tCase, 3), "")
-            If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot administrator path test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot armed test class; deleted in its OnAfterAllTests")
-            If $$$ISERR(tSC) Quit
-            Set tAdmin = ($SYSTEM.Security.CheckUserPermission(tUser, "OcuPilotAdmin", "USE") = 1)
-            If ($SYSTEM.Security.CheckUserPermission(tUser, "%All", "USE") = 1) || (tAdmin '= (tUser = ..#ADMINUSER)) {
-                Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal " _ tUser _ "'s grants did not read back as declared")
-                Quit
-            }
-        }
-    } Catch ex {
-        Set tSC = ex.AsStatus()
+    If pCases = "" Set pCases = ..Cases()
+    Set tCases = ""
+    For tI = 1:1:$ListLength(pCases) {
+        Set tCase = $List(pCases, tI)
+        Set tAdjuster = (($List(tCase, 3) [ "%Development:") || ($List(tCase, 3) [ "%Admin_Secure:"))
+        Set tCases = tCases _ $ListBuild($ListBuild($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), $List(tCase, 1) = ..#ADMINUSER, tAdjuster))
     }
-    Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ##class(OcuPilot.Test.AdminStateWrite).EnsurePrincipals(pPassword, tCases, "RW")
 }
 
 /// <p>The first column of <var>pSql</var>'s first row, bound to <var>pValue</var>, as a number;
@@ -274,7 +250,7 @@ Method TestAnAdministratorWithoutAllKeysProposalsAndPurgesTheLedger()
 /// <p>A first install by an account that does not hold <code>%All</code>: the install grants it
 /// <code>OcuPilotAdmin</code>, which leaves its running process without the role, and then runs the
 /// target-key step, which passes because no stored proposal lacks its key, as on a new install.</p>
-/// <p>Mutation (Rule 19): the frame removed from <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method>
+/// <p>Mutation (Rule 19): the frame removed from <method>OcuPilot.Install.Installer.AsAdministrator</method>
 /// and <method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method> made to check the
 /// administrator before it reads -> the step is refused <code>822</code> and this goes red, with the
 /// upgrade test and the developer's empty-store leg.</p>
@@ -296,7 +272,7 @@ Method TestAFirstInstallWithoutAllPassesTheTargetKeyStep()
 /// the running process, and the target-key step gives the keyless proposal its key all the same, because the
 /// step adds the role to its own process around the one call. The role is gone when the step returns.</p>
 /// <p>Mutation (Rule 19): the <code>New $ROLES</code> frame and its <code>Set $ROLES</code> removed from
-/// <method>OcuPilot.Install.Installer.EnsureProposalTargetKeys</method> -> the step is refused
+/// <method>OcuPilot.Install.Installer.AsAdministrator</method> -> the step is refused
 /// <code>822</code>, the proposal keeps no key, and this goes red alone.</p>
 Method TestAnUpgradeByAnAccountGrantedTheRoleInTheSameInstallKeysTheProposals()
 {

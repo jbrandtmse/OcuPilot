@@ -110,7 +110,7 @@ Rejected:
 
 **Governing ADs:** AD-2 (port behavior), AD-27 (the vendor dependency stays in the port), AD-4 (the complete property set; unchanged), AD-7 (the write stays in the confirm or action request), AD-9 (no `JOB`), AD-16 (the test's `%SYS` purge uses save and restore). Inbox: DW-2646 is addressed by every task. Consumed-by and Consumes: no new service or module, so neither applies.
 
-**Experiments** (fresh rebuilds of `ocupilot-ci`; scripts and logs in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/21-32/`):
+**Experiments** (fresh rebuilds of `ocupilot-ci`; scripts and logs in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/21-32/`):
 
 - In a session, with the version bumped and `%SYS` purged, the next `%PrepareClassQuery(...,2)` fails -428 once, then succeeds. Without the purge it succeeds, because the cached query compiles nothing.
 - Bearer versus Basic makes no difference: curl with either, with warm workers, OcuPilot's set and a purge, stays green.
@@ -135,7 +135,7 @@ Rejected:
 
 **Shared surfaces:** the `config-settings` spec's `after` hook. *Every test added or changed passes on a fresh environment, in either order.*
 
-**Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message. `L` is `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/4667058b-f052-49c9-b08a-221f7f41dfab/scratchpad/e21u/lead`.
+**Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message. `L` is `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead`.
 
 - `(loop)` `sh $L/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- `LOADERRORS=0`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.AdminPortCompileContext`, then the same command for `AdminPortSync`, `TaskLists` and `PortGate`, one class per call -- green.

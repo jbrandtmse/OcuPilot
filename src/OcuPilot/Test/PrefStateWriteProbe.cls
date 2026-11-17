@@ -21,10 +21,15 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// <code>Pref.ForgedSetValue</code>, <code>Sharing.ForgedSetForUser</code> and <code>SqlRun.ForgedCancel</code>
 /// open row <code>id</code>, set its <code>UserName</code> to <code>heldUser</code> in memory and hold it across
 /// the store's writer for <code>user</code>. <code>Turn.ReserveWith</code> and <code>SqlRun.ReserveWith</code> reserve
-/// with the limits class <code>limits</code>, first holding the other user's row <code>id</code> opened with the public
-/// <code>GuardedOpenId</code> and changed in memory when <code>heldField</code> is set (<code>EndedAt</code>, or
-/// <code>Namespace</code> for a run). <code>Turn.HeldAbandon</code> holds turn row <code>id</code> with its
-/// <code>TurnKey</code> set to <code>heldKey</code> across <code>Turn.GuardedAbandonForUser</code>. A run
+/// with the limits class <code>limits</code>, first trying to hold row <code>id</code> opened with the public
+/// <code>GuardedOpenId</code> with its field <code>heldField</code> set to <code>heldValue</code> in memory, and answer
+/// the open's error code as <code>openCode</code>. <code>SqlRun.HeldFinish</code> holds run row <code>id</code>, with
+/// its field <code>heldField</code> set to <code>heldValue</code>, its answer pointed at stream <code>stream</code>, or a
+/// new answer written under stream id <code>forgeId</code>, across <code>SqlRun.GuardedFinish</code> of run
+/// <code>key</code>.
+/// <code>Turn.HeldAbandon</code> tries to hold turn row <code>id</code> with its <code>TurnKey</code> set to
+/// <code>heldKey</code> across <code>Turn.GuardedAbandonForUser</code>, which runs whether or not the open was
+/// refused; its <code>openCode</code> answers the open. A run
 /// <code>key</code> of <code>"$reserved"</code> is the one the last <code>SqlRun.ReserveWith</code> of this process
 /// answered. <code>Suite.Ask</code> asks the process that started the run <code>question</code> about
 /// <code>key</code> (<method>OcuPilot.Test.OwnerStateWriteProbe.Ask</method>) and answers its reply as
@@ -32,7 +37,13 @@ ClassMethod Handles(pKind As %String) As %Boolean
 /// class <code>limits</code> and answers <code>found</code>.</p>
 ClassMethod PrefKinds() As %List
 {
-    Quit $ListBuild("Pref.GuardedAdd", "Pref.GuardedRemove", "Pref.GuardedClear", "Pref.GuardedTouch", "Pref.GuardedTrim", "Pref.DeleteAllGuarded", "Pref.GuardedDeleteForUser", "Pref.BaseSave", "Pref.BaseSaveIfCurrent", "Pref.ForgedSetValue", "Sharing.GuardedSetForUser", "Sharing.DeleteAllGuarded", "Sharing.GuardedDeleteForUser", "Sharing.ForgedSetForUser", "SqlRun.GuardedBegin", "SqlRun.GuardedFinish", "SqlRun.GuardedCancel", "SqlRun.GuardedSweep", "SqlRun.GuardedForgetUser", "SqlRun.ForgedCancel", "SqlRun.ReserveWith", "Turn.ReserveWith", "Turn.HeldAbandon", "Suite.Ask", "SqlRun.ViewFor")
+    Quit $ListBuild("Pref.GuardedAdd", "Pref.GuardedRemove", "Pref.GuardedClear", "Pref.GuardedTouch", "Pref.GuardedTrim", "Pref.DeleteAllGuarded", "Pref.GuardedDeleteForUser", "Pref.BaseSave", "Pref.BaseSaveIfCurrent", "Pref.ForgedSetValue", "Sharing.GuardedSetForUser", "Sharing.DeleteAllGuarded", "Sharing.GuardedDeleteForUser", "Sharing.ForgedSetForUser", "SqlRun.GuardedBegin", "SqlRun.GuardedFinish", "SqlRun.GuardedCancel", "SqlRun.GuardedSweep", "SqlRun.GuardedForgetUser", "SqlRun.ForgedCancel", "SqlRun.ReserveWith", "Turn.ReserveWith", "Turn.HeldAbandon", "Suite.Ask", "SqlRun.ViewFor", "SqlRun.HeldFinish")
+}
+
+/// <p>The first error code of <var>pStatus</var>, or an empty string for an OK status.</p>
+ClassMethod CodeOf(pStatus As %Status) As %String [ Private ]
+{
+    Quit $Select($$$ISOK(pStatus): "", 1: $Piece($System.Status.GetErrorCodes(pStatus), ",", 1))
 }
 
 /// <p>Run one step of the plan, answered as the parent answers one.</p>
@@ -111,37 +122,48 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tRow = ""
         } ElseIf tKind = "SqlRun.ReserveWith" {
             If pStep.%Get("id") '= "" {
-                Set tSC = $ClassMethod(tRun, "GuardedOpenId", pStep.%Get("id"), .tRow)
-                If $$$ISOK(tSC) {
-                    If pStep.%Get("heldField") = "EndedAt" Set tRow.EndedAt = pStep.%Get("heldValue")
-                    If pStep.%Get("heldField") = "Namespace" Set tRow.Namespace = pStep.%Get("heldValue")
-                }
+                Set tOpenSC = $ClassMethod(tRun, "GuardedOpenId", pStep.%Get("id"), .tRow)
+                Do tLeg.%Set("openCode", ..CodeOf(tOpenSC), "string")
+                If $$$ISOK(tOpenSC) && (pStep.%Get("heldField") '= "") Set $Property(tRow, pStep.%Get("heldField")) = pStep.%Get("heldValue")
             }
-            If $$$ISOK(tSC) Set tSC = $ClassMethod(tRun, "GuardedReserve", tUser, $NAMESPACE, 10, pStep.%Get("limits"), .tKey, .tBusyKey, .tFull, .tSweepStatus)
+            Set tSC = $ClassMethod(tRun, "GuardedReserve", tUser, $NAMESPACE, 10, pStep.%Get("limits"), .tKey, .tBusyKey, .tFull, .tSweepStatus)
             Set tRow = ""
             If $$$ISOK(tSC) Set ^||OcuPilotProbe("reserved") = $Get(tKey)
             Do tLeg.%Set("key", $Get(tKey), "string")
             Do tLeg.%Set("sweepOk", ''$$$ISOK($Get(tSweepStatus, $$$OK)), "boolean")
         } ElseIf tKind = "Turn.ReserveWith" {
             If pStep.%Get("id") '= "" {
-                Set tSC = $ClassMethod(tTurn, "GuardedOpenId", pStep.%Get("id"), .tRow)
-                If $$$ISOK(tSC) && (pStep.%Get("heldField") = "EndedAt") Set tRow.EndedAt = pStep.%Get("heldValue")
+                Set tOpenSC = $ClassMethod(tTurn, "GuardedOpenId", pStep.%Get("id"), .tRow)
+                Do tLeg.%Set("openCode", ..CodeOf(tOpenSC), "string")
+                If $$$ISOK(tOpenSC) && (pStep.%Get("heldField") '= "") Set $Property(tRow, pStep.%Get("heldField")) = pStep.%Get("heldValue")
             }
-            If $$$ISOK(tSC) Set tSC = $ClassMethod(tTurn, "GuardedReserve", tUser, "1", "lost", pStep.%Get("limits"), .tKey, .tBusy, .tSweepStatus)
+            Set tSC = $ClassMethod(tTurn, "GuardedReserve", tUser, "1", "lost", pStep.%Get("limits"), .tKey, .tBusy, .tSweepStatus)
             Set tRow = ""
             Do tLeg.%Set("key", $Get(tKey), "string")
             Do tLeg.%Set("sweepOk", ''$$$ISOK($Get(tSweepStatus, $$$OK)), "boolean")
         } ElseIf tKind = "Turn.HeldAbandon" {
-            Set tSC = $ClassMethod(tTurn, "GuardedOpenId", pStep.%Get("id"), .tRow)
-            If $$$ISOK(tSC) {
-                Set tRow.TurnKey = pStep.%Get("heldKey")
-                Set tSC = $ClassMethod(tTurn, "GuardedAbandonForUser", tUser, .tCount)
-                Do tLeg.%Set("count", +$Get(tCount), "number")
-            }
+            Set tOpenSC = $ClassMethod(tTurn, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            Do tLeg.%Set("openCode", ..CodeOf(tOpenSC), "string")
+            If $$$ISOK(tOpenSC) Set tRow.TurnKey = pStep.%Get("heldKey")
+            Set tSC = $ClassMethod(tTurn, "GuardedAbandonForUser", tUser, .tCount)
+            Do tLeg.%Set("count", +$Get(tCount), "number")
             Set tRow = ""
         } ElseIf tKind = "SqlRun.ViewFor" {
             Set tSC = $ClassMethod(tRun, "GuardedViewForOwner", pStep.%Get("key"), tUser, pStep.%Get("limits"), .tFound, .tView, "sql")
             Do tLeg.%Set("found", +$Get(tFound), "number")
+        } ElseIf tKind = "SqlRun.HeldFinish" {
+            Set tOpenSC = $ClassMethod(tRun, "GuardedOpenId", pStep.%Get("id"), .tRow)
+            Do tLeg.%Set("openCode", ..CodeOf(tOpenSC), "string")
+            If $$$ISOK(tOpenSC) && (pStep.%Get("heldField") '= "") Set $Property(tRow, pStep.%Get("heldField")) = pStep.%Get("heldValue")
+            If $$$ISOK(tOpenSC) && (pStep.%Get("stream") '= "") Do tRow.AnswerSetObjectId(pStep.%Get("stream"))
+            If $$$ISOK(tOpenSC) && (pStep.%Get("forgeId") '= "") {
+                Set tAnswer = tRow.Answer
+                Set tAnswer.Id = pStep.%Get("forgeId")
+                Do tAnswer.Write("{""forged"":1}")
+                Set tAnswer = ""
+            }
+            Set tSC = $ClassMethod(tRun, "GuardedFinish", pStep.%Get("key"), "ended", "")
+            Set tRow = ""
         } ElseIf tKind = "Suite.Ask" {
             Do tLeg.%Set("answer", ..Ask(pStep.%Get("question"), ..Value(pStep, "key")), "string")
         }

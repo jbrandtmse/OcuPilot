@@ -142,14 +142,14 @@ ClassMethod Confirm(pProposalId As %String, pSuppliedSecrets As %DynamicObject, 
         }
 
         ; AD-6. The row is read first only to learn which tool's declaration the channel is closed
-        ; to; a row this caller cannot claim falls through to the claim below, which answers
+        ; to; a row this caller cannot read or claim falls through to the claim below, which answers
         ; UNKNOWN or NOTYOURS without this step saying anything about the row.
         Set tPeekSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tPeeked, .tPeek)
-        If $$$ISERR(tPeekSC) {
+        If $$$ISERR(tPeekSC) && '##class(OcuPilot.Kernel.Proposal.Write).IsRefusedRead(tPeekSC) {
             Set tSC = tPeekSC
             Quit
         }
-        If tPeeked && ($Get(tPeek("user")) = pUser) {
+        If $$$ISOK(tPeekSC) && tPeeked && ($Get(tPeek("user")) = pUser) {
             Set tChannelSC = ..ChannelProblem($Get(tPeek("toolName")), pSuppliedSecrets, .tSecretNames, .tProblem)
             If $$$ISERR(tChannelSC) {
                 Set tSC = tChannelSC

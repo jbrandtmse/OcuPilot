@@ -283,8 +283,10 @@ Method TestAnAdministratorWritesAVictimsRowsAndTheDefinitions()
 /// mint wrote for a different description, and saves it through <code>Base.GuardedSave</code>. The
 /// save is refused <code>822</code>, the stored row is as it was, and the administrator's confirm
 /// sends the description the administrator reviewed.</p>
-/// <p>Mutation (Rule 19): <code>PublicSaveRefused</code> answers <code>$$$OK</code> -> this, the
-/// conditional-save test and the agent definition test go red.</p>
+/// <p>Mutation (Rule 19): the owner check removed from <code>Base.GuardedOpenId</code> and
+/// <code>PublicSaveRefused</code> answering <code>$$$OK</code>, together -> this and the conditional-save test go red;
+/// <code>PublicSaveRefused</code> alone is pinned by <code>OwnerStateRead.TestADeveloperCannotSaveItsOwnProposalThroughBase</code>
+/// and the agent definition test.</p>
 Method TestAnAdministratorsLiveProposalIsNotEditedThroughGuardedSave()
 {
     Do ..EditThenConfirm("save")

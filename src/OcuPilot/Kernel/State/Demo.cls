@@ -9,6 +9,13 @@
 Class OcuPilot.Kernel.State.Demo Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>An administrator-owned store (<parameter>OcuPilot.Kernel.State.Base.ADMINWRITE</parameter>):
+/// its writers and <code>Base</code>'s public saves refuse a caller who does not hold the administrative
+/// resource. The installer removes its rows through its own administrator frame
+/// (<method>OcuPilot.Install.Installer.AsAdministrator</method>); the demo fixture creates them as the container's
+/// own account, which holds every resource.</p>
+Parameter ADMINWRITE As %Boolean = 1;
+
 /// <p>The install profile this row was created under: <code>""</code> for production or
 /// <code>"probe"</code> for the disposable test seam. Reads back through SQL as
 /// <code>NULL</code>, not <code>''</code>, for the production row --
@@ -49,6 +56,8 @@ Property Scope As %String(MAXLEN = 64);
 /// do, through <method>GuardedExecuteNoParam</method>'s zero-parameter form.</p>
 ClassMethod DeleteByProfile(pProfile As %String) As %Status
 {
+    Set tSC = ..AdminWriteRefused($ClassName())
+    If $$$ISERR(tSC) Quit tSC
     If pProfile = "" {
         Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile IS NULL")
     }
