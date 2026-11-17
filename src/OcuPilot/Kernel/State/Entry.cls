@@ -165,9 +165,14 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 /// or JSON null when the turn carried none or it does not parse. <var>pWithDefinition</var> 1 adds
 /// <code>definitionId</code>, the definition the entry ran under or <code>""</code>. The default leaves
 /// the shape the panel's restore reads unchanged.</p>
+/// <p>Answered for a conversation its caller owns and to an administrator only: any other caller is refused
+/// <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and handed no row. A key that names no conversation
+/// answers no rows.</p>
 ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWithContext As %Boolean = 0, pWithDefinition As %Boolean = 0) As %Status
 {
     Set pRows = []
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tIds)
     If $$$ISERR(tSC) Quit tSC
     Set tCreatedAt = ""
@@ -268,9 +273,12 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWi
 /// because <class>OcuPilot.Api.Conversation</class> is what needs it, to attach each turn's
 /// proposals outside the escalated frame (AD-9), and the view's own shape is a published contract
 /// this does not widen.</p>
+/// <p>Answered as <method>GuardedRows</method> is: for a conversation its caller owns and to an administrator only.</p>
 ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
 {
     Kill pKeys
+    Set tSC = ..NamedOwnerRefused(..#OWNERPARENT, ..#OWNERPARENTINDEX _ "Exists", pConvoKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedPairsWhere("SELECT Seq, TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tRows) {

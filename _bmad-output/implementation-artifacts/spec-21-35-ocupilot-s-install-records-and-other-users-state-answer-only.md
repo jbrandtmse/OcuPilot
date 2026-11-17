@@ -2,11 +2,11 @@
 title: "Story 21.35: OcuPilot's install records and other users' state answer only to their callers"
 type: 'bugfix'
 created: '2026-11-16'
-status: 'in-progress'
-baseline_revision: '355d924387986fbd9206839113c11a4af450579c'
+status: 'done'
+baseline_revision: 'b4046f5046c97f780e11295c883bb5efc6f7cc20'
 baseline_commit: '355d924387986fbd9206839113c11a4af450579c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md'
@@ -67,6 +67,34 @@ deferred:
       The held-victim-row legs of `ReserveSweepWrite` now meet 822 at the open, which proves the attack unreachable. `StoreOwnerWrite` and `OwnerStateWriteProbe` still open a victim row first, so their held-row saves are refused at the open and no longer prove the save refuses a forged held row. A leg that holds the developer's own row and edits its owner would settle it.
     location: >-
       src/OcuPilot/Test/OwnerStateWriteProbe.cls
+    severity: low
+  - summary: >-
+      `Api/Transcripts.HandleRead`'s mapping of a refused `Entry.GuardedTurnKeys` to its 404 has no test leg.
+    evidence: |-
+      The call follows a `GuardedOwnerOf` answer for the same key, which is the owner's or an administrator's, so only a race (the conversation changes owner between the two) reaches the refusal. The owner-lookup mapping is pinned by `UserStateRead`.
+    location: >-
+      src/OcuPilot/Api/Transcripts.cls
+    severity: low
+  - summary: >-
+      A non-administrator's `Turn.GuardedSignals`, `Step.GuardedRows`, `Nav.GuardedPending` and `Entry.GuardedRows` each cost one more escalated read for the parent's owner (inference).
+    evidence: |-
+      `NamedOwnerRefused` reads the parent turn's or conversation's stored owner once per call; the loop polls `GuardedSignals` at every step boundary. Unmeasured; a timed turn as a developer-held principal against the parent would settle it.
+    location: >-
+      src/OcuPilot/Kernel/State/Turn.cls
+    severity: low
+  - summary: >-
+      `Entry.GuardedTurnKeys` answers the turn keys of an orphaned conversation to any caller.
+    evidence: |-
+      Its key check passes for a key that names no conversation, and it reads by SQL with no per-row open. Keys only, no content; no product path leaves an entry whose conversation is gone (inference). A leg that deletes a conversation row and reads as the developer would settle it.
+    location: >-
+      src/OcuPilot/Kernel/State/Entry.cls
+    severity: low
+  - summary: >-
+      `Convo.GuardedScreenRows`'s SQL scope and its per-row open are not pinned one at a time.
+    evidence: |-
+      Removing either alone leaves `TestTheTranscriptListIsScopedToTheCaller` green because each hides the other's rows; both together turn it red. A held-row probe that bypasses the SQL scope would pin the open alone.
+    location: >-
+      src/OcuPilot/Kernel/State/Convo.cls
     severity: low
 ---
 
@@ -266,6 +294,24 @@ Code review of Batch 2 (`4529a120a` against `355d92438`), 2026-11-17. Measured o
   - `[low]` `[reject]` No ledger caller maps 822 — every product caller of the windowed reads is `Audit.Ledger.ViewForUser` and `GateTurns`, which check the administrator's privilege first; `Ledger`, `LedgerWire` and `AuditEvent` are green.
   - `[low]` `[reject]` The AD-9 narrowing is a spine edit — the spine was edited by the runner (`046388151`); this build edits only the spec's Design Notes text.
 
+### 2026-11-17 — Review pass (Batch 3)
+
+- verdicts: 13 findings — high 0, medium 2, low 7, false 0, maybe-false 0, not-a-finding 4 (the intent auditor's descriptive items, graded below)
+- findings:
+  - `[medium]` `[patch]` The owner of a step, directive or entry whose parent row is gone was unpinned — measured: `Nav.GuardedPending` handed the directive to a non-owner (a real gap, since its open is by key and its check names a parent that no longer exists); `Nav.GuardedPending` now asks `OwnerWriteRefused` of the opened row, and `TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack` pins all three reads (mutations recorded).
+  - `[medium]` `[patch]` `Convo.GuardedScreenRows` had no assertion that another user's title never reaches an administrator's list — the list test asserts the administrator's rows carry no `victim-message`; the mutation is recorded.
+  - `[low]` `[patch]` The owner leg of the transcript route test passed for any answer but 404 — it now also asserts the answer is neither 403 nor 500.
+  - `[low]` `[patch]` The `UserStateRead` arming line had no mutation record — removed in turn, `ci.test.mjs` goes red (recorded).
+  - `[low]` `[defer]` The mapping of a refused `Entry.GuardedTurnKeys` to 404 has no test leg — carried: already in the deferred list; only a race between two calls reaches it.
+  - `[low]` `[defer]` `Convo.GuardedScreenRows`'s two defences (the SQL scope and the per-row open) are not pinned one at a time — the code is unchanged in Batch 3 and either layer alone is enough; a per-layer leg would need a held-row probe.
+  - `[low]` `[defer]` `Entry.GuardedTurnKeys` hands the turn keys of an orphaned conversation to any caller — measured by reading: its check passes for a key that names no conversation and it reads by SQL; keys only, no content, and no product path leaves an orphaned entry (inference).
+  - `[low]` `[reject]` A key that names no row answers OK-empty while another user's key answers 822, so a non-owner can tell the two apart — the spec decides "a row that does not exist answers as today", `TestARowThatDoesNotExistAnswersAsItDid` pins it, and keys are 32 random hex characters.
+  - `[low]` `[reject]` `UserStateRead` is 722 lines against a roughly 500-line guide — Batch 2's `OwnerStateRead` was accepted at 654 for the same reason: one probe, shared seeding.
+  - `[not-a-finding]` `[reject]` The route row is exercised by calling `HandleRead` with a stubbed request and response, and asserts the status but not the error code — the 404 renders through the one `NotFound` that an unknown id also uses; the status is the pinned contract.
+  - `[not-a-finding]` `[reject]` The `(loop)` suites run as `%All`, so a non-administrator owner's product path is not driven over HTTP — `DeveloperFloorTurn` and `UserStateRead`'s owner legs run as the developer principal, and the turn and background jobs run as the row's owner (spine AD-33); a wire suite as a non-administrator is outside this batch.
+  - `[not-a-finding]` `[reject]` Key reads refuse when a row exists and answer empty when none does, while user reads refuse the name — descriptive; the spec's "Decided in-stage" note settles both.
+  - `[not-a-finding]` `[reject]` `Turn.GuardedLiveUsers` and `GuardedIsTurnJob` stay open to any caller — by the spec's own rule, pinned by `TestTheOpenReadsStayOpen`.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -315,6 +361,15 @@ Code review of Batch 2 (`4529a120a` against `355d92438`), 2026-11-17. Measured o
   - The principals come from `AdminStateWrite.EnsurePrincipals`.
   - `Access.WRITERPAIRS` copies `Gate.AdjusterPairs()` because `Kernel/State` may not name `OcuPilot.Screen` (rule 7). `InstallRecordWrite` pins the two equal.
 - The epic context cache is older than `epics.md`. Per the runner's rule it was reused, not recompiled; the 21.35 block was read from `epics.md` directly.
+- Batch 3 (implement, 2026-11-17):
+  - A read that names another user, or another user's key, is refused 822 whether or not that user holds a row. A key that names no row, and a caller who names itself with another user's key, answer as before (nothing found), so the owner compares upstream of the routes keep their answers.
+  - `Step.GuardedRows`, `Nav.GuardedPending`, `Entry.GuardedRows` and `GuardedTurnKeys` check the key through `NamedOwnerRefused`, naming the parent class and index from their `OWNERPARENT` parameters; `Turn.GuardedDropped`, `GuardedSignals`, `Convo.GuardedOwnerOf` and `SqlRun.GuardedCancelRequested` check their own key the same way.
+  - `Turn.GuardedDefinitionOf` and `GuardedWorkflowOf` take no check of their own: their open is Batch 2's `GuardedOpenId`, which refuses the row with 822. A mutation that makes it the any-caller open turns the turn test red.
+  - `Step.GuardedRows`, `Entry.GuardedRows` and `Pref.GuardedListForUser` keep their per-row `GuardedOpenId`, so a row whose parent is gone stays unreadable to a non-administrator. `Nav.GuardedPending` opens by key through a private open, so it asks `OwnerWriteRefused` of the row it opened.
+  - Pinned by test rather than changed: `Convo.LoadOrCreate`'s load branch (21.33's check), `Convo.GuardedScreenRows` (scoped to the caller by its SQL and again by its per-row open), and the two open reads.
+  - `SqlRun.GuardedViewForOwner` checks `pUser` at the top, so the conditional around its reconcile is gone.
+  - `UserStateRead` carries its own three assertion helpers: an assertion macro binds to the test case that runs it, so `OwnerStateRead`'s cannot be shared.
+  - Opening one store's row through another store's class name fails ("not an instance", ERROR #5825) before any gate; `UserStateRead` pins it as a control.
 
 **Integration ACs.** The consumers are the installer, uninstall and start path, `ScreenAccessPort`, the turn job, confirm and draft, the routes, the ledger viewer and the retention task, each through its existing real-principal or wire suite and `InstallAsAdministrator`. `Consumes:` `Kernel/State/Base`, 21.33's frame. `Consumed-by:` Stories 24.6 and 24.7, whose consoles run code with the person's rights.
 
@@ -444,17 +499,62 @@ DW-2651 is addressed by Batch 1, and DW-2652 by Batches 2 and 3.
 - mutation: `Ledger.WindowReadRefused` refuses an administrator's all-users read -> `TestAnAdministratorReadsAnotherUsersRows` red at its two all-users legs.
 - mutation: the turn check removed alone from `Ledger.GuardedCountForTurn` -> the ledger refusal test red at its count leg.
 
+**Task 0 (pre-fix), Batch 3 (2026-11-17, `ocupilot-ci`).** Run on the Batch 2 tree: the eight stores and `Api/Transcripts` loaded from `HEAD` into the throwaway, under the final `UserStateRead` (run 231). 5 of 15 tests red; the owner, administrator, open-read, missing-row, list-scope, route, control and roster tests green. As the developer principal (`%Development:USE`, no `OcuPilotAdmin`, no `%All`) against the victim's seeded rows, each output argument read after the call:
+
+- Handed back a value of the victim, with no refusal (13 legs): `Turn.GuardedDropped`, `GuardedSignals`, `Nav.GuardedPending`, `Convo.GuardedOwner`, `GuardedOwnerOf`, `GuardedView` (the id and an empty turn list), `Entry.GuardedTurnKeys`, `Pref.GuardedValue`, `GuardedCountForUser`, `Sharing.GuardedForUser`, `SqlRun.GuardedCancelRequested`, and `Pref.GuardedUsers` and `Sharing.GuardedUsers` across every user. What each handed back is read from the seeded values and the code, not printed (inference).
+- Answered OK and handed back nothing, because Batch 2's per-row open hides the row (7 legs): `Step.GuardedRows`, `Entry.GuardedRows` with and without context, `Convo.HistoryMessages`, `Pref.GuardedListForUser` for two kinds, and the history of the developer's own held conversation with its key edited to the victim's.
+- Already refused 822: `Turn.GuardedDefinitionOf`, `GuardedWorkflowOf`, `GuardedForOwner` and `GuardedView` naming the victim, `Convo.LoadOrCreate`'s load branch, `SqlRun.GuardedViewForOwner` naming the victim, `Base`'s opens and existence checks of all eight stores' rows and four stored values, and the three held-stream legs (an own entry's two streams, an own run's answer), which handed back none of the victim's content.
+- A read naming another user who holds no row (turn, view, conversation owner and view, preferences three ways, sharing, run view): 9 of 9 answered OK, none refused.
+- Controls, the same before and after: for each of the eight stores a direct `%OpenId`, `%ExistsId`, read of one stored property, count over the table and extent query hand back nothing (40 legs); an open through another store's class name fails with ERROR #5825 and its existence check answers no.
+- The transcript route answers a non-owner and an unknown id 404 before the change (its `GuardedOwnerOf` handed the owner's name back and the ledger gate then withheld it), and the owner a non-404 answer.
+
+**Inventory, Batch 3 (measured from the compiled classes, public class methods, `%` methods and Base's excluded).** Each store defines no public instance method and no class query of its own; `Extent` is the only query, and the three stream properties are `Entry.ContextJson`, `Entry.StepsJson` and `SqlRun.Answer`, each read through `GuardedStreamText`. Each store also inherits `Base`'s 21 public methods, whose reads Batch 2 split.
+
+- `Turn` (30): owner reads `GuardedDropped`, `GuardedSignals`, `GuardedDefinitionOf`, `GuardedWorkflowOf`, `GuardedForOwner`, `GuardedView`; open reads `GuardedLiveUsers`, `GuardedIsTurnJob`, and the helpers `Cap`, `CitationsArray`, `EgressObject`, `IsTerminal`, `IsoOfSeconds`, `MinuteCeiling`, `NowSeconds`, `SecondsOf`, `Timestamp`; 13 writers.
+- `Step` (6): owner read `GuardedRows`; 5 writers. `Nav` (4): owner read `GuardedPending`; 3 writers. `Convo` (9): owner reads `GuardedOwner`, `GuardedOwnerOf`, `GuardedView`, `GuardedScreenRows`, `HistoryMessages`, `LoadOrCreate`; 3 writers. `Entry` (5): owner reads `GuardedRows`, `GuardedTurnKeys`; 3 writers.
+- `Pref` (14): owner reads `GuardedListForUser`, `GuardedValue`, `GuardedCountForUser`; administrator read `GuardedUsers`; open helpers `IsShellMember`, `IsThemeValue`; 8 writers. `Sharing` (5): owner read `GuardedForUser`; administrator read `GuardedUsers`; 3 writers. `SqlRun` (9): owner reads `GuardedViewForOwner`, `GuardedCancelRequested`; open helper `IsTerminal`; 6 writers.
+- 22 owner reads, 2 administrator reads, 14 open methods (2 reads and 12 helpers) and 44 writers: 82 methods, equal to the compiled set. `UserStateRead.TestTheReadsAreSplitIntoOwnerAdministratorAndOpen` pins the split in both directions and that each read is a probe step.
+
+**Batch 3 after.** `UserStateRead` 16 of 16 (run 272 after the review patches). Product: `Turn.GuardedDropped`, `GuardedSignals`, `GuardedForOwner`; `Step.GuardedRows`; `Nav.GuardedPending`; `Convo.GuardedOwner`, `GuardedOwnerOf`; `Entry.GuardedRows`, `GuardedTurnKeys`; `Pref.GuardedListForUser`, `GuardedValue`, `GuardedCountForUser`, `GuardedUsers`; `Sharing.GuardedForUser`, `GuardedUsers`; `SqlRun.GuardedViewForOwner`, `GuardedCancelRequested` check the caller; `Api/Transcripts.HandleRead` maps a refused `GuardedOwnerOf` or `GuardedTurnKeys` to its 404. The Batch 3 `(loop)` classes are green, each its own run: `TranscriptOwnerWrite` 9, `PrefOwnerWrite` 6, `TranscriptsWire` 7, `TranscriptStore` 5, `TranscriptGate` 8, `ConversationRestore` 4, `Convo` 7, `TurnStore` 11, `TurnWire` 15, `TurnConversation` 11, `TurnNavigate` 15, `TurnLoop` 11, `TurnProviderFault` 6, `PrefState` 17, `PreferencesWire` 12, `AgentPick` 5, `AgentPickTurn` 3, `SqlRunStore` 14, `SqlBackgroundJob` 12, `SqlBackgroundRoutes` 9, `ContextBound` 15, `RemovalRowsSweep` 7, `ProcessControl` 15, `Retention` 10, `DeveloperFloorTurn` 1 (`NavSettleJob` is a fixture with no test method). Also green after the change: `OwnerStateRead` 15, `ReserveSweepWrite` 18, `StoreOwnerWrite` 14, `ProposalConfirm` 24, `ProposalWire` 17, `ProposalCreate` 11, `AnalyticsMdxRead` 15, `AnalyticsMdxJob` 13, `TurnTools` 13, `Restraint` 15, `WorkflowLoop` 10, `ToolDispatch` 19. The turn, tool and proposal classes were re-run after the last product edit, and `ToolDispatch` and `ProposalCreate` once more because their first two runs were sent in one message. `uv run scripts/check-objectscript.py` 0 problems; `uv run scripts/test_check_objectscript.py` 162 tests OK; `node --test tools/ci.test.mjs` 103 pass.
+
+**Mutations, Batch 3 (Rule 19; each applied, observed red in `UserStateRead`, reverted, `git diff` of the file unchanged, reloaded).**
+
+- mutation: the key check removed from `Turn.GuardedDropped` -> `TestADeveloperIsRefusedEveryReadOfAnotherUsersTurn` red at leg 1; from `GuardedSignals` -> leg 2 red.
+- mutation: `Turn.GuardedDefinitionOf` or `GuardedWorkflowOf` opens with `GuardedOpenIdAnyCaller` -> the turn test red at leg 3 or leg 4.
+- mutation: the user check removed from `Turn.GuardedForOwner` -> `TestADeveloperIsRefusedAReadNamingAnotherUserWhoHoldsNoRow` red at legs 1 and 2 (the turn test stays green, because the open refuses a row that exists). Refusing the developer's own name instead -> `TestARowThatDoesNotExistAnswersAsItDid`, `TestAnOwnerReadsItsOwnRows` and `TestAnAdministratorReadsAnotherUsersRows` red.
+- mutation: the key check removed from `Step.GuardedRows` -> the turn test red at leg 7; from `Nav.GuardedPending` -> leg 8 red.
+- mutation: the key check removed from `Entry.GuardedRows` -> the conversation test red at legs 5 to 7 and `TestAHeldRowCannotReadAnotherRowsStreamOrConversation` red at leg 4; from `GuardedTurnKeys` -> leg 8 red.
+- mutation: the user check removed from `Convo.GuardedOwner` -> the conversation test red at leg 1 and the no-row test red at legs 3 and 4; the key check removed from `GuardedOwnerOf` -> leg 2 red; `GuardedOwnerOf` refusing a key that names no conversation -> `TestARowThatDoesNotExistAnswersAsItDid` red at leg 7.
+- mutation: `Convo.LoadOrCreate`'s load branch unchecked -> the conversation test red at leg 4.
+- mutation: the user check removed from `Pref.GuardedListForUser` -> the settings test red at legs 1 and 2 and the no-row test at leg 5; from `GuardedValue` -> leg 3 and no-row leg 6; from `GuardedCountForUser` -> leg 4 and no-row leg 7; the administrator check removed from `Pref.GuardedUsers` -> leg 8 red.
+- mutation: the user check removed from `Sharing.GuardedForUser` -> the settings test red at leg 5 and the no-row test at leg 8; the administrator check removed from `Sharing.GuardedUsers` -> leg 9 red.
+- mutation: the user check removed from `SqlRun.GuardedViewForOwner` -> the no-row test red at leg 9; the key check removed from `GuardedCancelRequested` -> the settings test red at leg 7.
+- mutation: `Turn.GuardedLiveUsers` or `GuardedIsTurnJob` refuses a non-administrator -> `TestTheOpenReadsStayOpen` red.
+- mutation: `Api/Transcripts.HandleRead` stops mapping a refused `GuardedOwnerOf` -> `TestTheTranscriptRouteAnswersANonOwnerItsNotFound` red (500 for 404). Its mapping of a refused `GuardedTurnKeys` has no leg: that call follows an owner or administrator answer for the same key, so only a race reaches it (deferred).
+- mutation: `Convo.GuardedScreenRows` selects every user's rows and opens them without the caller check -> `TestTheTranscriptListIsScopedToTheCaller` red. Either change alone stays green.
+- mutation: `Base.GuardedOpenId` reads `OWNERWRITE` from the class called -> `TestADeveloperIsRefusedEveryOpenOfAnotherUsersRowThroughBase` red at its open legs.
+- mutation: the stored-stream comparison removed from `Base.GuardedStreamText` -> `TestAHeldRowCannotReadAnotherRowsStreamOrConversation` red, handing back the victim's step and answer.
+- mutation: a public method added to `Pref` that no list names -> `TestTheReadsAreSplitIntoOwnerAdministratorAndOpen` red.
+- mutation: the administrator exemption removed from `Base.OwnerWriteRefused` -> all 15 tests red at their seeding.
+
+**Code review, Batch 3 (2026-11-17, `ocupilot-ci`).**
+
+- Measured as the developer principal: a directive whose turn row was gone (`Nav.GuardedPending` on the key) was handed back to a non-owner; a step or entry whose parent was gone was not. `Nav.GuardedPending` now asks `OwnerWriteRefused` of the row it opened. `UserStateRead` 16 of 16; `TurnNavigate` 15, `TurnStore` 11, `TurnWire` 15, `TurnConversation` 11, `TurnLoop` 11, `DeveloperFloorTurn` 1, `TranscriptOwnerWrite` 9, `ReserveSweepWrite` 18 and `OwnerStateRead` 15 green; `check-objectscript.py` 0 problems.
+- mutation: the owner check removed from `Nav.GuardedPending` (the tree before the patch) -> `TestAnOrphanedChildRowOfAnotherUserIsNotHandedBack` red at leg 2.
+- mutation: the per-row open of `Step.GuardedRows` or `Entry.GuardedRows` made through `GuardedOpenIdAnyCaller` -> the same test red at leg 1, or at legs 3 and 4.
+- mutation: `Convo.GuardedScreenRows` gives every row a title (`If tUser = tCaller` replaced by `If 1`) -> `TestTheTranscriptListIsScopedToTheCaller` red at its no-victim-title assertion.
+- mutation: the `UserStateRead` line removed from `scripts/ci-throwaway.sh` -> `ui/tools/ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red (102 of 103 pass).
+
 ## Auto Run Result
 
-Status: in-progress
+Status: done
 Blocking condition: none
 
-Batch 1 (DW-2651) and Batch 2 (DW-2652: proposals, ledger, `Base`'s reads) are done; Batch 3 is not started.
+This pass built Batch 3 (DW-2652: transcripts and settings). Batch 1 (DW-2651) closed in its own pass (Code review, Batch 1 under Verification); Batch 2 (proposals, ledger, `Base`'s reads) closed in its pass (Code review, Batch 2 under Verification).
 
-- **Change (Batch 2).** `Base`'s public `GuardedOpenId`, `GuardedExistsId` and `GuardedStoredValue` refuse a non-owner, non-administrator of an `OWNERWRITE` row with 822 (owner through `OWNERPARENT` where declared); a refused open leaves `pObject` empty; a missing row answers as before. The private twins `GuardedOpenIdAnyCaller` and `GuardedStoredValueAnyCaller` serve the owner predicates and the row loops. `Propose`'s key, token, version, turn, conversation and count reads and `Ledger`'s row, window, dropped-count and count reads check the stored owner or `pUser`; `pAllUsers` is an administrator's. `Write.Claim`, `ClaimById`, `Draft.Take` and the confirm peek map the refusal to NOTYOURS, UNKNOWN 404 and "not peeked" through `Write.IsRefusedRead`. `Turn.GuardedLiveUsers` and `GuardedIsTurnJob` are untouched.
-- **Files.** `src/OcuPilot/Kernel/State/{Base,Propose,Ledger}.cls`, `Kernel/Proposal/{Write,Confirm,Draft}.cls`, `scripts/ci-throwaway.sh` (add-only), new `Test/OwnerStateRead` and `OwnerStateReadProbe`, and edits to `Test/{AdminStateWrite,AdminPathWrite,InstallRecordWrite,InstallAsAdministrator,ReserveSweepWrite,PrefStateWriteProbe}`.
-- **Carry-overs closed.** The shared `EnsurePrincipals` (Rule 31); the Residual sentence; the skipped resource check's reason; the AD text in Design Notes; `GuardedProbeSet` in Task 0.
-- **Review (Batch 2).** 14 findings: 2 medium and 3 low patched, 9 rejected, 1 item deferred. Details in the triage log.
-- **Follow-up review recommended: false.** Two medium entries were patched (tests only), not a high.
-- **Verification.** `LOADERRORS=0`; `OwnerStateRead` 12 of 12; the Batch 2 `(loop)` list green after the patches (proposal, ledger, transcript, turn, `DraftExecute`, `Retention`, `DeveloperFloorTurn`, `AdminPathWrite`, `AdminStateWrite`, `StoreOwnerWrite`, `PrefOwnerWrite`, `TranscriptOwnerWrite`, `ReserveSweepWrite`, `InstallRecordWrite`); `check-objectscript.py` 0 problems; harness 162 tests; `ci.test.mjs` 103 pass; `lint-docs.sh` 0 issues. Mutations recorded under Verification.
-- **Residual.** The held-row legs of `StoreOwnerWrite` and `OwnerStateWriteProbe` no longer prove a save refuses a forged held row (deferred). One non-owner answer moves: a claim that pairs a victim's token with an id that is not that row's now answers NOTYOURS where it answered UNKNOWN; no route sends that pair. The `(once)` sweep, smoke and fresh check are the runner's.
+- **Change.** `Turn.GuardedDropped`, `GuardedSignals`, `GuardedForOwner`; `Step.GuardedRows`; `Nav.GuardedPending`; `Convo.GuardedOwner`, `GuardedOwnerOf`; `Entry.GuardedRows`, `GuardedTurnKeys`; `Pref.GuardedListForUser`, `GuardedValue`, `GuardedCountForUser`; `Sharing.GuardedForUser`; `SqlRun.GuardedViewForOwner`, `GuardedCancelRequested` refuse a caller who is neither the owner nor an administrator with 822. `Pref.GuardedUsers` and `Sharing.GuardedUsers` serve an administrator only. `Turn.GuardedLiveUsers` and `GuardedIsTurnJob` stay open. `Api/Transcripts.HandleRead` answers its 404 for a refused `GuardedOwnerOf` or `GuardedTurnKeys`.
+- **Files.** `src/OcuPilot/Kernel/State/{Turn,Step,Nav,Convo,Entry,Pref,Sharing,SqlRun}.cls`, `Api/Transcripts.cls`, `scripts/ci-throwaway.sh` (add-only), new `Test/UserStateRead` and `Test/UserStateReadProbe`.
+- **Review (Batch 3).** 13 findings: 2 medium and 2 low patched, 3 low deferred, 2 low and 4 descriptive items rejected. Details in the triage log. The patched medium finding that mattered: a directive whose turn row was gone was handed to a non-owner by `Nav.GuardedPending`.
+- **Follow-up review recommended: true.** Two medium entries were patched. The unverified risk: another read among the eight stores that opens its row through a private by-key open after a parent-key check, as `Nav` did. `Turn`, `Pref`, `Sharing` and `SqlRun` check the user or the key themselves, and `Step` and `Entry` open each row through the gated open; no leg opens a held or orphaned row of the other stores.
+- **Verification.** `LOADERRORS=0`; `UserStateRead` 16 of 16; the Batch 3 `(loop)` list green, each class its own run (run again after the last product edit: `UserStateRead`, `TurnNavigate`, `TurnStore`, `TurnWire`, `TurnConversation`, `TurnLoop`, `DeveloperFloorTurn`, `TranscriptOwnerWrite`, `ReserveSweepWrite`, `OwnerStateRead`); `check-objectscript.py` 0 problems; harness 162 tests; `ci.test.mjs` 103 pass; `lint-docs.sh` 0 issues. Task 0, the inventory and the mutations are under Verification.
+- **Residual.** Three low items are deferred (the `GuardedTurnKeys` 404 mapping, the orphaned-conversation turn keys, the one-at-a-time pin of the transcript list's two defences), and one inference: the extra escalated read on a non-administrator's `GuardedSignals`. The `(once)` sweep, smoke and fresh check are the runner's.

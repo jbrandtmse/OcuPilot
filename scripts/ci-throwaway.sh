@@ -318,6 +318,7 @@ services:
       # classes: PrefOwnerWrite, ReserveSweepWrite
       # classes: InstallRecordWrite, InstallAsAdministrator
       # classes: OwnerStateRead
+      # classes: UserStateRead
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire

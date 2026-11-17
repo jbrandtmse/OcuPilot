@@ -104,10 +104,15 @@ ClassMethod LoadOrCreate(pId As %String, pUser As %String, pTimeout As %Integer,
 }
 
 /// <p>Whether <var>pUser</var>, matched exactly, owns conversation <var>pKey</var>. A plain read:
-/// unlike <method>LoadOrCreate</method> this takes no lock and opens nothing exclusively.</p>
+/// unlike <method>LoadOrCreate</method> this takes no lock and opens nothing exclusively. Asked for
+/// <var>pUser</var> by that user or an administrator only: any other caller is refused <code>$$$AccessDenied</code>
+/// (vendor <code>ERROR #822</code>). A caller who names itself and another user's conversation is answered not
+/// owned.</p>
 ClassMethod GuardedOwner(pKey As %String, pUser As %String, Output pFound As %Boolean) As %Status
 {
     Set pFound = 0
+    Set tSC = ..OwnerWriteRefused($ClassName(), pUser)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ? AND %EXACT(UserName) = ?", pKey, pUser, .tIds)
     If $$$ISERR(tSC) Quit tSC
     Set pFound = ($Get(tIds(1)) '= "")
@@ -151,10 +156,14 @@ ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String,
 /// <p>The user who created conversation <var>pKey</var>, matched exactly, as stored; <var>pUser</var>
 /// is <code>""</code> when no conversation holds that key. A plain read, like
 /// <method>GuardedOwner</method>; the user is a weak reference (AD-37), so a name the instance no
-/// longer holds still reads back.</p>
+/// longer holds still reads back. Answered for a conversation its caller owns and to an administrator only: any
+/// other caller is refused <code>$$$AccessDenied</code> (vendor <code>ERROR #822</code>) and <var>pUser</var> stays
+/// empty. A key that names no conversation answers <code>""</code> for every caller.</p>
 ClassMethod GuardedOwnerOf(pKey As %String, Output pUser As %String) As %Status
 {
     Set pUser = ""
+    Set tSC = ..NamedOwnerRefused($ClassName(), "ConvKeyIdxExists", pKey)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedIdsWhere("SELECT UserName FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pUser = $Get(tRows(1))
