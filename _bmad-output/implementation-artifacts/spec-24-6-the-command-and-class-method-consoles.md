@@ -2,7 +2,7 @@
 title: 'Story 24.6: The command and class-method consoles'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -61,6 +61,9 @@ The sibling repository is `/Users/jbrandt/git/iris-execute-mcp-v2` at `c6aad31`.
 Pending the ruling.
 
 ## Design Notes
+
+**Owner answer U-78 (2026-11-16, "C: fix U-79 first, then A (Recommended)"), condition met:** the DW-2634 fix (Story 21.30) is on feature (orchestrator, run 43850988016). Both consoles are built as a named AD-10 exception: a person's alone, off by default, gated as the vendor terminal is, every run confirmed with its consequence named. Story 24.5 built the mechanism and the spine now carries it (AD-10 "Code a person runs through OcuPilot", AD-22's `PERSONGATE` exception, AD-53's unadvertised person-only tools, all citing U-86): each console declares `PERSONGATE` with its own refusal code and a key shipped `false`; the AD-10 paragraph already names Stories 24.6 and 24.7. At this story's spec gate the runner extends AD-53 (and AD-22's named tool list) with this story's tools, citing U-78.
+
 
 ### The blocking question (intent gap, AD-10)
 

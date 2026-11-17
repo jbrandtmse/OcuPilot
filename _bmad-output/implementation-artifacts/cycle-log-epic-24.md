@@ -237,3 +237,6 @@
 2026-11-17T00:35:06Z	Story 24.5	fresh_check	env=recipe(merged_tree_feature_ebb3e85d8) tests=21_classes+3_specs result=pass order=forward,reverse components=3509 tools=2296
 2026-11-17T00:35:06Z	Story 24.5	committed	sha=984a3c6e0+review code_head=7fc563379(merged_with_feature_ebb3e85d8) ci=pending runs=43988754165 amendments=epics.md_U-77,exclusion-register_DT-03,spine_AD-10_AD-22_AD-53(U-86)
 2026-11-17T00:35:06Z	Story 24.5	story_cycle	plan_to_commit_min=520 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-17T00:35:35Z	Story 24.6	owner_decision	id=U-78 at=2026-11-16T06:22:11Z#243 via=inbox by=owner(relayed) answer=C_then_A condition=DW-2634_fix_on_feature(met,orchestrator_2026-11-16)
+2026-11-17T00:35:35Z	Story 24.6	story_unparked	via=inbox id=U-78 effect=epics.md_marker(24.6,24.7),spec_status_draft,re-plan_on_PERSONGATE
+2026-11-17T00:35:35Z	Story 24.6	stage_spawned	stage=plan spawn_at=2026-11-17T00:35:35Z model=opus agent_name=24-6-the-command-and-class-method-consoles-plan-2 cycle_iteration=2 story_base=7f8a812ea

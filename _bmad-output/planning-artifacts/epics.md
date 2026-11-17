@@ -10365,6 +10365,8 @@ So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
+[AMENDED 2026-11-16, owner answer U-78: "C: fix U-79 first, then A (Recommended)"] Built under AD-10's run-code exception (Story 24.5): a person's alone, off by default through its governance key, every run confirmed with its consequence named.
+
 - **Given** the execute-command and class-method consoles
 - **When** each runs
 - **Then** it round-trips over its backing class.
@@ -10382,6 +10384,8 @@ I want the web terminal,
 So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
+
+[AMENDED 2026-11-16, owner answer U-78: "C: fix U-79 first, then A (Recommended)"] Built under AD-10's run-code exception (Story 24.5): a person's alone, off by default through its governance key, every run confirmed with its consequence named.
 
 - **Given** the web terminal
 - **When** it runs
