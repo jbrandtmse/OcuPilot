@@ -13576,3 +13576,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: StoreOwnerWrite and OwnerStateWriteProbe held-victim-row legs now meet 822 at the open, so they no longer prove a save refuses a forged held row; a leg holding the developer's own row with an edited owner would settle it
 - 2026-11-17T07:23:28Z status=open owner=21-35-ocupilot-s-install-records-and-other-users-state-answer-only by=harvest note=B2 build-auto deferred item; resume asks the B2 CR to re-pin it
+### DW-2685: flake: screen-permissions-agent.browser-spec.mjs AC1 (both tests) timed out (Navigation timeout of 30000 ms with one request in flight) in CI browser shard 4/5
+- source: CI run 44029722214 (feature dispatch head 4f3b7d2fe) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; the head was bookkeeping over green code 8c58f5edf; same navigation-timeout shape as DW-2544
+- 2026-11-17T07:20:51Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake found at the dispatch gate; for the flake-hardening story
