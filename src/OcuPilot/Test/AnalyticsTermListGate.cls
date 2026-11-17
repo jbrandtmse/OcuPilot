@@ -152,7 +152,7 @@ ClassMethod TransferRequests(pList As %String) As %List
 
 /// <p>Story 24.10, AC4: each transfer, from the person's side, is refused 403 naming the failed pair for the principal without the editor's pair
 /// and, for the copy and the import, for the one with READ alone on the term list database; the export, which only reads, asks the file system's
-/// resource instead, which no principal here holds, so every one of them is refused for it and the term lists are as they were.</p>
+/// resource instead, which no principal here holds, so each one that holds the editor's pair is refused for it. The term lists are as they were.</p>
 /// <p>Mutation (Rule 19): declare <code>WRITE</code> as <parameter>OcuPilot.Screen.Tool.AnalyticsTermListExport.DESTINATIONPERMISSION</parameter>'s
 /// default again -- the read-only principal's export leg is refused for the database and goes red.</p>
 Method TestEachTransferIsRefusedNamingTheFailedPair()

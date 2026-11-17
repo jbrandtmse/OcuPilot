@@ -480,7 +480,9 @@ Method TestTheDestinationRefusesAnImportAndACopyButNotAnExport()
 }
 
 /// <p>AC7: each transfer's script form, run in <code>USER</code>, makes the change the write makes: a copy and an import create the list, an export
-/// writes the file, and a script whose name is taken or whose file is no export only sets the refusal. The scripts run one line at a time.</p>
+/// writes the file the write would, and a script whose name is taken, whose source is not held, or whose file is no export, holds another list or
+/// is not the reviewed text only sets the refusal. A list with more entries than the script form renders has none. The scripts run one line at a
+/// time.</p>
 /// <p>Mutation (Rule 19): drop the value write of a field in <method>OcuPilot.Port.AnalyticsPort.WholeListSnippet</method> -- the copy and import legs go red.</p>
 Method TestEachTransfersScriptFormMakesTheSameChange()
 {
@@ -497,6 +499,10 @@ Method TestEachTransfersScriptFormMakesTheSameChange()
     Do $$$AssertEquals(..Dump(tName _ "Cp"), tSource, "and creates the list the copy creates")
     Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "COPY", .tQuery)), 0, "a second run is refused: the name is taken")
     Do $$$AssertTrue(..Dump(tName _ "Cp") = tSource, "and leaves the list as it was")
+    Set tQuery("id") = tName _ "Gone"
+    Set tQuery("newName") = tName _ "Cp2"
+    Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "COPY", .tQuery)), 0, "a copy of a list that is not held only sets the refusal")
+    Do $$$AssertEquals(..Dump(tName _ "Cp2"), "", "and creates nothing")
     Set tFile = ..FileQuery("script.csv")
     Do $ClassMethod(..#EDIT, "Call", "TermLists", "DELETE", tName _ "Cp", {}, .tRes, .tFault)
     Do $$$AssertEquals(..T("EXPORT", tName, tFile, .tRes, .tFault), "200 ", "the list exports")
@@ -506,8 +512,23 @@ Method TestEachTransfersScriptFormMakesTheSameChange()
     Set tQuery("id") = "import"
     Set tQuery("root") = tFile.root
     Set tQuery("path") = tFile.path
+    Set tQuery("digest") = "0"
+    Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "IMPORT", .tQuery)), 0, "an import whose file is not the reviewed text only sets the refusal")
+    Set tQuery("digest") = ..DigestOf(tFile)
+    Set tQuery("id") = tName _ "Other"
+    Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "IMPORT", .tQuery)), 0, "an import whose file holds another list than the one named only sets the refusal")
+    Do $$$AssertEquals(..Dump(tName), "", "and neither creates the list")
+    Set tQuery("id") = "import"
     Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "IMPORT", .tQuery)), 1, "the import's script runs")
     Do $$$AssertEquals(..Dump(tName), tSource, "and creates the list the file holds")
+    Kill tLocal
+    Set tLocal("namespace") = ..#NAMESPACE
+    Set tLocal("id") = "import"
+    Set tLocal("fileName") = "a.csv"
+    Set tLocal("content") = "k1,v1" _ $Char(10)
+    Set tLocal("digest") = ..TextDigest(tLocal("content"))
+    Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "IMPORT", .tLocal)), 0, "an import whose text is no term list export only sets the refusal")
+    Do $$$AssertEquals(..Marked(), $ZConvert(tName, "U"), "and creates nothing")
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = tName
@@ -516,8 +537,26 @@ Method TestEachTransfersScriptFormMakesTheSameChange()
     Set tSteps = ##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "EXPORT", .tQuery)
     Set tText = tSteps.%Get(0).text
     Do $$$AssertTrue(tText [ "%ExportCSV(", "the export's script is the vendor's call")
+    Do $$$AssertEquals(..RunScript(tSteps), 1, "the export's script runs")
+    Do $$$AssertTrue($ClassMethod(..#FILES, "FileExists", "out.csv"), "and writes the file the write writes, under the allowed directory")
+    Set tQuery("path") = "../out.csv"
+    Do $$$AssertEquals(..RunScript(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "EXPORT", .tQuery)), 0, "a file the write would refuse only sets the refusal")
     Set tQuery("path") = ""
     Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "EXPORT", .tQuery).%Get(0).text [ (", " _ $Char(34, 34) _ ", 0)"), "and with no file it writes to the current device")
+    Set tBig = tName _ "Big"
+    Set tMost = ##class(OcuPilot.Port.AnalyticsPort).#SNIPPETENTRIES + 1
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Do ##class(%DeepSee.TermList).%CreateTermList(tBig)
+    For tAt = 1:1:tMost {
+        Do ##class(%DeepSee.TermList).%SetValue(tBig, "k" _ tAt, "v")
+    }
+    Set $NAMESPACE = tOrigNS
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = tBig
+    Set tQuery("newName") = tBig _ "Cp"
+    Do $$$AssertEquals(##class(OcuPilot.Port.AnalyticsPort).Snippet("TermLists", "COPY", .tQuery).%Size(), 0, "a list with more entries than a script renders has no script form, rather than one that copies part of it")
 }
 
 /// <p>Run the script steps <var>pSteps</var> in <code>USER</code>, one line at a time, rolling back a transaction a failed script left open; 1 when
@@ -588,8 +627,8 @@ Method TestThePersonsExportImportAndCopy()
     Do $$$AssertEquals(..Act("copy", tName, {"NewName": (tName _ "Copy")}, .tCopy), 200, "Copy term list answers 200: " _ $Select($IsObject(tCopy): $Extract(tCopy.%ToJSON(), 1, 300), 1: tCopy))
     If $IsObject(tCopy) Do $$$AssertEquals(tCopy.action _ "|" _ tCopy.target.id, "created|" _ tName, "created, on the source the person named")
     Do $$$AssertEquals(..Dump(tName _ "Copy"), tSource, "the copy equals the source")
-    Do $$$AssertEquals(..Act("copy", tName, {"NewName": (tName _ "Copy")}, .tTaken), 409, "a second copy to the same name is refused 409")
-    Do $$$AssertEquals(..Act("import-local", "import", {"fileName": "person.csv", "content": (tText)}, .tAgain), 409, "and so is a second import")
+    Do $$$AssertEquals(..Act("copy", tName, {"NewName": (tName _ "Copy")}, .tTaken) _ " " _ $Select($IsObject(tTaken): tTaken.%Get("code"), 1: ""), "409 ANALYTICS.TERMLIST.TAKEN", "a second copy to the same name is refused as taken")
+    Do $$$AssertEquals(..Act("import-local", "import", {"fileName": "person.csv", "content": (tText)}, .tAgain) _ " " _ $Select($IsObject(tAgain): tAgain.%Get("code"), 1: ""), "409 ANALYTICS.TERMLIST.TAKEN", "and so is a second import")
     Do $$$AssertEquals(..Rows(tSince, tName, "analytics.termlists.export"), 2, "the two exports are audited")
     Do $$$AssertEquals(..Rows(tSince, tName, "analytics.termlists.import") + ..Rows(tSince, tName _ "Copy", "analytics.termlists.copy"), 2, "and the import and the copy, once each")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "AgentWrite", tName, .tMarker), 0, "and no agent marker is emitted for a person's action")
@@ -628,9 +667,11 @@ Method TestTheAgentsThreeProposalsConfirmAndTheImportedEntriesRead()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     Do $ClassMethod(..#CONTROL, "Call", "GET", "/screens/analytics.termlistentries/read?termlist=" _ tName, "", .tHttp, .tRead)
     Do $$$AssertEquals(tHttp, 200, "the Entries screen reads the imported list")
+    Do $$$AssertTrue($IsObject(tRead) && $IsObject(tRead.%Get("rows")) && (tRead.rows.%Size() = 4), "and answers the file's four rows")
     If $IsObject(tRead) && $IsObject(tRead.%Get("rows")) Do $$$AssertEquals(tRead.rows.%Get(0).Key _ "|" _ tRead.rows.%Get(0).Fields, "a,b|Region: West; Note: n1", "its first row carries the fields joined")
     Set tLeg = ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.termlistentries.read", {"termlist": (tName)}, $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS"))
     Do $$$AssertEquals(tLeg.%Get("http"), 200, "and the agent's read tool answers")
+    Do $$$AssertTrue($IsObject(tLeg.%Get("rows")) && (tLeg.rows.%Size() = 4), "with the file's four rows")
     If $IsObject(tLeg.%Get("rows")) Do $$$AssertEquals(tLeg.rows.%Get(0).Key _ "|" _ tLeg.rows.%Get(0).Fields, "a,b|Region: West; Note: n1", "with the same row")
 
     Do ..Mint(..#COPYTOOL, {"Name": (tName), "NewName": (tName _ "Copy")}, .tProposal, .tTurn)
@@ -665,7 +706,7 @@ Method TestTheAgentsMintRefusesWhatTheWriteWouldRefuse()
     Do ..MintRefused(..#IMPORTTOOL, {"Name": "Other", "root": (tFile.root), "path": (tFile.path)}, "ANALYTICS.TERMLIST.IMPORTSHAPE")
     Do ..MintRefused(..#IMPORTTOOL, {"Name": (tName), "root": "/nowhere/", "path": "a.csv"}, "PATH.")
     Do ..MintRefused(..#EXPORTTOOL, {"Name": (tName), "root": "/nowhere/", "path": "a.csv"}, "PATH.")
-    Do ..MintRefused(..#EXPORTTOOL, {"Name": (tName _ "Gone"), "root": (tFile.root), "path": (tFile.path)}, "")
+    Do ..MintRefused(..#EXPORTTOOL, {"Name": (tName _ "Gone"), "root": (tFile.root), "path": (tFile.path)}, "TOOL.ARGUMENTS")
     Do ..MintRefused(..#COPYTOOL, {"Name": (tName), "NewName": (tName)}, "ANALYTICS.TERMLIST.TAKEN")
     Do ..MintRefused(..#COPYTOOL, {"Name": (tName), "NewName": ""}, "ANALYTICS.TERMLIST.NAME")
     Do $$$AssertEquals(..Snapshot(), tBefore, "nothing was written")
@@ -675,7 +716,7 @@ Method TestTheAgentsMintRefusesWhatTheWriteWouldRefuse()
     If '$IsObject($Get(tProposal)) Quit
     Do $$$AssertStatusOK($ClassMethod(..#FILES, "WriteFile", "moved.csv", "%%NAME," _ tName _ "M" _ $Char(10) _ "k1,v1" _ $Char(10) _ "k2,v2" _ $Char(10)), "the file is rewritten after the mint")
     Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
-    Do $$$AssertTrue(tStatus >= 400, "the confirm is refused: " _ tStatus _ " " _ $Extract($Get(tRaw), 1, 200))
+    Do $$$AssertTrue((tStatus = 409) && (($Get(tRaw) [ "PROPOSAL.TARGETCHANGED") || ($Get(tRaw) [ "ANALYTICS.TERMLIST.IMPORTCHANGED")), "the confirm is refused as moved: " _ tStatus _ " " _ $Extract($Get(tRaw), 1, 200))
     Do $$$AssertEquals(..Dump(tName _ "M"), "", "and nothing was imported")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }

@@ -192,7 +192,7 @@ Parameter COMPOSEDTYPES = "TermLists/EXPORT,TermLists/IMPORT,TermLists/COPY";
 /// <p>An export to a server file replaces a file already there: PathPort's overwrite, which this port declares as a constant, never a caller value.</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
 
-/// <p>The most entries a script form (AD-59) of an import or a copy renders.</p>
+/// <p>The most entries a script form (AD-59) of an import or a copy renders; a list with more has no script form.</p>
 Parameter SNIPPETENTRIES As INTEGER = 1000;
 
 /// <p>The global the term lists live in: the destination <method>AdmitTermList</method> judges.</p>
@@ -2131,7 +2131,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 }
 
 /// <p>The write as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names; a term list write is
-/// <method>TermListSnippet</method>'s. A cube manager write is <code>%BuildCube</code> of the cube
+/// <method>TermListSnippet</method>'s, and no step when that renders nothing. A cube manager write is <code>%BuildCube</code> of the cube
 /// <parameter>IDKEY</parameter> names, asynchronous, or <code>%SynchronizeCube</code> of it. The cube is a string literal, so nothing the
 /// query carries runs as code. Whoever runs the script is checked by the vendor's own resources, which do not include
 /// <code>%DeepSee_Admin</code>.</p>
@@ -2140,7 +2140,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tText = tText _ ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery)
+        Set tPart = ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils).%BuildCube(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 1, 0, 0, 0, 0, .tStats)"
     } Else {
@@ -2204,18 +2206,21 @@ ClassMethod TermListSnippet(pType As %String, pId As %String, pBody As %DynamicA
 }
 
 /// <p>The lines <method>TermListSnippet</method> adds for a transfer (Story 24.10): an export is the vendor's own <code>%ExportCSV</code> of a list that is
-/// held, to the server file the query names (in a comment, since the directory is resolved when the write runs) or to the current device; an import
-/// and a copy are <method>WholeListSnippet</method> of the list the file holds, or the source's read. An import file that cannot be read as a term
-/// list export, or a source that is not held, is a script that only sets the refusal. A local file's text is never in a script, so an import of one
-/// renders the list that text holds when the query carries it.</p>
+/// held, to the server file the query names, resolved as the write resolves it (<method>TermListExportFile</method>), or to the current device; an
+/// import and a copy are <method>WholeListSnippet</method> of the list the file holds, or the source's read. An import file that cannot be read as a
+/// term list export or holds another list than the one named, one whose text is not the reviewed <parameter>DIGESTKEY</parameter>, a source that is
+/// not held, and a server file the export cannot resolve are each a script that only sets the refusal. A local file's text is never in a script, so
+/// an import of one renders the list that text holds when the query carries it. <code>""</code> when the list has more entries than
+/// <parameter>SNIPPETENTRIES</parameter>, so the draft is refused rather than rendered in part.</p>
 ClassMethod TransferSnippet(pType As %String, pId As %String, ByRef pQuery) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tList = "##class(%DeepSee.TermList)"
     If pType = ..#TYPEIMPORT {
         Set tSC = ..TermListImportText(.pQuery, .tText, .tHttp, .tFault)
-        If $$$ISOK(tSC) && ..TermListParse(tText, .tData) Quit ..WholeListSnippet(..Literal(tData("name")), .tData)
-        Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTIMPORTSHAPE) _ ")"
+        If $$$ISERR(tSC) || '..TermListParse(tText, .tData) || ((pId '= ..#IMPORTID) && (pId '= tData("name"))) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTIMPORTSHAPE) _ ")"
+        If $Get(pQuery(..#DIGESTKEY)) '= ..TextDigest(tText) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTIMPORTCHANGED) _ ")"
+        Quit ..WholeListSnippet(..Literal(tData("name")), .tData)
     }
     Set tAbsent = tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTABSENT) _ ")"
     If pType = ..#TYPECOPY {
@@ -2226,15 +2231,21 @@ ClassMethod TransferSnippet(pType As %String, pId As %String, ByRef pQuery) As %
     Set tName = ..Literal(pId)
     Set tHeld = " Set tId = $ZConvert(" _ tName _ ", ""U""), tSC = $Select($Data(^DeepSee.TermList(tId)): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTABSENT) _ "))"
     Set tPath = $Get(pQuery(..#PATHKEY))
-    Set tFile = $Select(tPath = "": """""", 1: ..Literal(tPath))
+    Set tFile = """"""
     Set tSource = ""
-    If tPath '= "" Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
+    If tPath '= "" {
+        Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
+        Set tSC = ..TermListExportFile($Get(pQuery(..#ROOTKEY)), tPath, .tResolved, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit tSource _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+        Set tFile = ..Literal(tResolved)
+    }
     Quit tSource _ tNL _ tHeld _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%ExportCSV(" _ tName _ ", " _ tFile _ ", " _ $Select(tPath = "": 0, 1: 1) _ ")"
 }
 
 /// <p>The lines that create the term list named by the literal <var>pNameLiteral</var> from <var>pData</var> in one transaction (Story 24.10): a free
-/// name, the create with the header, and a value write for each entry and field value, at most <parameter>SNIPPETENTRIES</parameter> entries, the
-/// rest named in a comment. Rolled back when one step fails.</p>
+/// name, the create with the header, and a value write for each entry and field value. Rolled back when one step fails. <code>""</code> when
+/// <var>pData</var> holds more than <parameter>SNIPPETENTRIES</parameter> entries, since a script that wrote part of them would make another
+/// change than the write (AD-59).</p>
 ClassMethod WholeListSnippet(pNameLiteral As %String, ByRef pData) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -2243,14 +2254,11 @@ ClassMethod WholeListSnippet(pNameLiteral As %String, ByRef pData) As %String [ 
     For tAt = 1:1:$Length(pData("fieldList"), "^") {
         If $Piece(pData("fieldList"), "^", tAt) '= "" Set tFields = tFields _ $Select(tFields = "": "", 1: "^") _ $Piece(pData("fieldList"), "^", tAt)
     }
+    If pData("keys") > ..#SNIPPETENTRIES Quit ""
     Set tText = tNL _ " TSTART"
     Set tText = tText _ tNL _ " Set tSC = $Select($Data(^DeepSee.TermList($ZConvert(" _ pNameLiteral _ ", ""U""))): $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONTERMLISTTAKEN) _ "), 1: 1)"
     Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%CreateTermList(" _ pNameLiteral _ ", " _ ..Literal(pData("caption")) _ ", " _ ..Literal(tFields) _ ", " _ ..Literal(pData("pattern")) _ ", " _ ..Literal(pData("description")) _ ", " _ ..Literal(pData("subjectArea")) _ ", " _ ''pData("hide") _ ")"
     For tEntry = 1:1:pData("keys") {
-        If tEntry > ..#SNIPPETENTRIES {
-            Set tText = tText _ tNL _ " ; " _ (pData("keys") - ..#SNIPPETENTRIES) _ " more entries follow in the same form."
-            Quit
-        }
         Set tKey = ..Literal(pData("key", tEntry))
         Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tList _ ".%SetValue(" _ pNameLiteral _ ", " _ tKey _ ", " _ ..Literal($Get(pData("val", tEntry, 0))) _ ", """")"
         For tAt = 1:1:$Length(pData("fieldList"), "^") {
@@ -3357,8 +3365,8 @@ ClassMethod ReadCopyTarget(pNamespace As %String, pName As %String, pAction As %
 
 /// <p>Copy the term list <var>pName</var> to a new list named <parameter>NEWNAMEKEY</parameter> of the query (Story 24.10, AD-54), the classic
 /// Save As without its overwrite. Each refusal before any vendor write: the new name's own rule (422), the source not held (404
-/// <code>ABSENT</code>), the new name held (409 <code>TAKEN</code>, which includes the source's own name), and the whole list's rules under the new
-/// name (<method>CreateRefusal</method>). The new list is the source's header and every entry, written in one transaction
+/// <code>ABSENT</code>), then <method>CreateRefusal</method>: the whole list's rules under the new name (422), then the new name held (409
+/// <code>TAKEN</code>, which includes the source's own name). The new list is the source's header and every entry, written in one transaction
 /// (<method>WriteWholeList</method>) with a modification time of its own. The source is only read. The answer is the new list read again.</p>
 ClassMethod PerformCopy(pNamespace As %String, pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
