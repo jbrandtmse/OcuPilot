@@ -267,7 +267,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#TERMLISTGLOBAL, .tTermResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's term list database resolves")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
-            For tOwnPair = $ListBuild(tTermResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
+            ; Story 24.10: the export reads only (READ on the term list database) and names the file system's resource, which it writes through.
+            For tOwnPair = $ListBuild(tTermResource, $Parameter(tTool.class, "DESTINATIONPERMISSION")), $ListBuild(tRoutineResource, "READ"), $ListBuild($Parameter(tTool.class, "FILERESOURCE"), "USE") {
+                If $List(tOwnPair, 1) = "" Continue
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {

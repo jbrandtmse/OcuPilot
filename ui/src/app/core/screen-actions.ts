@@ -200,6 +200,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     add: STRINGS.analyticsTermListNewAction,
     update: STRINGS.analyticsTermListEditAction,
     delete: STRINGS.analyticsTermListDeleteAction,
+    export: STRINGS.taskExportAction,
+    copy: STRINGS.analyticsTermListCopyAction,
   },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {
     add: STRINGS.webAppPctAccessAdd,

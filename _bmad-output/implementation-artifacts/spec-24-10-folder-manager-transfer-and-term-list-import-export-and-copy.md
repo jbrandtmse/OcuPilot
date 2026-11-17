@@ -2,9 +2,10 @@
 title: 'Story 24.10: Folder manager transfer and term-list import, export and copy (planned slice: the term lists)'
 type: 'feature'
 created: '2026-11-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'bb323e74ee6c8c50fb175b1acaa7809ee0d72735'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-2-the-analytics-editors.md'
 warnings: ['oversized', 'multiple-goals']
@@ -109,25 +110,25 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `91931ecd
 
 **Execution:**
 
-- [ ] **Task 0, on `ocupilot-b-ci` only.** Use USER, marker lists, and a probe directory made and removed by the task. Record the results under Design Notes › Measured.
+- [x] **Task 0, on `ocupilot-b-ci` only.** Use USER, marker lists, and a probe directory made and removed by the task. Record the results under Design Notes › Measured.
   1. No vendor audit row for an export, or for the create and value writes an import or copy makes.
   2. A captured `%ExportCSV(name,"",0)` and a file `%ExportCSV(name,file,1)` hold the same lines.
   3. Parsing the export back yields every key, value and field.
-- [ ] `src/OcuPilot/Port/AnalyticsPort.cls`:
+- [x] `src/OcuPilot/Port/AnalyticsPort.cls`:
   - read types `EXPORTLIST` (the `TERMLIST` row echoing `root`/`path`), `IMPORTFILE` and `COPYTARGET`;
   - write types `EXPORT`, `IMPORT` and `COPY`, through `InvokeTermList`/`PerformTermList`;
   - `TermListImportText`, `TermListParse`, `TermListExportFile` and `CheckTermListExport`, extending 20.5's methods by their shape;
   - the vendor seams `VendorTermListExport` (capture or file);
   - `TermListSnippet` branches.
-- [ ] `src/OcuPilot/Api/AnalyticsError.cls`: the three codes with the Proposed strings.
-- [ ] `src/OcuPilot/Screen/Tool/`:
+- [x] `src/OcuPilot/Api/AnalyticsError.cls`: the three codes with the Proposed strings.
+- [x] `src/OcuPilot/Screen/Tool/`:
   - `AnalyticsTermListExport.cls` plus `AnalyticsTermListExportMint.cls`, which extends `InteropLookupTableExportMint`'s order over this port;
   - `AnalyticsTermListImport.cls`;
   - `AnalyticsTermListCopy.cls`.
 
   Each extends `AnalyticsTermListAction`. Names, values and keys are in Design Notes › Tools.
-- [ ] The descriptor row actions; `Baseline.cls`; `Prohibited.cls`; the client page, store and maps; `strings.ts`; the new EXPERIENCE.md row.
-- [ ] Tests:
+- [x] The descriptor row actions; `Baseline.cls`; `Prohibited.cls`; the client page, store and maps; `strings.ts`; the new EXPERIENCE.md row.
+- [x] Tests:
   - new `Test/AnalyticsTermListTransfer.cls` (the matrix, both callers, the seam's partial failure, audit, the script form);
   - extend `AnalyticsTermListGate.cls` (pairs, `READONLY`, `NOTJOURNALED` for import and copy);
   - extend `ui/browser/analytics-term-list-editor.browser-spec.mjs` (export to the browser, a local import, a copy);
@@ -149,6 +150,27 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `91931ecd
 - 2026-11-17, spec gate: blocked -> ready-for-dev on the runner's rulings (U-105); this spec is Batch 1.
 
 ## Review Triage Log
+
+### 2026-11-17 - Review pass
+
+- verdicts: 16 findings - high 0, medium 3, low 13, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Two assertions counted lists through the Edit class's broader marker - patched: they read this class's own `Marked()`.
+  - `[medium]` `[patch]` Import size bound and local file-name rule untested - patched: a 3,000,001-character local text (`TOOLARGE`) and a name with a slash (400) join `TestShapeBreachesNeverReachTheVendor`.
+  - `[medium]` `[patch]` Guarded `output` assertions passed when `output` was missing - patched: an unconditional `$IsObject` assertion precedes each of the three guarded checks.
+  - `[low]` `[patch]` `TermListParse` repeat, keyless and over-long key rules unpinned - patched: a repeated key counts once, a keyless line is skipped, a 256-character key is 422 `KEY`.
+  - `[low]` `[reject]` Term lists page refusal wiring untested - the 20.5 lookup page's spec has no refusal leg either, a refused path is a displayed sentence, and the fix is a new component spec.
+  - `[low]` `[reject]` `AdmitTermListRead`'s own READ refusal unpinned - the tool-level pairs refuse first on every route, so no caller reaches it without READ.
+  - `[low]` `[reject]` Export script form checked as text only - the script is rendered from the same seam call the tests execute; an executed export script adds a second file write for no new claim.
+  - `[low]` `[reject]` `ReadCopyTarget` checks only the new name while the write also checks the source's data - a source made through the editor obeys the rules; a vendor-made one fails at confirm with a 422, loudly.
+  - `[low]` `[reject]` Line breaks inside a value split into records - the named limit of Decided in-stage 5.
+  - `[low]` `[reject]` `ToolEmit` builds its expected pair from the same parameters - `AnalyticsTermListGate` pins the values and the `DESTINATIONPERMISSION` mutation reddened it.
+  - `[low]` `[reject]` Intent audit: read-back verdict `nothingSent` where the matrix says `holds` - `holds` is not a verdict; AD-58 gives an action-style write `nothingSent` and the test says the read-back found the list (Decided in-stage 7).
+  - `[low]` `[reject]` Intent audit: no test counts the `created` change event - the shared handler publishes it for every confirmed write (`screen-action-handler.ts` AD-14 block) and the browser spec reads the list back after the import.
+  - `[low]` `[reject]` Intent audit: export needs `%Admin_FileSystemAccess:USE` for both callers - 20.5's export does the same; recorded as Decided in-stage 9.
+  - `[low]` `[reject]` Intent audit: `scripts/ci-throwaway.sh` edited - three added lines (a comment and the `classes:` roster line), which is the add-only edit the spec allows.
+  - `[low]` `[reject]` Intent audit: local `content` is in the import's fingerprint subject - the same declaration as 20.5's lookup import; whether the stored proposal keeps the text was not checked (inference).
+  - `[low]` `[reject]` Intent audit: matrix rows' run results are not in the diff - the Verification section records them.
 
 ## Design Notes
 
@@ -204,6 +226,15 @@ OcuPilot's posture there must load folder-item documents only, never compile, an
 4. Duplicate keys in a file: the later line wins, as `%SetValue` does, and `FileEntries` counts distinct keys.
 5. Values holding a line break do not survive the vendor's CSV. This is a named limit.
 
+**Decided in-stage (implement).**
+
+6. The transfer helpers are copies on `AnalyticsPort` (`TermListImportText`, `TermListExportFile`, `TextDigest`), not lifted: 20.5's are `Private` and carry Interop's codes. The text read (`AtelierPort.ReadText`) and the path resolve (`PathPort`) are shared.
+7. Import and copy are action-style (`CREATES` 0) with change action `created`: AD-54's absence read cannot carry the file's digest, so the taken name is the read's own refusal (409 `TAKEN`) and the read-back verdict is `nothingSent`, not `matches`. The agent's confirm answers `createdId` with the new name; a person's action answers the target the person sent (the source, or `import`), since the screen action carries no created id. The Term lists screen re-reads on any `term-list` event.
+8. The port declares `COMPOSEDTYPES` `TermLists/EXPORT,TermLists/IMPORT,TermLists/COPY` (the query-carried arguments), and `Prohibited` reads no target for an import, as for 20.5's.
+9. `AnalyticsAction` gained `DESTINATIONPERMISSION` (default `WRITE`) and `FILERESOURCE` (default none). The export sets `READ` and `%Admin_FileSystemAccess:USE`, which both callers face, Export to this browser included, as 20.5's export does.
+10. The proposal card's rows are data field names (`root`, `path`, `NewName`, `Entries`, `File`, `Name`), so no new label is published. An import's screen answer carries `output.Name` (screen only) for its status line.
+11. Import trims each data line's whitespace and reads only leading `%%` lines as header, as `%ImportCSV` does. A script form (AD-59) of an import or copy renders the create and one value write per entry and field in one transaction, at most `SNIPPETENTRIES` (1,000) entries with the rest named in a comment; an export's is `%ExportCSV`.
+
 **Tools.**
 
 | Tool | Kind | Id / values | Screen actions | Key |
@@ -252,6 +283,12 @@ OcuPilot's posture there must load folder-item documents only, never compile, an
 - `%ImportCSV(<file name>, ...)` failed at `%File.Open` on this build. Given a `%Stream.TmpCharacter` copied from that file, it created the list with only `name` and `modDate`, because the stream's CR LF terminator read the file as one line.
 - A captured `%ExportCSV(name,"",0)` of a 10,000-entry, two-field list answered 10,005 lines, 285,672 characters, in 0.17 s. 30,000 `%SetValue` calls in one transaction took 0.03 s.
 
+**Measured** (Task 0, 2026-11-17, `ocupilot-b-ci`, USER; the list, the probe class and `/tmp/e2410probe/` removed):
+
+- `%SYS.Audit` held 30,796 rows before and after `%ExportCSV` to a file and inside a capture, so the export is unaudited as the create and value writes are (24.2). OcuPilot's own `ConfigChange` row is the record.
+- A list with a comma and a double quote in its caption, a comma and a double quote in two keys, and an accented key exported to a UTF-8 file of 173 bytes; the capture's ten lines equal the file's ten lines read as UTF-8.
+- `%ParseCSVRecord` of each file line, encoded to UTF-8 first, gave the header values, the keys `a,b`, `q"k` and `u` plus the accented letter, and every value and field.
+
 ## Verification
 
 **Shared surfaces:**
@@ -291,7 +328,42 @@ OcuPilot's posture there must load folder-item documents only, never compile, an
 - AC7: one `SurfaceCoverage` row is removed → that test alone.
 - AC8: the probe directory is left behind → `OnAfterAllTests`.
 
+**Mutations run (Rule 19)** on `ocupilot-b-ci`, each reverted byte-identically (`cmp` against the saved copy) and the tree reloaded:
+
+- mutation: the export passes no file to `VendorTermListExport` -> `AnalyticsTermListTransfer` `TestAnExportWritesTheVendorsCsvToAFileAndToTheBrowser` (file, quoting and lines legs) went red.
+- mutation: the text bound dropped in `VendorTermListExport` -> `TestAnExportToTheBrowserPastTheTextBoundIsRefused` went red.
+- mutation: the digest comparison of `PerformImport` made `If 0` -> `TestAFileChangedAfterItsReviewWritesNothing` went red.
+- mutation: `AdmitTermList`'s journal refusal made `If 0` -> `TestTheDestinationRefusesAnImportAndACopyButNotAnExport` (nonjournaled legs) went red.
+- mutation: `PerformExport`'s `AuditWrite` dropped -> `TestEachTransferIsAudited` and the agent's export leg went red.
+- mutation: `TermListParse` sets every field value empty -> the round trip, local import, agent import (integration, `Region: West`) and person legs went red.
+- mutation: `CreateRefusal`'s held check made `If 0` -> the taken legs and the agent's taken mint went red.
+- mutation: the field value write of `WriteWholeList` skipped -> the copy, round trip, local and agent legs went red; the `TROLLBACK` of the same method made `TCOMMIT` -> `TestAFailedValueWriteRollsAnImportAndACopyBack` went red; the field write of `WholeListSnippet` skipped -> `TestEachTransfersScriptFormMakesTheSameChange` went red.
+- mutation: `NameShaped` admits `^` -> `TestShapeBreachesNeverReachTheVendor` (key leg) went red.
+- mutation: the export tool's output lines emptied -> `TestThePersonsExportImportAndCopy` (browser leg) went red; the `Prohibited` import early-out removed -> the person's and the agent's import legs went red; `AnalyticsTermListTransfer.Sweep` stops deleting -> its `OnAfterAllTests` went red.
+- mutation: the export's `DESTINATIONPERMISSION` set to `WRITE` -> `AnalyticsTermListGate` `TestEachTransferIsRefusedNamingTheFailedPair` and `ToolEmit` went red; `FILERESOURCE` ignored in `AnalyticsAction.PrivilegePairs` -> `ToolEmit` went red.
+- mutation: the import row removed from `SurfaceCoverage`, the copy row from `MappingDescriptor.CLASSICROSTER`, the export row from `ClassicPageGate.OWNPAIRS`, and `analytics.termlists.export` shipped `false` in `Baseline.cls` -> each of those four tests went red, alone.
+- mutation (client): the copy dialog's value renamed from `NewName`, the page's `fill` without its global flag, `exportFileName` keeping `/`, and `'copy'` and `'export'` dropped from the Term lists' `UNDRAWN_ACTIONS` entry -> `term-list-copy-dialog.spec.ts`, `term-list-list.page.spec.ts` and `screen-action-handler-termlist.spec.ts` went red; the dialog's `Name` violation read removed -> its rule leg went red; the copy dialog's value renamed again, rebuilt and redeployed -> `analytics-term-list-editor.browser-spec.mjs` (the copy test) went red, and green after the revert, rebuild and redeploy.
+- mutation (review pass): `TermListParse`'s repeated-key lookup made `If 0 &&` -> `TestShapeBreachesNeverReachTheVendor` went red; reverted byte-identically and reloaded.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the split question was ruled at the spec gate: two batches in one story, U-105)
+Status: done
+Blocking condition: none
+
+**Summary.** Batch 1 of Story 24.10 (the term lists): export, import and copy on `AnalyticsPort`, three tools plus the export mint, three error codes, three governance keys at `true`, the Term lists page's Export, Import and Copy, and the EXPERIENCE.md row. Batch 2 (the folder manager) is not built; the story reaches `done` only when it is.
+
+**Files changed.**
+
+- `src/OcuPilot/Port/AnalyticsPort.cls`: the read types `EXPORTLIST`, `IMPORTFILE`, `COPYTARGET` and the writes `EXPORT`, `IMPORT`, `COPY`, with the parse, digest, export-file and seam helpers.
+- `src/OcuPilot/Screen/Tool/AnalyticsTermList{Export,ExportMint,Import,Copy}.cls` and `AnalyticsAction.cls`: the tools and two defaulted parameters.
+- `AnalyticsError.cls`, `Baseline.cls`, `Prohibited.cls`, `AnalyticsTermListList.cls`: the codes, keys, import arm and row actions.
+- `ui/src/app/areas/analytics/term-list-list.page.ts`, `term-list-copy-dialog.ts`, `strings.ts`, `screen-action-handler.ts`, `screen-actions.ts`, `screens.generated.ts`: the client.
+- `Test/AnalyticsTermListTransfer.cls` (new), the extended gate, seam and roster classes, `analytics.test.mjs`, the browser spec, and `scripts/ci-throwaway.sh` (add-only roster line).
+
+**Review.** Patches applied: 4 (3 medium, 1 low), all test additions in `AnalyticsTermListTransfer`. Deferred: none. Rejected: 12 lows, each with its reason in the Review Triage Log.
+
+**Follow-up review recommended: true.** Three medium patches landed. Unverified risk: the new size-bound, file-name and unconditional-output assertions have no recorded mutation, and the Term lists page's refusal wiring has no test.
+
+**Verification.** `check-objectscript` and `lint-docs` clean; `test:tools` 2,296 and `test:components` 3,524 green; `npm run build` green; the browser spec 4 of 4 on the redeployed bundle; `AnalyticsTermListTransfer` (16), `Gate`, `Edit`, `Routes` green; the full ObjectScript sweep, shards 1 to 17, green on `ocupilot-b-ci`. The review pass's mutation is recorded under Verification.
+
+**Residual risks.** `AnalyticsTermListTransfer.cls` is about 690 lines. `ci-timings.json` has no row for the new class. The proposed spine lines (AD-21, AD-51, AD-65) stay for the owner.

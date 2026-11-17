@@ -285,6 +285,9 @@ XData Coverage
 <tool name="analytics.termlistentries.add" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
 <tool name="analytics.termlistentries.set" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestAnEntryIsAddedChangedAndRemoved" corpus="one test adds, changes and removes an entry, so it covers the three entry writes"/>
 <tool name="analytics.termlistentries.remove" class="OcuPilot.Test.AnalyticsTermListEdit" method="TestADeleteAndARemoveTakeWhatTheyNameAndAreAudited" corpus="one test removes an entry and deletes a list, so it covers both removals"/>
+<tool name="analytics.termlists.export" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestAnExportWritesTheVendorsCsvToAFileAndToTheBrowser"/>
+<tool name="analytics.termlists.import" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestAnExportImportsBackAsTheSameList"/>
+<tool name="analytics.termlists.copy" class="OcuPilot.Test.AnalyticsTermListTransfer" method="TestACopyEqualsItsSourceExceptItsNameAndStamp"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

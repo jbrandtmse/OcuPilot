@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:650 */
+  /** EXPERIENCE.md:651 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8072,6 +8072,32 @@ export const STRINGS = {
   analyticsTermListsEmptyAgent: 'create a term list',
   /** EXPERIENCE.md:607 */
   analyticsTermListEntriesEmptyAgent: 'add an entry to this term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyAction: 'Copy term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportTitle: 'Export term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportTitle: 'Import a term list',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyTitle: 'Copy term list <name>',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyNameLabel: 'Name of the copy',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportHelp: 'The file holds the term list\'s properties and every entry, in the CSV form the classic Term List Manager exports. A file already at this name is replaced.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportHelp: 'The file must be a term list export. It creates the term list it names; a term list of that name must not exist.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportShape: 'This file is not a term list export, or it holds no entry.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListImportChanged: 'The file changed after it was reviewed, so nothing was imported.',
+  /** EXPERIENCE.md:609 */
+  analyticsRefusalTermListTooLarge: 'The file is larger than OcuPilot imports or exports.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListExportDone: 'Exported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListImportDone: 'Imported <name>.',
+  /** EXPERIENCE.md:609 */
+  analyticsTermListCopyDone: 'Copied <name> to <new>.',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

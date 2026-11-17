@@ -518,8 +518,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
-  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2).
-  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update'],
+  // The Term lists' page registers Edit term list itself, and a term list's entries' page Change entry, whose dialogs send the values (Story 24.2);
+  // the Term lists' page also registers Copy term list and Export itself and draws Import as a screen-level action, whose dialogs send the five
+  // transfer actions (Story 24.10).
+  'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update', 'copy', 'export', 'export-browser', 'import', 'import-local'],
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],

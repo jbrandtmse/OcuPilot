@@ -3,8 +3,8 @@
 /// <class>OcuPilot.Test.AnalyticsTermListGate</class> drive the port's refusals and its rollback in process. Every call that is not failed
 /// is made on the vendor, in <code>USER</code>.</p>
 /// <p><method>Arm</method> names the mode: <code>failsecond</code> (the second <code>%SetValue</code> since <method>Reset</method> answers an
-/// error), <code>throwsecond</code> (it raises an exception instead), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
-/// read) or <code>readonly</code> (it reads as mounted read-only). <method>Calls</method> counts the vendor write calls made.</p>
+/// error), <code>throwsecond</code> (it raises an exception instead), <code>failthird</code> (the third <code>%SetValue</code> answers an error, which an import or a copy of a list with entries reaches), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
+/// read) or <code>readonly</code> (it reads as mounted read-only). <method>Calls</method> counts the vendor calls made, an export's included.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.AnalyticsTermListSeam Extends OcuPilot.Port.AnalyticsPort
 {
@@ -30,6 +30,7 @@ ClassMethod Count(pKind As %String) As %Status [ Private ]
     Set ^||OcuPilotTermListSeam("calls") = $Get(^||OcuPilotTermListSeam("calls")) + 1
     If pKind = "set" Set ^||OcuPilotTermListSeam("sets") = $Get(^||OcuPilotTermListSeam("sets")) + 1
     If ($Get(^||OcuPilotTermListSeam("mode")) = "failsecond") && (pKind = "set") && ($Get(^||OcuPilotTermListSeam("sets")) = 2) Quit $$$ERROR($$$GeneralError, "armed failure of the second value write")
+    If ($Get(^||OcuPilotTermListSeam("mode")) = "failthird") && (pKind = "set") && ($Get(^||OcuPilotTermListSeam("sets")) = 3) Quit $$$ERROR($$$GeneralError, "armed failure of the third value write")
     If ($Get(^||OcuPilotTermListSeam("mode")) = "failhide") && (pKind = "hide") Quit $$$ERROR($$$GeneralError, "armed failure of the hide-value write")
     Quit $$$OK
 }
@@ -76,6 +77,16 @@ ClassMethod VendorTermListRemoveEntry(pNamespace As %String, pName As %String, p
     Set tSC = ..Count("remove")
     If $$$ISERR(tSC) Quit tSC
     Quit ##super(pNamespace, pName, pKey, .pCaught)
+}
+
+ClassMethod VendorTermListExport(pNamespace As %String, pName As %String, pFile As %String, Output pLines As %DynamicArray, Output pTooLarge As %Boolean, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pCaught = ""
+    Set pLines = ""
+    Set pTooLarge = 0
+    Set tSC = ..Count("export")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##super(pNamespace, pName, pFile, .pLines, .pTooLarge, .pCaught)
 }
 
 ClassMethod VendorTermListDelete(pNamespace As %String, pName As %String, Output pCaught As %Exception.AbstractException) As %Status

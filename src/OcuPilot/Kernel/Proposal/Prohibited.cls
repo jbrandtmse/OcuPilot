@@ -1648,6 +1648,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; browser never reads, and AD-10 names no effect on a lookup table, so the arm reads no target; the port refuses a file
         ; that is not exactly one lookup table, or holds another table than the one named, before any load.
         If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
+        ; Story 24.10: a term list import names the list its file holds, or the literal import id for a server file the browser never
+        ; reads, and AD-10 names no effect on a term list, so the arm reads no target; the port refuses a file that is not a term list
+        ; export, or holds another list than the one named, and a name already held, before any write. An export and a copy read the
+        ; source and are judged as any term list write is, by the reviewed-few sweep below.
+        If (tType = ..#TYPETERMLIST) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
