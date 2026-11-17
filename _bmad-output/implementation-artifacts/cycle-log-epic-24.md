@@ -278,3 +278,6 @@
 2026-11-17T08:35:16Z	Story 24.6	story_cycle	plan_to_commit_min=482(incl_hold_04:16-06:14Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-17T08:39:05Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(feature_merge_1dbdfbb85) model=claude-opus-5-5
 2026-11-17T08:39:05Z	Story 24.7	stage_spawned	stage=plan spawn_at=2026-11-17T08:39:05Z model=opus agent_name=24-7-web-terminal-plan-1 cycle_iteration=1
+2026-11-17T08:45:37Z	Story 24.7	plan_clarification_requested	spawn_at=2026-11-17T08:40:20Z model=opus build_status=blocked condition=intent_gap(DT-04_TerminalAgent_WebSocket_stateful_child_process;Bearer_401;outside_AD-10_U-78_exception) options=A_narrow_to_console_transcript,B_not_planned,C_stateful_terminal
+2026-11-17T08:45:37Z	Story 24.7	ruling	question=web_terminal_scope choice=park rejected=decide_A(narrows_scope),veto why=owner_only(dropping_or_deferring_scope;moving_an_AC;AD_amendments) category=park inbox=U-104 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-17T08:45:37Z	Story 24.7	story_parked	stage=plan code=none spec=_bmad-output/implementation-artifacts/spec-24-7-web-terminal.md(status_blocked) inbox=U-104
