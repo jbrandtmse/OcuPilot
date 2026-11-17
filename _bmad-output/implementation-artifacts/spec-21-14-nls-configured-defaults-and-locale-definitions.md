@@ -2,9 +2,10 @@
 title: 'Story 21.14: NLS configured defaults and locale definitions'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'd438699e19506ed6740412309a2537f328035ad1'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred: []
@@ -77,6 +78,8 @@ deferred: []
 
 **Execution, batch 2 (client; commit when its loop commands are green):**
 
+- **Runner ruling (2026-11-17, decide): Batches 1 and 2 land in one commit.** The pre-commit hook's `screen-mirror.mjs --check` refuses the `LocaleList` descriptor until the client knows the `locale` source and the ruled strings, so Batch 1 cannot be committed alone and `--no-verify` is not used. Batch 1 (server) is built, self-reviewed and left staged in the tree; this pass builds Batch 2 on top of it, and build-auto's finalize commits both. Batch 1's review is not repeated: review Batch 2's diff and the seams between them. Start from the saved patch `screen-mirror-locale-source.patch` in the Batch 1 scratch dir (`e21u/21-14/b1impl/`) for the mirror's `locale` source. Then finalize `status: done`.
+
 - `ui/src/app/areas/os-management/config-settings.page.ts` with its spec -- `NlsDefaultList` in `SERVED_LISTS`; `Source` shown as its ruled words.
 - `ui/src/app/areas/os-management/locale-list.page.ts` and `locale-validate-dialog.ts`, each with its spec -- `backup-database-list.page.ts`'s shape: the page registers `validate` (undrawn in the handler), which opens the dialog, which reads the screen route and shows the ruled sentence and the lines; `install` and `delete` are the handler's typed-name destructive actions. `shell/screen-outlet.ts`, `shell/screen-action-handler.ts` (`validate` undrawn; `install` destructive for `LocaleList` only; both consequences), `core/screen-actions.ts`, `core/proposal-view.ts` (`CONFIG.NLS.RELOAD`, `LOCALE.INSTALL`, `LOCALE.DELETE`), `core/strings.ts`, `screens.generated.ts`; `ui/tools/screen-mirror.mjs` and its test (the `locale` source).
 - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` -- the ruled strings into Fixed strings; both screens into OS management's side-bar row (add-only).
@@ -94,8 +97,21 @@ deferred: []
 
 - 2026-11-15 (lead): plan halt ruled (split, Q2, Q3); status reset to draft for re-plan.
 - 2026-11-15 (re-plan): intent narrowed to the rulings (Load table, its strings and `LOCALE.TABLE` removed; the stale empty rulings heading dropped). Validate also answers `Installable`, and the Install refusal carries no vendor lines; Validate is where the person reads them (AD-39; Design Notes).
+- 2026-11-17 (runner): Batch 1 built and staged; its commit was refused by the screen-mirror hook, so Batches 1 and 2 land in one commit (ruling under Execution, batch 2); status reset from blocked to in-progress.
 
 ## Review Triage Log
+
+### 2026-11-17 — Review pass (Batch 1, server)
+
+- verdicts: 6 findings — high 0, medium 2, low 4, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The agent tool's no-vendor-line assertion in `LocaleRead` depended on the instance's current locale carrying a warning — evidence: the assertion read `Warnings.%Size() > 0` from the real locale; patched by feeding lines through the new `Test.LocaleValidateSeam` (`TestTheToolHoldsNoVendorLine`), mutation observed red.
+  - `[low]` `[patch]` AC1's reload half and AC3's 409 half had no recorded `mutation:` line — evidence: `ReloadAfterSet` reloads nothing -> `NlsDefaultRead` red, and `Code` ignoring the installable verdict -> `LocaleRules` red, both observed, reverted, lines written under Verification.
+  - `[low]` `[patch]` `LocaleWrite.TestTheSwitchRoundTrips...` assumed the node it found was off — evidence: it now sets the node to 0 and reloads before the first separator assertion; `Restore` already puts it back.
+  - `[medium]` `[patch]` The live-safe `LocaleRules.TestTheScreensActionRouteAsksTheSameRules` called the shipped screen delete of the current system locale, which the vendor would carry out if the rules regressed — evidence: Task 0 (e) shows the vendor refuses nothing; the case is removed there (`LocaleWrite` already asks it, armed) and the 404 rows stay.
+  - `[low]` `[patch]` `LocaleWrite.Restore` removed the custom locale before reinstalling the original, so a custom locale left current survived — evidence: reordered, original first.
+  - `[low]` `[reject]` Validate reads "has problems" with no lines for an installable locale whose tables are not compiled — evidence: spec-bound (`Valid` is `IsValid` and `IsLoadable`, the lines are not shown by the AD-39 ruling); a fix edits the spec.
+- intent-alignment: descriptive only (server half of the intent, descriptors declared ahead of the client); no finding.
 
 ## Design Notes
 
@@ -115,6 +131,17 @@ deferred: []
 - Validate is a read: `IsValid`, `IsLoadable` and `IsInstallable`, not the classic page's `Compile`, so it writes nothing (inference; Task 0 (b)). It reaches the screen through a screen-only route and the agent through a class read tool, because every write tool's caller is a proposal and Validate writes nothing. It also answers `Installable`, so the Install refusal stays a sentence and its reasons are read in one place.
 - Install of the current locale is allowed (the classic page allows it: a reload). Delete is refused for a system locale and for the current locale, as the classic page disables both.
 - `Source` rides only the NLS rows, so the shared row shape of the other endpoints is unchanged.
+
+**Task 0 (measured on `ocupilot-ci`, 2026-11-17; the current locale, the switch's node and every probe locale restored):**
+
+- (a) A caller holding `PAIRS` alone fails `Install`, `Delete` and a write of the node with `<PROTECT>` (`^%SYS("LOCALE","CURRENT")`, `^SYS("NLS","LocalesD",<name>)`, `^SYS("NLS","Config","LocaleFormat")`); with `%DB_IRISSYS:WRITE` added all three succeed.
+- (b) `IsValid`, `IsLoadable` and `IsInstallable` change nothing: `^SYS("NLS")` (368,130 nodes) and `^%nls` (empty) checksum the same before and after, for `enuw` and `deuw`; the three together take under 10 ms. `IsLoadable` is false for a locale whose tables are not yet compiled (`deuw`: ten "is not compiled" lines) while `IsValid` and `IsInstallable` read true; `Install` compiles it.
+- (c) `Install` of `deuw` took 5.2 s and moved IRISTEMP's default collation `IRIS standard` to `German3`; `smoke.sh` read 50/50 and `ConfigSettingRead` 9/9 with it current; `enuw` installed again in 0.06 s, collation `IRIS standard`, smoke 50/50. Green: no AD-10 predicate and no new AD-10 entry. (Compiling the German tables added 8,448 nodes to `^SYS("NLS")`.)
+- (d) With `deuw` current, `LocaleFormat` 1 then `Config.NLS.Locales.Reload()` gives the same formats as `Locale^NLSLOAD` (decimal `,`, date order 4; 5.0 s for `deuw`). Node 1 means "use the locale's own formats"; an undefined node gives the standard ones. `smoke.sh` read 50/50 under `deuw` with the node at 1.
+- (e) `Create` from `enuw`'s `Get` set accepts any name; a `y` name lists with `Custom`, and `IsValid` answers "Invalid locale name" for one that is not `y`, a language and a character set (`yzzp`), so the tests use `yzzw`. The vendor's `Delete` refuses nothing: it deleted the current system locale `enuw` (recreated from the same properties; its property set hashes equal to slot A's). `LOCALE.SYSTEM` and `LOCALE.CURRENT` are therefore the only guard, and no test asks the vendor to delete a system locale.
+- (f) A table name no locale lists: `IsValid` 1, `IsInstallable` 1, `IsLoadable` 0 with one line (`Object for Table(Accent,Unicode,NoSuchTableZ) does not exist`). Validate's `Valid` is therefore `IsValid` and `IsLoadable`; its errors are the lines of `IsValid`, `IsLoadable` and `IsInstallable` in that order, its warnings those of `IsValid` and `IsInstallable`.
+
+**Decided in-stage (implement):** the switch reads `1` or `0` and a set writes the value given, as the classic page does; `LocalePort.LocaleRows` closes its query in `%SYS` before the namespace is restored, because closing it from another namespace left the next execution refused (SQLCODE -101, measured); Validate answers at most 50 lines, errors first, each cut at 500 characters, with counts of every line; an install's read-back is the action kind's `nothingSent`, so AC3's "`readBack` matches" is read as that verdict plus `Current` read through the port (inference); the screen's install is asserted over the web application, because the vendor's install resets the process's device state and the in-process action fixture's capture does not survive it; OS management positions 36 and 37 (35 was the highest taken). Client keys Batch 2 must add to `strings.ts`: labels `nlsDefaultsLabel`, `localesLabel`; entities `aboutNlsDefault`, `aboutLocale`; columns `nlsDefaultColumnSource`, `localeColumnCurrent`, `localeColumnCustom`; empty `localesEmpty`, `nlsDefaultsEmptyAgent`, `localesEmptyAgent`; prompts `nlsDefaultsPrompt1`, `localesPrompt1`, `localesPrompt2` (the three ruled prompts, each screen using all three).
 
 **Extend, don't copy (Rule 2/31):** extends `ConfigPort` (an NLS family beside the roster family, a reload after-write beside the purge one), `ConfigError`, `ConfigSettingSet` (`NlsDefaultSet`) and `config-settings.page.ts`. `LocalePort` copies `BackupPort`'s structure: a shared base would couple two vendor families that diverge, and `BackupPort` is harvest-bound. `LocaleAction` copies `BackupAction`'s shape (its port, rules and id parameter differ; subclassing would tie locales to backup). `LocaleValidate` follows `ErrorRead`; `LocaleRules` and `LocaleError` follow `BackupRules` and `BackupError`. The page copies `backup-database-list.page.ts`'s registration; the dialog is new.
 
@@ -143,9 +170,24 @@ deferred: []
 
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted byte-identical and the reverted source reloaded, then recorded here by the implement stage as `mutation: <change> -> <test red>`:** AC1 `Collect` answers the locale's table even when a configured one is set; AC2 `LocaleValidate` passes the lines through; AC3 `osmgmt.locales.install` `true` in `Baseline`; AC4 the `y` check dropped from `DELETE`; AC5 one word of `LOCALE.CURRENT` changed in `strings.ts`.
 
+- mutation: AC1 `CollectNls` answers the locale's table even when a configured one is set -> `LocaleWrite.TestAConfiguredTableWinsOverTheLocalesAndSaysConfig` red; reverted byte-identical, reloaded.
+- mutation: AC1 `ConfigPort.ReloadAfterSet` reloads nothing -> `NlsDefaultRead.TestTheSwitchReachesTheNodeSeamAndTheReloadRunsOnlyWhenItMoved` red; reverted byte-identical, reloaded.
+- mutation: AC2 `LocaleValidate.View` adds the answer's first `Warnings` line to its result -> `LocaleRead.TestTheToolHoldsNoVendorLine` (lines fed through `LocaleValidateSeam`) and `TestValidateAgreesWithTheVendorByPortAndToolAndTheToolHoldsNoLine` (key set) red; reverted byte-identical, reloaded.
+- mutation: AC3 `osmgmt.locales.install` `true` in `Baseline` -> `LocaleRead.TestTheInstallAndDeleteKeysShipDisabledAndTheAgentIsRefusedAtDispatch` red; reverted byte-identical, reloaded.
+- mutation: AC3 `LocaleRules.Code` ignores the installable verdict -> `LocaleRules.TestTheRulesMatrix`, `TestTheMintAsksTheSameRules` and `TestAnInstallIsRefusedBeforeTheVendorAndAnswersTheCollationBeforeAndAfter` red; reverted byte-identical, reloaded.
+- mutation: AC4 the `y` check dropped from `LocaleRules.Code`'s delete -> `LocaleRules.TestTheRulesMatrix`, `TestADeleteIsRefusedBeforeTheVendorForASystemAndTheCurrentLocale` and `TestTheMintAsksTheSameRules` red (the current-locale check still held, so nothing was deleted); reverted byte-identical, reloaded.
+- AC5's mutation is Batch 2's.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: finalization commit refused by the pre-commit hook: `screen-mirror.mjs --check` rejects the new `LocaleList` descriptor (read source `locale` unknown to the client mirror; label keys absent from `strings.ts`), and both are Batch 2's files. The Batch 1 diff is complete, verified and staged (58 files), uncommitted; HEAD is still d438699e1. Resolution for the runner: either commit the staged Batch 1 diff with the hook's checks waived once (owner's call on `--no-verify`), or authorize the minimal client additions (the `locale` source in `ui/tools/screen-mirror.mjs`, saved as a patch in the scratch dir `e21u/21-14/b1impl/screen-mirror-locale-source.patch`, plus the ruled `strings.ts` keys and a regenerated `screens.generated.ts`) into Batch 1's commit.
 
-Re-plan pass: the narrowed story per the runner's rulings, from read-only probes on slot A (`ocupilot`); nothing ran against `ocupilot-ci`. Escalated for the spec gate: an AD-39 named exception for Validate's lines (recommended, with a fallback), three new strings, and Export's home.
+**Batch 1 (server) is done and reviewed; Batch 2 (client) is not started.** Once committed, the spec stays `in-progress` for Batch 2.
+
+- **Implemented:** `ConfigPort` `NLSDefaults` (19 table rows read-only plus the settable `LocaleFormat`, with `Source`, the `SendNlsNode` and `ReloadLocale` seams, `ReloadAfterSet`/`ReloadSteps`), `ConfigError.NLSRELOAD`; new `LocalePort`, `LocaleError`, `LocaleRules` (and the `GET /locales/:name/validation` route in `Router`); the `locale` read source (`Read`, `Registry`); tools `NlsDefaultSet`, `LocaleAction`, `LocaleInstall`, `LocaleDelete`, `LocaleValidate`; descriptors `NlsDefaultList` (OS management position 36) and `LocaleList` (37); add-only rows in `Baseline`, `EntityType`, `Prohibited`, `Api/Error`, `Titles`, `PortGate`, `ci-throwaway.sh`; new test classes `NlsDefaultRead`, `LocaleRead`, `LocaleRules`, `LocaleWrite` (armed) with their seams, and about 20 shared-surface tests brought to the new counts.
+- **Task 0** findings are under Design Notes (implement-stage decisions). No AD-10 predicate is needed; Install of another locale left smoke 50/50.
+- **Review:** 6 findings, patched 5 (two medium, three low), rejected 1 low (spec-bound); none deferred. Patched by the lead after the review layers returned: `LocaleValidateSeam` and `TestTheToolHoldsNoVendorLine`, the live delete case moved to the armed class, `LocaleWrite` start state and restore order, two mutation lines.
+- **Verification:** all 32 `(loop)` ObjectScript classes green on `ocupilot-ci` (implement pass); after the patches `LocaleRead` 11, `LocaleRules` 6, `LocaleWrite` 4, `NlsDefaultRead` 7 green; the AC1 (reload), AC2 and AC3 (installable) mutations observed red and reverted byte-identical; `check-objectscript.py` 0 problems; `lint-docs.sh` clean. `ocupilot-ci` is restored (locale `enuw`, no switch node, no custom locale). The `ui/tools` and component suites were not run: `screen-mirror.test.mjs` and the string tests stay red until Batch 2 adds the `locale` source and the `strings.ts` keys listed in the handoff.
+- **Follow-up review recommended:** true. Two medium test findings were patched (the new seam test and the moved live delete case) and no independent pass has read the patches.
+- **Residual risks:** AC3's read-back verdict is `nothingSent` for an install (an inference recorded under Design Notes). `Baseline`, `Prohibited`, `ci-throwaway.sh` and `PortGate` carry add-only edits inside rosters Epic 24 also changes, so expect a textual merge conflict there.
