@@ -1,0 +1,1 @@
+import{$ as Mx}from"./chunk-DeQKWfu9.js";function t(n){return n.toTimeString().slice(0,8)}function a(n,r,i){return r===`running`?Mx.databaseOperationRunning.replace(`<operation>`,()=>n).replace(`<time>`,()=>i===null?``:t(i)):r===`finished`?Mx.databaseOperationFinished.replace(`<operation>`,()=>n):r===`continues`?Mx.auditDatabaseStillRunning:``}export{t as n,a as t};
