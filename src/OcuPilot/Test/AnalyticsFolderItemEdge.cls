@@ -1,7 +1,8 @@
 /// <p>Pins the edges of Story 24.10's folder manager (Batch 2: AD-21, AD-54, AD-65) that <class>OcuPilot.Test.AnalyticsFolderItemTransfer</class> does not, against
 /// <code>USER</code> and through that class's helpers: an item the caller's resources hide is absent to the export, the delete and the reads, and held to the import; an
 /// import file past the text bound is <code>TOOLARGE</code> whether it is read from the server or sent from the browser, and one at the bound is judged by its shape; an
-/// import creates the items of its file and leaves every other item as it was; and the import's and the delete's cards name what they act on.</p>
+/// import creates the items of its file and leaves every other item as it was; an import or a delete the vendor answers short rolls back; and the import's and the
+/// delete's cards name what they act on.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it turns
 /// analytics on in <code>USER</code> and writes folder items and files there. It removes everything after the last test. One class per run.</p>
 Class OcuPilot.Test.AnalyticsFolderItemEdge Extends %UnitTest.TestCase
@@ -93,7 +94,7 @@ Method TestAnItemTheCallerCannotSeeIsAbsentAndItsNameIsTaken()
     Do $$$AssertEquals($ClassMethod(..#HIDDEN, "Calls") _ "|" _ $ClassMethod(..#BASE, "Snapshot"), "0|" _ tBefore, "no vendor call was made and nothing was written")
 }
 
-/// <p>The file text of <var>pPadding</var> spaces after the root of an export of the item <var>pName</var>, so that its length is exactly <var>pLength</var> characters.</p>
+/// <p>The file text of an export of the item <var>pName</var>, padded with spaces after its root so that its length is exactly <var>pLength</var> characters.</p>
 ClassMethod Padded(pName As %String, pLength As %Integer) As %String
 {
     Set tText = $ClassMethod(..#BASE, "Wrap", $ClassMethod(..#BASE, "Doc", pName))
@@ -155,6 +156,34 @@ Method TestTheImportsAndTheDeletesCardsNameWhatTheyActOn()
     Do $$$AssertEquals(..Fields(tRows, "before") _ "|" _ tProblem, "Name=F/A.dashboard;Type=Dashboard;Owner=u|", "the delete's card lists the name, the type and the owner")
     Set tSC = ##class(OcuPilot.Screen.Tool.AnalyticsFolderItemDelete).StateDiff({}, .tRows, .tProblem)
     Do $$$AssertEquals(tRows.%Size() _ "|" _ (tProblem '= ""), "0|1", "a read that names no target is a problem and builds no card")
+}
+
+/// <p>AC4: an import and a delete roll back when the vendor's answer does not match the request. An import that reports fewer items than its file holds is refused
+/// <code>IMPORTSHAPE</code>, and a delete that reports nothing deleted is <code>ABSENT</code>. Either way the globals are as they were, no transaction stays open and nothing is
+/// audited.</p>
+/// <p>Mutation (Rule 19): make <code>tShort</code> of <method>OcuPilot.Port.AnalyticsPort.PerformFolderImport</method> 0 -- the import leg goes red; commit when the delete
+/// reports none in <method>OcuPilot.Port.AnalyticsPort.PerformFolderDelete</method> -- the delete leg goes red.</p>
+Method TestAnImportOrADeleteTheVendorAnswersShortRollsBack()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tFirst = ..#MARKER _ "/Short/One.dashboard"
+    Set tText = $ClassMethod(..#BASE, "Wrap", $ClassMethod(..#BASE, "Doc", tFirst) _ $ClassMethod(..#BASE, "Doc", ..#MARKER _ "/Short/Two.dashboard"))
+    Set tBefore = $ClassMethod(..#BASE, "Snapshot")
+    Do $ClassMethod(..#HIDDEN, "Arm", "shortimport")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Import", tText, .tRes, .tFault), "409 ANALYTICS.FOLDERITEM.IMPORTSHAPE", "an import the vendor reports short is refused")
+    Do $$$AssertEquals($ClassMethod(..#HIDDEN, "Calls"), 1, "after one vendor call")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Snapshot") _ "|" _ $TLevel, tBefore _ "|0", "no item and no folder remain, and no transaction is left open")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Rows", tSince, tFirst, "analytics.folderitems.import"), 0, "and nothing was audited")
+    Set tName = ..#MARKER _ "/Kept.dashboard"
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Item", tName), tName, "the item to delete is saved")
+    Set tBefore = $ClassMethod(..#BASE, "Snapshot")
+    Do $ClassMethod(..#HIDDEN, "Reset")
+    Do $ClassMethod(..#HIDDEN, "Arm", "zerodelete")
+    Do $$$AssertEquals(..H("DELETE", tName, {}, .tRes, .tFault), "404 ANALYTICS.FOLDERITEM.ABSENT", "a delete the vendor reports as none is refused")
+    Do $$$AssertEquals($ClassMethod(..#HIDDEN, "Calls"), 1, "after one vendor call")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Exists", tName) _ "|" _ $TLevel, "1|0", "the item is there again, and no transaction is left open")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Snapshot"), tBefore, "and the globals are as they were")
+    Do $$$AssertEquals($ClassMethod(..#BASE, "Rows", tSince, tName, "analytics.folderitems.delete"), 0, "and nothing was audited")
 }
 
 /// <p>The rows <var>pRows</var> of a card as <code>field=value</code> pairs joined by <code>;</code>, the value being the row's <var>pMember</var> (<code>after</code> by default).</p>

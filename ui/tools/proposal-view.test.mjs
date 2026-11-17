@@ -1197,3 +1197,18 @@ test('Story 21.4: a setting whose change purges the cached queries states the pu
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.ConfigSettingSet/.test(tool(name)), `${name} inherits the code`);
   }
 });
+
+// Story 24.2 and Story 24.10: the agent's card for a term list delete, an entry remove and a folder item delete reads each one's published sentence.
+// Mutation (Rule 19): delete the `CONSEQUENCE_ANALYTICSFOLDERITEMDELETE` line from `consequenceSentence` -> the folder item case goes red on ''.
+test('Story 24.10: the analytics deletes and the entry remove state their consequence on the card', async () => {
+  const view = await import(corePath('proposal-view.ts'));
+  const cases = [
+    [view.CONSEQUENCE_ANALYTICSTERMLISTDELETE, STRINGS.analyticsTermListDeleteConsequence],
+    [view.CONSEQUENCE_ANALYTICSTERMLISTREMOVE, STRINGS.analyticsTermListRemoveConsequence],
+    [view.CONSEQUENCE_ANALYTICSFOLDERITEMDELETE, STRINGS.analyticsFolderItemDeleteConsequence],
+  ];
+  for (const [code, sentence] of cases) {
+    assert.ok(typeof sentence === 'string' && sentence !== '', `${code} has a published sentence`);
+    assert.equal(view.consequenceSentence(code), sentence, `${code} reads its published sentence`);
+  }
+});

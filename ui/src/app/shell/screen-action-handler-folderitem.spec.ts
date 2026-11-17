@@ -80,4 +80,14 @@ describe('the folder manager through the generic handler (Story 24.10)', () => {
     expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
     expect(calls[0].body).toEqual({ action: 'delete', id: ITEM });
   });
+
+  it('types the name the row shows, and sends the row key', async () => {
+    // Mutation (Rule 19): drop the Folder items' `TYPED_NAME_ROWS` entry -> the dialog asks for the row key and the name assertion goes red.
+    const { handler, store, calls } = mount();
+    handler.startFor(ITEMS, 'delete', 'Key/Other.dashboard', { Name: ITEM }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target]).toEqual(['typed-name', ITEM, 'Key/Other.dashboard']);
+    handler.confirmPending();
+    await settle();
+    expect(calls[0].body).toEqual({ action: 'delete', id: 'Key/Other.dashboard' });
+  });
 });

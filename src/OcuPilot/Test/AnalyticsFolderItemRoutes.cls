@@ -160,9 +160,10 @@ Method TestThePersonsExportImportAndDelete()
     Set tItem = ##class(%DeepSee.Dashboard.Definition).%New()
     Set tItem.fullName = tLocked
     Set tItem.locked = 1
-    Do tItem.%Save()
+    Set tSaved = tItem.%Save()
     Set tItem = ""
     Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSaved, "the locked item is saved")
     Do $$$AssertEquals($ClassMethod(..#BASE, "Act", "delete", tLocked, "", .tRefused) _ " " _ $Select($IsObject(tRefused): tRefused.%Get("code"), 1: ""), "409 ANALYTICS.FOLDERITEM.LOCKED", "Delete of a locked item is refused")
     Do $$$AssertEquals($ClassMethod(..#BASE, "Exists", tLocked), 3, "and leaves it")
     Do $$$AssertEquals($ClassMethod(..#BASE, "Rows", tSince, tName, "analytics.folderitems.export"), 2, "the two exports are audited")
@@ -269,9 +270,10 @@ Method TestTheAgentsMintRefusesWhatTheWriteWouldRefuse()
     Set tItem = ##class(%DeepSee.Dashboard.Definition).%New()
     Set tItem.fullName = tLocked
     Set tItem.locked = 1
-    Do tItem.%Save()
+    Set tSaved = tItem.%Save()
     Set tItem = ""
     Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSaved, "the locked item is saved")
     Do $$$AssertStatusOK($ClassMethod(..#FILES, "WriteFile", "refuse.xml", $ClassMethod(..#BASE, "Wrap", $ClassMethod(..#BASE, "Doc", tHeld))), "the file is written")
     Do $$$AssertStatusOK($ClassMethod(..#FILES, "WriteFile", "free.xml", $ClassMethod(..#BASE, "Wrap", $ClassMethod(..#BASE, "Doc", ..#MARKER _ "/Free.dashboard"))), "a second file is written")
     Set tTaken = $ClassMethod(..#BASE, "FileQuery", "refuse.xml")

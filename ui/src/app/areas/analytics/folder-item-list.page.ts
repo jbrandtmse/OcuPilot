@@ -50,7 +50,7 @@ export function exportFileName(name: string): string {
  *
  * **Export and Import are this page's own actions**, registered on the descriptor after injecting the shell's handler, whose construction
  * registers the list's declared Delete (a typed-name confirm of the item's full name). Export is the row action: it acts on the selected item, to
- * a server file named by the picker or to this browser, which saves the answered lines as `<item>.xml`. Import is registered under the
+ * a server file named by the picker or to this browser, which saves the answered lines under the name `exportFileName` gives the item. Import is registered under the
  * screen-level `TASK_IMPORT_ACTION_ID`, which names a file and no row: a server file, or one this browser reads as text and sends, never storing
  * it; the file names the items it creates. A refusal keeps the dialog open, on the picker's field where it names one; an applied write closes it
  * and the status line reads what was done. An item deleted, by the person's Delete or the agent's confirmed proposal, is the same line.

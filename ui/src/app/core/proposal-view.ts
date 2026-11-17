@@ -410,10 +410,9 @@ export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
-
-/** The folder item delete's consequence code (Story 24.10). */
-export const CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
+/** Story 24.10: the folder item delete; one published sentence. */
+export const CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */

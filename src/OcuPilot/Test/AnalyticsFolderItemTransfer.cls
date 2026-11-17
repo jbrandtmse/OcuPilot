@@ -3,10 +3,9 @@
 /// <class>OcuPilot.Test.ExplorerTransferProbe</class>'s directory. The port legs are the story's matrix through
 /// <class>OcuPilot.Test.AnalyticsTermListSeam</class>, which counts the vendor calls: an export to a file and to the browser, the round trip, the classic
 /// page's file, a file that holds more than folder items, a taken name, a file that changed after its review, an import that fails after the vendor
-/// returned, a delete and its refusals, a path that is refused, each write's script form and OcuPilot's own audit rows. The route legs drive both callers
-/// over HTTP: the person's Export, Import and Delete, and the agent's three proposals, minted and confirmed.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
-/// <class>OcuPilot.Test.Http</class>'s account, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it turns analytics on in
+/// returned, a delete and its refusals, a path that is refused, each write's script form and OcuPilot's own audit rows. It also holds the helpers its
+/// sibling classes call, the HTTP ones (<method>Act</method>, <method>Post</method>, <method>Confirm</method>) for <class>OcuPilot.Test.AnalyticsFolderItemRoutes</class>.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it turns analytics on in
 /// <code>USER</code> and writes folder items and files there. It removes everything after the last test. One class per run.</p>
 Class OcuPilot.Test.AnalyticsFolderItemTransfer Extends %UnitTest.TestCase
 {
@@ -72,7 +71,8 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Delete every item whose name starts with the marker, hidden ones too, then every folder of that name, deepest first, in <code>USER</code>.</p>
+/// <p>Delete every item whose full name starts with the marker, hidden ones too, then every folder whose full name does, deepest first, in <code>USER</code>.
+/// Nothing outside the marker's folders is touched: a folder's delete also deletes the items it holds.</p>
 ClassMethod Sweep()
 {
     Set tOrigNS = $NAMESPACE
@@ -87,7 +87,7 @@ ClassMethod Sweep()
             If $IsObject(tItem) && ($ZConvert($Extract(tItem.fullName, 1, $Length(..#MARKER)), "U") = $ZConvert(..#MARKER, "U")) Do ##class(%DeepSee.UserLibrary.FolderItem).%DeleteId(tIds(tAt))
             Set tItem = ""
         }
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT %ID FROM %DeepSee_UserLibrary.Folder WHERE folder IS NOT NULL OR name %STARTSWITH ? ORDER BY LENGTH(%ID) DESC", ..#MARKER)
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT %ID FROM %DeepSee_UserLibrary.Folder WHERE fullName %STARTSWITH ? ORDER BY LENGTH(fullName) DESC", ..#MARKER)
         While tRS.%Next() {
             If ##class(%DeepSee.UserLibrary.Folder).%ExistsId(tRS.%GetData(1)) Do ##class(%DeepSee.UserLibrary.Folder).%DeleteId(tRS.%GetData(1))
         }
@@ -112,7 +112,7 @@ ClassMethod Marked() As %String
             If $IsObject(tItem) && ($ZConvert($Extract(tItem.fullName, 1, $Length(..#MARKER)), "U") = $ZConvert(..#MARKER, "U")) Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tItem.fullName
             Set tItem = ""
         }
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT %ID FROM %DeepSee_UserLibrary.Folder WHERE name %STARTSWITH ?", ..#MARKER)
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT %ID FROM %DeepSee_UserLibrary.Folder WHERE fullName %STARTSWITH ?", ..#MARKER)
         While tRS.%Next() {
             Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ "folder " _ tRS.%GetData(1)
         }
@@ -423,11 +423,15 @@ Method TestTheClassicPagesFileImportsBothItems()
 /// <p>AC4, AC5: a file that holds more than folder items, or none, or something the import cannot read as one, is refused <code>IMPORTSHAPE</code> by the write and by
 /// the read composed for it, before any vendor call. No class of the file is defined, no item is created, and the globals are as they were. A file of 101 items is
 /// <code>TOOLARGE</code>.</p>
-/// <p>Mutation (Rule 19): admit a <code>Class</code> child in <method>OcuPilot.Port.AnalyticsPort.FolderItemsInText</method> (treat any element as an item) -- the mixed-file leg goes red.</p>
+/// <p>Mutation (Rule 19): admit a <code>Class</code> child in <method>OcuPilot.Port.AnalyticsPort.FolderItemsInText</method> (treat any element as an item) -- the mixed-file leg goes red;
+/// skip a child of <code>Export</code> that is not a <code>Document</code> -- the routine leg goes red; drop the check that the document before held an item -- the
+/// empty-document leg goes red.</p>
 Method TestAFileThatHoldsMoreThanFolderItemsCreatesNothing()
 {
     Set tOne = ..#MARKER _ "Mix.dashboard"
     Set tEvil = "<Document name=""" _ ..#MARKER _ "Evil.cls""><Class name=""" _ ..#MARKER _ "Evil""><Super>%RegisteredObject</Super></Class></Document>"
+    Set tTopClass = "<Class name=""" _ ..#MARKER _ "Evil""><Super>%RegisteredObject</Super></Class>"
+    Set tTopRoutine = "<Routine name=""" _ ..#MARKER _ "EvilR"" type=""MAC""><![CDATA[ Quit]]></Routine>"
     Set tLib = " xmlns=""http://www.intersystems.com/deepsee/library"""
     Set tMany = ""
     For tAt = 1:1:101 {
@@ -435,7 +439,7 @@ Method TestAFileThatHoldsMoreThanFolderItemsCreatesNothing()
     }
     Set tBefore = ..Snapshot()
     Do $ClassMethod(..#SEAM, "Reset")
-    For tCase = $ListBuild("a class and an item", ..Wrap(tEvil _ ..Doc(tOne))), $ListBuild("a class alone", ..Wrap(tEvil)), $ListBuild("no document", ..Wrap("")), $ListBuild("a folder", "<folder" _ tLib _ " name=""" _ ..#MARKER _ "Dir""/>"), $ListBuild("a document of another type", ..Wrap("<Document name=""x.LUT""><lookupTable/></Document>")), $ListBuild("a document with no item", ..Wrap("<Document name=""a.dashboard.DFI""></Document>")), $ListBuild("a document with two items", ..Wrap($Replace(..Doc(tOne), "</Document>", "<dashboard" _ tLib _ " name=""Other"" folderName=""""/></Document>"))), $ListBuild("one item twice, in two cases", ..Wrap(..Doc(tOne) _ ..Doc($ZConvert(tOne, "U")))), $ListBuild("an item outside the library namespace", "<dashboard name=""" _ ..#MARKER _ "Ns"" folderName=""""/>"), $ListBuild("an item with no name", "<dashboard" _ tLib _ " folderName=""""/>"), $ListBuild("a document type definition", "<!DOCTYPE dashboard [<!ENTITY e ""x"">]><dashboard" _ tLib _ " name=""" _ ..#MARKER _ "Dtd"" folderName=""""/>"), $ListBuild("text that is no XML", "not a folder item") {
+    For tCase = $ListBuild("a class and an item", ..Wrap(tEvil _ ..Doc(tOne))), $ListBuild("a class alone", ..Wrap(tEvil)), $ListBuild("no document", ..Wrap("")), $ListBuild("a folder", "<folder" _ tLib _ " name=""" _ ..#MARKER _ "Dir""/>"), $ListBuild("a document of another type", ..Wrap("<Document name=""x.LUT""><lookupTable/></Document>")), $ListBuild("a document with no item", ..Wrap("<Document name=""a.dashboard.DFI""></Document>")), $ListBuild("a document with two items", ..Wrap($Replace(..Doc(tOne), "</Document>", "<dashboard" _ tLib _ " name=""Other"" folderName=""""/></Document>"))), $ListBuild("one item twice, in two cases", ..Wrap(..Doc(tOne) _ ..Doc($ZConvert(tOne, "U")))), $ListBuild("an item outside the library namespace", "<dashboard name=""" _ ..#MARKER _ "Ns"" folderName=""""/>"), $ListBuild("an item with no name", "<dashboard" _ tLib _ " folderName=""""/>"), $ListBuild("a document type definition", "<!DOCTYPE dashboard [<!ENTITY e ""x"">]><dashboard" _ tLib _ " name=""" _ ..#MARKER _ "Dtd"" folderName=""""/>"), $ListBuild("text that is no XML", "not a folder item"), $ListBuild("a class beside an item, as the instance exports it", ..Wrap(tTopClass _ ..Doc(tOne))), $ListBuild("a routine beside an item", ..Wrap(..Doc(tOne) _ tTopRoutine)), $ListBuild("a document with no item before one with an item", ..Wrap("<Document name=""e.dashboard.DFI""></Document>" _ ..Doc(tOne))) {
         Do $$$AssertEquals(..Import($List(tCase, 2), .tRes, .tFault), "409 ANALYTICS.FOLDERITEM.IMPORTSHAPE", $List(tCase, 1) _ " is refused")
         Set tExtra = {"fileName": "a.xml", "content": ($List(tCase, 2))}
         Do $$$AssertEquals(..T("IMPORTFILE", "import", tExtra, .tRead, .tFault, "IMPORT"), "409 ANALYTICS.FOLDERITEM.IMPORTSHAPE", $List(tCase, 1) _ " is refused by the read composed for the import")
@@ -503,9 +507,10 @@ Method TestADeleteRemovesAnUnlockedItemAndRefusesALockedOrAbsentOne()
     Set tItem = ##class(%DeepSee.Dashboard.Definition).%New()
     Set tItem.fullName = tLocked
     Set tItem.locked = 1
-    Do tItem.%Save()
+    Set tSaved = tItem.%Save()
     Set tItem = ""
     Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSaved, "the locked item is saved")
     Do $$$AssertEquals(..Exists(tLocked), 3, "the locked item reads locked")
     Set tBefore = ..Snapshot()
     Do $ClassMethod(..#SEAM, "Reset")
@@ -615,9 +620,10 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Set tItem = ##class(%DeepSee.Dashboard.Definition).%New()
     Set tItem.fullName = tLocked
     Set tItem.locked = 1
-    Do tItem.%Save()
+    Set tSaved = tItem.%Save()
     Set tItem = ""
     Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSaved, "the locked item is saved")
     Do $$$AssertEquals(..RunScript(..Script("DELETE", tLocked)) _ "|" _ ..Exists(tLocked), "0|3", "a locked item's script only sets the refusal and leaves it")
 }
 

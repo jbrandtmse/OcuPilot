@@ -3,7 +3,8 @@
 /// <class>OcuPilot.Test.AnalyticsTermListGate</class> drive the port's refusals and its rollback in process. Every call that is not failed
 /// is made on the vendor, in <code>USER</code>.</p>
 /// <p>Since Story 24.10 it counts the folder manager's three vendor calls too (<code>VendorFolderItem*</code>), <code>failimport</code> answers an error
-/// after the vendor's import of folder items has returned, and <code>readonly</code> applies to the folder item database as to the term list one.</p>
+/// after the vendor's import of folder items has returned, <code>shortimport</code> reports one item fewer than the import saved, <code>zerodelete</code>
+/// reports no item deleted after the vendor's delete returned, and <code>readonly</code> applies to the folder item database as to the term list one.</p>
 /// <p><method>Arm</method> names the mode: <code>failsecond</code> (the second <code>%SetValue</code> since <method>Reset</method> answers an
 /// error), <code>throwsecond</code> (it raises an exception instead), <code>failthird</code> (the third <code>%SetValue</code> answers an error, which an import or a copy of a list with entries reaches), <code>failhide</code> (the hide-value write answers an error), <code>nonjournaled</code> (the term list database reads as not journaled), <code>unknownjournal</code> (its journal state cannot be
 /// read) or <code>readonly</code> (it reads as mounted read-only). <method>Calls</method> counts the vendor calls made, an export's included.</p>
@@ -119,6 +120,7 @@ ClassMethod VendorFolderItemImport(pNamespace As %String, pText As %String, Outp
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ##super(pNamespace, pText, .pLoaded, .pCaught)
     If $$$ISOK(tSC) && '$IsObject(pCaught) && ($Get(^||OcuPilotTermListSeam("mode")) = "failimport") Quit $$$ERROR($$$GeneralError, "armed failure after the import returned")
+    If $$$ISOK(tSC) && '$IsObject(pCaught) && ($Get(^||OcuPilotTermListSeam("mode")) = "shortimport") Set pLoaded = pLoaded - 1
     Quit tSC
 }
 
@@ -128,7 +130,9 @@ ClassMethod VendorFolderItemDelete(pNamespace As %String, pName As %String, Outp
     Set pCount = 0
     Set tSC = ..Count("delete")
     If $$$ISERR(tSC) Quit tSC
-    Quit ##super(pNamespace, pName, .pCount, .pCaught)
+    Set tSC = ##super(pNamespace, pName, .pCount, .pCaught)
+    If $$$ISOK(tSC) && '$IsObject(pCaught) && ($Get(^||OcuPilotTermListSeam("mode")) = "zerodelete") Set pCount = 0
+    Quit tSC
 }
 
 /// <p>The armed journal state of the term list database, else the instance's own.</p>

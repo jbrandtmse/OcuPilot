@@ -149,6 +149,53 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `37b3429e
 - **AC7 (declared, governed, audited, rostered).** Given the three tools. When the roster tests run. Then each tool declares `write`, the port and `%DeepSee.UI.FolderManager`; `Baseline.cls` holds the export and import keys at `true` and the delete key at `false`; each write records `ConfigChange`; and `SurfaceCoverage`, `GovernanceBaseline`, `ClassicPageGate`, `MappingDescriptor` and `DraftRegistry` hold their rows, where removing one row reddens that test alone.
 - **AC8 (leaves USER as found).** When any new or changed test ends, no marker item, folder, probe file or directory remains.
 
+### Review Findings
+
+Code review of Batch 2, 2026-11-17 (four layers, `full-opus`): 0 decision-needed, 11 patch (applied), 3 defer, 27 rejected.
+
+- [x] [Review][Patch] **medium** `Sweep` deleted every nested folder in `USER`, and with it every item those folders held, not only the marker's [src/OcuPilot/Test/AnalyticsFolderItemTransfer.cls:91] — now matches the folder's `fullName` by the marker, deepest first; `Marked` reports nested marker folders too. A foreign `ZzReviewKeep2410/Sub/Keep.dashboard` survived a run of `AnalyticsFolderItemBounds`.
+- [x] [Review][Patch] **medium** The agent's delete card could lose its consequence sentence with every test green [ui/src/app/core/proposal-view.ts:610] — `proposal-view.test.mjs` asserts `consequenceSentence` for the folder item delete, the term list delete and the entry remove.
+- [x] [Review][Patch] **medium** The import's short-count rollback and the delete's nothing-deleted rollback never ran [src/OcuPilot/Port/AnalyticsPort.cls PerformFolderImport, PerformFolderDelete] — seam modes `shortimport` and `zerodelete`, and `AnalyticsFolderItemEdge.TestAnImportOrADeleteTheVendorAnswersShortRollsBack`.
+- [x] [Review][Patch] **medium** AC5's mixed file wrapped the class in a `.cls` `Document`, which the instance never writes [src/OcuPilot/Test/AnalyticsFolderItemTransfer.cls:440] — added a class and a routine directly under `Export` beside an item, and an empty `.DFI` document before a populated one.
+- [x] [Review][Patch] **low** AC3's shipped-off delete key had no recorded mutation [src/OcuPilot/Kernel/Governance/Baseline.cls:273] — run and recorded under Verification.
+- [x] [Review][Patch] **low** `ReadTool`'s message still counted 265 write tools [src/OcuPilot/Test/ReadTool.cls:94] — 268.
+- [x] [Review][Patch] **low** Stale test prose: `AnalyticsFolderItemTransfer`'s header claimed route legs, `AnalyticsFolderItemBounds` described a leg it does not run and kept an unused variable, `AnalyticsFolderItemEdge.Padded` named an argument it lacks [src/OcuPilot/Test/AnalyticsFolderItem{Transfer,Bounds,Edge}.cls].
+- [x] [Review][Patch] **low** The EXPERIENCE.md row omitted the 100-item `TOOLARGE` case and the browser file name's mapping; the page's doc comment said `<item>.xml` [EXPERIENCE.md:610, ui/src/app/areas/analytics/folder-item-list.page.ts:53].
+- [x] [Review][Patch] **low** `CONSEQUENCE_ANALYTICSFOLDERITEMDELETE` split the term list delete and remove constants [ui/src/app/core/proposal-view.ts:414].
+- [x] [Review][Patch] **low** The locked-item fixtures discarded their `%Save()` status [src/OcuPilot/Test/AnalyticsFolderItem{Routes,Transfer}.cls] — each is asserted.
+- [x] [Review][Defer] **medium** DW-2710 (escalated, burndown): the proposed AD-65 line omits `%GetFolderItemClasses`, and no AD-15 case records that the vendor audits no folder item write — for U-106's attended spine update.
+- [x] [Review][Defer] **low** DW-2711 (decision-pending, burndown): "Imported 1 folder items." has no singular, as DW-2658 for 24.9 — a new shipped string.
+- [x] [Review][Defer] **low** DW-2712 (wontfix-accepted, Rule 2): the folder item export and import tools repeat about 90 and 120 lines of the term list tools under a weak reason.
+
+Rejected:
+
+- `FolderItems/DELETE` absent from `COMPOSEDTYPES` — false: `TermLists/DELETE` is absent too, and the delete carries no query argument beyond the id.
+- `%DeleteFolderItem` removes case-variant duplicates — low: the vendor's own semantics, as the classic Delete; such duplicates need direct object writes.
+- A name requested in another case acts on the stored item — false: the vendor's names are case-insensitive, and the row and fingerprint carry the stored name.
+- Races between the taken check and `%Import`, and between the delete's read and the vendor call — low: narrow windows; `%Import` refuses a held name itself.
+- `folderName` with a leading, trailing or doubled `/` — low: a crafted file only, and the guard adds branches.
+- `Utf8Stream` may split a surrogate pair at a 30,000-character boundary — maybe-false: unknown whether `$ZConvert` joins pairs (inference); low if so.
+- A non-UTF-8 encoding declaration — low: both exports write UTF-8.
+- The import script names a too-large or refused path as the shape sentence — low: the refusal branch is mirrored and only the sentence differs, as Batch 1's.
+- The export script with `root` and no `path` — false: `FileProblem` requires both at both callers.
+- The agent's `Name` of `import` — low: Batch 1's ruling; the card lists the file's items.
+- A browser export with no lines saves an empty file — false: a 200 export always answers lines, the declaration first.
+- Folders in an unjournaled database apart from the items — low: the DeepSee globals map together.
+- The import script does not re-check the file when run — low: the person runs shown text with their own rights, and `%Import` loads no class.
+- `export-browser` needs `%Admin_FileSystemAccess:USE` — spec-bound (Boundaries, as Batch 1's export).
+- The delete status line ignores the namespace — low: bus events carry none, and a cross-namespace confirm under an open page is unlikely.
+- Test helpers switch `$NAMESPACE` without a `Try` — low.
+- `AnalyticsError.FolderItemCodes` has no caller — low: mirrors `TermListCodes`.
+- QA's class and roster line are uncommitted — false: the runner commits them with this review.
+- The mint answers `TOOL.ARGUMENTS` for an absent item — false: the kernel's mint refusal, as the term list's (`AnalyticsTermListTransfer`:709).
+- AC4's gate rows run for one caller — low: one port gate serves both callers.
+- AC5 is driven at the port only — rejected in the implement review.
+- The taken check reads 0 when `%OpenId` fails — low: `%Import` refuses a held name.
+- AC7 names `DraftRegistry`, whose rows are derived — fix edits the spec.
+- Script refusal legs assert only that the run failed — low: the vendor fails it too; asserting the text adds machinery.
+- The QA bullet's "slash in a folder" — fix edits the spec.
+- The device form of the export script is never run — low.
+
 ## Spec Change Log
 
 - 2026-11-17, spec gate: the runner kept decisions 1 and 2 (import refuses non-folder-item content; create-only), the proposed strings, and the proposed spine lines for the owner's attended update (veto item U-106).
@@ -296,6 +343,16 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `37b3429e
 - mutation (client): `endSend` reading `root` for the path, the import count read as `'0'`, the bus test on `'created'` and `exportFileName` keeping `/`, each alone -> `folder-item-list.page.spec.ts` went red (four tests); `'export'` dropped from the Folder items' `UNDRAWN_ACTIONS` entry -> `screen-action-handler-folderitem.spec.ts` went red; the Folder items' `DESTRUCTIVE_CONSEQUENCES` entry dropped, rebuilt and redeployed -> `analytics.browser-spec.mjs` (the Story 24.10 test, its row menu) went red, and green after the revert, rebuild and redeploy. The `TYPED_NAME_ROWS` entry dropped left the handler spec and the browser spec green: the dialog types the item's name whether or not the entry is declared, so that entry is unproven by any mutation (the spec's Code Map lists it, as it does for the term lists').
 
 - mutation (review pass, `AnalyticsFolderItemEdge`, throwaway source copy reloaded, reverted by `rsync --checksum` and `diff -r`, byte-identical): `FolderItemVisible` answering 1 for 2 -> `TestAnItemTheCallerCannotSeeIsAbsentAndItsNameIsTaken` went red; the vendor import's `pKill` argument made 1 -> `TestAnImportLeavesEveryOtherItemAsItWas` went red; `FolderItemImportFile` passing the term list's too-large code -> `TestAnImportFilePastTheTextBoundIsTooLargeAndOneAtTheBoundIsRead` went red; `AnalyticsFolderItemImport.StateDiff` pushing no `Items` row -> `TestTheImportsAndTheDeletesCardsNameWhatTheyActOn` went red.
+
+- (QA) `src/OcuPilot/Test/AnalyticsFolderItemBounds.cls` (new, armed by `OCUPILOT_ALLOW_PRINCIPALS`, rostered in `scripts/ci-throwaway.sh`): a file of exactly 100 items read and one of 101 `TOOLARGE` (local, server, composed read, write); an item name or folder holding a slash or a control character, or past 255 characters, `IMPORTSHAPE`, and one at 255 read; a `.dfi` document read in any case.
+- (QA) `ui/src/app/shell/screen-action-handler-folderitem.spec.ts` (changed): the typed-name dialog asks for the row's `Name`, not the row key.
+- mutation (QA): the import bound of `FolderItemsInText` made `MAXIMPORTITEMS - 1` -> `AnalyticsFolderItemBounds` `TestAFileOfOneHundredItemsIsReadAndOneOfOneHundredAndOneIsTooLarge` went red; the slash test, the control-character test, the folder length test and the name length test each dropped alone -> `TestAnItemNameTheVendorCannotAddressIsRefusedAsShape` went red on that leg; the upper-casing of the document extension dropped -> `TestTheClassicFilesDocumentExtensionIsReadInAnyCase` went red. Each reverted by `rsync --checksum` and `diff -r`, byte-identical, and recompiled with its subclasses.
+- mutation (QA, client): the Folder items' `TYPED_NAME_ROWS` entry dropped -> `screen-action-handler-folderitem.spec.ts` `types the name the row shows, and sends the row key` went red; this closes the implement-stage flag that no mutation pinned it.
+- mutation (QA): `AnalyticsFolderItemBounds` removed from the arming roster in `scripts/ci-throwaway.sh` -> `ci.test.mjs` `DW-1276` went red alone.
+- hermeticity (QA): `AnalyticsFolderItemEdge`, `AnalyticsFolderItemTransfer` and `AnalyticsFolderItemRoutes` each ran green on `ocupilot-b-ci` in a different order from the spec's, each alone, and `USER` held no folder item, no folder and no probe directory after the last, the governance policy as found.
+
+- mutation (code review, `ocupilot-b-ci` source copy reloaded and compiled with its subclasses, reverted by `rsync --checksum` and `diff -r`, byte-identical): `tShort` of `PerformFolderImport` made 0 and the delete's rollback made `If tFailed` -> `AnalyticsFolderItemEdge` `TestAnImportOrADeleteTheVendorAnswersShortRollsBack` went red on both legs; a non-`Document` child of `Export` skipped and the empty-document check dropped in `FolderItemsInText` -> `AnalyticsFolderItemTransfer` `TestAFileThatHoldsMoreThanFolderItemsCreatesNothing` went red on the routine and empty-document legs; `analytics.folderitems.delete` shipped `true` in `Baseline.cls` -> `AnalyticsFolderItemRoutes` `TestTheDeleteKeyShipsOffForTheAgentOnly` went red.
+- mutation (code review, client, reverted by `cmp`): the `CONSEQUENCE_ANALYTICSFOLDERITEMDELETE` line dropped from `consequenceSentence` -> `proposal-view.test.mjs` `Story 24.10: the analytics deletes and the entry remove state their consequence on the card` went red.
 
 ## Auto Run Result
 
