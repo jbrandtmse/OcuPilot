@@ -6,7 +6,7 @@
 /// <class>OcuPilot.Kernel.Fault</class> (AD-12, AD-39).</p>
 /// <p>The port calls the body in the caller's process, behind stub <code>%request</code>,
 /// <code>%response</code> and <code>%session</code>, with the body's device output captured and
-/// discarded (AD-1, AD-61).</p>
+/// discarded unless the handler takes it (AD-1, AD-61).</p>
 Class OcuPilot.Port.HarvestPort Extends %RegisteredObject
 {
 
@@ -62,7 +62,8 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <code>PORT.ACCESSDENIED</code>, 404 <code>PORT.NOTFOUND</code>, 409 <code>PORT.CONFLICT</code>, 400
 /// <code>PORT.VALIDATION</code>, 501 <code>PORT.NOTIMPLEMENTED</code>, otherwise 500), and the raw
 /// text logged once. No render or several, or an exception, is 500 <code>INTERNAL</code>, logged.
-/// The body's device output is discarded.</li>
+/// The body's device output is discarded unless its handler takes it (<method>OcuPilot.Port.Harvest.Handler.OnCaptured</method>,
+/// called after an OK render with the namespace restored; AD-39's eighth exception).</li>
 /// </ul>
 /// <p>The answer follows the port convention. <var>pFault</var> is
 /// <code>{error, reason, code[, detail]}</code> and is empty on success; the returned status is an
@@ -149,6 +150,13 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
             Set tSC = ..Fail($Get(pHandler) _ "." _ $Get(pMethod) _ " raised an exception", tCaught.AsStatus(), .pHttpStatus, .pFault)
         } Else {
             Set tSC = ..Answer(pHandler, pMethod, tStub, .pResult, .pHttpStatus, .pFault, .pConsole)
+            If $$$ISOK(tSC) && $IsObject(pResult) {
+                Set tCapturedSC = $ClassMethod(pHandler, "OnCaptured", $Select($IsObject($Get(tLines)): tLines, 1: []), pResult)
+                If $$$ISERR(tCapturedSC) {
+                    Set pResult = ""
+                    Set tSC = ..Fail($Get(pHandler) _ "." _ $Get(pMethod) _ " could not take its captured output", tCapturedSC, .pHttpStatus, .pFault)
+                }
+            }
         }
     } Catch exAnswer {
         Set pResult = ""

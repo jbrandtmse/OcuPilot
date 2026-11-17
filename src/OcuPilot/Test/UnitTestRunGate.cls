@@ -38,6 +38,9 @@ Property RootHad As %Boolean;
 
 Property RootWas As %String(MAXLEN = "");
 
+/// <p>The audit clock when the test began, so a row it counts is one this test could have caused.</p>
+Property Since As %String;
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -59,6 +62,9 @@ Method OnBeforeOneTest() As %Status
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $ClassMethod(..#FIXTURE, "Clear")
     Do $ClassMethod(..#FIXTURE, "SetLockName", ..#LOCKNAME)
+    ; The audit stamps a row a little after the call that wrote it, so the clock is read once the last test's rows are behind it.
+    Hang 0.25
+    Set ..Since = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tNs = ..#NAMESPACE
     Set ..RootHad = ($Data(^|tNs|UnitTestRoot) # 2)
     Set ..RootWas = $Get(^|tNs|UnitTestRoot)
@@ -220,6 +226,29 @@ Method TestARunWithTheKeyOnIsOneBodyCallWithThePortsKeysOnly()
     Do $$$AssertStatusOK(..Act("OcuProbe245", "package", .tPackageStatus, .tPackageAnswer), "a package-level Run answers")
     Set tPackageCall = $ClassMethod(..#RECORDER, "CallAt", 1)
     Do $$$AssertEquals(tPackageStatus _ "|" _ tPackageCall.query.level _ "|" _ tPackageCall.query.classes, "200|package|OcuProbe245.Mixed", "and sends the one test class the checks passed")
+}
+
+/// <p>A run whose body answered writes one OcuPilot <code>SecurityChange</code> row that names the console <code>unittests</code> and
+/// the namespace and never the tests it named; a run the port refused, and a run whose body faulted, write none.</p>
+/// <p>Mutation (Rule 19): remove the <code>AuditRun</code> call from <method>OcuPilot.Port.DevToolPort.RunLocked</method> -- the
+/// row count goes red.</p>
+Method TestARunWritesOneAuditRowThatNamesNoTests()
+{
+    Do ..EnableKey()
+    Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 7, "passed": 1, "failed": 1}.%ToJSON())
+    Do $$$AssertStatusOK(..Act("OcuProbe245.Nope", "class", .tRefusedStatus, .tRefused), "a run of a class that is not there is asked")
+    Do $$$AssertTrue(tRefusedStatus '= 200, "and the port refuses it: " _ tRefusedStatus)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests"""), 0, "and writes no row")
+    Do $ClassMethod(..#RECORDER, "Clear")
+    Do $ClassMethod(..#RECORDER, "SetFault")
+    Do $$$AssertStatusOK(..Act(..#MIXED, "class", .tFaultStatus, .tFault), "a run whose body faults is answered")
+    Do $$$AssertEquals(tFaultStatus _ "|" _ ##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests"""), "500|0", "500, and writes no row")
+    Do $ClassMethod(..#RECORDER, "Clear")
+    Do $ClassMethod(..#RECORDER, "SetAnswer", {"run": 7, "passed": 1, "failed": 1}.%ToJSON())
+    Do $$$AssertStatusOK(..Act(..#MIXED, "class", .tStatus, .tAnswer), "the route answers")
+    Do $$$AssertEquals(tStatus, 200, "the Run is applied")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(..Since, "SecurityChange", """console"":""unittests""", .tData, """namespace"":""USER"""), 1, "one row names the console and the namespace")
+    Do $$$AssertTrue(tData '[ "OcuProbe245", "and not the tests: " _ tData)
 }
 
 /// <p>A run whose tests leave a transaction open is rolled back to the level it began at before the root global is put back,

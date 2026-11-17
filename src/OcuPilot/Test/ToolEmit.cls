@@ -325,9 +325,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({"Namespace": "USER"}, .tExpectedAddedResolved)
             Do $$$AssertTrue($ListLength(tExpectedAdded) > 0, tTool.name _ ": the expected argument pair, WRITE on the other namespace's routines database, resolves")
-        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerUnitTestRun" {
-            ; Story 24.5: the unit-test run declares its screen's pairs alone; the port adds the namespace's database pairs, WRITE on
-            ; its routines database included, and names the one it finds missing (AD-8).
+        } ElseIf $Parameter(tTool.class, "PERSONGATE") '= "" {
+            ; Stories 24.5 and 24.6: a tool that runs code as the person (PERSONGATE) declares its screen's pairs alone; the port adds
+            ; the namespace's database pairs, WRITE on its routines database included, and names the one it finds missing (AD-8).
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {

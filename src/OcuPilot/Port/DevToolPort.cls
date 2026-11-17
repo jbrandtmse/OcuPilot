@@ -1,7 +1,8 @@
 /// <p>The port to the developer-tool bodies that count a namespace's lines, hash its documents, compare two
-/// namespaces' documents and run a namespace's unit tests (AD-23, AD-29): the only caller of
-/// <class>OcuPilot.Port.Harvest.Loc</class>, <class>OcuPilot.Port.Harvest.EnvSync</class> and
-/// <class>OcuPilot.Port.Harvest.UnitTestRun</class>, through <class>OcuPilot.Port.HarvestPort</class>.
+/// namespaces' documents, run a namespace's unit tests and run a person's command or class method (AD-23, AD-29): the only
+/// caller of <class>OcuPilot.Port.Harvest.Loc</class>, <class>OcuPilot.Port.Harvest.EnvSync</class>,
+/// <class>OcuPilot.Port.Harvest.UnitTestRun</class> and <class>OcuPilot.Port.Harvest.ConsoleRun</class>, through
+/// <class>OcuPilot.Port.HarvestPort</class>.
 /// Nothing here issues an HTTP request, and nothing here names a class of the source code API.</p>
 /// <p>The bodies refuse a bad request in a way the harvest port answers as an internal fault, and
 /// neither caps what it scans, so <b>the order of every call is fixed</b> and nothing reaches a body
@@ -70,6 +71,13 @@
 /// <method>UnitTest</method> sets out; a run is the one write here that runs the code of the classes it names, as the
 /// signed-in person, and OcuPilot cannot see what that code changes. It is a person's alone (AD-10): the tool that reaches it
 /// is never advertised, and it declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter>.</p>
+/// <p><b>Consoles</b> (Story 24.6). Two more endpoints, <parameter>ENDPOINTCOMMAND</parameter> and
+/// <parameter>ENDPOINTCLASSMETHOD</parameter>, read what a console run would run (<parameter>TYPESTATE</parameter>) and run
+/// it (<parameter>TYPERUN</parameter>): an ObjectScript command, or a class method with its arguments, in a namespace, as the
+/// signed-in person. They take the order of checks <method>Console</method> sets out, after step 1 above, and a run writes one
+/// OcuPilot <code>SecurityChange</code> row naming the console and the namespace and never the command, the arguments or the
+/// answer (<method>AuditRun</method>). Each is a person's alone (AD-10): the tool that reaches it is never advertised and
+/// declares <parameter>OcuPilot.Screen.Tool.Write.PERSONGATE</parameter>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>HarvestPortClass</method>,
 /// <method>AtelierPortClass</method>, <method>MaxDocuments</method>, <method>MaxTestClasses</method>,
 /// <method>LockName</method> and <method>LogFault</method>. Production overrides none.</p>
@@ -112,7 +120,7 @@ Parameter TYPEPROMOTE = "PROMOTE";
 
 /// <p>The <code>endpoint/type</code> pairs whose writes this port composes from the query it is given, and sends no caller
 /// body for.</p>
-Parameter COMPOSEDTYPES = "NamespaceDiff/PROMOTE,UnitTestRun/RUN";
+Parameter COMPOSEDTYPES = "NamespaceDiff/PROMOTE,UnitTestRun/RUN,Command/RUN,ClassMethod/RUN";
 
 /// <p>The endpoint that runs a namespace's unit tests (<parameter>TYPERUN</parameter>) and reads what a run would run
 /// (<parameter>TYPESTATE</parameter>); the endpoint listing a namespace's recorded runs, newest first; and the endpoint
@@ -168,6 +176,51 @@ Parameter FAILUREMAX As INTEGER = 2000;
 Parameter HANDLERUNITTEST = "OcuPilot.Port.Harvest.UnitTestRun";
 
 Parameter METHODUNITTEST = "Run";
+
+/// <p>The two console endpoints (Story 24.6): a command, and a class method. Each serves <parameter>TYPESTATE</parameter> and
+/// <parameter>TYPERUN</parameter>.</p>
+Parameter ENDPOINTCOMMAND = "Command";
+
+Parameter ENDPOINTCLASSMETHOD = "ClassMethod";
+
+/// <p>The query keys a console request reads: the command, the class and the method, and the arguments as a JSON array's text.
+/// The run's target is the literal <parameter>IDVALUECOMMAND</parameter> or <parameter>IDVALUECLASSMETHOD</parameter>
+/// under <parameter>IDKEY</parameter> (AD-13): a run is made in a namespace, not against a named object.</p>
+Parameter COMMANDKEY = "command";
+
+Parameter CLASSKEY = "class";
+
+Parameter METHODKEY = "method";
+
+Parameter ARGSKEY = "args";
+
+Parameter IDVALUECOMMAND = "command";
+
+Parameter IDVALUECLASSMETHOD = "classmethod";
+
+/// <p>The longest command this port reads, and the most arguments a class method takes.</p>
+Parameter COMMANDMAX As INTEGER = 30000;
+
+Parameter MAXARGUMENTS As INTEGER = 20;
+
+/// <p>The shape a class name takes and the shape a method name takes, each with an optional leading <code>%</code>.</p>
+Parameter CLASSPATTERN = "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
+
+Parameter METHODPATTERN = "^%?[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>The console bodies, and their methods: the command's and the class method's.</p>
+Parameter HANDLERCONSOLE = "OcuPilot.Port.Harvest.ConsoleRun";
+
+Parameter METHODCOMMAND = "Command";
+
+Parameter METHODCLASSMETHOD = "ClassMethod";
+
+/// <p>The sentences a console's own input refusals carry.</p>
+Parameter REASONCOMMANDSHAPE = "Enter the command on one line, up to 30,000 characters.";
+
+Parameter REASONCLASSMETHODSHAPE = "Name a class and one of its class methods with letters, digits, dots and %.";
+
+Parameter REASONARGUMENTSSHAPE = "Give the arguments as a list in square brackets of at most 20 values: text, numbers, true or false, or a by-reference value.";
 
 /// <p>The sentence a target or level outside <parameter>TESTSPATTERN</parameter>'s shape carries.</p>
 Parameter REASONTESTSSHAPE = "Name a package, a class, or Class:Method with letters, digits and dots.";
@@ -305,7 +358,7 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <p>The endpoints this port serves, as a list.</p>
 ClassMethod Endpoints() As %List
 {
-    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES, ..#ENDPOINTNAMESPACEDIFF, ..#ENDPOINTUNITTESTRUN, ..#ENDPOINTUNITTESTRUNS, ..#ENDPOINTUNITTESTMETHODS)
+    Quit $ListBuild(..#ENDPOINTCODEMETRICS, ..#ENDPOINTDOCUMENTHASHES, ..#ENDPOINTNAMESPACEDIFF, ..#ENDPOINTUNITTESTRUN, ..#ENDPOINTUNITTESTRUNS, ..#ENDPOINTUNITTESTMETHODS, ..#ENDPOINTCOMMAND, ..#ENDPOINTCLASSMETHOD)
 }
 
 /// <p>Serve <var>pEndpoint</var> for request type <parameter>TYPELIST</parameter>, or, for
@@ -357,6 +410,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If $ListFind(..UnitTestEndpoints(), pEndpoint) {
             Set tSC = ..UnitTest(pEndpoint, pType, .pQuery, tPairs, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $ListFind(..ConsoleEndpoints(), pEndpoint) {
+            Set tSC = ..Console(pEndpoint, pType, .pQuery, tPairs, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
@@ -493,6 +550,245 @@ ClassMethod LockName() As %String
 ClassMethod UnitTestEndpoints() As %List
 {
     Quit $ListBuild(..#ENDPOINTUNITTESTRUN, ..#ENDPOINTUNITTESTRUNS, ..#ENDPOINTUNITTESTMETHODS)
+}
+
+/// <p>The two console endpoints, as a list.</p>
+ClassMethod ConsoleEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTCOMMAND, ..#ENDPOINTCLASSMETHOD)
+}
+
+/// <p>Serve one of the two console endpoints, after <method>Invoke</method>'s first step. The read answers
+/// <code>{Namespace, Command}</code> for the command console and <code>{Namespace, Class, Method, Arguments,
+/// ArgumentCount}</code> for the class method console, <code>Arguments</code> the list as sent and <code>ArgumentCount</code>
+/// its length; the run answers what its body rendered, the code's own error included (<code>error</code>), and never raises
+/// one of that code's as a fault.</p>
+/// <p>Every check precedes any body, in this order, and a refusal records no body call and writes no audit row:</p>
+/// <ol>
+/// <li>The namespace's shape, then <method>OcuPilot.Port.AtelierPort.WritePairs</method>, refused 400
+/// <code>PORT.VALIDATION</code> when they answer <code>""</code> and evaluated like step 1 of <method>Invoke</method>
+/// otherwise.</li>
+/// <li>The request type: <parameter>TYPESTATE</parameter> or <parameter>TYPERUN</parameter>, else 501.</li>
+/// <li>The input's shape, 400 <code>PORT.VALIDATION</code>: a command of 1 to <parameter>COMMANDMAX</parameter> characters
+/// with no control character; a class name and a method name (<parameter>CLASSPATTERN</parameter>,
+/// <parameter>METHODPATTERN</parameter>); and arguments that are a JSON array of at most <parameter>MAXARGUMENTS</parameter>
+/// values, each a text, a number, a boolean or a by-reference marker.</li>
+/// <li>The <parameter>OWNSEGMENT</parameter> screen, 400 <parameter>OcuPilot.Api.AtelierError.COMMANDOWNCODE</parameter> or
+/// <parameter>OcuPilot.Api.AtelierError.CLASSMETHODOWNCODE</parameter>: a command that names it in any letter case, and a
+/// class whose first segment is it. It is a screen: code reached by indirection passes it.</li>
+/// <li>For a class method, its resolution (<method>ClassMethodFound</method>): a compiled, public class method of the
+/// namespace, else 404 <parameter>OcuPilot.Api.AtelierError.CLASSMETHODNOTFOUND</parameter>.</li>
+/// </ol>
+/// <p>The run then calls <parameter>HANDLERCONSOLE</parameter> through the harvest port with the pairs of the gate and the
+/// namespace, rolls back any transaction the code left open to the level the run began at, and writes the audit row
+/// (<method>AuditRun</method>) for a run whose body answered. No <code>OcuPilot.*</code> class is called while the namespace is
+/// switched.</p>
+ClassMethod Console(pEndpoint As %String, pType As %String, ByRef pQuery, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tCommand = (pEndpoint = ..#ENDPOINTCOMMAND)
+    Set tFailedPair = ""
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+    }
+    Set tNamespacePairs = ##class(OcuPilot.Port.AtelierPort).WritePairs(tNamespace)
+    If tNamespacePairs = "" {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    }
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", tNamespacePairs, .tFailedPair) {
+        Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    }
+    If (pType '= ..#TYPESTATE) && (pType '= ..#TYPERUN) {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+
+    Set tText = $Get(pQuery(..#COMMANDKEY))
+    Set tClass = $Get(pQuery(..#CLASSKEY))
+    Set tMethod = $Get(pQuery(..#METHODKEY))
+    Set tArgs = $Get(pQuery(..#ARGSKEY))
+    If tCommand {
+        If '..CommandShapeOK(tText) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCOMMANDSHAPE, .pHttpStatus, .pFault)
+        }
+        If $ZConvert(tText, "L") [ ..#OWNSEGMENT {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#COMMANDOWNCODE, ##class(OcuPilot.Api.AtelierError).#REASONCOMMANDOWNCODE, .pHttpStatus, .pFault)
+        }
+    } Else {
+        If '$Match(tClass, ..#CLASSPATTERN) || '$Match(tMethod, ..#METHODPATTERN) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCLASSMETHODSHAPE, .pHttpStatus, .pFault)
+        }
+        If '..ArgumentsShapeOK(tArgs, .tArgCount) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONARGUMENTSSHAPE, .pHttpStatus, .pFault)
+        }
+        If $ZConvert($Piece(tClass, ".", 1), "L") = ..#OWNSEGMENT {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#CLASSMETHODOWNCODE, ##class(OcuPilot.Api.AtelierError).#REASONCLASSMETHODOWNCODE, .pHttpStatus, .pFault)
+        }
+        Set tFoundSC = ..ClassMethodFound(tNamespace, tClass, tMethod, .tFound)
+        If $$$ISERR(tFoundSC) {
+            Quit ..Fail("the class method could not be resolved", tFoundSC, .pHttpStatus, .pFault)
+        }
+        If 'tFound {
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#CLASSMETHODNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONCLASSMETHODNOTFOUND, .pHttpStatus, .pFault)
+        }
+    }
+
+    If pType = ..#TYPESTATE {
+        Set pResult = {}
+        Do pResult.%Set("Namespace", tNamespace, "string")
+        If tCommand {
+            Do pResult.%Set("Command", tText, "string")
+        } Else {
+            Do pResult.%Set("Class", tClass, "string")
+            Do pResult.%Set("Method", tMethod, "string")
+            Do pResult.%Set("Arguments", tArgs, "string")
+            Do pResult.%Set("ArgumentCount", tArgCount, "number")
+        }
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..RunConsole(tCommand, tNamespace, tText, tClass, tMethod, tArgs, pPairs _ tNamespacePairs, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pText</var> is a command this port takes: 1 to <parameter>COMMANDMAX</parameter> characters, not blank, and
+/// with no control character, so it is one line. Pure.</p>
+ClassMethod CommandShapeOK(pText As %String) As %Boolean
+{
+    If $IsObject(pText) || ($Length(pText) > ..#COMMANDMAX) Quit 0
+    If $ZStrip(pText, "<>W") = "" Quit 0
+    Quit $ZStrip(pText, "*C") = pText
+}
+
+/// <p>Whether <var>pText</var> is an argument list this port takes, and in <var>pCount</var> how many it holds: empty, or the
+/// text of a JSON array of at most <parameter>MAXARGUMENTS</parameter> values, each a text, a number or a boolean, or an
+/// object <code>{"byRef": &lt;boolean&gt;, "value": &lt;scalar&gt;}</code> whose value may be left out only for a
+/// <code>true</code> <code>byRef</code>. A <code>null</code>, a nested array and any other object are refused. Pure.</p>
+ClassMethod ArgumentsShapeOK(pText As %String, Output pCount As %Integer) As %Boolean
+{
+    Set pCount = 0
+    If pText = "" Quit 1
+    Set tOK = 1
+    Try {
+        Set tArray = ##class(%DynamicAbstractObject).%FromJSON(pText)
+        If '$IsObject(tArray) || 'tArray.%IsA("%Library.DynamicArray") || (tArray.%Size() > ..#MAXARGUMENTS) {
+            Set tOK = 0
+            Quit
+        }
+        Set pCount = tArray.%Size()
+        For tI = 0:1:pCount - 1 {
+            Set tType = tArray.%GetTypeOf(tI)
+            If (tType = "null") || (tType = "array") {
+                Set tOK = 0
+                Quit
+            }
+            If tType '= "object" Continue
+            Set tEntry = tArray.%Get(tI)
+            Set tValueType = tEntry.%GetTypeOf("value")
+            If (tEntry.%GetTypeOf("byRef") '= "boolean") || (tValueType = "null") || (tValueType = "object") || (tValueType = "array") || ((tValueType = "unassigned") && 'tEntry.%Get("byRef")) {
+                Set tOK = 0
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tOK = 0
+    }
+    If 'tOK Set pCount = 0
+    Quit tOK
+}
+
+/// <p>Whether <var>pNamespace</var> holds a compiled, public class method <var>pMethod</var> of the class <var>pClass</var>, in
+/// <var>pFound</var>. While the namespace is switched only the class dictionary is read, and it is restored first in the
+/// <code>Catch</code>.</p>
+ClassMethod ClassMethodFound(pNamespace As %String, pClass As %String, pMethod As %String, Output pFound As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCompiled = ##class(%Dictionary.CompiledMethod).%OpenId(pClass _ "||" _ pMethod)
+        If $IsObject(tCompiled) {
+            Set pFound = tCompiled.ClassMethod && 'tCompiled.Private
+        }
+        Set tCompiled = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pFound = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Run the console's body for the input the checks passed, in <var>pNamespace</var>, under <var>pPairs</var>, answering what the
+/// body rendered in <var>pResult</var>. Any transaction the code left open is rolled back to the level the run began at, on
+/// every path, before anything else is written. A run whose body answered writes its audit row; one the harvest port refused
+/// or whose body raised writes none.</p>
+ClassMethod RunConsole(pCommand As %Boolean, pNamespace As %String, pText As %String, pClass As %String, pMethod As %String, pArgs As %String, pPairs As %List, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tLevel = $TLevel
+    Try {
+        Kill tQuery
+        Set tQuery("namespace") = pNamespace
+        If pCommand {
+            Set tQuery("command") = pText
+        } Else {
+            Set tQuery("class") = pClass
+            Set tQuery("method") = pMethod
+            If pArgs '= "" Set tQuery("args") = pArgs
+        }
+        Set tBodySC = $ClassMethod(..HarvestPortClass(), "Invoke", ..#HANDLERCONSOLE, $Select(pCommand: ..#METHODCOMMAND, 1: ..#METHODCLASSMETHOD), pPairs, .tQuery, "", .tAnswer, .tHttp, .tFault, .tConsole)
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        If $$$ISERR(tBodySC) {
+            Set pHttpStatus = tHttp
+            Set pFault = tFault
+            Set tSC = tBodySC
+            Quit
+        }
+        If pCommand {
+            Do ..AuditRun(..#IDVALUECOMMAND, pNamespace, "", "")
+        } Else {
+            Do ..AuditRun(..#IDVALUECLASSMETHOD, pNamespace, pClass, pMethod)
+        }
+        Set pResult = tAnswer
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        While $TLevel > tLevel {
+            TRollback 1
+        }
+        Set tSC = ..Fail("the console run failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Record OcuPilot's own <code>SecurityChange</code> row for a run of <var>pConsole</var> (<parameter>IDVALUECOMMAND</parameter>,
+/// <parameter>IDVALUECLASSMETHOD</parameter> or <code>unittests</code>), because the instance audits none of what a person's
+/// own code does (AD-15). The row names the console and the namespace and, for a class method, the class and the method, and
+/// never the command, the arguments, the tests or the answer. It never fails the run: a row that cannot be recorded is
+/// logged.</p>
+ClassMethod AuditRun(pConsole As %String, pNamespace As %String, pClass As %String, pMethod As %String) [ Private ]
+{
+    Try {
+        Set tEffects = {}
+        Do tEffects.%Set("console", pConsole, "string")
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pClass '= "" {
+            Do tEffects.%Set("class", pClass, "string")
+            Do tEffects.%Set("method", pMethod, "string")
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record("run", "class", pConsole, {}, 1, tEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the console run could not be audited", tSC)
+    } Catch ex {
+        Do ..LogFault("the console run could not be audited", ex.AsStatus())
+    }
 }
 
 /// <p>Serve one of the three unit-test endpoints, after <method>Invoke</method>'s first step. The run and its read answer
@@ -725,6 +1021,7 @@ ClassMethod RunLocked(pNamespace As %String, pTests As %String, pLevel As %Strin
             Set tSC = tBodySC
             Quit
         }
+        Do ..AuditRun(..#IDVALUE, pNamespace, "", "")
         If '$IsObject($Get(tAnswer)) || (+tAnswer.%Get("run") < 1) {
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT, ##class(OcuPilot.Api.AtelierError).#REASONUNITTESTNORESULT, .pHttpStatus, .pFault)
             Do ..LogFault("the unit-test run recorded no result", tSC, ##class(OcuPilot.Api.AtelierError).#UNITTESTNORESULT)
@@ -1564,13 +1861,15 @@ ClassMethod Audit(pNamespace As %String, pTarget As %String, pReplaced As %Integ
     }
 }
 
-/// <p><code>objectscript</code> for a namespace diff's <parameter>TYPEPROMOTE</parameter> and a unit-test
-/// <parameter>TYPERUN</parameter>; <code>""</code> for every other request, which has no script form (AD-59). A person-only
-/// run mints no proposal, so its script is never offered; it is the form the port rule asks of every write.</p>
+/// <p><code>objectscript</code> for a namespace diff's <parameter>TYPEPROMOTE</parameter>, a unit-test
+/// <parameter>TYPERUN</parameter> and a console's <parameter>TYPERUN</parameter>; <code>""</code> for every other request, which
+/// has no script form (AD-59). A person-only run mints no proposal, so its script is never offered; it is the form the port rule
+/// asks of every write.</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint = ..#ENDPOINTNAMESPACEDIFF) && (pType = ..#TYPEPROMOTE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTUNITTESTRUN) && (pType = ..#TYPERUN) Quit "objectscript"
+    If $ListFind(..ConsoleEndpoints(), pEndpoint) && (pType = ..#TYPERUN) Quit "objectscript"
     Quit ""
 }
 
@@ -1592,6 +1891,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     If pEndpoint = ..#ENDPOINTUNITTESTRUN Quit ..RunSnippet(.pQuery)
+    If $ListFind(..ConsoleEndpoints(), pEndpoint) Quit ..ConsoleSnippet(pEndpoint, .pQuery)
     Set tSource = $Get(pQuery(..#NAMESPACEKEY))
     Set tTarget = $Get(pQuery(..#TARGETKEY))
     Kill tCreate
@@ -1666,6 +1966,33 @@ ClassMethod RunSnippet(ByRef pQuery) As %DynamicArray [ Private ]
     Set tText = tText _ " Do ##class(%UnitTest.Manager).RunTest(" _ ..Literal(":" _ tTests) _ ", ""/noload/nodelete/norecursive"") If tHad { Set ^UnitTestRoot = tOld } Else { Kill ^UnitTestRoot }"
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p>A console run as a script (AD-59). The command console is one <code>objectscript</code> step: a switch to the namespace
+/// the query names, then the command itself. The class method console is one <code>comment</code> step that names the class
+/// and the method, because its arguments are the person's own and a script never carries them. A step longer than
+/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter>, or a class and method of the wrong shape, answers no
+/// step.</p>
+ClassMethod ConsoleSnippet(pEndpoint As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tStep = {}
+    If pEndpoint = ..#ENDPOINTCOMMAND {
+        Set tCommand = $Get(pQuery(..#COMMANDKEY))
+        If '..CommandShapeOK(tCommand) Quit []
+        Set tText = " Set $NAMESPACE = " _ ..Literal(tNamespace) _ " " _ tCommand
+        If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit []
+        Do tStep.%Set("kind", "objectscript", "string")
+        Do tStep.%Set("text", tText, "string")
+        Quit [(tStep)]
+    }
+    Set tClass = $Get(pQuery(..#CLASSKEY))
+    Set tMethod = $Get(pQuery(..#METHODKEY))
+    If '$Match(tClass, ..#CLASSPATTERN) || '$Match(tMethod, ..#METHODPATTERN) Quit []
+    Do tStep.%Set("kind", "comment", "string")
+    Do tStep.%Set("text", "Call the class method " _ tClass _ "." _ tMethod _ " in the namespace " _ tNamespace _ " with the arguments you entered.", "string")
     Quit [(tStep)]
 }
 

@@ -170,7 +170,9 @@ XData Elsewhere
 <screen name="ExplorerClassDocument"/>
 <screen name="ExplorerClassEditor"/>
 <screen name="ExplorerClassList"/>
+<screen name="ExplorerClassMethod"/>
 <screen name="ExplorerCodeMetrics"/>
+<screen name="ExplorerCommand"/>
 <screen name="ExplorerCompare"/>
 <screen name="ExplorerDocDbList"/>
 <screen name="ExplorerDocumentHashes"/>

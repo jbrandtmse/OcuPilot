@@ -2,9 +2,10 @@
 title: 'Story 24.6: The command and class-method consoles'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '230e912913dfd532dc8b68c63b3ecfa442934a35'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred: []
@@ -223,6 +224,30 @@ In every refusal row, the recorder records no body call and no audit row is writ
 
 ## Review Triage Log
 
+### 2026-11-16 -- Review pass
+
+- verdicts: 19 findings -- high 0, medium 2, low 17, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A class method's output budget (what the return value leaves of 32,768) had no test -- added probe method `Both` and `ConsoleRoundTrip.TestAClassMethodsReturnAndOutputShareOneBudget`; mutation recorded and observed red.
+  - `[medium]` `[patch]` No test that a run whose harvest call faulted writes no row, and `UnitTestRunGate`'s refused leg was refused by the key, not the port -- added `DevToolHarvestRecorder.SetFault`, `ConsoleGate.TestARunWhoseBodyFaultedWritesNoRow` and a fault leg in `UnitTestRunGate`, with the key on before the refused leg and its status asserted; both mutations observed red.
+  - `[low]` `[patch]` AC9's guarded-store leg had no recorded mutation -- the guard dropped alone stays green (the principal also holds no write on OcuPilot's data, observed); the comment and the Verification line now say so.
+  - `[low]` `[reject]` AC1's mutation line names the server tier, not the browser spec -- the browser spec asserts the same round trip through the route, and the mutation reddens the tier that owns the code; no named harm.
+  - `[low]` `[patch]` `runRows` read a failed lookup as zero rows -- one assertion that the marker was present.
+  - `[low]` `[reject]` The browser Cancel check can pass while a run is in flight -- `console.page.spec.ts` pins Cancel by recorded requests, so the browser leg is a redundant second look.
+  - `[low]` `[reject]` Context and discovery checks in the two person-only subclasses are negative-only -- the AC6 mutation reddens the tool-level checks; an empty but valid answer is not a reachable defect.
+  - `[low]` `[reject]` `RunLocked` writes the unit-test row before its no-result check -- a run that reached its body is a run; the row is intended.
+  - `[low]` `[reject]` `ConsoleSnippet` has no test -- no console tool mints a proposal, so nothing reaches it (inference: `Draft` is its only caller).
+  - `[low]` `[reject]` Body-answer rows run against real bodies at the port tier and against canned answers at the route tier -- the browser specs run route plus real body for the command, class-method and by-reference rows (AC1, AC2); no row is unpinned.
+  - `[low]` `[reject]` The Gate row is asserted at the port, and the browser asserts the named pair in text rather than `detail.failedPair` -- the route's 403 envelope is Story 24.5's, unchanged.
+  - `[low]` `[reject]` The audit row is written when the harvest port answers OK, not whenever a body was entered -- the body's own errors are answered 200 and audited; a harvest-port fault is a failed call, and the spec's notes say so.
+  - `[low]` `[patch]` The sibling's file name `Command.cls` stood in five comments of the harvested bodies -- renamed in comments only, `InvokeWithArgs`'s hash re-pinned, and the rename table's third entry recorded under Design Notes.
+  - `[low]` `[reject]` The harvested bodies keep the sibling's review-history comments -- the spec takes the bodies verbatim and pins each hash; stripping them would change the harvest.
+  - `[low]` `[reject]` The harvested capture-overflow flag and its `<MAXSTRING>` labels are inert here (inference) -- harmless unchanged code; cutting happens in `OnCaptured`.
+  - `[low]` `[reject]` The script form of a console run exists but is unreachable -- see the `ConsoleSnippet` row.
+  - `[low]` `[reject]` The gate is never compared with the vendor terminal's in the diff -- the Code Map and AD-10 carry the comparison, and the checks are stricter.
+  - `[low]` `[reject]` The browser agent test accepts either `TOOL.UNKNOWN` or `PROHIBITED.PERSONONLY` -- the ObjectScript tier pins each exactly.
+  - `[low]` `[reject]` Scope beyond the consoles: unit-test runs now write a row, and a failing `OnCaptured` is 500 -- both are orchestrator rulings (DW-2673, the hook), and no Never line bars them.
+
 ## Design Notes
 
 **Owner answer U-78 (2026-11-16):** both consoles are built under AD-10's run-code exception, which the spine already carries for 24.5 and which names this story. The condition, the DW-2634 fix, is met: `SetGuarded` and `GuardedApply` refuse a caller who is not an OcuPilot administrator (`AdminWriteRefused`, Story 21.30). The 24.5 mechanism serves unchanged, so there is no intent gap.
@@ -334,6 +359,29 @@ Written at the spec gate on 2026-11-16, citing owner answer U-78: AD-10's consol
 
   > **The eighth exception** [AMENDED 2026-11-16, Story 24.6 spec gate, owner answer U-78, Rule 20]: a console run's output, return value, by-reference values and error text (Story 24.6) reach the screen only, as text, and never the model, a tool result, a ledger row, an audit payload, a log line or screen context.
 
+### Implementation notes (measured and decided in the implement stage)
+
+**Task 0 (measured), on `ocupilot-b-ci`, from `HSCUSTOM` switched to `USER`, with a probe handler that extends `Harvest.Handler` and runs `HarvestPort.Invoke`'s capture steps (`BeginCapture`, the call, `EndCapture`):**
+
+1. `Xecute "Write ""a"",!,""b"""` and then a 40,000-character `Write` come back whole: three lines, `a`, `b` followed by the 40,000 characters (40,001), and `c`. The gate passed, and the story went ahead.
+2. A parent-class method called with `..` while switched (`..SanitizeError`) resolves in `USER`, as `..BuildTestSpec` does.
+3. The sibling's redirect form, bound to the probe's own routine and switched to `USER`, raises `<COMMAND>` at the `Xecute`, not `<NOROUTINE>`: it fails across namespaces either way, so it is not taken. Recorded only.
+
+**DW-2673 (measured):** a Story 24.5 run sent through the real action route (`UnitTestActionFixture`, the port's own checks, a canned body answer) with the key on answered 200 with one body call and wrote 0 OcuPilot audit rows since its start. A control `Event.Record` in the same window wrote 1, so the read sees OcuPilot's rows. `DevToolPort.RunLocked` therefore calls the same `AuditRun` the consoles do (console `unittests`, the namespace, never the tests), pinned by `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests`. The ledger entry is closed with this result.
+
+**Deviations from the spec's text, each mechanical:**
+
+- `STATE` answers `Arguments` as the list's text and adds `ArgumentCount` as the number. A count under `Arguments` cannot also be the settable field the write's query is composed from (`Mint.Merge` refuses a text for a number).
+- The Arguments hint is three strings of the source around two code examples, so the rendered sentence is the proposed one. A string holding double quotes cannot be one literal of EXPERIENCE.md's table. The lone `Write` is `permissionWrite`, and Class, Method, Arguments, Output, Return value and Error reuse their existing strings (every value in `strings.ts` is unique).
+- The rename table gains a third entry, in comments only: the sibling's file name `Command.cls` becomes "the command body" (five places), which re-pins `InvokeWithArgs`. The harvested bodies otherwise keep their own comments, as `Harvest.UnitTest` does, so each pinned hash covers them. The CRLF line ends are the instance's form of a stored method.
+- Test commands and fixture bodies write with `W`, since the write-discipline rule matches the word `Write` in any code line, strings included.
+- `UnitTestPersonOnly` gains three parameters (`LITERAL`, `ENDPOINT`, `QUERY`) and skips its read-tool legs when `READWIRENAME` is empty; `CommandPersonOnly` and `ClassMethodPersonOnly` override them.
+- New test files beyond the spec's list: `ConsoleActionFixture`, `ConsoleTool/Registry`, `RunCommand` and `RunClassMethod` (the route's fixture), and `HarvestCaptured` with its fixture (the `OnCaptured` hook, which no other test reached).
+- The two tools are two short copies, not one base: their values, reads and answers differ (Rule 31).
+- Audit: the port writes the row when the harvest port answers OK, so a recorder that answers a canned result also writes one; a refusal before the body, or a harvest-port fault, writes none.
+- The three audit-counting classes read the audit clock after a pause of a quarter second: a row is stamped a little after the call that wrote it, so a clock read right after the last test could count its rows.
+- The command and class-method tests the browser specs run hold the key on only after the page is open, since signing in puts the stored policy back to its defaults.
+
 ## Verification
 
 **Shared surfaces:** System Explorer side-bar positions 18 and 19; the registered and unadvertised tool rosters; the governance baseline and the stored policy; the `EXPLORER.*` code roster and EXPERIENCE.md's Fixed strings; `HarvestPort`'s answer (`OnCaptured`); `ToolEmit`'s person-gate branch. Every test added or changed passes on a fresh environment, in either order. Tests touch only `^||` nodes, locals and `OcuProbe246` in `USER`, which they make and remove. Tests that store a key restore the policy they found.
@@ -349,18 +397,36 @@ Written at the spec gate on 2026-11-16, citing owner answer U-78: AD-10's consol
 
 **Mutations (Rule 19), one per AC, recorded as `mutation:` lines by the implement stage:**
 
-- AC1: `OnCaptured` no longer sets `output`.
-- AC2: `ClassMethod()` drops `byRefValues`.
-- AC3: `outputBudget` is ignored in `OnCaptured`.
-- AC4: the `ocupilot` screen is made unreachable.
-- AC5: a tool's `PERSONGATE` is emptied.
-- AC6: `ADVERTISED 1`.
-- AC7: Run sends without the dialog.
-- AC8: one harvested line is changed.
-- AC9: a `WritePairs` pair is dropped.
-- AC10: the audit call is removed.
+- AC1: `OnCaptured` no longer sets `output`. mutation: deleted the `output` set in `ConsoleRun.OnCaptured` -> `ConsoleRoundTrip` went red (4 of 6 tests, among them `TestACommandAnswersItsOutputItsOwnErrorAndLeavesNoTransaction`), reverted byte-identical.
+- AC2: `ClassMethod()` drops `byRefValues`. mutation: deleted the `byRefValues` set in `ConsoleRun.ClassMethod` -> `ConsoleRoundTrip.TestAClassMethodAnswersItsReturnItsOutputAndItsByReferenceValues` red alone, reverted byte-identical.
+- AC3: `outputBudget` is ignored in `OnCaptured`. mutation: `tBudget` forced to 1,000,000 in `ConsoleRun.OnCaptured` -> `ConsoleRoundTrip.TestAnOutputPastTheCeilingIsCutWithTheMarker` red alone, reverted byte-identical.
+- AC4: the `ocupilot` screen is made unreachable. mutation: the command screen in `DevToolPort.Console` compared with a word no command holds -> `ConsoleGate.TestEveryRefusalRowAnswersItsStatusAndCodeAndRecordsNoCall` red alone, reverted byte-identical.
+- AC5: a tool's `PERSONGATE` is emptied. mutation: `ExplorerCommandRun`'s `PERSONGATE` emptied -> `ConsoleGate.TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun` red alone, reverted byte-identical.
+- AC6: `ADVERTISED 1`. mutation: `ExplorerCommandRun` `ADVERTISED 1` -> `CommandPersonOnly` red (`TestTheToolIsInNoListTheAgentSees`, `TestAToolTheAgentCanReachCannotRunTheTests`, `TestEveryWriteOfTheRunEndpointDeclaresThePersonGate`), reverted byte-identical.
+- AC7: Run sends without the dialog. mutation: `ConsolePage.onAsk` sends the run when the form is asked -> `console.page.spec.ts` red (the two dialog tests), reverted byte-identical.
+- AC8: one harvested line is changed. mutation: `pArgCount = 0` made `1` in `Console.InvokeWithArgs` -> `ConsoleRoundTrip.TestTheHarvestedMethodsAreTheSiblingsAfterTheRenames` red naming it, reverted byte-identical.
+- AC9: a `WritePairs` pair is dropped. mutation: `NamespacePairs` asked in place of `WritePairs` in `DevToolPort.Console` -> `ConsoleGate.TestACallerShortOfAPairIsRefusedByName` and the key-on test red, reverted byte-identical.
+- AC10: the audit call is removed. mutation: the `AuditRun` calls removed from `DevToolPort.RunConsole` -> `ConsoleRoundTrip.TestARunWritesOneRowThatNamesTheConsoleAndNothingTheyTyped` red alone, reverted byte-identical.
+- Review patches (AC2, AC10): mutation: `outputBudget` answered as `..#OUTPUTCEILING` in `ConsoleRun.ClassMethod` -> `ConsoleRoundTrip.TestAClassMethodsReturnAndOutputShareOneBudget` red alone (the two together 62,768). mutation: an `AuditRun` call placed before the harvest status check in `DevToolPort.RunConsole` -> `ConsoleGate.TestARunWhoseBodyFaultedWritesNoRow` red (with two others that count rows); the same in `RunLocked` -> `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests` red alone. Each reverted byte-identical (`cmp`).
+- AC9, OcuPilot's own state: mutation: the `AdminWriteRefused` guard dropped from `Switch.SetGuarded` -> `consoles-principals.browser-spec.mjs` stays green (observed): the principal holds no write on OcuPilot's data, so the instance also refuses the store. The guard itself is pinned by Story 21.30's tests; this leg pins that the principal's command changes nothing.
+- DW-2673: the `AuditRun` call removed from `DevToolPort.RunLocked` -> `UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests` red alone, reverted byte-identical.
+- Each server mutation was applied on `ocupilot-b-ci`, the whole `src` tree reloaded and the class run; after the revert the tree was reloaded and `git status` plus a hash of every changed and new file were equal to before.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The Command console and the Class method console are built on Story 24.5's `PERSONGATE` mechanism, unchanged: two unadvertised person-only tools, two keys that ship `false`, `DevToolPort`'s `Command` and `ClassMethod` endpoints, the harvested `Console` methods and `ConsoleRun` bodies over `HarvestPort` (with the `OnCaptured` hook, AD-39's eighth exception), one OcuPilot `SecurityChange` row per run that names no command, argument or answer, and one client page serving both consoles behind a warning dialog. Story 24.5's unit-test run now writes the same row (DW-2673).
+
+**Measurements.** Task 0: captured output survives a switch to `USER` (gate passed); a parent-class method resolves while switched; the sibling's redirect fails across namespaces (`<COMMAND>`). DW-2673: a 24.5 run at the action route wrote 0 OcuPilot rows against a control row of 1, so it was given the row and a test; the ledger entry is `resolved-by:24-6`. Details are under Design Notes.
+
+**Files changed.** About 54 paths: `Port/DevToolPort.cls`, `Port/HarvestPort.cls`, `Port/Harvest/{Handler,Console,ConsoleRun}.cls`, `Screen/Tool/Explorer{Command,ClassMethod}Run.cls`, `Screen/Descriptor/Explorer{Command,ClassMethod}.cls`, `Kernel/Governance/Baseline.cls`, `Api/AtelierError.cls`, `Screen/Titles.cls`, roster tests, the new `Console*` and `*PersonOnly` test classes and fixtures, `ui/src/app/areas/system-explorer/console.{store,page}.ts` with its spec, the strings, the screen mirror, EXPERIENCE.md's Fixed strings, two browser specs, and the `HARVEST_CALLERS` row in `scripts/check-objectscript.py`.
+
+**Review.** 19 findings, none high; 5 patched (2 medium, 3 low), 14 rejected with their reasons in the Review Triage Log. Patched: the class-method shared-budget test, the faulted-body no-row tests (recorder `SetFault`, `ConsoleGate` and `UnitTestRunGate`), the principals spec's lookup assertion and its honest AC9 mutation note, and `Command.cls` renamed in five harvested comments with `InvokeWithArgs` re-pinned. Patched counts by verdict: medium 2, low 3.
+
+**Follow-up review recommendation:** `followup_review_recommended: true` -- two medium entries were patched; the unverified risk is that the patch tests and the re-pinned `InvokeWithArgs` hash were verified by their own tests, mutations and the full sweep but no second reviewer read them.
+
+**Verification.** `ConsoleGate` 6, `ConsoleRoundTrip` 7, `CommandPersonOnly` 4, `ClassMethodPersonOnly` 4, `UnitTestRunGate` 9 tests green; both browser specs 9 of 9; `test:tools` 2296 of 2296; `test:components` 3519 of 3519; `check-objectscript.py` 0 problems and its harness OK; the full ObjectScript sweep green in all 17 shards (765 classes; shard 1 was rerun once after an earlier run of it was cut short by a call timeout and left a probe web application behind, then ran clean). Mutations: one per AC plus the review patches, each observed red and reverted; the one exception (the `SetGuarded` guard alone, AC9) stays green because the instance also refuses the principal, and is recorded as observed.
+
+**Residual risks.** The audit row is written when the harvest port answers OK, so a recorder's canned answer also writes one. The harvested bodies keep the sibling's in-body comments, since each pinned hash covers them. The new test classes are not yet in `ui/tools/ci-timings.json`; the merge gate refreshes it. The full browser suite is left to CI. `/tmp/t0` inside `ocupilot-b-ci` holds root-owned probe files from Task 0.

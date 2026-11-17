@@ -13478,3 +13478,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-5-unit-test-runner-and-work-queue-viewer.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: spec-24-5 Task 0 item 6; Kernel/Audit/Event.cls calls $System.Security.Audit; spec-24-6 plan reads 24.5 as unaudited
 - 2026-11-17T00:54:06Z status=routed owner=24-6-the-command-and-class-method-consoles by=runner note=24.6 adds one SecurityChange row per console run; measure 24.5's run at the route and give it the same row if absent
+- 2026-11-17T02:04:53Z status=resolved-by:24-6-the-command-and-class-method-consoles by=implement note=measured at the action route on ocupilot-b-ci: a 24.5 run wrote 0 OcuPilot rows while a control Event.Record wrote 1; DevToolPort.RunLocked now calls AuditRun (SecurityChange, console unittests, namespace, no tests); pinned by UnitTestRunGate.TestARunWritesOneAuditRowThatNamesNoTests, mutation red
