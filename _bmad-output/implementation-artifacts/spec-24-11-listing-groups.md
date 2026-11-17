@@ -2,11 +2,11 @@
 title: 'Story 24.11: Listing groups (Batch 1: the read surface)'
 type: 'feature'
 created: '2026-11-17'
-status: 'in-progress'
-baseline_revision: 'b5199c97eb3a915453398eb55af85d844a0ff5b6'
-baseline_commit: 'b5199c97eb3a915453398eb55af85d844a0ff5b6'
+status: 'done'
+baseline_revision: '99f2903966eedcfcd624b79fe5d50c873ad970ab'
+baseline_commit: '99f2903966eedcfcd624b79fe5d50c873ad970ab'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-2-the-analytics-editors.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md'
@@ -132,7 +132,7 @@ Rejected:
 - (spec) The Auto Run Result counts the gate class's tests as 6 (QA made it 7), and its follow-up note cites a twin-order risk QA's two-order test closed: the spec is `oversized`, and this review adds only this subsection and its mutation lines.
 - (low) AC4's journal scan does not cover the HTTP screen reads: ruled earlier, AC4 is scoped to the calling process.
 
-- [ ] [Smoke] `AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite` fails on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6f350eeb2) and passes on a second run: the scan sees `SET ^["^^/durable/iris/mgr/"]%SYS("sql","sys","SQLStatsSettings",1,"curr")`, IRIS's one-time SQL stats initialization, and the control write then also misses ("while the scan sees the control write made after them"). — `src/OcuPilot/Test/AnalyticsListingGroupRead.cls` `TestNoReadMakesAJournaledWrite` — the test must pass on the first run on a fresh instance and on a reused one, without blinding the scan to a real write by the reads (keep the $Bit-write mutation red): e.g. warm the process (one SQL statement and one vendor read) before the scan window opens, and make the control-write check independent of the stats write; then demonstrate both the fresh-instance pass (down/up the throwaway, run the class first) and the mutation.
+- [x] [Smoke] `AnalyticsListingGroupRead.TestNoReadMakesAJournaledWrite` fails on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6f350eeb2) and passes on a second run: the scan sees `SET ^["^^/durable/iris/mgr/"]%SYS("sql","sys","SQLStatsSettings",1,"curr")`, IRIS's one-time SQL stats initialization, and the control write then also misses ("while the scan sees the control write made after them"). — `src/OcuPilot/Test/AnalyticsListingGroupRead.cls` `TestNoReadMakesAJournaledWrite` — the test must pass on the first run on a fresh instance and on a reused one, without blinding the scan to a real write by the reads (keep the $Bit-write mutation red): e.g. warm the process (one SQL statement and one vendor read) before the scan window opens, and make the control-write check independent of the stats write; then demonstrate both the fresh-instance pass (down/up the throwaway, run the class first) and the mutation.
 
 ## Spec Change Log
 
@@ -159,6 +159,18 @@ Rejected:
   - `[false]` `[reject]` The journal scan does not cover the web process -- same as the AC4 row above.
   - `[false]` `[reject]` Other browser specs counting the Analytics side bar were not searched -- searched: the cube manager and term list specs find entries by label, not position.
   - `[low]` `[reject]` No browser assertion on the SQL cell -- the Listings table has no SQL column; the SQL rule is pinned at the port and over HTTP.
+
+### 2026-11-17 - Review pass (rework iteration 1, [Smoke] item)
+
+- verdicts: 7 findings - high 0, medium 0, low 3, false 2, maybe-false 0 (2 intent-alignment descriptive points folded into rows 1 and 2)
+- findings:
+  - `[low]` `[reject]` The warm-up pass leaves a write a read makes only on its first call in a process unscanned - the open item prescribes the warm-up; the AC4 doc comment now says so in one sentence.
+  - `[low]` `[patch]` The control-write assertion had no mutation line - removed the control `Set` in the throwaway's copy, the control assertion went red alone (records: 0); restored (`cmp` equal), green; line added under Verification.
+  - `[low]` `[patch]` The doc comment claimed a cached-query compile as a warm-up effect without evidence - the claim is deleted; only the measured SQL statistics settings record remains.
+  - `[low]` `[patch]` A journal roll-over (`JournalWrites` = -1) failed the no-write leg with no message - the message now names it.
+  - `[false]` `[reject]` Run-order dependence on the probe groups - the class's `OnBeforeAllTests` creates them and the removal test recreates them; unchanged by this diff.
+  - `[false]` `[reject]` Unproven "first run is green" - run 1 on the rebuilt throwaway is green; the line now cites runs 1 to 3.
+  - `[low]` `[reject]` Unused locals `tWarm` and `tSC` in the new helper and test - harmless, and removing them adds nothing.
 
 ## Design Notes
 
@@ -284,6 +296,8 @@ Story 24.12 also saves and compiles a class, so Question 2's ruling sets its pat
 
 - mutation (review, AC5 roster): the Listings row removed from `AnalyticsDescriptor` `SCREENS` -> `TestTheSevenDeclarationsRegister` went red on the new roster-equality assertion (run 889); reverted (`cmp` equal), reloaded, green (run 890).
 - mutation (review, AC4 scan): `Set $Bit(^OcuPilotProbeBit, 3) = 1` added to the listing groups branch of `Collect` -> `TestNoReadMakesAJournaledWrite` went red naming the `BitSET` record, which the old `BSET` prefix could not match (run 892); reverted (`cmp` equal), the global killed, reloaded, green (run 893).
+- mutation (AC4 scan, fresh-instance rework): `Set $Bit(^OcuPilotProbeBit, 3) = 1` added to the listing groups branch of `Collect` (the throwaway's copy only) -> `TestNoReadMakesAJournaledWrite` went red naming the `BitSET` record with the reads run twice and the window on the second pass; reverted (`cmp` equal), the global killed, reloaded, green. On a rebuilt throwaway the class's first run is green (run 1); with the mutation it was red (run 2) and after the revert green (run 3).
+- mutation (AC4 scan, control write): the `Set ^|"USER"|OcuPilotProbeAnalyticsScan = 1` line removed from the throwaway's copy of the class -> `TestNoReadMakesAJournaledWrite` went red on the control assertion alone; restored (`cmp` equal), reloaded, green.
 - mutation (review, Never list): `%RegisterRecentItem` called from the port -> `analytics.test.mjs` "Story 24.11: the port reads listing groups ..." went red ("and only those ListingGroup calls"); reverted (`cmp` equal), green.
 
 ## Auto Run Result
@@ -298,3 +312,8 @@ Blocking condition: none
 **Verified on `ocupilot-b-ci`.** The `(loop)` classes green (the two new classes after the review patches: 7 and 6 tests); the `(once)` sweep, shards 1 to 17 of 17, every shard green with 0 failed and no probe leftovers; `test:tools` 2,300 and `test:components` 3,538 green and `npm run build` green with the initial bundle at 2.11 MB (before the review patches, which touch no client file); `analytics.browser-spec.mjs` 7 of 7 and `analytics-links.browser-spec.mjs` 6 of 6 on the redeployed bundle; `check-objectscript` and `lint-docs` clean. Mutations are under Verification.
 
 **Residual risks.** The journal scan covers journaled databases of the calling process only. `ci-timings.json` has no row for the two new classes. The full browser suite is left to CI.
+
+**Rework iteration 1 ([Smoke] item, this pass only).** `TestNoReadMakesAJournaledWrite` now runs the reads twice (new helper `ReadEverything`): the first pass is a warm-up and the journal window covers the second, and the control write is found by name among the window's records instead of by their count. Fresh instance: after `down` and `up` of `ocupilot-b-ci` the class's first run was green (run 1), where before the change the first run was red on the SQL statistics settings record; a reused instance is green (runs 3 and 5). Mutations under Verification: the `$Bit` write in `Collect` is red, the control write removed is red. Test-only change, so no full sweep (Rule 29); `check-objectscript` and `lint-docs` clean. Follow-up review recommendation: false (no high patched; 3 low patched).
+
+Status: done
+Blocking condition: none
