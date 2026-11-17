@@ -13698,6 +13698,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
 - 2026-11-17T21:35:37Z status=decision-pending owner=burndown by=cr note=product call: what Valid means without compiling (IsValid alone, or IsValid and IsLoadable), and whether the dialog states Installable
 - 2026-11-17T21:45:05Z status=routed owner=21-14-nls-configured-defaults-and-locale-definitions by=unattended note=decided_veto_U-109:Valid=IsValid_alone,no_Installable_in_Validate;built_in_21.14_rework_1
+- 2026-11-17T22:24:35Z status=resolved-by:21-14-nls-configured-defaults-and-locale-definitions by=cr note=built in rework 1 (37da85735): Valid is IsValid alone; measured on ocupilot-ci 27 of 36 shipped locales read valid, the 9 refused being those whose IsInstallable fills empty accent fields; pinned by LocaleWrite per-locale verdict loop
 
 ### DW-2716: The NLS defaults filter matches the Source column's stored values, not the words it draws
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-story

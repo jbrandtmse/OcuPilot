@@ -496,3 +496,6 @@
 2026-11-17T21:45:13Z	Story 21.14	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-17T21:45:13Z model=sonnet agent_name=21-14-implement-rework-1 cycle_iteration=3
 2026-11-17T22:12:09Z	Story 21.14	dev_complete	scope=rework1 spawn_at=2026-11-17T21:47Z model=sonnet build_sha=37da85735 baseline_revision=a37cc2066 followup_review_recommended=false deferred=0 cycle_iteration=3 note=implemented_without_handoff_subagent(small,specified)
 2026-11-17T22:12:09Z	Story 21.14	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-17T22:12:09Z model=opus agent_name=21-14-code-review-2 cycle_iteration=3 baseline=a37cc2066
+2026-11-17T22:33:38Z	Story 21.14	cr_complete	scope=rework1 spawn_at=2026-11-17T22:13Z model=opus high=0 med=2 low=3 rows=25 unresolved_high_med=0 resolved=U-109_HIGH,ReadValidation_MED,DW-2715 final=done commit=4b7aac1f4 closing_sections_present=true
+2026-11-17T22:33:38Z	Story 21.14	ledger_adjudicated	owned=1(DW-2715) resolved=1(by_cr_measured:IsValid_refuses_9_of_36) reowned=0 terminal=0 note=DW-2716,DW-2717_terminal_at_review
+2026-11-17T22:33:38Z	Story 21.14	ci_red_classified	run=44178940947 workflow=.github/workflows/ci.yml class=pending_rerun test=users.browser-spec.mjs_AC2(browser_1/5,30s_wait) head=20223ae5a(superseded) note=no_21.14_change_to_users_screen
