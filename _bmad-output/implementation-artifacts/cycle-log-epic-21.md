@@ -532,3 +532,6 @@
 2026-11-18T06:46:54Z	Story 21.5	ci_red_classified	run=44244846002 workflow=.github/workflows/ci.yml class=story test=CriterionHints(explorer.globals.read:pattern_hint),DeveloperFloorRoutes(POST_/explorer/globals/nodes),SaveHoldCoverage(same_route) head=25d79403d
 2026-11-18T06:46:54Z	Story 21.5	rework_opened	cycle_iteration=3 iteration=2 trigger=ci items=CriterionHints,DeveloperFloorRoutes,SaveHoldCoverage,roster_sweep,spec_stale_text scope_baseline=bed5aa01e
 2026-11-18T06:46:54Z	Story 21.5	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-18T06:46:54Z model=sonnet agent_name=21-5-implement-rework-2 cycle_iteration=3
+2026-11-18T07:10:39Z	Story 21.5	dev_complete	scope=rework2 spawn_at=2026-11-18T06:48Z model=sonnet build_sha=2595695d4 baseline_revision=1dae2426a followup_review_recommended=false deferred=0 cycle_iteration=3 note=test_rosters_only
+2026-11-18T07:10:39Z	Story 21.5	code_head_pushed	sha=2595695d4 run=44256813627 missing=none
+2026-11-18T07:10:39Z	Story 21.5	stage_spawned	stage=code-review scope=rework1+2 spawn_at=2026-11-18T07:10:39Z model=opus agent_name=21-5-code-review-2 cycle_iteration=3 baseline=1ace574fe
