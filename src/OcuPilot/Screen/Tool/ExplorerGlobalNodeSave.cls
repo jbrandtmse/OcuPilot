@@ -5,7 +5,7 @@
 /// the provider's tool list, the dispatch lookup and the screen context's <code>tools</code> never carry it, and its key ships disabled. A
 /// person's own Save is never asked governance (AD-22).</p>
 /// <p><b>Its screen carries two values</b>: the new <code>Value</code>, and <code>Was</code>, the value the dialog opened on. A Save
-/// is refused, and nothing is written, when the node now holds another value than <code>Was</code>
+/// is refused 409 <code>STATE.CONFLICT</code>, and nothing is written, when the node now holds another value than <code>Was</code>
 /// (<method>ScreenActionDelta</method>). The new value is the one settable argument (AD-4's merge write over the fresh read).</p>
 Class OcuPilot.Screen.Tool.ExplorerGlobalNodeSave Extends OcuPilot.Screen.Tool.ExplorerGlobalNodeWrite
 {
@@ -28,6 +28,11 @@ Parameter SCREENEMPTY = "save=Value:Was";
 
 /// <p>An edit acts on a node that holds a value.</p>
 Parameter PRECONDITIONFIELD = "Value";
+
+/// <p>The value reaches the port in its query, so the read-back compares the payload's <code>Value</code> with the node's.</p>
+Parameter READBACKFIELDS = "Value";
+
+Parameter READBACKPAYLOAD As BOOLEAN = 1;
 
 Parameter FINGERPRINTSUBJECT = "Reference,Value,Namespace";
 
@@ -79,7 +84,7 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
         Quit $$$OK
     }
     If $IsObject(pFresh) && (pFresh.%Get("Value") '= pValues.%Get("Was")) {
-        Set pProblem = "the node changed after it was read, so nothing was written"
+        Set pProblem = ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT
         Quit $$$OK
     }
     Do pArgs.%Set(..#VALUEARGUMENT, pValues.%Get("Value"), "string")

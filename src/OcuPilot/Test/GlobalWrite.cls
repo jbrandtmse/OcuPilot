@@ -158,7 +158,8 @@ Method TestTheToolsDeclareTheirWritePath()
 /// not plain text of 1,000 characters at most is 400 <code>GLOBAL.VALUE.SHAPE</code>, the empty string is a value, and a reference that is not canonical is
 /// 400 <code>PORT.VALIDATION</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Was</code> comparison in <method>OcuPilot.Screen.Tool.ExplorerGlobalNodeSave.ScreenActionDelta</method> -> the
-/// changed-since leg goes red. The fingerprint subject's <code>Value</code> cannot be dropped to the same effect: the merge replaces it (Design Notes).</p>
+/// changed-since leg goes red. The fingerprint subject's <code>Value</code> cannot be dropped to the same effect: the merge replaces it (Design Notes).
+/// Set <code>READBACKPAYLOAD</code> 0 on the save tool -> the read-back assertion goes red.</p>
 Method TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten()
 {
     Do ..Make()
@@ -166,10 +167,10 @@ Method TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten()
     Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(1), {"Value": "new", "Was": "v1"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, 1: ""), "200|updated|global-node|" _ ..Ref(1), "the edit is answered with its verb and target: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals(@tRoot@(1), "new", "the instance holds the new value")
-    Do $$$AssertTrue($IsObject(tAnswer) && (tAnswer.%GetTypeOf("readBack") '= "unassigned"), "and the answer carries the read-back")
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.readBack): tAnswer.readBack.verdict, 1: ""), "matches", "and the answer's read-back compares the value sent with the value read and matches")
     Set @tRoot@(2) = "other"
     Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(2), {"Value": "x", "Was": "v2"}, , .tAnswer)
-    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ @tRoot@(2), "400 TOOL.ARGUMENTS|other", "a node that changed after the dialog opened is refused and nothing is written")
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ @tRoot@(2), "409 STATE.CONFLICT|other", "a node that changed after the dialog opened is refused as a stale save and nothing is written")
     Kill @tRoot@(2)
     Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(2), {"Value": "x", "Was": "other"}, , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Data(@tRoot@(2)), "404 GLOBAL.NODE.NOTFOUND|0", "a node killed since is gone, and no node is created")
@@ -277,7 +278,7 @@ Method TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn()
     Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, 1: "") _ "|" _ $Data(@tRoot), "200|deleted|global|" _ ..PreparedName _ "|0", "the screen's delete answers and the global is gone")
     Do $$$AssertEquals(##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer), "notFound", "and its read-back finds the global gone")
     Set tStatus = ..Act(..#LISTSCREEN, "delete", ..PreparedName, , , .tAnswer)
-    Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "400 TOOL.ARGUMENTS", "a global that holds nothing is refused")
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "404 GLOBAL.NOTFOUND", "a global that holds nothing is refused as not found")
     Do ..Make()
     Set tSC = ##class(OcuPilot.Kernel.Governance.Gate).Decide(..DELETETOOLNAME(), "write", $Username, {"Name": (..PreparedName)}, .tDecision)
     Do $$$AssertEquals($Select($$$ISOK(tSC): +$Get(tDecision("allowed")), 1: -1), 0, "with the default baseline governance refuses the agent's proposal")

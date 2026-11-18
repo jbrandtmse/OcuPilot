@@ -154,7 +154,8 @@ ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObje
         }
         ; A merge or a create. A create compares against an empty fresh read (AD-54).
         Set tBefore = $Select(tKind = "create": {}, $IsObject(pFresh) && pFresh.%IsA("%Library.DynamicObject"): pFresh, 1: {})
-        If '..Compared(pToolClass, pSent, tBefore, tRead, .tFields, .tWritten, tRowKey, .tCount) {
+        Set tSent = $Select(..ComparesPayload(pToolClass) && '##class(OcuPilot.Kernel.Proposal.Operation).SendsBody(pToolClass): ##class(OcuPilot.Kernel.Proposal.Operation).ParsedObject(pPayloadJson), 1: pSent)
+        If '..Compared(pToolClass, tSent, tBefore, tRead, .tFields, .tWritten, tRowKey, .tCount) {
             Set tAnswer = ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE)
             Quit
         }
@@ -238,6 +239,7 @@ ClassMethod KindOf(pToolClass As %String) As %String
     If ##class(OcuPilot.Kernel.Proposal.Operation).ChangeAction(pToolClass) = "deleted" Quit "delete"
     If ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(pToolClass) Quit "create"
     If ##class(OcuPilot.Kernel.Proposal.Operation).SendsBody(pToolClass) Quit "merge"
+    If ..ComparesPayload(pToolClass) Quit "merge"
     Set tSecrets = ""
     Try {
         Set tSecrets = $ClassMethod(pToolClass, "SecretBodyNames")
@@ -246,6 +248,19 @@ ClassMethod KindOf(pToolClass As %String) As %String
     }
     If tSecrets '= "" Quit "secret"
     Quit "action"
+}
+
+/// <p>Whether <var>pToolClass</var> compares its payload's <code>READBACKFIELDS</code> with the re-read although it sends no body
+/// (<parameter>OcuPilot.Screen.Tool.Write.READBACKPAYLOAD</parameter>). A class that cannot be asked answers 0.</p>
+ClassMethod ComparesPayload(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tCompares = 0
+    Try {
+        Set tCompares = ''$ClassMethod(pToolClass, "ReadBackPayload")
+    } Catch {
+        Set tCompares = 0
+    }
+    Quit tCompares
 }
 
 /// <p>Whether <var>pFault</var>, the refusal of an action-style write's re-read, carries a code

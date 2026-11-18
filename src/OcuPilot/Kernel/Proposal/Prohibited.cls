@@ -2885,7 +2885,7 @@ ClassMethod GlobalPortClass() As %String
 /// <ol>
 /// <li>a global whose name begins with one of <method>OwnNameStems</method>, in any case, is <parameter>PROTECTEDGLOBAL</parameter>;</li>
 /// <li>a value edit of a node whose directory, or any other write of a node or a whole global any of whose mapping rows' directories, is one of
-/// OcuPilot's own database's or <parameter>SYSTEMDATABASES</parameter>' (<method>OwnDatabaseDirectories</method>) is
+/// OcuPilot's own database's or <parameter>SYSTEMDATABASES</parameter>' (<method>ProtectedDirectories</method>) is
 /// <parameter>PROTECTEDGLOBAL</parameter>;</li>
 /// <li>a global of <parameter>CODEGLOBALS</parameter> that resolves to the install namespace's routines database, written as a whole
 /// global, at a node whose first subscript begins with an own stem, or at any node of <parameter>NESTEDCODEGLOBALS</parameter>, is
@@ -2974,14 +2974,13 @@ ClassMethod GlobalLocations(pPort As %String, pName As %String, pReference As %S
 }
 
 /// <p>Whether any directory of <var>pLocations</var> (a <code>%List</code>) is OcuPilot's own database's or one of
-/// <parameter>SYSTEMDATABASES</parameter>' (<var>pProtected</var>), those directories read once through <method>OwnDatabaseDirectories</method>
-/// into <var>pDirectories</var> when it is undefined and reused while it is defined. A read that fails is an error status.</p>
+/// <parameter>SYSTEMDATABASES</parameter>' (<var>pProtected</var>), those directories found once through <method>ProtectedDirectories</method>
+/// into <var>pDirectories</var> when it is undefined and reused while it is defined. A lookup that fails is an error status.</p>
 ClassMethod ProtectedLocation(pLocations As %List, ByRef pDirectories As %List, Output pProtected As %Boolean) As %Status [ Private ]
 {
     Set pProtected = 0
     If '$Data(pDirectories) {
-        Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
-        Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
+        Set tSC = ..ProtectedDirectories(.tDirectories)
         If $$$ISERR(tSC) Quit tSC
         Set pDirectories = tDirectories
     }
@@ -2992,6 +2991,40 @@ ClassMethod ProtectedLocation(pLocations As %List, ByRef pDirectories As %List, 
         If pProtected Quit
     }
     Quit $$$OK
+}
+
+/// <p>The directories of OcuPilot's own database and of <parameter>SYSTEMDATABASES</parameter> (<var>pDirectories</var>, a <code>%List</code>), found
+/// with calls a caller holding no administrative privilege may make, never by reading the database configuration: the directory one of OcuPilot's own
+/// globals resolves to in the install namespace, the manager directory (IRISSYS), the directory one global stored in each of the other system databases
+/// resolves to in <code>%SYS</code>, and the security database's directory beside the manager directory, which no global resolves to by name. A global
+/// that resolves to no directory is an error status.</p>
+ClassMethod ProtectedDirectories(Output pDirectories As %List) As %Status [ Private ]
+{
+    Set pDirectories = ""
+    Set tSC = $$$OK
+    Try {
+        Set tManager = $System.Util.ManagerDirectory()
+        Set tOwn = $Piece(##class(%SYS.Namespace).GetGlobalDest($NAMESPACE, "^" _ $Translate(##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN, "*") _ "Location"), "^", 2)
+        If (tManager = "") || (tOwn = "") {
+            Set tSC = $$$ERROR($$$GeneralError, "the globals arm could not tell where OcuPilot's own database or the manager directory is")
+            Quit
+        }
+        Set tDirectories = $ListBuild(tOwn, tManager, tManager _ "irissecurity/")
+        For tGlobal = "IRIS.AuditD", "%cspSession", "IRIS.Metrics.InterfaceD", "IRIS.Temp", "%qCacheObjectErrors" {
+            Set tDirectory = $Piece(##class(%SYS.Namespace).GetGlobalDest("%SYS", "^" _ tGlobal), "^", 2)
+            If tDirectory = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "the globals arm could not tell where a system database is")
+                Quit
+            }
+            Set tDirectories = tDirectories _ $ListBuild(tDirectory)
+        }
+        If $$$ISERR(tSC) Quit
+        Set pDirectories = tDirectories
+    } Catch ex {
+        Set pDirectories = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The global documents, <code>.gbl</code> in any case, of the comma-separated names <var>pNames</var> an import reviewed, judged in
