@@ -13748,3 +13748,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44178940947 (Epic 21 head 20223ae5a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
+
+### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
+- source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ExplorerGlobalNodeSave.ScreenActionDelta compares the screen's Was with a fresh read; no fingerprint on the screen action route; nothing is written (AC3 holds). ExplorerGlobalNodeSave.cls:82
+- 2026-11-18T05:31:24Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred; CR to align with an existing ruled target-changed answer or escalate the string
+
+### DW-2723: A saved global node value may reach a change event or audit payload, which AD-36 forbids (unverified)
+- source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ExplorerGlobalNodeSave carries the new value in its tool payload and port query; reading the event and audit rows after a save on ocupilot-ci settles it
+- 2026-11-18T05:31:25Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred; CR to measure
+
+### DW-2724: The Globals list's whole-global Delete typed-name dialog has no component or browser spec for an ordinary global
+- source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The browser spec checks only the disabled Delete of an OcuPilot global; global.test.mjs matches source text
+- 2026-11-18T05:31:25Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred

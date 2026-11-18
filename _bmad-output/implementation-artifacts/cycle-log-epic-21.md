@@ -520,3 +520,7 @@
 2026-11-18T03:57:45Z	Epic 21	gate_step	step=smoke result=pass executed=50 passed=50 head=6b6f44743
 2026-11-18T03:57:45Z	Epic 21	ci_green_verified	sha=6b6f44743 runs=44218981008 result=success missing=none note=staging_head_21.14+feature_e50a321a0
 2026-11-18T03:58:12Z	Story 21.5	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T03:58:12Z model=sonnet agent_name=21-5-implement-1 cycle_iteration=1 story_base=ba9ac0135
+2026-11-18T05:31:49Z	Story 21.5	dev_complete	scope=batches1+2 spawn_at=2026-11-18T03:58Z model=sonnet build_sha=25d79403d baseline_revision=81f86d9c4 story_base=81f86d9c4 review_loop_iteration=0 followup_review_recommended=true deferred=3(DW-2722,DW-2723,DW-2724) cycle_iteration=1
+2026-11-18T05:31:49Z	Story 21.5	code_head_pushed	sha=25d79403d run=44244846002 missing=none
+2026-11-18T05:31:49Z	Story 21.5	adr_verifications_complete	result=none_required note=AD-10/AD-36/AD-53_pinned_by_GlobalRead,GlobalWrite;CR_measures_DW-2723
+2026-11-18T05:31:49Z	Story 21.5	stage_spawned	stage=code-review spawn_at=2026-11-18T05:31:49Z model=opus agent_name=21-5-code-review-1 cycle_iteration=1 baseline=81f86d9c4
