@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -557,6 +557,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "term-list",
   "term-list-entry",
   "folder-item",
+  "listing-group",
+  "listing-group-listing",
   "backup-task",
   "backup-database",
   "startup-setting",
@@ -2868,6 +2870,348 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "analyticsFolderItemsEmptyAgent"
     },
     "toolIdentifier": "analytics.folderitems",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsListingGroupList",
+    "route": "analytics/listing-groups",
+    "area": "analytics",
+    "labelKey": "analyticsListingGroupsLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "listing-group",
+    "secondaryEntityTypes": [
+      "listing-group-listing"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class",
+        "Compiled",
+        "Listings",
+        "Disabled",
+        "Description",
+        "Resource",
+        "DefaultResource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsListingGroupsEmpty",
+    "commandAliases": [
+      "listing groups",
+      "listing group"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ListingGroupManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "listing group",
+      "source": {
+        "port": "analytics",
+        "endpoint": "ListingGroups",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class",
+        "Compiled",
+        "Listings",
+        "Disabled",
+        "Description",
+        "Resource",
+        "DefaultResource"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Cubes",
+          "Class",
+          "Compiled",
+          "Listings"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Cubes",
+          "labelKey": "analyticsColumnTargetCubes",
+          "kind": "text"
+        },
+        {
+          "field": "Compiled",
+          "labelKey": "analyticsColumnCompiled",
+          "kind": "status"
+        },
+        {
+          "field": "Listings",
+          "labelKey": "analyticsListingGroupListingsLabel",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.listinggroups",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList",
+    "route": "analytics/listing-groups/listings",
+    "area": "analytics",
+    "labelKey": "analyticsListingGroupListingsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "listing-group-listing",
+    "secondaryEntityTypes": [
+      "listing-group"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/listing-groups",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ListingGroup",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ListingGroup",
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "OrderBy",
+        "Joins",
+        "Formats",
+        "Source",
+        "Resource",
+        "SelectMode",
+        "Disabled",
+        "Description",
+        "SQL"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsListingGroupListingsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupListingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupListingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupListingsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ListingGroupManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "listing",
+      "source": {
+        "port": "analytics",
+        "endpoint": "ListingGroupListings",
+        "type": "LIST"
+      },
+      "fields": [
+        "ListingGroup",
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "OrderBy",
+        "Joins",
+        "Formats",
+        "Source",
+        "Resource",
+        "SelectMode",
+        "Disabled",
+        "Description",
+        "SQL"
+      ],
+      "filter": [
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "Source"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "DisplayName",
+          "Type",
+          "Source"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "listinggroup",
+            "labelKey": "analyticsListingGroupCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One listing group, spelled as analytics.listinggroups.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Fields",
+          "labelKey": "explorerSqlTabFields",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "analyticsColumnDataConnector",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.listinggrouplistings",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

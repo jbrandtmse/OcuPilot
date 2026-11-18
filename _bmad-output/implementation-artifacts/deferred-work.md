@@ -13707,6 +13707,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy-2.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: diff of the two pairs without doc comments: the exports differ in TOOLNAME, DESCRIPTION, READTYPE, READANSWERS and one schema sentence; the imports also in StateDiff, WriteOutput and TargetName
 - 2026-11-17T18:23:40Z status=wontfix-accepted owner=24-10-folder-manager-transfer-and-term-list-import-export-and-copy by=cr note=reopen_if=a third analytics transfer tool copies the same file-argument methods; lift them into a shared transfer helper then
+
+### DW-2718: A viewer without %DeepSee_ListingGroupSQL:USE reads a withheld listing SQL as empty, the same as no SQL, while the Listings screen offers the prompt 'Which listings use a custom SQL query?'
+- source: spec-24-11-listing-groups.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AnalyticsPort.Rows sets SQL to empty without the pair; no field tells withheld from absent, so the agent likely answers none for most viewers (inference). A row flag reveals more than the classic page, which hides the field; rewording the prompt changes a ruled string.
+- 2026-11-17T23:14:29Z status=decision-pending owner=burndown by=cr note=product call: a has-SQL flag (posture) or a prompt worded for the SQL holder (string); code keeps the spec as written
+
+### DW-2719: Two classes naming one listing group give two Listing groups rows with the same Name id; the uncompiled twin's row shows its own listing count but its name opens the compiled class's listings
+- source: spec-24-11-listing-groups.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AnalyticsPort.Collect's groups branch emits one row per saved class; the Listings branch answers from the compiled class (Decided in-stage 6). Reachable only when a second class names a compiled group, whose own compile the vendor refuses.
+- 2026-11-17T23:14:29Z status=wontfix-accepted owner=24-11-listing-groups by=cr note=reopen_if=Batch 2's plan keys a write by group name while two saved classes can name it, or a person reports the mismatch
 ### DW-2713: flake: InteropItemRun.TestTheStartHelperWaitsForTheProductionsOwnUpdate saw the probe production's operation hold no job after the start in CI instance shard 6/8
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; same start-timing family as DW-2535 (resolved by 20.25); 21.35 touches no interop code

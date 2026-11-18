@@ -1550,6 +1550,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
   // Story 20.30's Trace tab, whose one criterion is the message too.
   // Story 20.11's three cube tabs, whose one criterion is the cube, and a term list's entries, whose one criterion is the term list.
+  // Story 24.11's Listings, whose one criterion is the listing group the route id names.
   // Story 20.38's three schema tabs, whose one criterion is the schema the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
@@ -1558,6 +1559,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
@@ -2750,6 +2752,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
@@ -3521,6 +3525,8 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsTermListList', 'TermLists'],
     ['AnalyticsTermListEntryList', 'TermListEntries'],
     ['AnalyticsFolderItemList', 'FolderItems'],
+    ['AnalyticsListingGroupList', 'ListingGroups'],
+    ['AnalyticsListingGroupListingList', 'ListingGroupListings'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

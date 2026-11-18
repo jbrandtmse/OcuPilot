@@ -1,6 +1,7 @@
-/// <p>Pins Story 20.11's seven declarations (AD-5, AD-8, AD-29, AD-36, AD-44, AD-65): the <code>analytics</code> source kind's
+/// <p>Pins the analytics read screens' declarations (AD-5, AD-8, AD-29, AD-36, AD-44, AD-65): the <code>analytics</code> source kind's
 /// refusals, which <file>ui/tools/screen-mirror.test.mjs</file> runs off this class's <code>Cases</code> block as well; the
-/// Cubes list, its three tabs, Term lists, a term list's entries and Folder items declared as the story names them; each
+/// Cubes list, its three tabs, Term lists, a term list's entries, Folder items, Listing groups and a group's Listings declared as their stories name them,
+/// and no other analytics list but the Cube manager; each
 /// classic page being the portal's own; each classic page's compiled <code>RESOURCE</code> naming a pair its screen
 /// declares; and the analytics refusal code reading its sentence on a refused tool call and on a violation.</p>
 /// <p>For Story 20.34 it also pins the Cube manager's declaration, its refusal codes and sentences, the two cube tools' declared codes and
@@ -12,9 +13,9 @@ Class OcuPilot.Test.AnalyticsDescriptor Extends %UnitTest.TestCase
 
 Parameter PACKAGE = "OcuPilot.Screen.Descriptor.";
 
-/// <p>The seven screens, <code>&lt;descriptor&gt;|&lt;route&gt;|&lt;position&gt;|&lt;archetype&gt;|&lt;pairs&gt;|&lt;own pair&gt;|&lt;entity&gt;|&lt;id parts&gt;|&lt;endpoint&gt;|&lt;criterion&gt;|&lt;tool&gt;|&lt;classic page&gt;|&lt;tab position&gt;|&lt;parent&gt;</code>,
+/// <p>The analytics read screens, <code>&lt;descriptor&gt;|&lt;route&gt;|&lt;position&gt;|&lt;archetype&gt;|&lt;pairs&gt;|&lt;own pair&gt;|&lt;entity&gt;|&lt;id parts&gt;|&lt;endpoint&gt;|&lt;criterion&gt;|&lt;tool&gt;|&lt;classic page&gt;|&lt;tab position&gt;|&lt;parent&gt;</code>,
 /// pairs separated by <code>/</code>.</p>
-Parameter SCREENS = "AnalyticsCubeList|analytics/cubes|1|list|%DeepSee_Portal:USE||cube||Cubes||analytics.cubes|%DeepSee.UI.ModelBrowser||;AnalyticsCubeMeasuresTab|analytics/cubes/document|0|detail|%DeepSee_Portal:USE||cube||Measures|cube|analytics.cubemeasures|%DeepSee.UI.ModelBrowser|1|analytics/cubes;AnalyticsCubeDimensionsTab|analytics/cubes/dimensions|0|detail|%DeepSee_Portal:USE||cube||Dimensions|cube|analytics.cubedimensions|%DeepSee.UI.ModelBrowser|2|analytics/cubes;AnalyticsCubeRelationshipsTab|analytics/cubes/relationships|0|detail|%DeepSee_Portal:USE||cube||Relationships|cube|analytics.cuberelationships|%DeepSee.UI.ModelBrowser|3|analytics/cubes;AnalyticsTermListList|analytics/term-lists|2|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list||TermLists||analytics.termlists|%DeepSee.UI.TermListManager||;AnalyticsTermListEntryList|analytics/term-lists/entries|0|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list-entry|TermList,Key|TermListEntries|termlist|analytics.termlistentries|%DeepSee.UI.TermListManager||analytics/term-lists;AnalyticsFolderItemList|analytics/folder-items|3|list|%DeepSee_Portal:USE/%Development:USE|%Development:USE|folder-item||FolderItems||analytics.folderitems|%DeepSee.UI.FolderManager||";
+Parameter SCREENS = "AnalyticsCubeList|analytics/cubes|1|list|%DeepSee_Portal:USE||cube||Cubes||analytics.cubes|%DeepSee.UI.ModelBrowser||;AnalyticsCubeMeasuresTab|analytics/cubes/document|0|detail|%DeepSee_Portal:USE||cube||Measures|cube|analytics.cubemeasures|%DeepSee.UI.ModelBrowser|1|analytics/cubes;AnalyticsCubeDimensionsTab|analytics/cubes/dimensions|0|detail|%DeepSee_Portal:USE||cube||Dimensions|cube|analytics.cubedimensions|%DeepSee.UI.ModelBrowser|2|analytics/cubes;AnalyticsCubeRelationshipsTab|analytics/cubes/relationships|0|detail|%DeepSee_Portal:USE||cube||Relationships|cube|analytics.cuberelationships|%DeepSee.UI.ModelBrowser|3|analytics/cubes;AnalyticsTermListList|analytics/term-lists|2|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list||TermLists||analytics.termlists|%DeepSee.UI.TermListManager||;AnalyticsTermListEntryList|analytics/term-lists/entries|0|list|%DeepSee_Portal:USE/%DeepSee_PortalEdit:USE|%DeepSee_PortalEdit:USE|term-list-entry|TermList,Key|TermListEntries|termlist|analytics.termlistentries|%DeepSee.UI.TermListManager||analytics/term-lists;AnalyticsFolderItemList|analytics/folder-items|3|list|%DeepSee_Portal:USE/%Development:USE|%Development:USE|folder-item||FolderItems||analytics.folderitems|%DeepSee.UI.FolderManager||;AnalyticsListingGroupList|analytics/listing-groups|9|list|%DeepSee_Portal:USE/%DeepSee_ListingGroup:USE|%DeepSee_ListingGroup:USE|listing-group||ListingGroups||analytics.listinggroups|%DeepSee.UI.ListingGroupManager||;AnalyticsListingGroupListingList|analytics/listing-groups/listings|0|list|%DeepSee_Portal:USE/%DeepSee_ListingGroup:USE|%DeepSee_ListingGroup:USE|listing-group-listing|ListingGroup,Name|ListingGroupListings|listinggroup|analytics.listinggrouplistings|%DeepSee.UI.ListingGroupManager||analytics/listing-groups";
 
 /// <p>The corpus both engines run: each case replaces the declaration's <code>read.source</code>, sets
 /// <code>read.criteria</code> when it carries one, and names the sentence the registry's <code>check</code>
@@ -51,7 +52,7 @@ XData Cases
     {"name": "TermListEntries", "check": "read", "source": {"port": "analytics", "endpoint": "TermListEntries", "type": "LIST"}, "expected": null},
     {"name": "FolderItems", "check": "read", "source": {"port": "analytics", "endpoint": "FolderItems", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "analytics", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the analytics port's endpoints ('Cubes', 'Measures', 'Dimensions', 'Relationships', 'TermLists', 'TermListEntries', 'FolderItems', 'CubeManager') (AD-65)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "analytics", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the analytics port's endpoints ('Cubes', 'Measures', 'Dimensions', 'Relationships', 'TermLists', 'TermListEntries', 'FolderItems', 'CubeManager', 'ListingGroups', 'ListingGroupListings') (AD-65)"},
     {"name": "a type other than LIST", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "GET"}, "expected": "read.source.type 'GET' is declared on an analytics source, which lists the namespace's cubes, term lists and folder items (AD-36)"},
     {"name": "rowGet", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Caption"], "derived": []}}, "expected": "read.source.rowGet is declared on an analytics source, which answers its list whole (AD-36)"},
     {"name": "forEach", "check": "read", "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST", "forEach": ["Measures"]}, "expected": "read.source.forEach is declared on an analytics source, which answers its list whole (AD-36)"},
@@ -91,10 +92,10 @@ Method TestTheAnalyticsSourceRefusals()
     Do $$$AssertTrue(tRefusals >= 7, "the corpus refuses its shapes: " _ tRefusals)
 }
 
-/// <p>The seven descriptors declare what the story names: the analytics area, their route, side-bar position, archetype, pairs
+/// <p>The roster's descriptors declare what their stories name: the analytics area, their route, side-bar position, archetype, pairs
 /// (the portal's, then each screen's own), entity type, id, endpoint, criterion, tool identifier and classic page; three suggested
 /// prompts; a read-only table with no action; context fields equal to the read's; the cube tabs one group under Cubes, in strip
-/// order; the Relationships tab's row target; and the registry validates the whole roster.</p>
+/// order; the Relationships tab's row target; the registry validates the whole roster; and the roster is every registered analytics read screen but the Cube manager.</p>
 /// <p>Mutation (Rule 19): change <code>AnalyticsCubeRelationshipsTab</code>'s <code>rowTarget</code> field to <code>Name</code>
 /// -- the Relationships leg goes red.</p>
 Method TestTheSevenDeclarationsRegister()
@@ -147,12 +148,46 @@ Method TestTheSevenDeclarationsRegister()
         }
     }
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
-    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $Get(tProblem), "1|", "the registry validates the roster with the seven: " _ $Get(tProblem))
+    Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $Get(tProblem), "1|", "the registry validates the roster with the analytics screens: " _ $Get(tProblem))
     Set tArea = ##class(OcuPilot.Screen.Area).Find("analytics")
-    Do $$$AssertEquals($Select($IsObject(tArea): tArea.appliesWhen, 1: ""), "analytics", "the area the seven inherit applies when the namespace reports analytics")
-    For tType = "cube", "term-list", "term-list-entry", "folder-item" {
+    Do $$$AssertEquals($Select($IsObject(tArea): tArea.appliesWhen, 1: ""), "analytics", "the area the analytics screens inherit applies when the namespace reports analytics")
+    For tType = "cube", "term-list", "term-list-entry", "folder-item", "listing-group", "listing-group-listing" {
         Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), tType _ " is a declared entity type")
     }
+    ; The roster is every registered screen that reads through the analytics port, but the Cube manager, which TestTheCubeManagerDeclaration pins.
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the registry lists its descriptors")
+    Set tDerived = ""
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        Kill tDeclaration
+        Do $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        If '$IsObject($Get(tDeclaration)) || '$IsObject(tDeclaration.%Get("read")) || '$IsObject(tDeclaration.read.%Get("source")) Continue
+        If (tDeclaration.read.source.%Get("port") '= "analytics") || (tClass = (..#PACKAGE _ "AnalyticsCubeManager")) Continue
+        Set tDerived = tDerived _ $ListBuild($Extract(tClass, $Length(..#PACKAGE) + 1, *))
+    }
+    Set tDeclared = ""
+    For tI = 1:1:$Length(..#SCREENS, ";") {
+        Set tDeclared = tDeclared _ $ListBuild($Piece($Piece(..#SCREENS, ";", tI), "|", 1))
+    }
+    Do $$$AssertEquals(..Sorted(tDerived), ..Sorted(tDeclared), "the roster is every analytics read screen the registry holds but the Cube manager")
+}
+
+/// <p>The members of <var>pList</var>, sorted and comma-separated.</p>
+ClassMethod Sorted(pList As %List) As %String
+{
+    Kill tSort
+    For tI = 1:1:$ListLength(pList) {
+        Set tSort($List(pList, tI)) = ""
+    }
+    Set tOut = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSort(tKey))
+        If tKey = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tKey
+    }
+    Quit tOut
 }
 
 /// <p>Each classic page a screen names is the one the portal's own resolver gives for the page's file, so the link the screen draws
@@ -162,7 +197,7 @@ Method TestTheSevenDeclarationsRegister()
 Method TestEachClassicPageIsThePortalsOwn()
 {
     Kill tPortal
-    For tPage = "ModelBrowser", "TermListManager", "FolderManager" {
+    For tPage = "ModelBrowser", "TermListManager", "FolderManager", "ListingGroupManager" {
         Set tName = "%DeepSee.UI." _ tPage
         Set tPortal(##class(%SYS.Portal.Resources).NormalizePage("/csp/user/_DeepSee.UI." _ tPage _ ".zen")) = 0
         Do $$$AssertTrue($Data(tPortal(tName)), tName _ ": the portal's own resolver answers it for the page's file")
@@ -179,7 +214,7 @@ Method TestEachClassicPageIsThePortalsOwn()
     For {
         Set tPage = $Order(tPortal(tPage))
         If tPage = "" Quit
-        Do $$$AssertEquals(tPortal(tPage), 1, tPage _ ": named by one of the seven screens")
+        Do $$$AssertEquals(tPortal(tPage), 1, tPage _ ": named by one of the roster's screens")
     }
 }
 
