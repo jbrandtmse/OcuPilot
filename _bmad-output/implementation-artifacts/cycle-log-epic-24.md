@@ -349,3 +349,11 @@
 2026-11-17T23:42:48Z	Story 24.11	dev_complete	spawn_at=2026-11-17T23:22:30Z model=sonnet build_sha=8e36650ec baseline_revision=99f2903966eedcfcd624b79fe5d50c873ad970ab review_loop_iteration=0 followup_review_recommended=false deferred=0 scope=batch1_rework_1 fresh_instance_first_run=pass mutations=bit_write,control_write cycle_iteration=2
 2026-11-17T23:42:48Z	Story 24.11	stage_spawned	stage=code-review spawn_at=2026-11-17T23:42:48Z model=opus agent_name=24-11-listing-groups-code-review-rework-1 cycle_iteration=2
 2026-11-17T23:57:46Z	Story 24.11	cr_complete	spawn_at=2026-11-17T23:43:30Z model=opus resolved=3 fixed_at_source=3 dismissed=11 high=0 med=1 low=2 rows=14 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done(batch1) smoke_item=confirmed_fixed scope=batch1_rework_rereview note=warmup_replaced_by_named_engine_exclusion(^rINDEXSQL,^%SYS(sql)) cycle_iteration=2
+2026-11-18T00:10:21Z	Epic 24	orchestrator_message	release_1.0.17_on_main(255485d8b);feature_ae925c462(bookkeeping+README)
+2026-11-18T00:10:21Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.11_batch1_final run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-18T00:10:21Z	Story 24.11	fresh_check	env=recipe(tree_d0e2b83bc) tests=12_classes+3_specs result=pass order=forward,reverse scope=batch1
+2026-11-18T00:10:21Z	Story 24.11	smoke_complete	method=browser+api result=pass iterations=2 defects_caught=1(fresh_instance_journal_scan) evidence=smoke.sh_PASSED+analytics_specs_13/13+a11y-structural-invariants_13/13 scope=batch1 model=claude-opus-5-5
+2026-11-18T00:10:21Z	Story 24.11	integrate_forward	feature=ae925c462(bookkeeping+README) head=d65c399a1 conflicts_resolved=none
+2026-11-18T00:10:21Z	Story 24.11	committed	sha=d0e2b83bc code_head=d65c399a1 ci=pending runs=44205531488 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(add-only_row)
+2026-11-18T00:10:21Z	Story 24.11	ruling	question=tracker_status_between_batches choice=in-progress(batch2_follows) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-18T00:10:21Z	Story 24.11	stage_spawned	stage=pre-warm spawn_at=2026-11-18T00:10:21Z model=opus agent_name=epic-24-context-prewarm-4 cycle_iteration=3 reason=planning_artifact_newer(EXPERIENCE.md_24.11)
