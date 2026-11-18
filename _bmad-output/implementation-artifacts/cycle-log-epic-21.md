@@ -560,3 +560,6 @@
 2026-11-18T11:18:44Z	Story 21.17	ruling	question=AD-61_rule5_vs_GLOBAL.TOOLARGE choice=a(add-only_AD-61_sentence;convert_only_on_capture-ceiling_signal;no_fault_row_for_too-large;pin_both_legs) via=orchestrator category=decide
 2026-11-18T11:18:58Z	Story 21.17	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=AD-61_capture-ceiling_conversion(orchestrator_ruling_a) scope_baseline=1017325ca
 2026-11-18T11:18:58Z	Story 21.17	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T11:18:58Z model=sonnet agent_name=21-17-implement-rework-1 cycle_iteration=2
+2026-11-18T11:42:14Z	Story 21.17	dev_complete	scope=rework1 spawn_at=2026-11-18T11:19Z model=sonnet build_sha=bc25e1609 baseline_revision=66c32ffa5 followup_review_recommended=false deferred=0 cycle_iteration=2
+2026-11-18T11:42:14Z	Story 21.17	code_head_pushed	sha=bc25e1609 run=44297052903 missing=none
+2026-11-18T11:42:14Z	Story 21.17	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T11:42:14Z model=opus agent_name=21-17-code-review-2 cycle_iteration=2 baseline=66c32ffa5
