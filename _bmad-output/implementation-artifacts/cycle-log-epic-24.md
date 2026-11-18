@@ -389,3 +389,6 @@
 2026-11-18T10:12:30Z	Story 24.11	committed	sha=c7f186888 code_head=eb6fbf706 ci=pending runs=44283101753 scope=batch2(story_complete) amendments=none footprint_extensions=EXPERIENCE.md(24.11_rows)
 2026-11-18T10:12:30Z	Story 24.11	story_cycle	plan_to_commit_min=930 implement_passes=4(batch1,batch1_rework,batch2,batch2_rework) reviews=4 rework=2 first_ci=success(batch1),pending(batch2) models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-11-18T10:12:48Z	Story 24.12	stage_spawned	stage=pre-warm spawn_at=2026-11-18T10:12:48Z model=opus agent_name=epic-24-context-prewarm-5 cycle_iteration=1 reason=planning_artifact_newer(feature_merges+EXPERIENCE.md)
+2026-11-18T10:15:25Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(feature_merges_21.14_21.5+EXPERIENCE.md) model=claude-opus-5-5
+2026-11-18T10:15:25Z	Epic 24	orchestrator_message	one_ci-runner_call_per_message_in_first_lines_of_every_implement_and_QA_prompt_from_24.12
+2026-11-18T10:15:25Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T10:15:25Z model=opus agent_name=24-12-quality-measures-plan-1 cycle_iteration=1
