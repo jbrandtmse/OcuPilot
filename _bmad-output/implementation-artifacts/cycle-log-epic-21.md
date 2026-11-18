@@ -569,3 +569,5 @@
 2026-11-18T12:10:08Z	Story 21.17	gate_step	step=fresh_check+full_sweep+smoke head=80897abe6 started=2026-11-18T12:10:08Z dir=e21u/21-17/gate
 2026-11-18T12:10:44Z	Story 21.22	ruling	question=21.22_scope_for_DW-2721 choice=re-plan(DW-2721+DW-2567_as_Batch_1;new_flakes_join_inbox;split_if_oversized) via=orchestrator_priority category=decide policy=b9ff703e
 2026-11-18T12:10:44Z	Story 21.22	stage_spawned	stage=plan spawn_at=2026-11-18T12:10:44Z model=opus agent_name=21-22-plan-2 cycle_iteration=2
+2026-11-18T12:28:31Z	Story 21.22	story_created	spawn_at=2026-11-18T12:06Z model=opus path=_bmad-output/implementation-artifacts/spec-21-22-ci-flake-hardening.md build_status=ready-for-dev cycle_iteration=2 batches=4(B1=DW-2721+DW-2567)
+2026-11-18T12:28:31Z	Story 21.22	spec_validated	service_introducing=false integration_ac=n/a adr_constrained_acs=none owned_ledger=18 addressed=17 declined=1(DW-2627_resolved-by_21.24) footprint_extensions=ui/angular.json(not_contended) pending=DW-2565_ci-throwaway.sh_line_replacement(orchestrator;Epic24_uncommitted_edit) mutates_shared_runtime=false

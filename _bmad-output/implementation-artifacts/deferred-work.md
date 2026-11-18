@@ -13344,6 +13344,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T02:08:21Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified(transient_instance_window); unchanged rerun
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
+- 2026-11-18T12:28:31Z status=resolved-by:21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=spec_gate note=cause(config-settings_left_a_SQL_setting_changed)_fixed_by_6a5bcf05f_merged_48e3593a3;no_occurrence_after_2026-11-16T05:07Z;declined_in_21.22_re-plan
 
 ### DW-2653: A person's promote action that omits Reviewed is not held to the plan-hash compare; the client always sends it and the agent's confirm is held by PlanHash
 - source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
