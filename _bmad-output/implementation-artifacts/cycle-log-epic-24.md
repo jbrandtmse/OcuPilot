@@ -436,3 +436,6 @@
 2026-11-18T20:05:34Z	Story 24.12	stage_spawned	stage=pre-warm spawn_at=2026-11-18T20:05:34Z model=opus agent_name=epic-24-context-prewarm-7 cycle_iteration=3 reason=planning_artifact_newer(AD-58,AD-61_paragraphs+EXPERIENCE.md)
 2026-11-18T20:07:56Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(AD-58,AD-61_paragraphs+EXPERIENCE.md) model=claude-opus-5-5
 2026-11-18T20:07:56Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T20:07:56Z model=opus agent_name=24-12-quality-measures-plan-batch3 cycle_iteration=3 scope=batch3_elements_documentation
+2026-11-18T20:20:52Z	Story 24.12	story_created	spawn_at=2026-11-18T20:09:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-12-quality-measures-3.md build_status=ready-for-dev epic_context=reused scope=batch3_elements_documentation cycle_iteration=3
+2026-11-18T20:20:52Z	Story 24.12	ruling	question=batch3_keys,groups_via_elements,no_rename_reorder,tab_group_DW-2734,strings,spine_lines choice=keep category=veto inbox=U-113 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-18T20:20:52Z	Story 24.12	spec_validated	service_introducing=true integration_ac=see_spec adr_constrained_acs=AD-51,AD-52,AD-53,AD-61,AD-65,AD-22,AD-58,AD-10 decision_dependency=none sections_created=none owned_ledger=DW-2734 addressed=1 declined=0 mutates_shared_runtime=true(throwaway_only) scope=batch3
