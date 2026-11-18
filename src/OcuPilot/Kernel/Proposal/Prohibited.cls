@@ -1941,7 +1941,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        ; A listing group and one of its listings (Story 24.11): AD-10 names no effect on either, so a write passes the reviewed-few sweep and nothing else.
+        ; A listing group and one of its listings (Story 24.11): AD-10's one effect on either, a class of OcuPilot's own, is AnalyticsPort's to refuse, so a write passes the reviewed-few sweep and nothing else.
         If ..IsListingGroupType(tType) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit

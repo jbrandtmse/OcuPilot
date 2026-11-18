@@ -11,7 +11,7 @@ Class OcuPilot.Screen.Tool.AnalyticsListingGroupCopy Extends OcuPilot.Screen.Too
 
 Parameter TOOLNAME = "analytics.listinggroups.copy";
 
-Parameter DESCRIPTION = "Propose copying one listing group to a new listing group in the namespace the user is working in: the new group takes the source's caption, description, resources and every listing, and the source is not changed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the source as the Listing groups list reports it, and give the new group's name in `NewName`, the new class in `NewClass` and, to copy into other cubes, `NewCubes`. The new class is saved and compiled. A name or class the namespace already holds, a class name that is malformed, begins with % or is in an OcuPilot package, a target cube that does not exist, and listings that a target cube or another group already defines (which includes the source's own cubes while the source is enabled) are refused.";
+Parameter DESCRIPTION = "Propose copying one listing group to a new listing group in the namespace the user is working in: the new group takes the source's caption, description, resources and every listing, and the source is not changed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the source as the Listing groups list reports it, and give the new group's name in `NewName`, the new class in `NewClass` and, to copy into other cubes, `NewCubes`. The new class is saved and compiled. A name or class the namespace already holds, a class name that is malformed or begins with % or OcuPilot, a target cube that does not exist, and listings that a target cube or another group already defines (which includes the source's own cubes while the source is enabled) are refused.";
 
 /// <p>The fresh read: the source, with the new name, class and cubes, composed from the call's own values.</p>
 Parameter READTYPE = "COPYTARGET";
@@ -51,7 +51,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         Do tProperties.%Get(..IdArgument()).%Set("description", "The listing group to copy, named as this namespace's Listing groups list reports it in its Name column. A group the namespace does not hold is refused.", "string")
     }
     Do tProperties.%Set("NewName", {"type": "string", "description": "The new listing group's name: 1 to 250 characters with no control character. A name the namespace already holds is refused, compared without regard to case."})
-    Do tProperties.%Set("NewClass", {"type": "string", "description": "The new class that holds the copy: dotted letters and digits with a package, outside the % packages and the OcuPilot package. A class the namespace already holds is refused."})
+    Do tProperties.%Set("NewClass", {"type": "string", "description": "The new class that holds the copy: dotted letters and digits with a package, beginning with neither % nor OcuPilot. A class the namespace already holds is refused."})
     Do tProperties.%Set("NewCubes", {"type": "string", "description": "Optional. The cubes the copy adds listings to, comma-separated. Omit it to keep the source's cubes, which is refused while the source is enabled."})
     Do tSchema.%Get("required").%Push("NewName")
     Do tSchema.%Get("required").%Push("NewClass")

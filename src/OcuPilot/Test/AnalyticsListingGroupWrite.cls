@@ -196,21 +196,21 @@ Method TestTargetCubesWithSpacesReadBackAsSent()
     Do ..Mint(..#ADDTOOL, {"Name": (tAgent), "Class": (tAgentClass), "TargetCubes": (" " _ ..#VISITS _ ", " _ ..#CATEGORIES _ " ")}, .tProposal, .tTurn)
     If '$IsObject($Get(tProposal)) Quit
     Do $$$AssertEquals(..Confirm(tProposal, .tAnswer, .tRaw), 200, "the agent's add confirms: " _ $Extract($Get(tRaw), 1, 300))
-    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, "matches", "the agent's add reads back matching")
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.readBack.verdict, 1: ""), "matches", "the agent's add reads back matching")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     Do ..Mint(..#UPDATETOOL, {"Name": (tAgent), "TargetCubes": (..#CATEGORIES _ " ,  " _ ..#VISITS)}, .tProposal, .tTurn)
     If '$IsObject($Get(tProposal)) Quit
     Do $$$AssertEquals(..Confirm(tProposal, .tAnswer, .tRaw), 200, "the agent's update confirms: " _ $Extract($Get(tRaw), 1, 300))
-    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, "matches", "the agent's update reads back matching")
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.readBack.verdict, 1: ""), "matches", "the agent's update reads back matching")
     Do $$$AssertEquals($Piece(..Model(tAgentClass), "|", 4), ..#CATEGORIES _ "," _ ..#VISITS, "and the model holds the trimmed list")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
 /// <p>AD-10: a write whose class is one of OcuPilot's own is refused 403 <code>PROHIBITED.OCUPILOTCODE</code> with the published sentence, by the port, by the person's screen call and by
 /// the agent's mint, with nothing written, for each of the four group writes: an add into, and a copy into, a class whose name begins <code>OcuPilot</code> in any letter case and at any
-/// package depth, and an update and a delete of a group saved in such a class.</p>
+/// package depth, and an update and a delete of a group saved in such a class. A copy out of such a group into an ordinary class is not refused: a copy writes only its new class.</p>
 /// <p>Mutation (Rule 19): make the own-code checks of <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> and <method>OcuPilot.Port.AnalyticsPort.ReadListingGroup</method> answer
-/// 0 -- every leg goes red.</p>
+/// 0 -- every refusal leg goes red; make them judge a copy's source class too -- the copy-out legs go red.</p>
 Method TestOwnCodeIsRefusedByEveryGroupWrite()
 {
     Set tOwnName = ..#MARKER _ "Own"
@@ -228,13 +228,16 @@ Method TestOwnCodeIsRefusedByEveryGroupWrite()
     Do ..EnableKey("analytics.listinggroups.delete")
     Do ..AssertOwnCodeRefused("a delete of a group in an OcuPilot class", "ListingGroups", "DELETE", tOwnName, {}, "", ..#GROUPSCREEN, "delete", "", ..#DELETETOOL, {"Name": (tOwnName)})
     Do $$$AssertEquals(..Registered(tOwnName, ..#OWNCLASSMARKER _ "Held"), 1, "and the group is still there")
+    Do ..Mint(..#COPYTOOL, {"Name": (tOwnName), "NewName": (..#MARKER _ "OwnCopy"), "NewClass": (..#CLASSMARKER _ "OwnCopy"), "NewCubes": (..#CATEGORIES)}, .tProposal, .tTurn)
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
+    Do $$$AssertEquals(..Port("ListingGroups", "COPY", tOwnName, {}, {"newName": (..#MARKER _ "OwnCopy"), "newClass": (..#CLASSMARKER _ "OwnCopy"), "targetCubes": (..#CATEGORIES)}, .tRes), "200 ", "a copy out of a group in an OcuPilot class into an ordinary class is not refused")
 }
 
 /// <p>AC1, AC2: a copy's own refusals, each by its own code with the classes and registry nodes as they were: a new name already held by a group (409 <code>TAKEN</code>), a new class
 /// already defined (409 <code>TAKEN</code>), a new name that is empty or holds a control character (422 <code>PORT.FIELD.SHAPE</code>), and a new class in a <code>%</code> package or with
 /// no package (422 <code>CLASS</code>), or in an <code>OcuPilot</code> package (403 <code>PROHIBITED.OCUPILOTCODE</code>). A copy with a free name and class succeeds, so the refusals are the new name's and class's alone.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.VendorListingGroupCompose</method> check only the new name of a copy for TAKEN -- the class leg goes red; make
-/// <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> skip the class shape of a copy -- the three class-shape legs go red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> skip the class shape of a copy -- the two class-shape legs go red.</p>
 Method TestEachCopyRefusalWritesNothing()
 {
     Set tName = ..#MARKER _ "CopyHeld"

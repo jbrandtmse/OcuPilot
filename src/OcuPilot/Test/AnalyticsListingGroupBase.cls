@@ -313,7 +313,9 @@ Method AssertOwnCodeRefused(pWhat As %String, pEndpoint As %String, pType As %St
     Do $$$AssertEquals(..Port(pEndpoint, pType, pId, pBody, pExtra, .tRes), "403 " _ tCode, pWhat _ ": the port refuses it")
     Set tStatus = $Select(pAction = "": ..Post(pScreen, pValues, .tAnswer), 1: ..Act(pScreen, pAction, pId, pValues, .tAnswer))
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code") _ " " _ tAnswer.%Get("reason"), 1: ""), "403 " _ tCode _ " " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), pWhat _ ": the person's call is refused with the published sentence")
-    Do ..MintRefused(pTool, pArgs, tCode)
+    Set tSC = $ClassMethod(..#CONTROL, "MintAs", pTool, pArgs, ##class(OcuPilot.Test.Http).GetTestUsername(), .tProposal, .tHttp, .tFault, .tTurn)
+    Do $$$AssertTrue($$$ISERR(tSC) && '$IsObject($Get(tProposal)), pWhat _ ": the agent's mint is refused with no proposal")
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code") _ " " _ tFault.%Get("reason"), 1: ""), "403 " _ tCode _ " " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), pWhat _ ": the agent's mint is refused with the published sentence")
     Do $$$AssertEquals(..Snapshot(), tBefore, pWhat _ ": nothing was written")
 }
 

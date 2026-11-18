@@ -378,3 +378,5 @@
 2026-11-18T08:56:40Z	Story 24.11	protocol_violation	stage=implement depth=3 agent=handoff_subagent violation=two_ci-runner_calls_in_one_message(third_occurrence_this_epic) consequence=none(0_overlaps;rerun_alone_green) detected_by=implement_stage outcome=rerun
 2026-11-18T08:56:40Z	Story 24.11	stage_spawned	stage=code-review spawn_at=2026-11-18T08:56:40Z model=opus agent_name=24-11-listing-groups-code-review-batch2-rework-1 cycle_iteration=4
 2026-11-18T08:56:47Z	Story 24.11	note	scope_baseline_corrected=c5fc88383(rework_baseline;build-auto_left_baseline_revision_at_ec633e8f9) for=code-review-batch2-rework-1
+2026-11-18T09:17:26Z	Story 24.11	cr_complete	spawn_at=2026-11-18T08:58:00Z model=opus resolved=6 fixed_at_source=6 dismissed=10 high=0 med=1 low=5 rows=5 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done checklist=AD-10_fixed,AD-58_fixed scope=batch2_rework_rereview cycle_iteration=4
+2026-11-18T09:17:26Z	Story 24.11	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 born_terminal=DW-2728 to_decision_sheet=DW-2725,DW-2726,DW-2727 scope=batch2 model=claude-opus-5-5

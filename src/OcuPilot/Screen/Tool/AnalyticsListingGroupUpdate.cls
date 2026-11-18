@@ -65,7 +65,7 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
     Quit ##super(pFresh, ..CubesNormalized(pArgs), pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
 }
 
-/// <p>The dialog's values as this tool's arguments: the strings as sent, <code>Disabled</code> as <code>true</code> or <code>false</code>; the port judges them.</p>
+/// <p>The dialog's values as this tool's arguments: the strings as sent, the target cubes in the form the port stores them (AD-58), <code>Disabled</code> as <code>true</code> or <code>false</code>; the port judges them.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pArgs = {}
