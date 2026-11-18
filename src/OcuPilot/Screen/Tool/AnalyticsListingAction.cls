@@ -59,14 +59,6 @@ ClassMethod TargetParts(pIdValue As %String, Output pGroup As %String, Output pL
     Set pListing = $Select($ListLength(tParts) = 2: $List(tParts, 2), 1: "")
 }
 
-/// <p>The title the card gives the listing: its name.</p>
-ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
-{
-    If $IsObject(pFresh) && (pFresh.%GetTypeOf("Name") = "string") Quit pFresh.%Get("Name")
-    If $IsObject(pArgs) && (pArgs.%GetTypeOf("Name") = "string") Quit pArgs.%Get("Name")
-    Quit ""
-}
-
 /// <p>The listing group's sentence for a listing that sets SQL, else the one every write states.</p>
 ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
 {

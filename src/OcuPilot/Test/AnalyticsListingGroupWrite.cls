@@ -202,8 +202,9 @@ Method TestEachCopyRefusalWritesNothing()
 }
 
 /// <p>AC1: each write has a script form (AD-59) that makes the same change: the add's script saves and compiles the class, the delete's deletes it, and a script for a write the
-/// port refuses only sets the refusal's sentence.</p>
-/// <p>Mutation (Rule 19): drop the compile line from <method>OcuPilot.Port.AnalyticsPort.ListingGroupSnippet</method> -- the registered leg goes red.</p>
+/// port refuses only sets the refusal's sentence. An add's script run after another writer took the name leaves that writer's class as it is.</p>
+/// <p>Mutation (Rule 19): drop the compile line from <method>OcuPilot.Port.AnalyticsPort.ListingGroupSnippet</method> -- the registered leg goes red; drop its free-name
+/// condition -- the late script's legs go red.</p>
 Method TestEachWritesScriptFormMakesTheSameChange()
 {
     Set tName = ..#MARKER _ "Script"
@@ -217,6 +218,13 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Do $$$AssertEquals(..RunScript(..Script("DELETE", tName, {})), 1, "the delete's script runs")
     Do $$$AssertEquals(..Gone(tName, tClass, "LGWNone"), 1, "and removes the class and its nodes")
     Do $$$AssertEquals(..RunScript(..Script("DELETE", tName, {})), 0, "a second delete only sets the refusal: the group is not there")
+    Set tLate = ..#MARKER _ "ScriptLate"
+    Set tLateClass = ..#CLASSMARKER _ "ScriptLate"
+    Set tSteps = ..Script("ADD", tLate, {"Name": (tLate), "Class": (tLateClass), "TargetCubes": (..#VISITS)})
+    Do $$$AssertEquals(..Port("ListingGroups", "ADD", tLate, {"Name": (tLate), "Class": (tLateClass), "TargetCubes": (..#VISITS), "Caption": "taken first"}, "", .tRes), "200 ", "another writer takes the name after the add's script was rendered")
+    Set tTaken = ..TextOf(tLateClass)
+    Do $$$AssertEquals(..RunScript(tSteps), 0, "the earlier add's script finds the name taken and only sets the refusal")
+    Do $$$AssertEquals((..TextOf(tLateClass) = tTaken) _ "|" _ ..Registered(tLate, tLateClass), "1|1", "and the other writer's class is neither replaced nor deleted")
 }
 
 /// <p>The three routes the editor adds answer JSON envelopes of the declared type and shape as the HTTP account: <code>POST /analytics/listing-groups</code> creates a group (201

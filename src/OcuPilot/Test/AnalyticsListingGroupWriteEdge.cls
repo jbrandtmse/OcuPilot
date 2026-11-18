@@ -4,6 +4,7 @@
 /// row; a class changed after a proposal was minted closes it as target-changed; the baseline ships five keys on and two off; and the gate refuses, in process and before any write,
 /// a caller without <code>%Development:USE</code> and one without <code>%DeepSee_ListingGroupEdit:USE</code>. The helpers are
 /// <class>OcuPilot.Test.AnalyticsListingGroupBase</class>'s.</p>
+/// <p><b>What it needs from the environment:</b> the base class's. It makes and removes marker-named groups and classes in <code>USER</code>.</p>
 Class OcuPilot.Test.AnalyticsListingGroupWriteEdge Extends OcuPilot.Test.AnalyticsListingGroupBase
 {
 
@@ -167,7 +168,7 @@ Method TestAGroupsResourceGuardsItsWrites()
 }
 
 /// <p>AC1: in process, through the gate seam, a write is refused before any write for a caller without <code>%DeepSee_ListingGroupEdit:USE</code> (403 naming it) and for one without
-/// <code>%Development:USE</code> (403 naming it, the pair <code>AtelierPort.WritePairs</code> adds), each for the six writes that reach the class; the read of the group needs neither.</p>
+/// <code>%Development:USE</code> (403 naming it, one of the pairs <code>AtelierPort.Pairs</code> adds), each for the seven writes; the read of the group needs neither.</p>
 /// <p>Mutation (Rule 19): drop the edit pair from <method>OcuPilot.Port.AnalyticsPort.AdmitListingGroup</method> -- the edit leg goes red.</p>
 Method TestAWriteIsRefusedWithoutItsPairsBeforeAnyWrite()
 {

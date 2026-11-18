@@ -4618,8 +4618,8 @@ ClassMethod ListingAt(ByRef pData, pName As %String) As %Integer
 /// <p>The shape violations of a listing group write that need nothing from the instance, in <var>pViolations</var>
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>), every one <code>PORT.FIELD.SHAPE</code>: <var>pType</var> is the
 /// write, <var>pGroup</var> and <var>pListing</var> the names it acts on, <var>pBody</var> what the caller sends. A name is
-/// <method>ListingNameShaped</method>; a text member is a string within its length (a caption, description, resource, display name or source of at most
-/// 255 characters, any other of at most 32,000); <code>Disabled</code> is true or false; a listing's <code>Type</code> is <code>table</code> or <code>map</code>
+/// <method>ListingNameShaped</method>; a text member is a string within its length (a caption, resource, default resource, display name or source of at most
+/// 255 characters, a description and any other of at most 32,000); <code>Disabled</code> is true or false; a listing's <code>Type</code> is <code>table</code> or <code>map</code>
 /// and its <code>SelectMode</code> is <code>0</code>, <code>1</code> or <code>2</code>. Pure.</p>
 ClassMethod ListingGroupViolations(pType As %String, pGroup As %String, pListing As %String, pBody As %DynamicObject, Output pViolations) As %Status
 {
@@ -4711,7 +4711,7 @@ ClassMethod VendorListingGroupCompose(pNamespace As %String, pOp As %String, pCl
         If pCode = "" && ((pOp = "ENTRYSET") || (pOp = "ENTRYREMOVE")) {
             Set tIndex = 0
             For tAt = 1:1:tModel.listings.Count() {
-                If tModel.listings.GetAt(tAt).name = pListing Set tIndex = tAt
+                If tModel.listings.GetAt(tAt).name = pListing Set tIndex = tAt Quit
             }
             If 'tIndex {
                 Set pCode = "ABSENT"
@@ -5021,6 +5021,8 @@ ClassMethod PerformListingGroup(pNamespace As %String, pType As %String, pGroup 
                     Set tJoined = tJoined _ $Select(tJoined = "": "", 1: " | ") _ tLine
                 }
                 Do ..LogFault("the listing group's compile was refused: " _ tJoined, $$$ERROR($$$GeneralError, tName))
+            } Else {
+                Do ..LogFault("the listing group's compile call failed", tSC)
             }
             Set tOutcome = ..RestoreListingGroup(pNamespace, tName, tCreates, tPlan("prior"), tPlan("compiled"))
         }
@@ -5090,7 +5092,9 @@ ClassMethod RestoreListingGroup(pNamespace As %String, pName As %String, pCreate
 /// <p>The lines <method>Snippet</method> adds for a listing group write <var>pType</var> of the group or listing the id <var>pId</var> names (Story 24.11, AD-59): the class
 /// the write would save, compiled, and, as the write does, put back when the compile is refused. A delete is the class's deletion. The text is
 /// <method>PlanListingGroup</method>'s, composed from the instance as it stands, and rendered as one string literal; a write that plan refuses is a script that only
-/// sets the refusal's sentence.</p>
+/// sets the refusal's sentence. An add's or a copy's steps are each gated on one line by a free-name check applying the port's taken-name rule (the group's name in the
+/// saved list or the registry, or its class defined), so a script run after another writer took the name changes and deletes nothing. A script longer than
+/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
 ClassMethod ListingGroupSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -5105,11 +5109,20 @@ ClassMethod ListingGroupSnippet(pType As %String, pId As %String, pBody As %Dyna
     If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
     Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
     ; The vendor's text service takes a carriage return and a line feed between lines.
-    Set tText = tNL _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("text")) _ ", $Char(10), $Char(13, 10)))"
-    Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")"
-    If tCreates Quit tText _ tNL _ " If '$System.Status.IsOK(tSC) Do $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
-    Set tUndo = " Do ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("prior")) _ ", $Char(10), $Char(13, 10)))" _ $Select(tPlan("compiled"): " Do $System.OBJ.Compile(" _ tClass _ ", ""ck"")", 1: "")
-    Quit tText _ tNL _ " If '$System.Status.IsOK(tSC) {" _ tUndo _ " }"
+    Set tSave = "##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("text")) _ ", $Char(10), $Char(13, 10)))"
+    If tCreates {
+        Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
+        Set tText = tNL _ " Kill tGroups Do ##class(%DeepSee.ListingGroup).%GetListingGroups(.tGroups, 0)"
+        Set tText = tText _ tNL _ " Set tMade = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPTAKEN) _ ")"
+        Set tText = tText _ tNL _ " If '$Data(tGroups(" _ tNameU _ ")), '$Data(^DeepSee.ListingGroups(""groups"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ tClass _ ") Set tMade = 1, tSC = " _ tSave
+        Set tText = tText _ tNL _ " If tMade, $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")"
+        Set tText = tText _ tNL _ " If tMade, '$System.Status.IsOK(tSC) Do $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
+    } Else {
+        Set tUndo = " Do ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("prior")) _ ", $Char(10), $Char(13, 10)))" _ $Select(tPlan("compiled"): " Do $System.OBJ.Compile(" _ tClass _ ", ""ck"")", 1: "")
+        Set tText = tNL _ " Set tSC = " _ tSave _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")" _ tNL _ " If '$System.Status.IsOK(tSC) {" _ tUndo _ " }"
+    }
+    If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
+    Quit tText
 }
 
 }

@@ -454,6 +454,7 @@ const LISTING_GROUP_TOOLS = [
 
 test('Story 24.11 Batch 2: each listing group refusal and consequence is published once, and the port saves, compiles and deletes through the source code port', () => {
   // Mutation (Rule 19): change one word of REASONLISTINGGROUPCOMPILE in AnalyticsError.cls (or of analyticsRefusalListingGroupCompile in strings.ts) -> this goes red naming the pair;
+  // swap the SQL and SAVE returns in proposal-view.ts's `consequenceSentence` -> this goes red naming the constant;
   // call %SaveToClass, %DeleteListingGroup or $System.OBJ.Delete from AnalyticsPort.cls -> the second half goes red naming the call.
   const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
   const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
@@ -471,7 +472,9 @@ test('Story 24.11 Batch 2: each listing group refusal and consequence is publish
     ['ANALYTICS.LISTINGGROUP.SQL', 'analyticsListingSqlConsequence'],
     ['ANALYTICS.LISTINGGROUP.SAVE', 'analyticsListingGroupSaveConsequence'],
   ]) {
-    assert.ok(proposalView.includes(`'${code}'`), `proposal-view.ts holds ${code}`);
+    const constant = `CONSEQUENCE_ANALYTICSLISTINGGROUP${code.split('.').pop()}`;
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
     assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
   }
   assert.equal(classParameter(LISTING_GROUP_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.LISTINGGROUP.DELETE', 'the group delete names its consequence code');

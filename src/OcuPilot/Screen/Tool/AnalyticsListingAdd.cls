@@ -73,14 +73,4 @@ ClassMethod CreatedId(pWritten) As %String
     Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pWritten.%Get("ListingGroup"), pWritten.%Get("Name")))
 }
 
-/// <p>The add always asks its read for the add: held is <code>LISTINGTAKEN</code> and absent is the 404 a create expects (AD-54).</p>
-ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
-{
-    Set pQuery(##class(OcuPilot.Port.AnalyticsPort).#ACTIONKEY) = ..#WRITETYPE
-    If '$IsObject(pPayload) Quit
-    If (pPayload.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pPayload.%Get(..#NAMESPACEFIELD) '= "") {
-        Set pQuery(##class(OcuPilot.Port.AnalyticsPort).#NAMESPACEKEY) = pPayload.%Get(..#NAMESPACEFIELD)
-    }
-}
-
 }

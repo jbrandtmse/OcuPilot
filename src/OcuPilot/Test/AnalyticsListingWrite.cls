@@ -4,6 +4,7 @@
 /// <code>matches</code> (<code>notFound</code> for a remove). A listing's SQL needs its own pair, judged in process through <class>OcuPilot.Test.AnalyticsGateSeam</class>: without it a
 /// write that sets SQL is refused naming the pair and a write that leaves SQL out keeps what the model holds; and a name the group, a cube or another group already defines is refused
 /// by its own code with nothing written. The helpers are <class>OcuPilot.Test.AnalyticsListingGroupBase</class>'s.</p>
+/// <p><b>What it needs from the environment:</b> the base class's. It makes and removes marker-named groups and classes in <code>USER</code>.</p>
 Class OcuPilot.Test.AnalyticsListingWrite Extends OcuPilot.Test.AnalyticsListingGroupBase
 {
 

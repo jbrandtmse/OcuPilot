@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -13,7 +14,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { ListPage } from '../../shell/list-page';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { LISTING_GROUP_COPY_ACTION } from './listing-group-copy-dialog';
+import { LISTING_GROUP_COPY_ACTION, ListingGroupCopyDialog } from './listing-group-copy-dialog';
 import { LISTING_GROUP_LIST, LISTING_GROUP_LISTING_LIST, LISTING_GROUP_UPDATE_ACTION, LISTING_SET_ACTION } from './listing-group-dialog';
 import { LISTING_GROUP_ADD_ACTION, ListingGroupListPage } from './listing-group-list.page';
 import { LISTING_ADD_ACTION, ListingGroupListingListPage } from './listing-group-listing-list.page';
@@ -144,6 +145,9 @@ describe('the Listing groups page', () => {
     await settle(third.fixture);
     expect(third.host.querySelector('app-listing-group-copy-dialog')).not.toBeNull();
     expect(third.host.querySelector('app-listing-group-dialog')).toBeNull();
+    // Mutation (Rule 19): give the copy dialog `[source]="namespace"` instead of the copied name -> this goes red.
+    const copy = third.fixture.debugElement.query(By.directive(ListingGroupCopyDialog)).componentInstance as ListingGroupCopyDialog;
+    expect(copy.source()).toBe('Probe.Group');
   });
 });
 

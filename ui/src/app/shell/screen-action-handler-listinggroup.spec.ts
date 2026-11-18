@@ -88,6 +88,18 @@ describe('the listing group editor through the generic handler (Story 24.11)', (
     expect(calls[0].body).toEqual({ action: 'delete', id: 'Probe.Group' });
   });
 
+  it('asks for the name the row shows, not the key the write is sent with', async () => {
+    // A listing group's row key is its name, so a real row cannot tell the entry from the key; this fixture gives the row a key that is not its name.
+    // Mutation (Rule 19): drop the Listing groups' `TYPED_NAME_ROWS` entry -> the dialog asks for the key and this goes red.
+    const { handler, store, calls } = mount(GROUPS);
+    handler.startFor(GROUPS, 'delete', 'row-key', { Name: 'Probe.Group' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target]).toEqual(['typed-name', 'Probe.Group', 'row-key']);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toEqual({ action: 'delete', id: 'row-key' });
+  });
+
   it('asks for a listing\u2019s name typed, never its composite id, under the remove consequence', async () => {
     // Mutation (Rule 19): drop the Listings' `TYPED_NAME_ROWS` entry -> the name reads the composite id and this goes red.
     const { handler, store, calls } = mount(LISTINGS);

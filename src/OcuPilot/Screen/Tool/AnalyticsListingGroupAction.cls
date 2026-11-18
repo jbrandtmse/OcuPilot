@@ -47,8 +47,8 @@ ClassMethod IdArgument() As %String
     Quit "Name"
 }
 
-/// <p>The pairs <method>OcuPilot.Screen.Tool.AnalyticsAction.PrivilegePairs</method> names, then <code>%DeepSee_ListingGroupEdit:USE</code> and the pairs
-/// <code>AtelierPort.WritePairs</code> names for the namespace the request is scoped to, each once. <var>pResolved</var> is 0 when a database names no resource.</p>
+/// <p>The pairs <method>OcuPilot.Screen.Tool.AnalyticsAction.PrivilegePairs</method> names, then <code>%DeepSee_ListingGroupEdit:USE</code>, the source code API's own pairs
+/// (<code>AtelierPort.Pairs</code>, which carry <code>%Development:USE</code>) and the pairs <code>AtelierPort.WritePairs</code> names for the namespace the request is scoped to, each once. <var>pResolved</var> is 0 when a database names no resource.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##super(pDescriptor, .pResolved)

@@ -591,7 +591,7 @@ async function fillAndConfirm(page, fields) {
 }
 
 // Story 24.11 AC4 (Batch 2). Mutation (Rule 19): make the New listing group dialog post to the term lists' route (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red;
-// the Listing groups' own `TYPED_NAME_ROWS` entry is pinned by no mutation: a group's id is its name, so the dialog asks for the same text whether or not the entry is declared.
+// the Listing groups' own `TYPED_NAME_ROWS` entry is pinned in `screen-action-handler-listinggroup.spec.ts`, whose fixture's key differs from its name; here a group's id is its name.
 test('Story 24.11: a person creates a listing group, edits it, adds a listing to it and deletes the group by typing its name, and each screen shows each change', async () => {
   const { context, page } = await signedInAt(browser, config, url(LISTING_GROUPS), VIEWPORTS.wide, REDUCED_MOTION);
   try {

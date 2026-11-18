@@ -1,7 +1,7 @@
 /// <p>What Story 24.11's listing group write tests share (Batch 2): the probe's analytics in <code>USER</code>, classes and groups named with the probe's write marker, the
 /// person's routes and the agent's mint and confirm over HTTP, the vendor's model of a group, a class's text and what lies outside its <code>Listings</code> XData, the
-/// registry's state, the audit and ledger counts, and a probe principal without the SQL pair that mints in a child process. <class>OcuPilot.Test.AnalyticsListingGroupWrite</class>, <class>OcuPilot.Test.AnalyticsListingWrite</class> and
-/// <class>OcuPilot.Test.AnalyticsListingGroupWriteEdge</class> extend it.</p>
+/// registry's state, the audit and ledger counts, and a probe principal without the SQL pair that mints in a child process. <class>OcuPilot.Test.AnalyticsListingGroupWrite</class>, <class>OcuPilot.Test.AnalyticsListingWrite</class>,
+/// <class>OcuPilot.Test.AnalyticsListingGroupWriteEdge</class> and <class>OcuPilot.Test.AnalyticsListingGroupDatabase</class> extend it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it turns analytics on in <code>USER</code> and saves, compiles and deletes classes there. It removes
 /// everything after the last test of each class.</p>
