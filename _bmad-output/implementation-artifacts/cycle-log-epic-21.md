@@ -537,3 +537,5 @@
 2026-11-18T07:10:39Z	Story 21.5	stage_spawned	stage=code-review scope=rework1+2 spawn_at=2026-11-18T07:10:39Z model=opus agent_name=21-5-code-review-2 cycle_iteration=3 baseline=1ace574fe
 2026-11-18T07:34:33Z	Story 21.5	cr_complete	scope=rework1+2 spawn_at=2026-11-18T07:11Z model=opus high=0 med=2(patched) low=16 rows=28 unresolved_high_med=0 new=DW-2730(decision-pending:AD-58_READBACKPAYLOAD_spine_line) final=done commit=b293049be closing_sections_present=true
 2026-11-18T07:34:33Z	Story 21.5	ledger_adjudicated	owned=2 resolved=2(DW-2607,DW-2722) reowned=0 terminal=0 note=DW-2723,DW-2724_resolved_at_review;DW-2730_decision_sheet
+2026-11-18T07:34:43Z	Epic 21	integrated	feature=50cb0b1de merge=1de56e265 conflicts=none note=21.14_merged_on_feature;timings
+2026-11-18T07:34:43Z	Story 21.5	gate_step	step=fresh_check+full_sweep+smoke head=1de56e265 started=2026-11-18T07:34:43Z dir=e21u/21-5/gate2
