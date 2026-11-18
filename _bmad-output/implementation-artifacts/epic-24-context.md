@@ -59,6 +59,9 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
   - Only reads measured to write nothing are called. `%GetMemberTree`, `%GetDimensionMembers` and `%GetFavoritesForUser` are never called.
   - MDX that runs code is detected by the shared detector, which fails closed.
   - Analytics ids, such as a term-list name or a folder-item full name, are kept exactly.
+- **Class-backed definitions** (listing groups, quality measures) are written by saving and compiling their class. A compile the instance refuses puts the class back as it was. Class names are refused in the `%` and `OcuPilot` packages, and two classes defining one item are refused.
+- **AtelierPort** is the only class naming `%Api.Atelier.*`. Its writes (save, compile, delete, import) also require WRITE on the target namespace's routines-database resource, resolved at call time, because the API checks none itself. An answer above the capture ceiling (about 3.6 million characters) is refused `PORT.UNAVAILABLE`.
+- **Read-back.** After a write reads OK, its caller re-reads the target through the tool's declared port with the caller's own privileges and reports `readBack {verdict, fields, written, reason?}` without altering the write's answer. A tool with no derived field list may declare `READBACKFIELDS`. A tool that sends no body may also declare `READBACKPAYLOAD`, which compares those fields against its port query's values so it reads `matches` or `differs` rather than `nothingSent`.
 - **Run-code exception (unit-test runner, consoles, terminal):**
   - The tool belongs to a person alone: it declares `PERSONGATE`, is unadvertised, and is refused `PROHIBITED.PERSONONLY` if the agent reaches it.
   - Its governance key ships `false` and is asked by the screen action route.
@@ -74,17 +77,18 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
 ## UX & Interaction Patterns
 
 - Every screen registers the standard screen contract: route with `?ns=`, side-bar entry, archetype, privilege resource, entity-type key, context serializer, actions (destructive last), empty-state sentence, fixed strings and aliases.
-- On write-capable lists the "Or ask the agent: …" line takes a short phrase, never a full sentence.
+- On write-capable lists the "Or ask the agent: …" line takes a short phrase, never a full sentence. A screen with no action names no agent phrase.
 - Gated controls stay focusable with `aria-disabled` and name their reason; they are never hidden.
-- A screen's destructive action uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target.
+- A screen's destructive action uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target, and a delete that OcuPilot cannot reverse says so in its consequence.
+- Refusals are the server's sentences, shown as sent. Vendor text is logged, never shown.
 - Result and status lines are announced to assistive technology.
-- Each story's fixed strings are in the experience spine's string table, and the story must use them.
+- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class).
 
 ## Cross-Story Dependencies
 
 - Every story harvests through Story 21.1's seam. The interoperability stories (24.3, 24.15 to 24.19) extend Epic 20's InteropPort. The analytics stories (24.2, 24.10 to 24.14) extend its AnalyticsPort.
 - Story 24.5 establishes the run-code exception and `PERSONGATE`. Stories 24.6 and 24.7 build under it, and they rely on Story 21.30's guarded stores to protect OcuPilot's administrative state.
 - Story 24.8's environment diff should compare the per-namespace default settings that Story 24.15 reads (DW-2636). Story 24.9's promote is the tool the harvested promote guided workflow is waiting for, and that workflow has no steps until promote lands.
-- Story 24.10 extends the term-list editor from Story 24.2.
+- Story 24.10 extends the term-list editor from Story 24.2. Story 24.12's quality measures reuse the listing groups' (24.11) class-save pattern and refusal sentences.
 - The 28 harvested tools are split across Stories 24.4 (14), 24.21 (10), 24.22 (3) and 24.23 (1). Story 24.20's undo applies to the write path as a whole.
 - Stories 24.5 and 24.8 add rows to Epic 22's exclusion register, and its test holds the register equal to the catalog.
