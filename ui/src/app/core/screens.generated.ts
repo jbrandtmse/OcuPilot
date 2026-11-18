@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'global' | 'global-node';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'global' | 'global-node';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -559,6 +559,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "folder-item",
   "listing-group",
   "listing-group-listing",
+  "quality-measure",
+  "quality-measure-element",
+  "quality-measure-meta",
   "backup-task",
   "backup-database",
   "startup-setting",
@@ -3321,6 +3324,495 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList",
+    "route": "analytics/quality-measures/elements",
+    "area": "analytics",
+    "labelKey": "analyticsQualityMeasureElementsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure-element",
+    "secondaryEntityTypes": [
+      "quality-measure"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/quality-measures",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "QualityMeasure",
+        "Group",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "QualityMeasure",
+        "Group",
+        "GroupCaption",
+        "GroupDescription",
+        "GroupDisabled",
+        "Name",
+        "Caption",
+        "MDX",
+        "Disabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasureElementsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureElementsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasureElementsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureElementsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "element",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasureElements",
+        "type": "LIST"
+      },
+      "fields": [
+        "QualityMeasure",
+        "Group",
+        "GroupCaption",
+        "GroupDescription",
+        "GroupDisabled",
+        "Name",
+        "Caption",
+        "MDX",
+        "Disabled"
+      ],
+      "filter": [
+        "Group",
+        "Name",
+        "Caption",
+        "MDX"
+      ],
+      "sort": {
+        "fields": [
+          "Group",
+          "Name",
+          "Caption"
+        ],
+        "default": "Group",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "qualitymeasure",
+            "labelKey": "analyticsQualityMeasureCriterion",
+            "kind": "text",
+            "maxLength": 752,
+            "hint": "One quality measure, spelled as analytics.qualitymeasures.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Group",
+          "labelKey": "analyticsColumnGroup",
+          "kind": "name"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "text"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "MDX",
+          "labelKey": "analyticsColumnMdx",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.qualitymeasureelements",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList",
+    "route": "analytics/quality-measures",
+    "area": "analytics",
+    "labelKey": "analyticsQualityMeasuresLabel",
+    "sideBarPosition": 10,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure",
+    "secondaryEntityTypes": [
+      "quality-measure-element",
+      "quality-measure-meta"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Catalog",
+        "Set",
+        "Id",
+        "Caption",
+        "Description",
+        "SubjectArea",
+        "Expression",
+        "LinkedTo",
+        "Published",
+        "Format",
+        "Href",
+        "Class",
+        "Compiled",
+        "Groups"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasuresEmpty",
+    "commandAliases": [
+      "quality measures",
+      "quality measure"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasuresPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasuresPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasuresPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "quality measure",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasures",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Catalog",
+        "Set",
+        "Id",
+        "Caption",
+        "Description",
+        "SubjectArea",
+        "Expression",
+        "LinkedTo",
+        "Published",
+        "Format",
+        "Href",
+        "Class",
+        "Compiled",
+        "Groups"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "SubjectArea",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "SubjectArea",
+          "Published",
+          "Compiled",
+          "Groups"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "SubjectArea",
+          "labelKey": "analyticsTermListSubjectArea",
+          "kind": "text"
+        },
+        {
+          "field": "Published",
+          "labelKey": "analyticsColumnPublished",
+          "kind": "status"
+        },
+        {
+          "field": "Compiled",
+          "labelKey": "analyticsColumnCompiled",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.qualitymeasures",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList",
+    "route": "analytics/quality-measures/documentation",
+    "area": "analytics",
+    "labelKey": "linksDocumentation",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure-meta",
+    "secondaryEntityTypes": [
+      "quality-measure"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/quality-measures",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "QualityMeasure",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "QualityMeasure",
+        "Name",
+        "Caption",
+        "Section",
+        "Content",
+        "Disabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasureMetasEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureMetasPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasureMetasPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureMetasPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "documentation item",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasureMetas",
+        "type": "LIST"
+      },
+      "fields": [
+        "QualityMeasure",
+        "Name",
+        "Caption",
+        "Section",
+        "Content",
+        "Disabled"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Section",
+        "Content"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Section"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "qualitymeasure",
+            "labelKey": "analyticsQualityMeasureCriterion",
+            "kind": "text",
+            "maxLength": 752,
+            "hint": "One quality measure, spelled as analytics.qualitymeasures.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Content",
+          "labelKey": "analyticsColumnContent",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.qualitymeasuremetas",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

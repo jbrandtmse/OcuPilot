@@ -94,6 +94,11 @@
 /// and saves, compiles and deletes the group's class through <method>AtelierPortClass</method> (<class>OcuPilot.Kernel.SourceDocument</class>), never through the vendor's save and
 /// delete calls; a compile the instance refuses puts the class back as it was (<method>PerformListingGroup</method>). The vendor audits none of it, so each write records OcuPilot's
 /// own <code>ConfigChange</code> row.</p>
+/// <p><b>The quality measures (Story 24.12, AD-65).</b> The <code>QualityMeasures</code> endpoint answers one row per measure name the vendor's
+/// <code>%GetQualityMeasureList</code> lists, read through the class the vendor's registry names for it (<code>%GetQualityMeasureClass</code>) and the model
+/// <code>%GetModel</code> reads with its link followed; a measure listed with no name is not a row, and a name the registry does not hold is not either.
+/// <code>Compiled</code> is <code>$System.OBJ.IsUpToDate</code> of the registered class. The <code>QualityMeasureElements</code> and <code>QualityMeasureMetas</code>
+/// endpoints answer one measure's groups with their elements and its documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>; all three are reads.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
@@ -104,7 +109,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -135,6 +140,15 @@ Parameter ENDPOINTLISTINGGROUPS = "ListingGroups";
 
 Parameter ENDPOINTLISTINGGROUPLISTINGS = "ListingGroupListings";
 
+/// <p>The quality measures of the namespace (Story 24.12).</p>
+Parameter ENDPOINTQUALITYMEASURES = "QualityMeasures";
+
+/// <p>One quality measure's groups with their elements, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREELEMENTS = "QualityMeasureElements";
+
+/// <p>One quality measure's documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREMETAS = "QualityMeasureMetas";
+
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
 Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
@@ -151,6 +165,9 @@ Parameter FOLDERPAIRS = "%DeepSee_Portal:USE,%Development:USE";
 
 /// <p>The classic Listing Group Manager's pairs, narrowed to the view resource of its either-of list: the portal's, and <code>%DeepSee_ListingGroup:USE</code>.</p>
 Parameter LISTINGGROUPPAIRS = "%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE";
+
+/// <p>The classic Quality Measures Manager's pairs: the portal's, and <code>%DeepSee_PortalEdit:USE</code>, the <code>RESOURCE</code> of the classic page.</p>
+Parameter QUALITYMEASUREPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
 
 /// <p>The pair a listing's SQL needs to be answered: the classic page's own check for showing the field (<code>CheckListingGroupSQLViewAccess</code>).</p>
 Parameter LISTINGGROUPSQLPAIRS = "%DeepSee_ListingGroupSQL:USE";
@@ -344,6 +361,9 @@ Parameter TERMLISTKEY = "termlist";
 /// <p>The query key naming a listing group, for its listings.</p>
 Parameter LISTINGGROUPKEY = "listinggroup";
 
+/// <p>The query key naming a quality measure, for its elements and its documentation.</p>
+Parameter QUALITYMEASUREKEY = "qualitymeasure";
+
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
 
@@ -483,7 +503,7 @@ ClassMethod Endpoints() As %List
 
 /// <p>The pair set <var>pEndpoint</var> requires, as the <code>%List</code> of two-element <code>%List</code>s the gate
 /// evaluates; <code>""</code> for an endpoint this port does not serve. The cubes and their three tabs take the Model Browser's
-/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's and the listing groups and their listings the Listing Group Manager's.</p>
+/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's, the listing groups and their listings the Listing Group Manager's and the quality measures with their two tabs the Quality Measures Manager's.</p>
 ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
@@ -496,6 +516,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#FOLDERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
         Set tSpec = ..#LISTINGGROUPPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+        Set tSpec = ..#QUALITYMEASUREPAIRS
     } Else {
         Quit ""
     }
@@ -575,6 +597,11 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// model's target cubes as written, <code>Compiled</code> whether the vendor's compiled list names this group's class, <code>Listings</code> the number of listings the group holds.</li>
 /// <li>ListingGroupListings: <code>{ListingGroup, Name, DisplayName, Type, Fields, OrderBy, Joins, Formats, Source, Resource, SelectMode, Disabled, Description, SQL}</code>, the
 /// listings of the group the criterion <parameter>LISTINGGROUPKEY</parameter> names, <code>SQL</code> <code>""</code> unless the caller holds <parameter>LISTINGGROUPSQLPAIRS</parameter>.</li>
+/// <li>QualityMeasures: <code>{Name, Catalog, Set, Id, Caption, Description, SubjectArea, Expression, LinkedTo, Published, Format, Href, Class, Compiled, Groups}</code>, one row per
+/// measure name, <code>Class</code> the class the registry names for it, <code>Groups</code> the number of groups its model holds.</li>
+/// <li>QualityMeasureElements: <code>{QualityMeasure, Group, GroupCaption, GroupDescription, GroupDisabled, Name, Caption, MDX, Disabled}</code>, one row per element of the measure
+/// the criterion <parameter>QUALITYMEASUREKEY</parameter> names, a group with no element one row with empty element fields.</li>
+/// <li>QualityMeasureMetas: <code>{QualityMeasure, Name, Caption, Section, Content, Disabled}</code>, one row per documentation item of that measure.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -648,6 +675,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
             ; A criterion that names no group answers no rows, and an empty one names none.
             Set tCriterion = $Get(pQuery(..#LISTINGGROUPKEY))
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; A criterion that names no measure answers no rows, and an empty one names none.
+            Set tCriterion = $Get(pQuery(..#QUALITYMEASUREKEY))
         }
         ; A listing's SQL is answered to a holder of its own pair only; the pair is judged here, where the gate class is visible (AD-16).
         Set tShowSQL = 0
@@ -747,7 +777,7 @@ ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) 
 
 /// <p>Read <var>pEndpoint</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData</code> is the row count,
 /// and <code>pData(n)</code> row <code>n</code> as a <code>%List</code>, at most <var>pMax</var> rows when that is above zero.
-/// <var>pCriterion</var> is the cube or term list a tab names, or the listing group whose listings are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
+/// <var>pCriterion</var> is the cube or term list a tab names, the listing group whose listings are read, or the quality measure whose groups or documentation are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
 /// exception is <var>pCaught</var>.</p>
 /// <p><b>Everything between the switch and the restore is in this one method</b> and names only vendor and system classes, because
 /// an <code>OcuPilot.*</code> class is not visible in the target namespace (AD-16). The raw values are shaped into rows by
@@ -901,6 +931,67 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     }
                 }
             }
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; The vendor's list names each measure once per class declaring it and gives a disabled measure no name; the registry answers one class per name.
+            Set pVendorStatus = $$$OK
+            If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                Set pVendorStatus = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)
+                Set tAt = ""
+                While $$$ISOK(pVendorStatus) {
+                    Set tAt = $Order(tList(tAt))
+                    If tAt = "" Quit
+                    Set tListed = $List(tList(tAt), 1)
+                    If (tListed = "") || $Data(tNameSeen($ZConvert(tListed, "U"))) Continue
+                    Set tNameSeen($ZConvert(tListed, "U")) = ""
+                    Set tNames($Increment(tNames)) = $ListBuild(tListed, $List(tList(tAt), 5))
+                }
+            } ElseIf pCriterion '= "" {
+                Set tNames = 1
+                Set tNames(1) = $ListBuild(pCriterion, "")
+            }
+            For tAt = 1:1:+$Get(tNames) {
+                If (pMax > 0) && (pData >= pMax) Quit
+                Set tName = $List(tNames(tAt), 1)
+                Set tClass = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(tName, .tFound)
+                If $$$ISERR(tFound) || (tClass = "") Continue
+                Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(tName, .tModelStatus, 1)
+                If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                    Set tIsCompiled = ''$System.OBJ.IsUpToDate(tClass)
+                    Set pData = pData + 1
+                    If $IsObject(tModel) {
+                        Set pData(pData) = $ListBuild(tName, tModel.catalog, tModel.set, tModel.id, tModel.caption, tModel.description, tModel.subjectArea, tModel.expression, tModel.linkedTo, ''tModel.published, tModel.format, tModel.href, tClass, tIsCompiled, tModel.groups.Count())
+                    } Else {
+                        Set pData(pData) = $ListBuild(tName, $Piece(tName, "/", 1), $Piece(tName, "/", 2), $Piece(tName, "/", 3), $List(tNames(tAt), 2), "", "", "", "", 0, "", "", tClass, tIsCompiled, 0)
+                    }
+                    Continue
+                }
+                ; A model the vendor cannot read, or one that is not the measure the criterion names, has no rows.
+                If '$IsObject(tModel) || ($ZConvert(tModel.name, "U") '= $ZConvert(pCriterion, "U")) Continue
+                If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+                    For tGroupAt = 1:1:tModel.groups.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tGroupObject = tModel.groups.GetAt(tGroupAt)
+                        If tGroupObject.elements.Count() = 0 {
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, "", "", "", 0)
+                            Continue
+                        }
+                        For tElementAt = 1:1:tGroupObject.elements.Count() {
+                            If (pMax > 0) && (pData >= pMax) Quit
+                            Set tElement = tGroupObject.elements.GetAt(tElementAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, tElement.name, tElement.caption, tElement.mdx, ''tElement.disabled)
+                        }
+                    }
+                } Else {
+                    For tMetaAt = 1:1:tModel.metas.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tMeta = tModel.metas.GetAt(tMetaAt)
+                        Set pData = pData + 1
+                        Set pData(pData) = $ListBuild(tModel.name, tMeta.name, tMeta.caption, tMeta.section, tMeta.content, ''tMeta.disabled)
+                    }
+                }
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -1004,6 +1095,39 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As
             Do tRow.%Set("Disabled", $List(tValues, 12), "boolean")
             Do tRow.%Set("Description", $List(tValues, 13), "string")
             Do tRow.%Set("SQL", $Select(pShowSQL: $List(tValues, 14), 1: ""), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Catalog", $List(tValues, 2), "string")
+            Do tRow.%Set("Set", $List(tValues, 3), "string")
+            Do tRow.%Set("Id", $List(tValues, 4), "string")
+            Do tRow.%Set("Caption", $List(tValues, 5), "string")
+            Do tRow.%Set("Description", $List(tValues, 6), "string")
+            Do tRow.%Set("SubjectArea", $List(tValues, 7), "string")
+            Do tRow.%Set("Expression", $List(tValues, 8), "string")
+            Do tRow.%Set("LinkedTo", $List(tValues, 9), "string")
+            Do tRow.%Set("Published", $List(tValues, 10), "boolean")
+            Do tRow.%Set("Format", $List(tValues, 11), "string")
+            Do tRow.%Set("Href", $List(tValues, 12), "string")
+            Do tRow.%Set("Class", $List(tValues, 13), "string")
+            Do tRow.%Set("Compiled", $List(tValues, 14), "boolean")
+            Do tRow.%Set("Groups", $List(tValues, 15), "number")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Group", $List(tValues, 2), "string")
+            Do tRow.%Set("GroupCaption", $List(tValues, 3), "string")
+            Do tRow.%Set("GroupDescription", $List(tValues, 4), "string")
+            Do tRow.%Set("GroupDisabled", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Name", $List(tValues, 6), "string")
+            Do tRow.%Set("Caption", $List(tValues, 7), "string")
+            Do tRow.%Set("MDX", $List(tValues, 8), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 9), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Name", $List(tValues, 2), "string")
+            Do tRow.%Set("Caption", $List(tValues, 3), "string")
+            Do tRow.%Set("Section", $List(tValues, 4), "string")
+            Do tRow.%Set("Content", $List(tValues, 5), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 6), "boolean")
         } Else {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Type", $List(tValues, 2), "string")

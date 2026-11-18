@@ -13,7 +13,7 @@ Parameter TOOL = "OcuPilot.Screen.Tool.Navigate";
 /// <p>The screens that were refused an id while their own id was read in place of their parent's,
 /// and take <code>parentId</code> now. Each has a parent whose id is one part and an own id of
 /// more than one.</p>
-Parameter NEWLYOPENABLE = "tasks/schedule/history,analytics/term-lists/entries,analytics/listing-groups/listings,interoperability/lookup-tables/entries,interoperability/productions/items,web-applications/routine-applications/routines,os-management/namespaces/global-mappings,os-management/namespaces/package-mappings,os-management/namespaces/routine-mappings";
+Parameter NEWLYOPENABLE = "tasks/schedule/history,analytics/term-lists/entries,analytics/listing-groups/listings,analytics/quality-measures/elements,analytics/quality-measures/documentation,interoperability/lookup-tables/entries,interoperability/productions/items,web-applications/routine-applications/routines,os-management/namespaces/global-mappings,os-management/namespaces/package-mappings,os-management/namespaces/routine-mappings";
 
 /// <p>The screens whose parent's id is two parts, so no id the model supplies can name them: the
 /// four item tabs, which took a model-composed two-part parent id as <code>entityId</code>, and the
@@ -32,14 +32,14 @@ Parameter RESULTPARENTIDTEXT = "The item the screen was opened for, when one was
 
 Parameter REFUSALTEXT = "This screen cannot be opened on that item.";
 
-/// <p>Each of the nine screens that became openable for their parent takes <code>parentId</code>
+/// <p>Each of the eleven screens that became openable for their parent takes <code>parentId</code>
 /// and answers it as the parent, and refuses <code>entityId</code> naming it.</p>
 /// <p>Mutation (Rule 19): make a parent screen's declared id two parts, so the derived sweep follows
 /// it and stays green -- this goes red on that parent's child.</p>
 Method TestTheScreensOpenableForTheirParentTakeParentId()
 {
     Set tRoutes = $ListFromString(..#NEWLYOPENABLE, ",")
-    Do $$$AssertEquals($ListLength(tRoutes), 9, "the roster names nine screens")
+    Do $$$AssertEquals($ListLength(tRoutes), 11, "the roster names eleven screens")
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
         Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tRoute)

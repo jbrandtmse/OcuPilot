@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:655 */
+  /** EXPERIENCE.md:656 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8202,6 +8202,44 @@ export const STRINGS = {
   analyticsListingGroupsEmptyAgent: 'create a listing group',
   /** EXPERIENCE.md:612 */
   analyticsListingGroupListingsEmptyAgent: 'add a listing to this listing group',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresLabel: 'Quality measures',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsLabel: 'Groups and elements',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureCriterion: 'Quality measure',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnPublished: 'Published',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnGroup: 'Group',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnMdx: 'MDX',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnContent: 'Content',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresEmpty: 'No quality measure is defined in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsEmpty: 'This quality measure no longer exists, or it has no groups.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasEmpty: 'This quality measure no longer exists, or it has no documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt1: 'Summarize the quality measures in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt2: 'Which quality measures are not compiled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt3: 'Which quality measures are linked to another measure?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt1: 'Summarize the groups of this quality measure.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt2: 'Which elements are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt3: 'Explain what each element\'s MDX selects.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt1: 'Summarize this quality measure\'s documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt2: 'Which documentation items are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt3: 'What does the documentation say this measure is for?',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

@@ -1560,6 +1560,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
@@ -2756,6 +2758,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
@@ -3546,6 +3551,9 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsFolderItemList', 'FolderItems'],
     ['AnalyticsListingGroupList', 'ListingGroups'],
     ['AnalyticsListingGroupListingList', 'ListingGroupListings'],
+    ['AnalyticsQualityMeasureList', 'QualityMeasures'],
+    ['AnalyticsQualityMeasureElementList', 'QualityMeasureElements'],
+    ['AnalyticsQualityMeasureMetaList', 'QualityMeasureMetas'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

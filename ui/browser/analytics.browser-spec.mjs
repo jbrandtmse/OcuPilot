@@ -18,6 +18,9 @@
  * Story 24.11 adds one test: Listing groups lists the probe's listing groups with what the vendor's model reads, a name cell opens the group's Listings,
  * and both screens pass the structural and contrast checks.
  *
+ * Story 24.12 adds one test: Quality measures lists the probe's measures with what the vendor's model reads, a name that holds slashes opens the measure's Groups and elements,
+ * its Documentation shows the measure's items, and the three screens pass the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -58,6 +61,9 @@ const FOLDER_ITEMS = 'analytics/folder-items';
 const LISTING_GROUPS = 'analytics/listing-groups';
 const LISTINGS = `${LISTING_GROUPS}/listings`;
 const LISTING_GROUP = 'OcuPilotProbeListings';
+const QUALITY_MEASURES = 'analytics/quality-measures';
+const QUALITY_ELEMENTS = `${QUALITY_MEASURES}/elements`;
+const QUALITY_DOCUMENTATION = `${QUALITY_MEASURES}/documentation`;
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -226,8 +232,9 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsMdxQueryLabel,
         STRINGS.analyticsCubeManagerLabel,
         STRINGS.analyticsListingGroupsLabel,
+        STRINGS.analyticsQualityMeasuresLabel,
       ],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34) and Listing groups (Story 24.11)'
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11) and Quality measures (Story 24.12)'
     );
 
     const cubes = inUser('ANCUBES', [
@@ -566,6 +573,82 @@ test('Story 24.11: Listing groups shows each group with what the vendor\'s model
   } finally {
     await context.close();
     probe('LGGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
+  }
+});
+
+// Story 24.12 AC3. Mutation (Rule 19): drop `MDX` from the elements read in `AnalyticsPort.Collect` (reload the class) -> the MDX cell reads empty and the elements leg goes red.
+test('Story 24.12: Quality measures shows each measure with what the vendor\'s model reads, a name that holds slashes opens its Groups and elements, and its Documentation shows its items', async () => {
+  const made = probe('QMMADE', `$System.Status.IsOK(##class(${PROBE}).CreateQualityMeasures())`);
+  assert.equal(made.value, '1', `the probe's quality measures are saved and compiled: ${made.output}`);
+  const measure = probe('QMNAME', `##class(${PROBE}).#QMCOMPILED`).value;
+  assert.ok(measure.includes('/'), `the compiled measure's name holds slashes: ${measure}`);
+  const placeholder = (cell) => (cell === '' ? STRINGS.tableEmptyValue : cell);
+  const yesNo = (flag) => (flag === '1' ? STRINGS.tableStatusYes : STRINGS.tableStatusNo);
+  const byFirstCell = (left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await openEntry(page, STRINGS.analyticsQualityMeasuresLabel);
+      await pathHolds(page, `/${QUALITY_MEASURES}`);
+      await answered(page);
+      const measures = inUser('QMMEASURES', [
+        'Set sc=##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.l),k="",out=""',
+        'For { Set k=$Order(l(k))  Quit:k=""  Set n=$List(l(k),1)  If $Piece(n,"/",1)="OcuPilotProbe" { Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel(n,,1)  Set out=out_n_"~"_m.caption_"~"_m.subjectArea_"~"_(\'\'m.published)_"~"_(\'\'$System.OBJ.IsUpToDate(##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(n)))_"|" } }',
+      ]);
+      const expectedMeasures = measures.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~'))
+        .map(([name, caption, area, published, compiled]) => [name, placeholder(caption), area, yesNo(published), yesNo(compiled)])
+        .sort(byFirstCell);
+      assert.equal(expectedMeasures.length, 3, `the instance holds the three probe measures the vendor names: ${measures.output}`);
+      assert.deepEqual((await rowsStartingWith(page, 'OcuPilotProbe/')).sort(byFirstCell), expectedMeasures, 'Quality measures shows each probe measure with the caption, subject area, publication and compile state the vendor\'s model reads');
+      assert.deepEqual(
+        expectedMeasures.filter((row) => row[4] === STRINGS.tableStatusYes).map((row) => row[0]),
+        [measure, `${measure.replace(/Compiled$/, 'Linked')}`],
+        'the compiled measure and the linked one are compiled, and the one whose compile is refused is not'
+      );
+      assert.deepEqual(await structural(page, QUALITY_MEASURES), [], `${QUALITY_MEASURES}: no violation beyond the baseline's entries`);
+
+      await clickRowCentre(page, { text: measure, link: true });
+      await pathHolds(page, `/${QUALITY_ELEMENTS}/${encodeEntityId(measure)}`);
+      await answered(page);
+      const elements = inUser('QMELEMENTS', [
+        `Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${measure}",,1),out=""`,
+        'For g=1:1:m.groups.Count() { Set gr=m.groups.GetAt(g)  For e=1:1:gr.elements.Count() { Set el=gr.elements.GetAt(e)  Set out=out_gr.name_"~"_el.name_"~"_el.caption_"~"_el.mdx_"|" } }',
+      ]);
+      const expectedElements = elements.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~').map(placeholder))
+        .sort(byFirstCell);
+      assert.deepEqual(expectedElements.map((row) => row[1]), ['AllVisits', 'Over30', 'Retired'], `the vendor reads the compiled measure's three elements, the disabled one included: ${elements.output}`);
+      assert.deepEqual(await allRows(page), expectedElements, 'Groups and elements shows each element under its group with the name, caption and MDX the vendor\'s model reads');
+      assert.deepEqual(await structural(page, QUALITY_ELEMENTS), [], `${QUALITY_ELEMENTS}: no violation beyond the baseline's entries`);
+    } finally {
+      await context.close();
+    }
+
+    const documentation = await signedInAt(browser, config, url(`${QUALITY_DOCUMENTATION}/${encodeEntityId(measure)}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(documentation.page);
+      const items = inUser('QMMETAS', [
+        `Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${measure}",,1),out=""`,
+        'For i=1:1:m.metas.Count() { Set mt=m.metas.GetAt(i)  Set out=out_mt.name_"~"_mt.caption_"~"_mt.content_"|" }',
+      ]);
+      const expectedItems = items.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~').map(placeholder));
+      assert.deepEqual(expectedItems.map((row) => row[0]), ['Purpose'], `the vendor reads the compiled measure's one documentation item: ${items.output}`);
+      assert.deepEqual(await allRows(documentation.page), expectedItems, 'Documentation shows each item with the name, caption and content the vendor\'s model reads, the content as the stored text');
+      assert.deepEqual(await structural(documentation.page, QUALITY_DOCUMENTATION), [], `${QUALITY_DOCUMENTATION}: no violation beyond the baseline's entries`);
+    } finally {
+      await documentation.context.close();
+    }
+  } finally {
+    probe('QMGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
   }
 });
 

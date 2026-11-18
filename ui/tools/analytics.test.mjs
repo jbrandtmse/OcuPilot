@@ -85,9 +85,10 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(parameter('LISTINGGROUPPAIRS'), '%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE');
   assert.equal(parameter('LISTINGGROUPSQLPAIRS'), '%DeepSee_ListingGroupSQL:USE');
+  assert.equal(parameter('QUALITYMEASUREPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
   assert.equal(
     parameter('ENDPOINTS'),
-    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings'
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas'
   );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
@@ -489,10 +490,22 @@ test('Story 24.11 Batch 2: each listing group refusal and consequence is publish
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
   assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'the port still calls only the two measured ListingGroup reads');
-  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /\$System\.OBJ\./i, /\$system\.OBJ\./i, /%Api\.Atelier/]) {
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /\$System\.OBJ\.(?!IsUpToDate\()/i, /%Api\.Atelier/]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
   assert.ok(code.includes('##class(OcuPilot.Kernel.SourceDocument).Save('), 'the write saves through the shared source document helper');
+});
+
+test('Story 24.12: the port reads quality measures through the three measured pure reads and IsUpToDate only, and writes none', () => {
+  // Mutation (Rule 19): call %SaveQMsrDefinition from AnalyticsPort.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.QualityMeasure\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetModel', '%GetQualityMeasureClass', '%GetQualityMeasureList'], 'and only those Utils calls');
+  const objCalls = [...code.matchAll(/\$System\.OBJ\.(\w+)\(/gi)].map((match) => match[1]);
+  assert.deepEqual([...new Set(objCalls)], ['IsUpToDate'], 'and the one $System.OBJ call');
+  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$classmethod\([^)]*%GetModel/i]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
 });
 
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
@@ -504,7 +517,7 @@ test('Story 24.10: the three folder manager tools declare write, the analytics p
   assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.FolderManager";'), 'the base declares the classic Folder Manager');
   assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
-  for (const never of [/\$System\.OBJ\./i, /\$SYSTEM\.OBJ\./i, /%XML\.Reader/, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
+  for (const never of [/\$System\.OBJ\.(?!IsUpToDate\()/i, /%XML\.Reader/, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.UserLibrary\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
