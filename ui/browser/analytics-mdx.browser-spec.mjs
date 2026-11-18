@@ -118,22 +118,32 @@ async function writeStatement(page, text) {
   );
 }
 
-/** What the page shows of Run's readiness: the statement field's text, Run's `aria-disabled` and the namespace the shell reads. */
+/**
+ * What the page shows of Run's readiness: the statement field's text, Run's `aria-disabled`, the namespace the switch reads, and how many
+ * of the page's finished API calls carried that namespace out of how many resource entries it recorded.
+ */
 function describeRunState(page) {
   return page
-    .evaluate(() => ({
-      statement: document.querySelector('textarea[data-ocu-mdx="statement"]')?.value ?? '(statement field absent)',
-      ariaDisabled: document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') ?? '(Run absent or without aria-disabled)',
-      namespace: document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() ?? '(namespace switch absent)',
-    }))
+    .evaluate(() => {
+      const namespace = document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() ?? '(namespace switch absent)';
+      const resources = performance.getEntriesByType('resource');
+      return {
+        statement: document.querySelector('textarea[data-ocu-mdx="statement"]')?.value ?? '(statement field absent)',
+        ariaDisabled: document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') ?? '(Run absent or without aria-disabled)',
+        namespace,
+        scopedCalls: resources.filter((entry) => new URL(entry.name).pathname.startsWith('/api/ocupilot/') && new URL(entry.name).searchParams.get('ns') === namespace).length,
+        resources: resources.length,
+      };
+    })
     .then((state) => JSON.stringify(state))
     .catch((error) => `(page unreadable: ${error.message})`);
 }
 
 /**
- * Press Run with a real pointer, once the page can start a run: Run's `aria-disabled` reads `false` (the screen's store holds the
- * statement that was written) and the namespace switch reads the namespace the page's address names, which is the scope the start
- * carries. A press before either is a press the page ignores or sends to the wrong scope.
+ * Press Run with a real pointer, once the page can start a run: Run's `aria-disabled` reads `false` (the statement field's store holds
+ * a statement and no run is busy), the namespace switch reads the namespace the page's address names, and an API call has already
+ * carried that namespace. The switch shows the address's namespace before the shell has resolved it, while a call carries `?ns=` only
+ * once it has, so the finished call is the sign that the start will carry it too.
  */
 async function pressRun(page) {
   const namespace = new URL(page.url()).searchParams.get('ns');
@@ -141,7 +151,11 @@ async function pressRun(page) {
     await page.waitForFunction(
       (wanted) =>
         document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') === 'false' &&
-        (wanted === null || document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() === wanted),
+        (wanted === null ||
+          (document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() === wanted &&
+            performance
+              .getEntriesByType('resource')
+              .some((entry) => new URL(entry.name).pathname.startsWith('/api/ocupilot/') && new URL(entry.name).searchParams.get('ns') === wanted))),
       { timeout: config.navigationTimeoutMs },
       namespace
     );
@@ -181,12 +195,14 @@ function describeStarts(starts) {
   return starts.map((start) => `a start POST was sent with ns ${JSON.stringify(start.ns)} and ${start.status === null ? 'no answer yet' : `answered ${start.status}`}`).join('; ');
 }
 
-/** Wait until the first start POST has been answered and return it, or fail naming what the POSTs did. */
-async function firstStartAnswered(starts) {
+/** Wait until the first start POST has been answered and return it, or fail naming what the POSTs did and what the page shows. */
+async function firstStartAnswered(page, starts) {
   const deadline = Date.now() + config.navigationTimeoutMs;
   while (!starts.some((start) => start.status !== null) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
   const answered = starts.find((start) => start.status !== null);
-  if (answered === undefined) throw new Error(`expected the start POST to be answered within ${config.navigationTimeoutMs} ms; ${describeStarts(starts)}`);
+  if (answered === undefined) {
+    throw new Error(`expected the start POST to be answered within ${config.navigationTimeoutMs} ms; ${describeStarts(starts)}; the page shows ${await describeRunState(page)}`);
+  }
   return answered;
 }
 
@@ -626,7 +642,7 @@ test('AC7 (QA): a namespace without analytics and one whose cache is read-only s
       const starts = watchStarts(page);
       await writeStatement(page, 'SELECT FROM [OcuPilotProbeVisits]');
       await pressRun(page);
-      const start = await firstStartAnswered(starts);
+      const start = await firstStartAnswered(page, starts);
       assert.equal(start.ns, ns, `${ns}: the start POST carried the namespace the page names`);
       assert.ok(start.status >= 400 && start.status < 500, `${ns}: the start POST is refused before anything runs, not answered ${start.status}`);
       try {

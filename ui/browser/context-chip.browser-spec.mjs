@@ -469,6 +469,7 @@ test('Integration AC: a sent turn carries the synthetic screen_context pair nami
     });
     assert.ok(Number.isInteger(rowsShown), 'the chip showed a row count');
 
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the Send');
     await typeAndSend(page, 'who are the users');
     await page.waitForFunction(
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'read the users',
@@ -656,6 +657,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
       return Number(match[1]);
     });
 
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the Send');
     await typeAndSend(page, 'how many users');
     await page.waitForFunction(
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'counted',
@@ -690,6 +692,7 @@ test('A failed send preserves the paste-warning acknowledgment: a live 409 (AD-4
     // Occupy this user's one AD-41 turn slot for the whole leg below, from a second tab -- the
     // same live refusal `turn.browser-spec.mjs`'s "Second send" test drives, here used as the
     // "failed send" this story's follow-up risk names, not a stubbed/mocked failure.
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the holder sends');
     await typeAndSend(holder.page, 'holding the turn slot');
     await holder.page.waitForSelector('.ocu-panel-message-user', { timeout: config.navigationTimeoutMs });
 

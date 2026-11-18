@@ -80,15 +80,15 @@ export function trackInflightRequests(page) {
 const PROBE_TIMEOUT_MS = 10_000;
 
 /**
- * Fetch `url` from Node over a connection of its own, answering the HTTP status; aborts when `signal` does.
- * The `probe` that `signedInAt` hands `gotoNamingInflight`.
+ * Fetch `url` from Node over a connection of its own, answering the HTTP status and closing the connection without reading the body;
+ * aborts when `signal` does. The `probe` that `signedInAt` hands `gotoNamingInflight`.
  */
 export function fetchFromNode(url, signal) {
   return new Promise((resolve, reject) => {
     const get = url.startsWith('https:') ? httpsGet : httpGet;
     const request = get(url, { agent: false, signal }, (response) => {
-      response.resume();
       resolve(response.statusCode);
+      response.destroy();
     });
     request.on('error', reject);
   });

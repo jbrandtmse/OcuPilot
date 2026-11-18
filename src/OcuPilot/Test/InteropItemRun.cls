@@ -125,7 +125,7 @@ ClassMethod WaitJobs(pWant As %Integer) As %Status
         Hang 0.5
     }
     If $Select(pWant = 0: tCount = 0, 1: tCount >= pWant) Quit $$$OK
-    Quit $$$ERROR($$$GeneralError, "the Jobs tab lists " _ tCount _ " jobs, not " _ pWant _ ", after " _ $FNumber($ZHorolog - tStart, "", 1) _ " seconds; the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ " and the item " _ ..Facts())
+    Quit $$$ERROR($$$GeneralError, $Select(tCount = -1: "the Jobs tab could not be read (wanted " _ pWant _ " jobs)", 1: "the Jobs tab lists " _ tCount _ " jobs, not " _ pWant) _ ", after " _ $FNumber($ZHorolog - tStart, "", 1) _ " seconds; the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ " and the item " _ ..Facts())
 }
 
 /// <p>How many jobs the plain operation's Jobs tab lists, read through its screen; -1 when the read fails.</p>

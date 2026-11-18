@@ -9,6 +9,9 @@
 // - drop the probe line from the rethrown message -> the answering and failing probe tests go red.
 // - drop the probe's time bound or its abort -> the never-answering probe test goes red.
 // - drop `agent: false` from `fetchFromNode` -> the connection count in its test goes red.
+// - raise the default probe bound -> the ten-seconds test goes red.
+// - read the body (`response.resume()`) instead of `response.destroy()`, or drop `signal` from `fetchFromNode` -> the
+//   connection-closing test goes red at its 5 s bound.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -118,6 +121,24 @@ test('a probe that never answers is aborted at its bound and named, and the navi
   assert.equal(aborted, true, 'the probe was told to stop');
 });
 
+test('the probe\'s bound is ten seconds when the caller names none', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
+  const { page, listInflight } = timingOutPage(original);
+  let thrown = null;
+  gotoNamingInflight(page, 'http://localhost/ocupilot/', {}, listInflight, () => new Promise(() => {})).catch((error) => {
+    thrown = error;
+  });
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  await settle();
+  t.mock.timers.tick(9_999);
+  await settle();
+  assert.equal(thrown, null, 'still waiting on the probe just under ten seconds');
+  t.mock.timers.tick(1);
+  await settle();
+  assert.match(thrown?.message ?? '(nothing thrown)', /\nnode fetch failed: no answer within 10000 ms$/, 'the probe gives up at ten seconds');
+});
+
 test('a timeout with no probe appends no probe line', async () => {
   const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
   const { page, listInflight } = timingOutPage(original);
@@ -146,6 +167,31 @@ test('fetchFromNode answers the status a server gives, and rejects with the erro
     await new Promise((resolve) => server.close(resolve));
   }
   await assert.rejects(() => fetchFromNode(`http://127.0.0.1:${port}/ocupilot/`, new AbortController().signal), (error) => error.code === 'ECONNREFUSED');
+});
+
+test('fetchFromNode closes its connection once it has the status, and on an abort when the server never answers', { timeout: 5000 }, async () => {
+  const closed = [];
+  const server = createServer((request, response) => {
+    if (request.url === '/stalls-body') response.writeHead(200).write('partial');
+  });
+  server.on('connection', (socket) => socket.on('close', () => closed.push(socket)));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const closedCount = async (count) => {
+    while (closed.length < count) await new Promise((resolve) => setTimeout(resolve, 10));
+  };
+  try {
+    assert.equal(await fetchFromNode(`http://127.0.0.1:${port}/stalls-body`, new AbortController().signal), 200);
+    await closedCount(1);
+    const controller = new AbortController();
+    const pending = fetchFromNode(`http://127.0.0.1:${port}/never-answers`, controller.signal);
+    setTimeout(() => controller.abort(), 50);
+    await assert.rejects(pending, (error) => error.name === 'AbortError', 'the abort rejects the probe');
+    await closedCount(2);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('a failed or finished request leaves the list, and another error passes through unchanged', async () => {
