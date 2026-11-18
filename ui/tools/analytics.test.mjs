@@ -83,7 +83,12 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('PORTALPAIRS'), '%DeepSee_Portal:USE');
   assert.equal(parameter('TERMLISTPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
-  assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager');
+  assert.equal(parameter('LISTINGGROUPPAIRS'), '%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE');
+  assert.equal(parameter('LISTINGGROUPSQLPAIRS'), '%DeepSee_ListingGroupSQL:USE');
+  assert.equal(
+    parameter('ENDPOINTS'),
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings'
+  );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');
@@ -408,6 +413,16 @@ test("Story 24.10: the folder item delete's consequence code names one published
   assert.equal(classParameter(FOLDER_ITEM_TOOLS[2], 'CONSEQUENCECODE'), 'ANALYTICS.FOLDERITEM.DELETE', 'the delete tool names the consequence code');
   assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE'"), 'proposal-view.ts holds the code');
   assert.ok(experience.includes(`"${stringValue('analyticsFolderItemDeleteConsequence')}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
+});
+
+test('Story 24.11: the port reads listing groups through the two measured pure reads only, and writes none', () => {
+  // Mutation (Rule 19): call %RegisterRecentItem, %SaveToClass or %DeleteListingGroup from AnalyticsPort.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'and only those ListingGroup calls');
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /%DeepSee\.ListingGroupDefinition/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
 });
 
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {

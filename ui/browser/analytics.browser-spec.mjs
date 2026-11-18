@@ -15,6 +15,9 @@
  * `OcuPilot.Test.AnalyticsProbe`, so it runs on a throwaway only; the `after` hook removes all of it and restores `USER`'s flags,
  * whatever the tests answered.
  *
+ * Story 24.11 adds one test: Listing groups lists the probe's listing groups with what the vendor's model reads, a name cell opens the group's Listings,
+ * and both screens pass the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -52,6 +55,9 @@ const RELATIONSHIPS = `${CUBES}/relationships`;
 const TERM_LISTS = 'analytics/term-lists';
 const ENTRIES = `${TERM_LISTS}/entries`;
 const FOLDER_ITEMS = 'analytics/folder-items';
+const LISTING_GROUPS = 'analytics/listing-groups';
+const LISTINGS = `${LISTING_GROUPS}/listings`;
+const LISTING_GROUP = 'OcuPilotProbeListings';
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -219,8 +225,9 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsUserPortalLabel,
         STRINGS.analyticsMdxQueryLabel,
         STRINGS.analyticsCubeManagerLabel,
+        STRINGS.analyticsListingGroupsLabel,
       ],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33) and the Cube manager (Story 20.34)'
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34) and Listing groups (Story 24.11)'
     );
 
     const cubes = inUser('ANCUBES', [
@@ -507,5 +514,57 @@ test('Story 24.10: a folder item is exported to this browser, deleted by typing 
   } finally {
     await context.close();
     runIris(config.container, [`Do ##class(${FOLDER_PROBE}).Sweep()`]);
+  }
+});
+
+// Story 24.11 AC3. Mutation (Rule 19): make the Listings descriptor's parentScope empty (mirror regenerated, bundle rebuilt and redeployed) -> the Listing groups name cell is
+// text and the click leg goes red; drop `Compiled` from the Listing groups read in `AnalyticsPort.Collect` (reload the class) -> the Compiled column reads No and the first leg goes red.
+test('Story 24.11: Listing groups shows each group with what the vendor\'s model reads, a name cell opens its Listings, and both screens pass the structural checks', async () => {
+  const made = probe('LGMADE', `$System.Status.IsOK(##class(${PROBE}).CreateListingGroups())`);
+  assert.equal(made.value, '1', `the probe's listing groups are saved and compiled: ${made.output}`);
+  const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await openEntry(page, STRINGS.analyticsListingGroupsLabel);
+    await pathHolds(page, `/${LISTING_GROUPS}`);
+    await answered(page);
+    const groups = inUser('LGGROUPS', [
+      'Set sc=##class(%DeepSee.ListingGroup).%GetListingGroups(.l,0),k="",out=""',
+      `For { Set k=$Order(l(k))  Quit:k=""  Set m=##class(%DeepSee.ListingGroup).%GetModel($List(l(k,1),5))  If $Extract(m.name,1,21)="${LISTING_GROUP}" Set out=out_m.name_"~"_$List(l(k,1),3)_"~"_m.targetCubes_"~"_''##class(%DeepSee.ListingGroup).%ListingGroupExists(m.name,1)_"~"_m.listings.Count()_"|" }`,
+    ]);
+    const byName = (left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0);
+    const expectedGroups = groups.value
+      .split('|')
+      .filter((entry) => entry !== '')
+      .map((entry) => entry.split('~'))
+      .map(([name, caption, cubes, compiled, listings]) => [name, caption, cubes, compiled === '1' ? STRINGS.tableStatusYes : STRINGS.tableStatusNo, listings])
+      .sort(byName);
+    assert.equal(expectedGroups.length, 4, `the instance holds the four probe groups the vendor reads: ${groups.output}`);
+    assert.deepEqual((await rowsStartingWith(page, LISTING_GROUP)).sort(byName), expectedGroups, 'Listing groups shows each probe group with the caption, target cubes, compiled flag and listing count the vendor\'s model reads');
+    assert.deepEqual(
+      expectedGroups.filter((row) => row[3] === STRINGS.tableStatusYes).map((row) => row[0]),
+      [LISTING_GROUP, `${LISTING_GROUP}Hidden`],
+      'the compiled group and the guarded one are compiled, and the saved and disabled groups are not'
+    );
+    assert.deepEqual(await structural(page, LISTING_GROUPS), [], `${LISTING_GROUPS}: no violation beyond the baseline's entries`);
+
+    await clickRowCentre(page, { text: LISTING_GROUP, link: true });
+    await pathHolds(page, `/${LISTINGS}/${encodeEntityId(LISTING_GROUP)}`);
+    await answered(page);
+    const listings = inUser('LGLISTINGS', [
+      `Set m=##class(%DeepSee.ListingGroup).%GetModel(##class(%DeepSee.ListingGroup).%GetClassName("${LISTING_GROUP}",0)),out=""`,
+      'For i=1:1:m.listings.Count() { Set l=m.listings.GetAt(i)  Set out=out_l.name_"~"_l.listingType_"~"_l.fieldList_"~"_l.sourceClass_"~"_l.description_"|" }',
+    ]);
+    // An empty cell draws the table's own placeholder.
+    const expectedListings = listings.value
+      .split('|')
+      .filter((entry) => entry !== '')
+      .map((entry) => entry.split('~').map((cell) => (cell === '' ? STRINGS.tableEmptyValue : cell)));
+    assert.deepEqual(expectedListings.map((row) => row[0]), ['ByAmount', 'CustomSql'], `the vendor reads the compiled group's two listings: ${listings.output}`);
+    assert.deepEqual(await allRows(page), expectedListings, 'Listings shows each listing with the type, fields, data connector and description the vendor\'s model reads');
+    assert.deepEqual(await structural(page, LISTINGS), [], `${LISTINGS}: no violation beyond the baseline's entries`);
+  } finally {
+    await context.close();
+    probe('LGGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
   }
 });

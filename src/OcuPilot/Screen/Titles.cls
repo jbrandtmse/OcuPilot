@@ -33,6 +33,8 @@ XData Titles
 "analyticsCubeManagerLabel": "Cube manager",
 "analyticsCubesLabel": "Cubes",
 "analyticsFolderItemsLabel": "Folder items",
+"analyticsListingGroupListingsLabel": "Listings",
+"analyticsListingGroupsLabel": "Listing groups",
 "analyticsLogListLabel": "Analytics log",
 "analyticsMdxQueryLabel": "MDX query",
 "analyticsTabDimensions": "Dimensions",

@@ -488,7 +488,9 @@ namespace, the container installs into `USER`.
 OcuPilot signs each person in with their own IRIS account, and every screen checks that account's
 privileges. An account whose only role is `%Manager` also needs read access to the database of the
 namespace OcuPilot is installed in, for example `%DB_HSCUSTOM`; without it, every request is
-refused.
+refused. An administrator who installs or updates OcuPilot without the `%All` role also needs the
+Task Manager privilege, `%Admin_Task:USE`, because the installer sets up OcuPilot's nightly
+retention task; without it, the install stops at that step.
 
 ## What installing OcuPilot changes
 

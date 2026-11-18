@@ -299,7 +299,7 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Set tDetail14 = $Select($IsObject(tFault14) && $IsObject(tFault14.%Get("detail")): tFault14.detail.%Get("failedPair"), 1: "")
     Do $$$AssertEquals(tHttp14 _ "|" _ $Select($IsObject(tFault14): tFault14.%Get("code"), 1: "") _ "|" _ tDetail14, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%DeepSee_Portal:USE", "with AUTH.NOPRIVILEGE naming %DeepSee_Portal:USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
-    For tCase = $ListBuild("TermLists", "%DeepSee_PortalEdit:USE"), $ListBuild("TermListEntries", "%DeepSee_PortalEdit:USE"), $ListBuild("FolderItems", "%Development:USE"), $ListBuild("CubeManager", "%DeepSee_Admin:USE") {
+    For tCase = $ListBuild("TermLists", "%DeepSee_PortalEdit:USE"), $ListBuild("TermListEntries", "%DeepSee_PortalEdit:USE"), $ListBuild("FolderItems", "%Development:USE"), $ListBuild("CubeManager", "%DeepSee_Admin:USE"), $ListBuild("ListingGroups", "%DeepSee_ListingGroup:USE"), $ListBuild("ListingGroupListings", "%DeepSee_ListingGroup:USE") {
         Kill tQuery
         Set tQuery("namespace") = $Namespace
         Set tQuery("termlist") = "any"

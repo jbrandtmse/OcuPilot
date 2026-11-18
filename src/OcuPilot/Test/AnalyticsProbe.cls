@@ -110,6 +110,42 @@ Parameter TERMFIELDSTWO = "Note^Tag";
 
 Parameter TERMSTWO = "z1=Zed=zed note=zed tag";
 
+/// <p>The listing groups <method>CreateListingGroups</method> makes in <code>USER</code>, each with the class that holds it (Story 24.11). The first
+/// is compiled over the Visits cube and holds two listings, the second names a cube that does not exist and so is saved but not compiled, the third
+/// carries <parameter>HIDDENRESOURCE</parameter> on the group, the fourth is disabled, and the fifth
+/// (<method>CreateBrokenListingGroup</method>) holds an attribute value the model refuses, so the vendor reads it as no group.</p>
+Parameter LISTGROUP = "OcuPilotProbeListings";
+
+Parameter LISTGROUPCLASS = "OcuPilotProbe.Analytics.ListingGroup";
+
+Parameter LISTGROUPSAVED = "OcuPilotProbeListingsSaved";
+
+Parameter LISTGROUPSAVEDCLASS = "OcuPilotProbe.Analytics.ListingGroupSaved";
+
+Parameter LISTGROUPHIDDEN = "OcuPilotProbeListingsHidden";
+
+Parameter LISTGROUPHIDDENCLASS = "OcuPilotProbe.Analytics.ListingGroupHidden";
+
+Parameter LISTGROUPOFF = "OcuPilotProbeListingsOff";
+
+Parameter LISTGROUPOFFCLASS = "OcuPilotProbe.Analytics.ListingGroupOff";
+
+Parameter LISTGROUPBROKEN = "OcuPilotProbeListingsBroken";
+
+Parameter LISTGROUPBROKENCLASS = "OcuPilotProbe.Analytics.ListingGroupBroken";
+
+/// <p>The class <method>CreateTwinListingGroup</method> saves: it names the compiled group's name over a cube that does not exist, so its compile is refused, and its
+/// class name sorts before the compiled group's.</p>
+Parameter LISTGROUPTWINCLASS = "OcuPilotProbe.Analytics.AListingGroupTwin";
+
+/// <p>The class <method>CreateTwinListingGroup</method> saves when it is asked for the late twin: the same group name as the early twin, and a class name that sorts after the compiled group's.</p>
+Parameter LISTGROUPTWINLATECLASS = "OcuPilotProbe.Analytics.ZListingGroupTwin";
+
+/// <p>The cube the saved listing group names and the SQL the compiled group's custom listing runs.</p>
+Parameter LISTGROUPNOCUBE = "OcuPilotProbeNoSuchCube";
+
+Parameter LISTGROUPSQL = "SELECT ID FROM OcuPilotProbe_Analytics.Visit";
+
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
 
@@ -500,6 +536,179 @@ ClassMethod DeleteTermListTwo() As %Status
     Quit tSC
 }
 
+/// <p>The class text of the listing group <var>pWhich</var> (<code>compiled</code>, <code>saved</code>, <code>hidden</code>, <code>off</code>,
+/// <code>twin</code> or <code>broken</code>): a class extending <class>%DeepSee.ListingGroupDefinition</class> whose <code>Listings</code> XData holds the group. A single
+/// quote in the XML stands for a double one.</p>
+ClassMethod ListingGroupText(pWhich As %String) As %String [ Private ]
+{
+    Set tNL = $Char(13, 10)
+    Set tNS = "xmlns='http://www.intersystems.com/deepsee/listinggroup'"
+    Set tDepends = ""
+    If pWhich = "compiled" {
+        Set tClass = ..#LISTGROUPCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUP _ "' displayName='OcuPilot probe listings' description='Two listings over the Visits cube' targetCubes='" _ ..#VISITS _ "' defaultResource='%DeepSee_Portal'>" _
+            "<listing name='ByAmount' displayName='By amount' description='Amounts and minutes' listingType='table' fieldList='Amount,Minutes' formatList='color:red^' orderBy='Amount DESC' " _
+            "joinInfo='{&quot;joins&quot;:{&quot;Category&quot;:&quot;LEFT JOIN OcuPilotProbe_Analytics.Category c ON c.ID = Category&quot;},&quot;joinAlias&quot;:{&quot;Category&quot;:&quot;c&quot;}}'/>" _
+            "<listing name='CustomSql' displayName='Custom SQL' description='Runs its own query' sql='" _ ..#LISTGROUPSQL _ "' selectMode='1' resource='%DeepSee_Admin'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "saved" {
+        Set tClass = ..#LISTGROUPSAVEDCLASS
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPSAVED _ "' targetCubes='" _ ..#LISTGROUPNOCUBE _ "'>" _
+            "<listing name='Pending' fieldList='Amount' disabled='true'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "hidden" {
+        Set tClass = ..#LISTGROUPHIDDENCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPHIDDEN _ "' targetCubes='" _ ..#VISITS _ "' resource='" _ ..#HIDDENRESOURCE _ "'>" _
+            "<listing name='Secret' fieldList='Amount'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "off" {
+        Set tClass = ..#LISTGROUPOFFCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPOFF _ "' targetCubes='" _ ..#VISITS _ "' disabled='true'>" _
+            "<listing name='Idle' fieldList='Minutes'/>" _
+            "</listingGroup>"
+    } ElseIf (pWhich = "twin") || (pWhich = "twinlate") {
+        Set tClass = $Select(pWhich = "twin": ..#LISTGROUPTWINCLASS, 1: ..#LISTGROUPTWINLATECLASS)
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUP _ "' targetCubes='" _ ..#LISTGROUPNOCUBE _ "'>" _
+            "<listing name='Twin' fieldList='Amount'/>" _
+            "</listingGroup>"
+    } Else {
+        Set tClass = ..#LISTGROUPBROKENCLASS
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPBROKEN _ "' targetCubes='" _ ..#VISITS _ "' disabled='perhaps'/>"
+    }
+    Quit "Class " _ tClass _ " Extends %DeepSee.ListingGroupDefinition" _ tDepends _ tNL _ "{" _ tNL _
+        "XData Listings [ XMLNamespace = ""http://www.intersystems.com/deepsee/listinggroup"" ]" _ tNL _ "{" _ tNL _
+        $Translate(tXML, "'", """") _ tNL _ "}" _ tNL _ "}" _ tNL
+}
+
+/// <p>Save the probe's listing group classes in <code>USER</code> and compile each: the compiled group, the saved group (its compile is refused for a missing
+/// target cube), the group that carries <parameter>HIDDENRESOURCE</parameter> and the disabled group. It refuses, changing nothing, unless
+/// <method>Create</method> has run, because the Visits cube is the target. A compile that is refused for the saved group is the point of that group, not a failure.
+/// <method>RemoveListingGroups</method> deletes them.</p>
+ClassMethod CreateListingGroups() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCreated = ..Reports()
+        If tCreated {
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCreated = ##class(%DeepSee.Utils).%CubeExists(..#VISITS)
+            Set $NAMESPACE = tOrigNS
+        }
+        If 'tCreated {
+            Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.CreateListingGroups needs the probe created in " _ ..#NAMESPACE _ ": call Enable and Create first")
+            Quit
+        }
+        For tWhich = "compiled", "saved", "hidden", "off" {
+            Set tClass = $Case(tWhich, "compiled": ..#LISTGROUPCLASS, "saved": ..#LISTGROUPSAVEDCLASS, "hidden": ..#LISTGROUPHIDDENCLASS, : ..#LISTGROUPOFFCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ListingGroupText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCompile = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If (tWhich '= "saved") && $$$ISERR(tCompile) {
+                Set tSC = tCompile
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save the probe's broken listing group in <code>USER</code>: a class whose <code>Listings</code> XData is well-formed XML that the model refuses
+/// (<code>disabled</code> is not a boolean). It is saved and its compile is attempted, and refused. <method>RemoveListingGroups</method> deletes it.</p>
+ClassMethod CreateBrokenListingGroup() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#LISTGROUPBROKENCLASS, ..ListingGroupText("broken"))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Compile(..#LISTGROUPBROKENCLASS, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save a twin listing group in <code>USER</code>: a second class that names the compiled group's name, its class name sorting before the compiled group's
+/// or, when <var>pLate</var> is true, after it. Its compile is attempted and refused, so the vendor lists two saved classes under that name and compiles one.
+/// <method>RemoveTwinListingGroup</method> and <method>RemoveListingGroups</method> delete it.</p>
+ClassMethod CreateTwinListingGroup(pLate As %Boolean = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = $Select(pLate: ..#LISTGROUPTWINLATECLASS, 1: ..#LISTGROUPTWINCLASS)
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ListingGroupText($Select(pLate: "twinlate", 1: "twin")))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Compile(tClass, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete both twin listing groups' classes from <code>USER</code>; nothing happens when they are not there.</p>
+ClassMethod RemoveTwinListingGroup() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+            Kill ^DeepSee.ListingGroups("classes", tClass)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the probe's listing group classes from <code>USER</code>, which also removes what their compile registered, and kill what is left of the
+/// probe groups' registry nodes; nothing happens when there are none.</p>
+ClassMethod RemoveListingGroups() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+        }
+        For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
+            Kill ^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))
+        }
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            Kill ^DeepSee.ListingGroups("classes", tClass)
+        }
+        For tCube = ..#VISITS, ..#LISTGROUPNOCUBE {
+            Set tListing = ""
+            For {
+                Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
+                If tListing = "" Quit
+                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>Write the Category rows and the Visit rows, in <code>USER</code>, deterministically.</p>
 ClassMethod Fill() As %Status [ Private ]
 {
@@ -650,6 +859,7 @@ ClassMethod Remove() As %Status
         For tClass = ..#VISITCLASS, ..#CATEGORYCLASS, ..#GRIDSOURCE {
             If ##class(%Dictionary.CompiledClass).%ExistsId(tClass) Do $ClassMethod(tClass, "%KillExtent")
         }
+        Do ..RemoveListingGroups()
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
         Kill ^OBJ.DSTIME(..#VISITCLASS), ^OBJ.DSTIME(..#CATEGORYCLASS)
         Do ..ForgetBuilds()
@@ -704,6 +914,38 @@ ClassMethod Remove() As %Status
     Quit tSC
 }
 
+/// <p>The journal's current position as <code>file|offset</code>, after the journal buffer is flushed, for <method>JournalWrites</method> to scan from
+/// (Story 24.11).</p>
+ClassMethod JournalMark() As %String
+{
+    Do ##class(%SYS.Journal.System).Sync()
+    Quit ##class(%SYS.Journal.System).GetCurrentFileName() _ "|" _ ##class(%SYS.Journal.System).GetCurrentFileOffset()
+}
+
+/// <p>The global writes the calling process made since <var>pMark</var> (a <method>JournalMark</method> answer), one entry of <var>pWrites</var> for each
+/// set or kill record of this process (every record type whose name holds <code>SET</code> or <code>KILL</code>, the bit, vector, remote and mirror forms included), as <code>type global node</code>. Answers their count, or -1 when the journal rolled to another file in between,
+/// which the scan cannot span. Writes to a database that is not journaled are not seen.</p>
+ClassMethod JournalWrites(pMark As %String, Output pWrites) As %Integer
+{
+    Kill pWrites
+    Do ##class(%SYS.Journal.System).Sync()
+    Set tName = $Piece(pMark, "|", 1)
+    Set tFrom = +$Piece(pMark, "|", 2)
+    If ##class(%SYS.Journal.System).GetCurrentFileName() '= tName Quit -1
+    Set tFile = ##class(%SYS.Journal.File).%OpenId(tName)
+    If '$IsObject(tFile) Quit -1
+    Set tCount = 0
+    Set tRecord = tFile.LastRecord
+    While $IsObject(tRecord) && (tRecord.Address >= tFrom) {
+        If (tRecord.ProcessID = $Job) && ((tRecord.TypeName [ "SET") || (tRecord.TypeName [ "KILL")) {
+            Set tCount = tCount + 1
+            Set pWrites(tCount) = tRecord.TypeName _ " " _ tRecord.GlobalReference
+        }
+        Set tRecord = tRecord.Prev
+    }
+    Quit tCount
+}
+
 /// <p>1 when <code>USER</code> holds nothing of the probe: no probe class, cube, term list, folder item, favorite or build
 /// event, no probe node, and no analytics reported.</p>
 ClassMethod Gone() As %Boolean
@@ -726,6 +968,9 @@ ClassMethod Left() As %String
             If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
         }
         If ..BuildsLeft() Set tLeft = tLeft _ ",build residue"
+        For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
+            If $Data(^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))) Set tLeft = tLeft _ ",listing group " _ tGroup
+        }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"
         For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {

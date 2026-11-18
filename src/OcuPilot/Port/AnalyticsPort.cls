@@ -81,6 +81,12 @@
 /// loads or compiles a document and never replaces. A delete is <code>%DeleteFolderItem</code>, refused for a locked item. Each write is gated by
 /// <parameter>FOLDERPAIRS</parameter> and, beyond the read gate, by <method>AdmitFolderItem</method>; the vendor audits none of them, so each records
 /// OcuPilot's own <code>ConfigChange</code> row.</p>
+/// <p><b>The listing groups (Story 24.11, AD-65).</b> The <code>ListingGroups</code> endpoint answers the listing groups of the namespace and the
+/// <code>ListingGroupListings</code> endpoint one group's listings, under the criterion <parameter>LISTINGGROUPKEY</parameter>; both are reads. The groups are the
+/// vendor's own saved list (<code>%DeepSee.ListingGroup.%GetListingGroups</code> with the compiled flag 0, which applies the vendor's filter on each group's
+/// <code>resource</code>), <code>Compiled</code> is whether the vendor's compiled list (flag 1) names the same class, and the counts and listings are read from
+/// the model <code>%GetModel</code> loads from the class. A group the vendor cannot read has no name and is not listed. A listing's SQL is answered only to a
+/// holder of <parameter>LISTINGGROUPSQLPAIRS</parameter> and is <code>""</code> to everyone else.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
@@ -91,7 +97,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -117,6 +123,11 @@ Parameter ENDPOINTFOLDERITEMS = "FolderItems";
 /// <p>The cube manager: the cubes with their build state, one cube's state, and the two writes (Story 20.34).</p>
 Parameter ENDPOINTCUBEMANAGER = "CubeManager";
 
+/// <p>The listing groups of the namespace the caller's resources admit, and one group's listings, under the criterion <parameter>LISTINGGROUPKEY</parameter> (Story 24.11).</p>
+Parameter ENDPOINTLISTINGGROUPS = "ListingGroups";
+
+Parameter ENDPOINTLISTINGGROUPLISTINGS = "ListingGroupListings";
+
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
 Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
@@ -130,6 +141,12 @@ Parameter TERMLISTPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
 /// <p>The classic Folder Manager's pairs, narrowed to the developer resource of its either-of list: the portal's, and
 /// <code>%Development:USE</code>.</p>
 Parameter FOLDERPAIRS = "%DeepSee_Portal:USE,%Development:USE";
+
+/// <p>The classic Listing Group Manager's pairs, narrowed to the view resource of its either-of list: the portal's, and <code>%DeepSee_ListingGroup:USE</code>.</p>
+Parameter LISTINGGROUPPAIRS = "%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE";
+
+/// <p>The pair a listing's SQL needs to be answered: the classic page's own check for showing the field (<code>CheckListingGroupSQLViewAccess</code>).</p>
+Parameter LISTINGGROUPSQLPAIRS = "%DeepSee_ListingGroupSQL:USE";
 
 /// <p>The permission a database read needs.</p>
 Parameter READPERMISSION = "READ";
@@ -317,6 +334,9 @@ Parameter CUBEKEY = "cube";
 /// <p>The query key naming a term list, for its entries.</p>
 Parameter TERMLISTKEY = "termlist";
 
+/// <p>The query key naming a listing group, for its listings.</p>
+Parameter LISTINGGROUPKEY = "listinggroup";
+
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
 
@@ -415,7 +435,7 @@ ClassMethod Endpoints() As %List
 
 /// <p>The pair set <var>pEndpoint</var> requires, as the <code>%List</code> of two-element <code>%List</code>s the gate
 /// evaluates; <code>""</code> for an endpoint this port does not serve. The cubes and their three tabs take the Model Browser's
-/// pairs, the term lists and their entries the Term List Manager's, and the folder items the Folder Manager's.</p>
+/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's and the listing groups and their listings the Listing Group Manager's.</p>
 ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
@@ -426,6 +446,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#TERMLISTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
         Set tSpec = ..#FOLDERPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
+        Set tSpec = ..#LISTINGGROUPPAIRS
     } Else {
         Quit ""
     }
@@ -499,6 +521,10 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// <li>FolderItems: <code>{Name, Type, Owner, Modified, Favorite}</code>, <code>Name</code> the item's full name,
 /// <code>Modified</code> the instance's local <code>YYYY-MM-DD HH:MM:SS</code>, <code>Favorite</code> true for an item in the
 /// signed-in user's favorites.</li>
+/// <li>ListingGroups: <code>{Name, Caption, Cubes, Class, Compiled, Listings, Disabled, Description, Resource, DefaultResource}</code>, <code>Cubes</code> the
+/// model's target cubes as written, <code>Compiled</code> whether the vendor's compiled list names this group's class, <code>Listings</code> the number of listings the group holds.</li>
+/// <li>ListingGroupListings: <code>{ListingGroup, Name, DisplayName, Type, Fields, OrderBy, Joins, Formats, Source, Resource, SelectMode, Disabled, Description, SQL}</code>, the
+/// listings of the group the criterion <parameter>LISTINGGROUPKEY</parameter> names, <code>SQL</code> <code>""</code> unless the caller holds <parameter>LISTINGGROUPSQLPAIRS</parameter>.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -565,7 +591,13 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTERMLISTREQUIRED, .pHttpStatus, .pFault)
                 Quit
             }
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
+            ; A criterion that names no group answers no rows, and an empty one names none.
+            Set tCriterion = $Get(pQuery(..#LISTINGGROUPKEY))
         }
+        ; A listing's SQL is answered to a holder of its own pair only; the pair is judged here, where the gate class is visible (AD-16).
+        Set tShowSQL = 0
+        If pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS Set tShowSQL = $ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPSQLPAIRS))
 
         Kill tData
         Set tVendorSC = $$$OK
@@ -579,7 +611,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Statused(tVendorSC, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
             Quit
         }
-        Set pResult = ..Rows(pEndpoint, .tData)
+        Set pResult = ..Rows(pEndpoint, .tData, tShowSQL)
         Set pHttpStatus = 200
     } Catch ex {
         While $TLevel > tLevel {
@@ -660,7 +692,7 @@ ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) 
 
 /// <p>Read <var>pEndpoint</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData</code> is the row count,
 /// and <code>pData(n)</code> row <code>n</code> as a <code>%List</code>, at most <var>pMax</var> rows when that is above zero.
-/// <var>pCriterion</var> is the cube or term list a tab names. A vendor status that is an error is <var>pVendorStatus</var>; an
+/// <var>pCriterion</var> is the cube or term list a tab names, or the listing group whose listings are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
 /// exception is <var>pCaught</var>.</p>
 /// <p><b>Everything between the switch and the restore is in this one method</b> and names only vendor and system classes, because
 /// an <code>OcuPilot.*</code> class is not visible in the target namespace (AD-16). The raw values are shaped into rows by
@@ -765,6 +797,55 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     Set pData(pData) = $ListBuild(tObject.name, tKey, tObject.valueList.GetAt(tKey _ "^VALUE"), tFields)
                 }
             }
+        } ElseIf (pEndpoint = ..#ENDPOINTLISTINGGROUPS) || (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS) {
+            ; The vendor's saved list applies its own filter on each group's resource; its compiled list names the classes whose compile registered them.
+            ; %GetModel answers a model with no name for a class whose definition it cannot read, so such a group is not a row.
+            Set pVendorStatus = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tSaved, 0)
+            If $$$ISOK(pVendorStatus) Set pVendorStatus = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tCompiled, 1)
+            If (pEndpoint = ..#ENDPOINTLISTINGGROUPS) && $$$ISOK(pVendorStatus) {
+                Set tGroup = ""
+                For {
+                    Set tGroup = $Order(tSaved(tGroup))
+                    If tGroup = "" Quit
+                    Set tAt = ""
+                    For {
+                        Set tAt = $Order(tSaved(tGroup, tAt))
+                        If tAt = "" Quit
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tClass = $List(tSaved(tGroup, tAt), 5)
+                        Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(tClass)
+                        If '$IsObject(tModel) || (tModel.name = "") Continue
+                        Set tIsCompiled = $Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = tClass)
+                        Set pData = pData + 1
+                        Set pData(pData) = $ListBuild(tModel.name, $List(tSaved(tGroup, tAt), 3), tModel.targetCubes, tClass, ''tIsCompiled, tModel.listings.Count(), ''tModel.disabled, tModel.description, tModel.resource, tModel.defaultResource)
+                    }
+                    If (pMax > 0) && (pData >= pMax) Quit
+                }
+            } ElseIf (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS) && $$$ISOK(pVendorStatus) {
+                Set tGroup = $ZConvert(pCriterion, "U")
+                If (tGroup '= "") && $Data(tSaved(tGroup)) {
+                    ; Two classes can name one group; the compiled one answers, else the first saved.
+                    Set tClass = $List(tSaved(tGroup, 1), 5)
+                    Set tAt = ""
+                    For {
+                        Set tAt = $Order(tSaved(tGroup, tAt))
+                        If tAt = "" Quit
+                        If $Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = $List(tSaved(tGroup, tAt), 5)) {
+                            Set tClass = $List(tSaved(tGroup, tAt), 5)
+                            Quit
+                        }
+                    }
+                    Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(tClass)
+                    If $IsObject(tModel) && (tModel.name '= "") {
+                        For tAt = 1:1:tModel.listings.Count() {
+                            If (pMax > 0) && (pData >= pMax) Quit
+                            Set tListing = tModel.listings.GetAt(tAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tListing.name, tListing.displayName, tListing.listingType, tListing.fieldList, tListing.orderBy, tListing.joinInfo, tListing.formatList, tListing.sourceClass, tListing.resource, tListing.selectMode, ''tListing.disabled, tListing.description, tListing.sql)
+                        }
+                    }
+                }
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -790,8 +871,8 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
 }
 
 /// <p>The rows of <var>pEndpoint</var> from the values <method>Collect</method> gathered in <var>pData</var>, as an array of
-/// objects. Text is typed as text, so a name that reads as a number stays a string.</p>
-ClassMethod Rows(pEndpoint As %String, ByRef pData) As %DynamicArray [ Private ]
+/// objects. Text is typed as text, so a name that reads as a number stays a string. A listing's <code>SQL</code> is shaped only when <var>pShowSQL</var> is true.</p>
+ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As %DynamicArray [ Private ]
 {
     Set tRows = []
     For tAt = 1:1:pData {
@@ -842,6 +923,32 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData) As %DynamicArray [ Private ]
             Do tRow.%Set("Key", $List(tValues, 2), "string")
             Do tRow.%Set("Value", $List(tValues, 3), "string")
             Do tRow.%Set("Fields", $List(tValues, 4), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Caption", $List(tValues, 2), "string")
+            Do tRow.%Set("Cubes", $List(tValues, 3), "string")
+            Do tRow.%Set("Class", $List(tValues, 4), "string")
+            Do tRow.%Set("Compiled", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Listings", $List(tValues, 6), "number")
+            Do tRow.%Set("Disabled", $List(tValues, 7), "boolean")
+            Do tRow.%Set("Description", $List(tValues, 8), "string")
+            Do tRow.%Set("Resource", $List(tValues, 9), "string")
+            Do tRow.%Set("DefaultResource", $List(tValues, 10), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
+            Do tRow.%Set("ListingGroup", $List(tValues, 1), "string")
+            Do tRow.%Set("Name", $List(tValues, 2), "string")
+            Do tRow.%Set("DisplayName", $List(tValues, 3), "string")
+            Do tRow.%Set("Type", $List(tValues, 4), "string")
+            Do tRow.%Set("Fields", $List(tValues, 5), "string")
+            Do tRow.%Set("OrderBy", $List(tValues, 6), "string")
+            Do tRow.%Set("Joins", $List(tValues, 7), "string")
+            Do tRow.%Set("Formats", $List(tValues, 8), "string")
+            Do tRow.%Set("Source", $List(tValues, 9), "string")
+            Do tRow.%Set("Resource", $List(tValues, 10), "string")
+            Do tRow.%Set("SelectMode", $List(tValues, 11), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 12), "boolean")
+            Do tRow.%Set("Description", $List(tValues, 13), "string")
+            Do tRow.%Set("SQL", $Select(pShowSQL: $List(tValues, 14), 1: ""), "string")
         } Else {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Type", $List(tValues, 2), "string")

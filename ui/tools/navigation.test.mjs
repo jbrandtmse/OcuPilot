@@ -456,6 +456,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
       'analytics/cubes/relationships',
+      // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
+      'analytics/listing-groups/listings',
       'analytics/term-lists/entries',
       'analytics/cubes',
       'analytics/term-lists',
@@ -468,6 +470,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/mdx-query',
       // Story 20.34: the Cube manager, listed after them at position 8.
       'analytics/cube-manager',
+      // Story 24.11: Listing groups, listed after them at position 9.
+      'analytics/listing-groups',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -950,6 +954,16 @@ test('Story 20.11: a Cubes row opens the cube\'s Measures tab, a Relationships r
     screenForUrl(`/analytics/term-lists/entries/${encodeEntityId('OcuPilotProbeTerms')}`)?.descriptor,
     'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
     'an entries URL resolves to the entries list'
+  );
+  // Story 24.11: a listing group's name opens its Listings, as a term list's name opens its entries.
+  const listingGroups = screenForRoute('analytics/listing-groups');
+  assert.ok(listingGroups, 'Listing groups is declared');
+  assert.equal(childListFor(listingGroups)?.route, 'analytics/listing-groups/listings', 'the Listing groups name cell opens the Listings');
+  assert.equal(documentScreenFor(listingGroups), null, 'and Listing groups pairs no document viewer');
+  assert.equal(
+    screenForUrl(`/analytics/listing-groups/listings/${encodeEntityId('OcuPilotProbeListings')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+    'a Listings URL resolves to the Listings list'
   );
 });
 
