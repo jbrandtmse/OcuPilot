@@ -173,6 +173,44 @@ ClassMethod Run(pDirectory As %String, pArgs...) As %Status
     Quit $$$ERROR($$$GeneralError, "openssl " _ $Get(pArgs(1)) _ " exited " _ tExit _ ": " _ $Extract($Translate(..ReadText(tErrors), $Char(10), " "), *-399, *))
 }
 
+/// <p>A password that is not <var>pPassword</var> and that <code>openssl pkey</code> reports as
+/// <code>bad decrypt</code> for the encrypted key file <var>pKeyFile</var>, or <code>""</code> when
+/// none of the first 3000 candidates does. The first candidate is <var>pPassword</var> followed by
+/// <code>Wrong</code>, so the answer is the same on every run for the same key.</p>
+ClassMethod BadDecryptPassword(pDirectory As %String, pKeyFile As %String, pPassword As %String) As %String
+{
+    Quit ..FirstWrongPassword(pDirectory, pKeyFile, pPassword, 1)
+}
+
+/// <p>A password that is not <var>pPassword</var> and that <code>openssl pkey</code> refuses for
+/// <var>pKeyFile</var> with an error other than <code>bad decrypt</code>: a wrong key whose
+/// padding happens to check out, or <code>""</code> when none of the first 3000 candidates is
+/// one.</p>
+ClassMethod UndecodablePassword(pDirectory As %String, pKeyFile As %String, pPassword As %String) As %String
+{
+    Quit ..FirstWrongPassword(pDirectory, pKeyFile, pPassword, 0)
+}
+
+/// <p>The first of <var>pPassword</var>_<code>Wrong</code>, then <var>pPassword</var>_<code>Wrong</code>_n
+/// for n from 1 to 2999, that <code>openssl pkey -noout</code> refuses with <code>bad decrypt</code>
+/// (<var>pBadDecrypt</var> 1) or with any other error (0). A candidate openssl accepts is skipped.</p>
+ClassMethod FirstWrongPassword(pDirectory As %String, pKeyFile As %String, pPassword As %String, pBadDecrypt As %Boolean) As %String [ Private ]
+{
+    Set tFound = ""
+    For tN = 0:1:2999 {
+        Set tCandidate = pPassword _ "Wrong" _ $Select(tN = 0: "", 1: tN)
+        Do ##class(%File).Delete(pDirectory _ "openssl.err")
+        Set tSC = ..Run(pDirectory, "pkey", "-in", pKeyFile, "-passin", "pass:" _ tCandidate, "-noout")
+        If $$$ISOK(tSC) Continue
+        Set tBad = (..ReadText(pDirectory _ "openssl.err") [ "bad decrypt")
+        If tBad = pBadDecrypt {
+            Set tFound = tCandidate
+            Quit
+        }
+    }
+    Quit tFound
+}
+
 /// <p>The minimal configuration <code>openssl ca</code> needs to sign the expired certificate, and
 /// its empty database, in <var>pDirectory</var>.</p>
 ClassMethod WriteAuthority(pDirectory As %String) As %Status

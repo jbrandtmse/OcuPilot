@@ -31,8 +31,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader, saveAndSettle, waitForReplies } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, saveAndSettle, signedInAt as sharedSignedInAt, waitForReplies } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -49,7 +48,6 @@ import {
   waitForSlotFree,
 } from './turnprobe-spec.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, waitForRows } from './list-spec.mjs';
-import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -298,27 +296,16 @@ async function namedWaitForFunction(page, fn, args, wanted, diagnose) {
   }
 }
 
-/** A fresh context signed in as the configured user, standing on `url` with the panel laid out. */
+/**
+ * A fresh context signed in as the configured user, standing on `url` with the panel laid out and its composer enabled. The shared
+ * `signedInAt` resets the remembered state and names the requests in flight, and Node's own fetch, when the page load times out.
+ */
 async function signedInAt(url) {
-  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
-  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
-  // own -- see `preferences-reset.mjs`.
-  await resetRememberedState();
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  await page.setViewport(config.viewport);
-  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
-  await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
+  const held = await sharedSignedInAt(browser, config, url);
+  await held.page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
     timeout: config.navigationTimeoutMs,
   });
-  return { context, page };
+  return held;
 }
 
 async function typeAndSend(page, text) {
@@ -482,6 +469,7 @@ test('Integration AC: a sent turn carries the synthetic screen_context pair nami
     });
     assert.ok(Number.isInteger(rowsShown), 'the chip showed a row count');
 
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the Send');
     await typeAndSend(page, 'who are the users');
     await page.waitForFunction(
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'read the users',
@@ -510,6 +498,8 @@ test('Fresh at Send: context is assembled at the moment of the click, not cached
     await page.waitForFunction(() => /\d+ rows?\b/.test(document.querySelector('.ocu-context-chip-text')?.textContent ?? ''), {
       timeout: config.navigationTimeoutMs,
     });
+    // The previous test's turn holds its slot until its conversation entry is stored, which can be after its page is gone.
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the first Send');
     await typeAndSend(page, 'first turn, on Users');
     await waitForReplies(page, 1, config, STRINGS.actionSend);
     assert.equal(
@@ -667,6 +657,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
       return Number(match[1]);
     });
 
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the Send');
     await typeAndSend(page, 'how many users');
     await page.waitForFunction(
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'counted',
@@ -701,6 +692,7 @@ test('A failed send preserves the paste-warning acknowledgment: a live 409 (AD-4
     // Occupy this user's one AD-41 turn slot for the whole leg below, from a second tab -- the
     // same live refusal `turn.browser-spec.mjs`'s "Second send" test drives, here used as the
     // "failed send" this story's follow-up risk names, not a stubbed/mocked failure.
+    assert.equal(await waitForSlotFree(config), '', 'the previous turn handed its slot back before the holder sends');
     await typeAndSend(holder.page, 'holding the turn slot');
     await holder.page.waitForSelector('.ocu-panel-message-user', { timeout: config.navigationTimeoutMs });
 

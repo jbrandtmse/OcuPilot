@@ -41,6 +41,11 @@ Property MaterialDirectory As %String;
 /// <p>The password the probe's key file is encrypted under, made for this run.</p>
 Property Sentinel As %String;
 
+/// <p>A wrong password for that key which OpenSSL reports as <code>bad decrypt</code>, found before
+/// any test starts: the search runs OpenSSL with the candidates on its command line, and a test's
+/// audit scan must not see that.</p>
+Property BadDecryptPassword As %String;
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -52,6 +57,8 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#MATERIAL, "Run", tDirectory, "pkcs8", "-topk8", "-in", tDirectory _ "key.pem", "-out", tDirectory _ "ssl-key.pem", "-v2", "aes-256-cbc", "-passout", "pass:" _ ..Sentinel)
     If $$$ISERR(tSC) Quit tSC
+    Set ..BadDecryptPassword = $ClassMethod(..#MATERIAL, "BadDecryptPassword", tDirectory, tDirectory _ "ssl-key.pem", ..Sentinel)
+    If ..BadDecryptPassword = "" Quit $$$ERROR($$$GeneralError, "no wrong password that OpenSSL reports as bad decrypt was found for the probe key; the last openssl error: " _ $Extract($Translate($ClassMethod(..#MATERIAL, "ReadText", tDirectory _ "openssl.err"), $Char(10), " "), 1, 400))
     Quit ..EnsureProbe()
 }
 
@@ -97,7 +104,7 @@ Method TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither()
     Do $$$AssertEquals(..PasswordSet(), 1, "and stored")
     Do $$$AssertEquals(..Carries($Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: "")), 0, "the answer does not carry it")
 
-    Set tWrong = ..Sentinel _ "Wrong"
+    Set tWrong = ..BadDecryptPassword
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(), .tStatus, .tBody, ..PasswordBody(tWrong), "application/json")
     Set tRow = $Select($IsObject($Get(tBody)) && (tBody.%GetTypeOf("detail") = "object"): tBody.detail.violations.%Get(0), 1: "")
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tRow): tRow.field _ " " _ tRow.code, 1: ""), "422 PrivateKeyPassword " _ ##class(OcuPilot.Api.Error).#SSLPRIVATEKEYPASSWORDWRONG, "a wrong password is refused on its field")

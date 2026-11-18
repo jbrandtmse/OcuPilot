@@ -24,7 +24,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -82,14 +82,6 @@ function frames(page) {
   return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-/** Wait until no CSS transition is running, so a contrast read measures the theme it is in. */
-function transitionsSettled(page) {
-  return page.waitForFunction(
-    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
-    { timeout: config.navigationTimeoutMs }
-  );
-}
-
 /** The walk of the screen on display at three passes, with its open dialog, answering entries outside the baseline. */
 async function structural(page) {
   const found = [];
@@ -104,7 +96,7 @@ async function structural(page) {
     await page.setViewport(viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
-    await transitionsSettled(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);

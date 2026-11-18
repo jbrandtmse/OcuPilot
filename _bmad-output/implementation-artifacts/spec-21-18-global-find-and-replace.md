@@ -66,7 +66,7 @@ deferred: []
 | Too large | 20,001 nodes, or a replaced value over 32,767 characters | nothing written | 409 `GLOBAL.REPLACE.TOOLARGE` |
 | Bad text | empty Find, a control character, or over 1,000 characters | nothing read | 400 `GLOBAL.VALUE.SHAPE` (screen) / `TOOL.ARGUMENTS` (agent schema) |
 | `%SYS` | any replace in `%SYS` | Replace drawn disabled with the sentence | 409 `GLOBAL.REPLACE.SYSNAMESPACE` |
-| Protected | `^OcuPilot*`; a changing node in OcuPilot's database or a system database; a code global in the install namespace's routines database | refused before any write, both callers | 409 `PROHIBITED.PROTECTEDGLOBAL` / `PROHIBITED.OCUPILOTCODE` |
+| Protected | `^OcuPilot*`; a changing node in OcuPilot's database or a system database; a code global in the install namespace's routines database | refused before any write, both callers | 403 `PROHIBITED.PROTECTEDGLOBAL` / `PROHIBITED.OCUPILOTCODE` |
 | No privilege | no WRITE on the database | nothing written | 403 `PORT.ACCESSDENIED` |
 
 </intent-contract>
@@ -123,6 +123,7 @@ deferred: []
 - `src/OcuPilot/Api/GlobalError.cls` (add-only) -- `GLOBAL.REPLACE.NOCHANGE`, `.TOOLARGE`, `.REVIEWCHANGED`, `.SYSNAMESPACE`, consequence `GLOBAL.REPLACE`, the ruled sentences.
 - `src/OcuPilot/Area/Explorer/GlobalNodes.cls` -- accept `find` and `matchCase` in the page request, shape-checked as `Find`. Nothing logged.
 - `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (add-only) -- the `Global` arm's branch for `explorer.globals.replace`, reading the fresh `REPLACE` read's `Locations` (Always, self-protection).
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- DW-2731: `ImportedGlobals`'s `Catch` sets its status from the exception, so an error raised while judging an import's globals refuses the import instead of reading as permitted; a test forces the error and asserts the refusal (report the rewritten clause to the runner).
 - `src/OcuPilot/Screen/Tool/ExplorerGlobalReplace.cls` (new):
   - `explorer.globals.replace`, advertised, `PORTCLASS` `GlobalPort`, `DESCRIPTORCLASS` `ExplorerGlobalList`.
   - `READTYPE`/`WRITETYPE` `REPLACE`, `READSVALUES` 1, `SENDSBODY` 0, `DESTRUCTIVE` 1, `DRYRUN` 1.
@@ -165,6 +166,8 @@ deferred: []
 - AC5. Given any global the `Global` arm protects, when either caller replaces in it, then it is refused before any write with that refusal's sentence, which the client mirror pins equal.
 
 ## Spec Change Log
+
+- 2026-11-18, runner (ledger inbox): DW-2732 -- the Protected row answers 403, as every protected-global and OcuPilot-code refusal does since Story 21.5. DW-2731 -- a Batch 1 task fixes `Prohibited.ImportedGlobals`'s status-less `Catch`. Stories 21.5 and 21.17 are built: extend `GlobalPort`, the `Global` arm and the transfer tests rather than copying them.
 
 ## Review Triage Log
 

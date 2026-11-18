@@ -34,7 +34,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
@@ -174,14 +174,6 @@ function frames(page) {
   return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-/** Wait until no CSS transition is running, so a contrast read measures the theme it is in. */
-function transitionsSettled(page) {
-  return page.waitForFunction(
-    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
-    { timeout: config.navigationTimeoutMs }
-  );
-}
-
 /**
  * DW-1337 on `route`: 1280 light (every invariant), 720 light and 1280 dark, against the baseline;
  * with a dialog open, also the dialog body's own sideways overflow.
@@ -199,7 +191,7 @@ async function assertStructure(page, route, dialog = false) {
     await page.setViewport(viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
-    await transitionsSettled(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
