@@ -3,13 +3,20 @@ title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
 status: 'in-progress'
-baseline_revision: '71dbd288249a605e50cd8193417b84c57acface6'
+baseline_revision: '0432b4561c2a79b2a9d502ba8a929628d7251fe9'
 baseline_commit: '71dbd288249a605e50cd8193417b84c57acface6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A wrong private key password that OpenSSL decrypts with valid padding (about 1 in 230) is refused by the vendor with error 733 ("The public key in certificate ... and the private key ... do not match"), so the screen's Save answers 500 INTERNAL, not 422 on PrivateKeyPassword.
+    evidence: |-
+      Task 0 on ocupilot-ci, two runs with different keys: UndecodablePassword's candidate (openssl pkey: "Could not read key ... No supported data to decode") PUT to /ssl/OcuPilotProbeSslSecret answered 500 {"code":"INTERNAL"}, stored=0, and messages.log read "Security.SSLConfig failed with HTTP 500 ... ERROR #733: The public key in certificate ... do not match". 733 is also the real certificate and key mismatch, and IMPORTSAVECODES maps 731 and 733 to X509.PRIVATEKEY.MISMATCH, so a PROPERTYFAULTS entry for 733 would mislabel that fault.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls (PROPERTYFAULTS, Security.SSLConfig)
+    severity: low
 ---
 
 <intent-contract>
@@ -76,7 +83,7 @@ Batch 4 (bounded slices):
 
 **Execution (four batches in order; each is verifiable, committable and pushable alone; Batch 1 first):**
 
-**Scope of the current pass: Batch 1 only.** Implement the Batch 1 tasks and run the Batch 1 and "Every batch" verification lines and the Batch 1 mutations; do not start Batches 2 to 4 (no `ocupilot-ci`, ObjectScript or browser work). The pass finalizes at `status: in-progress`.
+**Scope of the current pass: Batch 2 only** (Batch 1 is built, reviewed and pushed). Do Task 0 first, then the Batch 2 tasks (DW-2534, DW-2553, DW-2565), and run the Batch 2 lines of Verification, the "Every batch" lines and the Batch 2 mutations; do not start Batches 3 and 4. Task 0 and every ObjectScript or browser run go to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. The pass finalizes at `status: in-progress`, and its `## Auto Run Result` says Batches 1 and 2 are done and 3 and 4 are not started.
 
 Batch 1 -- the node 22 client-suite hang (DW-2721, DW-2567):
 
@@ -173,6 +180,22 @@ Rejected:
   - `[low]` `[reject]` intent audit: the sampler and report run against stubs, not the runner's real `/proc` and `dmesg` — the three outcomes are each a reported sentence; the CI log shows the real read.
   - `[low]` `[reject]` intent audit: the log names the file by its start line, and with two workers the last line may not be the hung file — the default reporter prints each file as it finishes, so the unfinished files are the difference.
 
+### 2026-11-18 — Review pass (Batch 2)
+
+- verdicts: 11 findings — high 0, medium 0, low 11, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` `waitForRememberedView`'s retry, unparsable-value and timeout branches have no stubbed-fetch test in `preferences-reset.test.mjs` — the pinning test is web-applications AC1 and AC5 with their recorded mutations; four more unit tests for a browser-support helper whose only caller is AC1 is more than a direct correction.
+  - `[low]` `[reject]` `UndecodablePassword` has no caller and no test — Task `X509Material` in the spec requires both helpers, Task 0 and the recorded mutation use it, and deleting it contradicts the task text.
+  - `[low]` `[patch]` `UndecodablePassword`'s doc comment gave "about one in 256" against a measured 13 in 3000 — the figure is removed; the comment states only what the method returns.
+  - `[low]` `[reject]` the candidate sequence is pinned in the doc comments of the password helpers — the sequence is the contract that makes the answer the same for one key on every run.
+  - `[low]` `[reject]` intent audit: DW-2534 is fixed in the spec, not in the list screen's unawaited view write — the intent's matrix row names the spec's wait on the stored view; a client change is outside the stated approach.
+  - `[low]` `[reject]` intent audit: the wait checks only the last filter value, not earlier keystroke writes — the view writes of one screen reach the instance in order, so the last value held means the earlier ones landed (inference); AC5's reset follows.
+  - `[low]` `[reject]` intent audit: the stepped clock proves one read per attempt, not a real second boundary — the spec records the race as removed by construction.
+  - `[low]` `[reject]` intent audit: the clock lines sit near 995, not 948-955 — the ruling said "near"; the replaced lines are the two `date +%s` reads of the retry block.
+  - `[low]` `[reject]` intent audit: DW-2553 lands on branch (b), so a wrong password with valid padding still answers 500 — Task 0 measured it and the `deferred:` item records it; the spec's branch (b) is that outcome.
+  - `[low]` `[reject]` intent audit: the password is deterministic per key, not across runs — the key is made fresh each run, and the intent asks that the wrong password never be one OpenSSL accepts as other than `bad decrypt`.
+  - `[low]` `[reject]` intent audit: the rate of 13 in 3000 is measured on two keys only — the spec says so under Residual.
+
 ## Design Notes
 
 **ADs:** none binds the client test runner's pool settings; the spine's Stack rows "Client test runners" and "CI" stay true as written. AD-19 (the screen's own signal is the readiness signal: Run's `aria-disabled`, the stored view), AD-14, AD-43, AD-7 (a turn's slot), AD-17 (test classes only on a throwaway), AD-36. Test-and-CI only apart from Task 0's branch (a). No AD change.
@@ -195,6 +218,8 @@ Rejected:
 
 **Epic 24 contention** (2026-11-18): no Epic 24 commit ahead of feature on any path above; the epic-24 worktree holds an uncommitted edit to `scripts/ci-throwaway.sh`, so the DW-2565 task waits for an orchestrator ruling (it replaces lines). Epic 24's `interop-editors` and `interop-viewers` specs stay out.
 
+**Orchestrator ruling (2026-11-18), DW-2565:** the `scripts/ci-throwaway.sh` task is ruled. Replace exactly the two `$(date +%s)` lines in the bring-up retry block (near lines 948-955 of the file as it stands now) and nothing else in that file; Epic 24 has an unrelated add-only edit pending near line 640.
+
 **Decided in-stage:**
 
 - Batch 1: the start reporter prints on `onTestModuleQueued` as well as `onTestModuleStart`, once per file. Vitest reports a file as started only after its import, so a fork that runs out of memory during the import never named its file; it is reported as queued when the worker begins it (measured: two forks died on files with no start line until this change).
@@ -203,6 +228,9 @@ Rejected:
 - 12 minutes for the step is over twice the slowest green client suite (4 m 33 s) and leaves the 20-minute job room for its report step.
 - `runnerConfig` goes in `angular.json` so `npx ng test` and `npm test` load the same settings.
 - No Linux container reproduction: the shared-resource rule bars extra instances; the evidence is the local measurement, the cap mutation and CI's node 22 leg.
+- Batch 2, Task 0 (measured on `ocupilot-ci`, OpenSSL 3.0.13): 13 of 3000 wrong passwords against one key were not `bad decrypt` (error "Could not read key ... No supported data to decode"); the vendor answered such a password with error 733, HTTP 500 `INTERNAL`, nothing stored. Branch (b): 733 is shared with the certificate and key mismatch, so no `PROPERTYFAULTS` entry and no second test; the gap is a `deferred:` item.
+- Batch 2: `SslSecret` finds its `bad decrypt` password in `OnBeforeAllTests`, not in the test: the search puts each candidate on an `openssl` command line, and run after the test's audit mark it made the "no audit row holds it" assertion red.
+- Batch 2: `waitForRememberedView` takes the route and filter, so the next spec that ends on a typed filter can use it; only web-applications AC1 does here.
 - The page-load group gains DW-2648, DW-2649 and DW-2685: each failed in `signedInAt` with one request in flight.
 - DW-2714 joins DW-2548 in `pressRun`: the page state shows Run pressed while the statement was not yet in the store.
 - DW-2476 takes twelve non-interop copies under a ratchet; DW-2202 takes the four count literals (the 24 per-principal literals carry high fix-risk).
@@ -244,8 +272,11 @@ Every batch:
   - mutation (Batch 1, observed): delete the step's `timeout-minutes` -> `ci.test.mjs` red ("carries its own timeout-minutes"); the report step's `if:` narrowed to `failure()` -> red ("after a cancellation"); the script ends `exit 0` -> `shell-scripts.test.mjs` red ("the command's own status"); drop `trap stop_sampler EXIT` and the `stop_sampler` call -> red ("no process carrying the marker survives"); drop `killed process` from the OOM pattern -> the `--report` test red. Each reverted; tree identical.
   - mutation (Batch 1 review, observed): process filter back to `$3 ~ /node/` -> sampler test red ("three largest Node processes"); `sudo -n dmesg` branch replaced by `false` -> `--report` test red ("read through sudo -n first"); interval check `!= 0` -> refusal test red ("interval 00"); `[ $# -ge 2 ]` guard removed -> red under `/bin/sh` ("not a loop", 10 s bound); `"isolate": false` on the test target -> `angular-json.test.mjs` red; `'default'` dropped from `reporters` -> red; `working-directory: ui` on the report step -> `ci.test.mjs` red. Each reverted; tree identical.
 - DW-2534: delete AC5's `resetRememberedState()` -> AC5 red with CI's message; point AC1's wait at `myap` -> AC1 red naming the stored view.
+  - mutation (Batch 2, observed): AC1's wait pointed at `myap` (3 s bound) -> AC1 red, "the instance never held filter "myap" ... the stored view last read: ... \"filter\":\"myapp\""; the `resetRememberedState()` call removed from `signedInAtList` -> AC5 red, "filtering on "myapp" left 1 of 1 row(s)" (CI's message). Each reverted; four web-applications tests green again.
 - DW-2565: restore the second `date` read -> the stepped-clock test red.
+  - mutation (Batch 2, observed): `BIND_REMAINING` back to `$(date +%s)` -> "the budget runs from the first bind failure" red ("still bound after 1 attempt(s) over a 1 second budget"). Reverted; the six `DW-2123` tests green.
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
+  - mutation (Batch 2, observed): `OnBeforeAllTests` drawing from `UndecodablePassword` -> `SslSecret`'s wrong-password test red ("a wrong password is refused on its field"). Reverted and reloaded; the class green (4 of 4). Branch (b): no entry and no second test, so no second mutation.
 - Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs` red.
 - DW-2566: drop test 7's `waitForSlotFree` and delay test 6's slot release -> test 7 red.
 - DW-2714/DW-2548: `writeStatement` stops dispatching `input` -> AC1 red at `pressRun` naming the textarea and `aria-disabled` within the navigation timeout, not after 145 s; `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
@@ -258,4 +289,10 @@ Every batch:
 Status: in-progress
 Blocking condition: none
 
-Batch 1 implemented (DW-2721, DW-2567); Batches 2 to 4 not started. Added `ui/vitest-base.config.mjs` (isolated forks, `maxWorkers: 2`, 1536 MB heap cap, start reporter), `runnerConfig` in `ui/angular.json`, `scripts/ci-resource-sample.sh`, the workflow's bounded `client suite` step (12 minutes) and `client suite resources` report step, and the pins in `ci.test.mjs`, `angular-json.test.mjs` and `shell-scripts.test.mjs`. Verified: the three test files green (135), the component suite in three sampled calls (92 + 121 + 80 = 293 files, 3581 tests green), `--report` exit 0, the Batch 1 mutations above, `check-objectscript` clean. Review: 12 findings, none high or medium; 2 low patches applied (sampler header wording, one test message), 9 rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: the three test files green (135), `npm run test:tools` green (2319). Residual: nothing was run on Linux or Node 22; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence, and the 12-minute step bound against the isolated run time is judged there.
+Batches 1 and 2 are done; Batches 3 and 4 are not started. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
+
+Batch 2 pass: DW-2534 `waitForRememberedView` in `preferences-reset.mjs`, called before web-applications AC1 closes its context. DW-2565 `scripts/ci-throwaway.sh` reads the clock once per attempt (the two `date` lines only, per the ruling), and `ci.test.mjs`'s `runThrowawayUp` takes a stepped stub clock the first `up` advances without sleeping. DW-2553 `X509Material.BadDecryptPassword` and `UndecodablePassword`; `SslSecret` draws its wrong password from the first, in `OnBeforeAllTests`. Task 0 landed on branch (b): the vendor answers an undecodable-key password with error 733 and HTTP 500, shared with the certificate and key mismatch, so there is no `PROPERTYFAULTS` entry and one `deferred:` item.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`): `SslSecret` 4 of 4; web-applications browser spec 4 of 4 on a rebuilt and redeployed bundle; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 127 of 127; `check-objectscript` 0 problems, its harness 163 OK, `lint-docs` 0 issues, `npm run test:tools` 2319 of 2319. The three Batch 2 mutations above each went red and were reverted, tree checked. Not run here: the other two ObjectScript classes and the Batch 3 and 4 specs (their batches), and `smoke.sh` and ObjectScript sweep (runner-owned). Residual: the one-second-boundary and late-write races are removed by construction, not reproduced; DW-2553's rate (13 in 3000) is measured on two keys only.
+
+Batch 2 review: 11 findings, none high or medium; 1 low patched (a doc comment's unmeasured rate), 10 rejected with reasons in the triage log, none deferred by review (the one `deferred:` item is Task 0's branch (b) finding); follow-up review not recommended. After the patch: source reloaded into `ocupilot-ci` (`LOADERRORS=0`), `SslSecret` 4 of 4, `check-objectscript` 0 problems. Files changed: `scripts/ci-throwaway.sh` (one clock read per attempt), `ui/tools/ci.test.mjs` (stepped stub clock), `ui/browser/preferences-reset.mjs` (`waitForRememberedView`), `ui/browser/web-applications.browser-spec.mjs` (AC1 waits on it), `src/OcuPilot/Test/X509Material.cls` and `SslSecret.cls` (deterministic `bad decrypt` password).

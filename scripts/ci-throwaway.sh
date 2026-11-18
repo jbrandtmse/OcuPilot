@@ -995,8 +995,9 @@ EOF
             fi
             # The budget runs from the first bind failure, so a first attempt that spent its time
             # pulling the image still leaves the whole budget for the retries.
-            if [ -z "$BIND_DEADLINE" ]; then BIND_DEADLINE=$(( $(date +%s) + BIND_WAIT_SECONDS )); fi
-            BIND_REMAINING=$(( BIND_DEADLINE - $(date +%s) ))
+            BIND_NOW=$(date +%s)
+            if [ -z "$BIND_DEADLINE" ]; then BIND_DEADLINE=$(( BIND_NOW + BIND_WAIT_SECONDS )); fi
+            BIND_REMAINING=$(( BIND_DEADLINE - BIND_NOW ))
             if [ "$BIND_REMAINING" -le 0 ]; then
                 echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $ATTEMPT attempt(s) over a $BIND_WAIT_SECONDS second budget; this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
                 exit 1

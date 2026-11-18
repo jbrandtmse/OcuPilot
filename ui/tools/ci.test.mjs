@@ -2723,17 +2723,28 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
 // --- The bind retry and its time budget (DW-439, DW-2123) ------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0' }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
   const capture = join(dir, 'docker-argv.txt');
   const counter = join(dir, 'up-count.txt');
   const sleeps = join(dir, 'sleeps.txt');
+  const clock = join(dir, 'clock.txt');
   mkdirSync(bin);
   // A `sleep` that records its argument and returns at once, so the backoff sequence is read
   // without waiting it out. Only the budget's own clock (`date`) stays real.
   if (stubSleep) writeStub(bin, 'sleep', ['printf \'%s\\n\' "$1" >> "$OCUPILOT_SLEEP_CAPTURE"', 'exit 0']);
+  // A `date +%s` that reads a counter file and adds one second per read, so the budget's own clock is
+  // stepped and never straddles a real second; any other `date` call reaches the real one.
+  if (steppedClock) {
+    writeStub(bin, 'date', [
+      'if [ "$*" != "+%s" ]; then exec /bin/date "$@"; fi',
+      'n=$(cat "$OCUPILOT_CLOCK" 2>/dev/null || echo 0)',
+      'printf \'%s\\n\' $((1700000000 + n))',
+      'printf \'%s\' $((n + 1)) > "$OCUPILOT_CLOCK"',
+    ]);
+  }
   if (stubSs) writeStub(bin, 'ss', ['printf \'%s\\n\' "SS-STUB $*"', 'exit 0']);
   writeStub(bin, 'docker', [
     'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
@@ -2743,7 +2754,14 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
     '    n=$((n + 1))',
     '    printf \'%s\' "$n" > "$OCUPILOT_UP_COUNT"',
     '    if [ "$n" -le "$OCUPILOT_UP_FAILS" ]; then',
-    '      if [ "$n" -eq 1 ] && [ "$OCUPILOT_FIRST_UP_SECONDS" -gt 0 ]; then sleep "$OCUPILOT_FIRST_UP_SECONDS"; fi',
+    '      if [ "$n" -eq 1 ] && [ "$OCUPILOT_FIRST_UP_SECONDS" -gt 0 ]; then',
+    '        if [ -n "$OCUPILOT_CLOCK" ]; then',
+    '          c=$(cat "$OCUPILOT_CLOCK" 2>/dev/null || echo 0)',
+    '          printf \'%s\' $((c + OCUPILOT_FIRST_UP_SECONDS)) > "$OCUPILOT_CLOCK"',
+    '        else',
+    '          sleep "$OCUPILOT_FIRST_UP_SECONDS"',
+    '        fi',
+    '      fi',
     '      printf \'%s\\n\' "$OCUPILOT_UP_MESSAGE" >&2',
     '      exit 1',
     '    fi',
@@ -2773,6 +2791,8 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
         OCUPILOT_SLEEP_CAPTURE: sleeps,
         // How long the first `up` runs before it fails, standing in for an image pull.
         OCUPILOT_FIRST_UP_SECONDS: firstUpSeconds,
+        // Set only with `steppedClock`: the counter file the stub `date` reads, and the first `up` advances.
+        OCUPILOT_CLOCK: steppedClock ? clock : '',
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
@@ -2836,9 +2856,13 @@ test('DW-2123: the budget runs from the first bind failure, so a slow first atte
   // The first attempt also pulls the image; with the clock started before it, an attempt that ran
   // past the whole budget and then failed on the bind exited with no retry at all.
   //
+  // The clock is stepped (one second per read, the first `up` advancing it by its own two seconds with
+  // no real sleep), so a second boundary between two reads cannot spend the one second budget.
+  //
   // Mutation (Rule 19): start the budget clock before the first attempt -> the 2 second first
-  // attempt spends the 1 second budget, and this goes red with a non-zero exit after one attempt.
-  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, waitSeconds: '1', firstUpSeconds: '2' });
+  // attempt spends the 1 second budget, and this goes red with a non-zero exit after one attempt;
+  // read the clock twice in an attempt again -> the second read spends it and this goes red the same way.
+  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, waitSeconds: '1', firstUpSeconds: '2', steppedClock: true });
   assert.equal(run.status, 0, `expected the retry to succeed: ${run.output}`);
   assert.equal(run.ups, 2, 'one retry after the slow first attempt');
 });
