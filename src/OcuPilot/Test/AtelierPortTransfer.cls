@@ -374,10 +374,10 @@ ClassMethod Note(pText As %String) As %String
 }
 
 /// <p>The matrix row "Export to this browser above the capture ceiling": an export whose answer passes
-/// the capture's ceiling is refused 503 <code>PORT.UNAVAILABLE</code>, with the caller's namespace
+/// the capture's ceiling is refused 503 <code>PORT.UNAVAILABLE</code> with its fault logged, the caller's namespace
 /// restored (canned routes).</p>
 /// <p>Mutation (Rule 19): carry on after a failed route in
-/// <method>OcuPilot.Port.AtelierPort.ExportSet</method> -- this goes red.</p>
+/// <method>OcuPilot.Port.AtelierPort.ExportSet</method> -- this goes red; pass a quiet ceiling for every endpoint's export there -- the log assertion goes red.</p>
 Method TestAnExportAboveTheCeilingIsUnavailable()
 {
     Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
@@ -385,8 +385,10 @@ Method TestAnExportAboveTheCeilingIsUnavailable()
     Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[{""name"":""Probe.A.cls"",""ts"":""2026-01-10 10:00:00.000"",""db"":""HOME"",""gen"":false}]}}")
     Do $ClassMethod(..#FIXTURE, "ArmOversize", "ExportToXMLFile")
     Set tNamespace = $Namespace
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
     Do ..Act("Classes", "EXPORT", $ListBuild("namespace=" _ $Namespace, "names=Probe.A.cls"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "503 PORT.UNAVAILABLE", "an export above the ceiling is unavailable")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ "answered above the capture ceiling", "and its fault is logged: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
     Do $$$AssertEquals($Namespace, tNamespace, "with the caller's namespace restored")
 }
 

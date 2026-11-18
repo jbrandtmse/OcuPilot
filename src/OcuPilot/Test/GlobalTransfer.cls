@@ -352,7 +352,7 @@ Method TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor()
     }
 }
 
-/// <p>An export whose answer the capture refused, which a global of many short nodes whose node text is well under the bound reaches, and one whose XML lines
+/// <p>An export whose answer is above the capture's ceiling, which a global of many short nodes whose node text is well under the bound reaches, and one whose XML lines
 /// together pass the bound, are 422 <code>GLOBAL.TOOLARGE</code> and write no file, the first through the live vendor and the second through a canned route.</p>
 /// <p>Mutation (Rule 19): drop the length check after <method>OcuPilot.Port.AtelierPort.WholeLines</method> in <method>OcuPilot.Port.AtelierPort.ExportSet</method>
 /// -> the canned leg goes red; drop the ceiling mapping there -> the live leg goes red, answering 503.</p>
@@ -381,11 +381,13 @@ Method TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge()
     Do $$$AssertTrue('$ClassMethod(tProbe, "FileExists", "lines.xml"), "with no file written")
 }
 
-/// <p>Only an answer above the capture's ceiling is 422 <code>GLOBAL.TOOLARGE</code> for a global's export, and it logs no fault; a capture that cannot be ended
+/// <p>Only an answer above the capture's ceiling, in one string or in lines that together pass it, is 422 <code>GLOBAL.TOOLARGE</code> for a global's export, and
+/// it logs no fault; a capture that cannot be ended
 /// is 503 <code>PORT.UNAVAILABLE</code> and a refused route is 403, each with its fault logged and no file written (canned routes; the export's route runs once each).</p>
 /// <p>Mutation (Rule 19): convert every 503 of a global's export in <method>OcuPilot.Port.AtelierPort.ExportSet</method>, or count a capture that cannot be ended as the
 /// ceiling in <method>OcuPilot.Port.AtelierPort.Route</method> -> the capture-end leg goes red; log the ceiling's fault in <method>OcuPilot.Port.AtelierPort.Outcome</method>
-/// although the caller owns it -> the ceiling leg goes red on the empty log; set the ceiling for any failed call -> the refused leg goes red.</p>
+/// although the caller owns it -> the ceiling leg goes red on the empty log; set the ceiling for any failed call -> the refused leg goes red; count lines that
+/// together pass the ceiling as a capture that cannot be ended in <method>OcuPilot.Port.AtelierPort.Route</method> -> the lines leg goes red.</p>
 Method TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable()
 {
     Set tProbe = ..#PROBE
@@ -404,6 +406,15 @@ Method TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable
     Do $ClassMethod(..#FIXTURE, "Clear")
     Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
     Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
+    Do $ClassMethod(..#FIXTURE, "ArmOversizeLines", "ExportToXMLFile")
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Set tSaid = ..Atelier("Globals", "EXPORT", tPairs, .tNone)
+    Do $$$AssertEquals(tSaid _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), "422 GLOBAL.TOOLARGE 1", "lines that together pass the capture's ceiling are too large, after the vendor's export ran once and succeeded")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and log no fault")
+    Do $$$AssertTrue('$ClassMethod(tProbe, "FileExists", "ceiling.xml"), "with no file written")
+    Do $ClassMethod(..#FIXTURE, "Clear")
+    Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
+    Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
     Do $ClassMethod(..#FIXTURE, "ArmEndFailure")
     Do ##class(OcuPilot.Test.LogProbe).Clear()
     Set tSaid = ..Atelier("Globals", "EXPORT", tPairs, .tNone)
@@ -416,7 +427,7 @@ Method TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable
     Do $ClassMethod(..#FIXTURE, "ArmThrow", "ExportToXMLFile", "<PROTECT>")
     Do ##class(OcuPilot.Test.LogProbe).Clear()
     Set tSaid = ..Atelier("Globals", "EXPORT", tPairs, .tNone)
-    Do $$$AssertEquals(tSaid, "403 PORT.ACCESSDENIED", "a route the vendor refuses is access denied, not too large")
+    Do $$$AssertEquals(tSaid _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), "403 PORT.ACCESSDENIED 1", "a route the vendor refuses is access denied, not too large, after the vendor's export ran once")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ "ExportToXMLFile was refused", "and its fault is logged: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
     Do $$$AssertTrue('$ClassMethod(tProbe, "FileExists", "ceiling.xml"), "with no file written")
 }

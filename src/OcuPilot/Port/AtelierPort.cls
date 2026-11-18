@@ -3240,7 +3240,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
             }
         } Catch exEnd {
             If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-            Set tOverflow = $Select(exEnd.Name = "<MAXSTRING>": 2, 1: 1)
+            Set tOverflow = 1
             Set tText = ""
         }
     }

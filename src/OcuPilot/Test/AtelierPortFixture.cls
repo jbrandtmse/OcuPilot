@@ -16,7 +16,8 @@
 /// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
 /// <method>HighestVersion</method> and <method>DatabaseResources</method> answer what a test arms,
 /// <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>, and
-/// <method>LogNote</method> through <class>OcuPilot.Test.LogProbe</class>. State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
+/// <method>LogNote</method> through <class>OcuPilot.Test.LogProbe</class>, and <method>EndCapture</method> fails when a test arms
+/// <method>ArmEndFailure</method>. State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
 /// <p>A canned route runs while the port has switched to the read's namespace, so a test that arms
 /// one reads the install namespace.</p>
 Class OcuPilot.Test.AtelierPortFixture Extends OcuPilot.Port.AtelierPort
@@ -85,6 +86,13 @@ ClassMethod ArmOversize(pMethod As %String)
     Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 1)
 }
 
+/// <p>Arm route <var>pMethod</var> to write an answer above the capture's ceiling as many lines, each under the longest string, and to
+/// succeed, so only the capture's own count of the lines passes the ceiling.</p>
+ClassMethod ArmOversizeLines(pMethod As %String)
+{
+    Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 3)
+}
+
 /// <p>Arm route <var>pMethod</var> to raise an exception naming <var>pError</var> (an ObjectScript
 /// error name such as <code>&lt;PROTECT&gt;</code>) after writing nothing.</p>
 ClassMethod ArmThrow(pMethod As %String, pError As %String)
@@ -92,7 +100,7 @@ ClassMethod ArmThrow(pMethod As %String, pError As %String)
     Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 2, pError)
 }
 
-/// <p>Arm the capture's end to fail with an exception that is not the string ceiling, after the route has written nothing.</p>
+/// <p>Arm the capture's end to fail with an exception that is not the string ceiling, after the route has written its answer.</p>
 ClassMethod ArmEndFailure()
 {
     Set ^||OcuPilotAtelierFixture("endfailure") = 1
@@ -323,6 +331,7 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, p
     Set %response.Status = $ListGet(tArmed, 1)
     Set tMode = $ListGet(tArmed, 4)
     If tMode = 1 Quit ..WriteOversize()
+    If tMode = 3 Quit ..WriteOversizeLines()
     If tMode = 2 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$ObjectScriptError, $ListGet(tArmed, 5) _ " in the canned route"))
     Do ..Emit($ListGet(tArmed, 2))
     Quit $ListGet(tArmed, 3)
@@ -354,6 +363,17 @@ ClassMethod WriteOversize() As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Write <parameter>OVERSIZECHUNKS</parameter> lines of <parameter>OVERSIZECHUNK</parameter> characters, together above the capture's
+/// ceiling, and succeed.</p>
+ClassMethod WriteOversizeLines() As %Status [ Private ]
+{
+    Set tChunk = $Translate($Justify("", ..#OVERSIZECHUNK), " ", "x")
+    For tI = 1:1:..#OVERSIZECHUNKS {
+        Do ..Emit(tChunk _ $Char(10))
+    }
+    Quit $$$OK
 }
 
 }
