@@ -406,3 +406,10 @@
 2026-11-18T13:48:32Z	Story 24.12	stage_spawned	stage=code-review spawn_at=2026-11-18T13:48:32Z model=opus agent_name=24-12-quality-measures-code-review-batch1 cycle_iteration=1
 2026-11-18T14:05:35Z	Story 24.12	cr_complete	spawn_at=2026-11-18T13:49:00Z model=opus resolved=10 fixed_at_source=10 wontfix_accepted=4(DW-2735..DW-2738) dismissed=7 high=0 med=3 low=18 rows=4 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done(batch1) scope=batch1 cycle_iteration=1
 2026-11-18T14:05:35Z	Story 24.12	ledger_adjudicated	owned=1 resolved=0 reowned=0 terminal=0 kept=DW-2734(open_owner_24-12_for_batch3) born_terminal=DW-2735,DW-2736,DW-2737,DW-2738 scope=batch1 model=claude-opus-5-5
+2026-11-18T14:19:05Z	Story 24.12	integrate_forward	feature=9dabd07fc(bookkeeping+timings) head=1e2e176d2 conflicts_resolved=none
+2026-11-18T14:19:05Z	Epic 24	throwaway_rebuild	project=ocupilot-b-ci reason=fresh_check_24.12_batch1 run=20261114T1656Z-21,22 started_by=runner-24
+2026-11-18T14:19:05Z	Story 24.12	fresh_check	env=recipe(merged_tree_1e2e176d2) tests=13_classes+2_specs result=pass order=forward,reverse scope=batch1
+2026-11-18T14:19:05Z	Story 24.12	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+analytics_specs_16/16+a11y-structural-invariants_13/13 scope=batch1 model=claude-opus-5-5
+2026-11-18T14:19:05Z	Story 24.12	committed	sha=52720f987 code_head=1e2e176d2 ci=pending runs=44322844055 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(24.12_row)
+2026-11-18T14:19:05Z	Story 24.12	ruling	question=tracker_status_between_batches choice=in-progress(batches_2_3_follow) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-18T14:19:05Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T14:19:05Z model=opus agent_name=24-12-quality-measures-plan-batch2 cycle_iteration=2 scope=batch2_measure_writes
