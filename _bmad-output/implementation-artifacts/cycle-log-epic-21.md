@@ -501,3 +501,8 @@
 2026-11-17T22:33:38Z	Story 21.14	ci_red_classified	run=44178940947 workflow=.github/workflows/ci.yml class=pending_rerun test=users.browser-spec.mjs_AC2(browser_1/5,30s_wait) head=20223ae5a(superseded) note=no_21.14_change_to_users_screen
 2026-11-17T22:41:03Z	Epic 21	integrated	feature=48882f1f2 merge=7add83728 conflicts_resolved=sprint-status(ours),Prohibited.cls,ClassicPageGate,Governance,GovernanceBaseline,MappingDescriptor,Test/Prohibited(81_types),ReadTool(488),ToolRoundTrip,ToolWrite(99:base93+3+3) method=union+recount category=decide(plain_unions) checks=8_conflicted_classes_green,test:tools_2308,check-objectscript_0,hook_green ledger_dups=0
 2026-11-17T22:41:03Z	Story 21.14	gate_step	step=fresh_check+full_sweep+smoke head=7add83728 started=2026-11-17T22:41:03Z dir=e21u/21-14/gate
+2026-11-17T23:23:50Z	Story 21.14	ci_resolved	story=21.14 sha=20223ae5a runs=44178940947 result=success failed=none via=none resolved_at=gate note=flake_rerun(users_AC2,browser_1/5)
+2026-11-17T23:23:50Z	Story 21.22	ledger_routed_planned	story=21-22-ci-flake-hardening entries=0 excess=1 by=harvest note=routed_story_max=6_reached
+2026-11-18T00:41:07Z	Story 21.14	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+3_specs(nls-locales,language-servers,users) result=pass order=forward,reverse(specs) head=7add83728
+2026-11-18T00:41:07Z	Story 21.14	gate_step	step=sweep result=green shards=20/20 head=7add83728
+2026-11-18T00:41:07Z	Story 21.14	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5

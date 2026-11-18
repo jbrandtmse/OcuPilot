@@ -13733,3 +13733,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: LocaleRules.Flag is BackupRules.Flag inlined; RenderRefusal is JournalRecordDetail.RenderRefusal; each rules class keeps its own private copy.
 - 2026-11-17T21:35:43Z status=wontfix-accepted owner=21-14-nls-configured-defaults-and-locale-definitions by=cr note=reopen_if=a fourth rules class copies the same helpers or two copies diverge
+
+### DW-2720: flake: users.browser-spec.mjs AC2 (disabled and expired accounts) timed out waiting 30 s in CI browser shard 1/5
+- source: CI run 44178940947 (Epic 21 head 20223ae5a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
+- 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
