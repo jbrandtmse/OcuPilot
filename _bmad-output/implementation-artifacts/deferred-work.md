@@ -13912,3 +13912,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: hookFailed at a11y-structural-invariants.browser-spec.mjs:68; all four tests not ok; rerun green
 - 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=settle_deadline_family;21-22_closed
 - 2026-11-18T18:00:33Z status=dropped owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=duplicate_of_DW-1822(reopened_there)
+
+### DW-2747: The globals arm leaves a replace whose own read the port refuses with a 4xx to the write, which refuses the same way, so only a global that moves back between the arm's read and the write's walk escapes the location judgement
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Prohibited.Global replace branch quits on tUnreadable; measured on ocupilot-ci: NOCHANGE, TOOLARGE, NOTFOUND, SHAPE and PROTECT reads are refused by REPLACEALL's own walk; fail-closed would turn the direct replace's 409 NOCHANGE into 500
+- 2026-11-18T21:37:31Z status=wontfix-theoretical owner=21-18-global-find-and-replace by=cr note=real only if REPLACE and REPLACEALL could disagree with no change between the arm's read and the write's walk
+
+### DW-2748: A global replace takes no lock, so another process's write to a recorded node between the transaction's old-value check and its Set is overwritten
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GlobalPort.VendorReplaceApply compares then sets each node with no LOCK; IRIS locks are advisory, so a lock helps only against writers that lock too; the window is one comparison per node
+- 2026-11-18T21:37:36Z status=wontfix-accepted owner=21-18-global-find-and-replace by=cr note=reopen_if=a product writer that locks global nodes is found racing a replace, or a lost update is reported
+
+### DW-2749: The find and replace matrix's No privilege row (403 PORT.ACCESSDENIED, nothing written) has no test
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: No GlobalReplace or GlobalWriteDeveloper leg drives a replace into a database the caller can read but not write; the PROTECT mapping is the port's shared Mapped path, pinned for 21.5's writes
+- 2026-11-18T21:37:41Z status=wontfix-accepted owner=21-18-global-find-and-replace by=cr note=reopen_if=a replace by a principal without WRITE answers anything but 403 PORT.ACCESSDENIED or writes a node
