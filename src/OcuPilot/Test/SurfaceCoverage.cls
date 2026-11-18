@@ -316,6 +316,11 @@ XData Coverage
 <tool name="osmgmt.userddlmappings.create" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
 <tool name="osmgmt.userddlmappings.set" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
 <tool name="osmgmt.userddlmappings.delete" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
+<screen name="NlsDefaultList" class="OcuPilot.Test.NlsDefaultRead" method="TestTheScreenAndToolDeclareTheirPageActionAndKey"/>
+<screen name="LocaleList" class="OcuPilot.Test.LocaleRead" method="TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences"/>
+<tool name="osmgmt.nlsdefaults.set" class="OcuPilot.Test.LocaleWrite" method="TestTheSwitchRoundTripsOverTheNodeAndReloadsOnBothCallers"/>
+<tool name="osmgmt.locales.install" class="OcuPilot.Test.LocaleWrite" method="TestAnotherLocaleIsInstalledOnBothCallersAndTheOriginalComesBack"/>
+<tool name="osmgmt.locales.delete" class="OcuPilot.Test.LocaleWrite" method="TestACustomLocaleIsDeletedOnBothCallersAndTheOthersAreRefused"/>
 <tool name="osmgmt.sqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.sqlshellsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.tsqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>

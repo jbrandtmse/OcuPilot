@@ -33,6 +33,20 @@ export function fieldOf(row: unknown, field: string): unknown {
 }
 
 /**
+ * The words a column draws in place of the value its read carries, keyed by descriptor, then field, then value (Story 21.14). The read, the
+ * filter and the agent's context keep the value itself.
+ */
+const VALUE_WORDS: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>>> = {
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': { Source: { config: STRINGS.nlsDefaultSourceConfig, locale: STRINGS.nlsDefaultSourceLocale } },
+};
+
+/** The word `descriptor`'s `field` draws for `value`, or `value` itself where none is declared. */
+export function wordedValue(descriptor: string, field: string, value: unknown): unknown {
+  const words = VALUE_WORDS[descriptor]?.[field];
+  return typeof value === 'string' && words !== undefined && Object.hasOwn(words, value) ? words[value] : value;
+}
+
+/**
  * The key a row is selected, activated, marked changed and linked by. A composite id joins its
  * parts' texts with the shared separator (AD-13); any other id kind is the text of the `name`
  * column's field.

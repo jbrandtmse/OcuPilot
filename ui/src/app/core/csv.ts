@@ -9,7 +9,7 @@
  */
 
 import type { TableColumn } from './screens.generated';
-import { cellView, fieldOf } from './table-model.ts';
+import { cellView, fieldOf, wordedValue } from './table-model.ts';
 
 /** The UTF-8 byte-order mark a spreadsheet reads the file's encoding from (Rule 14: an escape). */
 export const CSV_BOM = '\ufeff';
@@ -44,12 +44,13 @@ export function tableCsvRows(
   rows: readonly unknown[],
   columns: readonly TableColumn[],
   lookup: (key: string) => string,
-  pendingFields: readonly string[] = []
+  pendingFields: readonly string[] = [],
+  descriptor = ''
 ): string[][] {
   return rows.map((row) =>
     columns.map((column) => {
       if (pendingFields.includes(column.field)) return '';
-      const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', lookup);
+      const view = cellView(wordedValue(descriptor, column.field, fieldOf(row, column.field)), column.kind, column.emptyKey ?? '', lookup);
       return view.empty ? '' : view.text;
     })
   );

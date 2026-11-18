@@ -64,6 +64,7 @@ import {
   resizedWidth,
   rowKey,
   viewKeys as viewKeysOf,
+  wordedValue,
 } from '../core/table-model';
 import { followInAppLink } from './in-app-link';
 import { LongBlock } from './long-block';
@@ -715,7 +716,7 @@ export class DataTable implements OnInit {
         classicHref,
         cells: columns.map((column, columnIndex) => {
           const pending = pendingFields.includes(column.field);
-          const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', this.lookup);
+          const view = cellView(wordedValue(screen.descriptor, column.field, fieldOf(row, column.field)), column.kind, column.emptyKey ?? '', this.lookup);
           const link = !pending && view.link && url !== '';
           const classic = !pending && view.link && classicHref !== '';
           return {
@@ -852,7 +853,7 @@ export class DataTable implements OnInit {
   private downloadCsv(): void {
     const columns = this.columns();
     const header = columns.map((column) => this.lookup(column.labelKey));
-    const text = csvText(header, tableCsvRows(this.view(), columns, this.lookup, this.pendingFields()));
+    const text = csvText(header, tableCsvRows(this.view(), columns, this.lookup, this.pendingFields(), this.screen().descriptor));
     saveCsv(document, text, csvFileName(this.gridLabel, new Date()));
   }
 
