@@ -2,10 +2,10 @@
 title: 'Story 21.18: Global find and replace'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: 'c9242b05416767b469166c6df368d843ab4f92ed'
+status: 'done'
+baseline_revision: 'a4f2d3d7cf1b178986c277d3bd610ff3e49e31ae'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: ['{project-root}/_bmad-output/implementation-artifacts/spec-21-5-globals-and-the-data-tools.md']
 warnings: ['oversized']
 deferred: []
@@ -168,7 +168,7 @@ deferred: []
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI run 44397952934 (code head 786f463f5), instance shard 5/8: `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript` fail on `explorer.globals.replace` ("Globals/REPLACEALL has no script form in OcuPilot.Port.GlobalPort"). AD-59 binds every write tool: the port that defines `Invoke` defines a `Snippet` that mirrors every branch `Invoke` takes, so "the write has no script form" (Design Notes, Verification) contradicts the spine. Add the `REPLACEALL` branch to `GlobalPort.SnippetForm` and `Snippet`, rendering the same replace `Invoke` performs (namespace, global, find, replace, match case; plain-text values only; one transaction) with every value a string literal reached by indirection, as the existing branches do; replace the two wrong sentences; `DraftRegistry` green; a `mutation:` line. [src/OcuPilot/Port/GlobalPort.cls]
+- [x] [Review][HIGH] Closed: `GlobalPort.SnippetForm`/`ReplaceScript`, `GlobalReplace` script tests, `DraftRegistry` green. CI run 44397952934 (code head 786f463f5), instance shard 5/8: `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript` fail on `explorer.globals.replace` ("Globals/REPLACEALL has no script form in OcuPilot.Port.GlobalPort"). AD-59 binds every write tool: the port that defines `Invoke` defines a `Snippet` that mirrors every branch `Invoke` takes, so "the write has no script form" (Design Notes, Verification) contradicts the spine. Add the `REPLACEALL` branch to `GlobalPort.SnippetForm` and `Snippet`, rendering the same replace `Invoke` performs (namespace, global, find, replace, match case; plain-text values only; one transaction) with every value a string literal reached by indirection, as the existing branches do; replace the two wrong sentences; `DraftRegistry` green; a `mutation:` line. [src/OcuPilot/Port/GlobalPort.cls]
 
 Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medium 6, low 20, false 3). Every medium was patched in this pass, and no high or medium remains open.
 
@@ -195,7 +195,6 @@ Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medi
   - The digest excludes the texts; the spec defines it over the references and values.
   - The counts act as a substring oracle (veto U-63, count-only card).
   - Three walks per replace (Decided in-stage).
-  - The write has no script form (Decided in-stage).
   - Raw `MatchCase` row labels (the spec names the card rows).
 - **low, not worth fixing:**
   - No "whole global" wording (it would need a new string).
@@ -230,6 +229,19 @@ Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medi
   - `[false]` `[reject]` Find filter "server-side, not screen-only" -- the Tasks list names `GlobalNodes` accepting `find` and `matchCase`; no new route exists.
   - `[false]` `[reject]` Agent card UI evidence thin -- the card is the generic proposal view of the five rows, pinned by `StateDiff` and the server test.
   - `[false]` `[reject]` Person's replace has no screen of its own -- by design (Decided in-stage): the page starts the list descriptor's `replace`.
+
+### 2026-11-18 -- Review pass (rework 1, AD-59 script form)
+
+- verdicts: 8 findings -- high 0, medium 1, low 6, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The script's rollback had no failing input -- `TestTheScriptRollsBackWhenItFails` forces a `<MAXSTRING>` after an earlier node was set and asserts nothing changed and no transaction is open; its mutation is observed red.
+  - `[low]` `[patch]` Overlapping finds were unpinned -- an `aa`-in-`aaaaa` leg, compared with the write and asserted `ZZa`; its mutation is observed red.
+  - `[low]` `[patch]` Mutation lines covered only `SnippetForm` and `Literal` -- two lines added.
+  - `[low]` `[patch]` `$Length(tWrite, $Char(10)) > 1` could not fail -- now asserts the write did not answer `invoke failed`.
+  - `[low]` `[patch]` `RunScript` left the script's variables defined -- they are killed after the run.
+  - `[low]` `[reject]` The lower-case length guard has no leg -- measured on `ocupilot-ci`: no character from 1 to 65,535 lower-cases to a different length, so no data can reach the guard.
+  - `[low]` `[reject]` The script lacks the port's guards (name, `%SYS`, bounds, no-change, digest) -- they guard the live write; AD-59 renders the change, and a draft's script is not protected by the fingerprint. A text over the string limit raises inside the script's transaction and rolls back (pinned).
+  - `[false]` `[reject]` The replace text's own rendering is checked only through the shared `Literal` -- the find, replace and every other value go through the one function.
 
 ## Design Notes
 
@@ -279,7 +291,7 @@ Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medi
 - An unsound find or replacement from the agent is refused `TOOL.ARGUMENTS` before the instance is read, by `ExplorerGlobalReplaceMint` (a new class, modeled on `InteropItemChangeClassMint`), with `GLOBAL.VALUE.SHAPE`'s existing sentence as the problem text.
 - The review's five rows carry no before-text, so the handler draws a row that is not removed and has no before-text as `field: value` (`fieldReviewLines`); the review dialog's verb is the ruled "Find and replace".
 - The `%SYS` sentence's key is `globalRefusalReplaceSystem`: `strings.test.mjs` pins every key containing `namespace`.
-- `GlobalPort.SnippetForm` answers no script form for `REPLACEALL`, as for a read: the replace has no vendor script.
+- `GlobalPort.SnippetForm` answers `objectscript` for `REPLACEALL` (AD-59) and none for the `REPLACE` read; the script mirrors the write.
 - DW-2731: no clause was rewritten. `Prohibited.ImportedGlobals`'s `Catch` already reads `Set tSC = ex.AsStatus()` (Story 21.5's original commit), so an error raised in it is an error status the caller refuses on. `GlobalWrite.TestAnErrorRaisedWhileJudgingAnImportRefusesIt` pins it (`GlobalProhibited.BreakPort` makes the arm's port a class with no methods); the evidence's "keeps tSC OK" read the file before that line.
 - DW-2732: the Protected row answers 403, pinned at the arm in `GlobalReplace` and `GlobalWrite`. No instance global stored in a protected database with at most 20,000 nodes was found to drive end to end (`^oddDEF` in `USER` holds more than 25,000), so both callers' refusal is pinned at the shared arm, not by a real write.
 
@@ -383,12 +395,15 @@ Each applied on `ocupilot-ci`, observed red, reverted byte-identical (md5) and r
 - mutation: AC3 (port) drop `If tStale Quit` from `GlobalPort.ReplacingRun` -> the seam leg of `GlobalReplace.TestAMovedGlobalIsNotWrittenOnEitherCaller` red; drop the rollback loop from `VendorReplaceApply`'s `Catch` -> its error leg red (observed, code review).
 - mutation: AC4 (value bound) compare with `'<` in `GlobalPort.VendorReplaceScan` -> the 32,767 leg of `GlobalReplace.TestARefusedReplaceWritesNothing` red (observed, code review).
 - mutation: AC1 (filter) drop `!hasMore` from the page's empty state -> `global-view.page.spec.ts` "a filtered page that scanned out" red (observed, code review).
+- mutation: AD-59 make `GlobalPort.SnippetForm` answer `""` for `REPLACEALL` again -> `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript`, and `GlobalReplace` script tests and declaration assertion, red; unquoted `Literal` -> `TestTheScriptRunsNothingTheQueryCarries` red; drop the rollback loop from `ReplaceScript`'s `Catch` -> `TestTheScriptRollsBackWhenItFails` red; step the script's search to `tAt - $Length(tNeedle) + 1` -> the overlap leg of `TestTheScriptFormMakesTheSameChangeAsTheWrite` red (all observed; reverted, the port equal to the reviewed diff, reloaded).
 - Each code-review mutation was reverted to byte-identical source (md5) and reloaded. The patched classes are green on `ocupilot-ci`: `GlobalReplace` 11/11 and `GlobalWriteDeveloper` 4/4. The 17 shared-surface and globals classes are also green: `CriterionHints`, `DeveloperFloorRoutes`, `SaveHoldCoverage`, `EndpointCoverage`, `SurfaceCoverage`, `ToolEmit`, `ReadDescriptions`, `Descriptor`, `Navigation`, `ReadTool`, `ToolWrite`, `ClassicPageGate`, `DeveloperFloor`, `ExplorerDescriptor`, `GlobalWrite`, `GlobalRead` and `Prohibited`. `test:tools` passes 2,330/2,330. The globals browser spec passes 7/7 on the rebuilt and redeployed bundle.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework 1 (AD-59).** `GlobalPort.SnippetForm` answers `objectscript` for `Globals`/`REPLACEALL` and `Snippet` renders it through the new private `ReplaceScript`: the namespace, the walk in `$Query` order root included, `Candidate`'s plain-text test, `Replaced`'s matcher and one transaction rolled back on error, every query value a `Literal` read by name indirection, every line closing the blocks it opens. `GlobalReplace` gains the script-form assertion, `TestTheScriptFormMakesTheSameChangeAsTheWrite` (the script run line by line against the port's own replace, six legs), `TestTheScriptRunsNothingTheQueryCarries` and `TestTheScriptRollsBackWhenItFails`. Review of this pass: 8 findings, 1 medium and 4 low patched (tests only), none high, none deferred; the earlier pass's follow-up flag is superseded by `followup_review_recommended: false`. Verified on `ocupilot-ci`: `LOADERRORS=0`, `DraftRegistry` 9/9, `GlobalReplace` 14/14, `GlobalWrite` 11/11 and `GlobalTransfer` 11/11 (handoff pass), `check-objectscript` 0 problems; four mutations observed red and reverted (Verification).
 
 **Implemented (Batches 1 and 2, one commit).** `explorer.globals.replace` reaches `GlobalPort` through a composed `REPLACE` read and a `REPLACEALL` write: a bounded walk, a digest guard, one transaction with a per-node old-value check, the `%SYS` refusal, and the `Global` arm judging the directories of the nodes that change. The Global nodes page gets Find, Match case, Replace with and Review; the list descriptor, handler, strings, EXPERIENCE.md row, mirror and baseline key (`false`) follow. Task 0 results and in-stage decisions are under Design Notes.
 
@@ -400,4 +415,4 @@ Blocking condition: none
 
 **Verification.** `reload.sh` `LOADERRORS=0`; `GlobalReplace` 10/10, `GlobalWrite` 11/11, `Prohibited` 16/16 green on `ocupilot-ci` after the patches, the other `(loop)` classes green in the handoff pass; `check-objectscript` 0 problems; `lint-docs` clean; `test:tools` 2,328 and the handler spec green; both browser specs green (11); build clean at 2.12 MB initial. Mutations observed red and reverted in this pass: the globals arm skipped, `FINGERPRINTSUBJECT` shortened, `Replaced`'s haystack left in case. The runner owns the full ObjectScript sweep, `smoke.sh` and the fresh check.
 
-**Residual risks.** `followup_review_recommended: true` (three medium patches): the agent's moved-global legs pin the kernel's `PROPOSAL.TARGETCHANGED`, so the port's digest comparison on the agent path is not pinned apart from it. A real protected-database global small enough to replace end to end does not exist on the instance, so the location and code-global refusals are pinned at the arm. Epic 24's worktree has staged edits to `Prohibited.cls`, `ReadTool.cls`, `ToolWrite.cls`, `ClassicPageGate.cls` and EXPERIENCE.md: roster counts on long lines may conflict at integration.
+**Residual risks.** The agent's moved-global legs pin the kernel's `PROPOSAL.TARGETCHANGED`, so the port's digest comparison on the agent path is not pinned apart from it. A real protected-database global small enough to replace end to end does not exist on the instance, so the location and code-global refusals are pinned at the arm. Epic 24's worktree has staged edits to `Prohibited.cls`, `ReadTool.cls`, `ToolWrite.cls`, `ClassicPageGate.cls` and EXPERIENCE.md: roster counts on long lines may conflict at integration.

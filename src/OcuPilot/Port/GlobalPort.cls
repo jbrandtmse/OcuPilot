@@ -1256,11 +1256,12 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>objectscript</code> for the three writes this port carries (<code>Globals</code> <code>DELETE</code>, <code>Node</code>
-/// <code>PUT</code> and <code>DELETE</code>); <code>""</code> for a read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for the four writes this port carries (<code>Globals</code> <code>DELETE</code> and
+/// <code>REPLACEALL</code>, <code>Node</code> <code>PUT</code> and <code>DELETE</code>); <code>""</code> for a read, which has no script
+/// form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#ENDPOINTGLOBALS) && (pType = ..#TYPEDELETE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTGLOBALS) && ((pType = ..#TYPEDELETE) || (pType = ..#TYPEREPLACEALL)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTNODE) && ((pType = ..#TYPEPUT) || (pType = ..#TYPEDELETE)) Quit "objectscript"
     Quit ""
 }
@@ -1268,12 +1269,15 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <p><method>Invoke</method>'s write branches as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names: a global's
 /// delete is <code>Kill</code> of its name, a node's the <code>Set</code> or <code>Kill</code> of the reference. Every value, a reference
 /// and a node's value included, is rendered as a string literal and reached by name indirection, so nothing the query carries runs as code.
-/// A read writes nothing and answers no step.</p>
+/// A global's find and replace (<code>REPLACEALL</code>) is <method>ReplaceScript</method>. Every line of a script opens no block it does
+/// not close on that line. A read writes nothing and answers no step.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    If pEndpoint = ..#ENDPOINTGLOBALS {
+    If (pEndpoint = ..#ENDPOINTGLOBALS) && (pType = ..#TYPEREPLACEALL) {
+        Set tText = tText _ ..ReplaceScript(.pQuery)
+    } ElseIf pEndpoint = ..#ENDPOINTGLOBALS {
         Set tText = tText _ $Char(10) _ " Set tGlobal = " _ ..Literal("^" _ $Get(pQuery(..#NAMEKEY))) _ $Char(10) _ " Kill @tGlobal"
     } Else {
         Set tText = tText _ $Char(10) _ " Set tNode = " _ ..Literal($Get(pQuery(..#REFERENCEKEY))) _ $Char(10)
@@ -1283,6 +1287,29 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
     Quit [(tStep)]
+}
+
+/// <p>The lines, each led by a line feed, that make <method>ReplacingRun</method>'s write: walk the named global in <code>$Query</code>
+/// order, the root included, and in each plain-text value (<method>Candidate</method>'s test) replace every occurrence of the find text
+/// left to right without overlap, matching case unless <parameter>MATCHCASEKEY</parameter> is <code>0</code> and leaving a value alone
+/// whose or whose find's lower-case form changes length (<method>Replaced</method>), all in one transaction rolled back on error. The
+/// namespace, name, find, replace and match-case flag are string literals the script reads by name indirection, never as code.</p>
+ClassMethod ReplaceScript(ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Set tRoot = " _ ..Literal("^" _ $Get(pQuery(..#NAMEKEY)))
+    Set tText = tText _ tNL _ " Set tFind = " _ ..Literal($Get(pQuery(..#FINDKEY)))
+    Set tText = tText _ tNL _ " Set tReplace = " _ ..Literal($Get(pQuery(..#REPLACEKEY)))
+    Set tText = tText _ tNL _ " Set tMatchCase = (" _ ..Literal($Get(pQuery(..#MATCHCASEKEY))) _ " '= ""0"")"
+    Set tText = tText _ tNL _ " Set tNeedle = $Select(tMatchCase: tFind, 1: $ZConvert(tFind, ""L""))"
+    Set tText = tText _ tNL _ " Set tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot)), tLevel = $TLevel"
+    Set tText = tText _ tNL _ " TSTART"
+    Set tText = tText _ tNL _ " Try { While tNext '= """" { Set tValue = $Get(@tNext) If ($ZStrip(tValue, ""*C"") = tValue) && (##class(%Studio.Global).format(tValue, .tOut, 1) = 1) && (tFind '= """") && ($Length(tNeedle) = $Length(tFind)) {"
+    Set tText = tText _ " Set tHay = $Select(tMatchCase: tValue, 1: $ZConvert(tValue, ""L"")) If $Length(tHay) = $Length(tValue) { Set tNew = """", tFrom = 1, tHits = 0"
+    Set tText = tText _ " For { Set tAt = $Find(tHay, tNeedle, tFrom) Quit:tAt=0  Set tNew = tNew _ $Extract(tValue, tFrom, tAt - $Length(tNeedle) - 1) _ tReplace, tHits = tHits + 1, tFrom = tAt }"
+    Set tText = tText _ " If tHits Set @tNext = tNew _ $Extract(tValue, tFrom, *) } } Set tNext = $Query(@tNext) } TCOMMIT }"
+    Set tText = tText _ " Catch tEx { While $TLevel > tLevel { TROLLBACK 1 } Throw tEx }"
+    Quit tText
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a <code>$Char</code>.</p>

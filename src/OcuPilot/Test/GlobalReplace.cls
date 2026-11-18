@@ -75,6 +75,8 @@ Method Remove()
     Kill @tRoot
     Set tPercent = "^%" _ $Translate(..PreparedName, "%")
     Kill @tPercent
+    Set tProbe = "^" _ ..PreparedName _ "Probe"
+    Kill @tProbe
 }
 
 /// <p>The test's global: three plain-text nodes holding <code>abc</code> (five occurrences, one value and one subscript carrying the marker), one holding it
@@ -197,7 +199,136 @@ Method TestTheToolDeclaresItsWritePathAndItsRefusals()
     For tCase = $ListBuild("GLOBAL.REPLACE.NOCHANGE", "No plain-text value in this global holds that text, so nothing would change.", 409), $ListBuild("GLOBAL.REPLACE.TOOLARGE", "This global is too large to replace in here: it holds more than 20,000 nodes, or a replaced value would be longer than 32,767 characters.", 409), $ListBuild("GLOBAL.REPLACE.REVIEWCHANGED", "This global changed after the replace was reviewed, so nothing was replaced. Review the replace again.", 409), $ListBuild("GLOBAL.REPLACE.SYSNAMESPACE", "Find and replace is not available in the %SYS namespace.", 409), $ListBuild("GLOBAL.REPLACE", "Replacing changes every value the review counts. This cannot be undone.", 0) {
         Do $$$AssertEquals(##class(OcuPilot.Api.GlobalError).ReasonFor($List(tCase, 1)) _ "|" _ ##class(OcuPilot.Api.GlobalError).HttpStatusFor($List(tCase, 1)), $List(tCase, 2) _ "|" _ $List(tCase, 3), $List(tCase, 1) _ ": its ruled sentence and status")
     }
-    Do $$$AssertEquals(##class(OcuPilot.Port.GlobalPort).SnippetForm("Globals", "REPLACEALL"), "", "the write has no script form")
+    Do $$$AssertEquals(##class(OcuPilot.Port.GlobalPort).SnippetForm("Globals", "REPLACEALL") _ "|" _ ##class(OcuPilot.Port.GlobalPort).SnippetForm("Globals", "REPLACE"), "objectscript|", "the write has an ObjectScript script form and its read has none")
+}
+
+/// <p>The test's global after the port's own replace (<code>REPLACE</code>, then <code>REPLACEALL</code> at the digest it answered), or after the rendered
+/// script of that replace when <var>pScript</var>: made fresh, its root holding <code>root abc</code>, a node of five <code>a</code> (a find may overlap
+/// itself), then every node as one text.</p>
+Method AfterReplace(pFind As %String, pReplace As %String, pMatchCase As %String, pScript As %Boolean, Output pText As %String) As %String
+{
+    Do ..Remove()
+    Do ..Make()
+    Set tRoot = "^" _ ..PreparedName
+    Set @tRoot = "root abc"
+    Set @tRoot@(7) = "aaaaa"
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("name") = ..PreparedName
+    Set tQuery("find") = pFind
+    Set tQuery("replace") = pReplace
+    If pMatchCase '= "" Set tQuery("matchCase") = pMatchCase
+    If pScript Quit ..RunScript(.tQuery, .pText) _ @tRoot _ $Char(10) _ ..Snapshot()
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Globals", "REPLACE", .tQuery, "", .tFresh, .tHttp, .tFault)
+    Set tQuery("digest") = $Select($IsObject($Get(tFresh)): tFresh.Digest, 1: "")
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Globals", "REPLACEALL", .tQuery, "", .tDone, .tHttp, .tFault)
+    Quit $Select($IsObject($Get(tDone)): "", 1: "invoke failed " _ $Get(tHttp)) _ @tRoot _ $Char(10) _ ..Snapshot()
+}
+
+/// <p>Render the script of <var>pQuery</var>'s replace and run it, one line at a time as a terminal would, in the current namespace restored after. The
+/// answer is the error the script raised, or <code>""</code>; <var>pText</var> is the script. The script's own variables are killed after it, so
+/// none outlives the call, and the locals of this method are named so none collides with them.</p>
+Method RunScript(ByRef pQuery, Output pText As %String) As %String
+{
+    Set zSteps = $ClassMethod(..#PORT, "Snippet", "Globals", "REPLACEALL", .pQuery)
+    Set pText = zSteps.%Get(0).text
+    Set zNamespace = $NAMESPACE
+    Set zError = ""
+    Try {
+        For zI = 1:1:$Length(pText, $Char(10)) {
+            Set zLine = $Piece(pText, $Char(10), zI)
+            Xecute zLine
+        }
+    } Catch zEx {
+        Set zError = zEx.Name
+    }
+    Set $NAMESPACE = zNamespace
+    Xecute "Kill tRoot, tFind, tReplace, tMatchCase, tNeedle, tNext, tLevel, tValue, tOut, tHay, tNew, tFrom, tHits, tAt, tEx"
+    Quit zError _ $Select($TLevel = 0: "", 1: "open transaction")
+}
+
+/// <p>AC1 and AD-59: the replace's script form makes the change the port's own replace makes -- the same nodes, in the same way, and no others. On a fresh
+/// copy of the test's global (its root included) the rendered script, run line by line, leaves every node as <code>REPLACE</code> then <code>REPLACEALL</code>
+/// leave it, with the case matched (the flag left out and given), and without matching case. The plain-text nodes holding the text change; the other-case
+/// node (with the case matched), the <code>$ListBuild</code> node, the node with a control character and the node whose subscript holds the text do not. The
+/// script opens no block it does not close on its line.</p>
+/// <p>Mutation (Rule 19): make <code>OcuPilot.Port.GlobalPort.SnippetForm</code> answer <code>""</code> for <code>REPLACEALL</code> again -> this
+/// test and the declaration assertion above go red; step the find's search past one character instead of its length in the script -> the overlap leg
+/// goes red.</p>
+Method TestTheScriptFormMakesTheSameChangeAsTheWrite()
+{
+    For tLeg = $ListBuild("abc", "xyz", ""), $ListBuild("abc", "xyz", "1"), $ListBuild("ABC", "xyz", "0"), $ListBuild("b", "", ""), $ListBuild("a", "aa", ""), $ListBuild("aa", "Z", "") {
+        Set tWrite = ..AfterReplace($List(tLeg, 1), $List(tLeg, 2), $List(tLeg, 3), 0)
+        Set tScript = ..AfterReplace($List(tLeg, 1), $List(tLeg, 2), $List(tLeg, 3), 1, .tText)
+        Set tName = $List(tLeg, 1) _ ">" _ $List(tLeg, 2) _ " case " _ $Select($List(tLeg, 3) = "": "default", 1: $List(tLeg, 3))
+        Do $$$AssertEquals(tScript, tWrite, tName _ ": the script leaves every node as the port's replace does")
+        Do $$$AssertTrue($Extract(tWrite, 1, 13) '= "invoke failed", tName _ ": and the write was made")
+    }
+    Set tScript = ..AfterReplace("aa", "Z", "", 1, .tText)
+    Set tRoot = "^" _ ..PreparedName
+    Do $$$AssertEquals(@tRoot@(7), "ZZa", "occurrences are replaced left to right without overlap")
+    Set tScript = ..AfterReplace("abc", "xyz", "", 1, .tText)
+    Do $$$AssertEquals($Piece(tScript, $Char(10), 1), "root xyz", "the root is replaced too")
+    Set tRoot = "^" _ ..PreparedName
+    Do $$$AssertEquals(@tRoot@(1) _ "|" _ @tRoot@(2) _ "|" _ @tRoot@(3) _ "|" _ @tRoot@(4) _ "|" _ (@tRoot@(5) = $ListBuild("abc", 2)) _ "|" _ @tRoot@(6) _ "|" _ @tRoot@("abc"), ..PreparedMarker _ " xyz and xyz|xAbCy|xxyzx|nothing here|1|tab" _ $Char(9) _ "abc|keep", "with the case matched only the plain-text values change")
+    Set tScript = ..AfterReplace("ABC", "xyz", "0", 1, .tText)
+    Do $$$AssertEquals(@tRoot@(2) _ "|" _ @tRoot@(3) _ "|" _ (@tRoot@(5) = $ListBuild("abc", 2)) _ "|" _ @tRoot@(6), "xxyzy|xxyzx|1|tab" _ $Char(9) _ "abc", "and without it the other-case value changes too, the list and control character values still do not")
+    Do $$$AssertTrue($Length(tText, "{") = $Length(tText, "}"), "every block the script opens it closes")
+    For tI = 1:1:$Length(tText, $Char(10)) {
+        Set tLine = $Piece(tText, $Char(10), tI)
+        Do $$$AssertEquals($Length(tLine, "{"), $Length(tLine, "}"), "line " _ tI _ " closes every block it opens")
+    }
+}
+
+/// <p>AD-59: the script is one transaction. A replacement that makes a later value longer than a string can be raises an error after an earlier node was
+/// set; the script raises it, no node holds a replaced value and no transaction is left open.</p>
+/// <p>Mutation (Rule 19): drop the rollback loop from the <code>Catch</code> of <code>OcuPilot.Port.GlobalPort.ReplaceScript</code> -> this test goes red.</p>
+Method TestTheScriptRollsBackWhenItFails()
+{
+    Set tProbe = "^" _ ..PreparedName _ "Probe"
+    Kill @tProbe
+    Set @tProbe@(1) = "a"
+    Set @tProbe@(2) = $Translate($Justify("", 4000), " ", "a")
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("name") = ..PreparedName _ "Probe"
+    Set tQuery("find") = "a"
+    Set tQuery("replace") = $Translate($Justify("", 1000), " ", "b")
+    Set tError = ..RunScript(.tQuery, .tText)
+    Do $$$AssertTrue((tError '= "") && (tError '[ "open transaction"), "the script raises the error and leaves no transaction open: " _ tError)
+    Do $$$AssertEquals(@tProbe@(1) _ "|" _ $Length(@tProbe@(2)), "a|4000", "and neither node holds a replaced value, the one set before the error included")
+    Kill @tProbe
+}
+
+/// <p>AD-59: nothing the replace's query carries runs as code. A find holding a double quote and the spelling of a call, which as code would count and
+/// match another value, matches only the node holding that very text; the call is never made; a find and a value holding a tab are rendered with the control
+/// character spelled and match nothing; and no raw control character, but the line feeds, is in the script.</p>
+/// <p>Mutation (Rule 19): render the find without doubling its quotes in <code>OcuPilot.Port.GlobalPort.Literal</code> -> the call runs and this test goes red.</p>
+Method TestTheScriptRunsNothingTheQueryCarries()
+{
+    Set tRoot = "^" _ ..PreparedName
+    Set tProbe = "^" _ ..PreparedName _ "Probe"
+    Kill @tProbe
+    Set tFind = "q""_$Increment(" _ tProbe _ ")_""q"
+    Set @tRoot@(1) = "1" _ tFind _ "2"
+    Set @tRoot@(2) = "1q1q2"
+    Set @tRoot@(3) = "tab" _ $Char(9) _ "abc"
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("name") = ..PreparedName
+    Set tQuery("find") = tFind
+    Set tQuery("replace") = "R"
+    Set tError = ..RunScript(.tQuery, .tText)
+    Do $$$AssertEquals(tError, "", "the script runs without error")
+    Do $$$AssertEquals(@tRoot@(1) _ "|" _ @tRoot@(2), "1R2|1q1q2", "only the node holding the find text as text changes")
+    Do $$$AssertEquals($Data(@tProbe), 0, "and the call in the find text was never made")
+    Set tQuery("find") = $Char(9) _ "abc"
+    Set tQuery("replace") = "X" _ $Char(0) _ "Y"
+    Set tError = ..RunScript(.tQuery, .tText)
+    Do $$$AssertEquals(tError _ "|" _ @tRoot@(3), "|tab" _ $Char(9) _ "abc", "a find with a control character changes no value, the one holding a control character included")
+    Do $$$AssertEquals($Translate(tText, $Char(10)), $ZStrip($Translate(tText, $Char(10)), "*C"), "no raw control character but the line feeds is in the script")
+    Do $$$AssertTrue(tText [ "$Char(9)_""abc""", "the control characters are spelled")
+    Kill @tProbe
 }
 
 /// <p>AC1. A person reviews a replace and the review states the counts over the node page's own rows -- three nodes and five occurrences -- and a digest, changing
