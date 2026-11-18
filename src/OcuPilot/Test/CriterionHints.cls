@@ -1,6 +1,6 @@
 /// <p>Pins Story 19.18's DW-1001 (AD-5, AD-24, AD-36): what a provider request tells the model about
 /// each derived read tool's <code>text</code> criteria. Every one either declares a hint or is one of
-/// the eight criteria that really are comma lists; a hinted one is described by its hint and the
+/// the nine criteria that really are comma lists; a hinted one is described by its hint and the
 /// "At most N characters." sentence, with no comma-list wording; and a hinted criterion of a
 /// parent-scoped read names the parent's read tool as the source of its value; and every read a hint
 /// names is registered and declares the field the hint says it answers.</p>
@@ -11,7 +11,7 @@ Class OcuPilot.Test.CriterionHints Extends %UnitTest.TestCase
 
 /// <p>The criteria that are comma lists, <code>&lt;tool&gt;:&lt;param&gt;</code> pipe-separated, and
 /// keep the generic description.</p>
-Parameter COMMALISTS = "logs.audit.read:eventSources|logs.audit.read:eventTypes|logs.audit.read:events|logs.audit.read:usernames|logs.audit.read:pids|logs.audit.read:namespaces|explorer.classes.read:pattern|explorer.routines.read:pattern";
+Parameter COMMALISTS = "logs.audit.read:eventSources|logs.audit.read:eventTypes|logs.audit.read:events|logs.audit.read:usernames|logs.audit.read:pids|logs.audit.read:namespaces|explorer.classes.read:pattern|explorer.routines.read:pattern|explorer.globals.read:pattern";
 
 Parameter GENERIC = "A server-search criterion, as a comma-separated list of names.";
 
@@ -55,7 +55,7 @@ ClassMethod Criteria(Output pRows) As %Status
     Quit tSC
 }
 
-/// <p>DW-1001: every text criterion of a derived read tool declares a hint, except exactly the eight
+/// <p>DW-1001: every text criterion of a derived read tool declares a hint, except exactly the nine
 /// comma lists, which declare none. Two-sided: a criterion added without a hint is named, and so is a
 /// comma list that gained one.</p>
 /// <p>Mutation (Rule 19): delete a hint from a descriptor -- this names the tool and criterion.</p>
