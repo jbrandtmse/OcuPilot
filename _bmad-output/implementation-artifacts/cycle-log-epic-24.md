@@ -413,3 +413,4 @@
 2026-11-18T14:19:05Z	Story 24.12	committed	sha=52720f987 code_head=1e2e176d2 ci=pending runs=44322844055 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(24.12_row)
 2026-11-18T14:19:05Z	Story 24.12	ruling	question=tracker_status_between_batches choice=in-progress(batches_2_3_follow) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-18T14:19:05Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T14:19:05Z model=opus agent_name=24-12-quality-measures-plan-batch2 cycle_iteration=2 scope=batch2_measure_writes
+2026-11-18T14:22:08Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_24.12) model=claude-opus-5-5
