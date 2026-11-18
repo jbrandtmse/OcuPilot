@@ -13827,3 +13827,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: actions/runner ProcessInvoker.cs: on Linux SIGINT, SIGTERM and Process.Kill() go to the step's root pid only; simulated locally, the script and its sampler were re-parented and kept sampling. The step still fails with its log and the report step runs.
 - 2026-11-18T13:26:26Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=a timed-out gates client suite step delays or breaks the report step or job cleanup, or its log loses samples the diagnosis needed
+
+### DW-2739: An SSL configuration save with a wrong private-key password that OpenSSL decrypts with valid padding (about 1 in 230) answers 500 INTERNAL, not 422, because the vendor's error 733 is also the real key/certificate mismatch
+- source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Task 0 on ocupilot-ci: 13 of 3000 candidates; PUT /ssl/<probe> answered 500 code INTERNAL, nothing stored; mapping 733 to a field error would also mislabel a genuine mismatch
+- 2026-11-18T14:48:16Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=harvest note=reopen_if=a person reports a 500 on an SSL configuration save with a wrong key password, or the vendor gives the two cases distinct codes

@@ -585,3 +585,6 @@
 2026-11-18T14:24:08Z	Story 21.17	committed	sha=e69f9492e staging_head=80897abe6 submodules= ci=success runs=44301357497 amendments=AD-61_sentence(1017325ca)
 2026-11-18T14:24:08Z	Story 21.17	story_cycle	plan_to_commit_min=n/a implement_passes=2 reviews=2 rework=1 first_ci=infra(gates_node26_cancelled) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
 2026-11-18T14:24:39Z	Story 21.22	stage_spawned	stage=implement scope=batch2(DW-2534,DW-2553,DW-2565) spawn_at=2026-11-18T14:24:39Z model=sonnet agent_name=21-22-implement-b2 cycle_iteration=1
+2026-11-18T14:48:16Z	Story 21.22	dev_complete	scope=batch2(DW-2534,DW-2553,DW-2565) spawn_at=2026-11-18T14:24Z model=sonnet build_sha=6ccb71f23 baseline_revision=0432b4561 followup_review_recommended=false deferred=1(wontfix-accepted) cycle_iteration=1 note=DW-2553_branch_b(733)
+2026-11-18T14:48:42Z	Story 21.22	code_head_pushed	sha=ead5f1f95 run=44328339684 missing=none note=B2_(6ccb71f23)+feature_7fe3f8659
+2026-11-18T14:48:42Z	Story 21.22	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-18T14:48:42Z model=opus agent_name=21-22-code-review-b2 cycle_iteration=1 baseline=0432b4561
