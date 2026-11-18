@@ -206,6 +206,15 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     export: STRINGS.taskExportAction,
     copy: STRINGS.analyticsTermListCopyAction,
   },
+  // Story 24.11: Listing groups' New listing group opens the dialog that creates a group, its Edit the dialog that changes one, its Copy the dialog that copies one and its Delete removes one;
+  // a group's Listings' Add listing opens the dialog that adds one, its Change listing the dialog that changes one and its Remove listing deletes one.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': {
+    add: STRINGS.analyticsListingGroupNewAction,
+    update: STRINGS.agentPanelSecretWarningEdit,
+    copy: STRINGS.auditDatabaseCopyConfirm,
+    delete: STRINGS.actionDelete,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { add: STRINGS.analyticsListingAddAction, set: STRINGS.analyticsListingChangeAction, remove: STRINGS.analyticsListingRemoveAction },
   // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {

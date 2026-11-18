@@ -306,8 +306,13 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
       'Kill ^DeepSee.TermList(tId, "")',
       'Kill ^DeepSee.TermList(tId, "", pKey)',
       'Set ^DeepSee.TermList(tId, "") = $ZDateTime($Horolog, 3)',
+      // Story 24.11 (AD-65), strings blanked: the listing group write's reads of the registry the vendor's compile checks before it refuses, the cube registry's
+      // listing-group switch and each target cube's own and registered listings, which the pre-checks read and never write.
+      'If $Data(tSaved($ZConvert(tModel.name, ""))) || $Data(^DeepSee.ListingGroups("", $ZConvert(tModel.name, ""))) || ##class(%Dictionary.ClassDefinition).%ExistsId($Select(pOp = "": pBody.%Get(""), 1: pNewClass)) Set pCode = ""',
+      `If '##class(%DeepSee.Utils).%CubeExists(tCube) || $Get(^DeepSee.Cubes("", $ZConvert(tCube, ""), ""), 0) {`,
+      `If $Data(^DeepSee.Cubes("", tCubeU, "", tName)) || ($Data(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) && ($Get(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) '= $ZConvert(tModel.name, ""))) {`,
     ],
-    'the port names a vendor global only in the lock probe and in the term list editor\'s named nodes'
+    'the port names a vendor global only in the lock probe, in the term list editor\'s named nodes and in the listing group write\'s pre-checks'
   );
   for (const file of [BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) assert.deepEqual(referencing(file), [], `${file} names no vendor global`);
 });
@@ -423,6 +428,71 @@ test('Story 24.11: the port reads listing groups through the two measured pure r
   for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /%DeepSee\.ListingGroupDefinition/]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
+});
+
+/** The refusals of the listing group writes (Story 24.11, Batch 2), each pinned to its `strings.ts` key. */
+const LISTING_GROUP_SENTENCES = [
+  ['REASONLISTINGGROUPTAKEN', 'analyticsRefusalListingGroupTaken'],
+  ['REASONLISTINGGROUPCLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONLISTINGGROUPCUBE', 'analyticsRefusalListingGroupCube'],
+  ['REASONLISTINGGROUPLISTINGTAKEN', 'analyticsRefusalListingGroupListingTaken'],
+  ['REASONLISTINGGROUPAMBIGUOUS', 'analyticsRefusalListingGroupAmbiguous'],
+  ['REASONLISTINGGROUPCOMPILE', 'analyticsRefusalListingGroupCompile'],
+  ['REASONLISTINGGROUPABSENT', 'analyticsRefusalListingGroupAbsent'],
+  ['REASONLISTINGGROUPREADONLY', 'analyticsRefusalListingGroupReadonly'],
+];
+
+const LISTING_GROUP_TOOLS = [
+  'AnalyticsListingGroupAdd',
+  'AnalyticsListingGroupUpdate',
+  'AnalyticsListingGroupCopy',
+  'AnalyticsListingGroupDelete',
+  'AnalyticsListingAdd',
+  'AnalyticsListingSet',
+  'AnalyticsListingRemove',
+].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+
+test('Story 24.11 Batch 2: each listing group refusal and consequence is published once, and the port saves, compiles and deletes through the source code port', () => {
+  // Mutation (Rule 19): change one word of REASONLISTINGGROUPCOMPILE in AnalyticsError.cls (or of analyticsRefusalListingGroupCompile in strings.ts) -> this goes red naming the pair;
+  // swap the SQL and SAVE returns in proposal-view.ts's `consequenceSentence` -> this goes red naming the constant;
+  // call %SaveToClass, %DeleteListingGroup or $System.OBJ.Delete from AnalyticsPort.cls -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of LISTING_GROUP_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [code, key] of [
+    ['ANALYTICS.LISTINGGROUP.DELETE', 'analyticsListingGroupDeleteConsequence'],
+    ['ANALYTICS.LISTINGGROUP.REMOVE', 'analyticsListingRemoveConsequence'],
+    ['ANALYTICS.LISTINGGROUP.SQL', 'analyticsListingSqlConsequence'],
+    ['ANALYTICS.LISTINGGROUP.SAVE', 'analyticsListingGroupSaveConsequence'],
+  ]) {
+    const constant = `CONSEQUENCE_ANALYTICSLISTINGGROUP${code.split('.').pop()}`;
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(classParameter(LISTING_GROUP_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.LISTINGGROUP.DELETE', 'the group delete names its consequence code');
+  assert.equal(classParameter(LISTING_GROUP_TOOLS[6], 'CONSEQUENCECODE'), 'ANALYTICS.LISTINGGROUP.REMOVE', 'the listing remove names its consequence code');
+  for (const file of LISTING_GROUP_TOOLS) {
+    const text = readFileSync(file, 'utf8');
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.Analytics(?:ListingGroup|Listing)Action/.test(text), `${file} extends a listing group tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsListingGroupAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.ListingGroupManager";'), 'the base declares the classic Listing Group Manager');
+  assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'the port still calls only the two measured ListingGroup reads');
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /\$System\.OBJ\./i, /\$system\.OBJ\./i, /%Api\.Atelier/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  assert.ok(code.includes('##class(OcuPilot.Kernel.SourceDocument).Save('), 'the write saves through the shared source document helper');
 });
 
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {

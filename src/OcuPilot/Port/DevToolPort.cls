@@ -1802,16 +1802,7 @@ ClassMethod ReadSource(pNamespace As %String, pName As %String, Output pText As 
 /// <code>modified</code> the source code API's document read answers.</p>
 ClassMethod ReadVersion(pNamespace As %String, pName As %String, Output pVersion As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set pVersion = ""
-    Kill tQuery
-    Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMESPACEKEY) = pNamespace
-    Set tQuery(##class(OcuPilot.Port.AtelierPort).#NAMEKEY) = pName
-    Set tQuery(##class(OcuPilot.Port.AtelierPort).#FORMKEY) = "udl"
-    Set tQuery(##class(OcuPilot.Port.AtelierPort).#MAXROWSKEY) = 1
-    Set tSC = $ClassMethod(..AtelierPortClass(), "Invoke", $Select(..Extension(pName) = "cls": ##class(OcuPilot.Port.AtelierPort).#ENDPOINTCLASS, 1: ##class(OcuPilot.Port.AtelierPort).#ENDPOINTROUTINE), ..#TYPELIST, .tQuery, "", .tRows, .pHttpStatus, .pFault, .tDocument)
-    If $$$ISERR(tSC) Quit tSC
-    If $IsObject($Get(tDocument)) Set pVersion = tDocument.%Get("modified")
-    Quit tSC
+    Quit ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, pName, .pVersion, .pHttpStatus, .pFault)
 }
 
 /// <p>The names of the <code>Storage</code> definitions the UDL text <var>pText</var> holds, as a <class>%List</class>: the

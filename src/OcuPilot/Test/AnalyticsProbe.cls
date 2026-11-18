@@ -134,6 +134,19 @@ Parameter LISTGROUPBROKEN = "OcuPilotProbeListingsBroken";
 
 Parameter LISTGROUPBROKENCLASS = "OcuPilotProbe.Analytics.ListingGroupBroken";
 
+/// <p>What the listing group write tests (Story 24.11, Batch 2) name: their groups start with <parameter>LISTGROUPWRITE</parameter>, their classes with
+/// <parameter>LISTGROUPWRITECLASS</parameter> and their listings with <parameter>LISTINGWRITE</parameter>, so <method>RemoveListingGroups</method> and
+/// <method>Left</method> find whatever a failed test left.</p>
+Parameter LISTGROUPWRITE = "OcuPilotProbeLGW";
+
+Parameter LISTGROUPWRITECLASS = "OcuProbeLGW.Analytics.LGW";
+
+/// <p>The prefix of the classes the write tests save directly, bypassing the port, whose names begin with <code>OcuPilot</code> so the writes' refusal of OcuPilot's own code
+/// can be shown against a group that exists. <method>RemoveListingGroups</method> and <method>Left</method> cover it as they cover <parameter>LISTGROUPWRITECLASS</parameter>.</p>
+Parameter LISTGROUPOWNCLASS = "OcuPilotLGW.Analytics.LGW";
+
+Parameter LISTINGWRITE = "LGW";
+
 /// <p>The class <method>CreateTwinListingGroup</method> saves: it names the compiled group's name over a cube that does not exist, so its compile is refused, and its
 /// class name sorts before the compiled group's.</p>
 Parameter LISTGROUPTWINCLASS = "OcuPilotProbe.Analytics.AListingGroupTwin";
@@ -694,12 +707,33 @@ ClassMethod RemoveListingGroups() As %Status
         For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
             Kill ^DeepSee.ListingGroups("classes", tClass)
         }
-        For tCube = ..#VISITS, ..#LISTGROUPNOCUBE {
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#LISTGROUPNOCUBE {
             Set tListing = ""
             For {
                 Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
                 If tListing = "" Quit
-                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
+                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) || ($Extract(tListing, 1, $Length(..#LISTINGWRITE)) = ..#LISTINGWRITE) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
+            }
+        }
+        ; The write tests' groups and classes, whatever a failed test left of them.
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
+        }
+        Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#LISTGROUPWRITE, "U")), -1)
+        For {
+            Set tName = $Order(^DeepSee.ListingGroups("groups", tName))
+            If $Extract(tName, 1, $Length(..#LISTGROUPWRITE)) '= $ZConvert(..#LISTGROUPWRITE, "U") Quit
+            Kill ^DeepSee.ListingGroups("groups", tName)
+        }
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            For {
+                Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+                If $Extract(tName, 1, $Length(tPrefix)) '= tPrefix Quit
+                Kill ^DeepSee.ListingGroups("classes", tName)
             }
         }
     } Catch ex {
@@ -970,6 +1004,25 @@ ClassMethod Left() As %String
         If ..BuildsLeft() Set tLeft = tLeft _ ",build residue"
         For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
             If $Data(^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))) Set tLeft = tLeft _ ",listing group " _ tGroup
+        }
+        Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#LISTGROUPWRITE, "U")), -1)
+        Set tName = $Order(^DeepSee.ListingGroups("groups", tName))
+        If $Extract(tName, 1, $Length(..#LISTGROUPWRITE)) = $ZConvert(..#LISTGROUPWRITE, "U") Set tLeft = tLeft _ ",listing group " _ tName
+        ; The registry's class nodes and the cubes' listing nodes the listing group tests' compiles register, which RemoveListingGroups kills.
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If $Data(^DeepSee.ListingGroups("classes", tClass)) Set tLeft = tLeft _ ",listing group class node " _ tClass
+        }
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+            If $Extract(tName, 1, $Length(tPrefix)) = tPrefix Set tLeft = tLeft _ ",listing group class node " _ tName
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",listing group classes " _ tPrefix
+        }
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#LISTGROUPNOCUBE {
+            Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", ..#LISTINGWRITE), -1)
+            Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
+            If $Extract(tListing, 1, $Length(..#LISTINGWRITE)) = ..#LISTINGWRITE Set tLeft = tLeft _ ",cube listing node " _ tCube _ "/" _ tListing
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"

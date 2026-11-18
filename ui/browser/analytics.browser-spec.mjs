@@ -568,3 +568,81 @@ test('Story 24.11: Listing groups shows each group with what the vendor\'s model
     probe('LGGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
   }
 });
+
+const WRITE_GROUP = 'OcuPilotProbeLGWBrowse';
+const WRITE_CLASS = 'OcuProbeLGW.Analytics.LGWBrowse';
+const WRITE_LISTING = 'LGWBrowseOne';
+
+/** Click the command bar's primary action, which opens the listing group dialog titled `label`. */
+async function commandBarAction(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('app-listing-group-dialog [data-listing-group-confirm]', { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** Type `text` into the listing group dialog's field `member` and confirm the dialog, which closes once the write was applied. */
+async function fillAndConfirm(page, fields) {
+  for (const [member, text] of Object.entries(fields)) {
+    await page.type(`app-listing-group-dialog [data-listing-group-field="${member}"]`, text);
+  }
+  await page.waitForFunction(() => document.querySelector('[data-listing-group-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+  await page.click('[data-listing-group-confirm]');
+  await page.waitForFunction(() => document.querySelector('app-listing-group-dialog') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.11 AC4 (Batch 2). Mutation (Rule 19): make the New listing group dialog post to the term lists' route (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red;
+// the Listing groups' own `TYPED_NAME_ROWS` entry is pinned in `screen-action-handler-listinggroup.spec.ts`, whose fixture's key differs from its name; here a group's id is its name.
+test('Story 24.11: a person creates a listing group, edits it, adds a listing to it and deletes the group by typing its name, and each screen shows each change', async () => {
+  const { context, page } = await signedInAt(browser, config, url(LISTING_GROUPS), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    // The group list is empty when the test starts, so only the navigation map is awaited.
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await commandBarAction(page, STRINGS.analyticsListingGroupNewAction);
+    await fillAndConfirm(page, { Name: WRITE_GROUP, Class: WRITE_CLASS, TargetCubes: VISITS });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, WRITE_GROUP);
+    // A row the instance has just changed carries its marker and read-back in its first cell, and a group with no caption shows its name as the caption.
+    assert.deepEqual(
+      (await rowsStartingWith(page, WRITE_GROUP)).map((row) => row.slice(1, 5)),
+      [[WRITE_GROUP, VISITS, STRINGS.tableStatusYes, '0']],
+      'Listing groups shows the new group, compiled and holding no listing'
+    );
+    assert.equal(inUser('LGWNEW', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${WRITE_CLASS}")`]).value, '1', 'and the instance holds its class');
+
+    await rowAction(page, WRITE_GROUP, STRINGS.agentPanelSecretWarningEdit);
+    await page.waitForSelector('app-listing-group-dialog [data-listing-group-field="Caption"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('[data-listing-group-field="Name"]')?.value !== '', { timeout: config.navigationTimeoutMs });
+    await fillAndConfirm(page, { Caption: 'Browser caption' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, 'Browser caption');
+    assert.equal(
+      inUser('LGWEDIT', [`Set out=##class(%DeepSee.ListingGroup).%GetModel("${WRITE_CLASS}").displayName`]).value,
+      'Browser caption',
+      'the edit changed the vendor\'s model, and Listing groups shows the caption'
+    );
+
+    await clickRowCentre(page, { text: await firstCell(page, WRITE_GROUP), link: true });
+    await pathHolds(page, `/${LISTINGS}/${encodeEntityId(WRITE_GROUP)}`);
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await commandBarAction(page, STRINGS.analyticsListingAddAction);
+    await fillAndConfirm(page, { Name: WRITE_LISTING, Fields: 'Amount' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, WRITE_LISTING);
+    assert.deepEqual(
+      (await rowsStartingWith(page, WRITE_LISTING)).map((row) => row.slice(1, 4)),
+      [['table', 'Amount', STRINGS.tableEmptyValue]],
+      'Listings shows the new listing with its type, fields and no data connector'
+    );
+
+    await page.goto(new URL(url(LISTING_GROUPS), page.url()).href, { waitUntil: 'networkidle2' });
+    await answered(page);
+    await rowAction(page, WRITE_GROUP, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.analyticsListingGroupDeleteConsequence, 'Delete states its consequence and asks for the group\'s name typed');
+    await page.type('.ocu-typed-name-field', WRITE_GROUP);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowGone(page, WRITE_GROUP);
+    assert.equal(inUser('LGWGONE', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${WRITE_CLASS}")_$Data(^DeepSee.ListingGroups("groups","${WRITE_GROUP.toUpperCase()}"))`]).value, '00', 'the class and the group\'s registry nodes are gone');
+  } finally {
+    await context.close();
+    probe('LGWCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
+  }
+});

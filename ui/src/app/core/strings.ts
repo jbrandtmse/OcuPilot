@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:654 */
+  /** EXPERIENCE.md:655 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8154,6 +8154,54 @@ export const STRINGS = {
   analyticsListingGroupListingsPrompt2: 'Which listings use a custom SQL query?',
   /** EXPERIENCE.md:611 */
   analyticsListingGroupListingsPrompt3: 'Which listings need a resource to open?',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewAction: 'New listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingAddAction: 'Add listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingChangeAction: 'Change listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveAction: 'Remove listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDefaultResourceLabel: 'Default resource',
+  /** EXPERIENCE.md:612 */
+  analyticsListingOrderByLabel: 'Order by',
+  /** EXPERIENCE.md:612 */
+  analyticsListingFormatsLabel: 'Formats',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSelectModeLabel: 'Select mode',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewNameLabel: 'New name',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewClassLabel: 'New class',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDeleteConsequence: 'Deleting this listing group deletes its class, and cubes lose its listings. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveConsequence: 'Removing this listing takes it out of its group, and cubes lose it. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSqlConsequence: 'This listing runs its SQL with the rights of whoever opens it.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupSaveConsequence: 'The listing group\'s class is saved and compiled.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupTaken: 'This namespace already holds a listing group or class with that name.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupClass: 'Name the class with letters, digits and dots, outside the % and OcuPilot packages.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCube: 'A target cube does not exist or does not accept listing groups.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupListingTaken: 'A listing of this group is already defined for a target cube. Choose other target cubes.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAmbiguous: 'Two classes define this listing group. Change it in its class instead.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCompile: 'The instance refused to compile the listing group, so nothing was changed.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAbsent: 'This listing group or listing no longer exists.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupReadonly: 'The database that holds listing groups is read-only.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupsEmptyAgent: 'create a listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupListingsEmptyAgent: 'add a listing to this listing group',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
@@ -8507,49 +8555,49 @@ export const STRINGS = {
   explorerClassMethodPrompt2: 'How do I pass an argument by reference?',
   /** EXPERIENCE.md:594 */
   explorerClassMethodPrompt3: 'What does a %Status return value mean?',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalNodesLabel: 'Global nodes',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalColumnNode: 'Node',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalColumnBelow: 'Below',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalStartNode: 'Start node',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalMore: 'More',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalEditTitle: 'Edit node',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalListEmpty: 'This namespace holds no global that matches.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalNodesEmpty: 'This global holds no nodes.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalListEmptyAgent: 'list the globals',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalListPrompt1: 'Which globals does this namespace hold?',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalListPrompt2: 'Which database stores this global?',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalListPrompt3: 'Delete a global',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   explorerGlobalValueShortened: 'Value shortened',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalDeleteConsequence: 'Deleting removes the global and all of its data. This cannot be undone.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalNodeDeleteConsequence: 'Deleting removes this node and every node below it. This cannot be undone.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalNotFound: 'There is no global with that name in this namespace.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalNodeNotFound: 'This node no longer holds a value or nodes below it.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalNodeNotEditable: 'Only a value of plain text, 1,000 characters at most, can be edited here.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalValueShape: 'Enter plain text of 1,000 characters at most.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalProtected: 'This global holds OcuPilot\'s own data or the instance\'s protected system data, so it cannot be changed or deleted from OcuPilot.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalTooLarge: 'This global is too large for OcuPilot to export or replace: the most is 3,000,000 characters.',
-  /** EXPERIENCE.md:612 */
+  /** EXPERIENCE.md:613 */
   globalRefusalOwnData: 'OcuPilot\'s own data cannot be exported.',
 } as const;
 

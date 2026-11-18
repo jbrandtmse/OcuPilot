@@ -12528,6 +12528,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-22T19:50:32Z status=escalated owner=burndown by=cr note=one helper beside AgentRules.ViolationsJson or a ScreenSaveRules template; Rules twin of 23.8 filing candidate 1
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
+- 2026-11-18T05:45:22Z occurrence=24-11-listing-groups
 
 ### DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept
 - source: upgrade-1013-check | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -13105,6 +13106,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/Proposal/Mint.cls ArgumentProblem renders any rule sentence as TOOL.ARGUMENTS (lookup editor precedent, InteropLookupRefusals); AnalyticsTermListRoutes.TestAMintRefusesWhatTheWriteWouldRefuse pins it
 - 2026-11-15T16:11:21Z status=escalated owner=burndown by=cr note=decide whether AC3's code for the agent caller is the kernel envelope; changing it touches every tool's mint
 - 2026-11-17T13:04:24Z occurrence=24-10-folder-manager-transfer-and-term-list-import-export-and-copy
+- 2026-11-18T05:45:22Z occurrence=24-11-listing-groups
 
 ### DW-2611: InteropPort.DefaultReadOnly's true path is not run against a real read-only database; the READONLY refusal is pinned through the seam
 - source: spec-24-3-interoperability-parity.md | severity: low | fix-risk: med | footprint: in-story
@@ -13732,10 +13734,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
 - 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
 
+### DW-2725: A listing group copy reads back nothingSent (action-style, no READBACKFIELDS), so AC2's 'matches' for each write does not hold for copy; 24.10's term-list copy is the same
+- source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: AnalyticsListingGroupCopy (and AnalyticsTermListCopy) declare no CREATES/SENDSBODY/READBACKFIELDS, so ReadBack.Of takes the action kind; a copy's values are NewName/NewClass/NewCubes, which READBACKFIELDS cannot map to the created group's Name/Class/TargetCubes
+- 2026-11-18T05:45:22Z status=escalated owner=burndown by=cr note=decide: accept nothingSent for a copy (AD-58 action-style) or add a ReadBack mapping for copies
+
+### DW-2726: Add listing with a name the group already holds is refused with LISTINGTAKEN's sentence, 'Choose other target cubes', which is the wrong advice for that case
+- source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AnalyticsPort.ComposeRefusal maps LISTINGHELD to LISTINGGROUPLISTINGTAKEN; ListingSave.TAKENREASON is the same sentence; no published sentence names a duplicate listing name
+- 2026-11-18T05:45:22Z status=decision-pending owner=burndown by=cr note=needs a new published sentence, e.g. 'This listing group already has a listing with that name.'; owner string call
+
+### DW-2727: The person's Add listing and Change listing dialogs draw no Joins field, while the three listing tools, the port and the read carry Joins
+- source: spec-24-11-listing-groups-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: listing-group-dialog.ts LISTING_MEMBERS and listing-group-listing-list.page.ts ROW_MEMBERS omit Joins; EXPERIENCE.md :612 publishes no Joins label; a Change listing keeps stored Joins (the port sets only members sent)
+- 2026-11-18T05:45:23Z status=decision-pending owner=burndown by=cr note=needs a Joins label string; owner call whether the person's dialog edits joins (classic page parity)
+
+### DW-2728: Listing group Edit and Copy action labels borrow agentPanelSecretWarningEdit and auditDatabaseCopyConfirm, so a change to either unrelated string relabels them
+- source: spec-24-11-listing-groups-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/core/screen-actions.ts DESCRIPTOR_ACTION_LABELS and listing-group-copy-dialog.ts heading reuse those keys; the term-list editor has its own keys
+- 2026-11-18T05:45:23Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=either borrowed key's value changes or a client lint forbids cross-area string reuse
 ### DW-2721: flake: CI gates (node 22.22.3) client suite (npm test) hangs until the job is cancelled at 25 min, with no log (BlobNotFound); seen 4x on 2026-11-18 (run 44209857864 att1 on OCU-1-epic21, run 44218128864 att1-3 on feature e50a321a0) while node 24/26 legs pass in ~9 min
 - source: orchestrator CI triage 2026-11-18 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: not reproduced: macOS Node 22.22.3 full and shallow clone, Linux node:22.22.3 4 CPU/15 GB 3x green 183s; a 2-CPU Linux container OOMed a vitest fork worker (heap limit) at file 90/286 (inference: same cause)
 - 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
+- 2026-11-18T10:38:51Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence 5: run 44283101753 att1 on OCU-1-epic24 eb6fbf706 (24.11 merged code head), node 22.22.3 client suite cancelled ~25 min; node 24/26 green
 ### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.

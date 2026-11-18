@@ -4,7 +4,8 @@
 /// <p><b>A group's name opens its listings</b>: <code>analytics/listing-groups/listings/&lt;group&gt;</code> declares this list's route as its <code>parentScope</code>. <b>Its id is the group's name</b>,
 /// kept exactly (AD-13), and its scope is <code>namespace</code>.</p>
 /// <p><b>Its pairs</b> are the classic Listing Group Manager's view resource: <code>%DeepSee_Portal:USE</code> and, as its own, <code>%DeepSee_ListingGroup:USE</code>; the port also checks READ on
-/// the namespace's databases before any vendor call (AD-8, AD-65). It offers no action and does not refresh (AD-43).</p>
+/// the namespace's databases before any vendor call (AD-8, AD-65). <b>It writes</b> (Story 24.11): its primary action New listing group and its row actions Edit, Copy and Delete are the tools
+/// <code>analytics.listinggroups.add</code>, <code>.update</code>, <code>.copy</code> and <code>.delete</code>. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsListingGroupList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -26,8 +27,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "update", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Caption", "Cubes", "Class", "Compiled", "Listings", "Disabled", "Description", "Resource", "DefaultResource"], "secretFields": []},
   "emptyStateKey": "analyticsListingGroupsEmpty",
   "commandAliases": ["listing groups", "listing group"],
@@ -54,8 +55,8 @@ XData Declaration
       {"field": "Compiled", "labelKey": "analyticsColumnCompiled", "kind": "status"},
       {"field": "Listings", "labelKey": "analyticsListingGroupListingsLabel", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsListingGroupsEmptyAgent"
   },
   "toolIdentifier": "analytics.listinggroups"
 }
