@@ -212,6 +212,8 @@ Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medi
 
 ## Review Triage Log
 
+- Review miss (orchestrator, 2026-11-18): the build's "no script form" for `REPLACEALL` contradicted AD-59 and the code review graded it by design; CI's `DraftRegistry` caught it, closed by rework 1 (`d988aff11`).
+
 ### 2026-11-18 -- Review pass
 
 - verdicts: 13 findings -- high 0, medium 3, low 6, false 4, maybe-false 0

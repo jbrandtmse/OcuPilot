@@ -625,3 +625,9 @@
 2026-11-18T21:47:31Z	Story 21.18	ruling	question=DW-2747(arm_defers_its_own_4xx_read_to_the_write;AD-10_strict_reading?) choice=accept_review_grading(low,wontfix-theoretical):the_write_refuses_identically,nothing_written;same_read-then-write_window_as_every_arm via=runner category=decide policy=b9ff703e
 2026-11-18T21:47:31Z	Story 21.18	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=AD-59_REPLACEALL_script_form scope_baseline=1a6576d0c
 2026-11-18T21:47:31Z	Story 21.18	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T21:47:31Z model=sonnet agent_name=21-18-implement-rework-1 cycle_iteration=2
+2026-11-18T22:18:51Z	Story 21.18	dev_complete	scope=rework1(AD-59_REPLACEALL_script_form) spawn_at=2026-11-18T21:50Z model=sonnet build_sha=d988aff11 followup_review_recommended=false cycle_iteration=2
+2026-11-18T22:18:51Z	Story 21.18	code_head_pushed	sha=d988aff11 run=44410221034 missing=none note=pushed_alone_before_any_bookkeeping(Rule32_reminder);covers_1a6576d0c
+2026-11-18T22:18:51Z	Epic 21	protocol_violation	rule=32 detail=skip-ci_bookkeeping_a4f2d3d7c_pushed_above_code_1a6576d0c_with_no_run;covered_by_d988aff11(run_44410221034) noted_by=orchestrator
+2026-11-18T22:18:51Z	Story 21.18	spine_amended	ad=AD-51 kind=add-only sentence=REPLACEALL_write_type,REPLACE_fresh_read via=orchestrator_ruling(a) lint_spine=ok:false_only_preexisting_{id}_line215 memlog=appended
+2026-11-18T22:18:51Z	Story 21.18	spine_commit	sha=8793dec9d
+2026-11-18T22:19:13Z	Story 21.18	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T22:19:13Z model=opus agent_name=21-18-code-review-2 cycle_iteration=2 baseline=a4f2d3d7c
