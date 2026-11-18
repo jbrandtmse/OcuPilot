@@ -377,3 +377,4 @@
 2026-11-18T08:56:40Z	Story 24.11	dev_complete	spawn_at=2026-11-18T05:53:00Z model=sonnet build_sha=730e56bb8 baseline_revision=ec633e8f9d15eefd74201e15277719d7aa7ece4f review_loop_iteration=0 followup_review_recommended=false deferred=0 sweep=17/17_green scope=batch2_rework_1 cycle_iteration=4
 2026-11-18T08:56:40Z	Story 24.11	protocol_violation	stage=implement depth=3 agent=handoff_subagent violation=two_ci-runner_calls_in_one_message(third_occurrence_this_epic) consequence=none(0_overlaps;rerun_alone_green) detected_by=implement_stage outcome=rerun
 2026-11-18T08:56:40Z	Story 24.11	stage_spawned	stage=code-review spawn_at=2026-11-18T08:56:40Z model=opus agent_name=24-11-listing-groups-code-review-batch2-rework-1 cycle_iteration=4
+2026-11-18T08:56:47Z	Story 24.11	note	scope_baseline_corrected=c5fc88383(rework_baseline;build-auto_left_baseline_revision_at_ec633e8f9) for=code-review-batch2-rework-1
