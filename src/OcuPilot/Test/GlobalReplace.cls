@@ -204,7 +204,8 @@ Method TestTheToolDeclaresItsWritePathAndItsRefusals()
 
 /// <p>The test's global after the port's own replace (<code>REPLACE</code>, then <code>REPLACEALL</code> at the digest it answered), or after the rendered
 /// script of that replace when <var>pScript</var>: made fresh, its root holding <code>root abc</code>, a node of five <code>a</code> (a find may overlap
-/// itself), then every node as one text.</p>
+/// itself) and a node holding a <code>$Char(127)</code> beside <code>abc</code>, which <code>%Studio.Global.format</code> accepts and no replace
+/// changes, then every node as one text.</p>
 Method AfterReplace(pFind As %String, pReplace As %String, pMatchCase As %String, pScript As %Boolean, Output pText As %String) As %String
 {
     Do ..Remove()
@@ -212,6 +213,7 @@ Method AfterReplace(pFind As %String, pReplace As %String, pMatchCase As %String
     Set tRoot = "^" _ ..PreparedName
     Set @tRoot = "root abc"
     Set @tRoot@(7) = "aaaaa"
+    Set @tRoot@(8) = "d" _ $Char(127) _ "abc"
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("name") = ..PreparedName
@@ -225,14 +227,16 @@ Method AfterReplace(pFind As %String, pReplace As %String, pMatchCase As %String
     Quit $Select($IsObject($Get(tDone)): "", 1: "invoke failed " _ $Get(tHttp)) _ @tRoot _ $Char(10) _ ..Snapshot()
 }
 
-/// <p>Render the script of <var>pQuery</var>'s replace and run it, one line at a time as a terminal would, in the current namespace restored after. The
-/// answer is the error the script raised, or <code>""</code>; <var>pText</var> is the script. The script's own variables are killed after it, so
-/// none outlives the call, and the locals of this method are named so none collides with them.</p>
+/// <p>Render the script of <var>pQuery</var>'s replace and run it one line at a time, stopping at the first error, in the current namespace restored after.
+/// The answer is the error the script raised, or <code>""</code>, followed by <code>open transaction</code> when the script left one open, which is
+/// then rolled back; <var>pText</var> is the script. The script's own variables are killed after it, so none outlives the call, and the locals of this
+/// method are named so none collides with them.</p>
 Method RunScript(ByRef pQuery, Output pText As %String) As %String
 {
     Set zSteps = $ClassMethod(..#PORT, "Snippet", "Globals", "REPLACEALL", .pQuery)
     Set pText = zSteps.%Get(0).text
     Set zNamespace = $NAMESPACE
+    Set zLevel = $TLevel
     Set zError = ""
     Try {
         For zI = 1:1:$Length(pText, $Char(10)) {
@@ -242,9 +246,13 @@ Method RunScript(ByRef pQuery, Output pText As %String) As %String
     } Catch zEx {
         Set zError = zEx.Name
     }
+    Set zOpen = ($TLevel > zLevel)
+    While $TLevel > zLevel {
+        TROLLBACK 1
+    }
     Set $NAMESPACE = zNamespace
-    Xecute "Kill tRoot, tFind, tReplace, tMatchCase, tNeedle, tNext, tLevel, tValue, tOut, tHay, tNew, tFrom, tHits, tAt, tEx"
-    Quit zError _ $Select($TLevel = 0: "", 1: "open transaction")
+    Xecute "Kill tRoot, tFind, tReplace, tMatchCase, tNeedle, tNext, tLevel, tValue, tOut, tHay, tNew, tFrom, tAt, tEx"
+    Quit zError _ $Select(zOpen: "open transaction", 1: "")
 }
 
 /// <p>AC1 and AD-59: the replace's script form makes the change the port's own replace makes -- the same nodes, in the same way, and no others. On a fresh
@@ -270,7 +278,7 @@ Method TestTheScriptFormMakesTheSameChangeAsTheWrite()
     Set tScript = ..AfterReplace("abc", "xyz", "", 1, .tText)
     Do $$$AssertEquals($Piece(tScript, $Char(10), 1), "root xyz", "the root is replaced too")
     Set tRoot = "^" _ ..PreparedName
-    Do $$$AssertEquals(@tRoot@(1) _ "|" _ @tRoot@(2) _ "|" _ @tRoot@(3) _ "|" _ @tRoot@(4) _ "|" _ (@tRoot@(5) = $ListBuild("abc", 2)) _ "|" _ @tRoot@(6) _ "|" _ @tRoot@("abc"), ..PreparedMarker _ " xyz and xyz|xAbCy|xxyzx|nothing here|1|tab" _ $Char(9) _ "abc|keep", "with the case matched only the plain-text values change")
+    Do $$$AssertEquals(@tRoot@(1) _ "|" _ @tRoot@(2) _ "|" _ @tRoot@(3) _ "|" _ @tRoot@(4) _ "|" _ (@tRoot@(5) = $ListBuild("abc", 2)) _ "|" _ @tRoot@(6) _ "|" _ @tRoot@("abc") _ "|" _ @tRoot@(8), ..PreparedMarker _ " xyz and xyz|xAbCy|xxyzx|nothing here|1|tab" _ $Char(9) _ "abc|keep|d" _ $Char(127) _ "abc", "with the case matched only the plain-text values change")
     Set tScript = ..AfterReplace("ABC", "xyz", "0", 1, .tText)
     Do $$$AssertEquals(@tRoot@(2) _ "|" _ @tRoot@(3) _ "|" _ (@tRoot@(5) = $ListBuild("abc", 2)) _ "|" _ @tRoot@(6), "xxyzy|xxyzx|1|tab" _ $Char(9) _ "abc", "and without it the other-case value changes too, the list and control character values still do not")
     Do $$$AssertTrue($Length(tText, "{") = $Length(tText, "}"), "every block the script opens it closes")
@@ -295,9 +303,35 @@ Method TestTheScriptRollsBackWhenItFails()
     Set tQuery("find") = "a"
     Set tQuery("replace") = $Translate($Justify("", 1000), " ", "b")
     Set tError = ..RunScript(.tQuery, .tText)
-    Do $$$AssertTrue((tError '= "") && (tError '[ "open transaction"), "the script raises the error and leaves no transaction open: " _ tError)
+    Do $$$AssertEquals(tError, "<MAXSTRING>", "the script raises the error the second node's replace meets, after the first node was set, and leaves no transaction open")
     Do $$$AssertEquals(@tProbe@(1) _ "|" _ $Length(@tProbe@(2)), "a|4000", "and neither node holds a replaced value, the one set before the error included")
     Kill @tProbe
+}
+
+/// <p>AD-59: the script sets only a value that changes, as the write does. Without matching case, <code>ABC</code> replaced by <code>abc</code> finds
+/// itself in <code>abc</code>, which stays as it is and is not set; <code>ABC</code> is set. The process's global update count rises by one.</p>
+/// <p>Mutation (Rule 19): set every value the find occurs in, changed or not, in <code>OcuPilot.Port.GlobalPort.ReplaceScript</code> -> this test
+/// goes red.</p>
+Method TestTheScriptSetsOnlyTheValuesThatChange()
+{
+    Set tRoot = "^" _ ..PreparedName
+    Set @tRoot@(1) = "abc"
+    Set @tRoot@(2) = "ABC"
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("name") = ..PreparedName
+    Set tQuery("find") = "ABC"
+    Set tQuery("replace") = "abc"
+    Set tQuery("matchCase") = "0"
+    Set tProcess = ##class(%SYS.ProcessQuery).Open($Job)
+    Set tBefore = tProcess.GlobalUpdates
+    Kill tProcess
+    Set tError = ..RunScript(.tQuery, .tText)
+    Set tProcess = ##class(%SYS.ProcessQuery).Open($Job)
+    Set tUpdates = tProcess.GlobalUpdates - tBefore
+    Kill tProcess
+    Do $$$AssertEquals(tError _ "|" _ @tRoot@(1) _ "|" _ @tRoot@(2), "|abc|abc", "the script runs and both values read abc")
+    Do $$$AssertEquals(tUpdates, 1, "and it set only the value that changed")
 }
 
 /// <p>AD-59: nothing the replace's query carries runs as code. A find holding a double quote and the spelling of a call, which as code would count and

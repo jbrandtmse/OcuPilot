@@ -1292,8 +1292,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <p>The lines, each led by a line feed, that make <method>ReplacingRun</method>'s write: walk the named global in <code>$Query</code>
 /// order, the root included, and in each plain-text value (<method>Candidate</method>'s test) replace every occurrence of the find text
 /// left to right without overlap, matching case unless <parameter>MATCHCASEKEY</parameter> is <code>0</code> and leaving a value alone
-/// whose or whose find's lower-case form changes length (<method>Replaced</method>), all in one transaction rolled back on error. The
-/// namespace, name, find, replace and match-case flag are string literals the script reads by name indirection, never as code.</p>
+/// when its lower-case form, or the find's, changes length (<method>Replaced</method>), setting only a value that changes, all in one
+/// transaction rolled back on error. The namespace, name, find, replace and match-case flag are string literals, never code; only the name
+/// is reached by indirection. It carries none of the write's refusals (the bounds, the digest, the <code>%SYS</code> namespace): the
+/// proposal it is drawn from passed them at its read, and whoever runs it is checked by the instance (AD-59).</p>
 ClassMethod ReplaceScript(ByRef pQuery) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -1302,12 +1304,12 @@ ClassMethod ReplaceScript(ByRef pQuery) As %String [ Private ]
     Set tText = tText _ tNL _ " Set tReplace = " _ ..Literal($Get(pQuery(..#REPLACEKEY)))
     Set tText = tText _ tNL _ " Set tMatchCase = (" _ ..Literal($Get(pQuery(..#MATCHCASEKEY))) _ " '= ""0"")"
     Set tText = tText _ tNL _ " Set tNeedle = $Select(tMatchCase: tFind, 1: $ZConvert(tFind, ""L""))"
-    Set tText = tText _ tNL _ " Set tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot)), tLevel = $TLevel"
+    Set tText = tText _ tNL _ " Set tLevel = $TLevel, tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot))"
     Set tText = tText _ tNL _ " TSTART"
     Set tText = tText _ tNL _ " Try { While tNext '= """" { Set tValue = $Get(@tNext) If ($ZStrip(tValue, ""*C"") = tValue) && (##class(%Studio.Global).format(tValue, .tOut, 1) = 1) && (tFind '= """") && ($Length(tNeedle) = $Length(tFind)) {"
-    Set tText = tText _ " Set tHay = $Select(tMatchCase: tValue, 1: $ZConvert(tValue, ""L"")) If $Length(tHay) = $Length(tValue) { Set tNew = """", tFrom = 1, tHits = 0"
-    Set tText = tText _ " For { Set tAt = $Find(tHay, tNeedle, tFrom) Quit:tAt=0  Set tNew = tNew _ $Extract(tValue, tFrom, tAt - $Length(tNeedle) - 1) _ tReplace, tHits = tHits + 1, tFrom = tAt }"
-    Set tText = tText _ " If tHits Set @tNext = tNew _ $Extract(tValue, tFrom, *) } } Set tNext = $Query(@tNext) } TCOMMIT }"
+    Set tText = tText _ " Set tHay = $Select(tMatchCase: tValue, 1: $ZConvert(tValue, ""L"")) If $Length(tHay) = $Length(tValue) { Set tNew = """", tFrom = 1"
+    Set tText = tText _ " For { Set tAt = $Find(tHay, tNeedle, tFrom) Quit:tAt=0  Set tNew = tNew _ $Extract(tValue, tFrom, tAt - $Length(tNeedle) - 1) _ tReplace, tFrom = tAt }"
+    Set tText = tText _ " Set tNew = tNew _ $Extract(tValue, tFrom, *) If tNew '= tValue Set @tNext = tNew } } Set tNext = $Query(@tNext) } TCOMMIT }"
     Set tText = tText _ " Catch tEx { While $TLevel > tLevel { TROLLBACK 1 } Throw tEx }"
     Quit tText
 }
