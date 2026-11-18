@@ -631,3 +631,7 @@
 2026-11-18T22:18:51Z	Story 21.18	spine_amended	ad=AD-51 kind=add-only sentence=REPLACEALL_write_type,REPLACE_fresh_read via=orchestrator_ruling(a) lint_spine=ok:false_only_preexisting_{id}_line215 memlog=appended
 2026-11-18T22:18:51Z	Story 21.18	spine_commit	sha=8793dec9d
 2026-11-18T22:19:13Z	Story 21.18	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T22:19:13Z model=opus agent_name=21-18-code-review-2 cycle_iteration=2 baseline=a4f2d3d7c
+2026-11-18T22:40:33Z	Story 21.18	cr_complete	scope=rework1 spawn_at=2026-11-18T22:20Z model=opus high=0 med=3(2_patched,1_routed_DW-2750_burndown) low=8 rows=31 unresolved_high_med=0(DW-2750_routed) final=done commit=abd91cccb closing_sections_present=true checklist=only_write_tool_added_ExplorerGlobalReplace_has_script_form;DraftRegistry_9/9
+2026-11-18T22:40:33Z	Story 21.18	code_head_pushed	sha=abd91cccb run=44413746537 missing=none note=supersedes_d988aff11_run_44410221034
+2026-11-18T22:40:33Z	Story 21.18	ledger_adjudicated	resolved=DW-2731,DW-2732 review_terminal=DW-2747(wontfix-theoretical),2748,2749(wontfix-accepted) routed=DW-2750(burndown) open_owned=0
+2026-11-18T22:40:43Z	Story 21.18	gate_step	step=fresh_check+full_sweep+smoke head=abd91cccb started=2026-11-18T22:40:43Z dir=e21u/21-18/gate
