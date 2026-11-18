@@ -423,6 +423,9 @@ export const CONSEQUENCE_CONFIGMAPPINGDELETE = 'CONFIG.MAPPING.DELETE';
 export const CONSEQUENCE_CONFIGNLSRELOAD = 'CONFIG.NLS.RELOAD';
 export const CONSEQUENCE_LOCALEINSTALL = 'LOCALE.INSTALL';
 export const CONSEQUENCE_LOCALEDELETE = 'LOCALE.DELETE';
+/** Story 21.5: a whole global's delete and a node's delete; each is one published sentence. */
+export const CONSEQUENCE_GLOBALDELETE = 'GLOBAL.DELETE';
+export const CONSEQUENCE_GLOBALNODEDELETE = 'GLOBAL.NODE.DELETE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -554,6 +557,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_CONFIGNLSRELOAD) return STRINGS.nlsDefaultReloadConsequence;
   if (code === CONSEQUENCE_LOCALEINSTALL) return STRINGS.localeInstallConsequence;
   if (code === CONSEQUENCE_LOCALEDELETE) return STRINGS.localeDeleteConsequence;
+  // Story 21.5: a global's delete and a node's delete.
+  if (code === CONSEQUENCE_GLOBALDELETE) return STRINGS.globalDeleteConsequence;
+  if (code === CONSEQUENCE_GLOBALNODEDELETE) return STRINGS.globalNodeDeleteConsequence;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;

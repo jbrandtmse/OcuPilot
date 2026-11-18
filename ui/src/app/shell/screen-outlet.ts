@@ -246,6 +246,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': () => import('../areas/system-explorer/data-browser.page').then((m) => m.DataBrowserPage),
   // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': () => import('../areas/system-explorer/docdb-list.page').then((m) => m.DocDbListPage),
+  // Story 21.5: one global's nodes, a page at a time.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalView': () => import('../areas/system-explorer/global-view.page').then((m) => m.GlobalViewPage),
   // Story 18.34: the REST API explorer, the list with its create dialog.
   'OcuPilot.Screen.Descriptor.RestApiList': () => import('../areas/web-applications/rest-api-list.page').then((m) => m.RestApiListPage),
   // Story 24.3: Productions, the list with its Start with the instance and Shutdown group dialogs.

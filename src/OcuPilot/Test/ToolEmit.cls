@@ -392,6 +392,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 19.8: so does the data browser's save, each statement's SQL privileges being checked
             ; at its prepare (AD-8).
             If tTool.name = "explorer.sqldata.save" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 21.5: the globals' writes declare their screen's set, then the custom resource of the classic page they also perform (the
+            ; node tools' edit page), and no write pair of their own: the instance checks WRITE on the database a global is stored in (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerGlobalWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).WithClassicPages(##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved), $Parameter(tTool.class, "CLASSICPAGES"))
             ; Story 18.9: the SQL privilege grants and revokes declare their screen's set and no write pair of
             ; their own, the namespace's database pairs being added by argument (AD-8).
             If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.SqlPrivilegeWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)

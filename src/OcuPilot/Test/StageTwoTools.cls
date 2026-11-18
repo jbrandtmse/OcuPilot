@@ -179,6 +179,8 @@ XData Elsewhere
 <screen name="ExplorerCommand"/>
 <screen name="ExplorerCompare"/>
 <screen name="ExplorerDocDbList"/>
+<screen name="ExplorerGlobalList"/>
+<screen name="ExplorerGlobalView"/>
 <screen name="ExplorerDocumentHashes"/>
 <screen name="ExplorerMacro"/>
 <screen name="ExplorerNamespaceDiff"/>

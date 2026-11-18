@@ -2,12 +2,34 @@
 title: 'Story 21.5: Globals and the data tools'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '81f86d9c497c70b9c73a17a73d576ea20fe3f718'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled plain sentence, where the matrix names 409 target-changed.
+    evidence: |-
+      ExplorerGlobalNodeSave.ScreenActionDelta compares the screen value Was with the fresh read; the screen action route carries no fingerprint, and no ruled sentence exists. Nothing is written, so AC3 holds. The owner rules the sentence and the status.
+    location: >-
+      src/OcuPilot/Screen/Tool/ExplorerGlobalNodeSave.cls:82
+    severity: medium
+  - summary: >-
+      A saved node value may reach a change event or an audit payload, which AD-36 forbids for node values.
+    evidence: |-
+      ExplorerGlobalNodeSave carries the person's new value in its tool payload and the port query. Reading the change event and the audit record written after a save on ocupilot-ci would settle whether the value is stored.
+    location: >-
+      src/OcuPilot/Screen/Tool/ExplorerGlobalNodeSave.cls
+    severity: medium (unverified)
+  - summary: >-
+      The Globals list's whole-global Delete typed-name dialog has no component or browser spec for an ordinary global.
+    evidence: |-
+      The browser spec only checks the disabled Delete row of an OcuPilot-named global; global.test.mjs matches source text. A spec in the style of interop-lookup-table-list.page.spec.ts would pin the dialog and its sentence.
+    location: >-
+      ui/src/app/shell/screen-action-handler.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -125,6 +147,35 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-17 — Review pass
+
+- verdicts: 24 findings — high 0, medium 5, low 17, false 1, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` reload with more than one page loaded is never exercised (store spec asserts `>= 3` sends over one page) — store spec now loads 101 rows, asserts the two requests and the rows; mutation (one page) observed red.
+  - `[medium]` `[patch]` `GLOBAL.DELETE` and `GLOBAL.NODE.DELETE` sentences pinned by source text only — runtime `consequenceSentence` assertions added to `proposal-view.test.mjs`; the list dialog residual is the deferred item below.
+  - `[medium]` `[patch]` hostile-text cursor leg refused by the other-global check, not the parse — the cursor now names the page's own global in `TestEveryHostileTextIsRefusedBeforeAnythingIsRead`.
+  - `[low]` `[reject]` `TestTheToolsDeclareTheirWritePath` list-pairs `'>` can pass on equal sets — the `ClassicPageGate` roster pins the classic pages; not worth a guard.
+  - `[low]` `[reject]` `ToolEmit` expected pairs use the production helpers — sibling tools' pin is the same oracle; a wrong formula is caught by `GlobalWrite` and `ClassicPageGate`.
+  - `[low]` `[reject]` the edit's read-back is asserted present, not equal — line 168 asserts the instance holds the new value; the read-back is the framework's own step.
+  - `[low]` `[reject]` the import failed-read leg asserts a not-OK status alone — the leg pins that a failed read refuses; the code is the arm's generic read error.
+  - `[low]` `[reject]` `TestTheScreensDeclareTheirShape` passes for any unresolved read tool — the registry roster tests pin the registered tools.
+  - `[low]` `[patch]` the store reload `toBeGreaterThanOrEqual(3)` — same root as the first row, closed there.
+  - `[low]` `[reject]` browser spec test 2 relies on running before test 4 — one file is one ordered flow on its own global; each test waits for its answer.
+  - `[low]` `[reject]` browser spec test 1 finds the global in the capped default list — the namespace holds far fewer than the cap's rows; the test would fail loud.
+  - `[low]` `[reject]` `TestTheInstancesProtectedGlobalIsRefusedOnBothCallers` drives real writes at `^oddDEF` in `USER` — that global is stored in IRISLIB, read-only, so a regressed arm meets the vendor `<PROTECT>`; reopen if a different database holds it.
+  - `[low]` `[patch]` `ExplorerTransfer`'s percent-global test has no teardown — `OnAfterOneTest` now kills both `^ZZOcuGlb<job>` and `^%ZZOcuGlb<job>`.
+  - `[low]` `[reject]` client pins carry their mutation in code comments — the spec's `## Verification` carries a line for every AC.
+  - `[medium]` `[patch]` node GET, PUT and DELETE log the vendor exception's text, which can name a subscript — the node calls now log the exception's name alone; `GlobalSeamPort` fails a node read and `GlobalRead` asserts no node text; mutation observed red.
+  - `[low]` `[reject]` the Code Map and Tasks name the node route `.../nodes`, the descriptor ships `.../document` — the fix edits this spec; the code follows the repository's `<list route>/document` convention.
+  - `[low]` `[reject]` `ImportedGlobals` is tested for a class import target only — the `.gbl` clause sits in the branch class and routine imports share.
+  - `[medium]` `[defer]` a node changed after the dialog opened answers 400 `TOOL.ARGUMENTS` with an unruled sentence, where the matrix says 409 target-changed — nothing is written (AC3 holds); the sentence and status need a ruling (deferred item 1).
+  - `[false]` `[reject]` AC4 "given the delete keys true" read as gating the person's own deletes — AD-53's record makes person-only writes ask no key; `GlobalWrite` pins that.
+  - `[low]` `[reject]` the descriptor route differs from the spec's `.../nodes` — same as the route row above; the HTTP route is `/explorer/globals/nodes`.
+  - `[low]` `[reject]` AC1 screen and agent parity is not driven in the browser — `GlobalRead` compares the port, the screen read path and the agent read.
+  - `[maybe-false]` `[defer]` a saved node value may reach a change event or audit payload — the tool carries the person's new value and AD-36 forbids node values in an audit payload; inspecting the event after a save would settle it (deferred item 2).
+  - `[low]` `[defer]` the list's whole-global Delete dialog (typed name) has no component or browser spec for an ordinary global (deferred item 3).
+  - `[low]` `[reject]` no end-to-end write to a real `^OcuPilot*` global — the arm's refusal is before any write and is pinned at the arm for both callers; writing one is what the spec forbids.
+
 ## Design Notes
 
 **Governing ADs:** AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-23, AD-29, AD-34, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-58, AD-59. No new AD-51 or AD-21 entry: edit is a merge write of `{Value}` over a fresh read (AD-4); the deletes send no body (AD-51's base shape, subject `Defined`); the namespace is the route's scope (AD-21).
@@ -166,6 +217,10 @@ deferred: []
 
 **Contended paths:** Epic 24 (slot B) has no committed change beyond feature in any file named here (`origin/OCU-1-epic24`, checked 2026-11-15); its worktree holds uncommitted edits to `EXPERIENCE.md`, `Baseline.cls`, `Prohibited.cls`, `Screen/Read.cls`, `strings.ts`, `screen-action-handler.ts`, `proposal-view.ts`, `screens.generated.ts`, `ClassicPageGate`, `Descriptor`, `MappingDescriptor`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `ToolWrite`. Every edit there is add-only. No Epic 22 branch or worktree exists.
 
+**Task 0, measured on `ocupilot-ci` (2026-11-18):** (d) the instance registers 80 audit events and none names a global's `Set` or `Kill` (auditing was off, so no event was observed being written; (inference) a global write records none). (e) a write of `^%qZZOcuProbe` (IRISLIB) with no roles is `<PROTECT>`, code 202, status text `ERROR #5002: ObjectScript error: <PROTECT> ^%qZZOcuProbe,/usr/irissys/mgr/irislib/`; as `_SYSTEM` it is `<PROTECT>` too, since IRISLIB is read-only. (h) an `$System.OBJ.Export` of `ZZOcuGlb<pid>.GBL` carries the name as `<Sub>^ZZOcuGlb<pid></Sub>`; rewritten to `^%ZZOcuGlb<pid>` it lists through `xml/list` as one global document and the screen's local import is refused `PROHIBITED.PROTECTEDGLOBAL` (`ExplorerTransfer`). A subscript holds 511 characters with the global's name, so a reference over 1,000 characters needs quotation marks in its subscript, which `$Name` doubles.
+
+**Decided in-stage (implement):** `Globals` `GET` and `Node` `GET` also answer `Namespace`, so a confirm writes where the proposal read (as `DocDbPort`). The person's stale-node guard is the screen value `Was`, compared with the fresh read in `ExplorerGlobalNodeSave.ScreenActionDelta`: a node that changed since the dialog opened answers 400 `TOOL.ARGUMENTS` with a plain problem sentence, not the 409 the I/O table names, because the screen action route takes no fingerprint and no ruled sentence exists for it (open item). The save's fingerprint subject keeps `Value`, but the merge replaces `Value` with the new value, so dropping it changes no digest; AC3's mutation targets `Was`. The node page's descriptor route is `system-explorer/globals/document`, the list's paired document screen, because a `list (server criteria)` list declares no `rowTarget` and the name cell opens a paired `document` screen; its HTTP route stays `/explorer/globals/nodes`. The list's title reuses `processColumnGlobals` and the Edit button `agentPanelSecretWarningEdit` (`strings.test.mjs` refuses a repeated value). `Node/PUT` is a `COMPOSEDTYPES` member of `GlobalPort`, the new value travelling in its query. `GlobalPort` defines `Snippet` and `SnippetForm` for its three writes (the draft registry requires it). The classic Global view and Global edit pages, `/csp/sys/exp` pages like Open Table, are added to `DeveloperFloor.INTERNALCHECKS` (the application's resource, `%Development`, was read on the instance; that the two pages are served by it is (inference)). The new tools and descriptors take positions and rosters 15 (free; Epic 24 holds 16-19).
+
 **Runner ruling at the spec gate (2026-11-15):** the three AD records are written into the spine (owner answer U-59); the AD-29 Binds addition stays a proposal beside DW-2559; the escalated strings and the stricter data posture are kept (veto U-60).
 
 ## Verification
@@ -184,13 +239,22 @@ deferred: []
 - `(once)` `cd ui && npm run test:tools` -- expected green.
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`, Rule 30's fresh check. The full browser suite is left to CI.
 
-**Mutations (Rule 19)** -- apply, observe red, revert byte-identical, reload, record `mutation: <change> -> <test red>`:
+**Mutations (Rule 19)** -- each applied on `ocupilot-ci`, observed red, reverted byte-identical (checksum) and reloaded:
 
-- AC1: drop the subscript-row filter. AC2: make the cursor inclusive. AC3: remove `Value` from the fingerprint subject. AC4: set `explorer.globals.delete` `true` in `Baseline`. AC5: drop the own-stem check from the `Global` arm. AC6: drop the `.gbl` clause from the import branch.
+- mutation: AC1 drop the `(` filter in `GlobalPort.VendorList` -> `GlobalRead.TestTheListAndTheAgentsReadAnswerTheSameRowsWithNoMappingRow` red.
+- mutation: AC2 make the cursor inclusive in `GlobalPort.VendorWalk` -> `GlobalRead.TestAPageWalksTheGlobalOnceInOrderWithLongValuesCut` and `TestAPageStartsWhereItIsToldAndLogsNoValue` red.
+- mutation: AC3 drop the `Was` comparison in `ExplorerGlobalNodeSave.ScreenActionDelta` (the spec's "remove `Value` from the fingerprint subject" is unobservable, see Design Notes) -> `GlobalWrite.TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten` red.
+- mutation: AC4 set `explorer.globals.delete` `true` in `Baseline` -> `GlobalWrite.TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn` and `TestTheToolsDeclareTheirWritePath` red.
+- mutation: AC5 drop the own-stem check from `Prohibited.Global` -> `GlobalWrite.TestTheArmRefusesOwnAndProtectedGlobalsBeforeAnyWrite` red (the client mirror's pin is `ui/tools/self-protection.test.mjs`).
+- mutation: AC6 drop the `.gbl` clause from the import branch of `Prohibited.Prohibits` -> `GlobalWrite.TestAnImportIsJudgedByTheGlobalsItNames` and `ExplorerTransfer.TestAnImportOfAPercentGlobalIsRefusedAndLoadsNothing` red.
+- mutation: AC2 (node calls log no node text) drop the quiet flag of `GlobalPort.NodeState`'s `Mapped` call -> `GlobalRead.TestAPageStartsWhereItIsToldAndLogsNoValue` red (observed).
+- mutation: AC3 (a reload keeps the pages shown) read one page in `GlobalViewStore.reload` -> `global-view.store.spec.ts` "reads again as many pages as are shown" red (observed).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan after the split ruling and U-59: scope narrowed to list, view, edit and kill; the three AD records written final in Design Notes; DW-2607 addressed (import clause, AC6); new strings remain escalated for the spec gate. Probes were read-only on slot A `ocupilot`; nothing ran against `ocupilot-ci`.
+Review pass: 24 findings (medium 5, low 17, false 1, maybe-false 1); patched 4 mediums and 2 lows (a multi-page reload spec, runtime consequence-sentence pins, the hostile cursor leg, node calls logging the exception name alone, an `ExplorerTransfer` teardown), deferred 3 (the stale-node sentence and status, whether a saved value reaches an event payload (unverified), the list's delete dialog spec), rejected 16 with reasons in the triage log. Re-verified after the patches on `ocupilot-ci`: `GlobalRead`, `GlobalWrite` and `ExplorerTransfer` green one at a time, `npm run test:components` 3,564 green, `proposal-view` and `global` tool tests green; two mutations observed red and reverted byte-identical. Follow-up review recommended: the patched code is not covered by a re-run of the browser specs or the other ObjectScript classes.
+
+Implement pass: Task 0 measured; Batch 1 (`GlobalPort`, `GlobalError`, `GlobalNodes` route, the arm and import clause in `Prohibited`, three tools, two descriptors, registrations, `GlobalRead` and `GlobalWrite`, one `ExplorerTransfer` test, shared-surface rosters) and Batch 2 (node page and store with specs, strings, EXPERIENCE.md row, consequences, the `protected-global` rule, regenerated mirror, `global.test.mjs`, browser spec). Verified on `ocupilot-ci`: every `(loop)` class green one at a time, `check-objectscript` clean, `lint-docs` clean, `npm run build` (initial bundle 2.12 MB, under the 2,500 kB warning), `npm run test:components` 3,564 green, both browser specs green, six mutations red and reverted. Open: the stale-node refusal's sentence (Design Notes).

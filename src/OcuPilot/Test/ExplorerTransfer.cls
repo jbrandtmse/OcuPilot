@@ -47,6 +47,9 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tOwnGlobal = "^ZZOcuGlb" _ $Job
+    Set tOwnPercentGlobal = "^%ZZOcuGlb" _ $Job
+    Kill @tOwnGlobal, @tOwnPercentGlobal
     Kill tRows
     Merge tRows = ..StoredPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
@@ -296,6 +299,36 @@ Method TestAnImportOfOcuPilotsOwnCodeIsRefusedOnBothCallers()
     Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "403 PROHIBITED.OCUPILOTCODE", "and refused at the confirm")
     Do $$$AssertTrue('$ClassMethod(tProbe, "Exists", ..#PROBENAMESPACE, tOwn _ ".cls"), "the document is not created")
+}
+
+/// <p>DW-2607 (Story 21.5): the screen's local import of an XML file holding a <code>%</code>-global is refused 403 <code>PROHIBITED.PROTECTEDGLOBAL</code> with the
+/// published sentence before anything loads, and the global stays undefined. The file is the instance's own export of a global with the name rewritten to a
+/// <code>%</code> name, which the instance's list of a file's documents names as one global document.</p>
+/// <p>Mutation (Rule 19): drop the <code>.gbl</code> clause from the import branch of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -> the
+/// refusal goes red and the global is loaded (and killed by this test).</p>
+Method TestAnImportOfAPercentGlobalIsRefusedAndLoadsNothing()
+{
+    Set tGlobal = "ZZOcuGlb" _ $Job
+    Set tPercent = "%" _ tGlobal
+    Set tFile = "/tmp/ocupilot-glb-" _ $Job _ ".xml"
+    Set tRoot = "^" _ tGlobal
+    Kill @tRoot
+    Set @tRoot@(1) = "a"
+    Set tSC = $System.OBJ.Export(tGlobal _ ".GBL", tFile, "/nodisplay")
+    Kill @tRoot
+    Do $$$AssertStatusOK(tSC, "the instance's export of a global is made")
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    Do tStream.LinkToFile(tFile)
+    Set tText = tStream.Read(100000)
+    Kill tStream
+    Do ##class(%File).Delete(tFile)
+    Do $$$AssertTrue(tText [ ("<Sub>^" _ tGlobal _ "</Sub>"), "the export names the global")
+    Set tText = $Replace(tText, "<Sub>^" _ tGlobal _ "</Sub>", "<Sub>^" _ tPercent _ "</Sub>")
+    Do ..Act("classes", "import-local", "import", {"fileName": "percent.xml", "content": (tText), "Compile": "false"}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.code _ " " _ tBody.reason, 1: ""), "403 PROHIBITED.PROTECTEDGLOBAL " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#PROTECTEDGLOBALREASON, "the screen's import is refused with the published sentence: " _ $Extract(..Json(tBody), 1, 200))
+    Set tPercentRoot = "^" _ tPercent
+    Do $$$AssertEquals($Data(@tPercentRoot), 0, "and the global stays undefined")
+    Kill @tPercentRoot
 }
 
 /// <p>AC6: a file that does not read is refused <code>UNREADABLE</code> with no document, stub

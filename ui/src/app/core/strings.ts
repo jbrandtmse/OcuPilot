@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:653 */
+  /** EXPERIENCE.md:654 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8507,6 +8507,46 @@ export const STRINGS = {
   explorerClassMethodPrompt2: 'How do I pass an argument by reference?',
   /** EXPERIENCE.md:594 */
   explorerClassMethodPrompt3: 'What does a %Status return value mean?',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalNodesLabel: 'Global nodes',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalColumnNode: 'Node',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalColumnBelow: 'Below',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalStartNode: 'Start node',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalMore: 'More',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalEditTitle: 'Edit node',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalListEmpty: 'This namespace holds no global that matches.',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalNodesEmpty: 'This global holds no nodes.',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalListEmptyAgent: 'list the globals',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalListPrompt1: 'Which globals does this namespace hold?',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalListPrompt2: 'Which database stores this global?',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalListPrompt3: 'Delete a global',
+  /** EXPERIENCE.md:612 */
+  explorerGlobalValueShortened: 'Value shortened',
+  /** EXPERIENCE.md:612 */
+  globalDeleteConsequence: 'Deleting removes the global and all of its data. This cannot be undone.',
+  /** EXPERIENCE.md:612 */
+  globalNodeDeleteConsequence: 'Deleting removes this node and every node below it. This cannot be undone.',
+  /** EXPERIENCE.md:612 */
+  globalRefusalNotFound: 'There is no global with that name in this namespace.',
+  /** EXPERIENCE.md:612 */
+  globalRefusalNodeNotFound: 'This node no longer holds a value or nodes below it.',
+  /** EXPERIENCE.md:612 */
+  globalRefusalNodeNotEditable: 'Only a value of plain text, 1,000 characters at most, can be edited here.',
+  /** EXPERIENCE.md:612 */
+  globalRefusalValueShape: 'Enter plain text of 1,000 characters at most.',
+  /** EXPERIENCE.md:612 */
+  globalRefusalProtected: 'This global holds OcuPilot\'s own data or the instance\'s protected system data, so it cannot be changed or deleted from OcuPilot.',
 } as const;
 
 /**

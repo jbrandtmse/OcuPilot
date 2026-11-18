@@ -105,6 +105,16 @@ const ROUTINE_APPLICATION = 'routine-application';
 export const OCUPILOT_ROUTINE_APPLICATIONS: readonly string[] = ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead'];
 
 /**
+ * The rule that explains a global OcuPilot keeps (Story 21.5): a global whose name begins with `OcuPilot`, in any letter case, which the instance
+ * refuses to change or delete from either caller (`PROHIBITED.PROTECTEDGLOBAL`). The key is the global's name without `^`. A global stored in a
+ * protected system database is the instance's alone to refuse.
+ */
+export const PROTECTED_GLOBAL_RULE = 'protected-global';
+
+/** The name stem `PROTECTED_GLOBAL_RULE` answers for, lower-case, as `OcuPilot.Kernel.Proposal.Prohibited.OwnNameStems` names it. */
+const PROTECTED_GLOBAL_STEM = 'ocupilot';
+
+/**
  * The rule that explains the allow-list's unrestricted fallback row (Story 18.46): while the list is unrestricted its one
  * entry is the manager directory, which the allow-list port refuses to change or remove (`ALLOWLIST.FALLBACK`). The row
  * reads `Restricted` false; with no row the instance alone refuses.
@@ -165,6 +175,7 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `allowed-directory-fallback` reads the row's `Restricted` and answers the fallback sentence for a row reading false, `''` otherwise
  * and with no row.
  * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
+ * `protected-global` answers for a global whose name begins with OcuPilot's own stem, in any case.
  * `ocupilot-routine-application` answers for OcuPilot's own three privileged routine applications, compared as the
  * instance resolves a routine application's name, in any case.
  *
@@ -183,6 +194,7 @@ export function selfProtectionReason(
 ): string {
   if (rowKey === '') return '';
   if (rule === OCUPILOT_SSL_RULE) return rowKey === OCUPILOT_SSL_CONFIGURATION ? STRINGS.sslRefusalOcuPilot : '';
+  if (rule === PROTECTED_GLOBAL_RULE) return rowKey.trimStart().replace(/^\^/, '').toLowerCase().startsWith(PROTECTED_GLOBAL_STEM) ? STRINGS.globalRefusalProtected : '';
   if (rule === SYSTEM_ROLE_RULE) return rowKey.trimStart().startsWith('%') ? STRINGS.roleRefusalSystem : '';
   if (rule === SYSTEM_RESOURCE_RULE) {
     const allow = row?.['AllowDelete'];

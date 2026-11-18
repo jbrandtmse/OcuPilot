@@ -174,6 +174,25 @@ Parameter PERSONONLY = "PROHIBITED.PERSONONLY";
 /// strings and pinned equal to <code>personOnlyRefusal</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter PERSONONLYREASON = "This runs code with the rights of whoever starts it, so it is started from its own screen alone.";
 
+/// <p>OcuPilot's own and the instance's protected globals (AD-10, Story 21.5): a write to a global whose name begins with one of
+/// OcuPilot's own name stems, a value edit of a node that resolves to OcuPilot's own database or one of
+/// <parameter>SYSTEMDATABASES</parameter>, a kill of a node or a whole global any of whose mapping rows in the namespace resolves to one,
+/// and an import of such a global (<method>ImportedGlobals</method>). Refused from either caller, key on or off.</p>
+Parameter PROTECTEDGLOBAL = "PROHIBITED.PROTECTEDGLOBAL";
+
+/// <p>The one sentence <parameter>PROTECTEDGLOBAL</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed strings and
+/// pinned equal to <code>globalRefusalProtected</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter PROTECTEDGLOBALREASON = "This global holds OcuPilot's own data or the instance's protected system data, so it cannot be changed or deleted from OcuPilot.";
+
+/// <p>One global of a namespace, keyed by its name without <code>^</code>, kept exactly, and one node of a global, keyed by its canonical
+/// reference (AD-13, Story 21.5).</p>
+Parameter TYPEGLOBAL = "global";
+
+Parameter TYPEGLOBALNODE = "global-node";
+
+/// <p>The extension a global's document carries in an import (Story 19.13).</p>
+Parameter GLOBALEXTENSION = ".gbl";
+
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
@@ -289,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,nls-default,locale";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,nls-default,locale,global,global-node";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -1143,10 +1162,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds last -- forty in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds last -- forty-one in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1198,6 +1217,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#STARTUPKMIP Quit ..#STARTUPKMIPREASON
     If pCode = ..#MIRRORDATABASES Quit ..#MIRRORDATABASESREASON
     If pCode = ..#PERSONONLY Quit ..#PERSONONLYREASON
+    If pCode = ..#PROTECTEDGLOBAL Quit ..#PROTECTEDGLOBALREASON
     Quit ""
 }
 
@@ -1548,7 +1568,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1571,6 +1591,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; Story 21.12: a mirror is judged by its stored payload alone, so the arm reads no target and no port.
         If tType = ..#TYPEMIRROR {
             Do ..Mirror(pPayload, .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 21.5: a global or a node is judged by its name, read again with where it is stored, through the globals port.
+        If (tType = ..#TYPEGLOBAL) || (tType = ..#TYPEGLOBALNODE) {
+            Set tSC = ..Global(tType, tId, tScope, ..ToolClassNamed(pToolName), .pProhibits, .pCode)
             Quit
         }
 
@@ -1615,7 +1641,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Set tSC = ..SqlRun(pToolName, tId, pPayload, .pProhibits, .pCode)
                 Quit
             }
-            Set tSC = ..Code($Select($ZConvert(tId, "L") = ..#IMPORTTARGET: ..ImportedNames(pPayload), 1: tId), .pProhibits, .pCode)
+            Set tImporting = ($ZConvert(tId, "L") = ..#IMPORTTARGET)
+            Set tNames = $Select(tImporting: ..ImportedNames(pPayload), 1: tId)
+            Set tSC = ..Code(tNames, .pProhibits, .pCode)
+            ; Story 21.5 (DW-2607): an import's global documents are judged after its code, by the globals' own rules.
+            If tImporting && $$$ISOK(tSC) && 'pProhibits Set tSC = ..ImportedGlobals(tNames, tScope, .pProhibits, .pCode)
             Quit
         }
 
@@ -2840,6 +2870,161 @@ ClassMethod Code(pId As %String, Output pProhibits As %Boolean, Output pCode As 
         }
     }
     Quit $$$OK
+}
+
+/// <p>The class every global read of the globals arm is issued through. Overridable so a fixture can reach another; production never
+/// overrides it.</p>
+ClassMethod GlobalPortClass() As %String
+{
+    Quit "OcuPilot.Port.GlobalPort"
+}
+
+/// <p>A write to the global or node <var>pId</var> of namespace <var>pNamespace</var> by tool class <var>pToolClass</var> (AD-10 as amended,
+/// Story 21.5), read at the write through <method>GlobalPortClass</method> as the caller; a read that fails is an error status, which the
+/// caller refuses on. In order:</p>
+/// <ol>
+/// <li>a global whose name begins with one of <method>OwnNameStems</method>, in any case, is <parameter>PROTECTEDGLOBAL</parameter>;</li>
+/// <li>a value edit of a node whose directory, or a kill of a node or a whole global any of whose mapping rows' directories, is one of
+/// OcuPilot's own database's or <parameter>SYSTEMDATABASES</parameter>' (<method>OwnDatabaseDirectories</method>) is
+/// <parameter>PROTECTEDGLOBAL</parameter>;</li>
+/// <li>a global of <parameter>CODEGLOBALS</parameter> that resolves to the install namespace's routines database, written as a whole
+/// global, at a node whose first subscript begins with an own stem, or at any node of <parameter>NESTEDCODEGLOBALS</parameter>, is
+/// <parameter>OCUPILOTCODE</parameter>.</li>
+/// </ol>
+ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToolClass As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPort = ..GlobalPortClass()
+        Set tNode = (pType = ..#TYPEGLOBALNODE)
+        Set tName = pId
+        Set tReference = ""
+        If tNode {
+            If '$ClassMethod(tPort, "ParseReference", pId, .tName, .tReference) {
+                Set tSC = $$$ERROR($$$GeneralError, "the globals arm was given a node reference it cannot parse")
+                Quit
+            }
+        } ElseIf '$ClassMethod(tPort, "NameValid", pId) {
+            Set tSC = $$$ERROR($$$GeneralError, "the globals arm was given a name that is no global name")
+            Quit
+        }
+        If ..IsOcuPilotCode(tName) {
+            Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+            Quit
+        }
+        Set tEdit = tNode && (..WriteTypeOf(pToolClass) '= "DELETE")
+        Set tSC = ..GlobalLocations(tPort, tName, tReference, tEdit, pNamespace, .tLocations)
+        If $$$ISERR(tSC) Quit
+        Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+        Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tLocations) {
+            For tJ = 1:1:$ListLength(tDirectories) {
+                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tLocations, tI), $List(tDirectories, tJ)) {
+                    Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+            If pProhibits Quit
+        }
+        If pProhibits Quit
+        If '$ListFind($ListFromString(..#CODEGLOBALS), tName) Quit
+        Set tRoutines = $Piece(##class(%SYS.Namespace).GetRoutineDest($NAMESPACE), "^", 2)
+        Set tResolves = 0
+        For tI = 1:1:$ListLength(tLocations) {
+            If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tLocations, tI), tRoutines) Set tResolves = 1
+        }
+        If 'tResolves Quit
+        Set tReaches = 'tNode || ($QLength(tReference) = 0) || $ListFind($ListFromString(..#NESTEDCODEGLOBALS), tName)
+        If 'tReaches Set tReaches = ..IsOcuPilotCode($QSubscript(tReference, 1))
+        If tReaches Do ..Refuse(..#OCUPILOTCODE, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The directories <var>pLocations</var> (a <code>%List</code>) global <var>pName</var> is stored in, in <var>pNamespace</var>, as the
+/// caller reads them through <var>pPort</var>: the node <var>pReference</var>'s own directory for a value edit (<var>pEdit</var>), every
+/// directory the global's mapping rows answer otherwise. A read that fails or answers no directory is an error status.</p>
+ClassMethod GlobalLocations(pPort As %String, pName As %String, pReference As %String, pEdit As %Boolean, pNamespace As %String, Output pLocations As %List) As %Status [ Private ]
+{
+    Set pLocations = ""
+    Kill tQuery
+    Set tQuery("namespace") = pNamespace
+    If pEdit {
+        Set tQuery("reference") = pReference
+        Set tSC = $ClassMethod(pPort, "Invoke", "Node", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    } Else {
+        Set tQuery("name") = pName
+        Set tSC = $ClassMethod(pPort, "Invoke", "Globals", "GET", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    }
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tAnswer)) || 'tAnswer.%IsA("%Library.DynamicObject") Quit $$$ERROR($$$GeneralError, "the globals arm read a global and was answered no object")
+    If pEdit {
+        Set tLocation = tAnswer.%Get("Location")
+        If tLocation '= "" Set pLocations = $ListBuild(tLocation)
+    } ElseIf tAnswer.%GetTypeOf("Locations") = "array" {
+        Set tIterator = tAnswer.%Get("Locations").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLocation) {
+            If tLocation '= "" Set pLocations = pLocations _ $ListBuild(tLocation)
+        }
+    }
+    If pLocations = "" Quit $$$ERROR($$$GeneralError, "the globals arm could not tell where a global is stored")
+    Quit $$$OK
+}
+
+/// <p>The global documents, <code>.gbl</code> in any case, of the comma-separated names <var>pNames</var> an import reviewed, judged in
+/// namespace <var>pNamespace</var> (AD-10 as amended, Story 21.5, DW-2607): a global of <parameter>CODEGLOBALS</parameter>, or one any of
+/// whose mapping rows resolves to OcuPilot's own database or one of <parameter>SYSTEMDATABASES</parameter>, is
+/// <parameter>PROTECTEDGLOBAL</parameter>. The file's subscripts are not read. A read that fails is an error status, which the caller
+/// refuses on.</p>
+ClassMethod ImportedGlobals(pNames As %String, pNamespace As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPort = ..GlobalPortClass()
+        Set tDirectories = ""
+        Set tRead = 0
+        For tI = 1:1:$Length(pNames, ",") {
+            Set tName = $Piece(pNames, ",", tI)
+            If ($Length(tName) '> $Length(..#GLOBALEXTENSION)) || ($ZConvert($Extract(tName, *-($Length(..#GLOBALEXTENSION) - 1), *), "L") '= ..#GLOBALEXTENSION) Continue
+            Set tGlobal = $Extract(tName, 1, *-$Length(..#GLOBALEXTENSION))
+            If '$ClassMethod(tPort, "NameValid", tGlobal) {
+                Set tSC = $$$ERROR($$$GeneralError, "the globals arm was given an imported global whose name is no global name")
+                Quit
+            }
+            If $ListFind($ListFromString(..#CODEGLOBALS), tGlobal) {
+                Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+                Quit
+            }
+            Set tSC = ..GlobalLocations(tPort, tGlobal, "", 0, pNamespace, .tLocations)
+            If $$$ISERR(tSC) Quit
+            If 'tRead {
+                Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+                Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
+                If $$$ISERR(tSC) Quit
+                Set tRead = 1
+            }
+            For tJ = 1:1:$ListLength(tLocations) {
+                For tK = 1:1:$ListLength(tDirectories) {
+                    If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tLocations, tJ), $List(tDirectories, tK)) Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+                }
+            }
+            If pProhibits Quit
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Whether SQL console statement <var>pText</var> reads or changes OcuPilot's own tables or code,

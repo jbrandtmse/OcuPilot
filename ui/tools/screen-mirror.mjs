@@ -318,7 +318,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application', 'allowed-directory-fallback'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application', 'allowed-directory-fallback', 'protected-global'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -1051,7 +1051,9 @@ export const SOURCE_CONFIG = 'config';
 export const SOURCE_MIRROR = 'mirror';
 /** The instance's locale definitions read through `OcuPilot.Port.LocalePort` (AD-29, AD-36, Story 21.14). */
 export const SOURCE_LOCALE = 'locale';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE];
+/** A namespace's globals read through `OcuPilot.Port.GlobalPort` (AD-29, AD-36, Story 21.5). */
+export const SOURCE_GLOBAL = 'global';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1268,6 +1270,22 @@ export function localeEndpoints() {
 
 /** The one request type a `locale` source declares. */
 export const LOCALE_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.GlobalPort` declares the endpoints a `global` read names. */
+export const GLOBAL_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'GlobalPort.cls');
+
+let globalEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.GlobalPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function globalEndpoints() {
+  if (globalEndpointsCache === undefined) {
+    globalEndpointsCache = parseInteropEndpoints(readFileSync(GLOBAL_PORT_SOURCE, 'utf8'));
+  }
+  return globalEndpointsCache;
+}
+
+/** The one request type a `global` source declares. */
+export const GLOBAL_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1534,8 +1552,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}' or '${SOURCE_LOCALE}', ` +
-      'the twenty sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}' or '${SOURCE_GLOBAL}', ` +
+      'the twenty-one sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1764,6 +1782,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a locale source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A global source lists a namespace's globals through `OcuPilot.Port.GlobalPort`, which answers its endpoint whole behind its own gate
+  // (AD-29, AD-36, Story 21.5): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per parent, under a
+  // fixed query or in parts.
+  if (source.port === SOURCE_GLOBAL) {
+    const endpoints = globalEndpoints();
+    if (endpoints === null) return `${GLOBAL_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the global port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== GLOBAL_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a global source, which lists a namespace's globals (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a global source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
@@ -2245,7 +2280,7 @@ export function criteriaProblem(declaration) {
   const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
   // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
   const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && port !== SOURCE_DEVTOOL && (!parentOnly || (!parented && !searches))) {
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && port !== SOURCE_DEVTOOL && port !== SOURCE_GLOBAL && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 
