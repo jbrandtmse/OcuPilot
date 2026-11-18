@@ -565,3 +565,5 @@
 2026-11-18T11:42:14Z	Story 21.17	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T11:42:14Z model=opus agent_name=21-17-code-review-2 cycle_iteration=2 baseline=66c32ffa5
 2026-11-18T12:03:09Z	Story 21.17	cr_complete	scope=rework1 spawn_at=2026-11-18T11:43Z model=opus high=0 med=2(patched) low=4 rows=20 unresolved_high_med=0 resolved=AD-61_HIGH final=done commit=e69f9492e closing_sections_present=true
 2026-11-18T12:03:09Z	Story 21.17	ledger_adjudicated	owned=1 resolved=1(DW-2608) reowned=0 terminal=0 note=DW-2731,DW-2732_routed_21-18
+2026-11-18T12:10:08Z	Epic 21	integrated	feature=9dabd07fc merge=80897abe6 conflicts_resolved=sprint-status(ours),EXPERIENCE.md(theirs_listing_rows+ours_Global_nodes_row),ClassicPageGate(126),GovernanceBaseline,MappingDescriptor,Test/Prohibited,ReadTool(503;280),ToolRoundTrip,ToolWrite(111),strings.ts_citations(613_for_21.17_keys) method=union+recount_from_base category=decide checks=12_classes_green,test:tools_2315
+2026-11-18T12:10:08Z	Story 21.17	gate_step	step=fresh_check+full_sweep+smoke head=80897abe6 started=2026-11-18T12:10:08Z dir=e21u/21-17/gate
