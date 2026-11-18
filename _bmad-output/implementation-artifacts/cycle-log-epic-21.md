@@ -506,3 +506,6 @@
 2026-11-18T00:41:07Z	Story 21.14	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+3_specs(nls-locales,language-servers,users) result=pass order=forward,reverse(specs) head=7add83728
 2026-11-18T00:41:07Z	Story 21.14	gate_step	step=sweep result=green shards=20/20 head=7add83728
 2026-11-18T00:41:07Z	Story 21.14	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-18T00:41:34Z	Epic 21	integrated	feature=ae925c462 merge=b015728ad conflicts=none note=README_only(release_1.0.17)
+2026-11-18T00:41:34Z	Story 21.14	committed	sha=4b7aac1f4 staging_head=b015728ad submodules= ci=pending runs=44209857864 amendments=spec_AC2,AC3(veto_U-109)
+2026-11-18T00:41:34Z	Story 21.14	story_cycle	plan_to_commit_min=n/a(multi-session) implement_passes=3(B1,B2,rework1) reviews=2 rework=1 first_ci=flake(users_AC2) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
