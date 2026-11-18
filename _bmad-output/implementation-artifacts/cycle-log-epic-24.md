@@ -388,3 +388,4 @@
 2026-11-18T10:12:30Z	Story 24.11	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+analytics_8/8+a11y-structural-invariants_13/13_on_fresh_merged_throwaway scope=batch2 model=claude-opus-5-5
 2026-11-18T10:12:30Z	Story 24.11	committed	sha=c7f186888 code_head=eb6fbf706 ci=pending runs=44283101753 scope=batch2(story_complete) amendments=none footprint_extensions=EXPERIENCE.md(24.11_rows)
 2026-11-18T10:12:30Z	Story 24.11	story_cycle	plan_to_commit_min=930 implement_passes=4(batch1,batch1_rework,batch2,batch2_rework) reviews=4 rework=2 first_ci=success(batch1),pending(batch2) models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-11-18T10:12:48Z	Story 24.12	stage_spawned	stage=pre-warm spawn_at=2026-11-18T10:12:48Z model=opus agent_name=epic-24-context-prewarm-5 cycle_iteration=1 reason=planning_artifact_newer(feature_merges+EXPERIENCE.md)
