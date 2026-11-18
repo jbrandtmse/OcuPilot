@@ -94,7 +94,16 @@
 /// and saves, compiles and deletes the group's class through <method>AtelierPortClass</method> (<class>OcuPilot.Kernel.SourceDocument</class>), never through the vendor's save and
 /// delete calls; a compile the instance refuses puts the class back as it was (<method>PerformListingGroup</method>). The vendor audits none of it, so each write records OcuPilot's
 /// own <code>ConfigChange</code> row.</p>
-/// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
+/// <p><b>The quality measures (Story 24.12, AD-65).</b> The <code>QualityMeasures</code> endpoint answers one row per measure name the vendor's
+/// <code>%GetQualityMeasureList</code> lists, read through the class the vendor's registry names for it (<code>%GetQualityMeasureClass</code>) and the model
+/// <code>%GetModel</code> reads with its link followed; a measure listed with no name is not a row, and a name the registry does not hold is not either.
+/// <code>Compiled</code> is <code>$System.OBJ.IsUpToDate</code> of the registered class. The <code>QualityMeasureElements</code> and <code>QualityMeasureMetas</code>
+/// endpoints answer one measure's groups with their elements and its documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>; all three are reads.</p>
+/// <p><b>The quality measure writes (Story 24.12, AD-61, AD-65).</b> The <code>QualityMeasures</code> endpoint also serves the single-object reads <code>QUALITYMEASURE</code> and
+/// <code>COPYTARGET</code> and four writes (<method>InvokeQualityMeasure</method>): a measure's add, update, copy and delete. A write is gated by <parameter>QUALITYMEASUREPAIRS</parameter>
+/// and by <method>AdmitClassWrite</method> as the listing group writes are, composes the class's <code>QualityMeasure</code> XData from <code>%GetModel</code> without its link and saves,
+/// compiles and deletes the class through <method>WriteClass</method>; a compile the instance refuses puts the class back as it was.</p>
+/// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
@@ -104,7 +113,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -135,6 +144,15 @@ Parameter ENDPOINTLISTINGGROUPS = "ListingGroups";
 
 Parameter ENDPOINTLISTINGGROUPLISTINGS = "ListingGroupListings";
 
+/// <p>The quality measures of the namespace (Story 24.12).</p>
+Parameter ENDPOINTQUALITYMEASURES = "QualityMeasures";
+
+/// <p>One quality measure's groups with their elements, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREELEMENTS = "QualityMeasureElements";
+
+/// <p>One quality measure's documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREMETAS = "QualityMeasureMetas";
+
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
 Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
@@ -151,6 +169,9 @@ Parameter FOLDERPAIRS = "%DeepSee_Portal:USE,%Development:USE";
 
 /// <p>The classic Listing Group Manager's pairs, narrowed to the view resource of its either-of list: the portal's, and <code>%DeepSee_ListingGroup:USE</code>.</p>
 Parameter LISTINGGROUPPAIRS = "%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE";
+
+/// <p>The classic Quality Measures Manager's pairs: the portal's, and <code>%DeepSee_PortalEdit:USE</code>, the <code>RESOURCE</code> of the classic page.</p>
+Parameter QUALITYMEASUREPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
 
 /// <p>The pair a listing's SQL needs to be answered: the classic page's own check for showing the field (<code>CheckListingGroupSQLViewAccess</code>).</p>
 Parameter LISTINGGROUPSQLPAIRS = "%DeepSee_ListingGroupSQL:USE";
@@ -344,6 +365,9 @@ Parameter TERMLISTKEY = "termlist";
 /// <p>The query key naming a listing group, for its listings.</p>
 Parameter LISTINGGROUPKEY = "listinggroup";
 
+/// <p>The query key naming a quality measure, for its elements and its documentation.</p>
+Parameter QUALITYMEASUREKEY = "qualitymeasure";
+
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
 
@@ -461,6 +485,26 @@ Parameter LISTINGNAMEMAX As INTEGER = 250;
 
 Parameter REASONLISTINGGROUPREQUIRED = "Name the listing group.";
 
+/// <p>The quality measure editor's single-object read (Story 24.12). Its writes reuse <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter>, <parameter>TYPEDELETE</parameter> and
+/// <parameter>TYPECOPY</parameter>; its copy read is <parameter>TYPECOPYTARGET</parameter>.</p>
+Parameter TYPEQUALITYMEASURE = "QUALITYMEASURE";
+
+Parameter ENTITYQUALITYMEASURE = "quality-measure";
+
+Parameter VERBQUALITYMEASUREADD = "analytics.qualitymeasures.add";
+
+Parameter VERBQUALITYMEASUREUPDATE = "analytics.qualitymeasures.update";
+
+Parameter VERBQUALITYMEASURECOPY = "analytics.qualitymeasures.copy";
+
+Parameter VERBQUALITYMEASUREDELETE = "analytics.qualitymeasures.delete";
+
+/// <p>The global whose database the quality measure writes need WRITE on.</p>
+Parameter QUALITYMEASUREGLOBAL = "^DeepSee.QMsrs";
+
+/// <p>The longest caption, description, subject area, link or URL a quality measure write accepts: the model's limit for a description, subject area and link.</p>
+Parameter QUALITYMEASURETEXTMAX As INTEGER = 2000;
+
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
 /// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -483,7 +527,7 @@ ClassMethod Endpoints() As %List
 
 /// <p>The pair set <var>pEndpoint</var> requires, as the <code>%List</code> of two-element <code>%List</code>s the gate
 /// evaluates; <code>""</code> for an endpoint this port does not serve. The cubes and their three tabs take the Model Browser's
-/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's and the listing groups and their listings the Listing Group Manager's.</p>
+/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's, the listing groups and their listings the Listing Group Manager's and the quality measures with their two tabs the Quality Measures Manager's.</p>
 ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
@@ -496,6 +540,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#FOLDERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
         Set tSpec = ..#LISTINGGROUPPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+        Set tSpec = ..#QUALITYMEASUREPAIRS
     } Else {
         Quit ""
     }
@@ -514,6 +560,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..IsFolderItemType(pType)
     If pEndpoint = ..#ENDPOINTLISTINGGROUPS Quit (pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPECOPYTARGET) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY)
     If pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS Quit (pType = ..#TYPELISTING) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET) || ..IsQualityMeasureWrite(pType)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
 }
 
@@ -575,6 +622,11 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// model's target cubes as written, <code>Compiled</code> whether the vendor's compiled list names this group's class, <code>Listings</code> the number of listings the group holds.</li>
 /// <li>ListingGroupListings: <code>{ListingGroup, Name, DisplayName, Type, Fields, OrderBy, Joins, Formats, Source, Resource, SelectMode, Disabled, Description, SQL}</code>, the
 /// listings of the group the criterion <parameter>LISTINGGROUPKEY</parameter> names, <code>SQL</code> <code>""</code> unless the caller holds <parameter>LISTINGGROUPSQLPAIRS</parameter>.</li>
+/// <li>QualityMeasures: <code>{Name, Catalog, Set, Id, Caption, Description, SubjectArea, Expression, LinkedTo, Published, Format, Href, Class, Compiled, Groups}</code>, one row per
+/// measure name, <code>Class</code> the class the registry names for it, <code>Groups</code> the number of groups its model holds.</li>
+/// <li>QualityMeasureElements: <code>{QualityMeasure, Group, GroupCaption, GroupDescription, GroupDisabled, Name, Caption, MDX, Disabled}</code>, one row per element of the measure
+/// the criterion <parameter>QUALITYMEASUREKEY</parameter> names, a group with no element one row with empty element fields.</li>
+/// <li>QualityMeasureMetas: <code>{QualityMeasure, Name, Caption, Section, Content, Disabled}</code>, one row per documentation item of that measure.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -604,7 +656,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tChanges = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tChanges = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
         Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
@@ -614,6 +666,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If ..IsListingGroupEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokeListingGroup(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsQualityMeasureEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeQualityMeasure(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If ..IsTermListType(pType) {
@@ -648,6 +704,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
             ; A criterion that names no group answers no rows, and an empty one names none.
             Set tCriterion = $Get(pQuery(..#LISTINGGROUPKEY))
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; A criterion that names no measure answers no rows, and an empty one names none.
+            Set tCriterion = $Get(pQuery(..#QUALITYMEASUREKEY))
         }
         ; A listing's SQL is answered to a holder of its own pair only; the pair is judged here, where the gate class is visible (AD-16).
         Set tShowSQL = 0
@@ -694,6 +753,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..AdmitFolderItem(pNamespace, .pHttpStatus, .pFault)
     If ..IsListingGroupEndpoint(pEndpoint) Quit ..AdmitListingGroup(pNamespace, .pHttpStatus, .pFault)
+    If ..IsQualityMeasureEndpoint(pEndpoint) Quit ..AdmitClassWrite(pNamespace, "", ..#QUALITYMEASUREGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREREADONLY, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
 
@@ -747,7 +807,7 @@ ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) 
 
 /// <p>Read <var>pEndpoint</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData</code> is the row count,
 /// and <code>pData(n)</code> row <code>n</code> as a <code>%List</code>, at most <var>pMax</var> rows when that is above zero.
-/// <var>pCriterion</var> is the cube or term list a tab names, or the listing group whose listings are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
+/// <var>pCriterion</var> is the cube or term list a tab names, the listing group whose listings are read, or the quality measure whose groups or documentation are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
 /// exception is <var>pCaught</var>.</p>
 /// <p><b>Everything between the switch and the restore is in this one method</b> and names only vendor and system classes, because
 /// an <code>OcuPilot.*</code> class is not visible in the target namespace (AD-16). The raw values are shaped into rows by
@@ -901,6 +961,67 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     }
                 }
             }
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; The vendor's list names each measure once per class declaring it and gives a disabled measure no name; the registry answers one class per name.
+            Set pVendorStatus = $$$OK
+            If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                Set pVendorStatus = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)
+                Set tAt = ""
+                While $$$ISOK(pVendorStatus) {
+                    Set tAt = $Order(tList(tAt))
+                    If tAt = "" Quit
+                    Set tListed = $List(tList(tAt), 1)
+                    If (tListed = "") || $Data(tNameSeen($ZConvert(tListed, "U"))) Continue
+                    Set tNameSeen($ZConvert(tListed, "U")) = ""
+                    Set tNames($Increment(tNames)) = $ListBuild(tListed, $List(tList(tAt), 5))
+                }
+            } ElseIf pCriterion '= "" {
+                Set tNames = 1
+                Set tNames(1) = $ListBuild(pCriterion, "")
+            }
+            For tAt = 1:1:+$Get(tNames) {
+                If (pMax > 0) && (pData >= pMax) Quit
+                Set tName = $List(tNames(tAt), 1)
+                Set tClass = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(tName, .tFound)
+                If $$$ISERR(tFound) || (tClass = "") Continue
+                Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(tName, .tModelStatus, 1)
+                If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                    Set tIsCompiled = ''$System.OBJ.IsUpToDate(tClass)
+                    Set pData = pData + 1
+                    If $IsObject(tModel) {
+                        Set pData(pData) = $ListBuild(tName, tModel.catalog, tModel.set, tModel.id, tModel.caption, tModel.description, tModel.subjectArea, tModel.expression, tModel.linkedTo, ''tModel.published, tModel.format, tModel.href, tClass, tIsCompiled, tModel.groups.Count())
+                    } Else {
+                        Set pData(pData) = $ListBuild(tName, $Piece(tName, "/", 1), $Piece(tName, "/", 2), $Piece(tName, "/", 3), $List(tNames(tAt), 2), "", "", "", "", 0, "", "", tClass, tIsCompiled, 0)
+                    }
+                    Continue
+                }
+                ; A model the vendor cannot read, or one that is not the measure the criterion names, has no rows.
+                If '$IsObject(tModel) || ($ZConvert(tModel.name, "U") '= $ZConvert(pCriterion, "U")) Continue
+                If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+                    For tGroupAt = 1:1:tModel.groups.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tGroupObject = tModel.groups.GetAt(tGroupAt)
+                        If tGroupObject.elements.Count() = 0 {
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, "", "", "", 0)
+                            Continue
+                        }
+                        For tElementAt = 1:1:tGroupObject.elements.Count() {
+                            If (pMax > 0) && (pData >= pMax) Quit
+                            Set tElement = tGroupObject.elements.GetAt(tElementAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, tElement.name, tElement.caption, tElement.mdx, ''tElement.disabled)
+                        }
+                    }
+                } Else {
+                    For tMetaAt = 1:1:tModel.metas.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tMeta = tModel.metas.GetAt(tMetaAt)
+                        Set pData = pData + 1
+                        Set pData(pData) = $ListBuild(tModel.name, tMeta.name, tMeta.caption, tMeta.section, tMeta.content, ''tMeta.disabled)
+                    }
+                }
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -1004,6 +1125,39 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As
             Do tRow.%Set("Disabled", $List(tValues, 12), "boolean")
             Do tRow.%Set("Description", $List(tValues, 13), "string")
             Do tRow.%Set("SQL", $Select(pShowSQL: $List(tValues, 14), 1: ""), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Catalog", $List(tValues, 2), "string")
+            Do tRow.%Set("Set", $List(tValues, 3), "string")
+            Do tRow.%Set("Id", $List(tValues, 4), "string")
+            Do tRow.%Set("Caption", $List(tValues, 5), "string")
+            Do tRow.%Set("Description", $List(tValues, 6), "string")
+            Do tRow.%Set("SubjectArea", $List(tValues, 7), "string")
+            Do tRow.%Set("Expression", $List(tValues, 8), "string")
+            Do tRow.%Set("LinkedTo", $List(tValues, 9), "string")
+            Do tRow.%Set("Published", $List(tValues, 10), "boolean")
+            Do tRow.%Set("Format", $List(tValues, 11), "string")
+            Do tRow.%Set("Href", $List(tValues, 12), "string")
+            Do tRow.%Set("Class", $List(tValues, 13), "string")
+            Do tRow.%Set("Compiled", $List(tValues, 14), "boolean")
+            Do tRow.%Set("Groups", $List(tValues, 15), "number")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Group", $List(tValues, 2), "string")
+            Do tRow.%Set("GroupCaption", $List(tValues, 3), "string")
+            Do tRow.%Set("GroupDescription", $List(tValues, 4), "string")
+            Do tRow.%Set("GroupDisabled", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Name", $List(tValues, 6), "string")
+            Do tRow.%Set("Caption", $List(tValues, 7), "string")
+            Do tRow.%Set("MDX", $List(tValues, 8), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 9), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Name", $List(tValues, 2), "string")
+            Do tRow.%Set("Caption", $List(tValues, 3), "string")
+            Do tRow.%Set("Section", $List(tValues, 4), "string")
+            Do tRow.%Set("Content", $List(tValues, 5), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 6), "boolean")
         } Else {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Type", $List(tValues, 2), "string")
@@ -2336,6 +2490,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If ((pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES)) && ..IsTermListWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
     If ..IsListingGroupEndpoint(pEndpoint) && ..IsListingGroupWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If ..IsQualityMeasureEndpoint(pEndpoint) && ..IsQualityMeasureWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
 
@@ -2349,7 +2504,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
+        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
@@ -4430,22 +4585,29 @@ ClassMethod ChangesListingGroups(pType As %String, pAction As %String = "") As %
     Quit (pAction '= "") && ((pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPELISTING) || (pType = ..#TYPECOPYTARGET))
 }
 
-/// <p>The listing group writes' gate (AD-29, AD-61, AD-65), after the namespace gate: <parameter>LISTINGGROUPEDITPAIRS</parameter> and
-/// the source code API's own pairs (<code>%Development:USE</code>, <method>OcuPilot.Port.AtelierPort.Pairs</method>) and <method>OcuPilot.Port.AtelierPort.WritePairs</method> of the
-/// namespace (which adds WRITE on the routines database), because the write saves, compiles and deletes a class, then WRITE on the database <parameter>LISTINGGROUPGLOBAL</parameter> maps to, mounted read-write. 400
-/// <code>PORT.VALIDATION</code> when the instance cannot name the databases. Names no vendor class.</p>
+/// <p>The listing group writes' gate (AD-29, AD-61, AD-65), after the namespace gate: <method>AdmitClassWrite</method> with <parameter>LISTINGGROUPEDITPAIRS</parameter>, the
+/// database <parameter>LISTINGGROUPGLOBAL</parameter> maps to and the listing groups' read-only code.</p>
 ClassMethod AdmitListingGroup(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AdmitClassWrite(pNamespace, ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPEDITPAIRS), ..#LISTINGGROUPGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPREADONLY, .pHttpStatus, .pFault)
+}
+
+/// <p>The gate of a write that saves, compiles and deletes a class (AD-29, AD-61, AD-65), after the namespace gate: <var>pExtraPairs</var> (a <code>%List</code> of pairs, <code>""</code>
+/// for none) and the source code API's own pairs (<code>%Development:USE</code>, <method>OcuPilot.Port.AtelierPort.Pairs</method>) and <method>OcuPilot.Port.AtelierPort.WritePairs</method> of the
+/// namespace (which adds WRITE on the routines database), then WRITE on the database <var>pGlobal</var> maps to, mounted read-write (409 <var>pReadOnlyCode</var>). 400
+/// <code>PORT.VALIDATION</code> when the instance cannot name the databases. Names no vendor class.</p>
+ClassMethod AdmitClassWrite(pNamespace As %String, pExtraPairs As %List, pGlobal As %String, pReadOnlyCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set tWritePairs = ##class(OcuPilot.Port.AtelierPort).WritePairs(pNamespace)
     If tWritePairs = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
     Set tFailedPair = ""
-    If '$ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPEDITPAIRS) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ tWritePairs, .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
-    Quit ..AdmitDestination(pNamespace, ..#LISTINGGROUPGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPREADONLY, .pHttpStatus, .pFault)
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", pExtraPairs _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ tWritePairs, .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit ..AdmitDestination(pNamespace, pGlobal, pReadOnlyCode, .pHttpStatus, .pFault)
 }
 
-/// <p>The class every listing group write is saved, compiled and deleted through. Overridable so a fixture can fail a call; production never overrides it.</p>
+/// <p>The class every listing group and quality measure write is saved, compiled and deleted through. Overridable so a fixture can fail a call; production never overrides it.</p>
 ClassMethod AtelierPortClass() As %String
 {
     Quit "OcuPilot.Port.AtelierPort"
@@ -5025,33 +5187,8 @@ ClassMethod PerformListingGroup(pNamespace As %String, pType As %String, pGroup 
     Set tSC = ..PlanListingGroup(pNamespace, pType, pGroup, pListing, .pQuery, pBody, .tPlan, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) || pDry Quit tSC
     Set tClass = tPlan("class")
-    Set tName = tClass _ ".cls"
-    Set tOutcome = "applied"
-    Set tRefused = 0
-    If pType = ..#TYPEDELETE {
-        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Remove(..AtelierPortClass(), pNamespace, tName, .tDeleted, .pHttpStatus, .pFault)
-        If $$$ISERR(tSC) Quit tSC
-        If 'tDeleted Quit ..Fail("the listing group's class was not deleted", $$$ERROR($$$GeneralError, tName), .pHttpStatus, .pFault)
-    } Else {
-        Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
-        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Save(..AtelierPortClass(), pNamespace, tName, tPlan("text"), $Select(tCreates: "", 1: tPlan("version")), .pHttpStatus, .pFault)
-        If $$$ISERR(tSC) Quit tSC
-        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Compile(..AtelierPortClass(), pNamespace, tName, .tErrors, .tLines, .pHttpStatus, .pFault)
-        If $$$ISERR(tSC) || tErrors {
-            Set tRefused = 1
-            If $$$ISOK(tSC) {
-                Set tJoined = ""
-                Set tIterator = tLines.%GetIterator()
-                While tIterator.%GetNext(.tIndex, .tLine) {
-                    Set tJoined = tJoined _ $Select(tJoined = "": "", 1: " | ") _ tLine
-                }
-                Do ..LogFault("the listing group's compile was refused: " _ tJoined, $$$ERROR($$$GeneralError, tName))
-            } Else {
-                Do ..LogFault("the listing group's compile call failed", tSC)
-            }
-            Set tOutcome = ..RestoreListingGroup(pNamespace, tName, tCreates, tPlan("prior"), tPlan("compiled"))
-        }
-    }
+    Set tSC = ..WriteClass(pNamespace, pType, tClass, .tPlan, "listing group", .tOutcome, .tRefused, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
     Set tEffects = {}
     Do tEffects.%Set("namespace", pNamespace, "string")
     Do tEffects.%Set("listingGroup", tPlan("name"), "string")
@@ -5087,10 +5224,47 @@ ClassMethod PerformListingGroup(pNamespace As %String, pType As %String, pGroup 
     Quit $$$OK
 }
 
-/// <p>Undo a write whose compile the instance refused (Story 24.11): delete the class a create saved, or save the text <var>pPrior</var> back over the changed class and,
-/// when the group had been registered (<var>pCompiled</var>), compile it again. Answers <code>restored</code> when each step reported success and
-/// <code>restorefailed</code> otherwise, which is logged: a class that could not be put back is for an operator.</p>
-ClassMethod RestoreListingGroup(pNamespace As %String, pName As %String, pCreated As %Boolean, pPrior As %String, pCompiled As %Boolean) As %String [ Private ]
+/// <p>Save, compile and delete the class <var>pClass</var> for the write <var>pType</var> of <var>pWhat</var> (<code>listing group</code> or <code>quality measure</code>), as
+/// <var>pPlan</var> plans it (<code>text</code>, <code>prior</code>, <code>version</code>, <code>compiled</code>): a create (<code>ADD</code>, <code>COPY</code>) saves a new class and
+/// compiles it; an update saves the text against the version read and compiles it; a delete deletes the class. A compile the instance refuses is logged, never sent, and undone
+/// (<method>RestoreClass</method>): <var>pRefused</var> is 1 and <var>pOutcome</var> is <code>restored</code> or <code>restorefailed</code>; otherwise <var>pOutcome</var> is <code>applied</code>.
+/// A call that fails is the error status with <var>pHttpStatus</var> and <var>pFault</var>.</p>
+ClassMethod WriteClass(pNamespace As %String, pType As %String, pClass As %String, ByRef pPlan, pWhat As %String, Output pOutcome As %String, Output pRefused As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pOutcome = "applied"
+    Set pRefused = 0
+    Set tName = pClass _ ".cls"
+    If pType = ..#TYPEDELETE {
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Remove(..AtelierPortClass(), pNamespace, tName, .tDeleted, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If 'tDeleted Quit ..Fail("the " _ pWhat _ "'s class was not deleted", $$$ERROR($$$GeneralError, tName), .pHttpStatus, .pFault)
+        Quit $$$OK
+    }
+    Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
+    Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Save(..AtelierPortClass(), pNamespace, tName, pPlan("text"), $Select(tCreates: "", 1: pPlan("version")), .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Compile(..AtelierPortClass(), pNamespace, tName, .tErrors, .tLines, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || tErrors {
+        Set pRefused = 1
+        If $$$ISOK(tSC) {
+            Set tJoined = ""
+            Set tIterator = tLines.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                Set tJoined = tJoined _ $Select(tJoined = "": "", 1: " | ") _ tLine
+            }
+            Do ..LogFault("the " _ pWhat _ "'s compile was refused: " _ tJoined, $$$ERROR($$$GeneralError, tName))
+        } Else {
+            Do ..LogFault("the " _ pWhat _ "'s compile call failed", tSC)
+        }
+        Set pOutcome = ..RestoreClass(pNamespace, tName, tCreates, pPlan("prior"), pPlan("compiled"), pWhat)
+    }
+    Quit $$$OK
+}
+
+/// <p>Undo a write whose compile the instance refused (Story 24.11, 24.12): delete the class a create saved, or save the text <var>pPrior</var> back over the changed class and,
+/// when it had been compiled (<var>pCompiled</var>), compile it again. Answers <code>restored</code> when each step reported success and <code>restorefailed</code> otherwise,
+/// which is logged: a class that could not be put back is for an operator. <var>pWhat</var> names the definition in the log.</p>
+ClassMethod RestoreClass(pNamespace As %String, pName As %String, pCreated As %Boolean, pPrior As %String, pCompiled As %Boolean, pWhat As %String) As %String [ Private ]
 {
     Set tOutcome = "restored"
     Try {
@@ -5110,8 +5284,35 @@ ClassMethod RestoreListingGroup(pNamespace As %String, pName As %String, pCreate
         Set tOutcome = "restorefailed"
         Set tSC = ex.AsStatus()
     }
-    If tOutcome = "restorefailed" Do ..LogFault("the listing group could not be put back after a refused compile", $Get(tSC, $$$ERROR($$$GeneralError, pName)))
+    If tOutcome = "restorefailed" Do ..LogFault("the " _ pWhat _ " could not be put back after a refused compile", $Get(tSC, $$$ERROR($$$GeneralError, pName)))
     Quit tOutcome
+}
+
+/// <p>The lines a class write's script form holds (Story 24.11, 24.12, AD-59), for the write <var>pType</var> of the class <var>pClass</var> in <var>pNamespace</var>: the class text
+/// <var>pText</var> saved and compiled and, as the write does, put back as <var>pPrior</var> (compiled again when <var>pCompiled</var>) when the compile is refused; a delete is
+/// the class's deletion. A create's steps are each gated on one line by <var>pFreeCondition</var>, ObjectScript that is true when the name and class are free, after
+/// <var>pPrelude</var> (lines it needs, each starting with a line feed, or <code>""</code>), so a script run after another writer took the name changes and deletes nothing; a
+/// taken name sets <var>pTakenSentence</var>. A script longer than <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
+ClassMethod ClassWriteSnippet(pType As %String, pNamespace As %String, pClass As %String, pText As %String, pPrior As %String, pCompiled As %Boolean, pPrelude As %String, pFreeCondition As %String, pTakenSentence As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tClass = ..Literal(pClass)
+    Set tSpace = ..Literal(pNamespace)
+    If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
+    ; The vendor's text service takes a carriage return and a line feed between lines.
+    Set tSave = "##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(pText) _ ", $Char(10), $Char(13, 10)))"
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
+        Set tText = pPrelude
+        Set tText = tText _ tNL _ " Set tMade = 0, tSC = $System.Status.Error(5001, " _ ..Literal(pTakenSentence) _ ")"
+        Set tText = tText _ tNL _ " If " _ pFreeCondition _ " Set tMade = 1, tSC = " _ tSave
+        Set tText = tText _ tNL _ " If tMade, $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")"
+        Set tText = tText _ tNL _ " If tMade, '$System.Status.IsOK(tSC) Do $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
+    } Else {
+        Set tUndo = " Do ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(pPrior) _ ", $Char(10), $Char(13, 10)))" _ $Select(pCompiled: " Do $System.OBJ.Compile(" _ tClass _ ", ""ck"")", 1: "")
+        Set tText = tNL _ " Set tSC = " _ tSave _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")" _ tNL _ " If '$System.Status.IsOK(tSC) {" _ tUndo _ " }"
+    }
+    If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
+    Quit tText
 }
 
 /// <p>The lines <method>Snippet</method> adds for a listing group write <var>pType</var> of the group or listing the id <var>pId</var> names (Story 24.11, AD-59): the class
@@ -5129,25 +5330,509 @@ ClassMethod ListingGroupSnippet(pType As %String, pId As %String, pBody As %Dyna
     Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
     Set tSC = ..PlanListingGroup(tNamespace, pType, $List(tParts, 1), $ListGet(tParts, 2), .pQuery, pBody, .tPlan, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
-    Set tClass = ..Literal(tPlan("class"))
-    Set tSpace = ..Literal(tNamespace)
-    If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
-    Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
-    ; The vendor's text service takes a carriage return and a line feed between lines.
-    Set tSave = "##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("text")) _ ", $Char(10), $Char(13, 10)))"
-    If tCreates {
-        Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
-        Set tText = tNL _ " Kill tGroups Do ##class(%DeepSee.ListingGroup).%GetListingGroups(.tGroups, 0)"
-        Set tText = tText _ tNL _ " Set tMade = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPTAKEN) _ ")"
-        Set tText = tText _ tNL _ " If '$Data(tGroups(" _ tNameU _ ")), '$Data(^DeepSee.ListingGroups(""groups"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ tClass _ ") Set tMade = 1, tSC = " _ tSave
-        Set tText = tText _ tNL _ " If tMade, $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")"
-        Set tText = tText _ tNL _ " If tMade, '$System.Status.IsOK(tSC) Do $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
-    } Else {
-        Set tUndo = " Do ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(tPlan("prior")) _ ", $Char(10), $Char(13, 10)))" _ $Select(tPlan("compiled"): " Do $System.OBJ.Compile(" _ tClass _ ", ""ck"")", 1: "")
-        Set tText = tNL _ " Set tSC = " _ tSave _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")" _ tNL _ " If '$System.Status.IsOK(tSC) {" _ tUndo _ " }"
+    Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
+    Set tPrelude = tNL _ " Kill tGroups Do ##class(%DeepSee.ListingGroup).%GetListingGroups(.tGroups, 0)"
+    Set tFree = "'$Data(tGroups(" _ tNameU _ ")), '$Data(^DeepSee.ListingGroups(""groups"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
+    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPTAKEN)
+}
+
+/// <p>Whether <var>pEndpoint</var> is the quality measures endpoint (Story 24.12): the one of the three quality measure endpoints that writes.</p>
+ClassMethod IsQualityMeasureEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit pEndpoint = ..#ENDPOINTQUALITYMEASURES
+}
+
+/// <p>Whether <var>pType</var> is one of the quality measure writes (Story 24.12): add, update, delete and copy.</p>
+ClassMethod IsQualityMeasureWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a quality measure and so needs
+/// the destination's gate (<method>AdmitClassWrite</method>): a write, and a single-object read composed for one. Pure.</p>
+ClassMethod ChangesQualityMeasures(pType As %String, pAction As %String = "") As %Boolean
+{
+    If ..IsQualityMeasureWrite(pType) Quit 1
+    Quit (pAction '= "") && ((pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET))
+}
+
+/// <p>404 <code>ANALYTICS.QUALITYMEASURE.ABSENT</code>: the quality measure is not there.</p>
+ClassMethod QualityMeasureAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASUREABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pName</var> names a quality measure to look up: three non-empty parts joined by <code>/</code>, no control character, at most three names' length. Pure.</p>
+ClassMethod QualityMeasureKeyShaped(pName As %String) As %Boolean
+{
+    If ($Length(pName, "/") '= 3) || ($Length(pName) > (3 * ..#LISTINGNAMEMAX + 2)) || ($ZStrip(pName, "*C") '= pName) Quit 0
+    Quit ($Piece(pName, "/", 1) '= "") && ($Piece(pName, "/", 2) '= "") && ($Piece(pName, "/", 3) '= "")
+}
+
+/// <p>Whether <var>pName</var> can name a new quality measure, as the classic Save dialog's rules have it: <method>QualityMeasureKeyShaped</method>, each part at most
+/// <parameter>LISTINGNAMEMAX</parameter> characters and with no dot. Pure.</p>
+ClassMethod QualityMeasureNameShaped(pName As %String) As %Boolean
+{
+    If '..QualityMeasureKeyShaped(pName) Quit 0
+    Set tShaped = 1
+    For tPart = 1:1:3 {
+        Set tText = $Piece(pName, "/", tPart)
+        If ($Length(tText) > ..#LISTINGNAMEMAX) || (tText [ ".") Set tShaped = 0
     }
-    If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
-    Quit tText
+    Quit tShaped
+}
+
+/// <p>Whether the expression <var>pExpression</var> resolves as the vendor's compile resolves it: each <code>[name]</code> names, without regard to case, a group in
+/// <var>pGroups</var> (<code>pGroups(UPPERNAME)</code>), and every <code>[</code> is closed. Pure.</p>
+ClassMethod ExpressionHolds(pExpression As %String, ByRef pGroups) As %Boolean
+{
+    Set tOpen = 0
+    Set tToken = ""
+    Set tHolds = 1
+    For tAt = 1:1:$Length(pExpression) {
+        Set tChar = $Extract(pExpression, tAt)
+        If 'tOpen {
+            If tChar = "[" Set tOpen = 1, tToken = ""
+            Continue
+        }
+        If tChar '= "]" {
+            Set tToken = tToken _ tChar
+            Continue
+        }
+        Set tOpen = 0
+        If (tToken = "") || '$Data(pGroups($ZConvert(tToken, "U"))) {
+            Set tHolds = 0
+            Quit
+        }
+    }
+    Quit tHolds && 'tOpen
+}
+
+/// <p>The quality measure <var>pName</var>'s state in the namespace the process is in: <var>pListed</var>, how many classes the vendor's list gives that name (compared without
+/// regard to case), and <var>pClass</var>, the class its registry holds for it, <code>""</code> for none. Reads only.</p>
+ClassMethod QualityMeasureHeld(pName As %String, Output pListed As %Integer, Output pClass As %String)
+{
+    Set pListed = 0
+    Set pClass = ""
+    Set tUpper = $ZConvert(pName, "U")
+    Set tSC = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)
+    Set tAt = ""
+    While $$$ISOK(tSC) {
+        Set tAt = $Order(tList(tAt))
+        If tAt = "" Quit
+        If $ZConvert($List(tList(tAt), 1), "U") = tUpper Set pListed = pListed + 1
+    }
+    Set tClass = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(pName, .tFound)
+    If $$$ISOK(tFound) Set pClass = tClass
+}
+
+/// <p>The quality measure <var>pName</var> as the vendor reports it in <var>pNamespace</var>, switched by explicit save and restore (AD-16), into <var>pData</var>:
+/// <code>listed</code> (how many classes the vendor's list names it for); <code>class</code> (the class its registry names), <code>exists</code> (the registered class
+/// answers the measure's own model, <code>%GetModel</code> read without its link), <code>compiled</code>, and the model's <code>name</code>, <code>catalog</code>, <code>set</code>, <code>id</code>, <code>caption</code>,
+/// <code>description</code>, <code>subjectArea</code>, <code>expression</code>, <code>linkedTo</code>, <code>published</code>, <code>format</code>, <code>href</code> and <code>groups</code> (their count). An exception
+/// is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod ReadQualityMeasureData(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("listed") = 0
+    Set pData("class") = ""
+    Set pData("groups") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..QualityMeasureHeld(pName, .tListed, .tClass)
+        Set pData("listed") = tListed
+        Set pData("class") = tClass
+        If tClass '= "" {
+            Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(pName, .tModelStatus, 0)
+            If $IsObject(tModel) && (tModel.name '= "") {
+                Set pData("exists") = 1
+                Set pData("compiled") = ''$System.OBJ.IsUpToDate(tClass)
+                Set pData("name") = tModel.name
+                Set pData("catalog") = tModel.catalog
+                Set pData("set") = tModel.set
+                Set pData("id") = tModel.id
+                Set pData("caption") = tModel.caption
+                Set pData("description") = tModel.description
+                Set pData("subjectArea") = tModel.subjectArea
+                Set pData("expression") = tModel.expression
+                Set pData("linkedTo") = tModel.linkedTo
+                Set pData("published") = ''tModel.published
+                Set pData("format") = tModel.format
+                Set pData("href") = tModel.href
+                Set pData("groups") = tModel.groups.Count()
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p><method>ReadQualityMeasureData</method> of <var>pName</var>, a name that cannot be a quality measure's answering none, with a fault as the answer's error status.</p>
+ClassMethod QualityMeasureFacts(pNamespace As %String, pName As %String, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("listed") = 0
+    Set pData("class") = ""
+    Set pData("groups") = 0
+    If '..QualityMeasureKeyShaped(pName) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadQualityMeasureData(pNamespace, pName, .pData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the quality measure could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The quality measure <var>pData</var> as a row: <code>{Name, Catalog, Set, Id, Class, Caption, Description, SubjectArea, Expression, LinkedTo, Published, Format, Href,
+/// Compiled, Groups, Version, Namespace}</code>, <code>Version</code> the class's version, <code>""</code> when none was read. Pure.</p>
+ClassMethod QualityMeasureRow(pNamespace As %String, ByRef pData, pVersion As %String = "") As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pData("name"), "string")
+    Do tRow.%Set("Catalog", pData("catalog"), "string")
+    Do tRow.%Set("Set", pData("set"), "string")
+    Do tRow.%Set("Id", pData("id"), "string")
+    Do tRow.%Set("Class", pData("class"), "string")
+    Do tRow.%Set("Caption", pData("caption"), "string")
+    Do tRow.%Set("Description", pData("description"), "string")
+    Do tRow.%Set("SubjectArea", pData("subjectArea"), "string")
+    Do tRow.%Set("Expression", pData("expression"), "string")
+    Do tRow.%Set("LinkedTo", pData("linkedTo"), "string")
+    Do tRow.%Set("Published", ''pData("published"), "boolean")
+    Do tRow.%Set("Format", pData("format"), "string")
+    Do tRow.%Set("Href", pData("href"), "string")
+    Do tRow.%Set("Compiled", ''pData("compiled"), "boolean")
+    Do tRow.%Set("Groups", pData("groups"), "number")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The shape violations of a quality measure write that need nothing from the instance, in <var>pViolations</var>
+/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>), every one <code>PORT.FIELD.SHAPE</code>: <var>pType</var> is the write, <var>pName</var>
+/// the measure it acts on (an add's is its new name, <method>QualityMeasureNameShaped</method>), <var>pPart</var> the part of it the write acts on (none yet, so <code>""</code>; it keeps
+/// the signature of <method>ListingGroupViolations</method>, which the shared tool base calls), <var>pBody</var> what the caller sends. A text member is a string within its
+/// length (<parameter>QUALITYMEASURETEXTMAX</parameter>, an expression <parameter>LONGTEXTMAX</parameter>, a format <parameter>SHORTTEXTMAX</parameter>); <code>Published</code>
+/// is true or false; and <code>LinkedTo</code> does not name the measure itself. Pure.</p>
+ClassMethod QualityMeasureViolations(pType As %String, pName As %String, pPart As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    If (pType = ..#TYPEADD) && '..QualityMeasureNameShaped(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", tShape)
+    If (pType '= ..#TYPEADD) && (pType '= ..#TYPEUPDATE) Quit $$$OK
+    Set tFields = $Select(pType = ..#TYPEADD: "Caption,Description,SubjectArea", 1: "Caption,Description,SubjectArea,LinkedTo,Href,Format,Expression")
+    For tMember = 1:1:$Length(tFields, ",") {
+        Set tName = $Piece(tFields, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tName)
+        If tMemberType = "unassigned" Continue
+        Set tMax = $Case(tName, "Expression": ..#LONGTEXTMAX, "Format": ..#SHORTTEXTMAX, : ..#QUALITYMEASURETEXTMAX)
+        If (tMemberType '= "string") || ($Length(pBody.%Get(tName)) > tMax) Set pViolations($Increment(pViolations)) = $ListBuild(tName, tShape)
+    }
+    If pType '= ..#TYPEUPDATE Quit $$$OK
+    Set tPublishedType = pBody.%GetTypeOf("Published")
+    If (tPublishedType '= "unassigned") && (tPublishedType '= "boolean") Set pViolations($Increment(pViolations)) = $ListBuild("Published", tShape)
+    If (pBody.%GetTypeOf("LinkedTo") = "string") && (pBody.%Get("LinkedTo") '= "") && ($ZConvert(pBody.%Get("LinkedTo"), "U") = $ZConvert(pName, "U")) Set pViolations($Increment(pViolations)) = $ListBuild("LinkedTo", tShape)
+    Quit $$$OK
+}
+
+/// <p>The class text a write's new XML belongs in, composed from the vendor's own model in <var>pNamespace</var>, switched by explicit save and restore (AD-16):
+/// <var>pOp</var> is <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter> or <parameter>TYPECOPY</parameter>. An add starts from the classic page's new model (a
+/// numerator and a denominator group of one element each, the expression dividing them); the others from <code>%GetModel</code> of <var>pName</var> without its link, read now, so
+/// what the caller cannot see is kept as stored. <var>pBody</var> carries the members to set (<method>QualityMeasureViolations</method> says which), <var>pNewName</var> a copy's
+/// name and <var>pNewClass</var> the class an add or copy creates. <var>pXml</var> is the model written by <code>%XML.Writer</code>. <var>pCode</var> is the refusal, <code>""</code>
+/// for none, in the vendor compile's order: <code>ABSENT</code>, <code>TAKEN</code> (the new name listed or registered, or its class defined), <code>COMPILE</code> (the model's own
+/// <code>%Validate</code>), <code>EXPRESSION</code> (an expression naming a group that is not enabled or holds no enabled element, or unmatched brackets) and <code>LINKED</code>
+/// (a linked measure's expression, format or URL changed). Nothing is written. An exception is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod VendorQualityMeasureCompose(pNamespace As %String, pOp As %String, pName As %String, pBody As %DynamicObject, pNewName As %String, pNewClass As %String, Output pXml As %String, Output pCode As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pXml = ""
+    Set pCode = ""
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tNewName = $Select(pOp = ..#TYPEADD: pName, 1: pNewName)
+        If pOp = ..#TYPEADD {
+            Set tModel = ##class(%DeepSee.Model.QualityMeasure.qualityMeasure).%New()
+            Set tModel.published = 1
+            Set tModel.expression = "[Numerator]/[Denominator]"
+            For tGroupName = "Numerator", "Denominator" {
+                Set tGroup = ##class(%DeepSee.Model.QualityMeasure.group).%New()
+                Set tGroup.name = tGroupName
+                Set tGroup.description = tGroupName
+                Set tElement = ##class(%DeepSee.Model.QualityMeasure.element).%New()
+                Set tElement.name = tGroupName _ " Cohort"
+                Set tElement.mdx = "100"
+                Do tGroup.elements.Insert(tElement)
+                Do tModel.groups.Insert(tGroup)
+            }
+        } Else {
+            Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(pName, .tModelStatus, 0)
+            If '$IsObject(tModel) || (tModel.name = "") Set pCode = "ABSENT"
+        }
+        If pCode = "" {
+            Set tOldExpression = tModel.expression
+            Set tOldFormat = tModel.format
+            Set tOldHref = tModel.href
+            If (pOp = ..#TYPEADD) || (pOp = ..#TYPEUPDATE) {
+                If pBody.%GetTypeOf("Caption") = "string" Set tModel.caption = pBody.%Get("Caption")
+                If pBody.%GetTypeOf("Description") = "string" Set tModel.description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("SubjectArea") = "string" Set tModel.subjectArea = pBody.%Get("SubjectArea")
+            }
+            If pOp = ..#TYPEUPDATE {
+                If pBody.%GetTypeOf("Expression") = "string" Set tModel.expression = pBody.%Get("Expression")
+                If pBody.%GetTypeOf("LinkedTo") = "string" Set tModel.linkedTo = pBody.%Get("LinkedTo")
+                If pBody.%GetTypeOf("Published") = "boolean" Set tModel.published = pBody.%Get("Published")
+                If pBody.%GetTypeOf("Format") = "string" Set tModel.format = pBody.%Get("Format")
+                If pBody.%GetTypeOf("Href") = "string" Set tModel.href = pBody.%Get("Href")
+            } Else {
+                Set tModel.catalog = $Piece(tNewName, "/", 1)
+                Set tModel.set = $Piece(tNewName, "/", 2)
+                Set tModel.id = $Piece(tNewName, "/", 3)
+            }
+        }
+        If pCode = "" && (pOp '= ..#TYPEUPDATE) {
+            ; A name in use, whoever declares it: the vendor's list, its registry and the class's own definition.
+            Do ..QualityMeasureHeld(tNewName, .tListed, .tHeldClass)
+            If tListed || (tHeldClass '= "") || ##class(%Dictionary.ClassDefinition).%ExistsId(pNewClass) Set pCode = "TAKEN"
+        }
+        If pCode = "" && $$$ISERR(tModel.%Validate()) Set pCode = "COMPILE"
+        If pCode = "" {
+            Kill tGroups
+            For tGroupAt = 1:1:tModel.groups.Count() {
+                Set tGroup = tModel.groups.GetAt(tGroupAt)
+                If tGroup.disabled Continue
+                For tElementAt = 1:1:tGroup.elements.Count() {
+                    If 'tGroup.elements.GetAt(tElementAt).disabled Set tGroups($ZConvert(tGroup.name, "U")) = ""
+                }
+            }
+            If '..ExpressionHolds(tModel.expression, .tGroups) Set pCode = "EXPRESSION"
+        }
+        If pCode = "" && (pOp = ..#TYPEUPDATE) && (tModel.linkedTo '= "") && ((tModel.expression '= tOldExpression) || (tModel.format '= tOldFormat) || (tModel.href '= tOldHref)) Set pCode = "LINKED"
+        If pCode = "" {
+            Set tWriter = ##class(%XML.Writer).%New()
+            Set tWriter.NoXMLDeclaration = 1
+            Set tWriter.Indent = 1
+            Set tStream = ##class(%Stream.TmpCharacter).%New()
+            Set tSC = tWriter.OutputToStream(tStream)
+            If $$$ISOK(tSC) Set tSC = tWriter.RootObject(tModel)
+            If $$$ISOK(tSC) {
+                Do tStream.Rewind()
+                Set pXml = tStream.Read(3000000)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The refusal for the code <var>pCode</var> <method>VendorQualityMeasureCompose</method> answered: <code>TAKEN</code> and <code>LINKED</code> 409, <code>ABSENT</code> 404, and
+/// <code>COMPILE</code> and <code>EXPRESSION</code> 422.</p>
+ClassMethod QualityMeasureComposeRefusal(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If pCode = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault)
+    If pCode = "LINKED" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURELINKED, .pHttpStatus, .pFault)
+    If pCode = "COMPILE" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECOMPILE, .pHttpStatus, .pFault)
+    If pCode = "EXPRESSION" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREEXPRESSION, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASUREEXPRESSION, .pHttpStatus, .pFault)
+    Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+}
+
+/// <p>Serve the quality measures endpoint's typed calls after <method>Invoke</method>'s gate (Story 24.12): the reads <code>QUALITYMEASURE</code> and <code>COPYTARGET</code>
+/// (<method>ReadQualityMeasure</method>) and the four writes (<method>PerformQualityMeasure</method>). The measure is named under <parameter>IDKEY</parameter> by its full name
+/// <code>catalog/set/id</code>, kept exactly (AD-13). A read carrying <parameter>ACTIONKEY</parameter> is composed for that write: an add's read is 409 when the name is held and
+/// 404 when it is not, and the other writes' reads are 404 <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> when the measure is not there and 409 <code>AMBIGUOUS</code> when two
+/// classes declare it.</p>
+ClassMethod InvokeQualityMeasure(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#IDKEY))
+    If '..QualityMeasureKeyShaped(tName) {
+        Set tViolation = 1
+        Set tViolation(1) = $ListBuild("Name", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Quit ..ViolationRefusal(.tViolation, .pHttpStatus, .pFault)
+    }
+    Set tWrite = ..IsQualityMeasureWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsQualityMeasureWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If tWrite Quit ..PerformQualityMeasure(pNamespace, pType, tName, .pQuery, pBody, 0, .pResult, .pHttpStatus, .pFault)
+    Quit ..ReadQualityMeasure(pNamespace, pType, tName, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The single-object reads of the quality measures endpoint: <code>QUALITYMEASURE</code> (the measure as <method>QualityMeasureRow</method>) and <code>COPYTARGET</code>
+/// (<code>{Name, Version, Groups, NewName, NewClass, Present, Namespace}</code>, the measure with the copy's own name and class from the query). A measure that is not there is 404
+/// <code>PORT.NOTFOUND</code> on a plain read and <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> with <var>pAction</var>. A read composed for a write carries the class's
+/// <code>Version</code>, which the proposal's fingerprint covers, and is refused as that write would be refused (<method>PlanQualityMeasure</method>).</p>
+ClassMethod ReadQualityMeasure(pNamespace As %String, pType As %String, pName As %String, pAction As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..QualityMeasureFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tHeld = +tData("exists") || (tData("listed") > 0) || (tData("class") '= "")
+    If (pAction = ..#TYPEADD) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(pQuery(..#NEWCLASSKEY))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If pAction = ..#TYPEADD Quit $Select(tHeld: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    If 'tData("exists") Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..QualityMeasureAbsent(.pHttpStatus, .pFault))
+    If pAction '= "" {
+        If tData("listed") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pAction '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tData("class")) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tData("class") _ ".cls", .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    } Else {
+        Set tVersion = ""
+    }
+    If pType = ..#TYPEQUALITYMEASURE {
+        Set pResult = ..QualityMeasureRow(pNamespace, .tData, tVersion)
+    } Else {
+        If pAction '= "" {
+            Set tSC = ..PlanQualityMeasure(pNamespace, ..#TYPECOPY, pName, .pQuery, {}, .tPlan, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit tSC
+        }
+        Set pResult = {}
+        Do pResult.%Set("Name", tData("name"), "string")
+        Do pResult.%Set("Version", tVersion, "string")
+        Do pResult.%Set("Groups", tData("groups"), "number")
+        Do pResult.%Set("NewName", $Get(pQuery(..#NEWNAMEKEY)), "string")
+        Do pResult.%Set("NewClass", $Get(pQuery(..#NEWCLASSKEY)), "string")
+        Do pResult.%Set("Present", 0, "boolean")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Judge the quality measure write <var>pType</var> of <var>pName</var> before anything is written (Story 24.12). In order, each refusal before any save: the shape rules
+/// (<method>QualityMeasureViolations</method>, a copy's new name too, 422); a class of OcuPilot's own (the new class of an add or copy, the measure's class for the others, 403
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); the new class's shape (<code>ANALYTICS.QUALITYMEASURE.CLASS</code>, 422); the measure read now
+/// (<method>ReadQualityMeasureData</method>): one not there is 404 <code>ABSENT</code>, one two classes declare 409 <code>AMBIGUOUS</code>, a held name on an add 409
+/// <code>TAKEN</code>; then the model composed from <code>%GetModel</code> read now (<method>VendorQualityMeasureCompose</method>), whose refusals are
+/// <method>QualityMeasureComposeRefusal</method>'s. <var>pPlan</var> holds what the write needs: <code>class</code> (the class it saves or deletes), <code>text</code> (its new
+/// text), <code>prior</code> (the text read, <code>""</code> for a create), <code>version</code>, <code>compiled</code> (whether the class was up to date) and <code>name</code> (the
+/// measure's name after the write). A delete has no text. Nothing is written.</p>
+ClassMethod PlanQualityMeasure(pNamespace As %String, pType As %String, pName As %String, ByRef pQuery, pBody As %DynamicObject, Output pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pPlan
+    Set tNew = $Get(pQuery(..#NEWNAMEKEY))
+    Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
+    Set tNewClass = $Select(pType = ..#TYPEADD: pBody.%Get("Class"), 1: $Get(pQuery(..#NEWCLASSKEY)))
+    Kill tViolations
+    Set tSC = ..QualityMeasureViolations(pType, pName, "", pBody, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    If (pType = ..#TYPECOPY) && '..QualityMeasureNameShaped(tNew) Set tViolations($Increment(tViolations)) = $ListBuild("NewName", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    If tCreates && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tNewClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If tCreates && '..ListingClassShaped(tNewClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECLASS, .pHttpStatus, .pFault)
+    Set tSC = ..QualityMeasureFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If pType = ..#TYPEADD {
+        If +tData("exists") || (tData("listed") > 0) || (tData("class") '= "") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault)
+    } Else {
+        If 'tData("exists") Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+        If tData("listed") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pType '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tData("class")) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    }
+    Set pPlan("class") = $Select(tCreates: tNewClass, 1: tData("class"))
+    Set pPlan("name") = $Select(pType = ..#TYPEADD: pName, pType = ..#TYPECOPY: tNew, 1: tData("name"))
+    Set pPlan("compiled") = ''$Get(tData("compiled"))
+    Set pPlan("text") = ""
+    Set pPlan("prior") = ""
+    Set pPlan("version") = ""
+    If pType = ..#TYPEDELETE Quit $$$OK
+    If 'tCreates {
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Read(..AtelierPortClass(), pNamespace, pPlan("class") _ ".cls", .tPrior, .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pPlan("prior") = tPrior
+        Set pPlan("version") = tVersion
+    }
+    Set tCaught = ""
+    Set tCode = ""
+    Set tSC = ..VendorQualityMeasureCompose(pNamespace, pType, $Get(tData("name"), pName), pBody, tNew, tNewClass, .tXml, .tCode, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the quality measure could not be composed", .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit ..Statused(tSC, "the quality measure could not be composed", .pHttpStatus, .pFault)
+    If tCode '= "" Quit ..QualityMeasureComposeRefusal(tCode, .pHttpStatus, .pFault)
+    If tCreates {
+        Set pPlan("text") = ##class(OcuPilot.Kernel.QualityMeasureText).ClassText(pPlan("class"), "", tXml)
+    } ElseIf '##class(OcuPilot.Kernel.QualityMeasureText).Splice(pPlan("prior"), "", tXml, .tSpliced) {
+        Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+    } Else {
+        Set pPlan("text") = tSpliced
+    }
+    Quit $$$OK
+}
+
+/// <p>The refusal sentence of the write <var>pType</var> of <var>pName</var> (<var>pPart</var>, none yet) with the members <var>pBody</var>, <code>""</code> when nothing refuses it:
+/// <method>PlanQualityMeasure</method>'s, with nothing written. The mint and a screen's save ask it, so the agent and the person are refused what the write would refuse.</p>
+ClassMethod QualityMeasureProblem(pNamespace As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        Set tSC = ..PlanQualityMeasure(pNamespace, pType, pName, .pQuery, pBody, .tPlan, .tHttp, .tFault)
+        If $$$ISERR(tSC) && $IsObject($Get(tFault)) Set tProblem = tFault.%Get("reason")
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p>Make the quality measure write <var>pType</var> (Story 24.12, AD-65): <method>PlanQualityMeasure</method>, then the class saved, compiled and deleted through
+/// <method>WriteClass</method>. A create (<code>ADD</code>, <code>COPY</code>) saves a new class and compiles it; an update saves the class's text with the
+/// <code>QualityMeasure</code> XData replaced, against the version read, and compiles it; a delete deletes the class. A compile the instance refuses (its own text is logged, never
+/// sent) undoes the write and answers 422 <code>ANALYTICS.QUALITYMEASURE.COMPILE</code>. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row
+/// (<method>AuditWrite</method>), a restored one with its outcome. With <var>pDry</var> nothing is written and <var>pResult</var> stays empty.</p>
+ClassMethod PerformQualityMeasure(pNamespace As %String, pType As %String, pName As %String, ByRef pQuery, pBody As %DynamicObject, pDry As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..PlanQualityMeasure(pNamespace, pType, pName, .pQuery, pBody, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || pDry Quit tSC
+    Set tSC = ..WriteClass(pNamespace, pType, tPlan("class"), .tPlan, "quality measure", .tOutcome, .tRefused, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("qualityMeasure", tPlan("name"), "string")
+    Do tEffects.%Set("class", tPlan("class"), "string")
+    Do tEffects.%Set("outcome", tOutcome, "string")
+    Do ..AuditWrite($Case(pType, ..#TYPEADD: ..#VERBQUALITYMEASUREADD, ..#TYPEUPDATE: ..#VERBQUALITYMEASUREUPDATE, ..#TYPECOPY: ..#VERBQUALITYMEASURECOPY, : ..#VERBQUALITYMEASUREDELETE), tPlan("name"), tEffects, ..#ENTITYQUALITYMEASURE)
+    If tRefused Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECOMPILE, .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If pType = ..#TYPEDELETE {
+        Do pResult.%Set("Name", tPlan("name"), "string")
+    } Else {
+        Do ..QualityMeasureFacts(pNamespace, tPlan("name"), .tAfter, .tAfterHttp, .tAfterFault)
+        Set tVersion = ""
+        If tAfter("exists") {
+            Do ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tAfter("class") _ ".cls", .tVersion, .tVersionHttp, .tVersionFault)
+            Set pResult = ..QualityMeasureRow(pNamespace, .tAfter, tVersion)
+        } Else {
+            Do pResult.%Set("Name", tPlan("name"), "string")
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for a quality measure write <var>pType</var> of the measure the id <var>pId</var> names (Story 24.12, AD-59): the class the write would
+/// save, compiled, and, as the write does, put back when the compile is refused (<method>ClassWriteSnippet</method>). A write <method>PlanQualityMeasure</method> refuses is a script
+/// that only sets the refusal's sentence. An add's or a copy's steps are gated on one line by a free-name check (the name listed or registered, or its class defined).</p>
+ClassMethod QualityMeasureSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    Set tSC = ..PlanQualityMeasure(tNamespace, pType, pId, .pQuery, pBody, .tPlan, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit $Char(10) _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
+    Set tPrelude = $Char(10) _ " Kill tList Set tListed = 0, tAt = """" Do ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList) For { Set tAt = $Order(tList(tAt)) Quit:tAt=""""  Set:($ZConvert($List(tList(tAt), 1), ""U"") = " _ tNameU _ ") tListed = 1 }"
+    Set tFree = "'tListed, '$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
+    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
 }
 
 }

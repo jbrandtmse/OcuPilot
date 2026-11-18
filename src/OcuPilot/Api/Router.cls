@@ -279,6 +279,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/listing-groups/form" Method="GET" Call="AnalyticsListingGroupForm"/>
   <Route Url="/analytics/listing-groups" Method="POST" Call="AnalyticsListingGroupCreate"/>
   <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
+  <Route Url="/analytics/quality-measures/form" Method="GET" Call="AnalyticsQualityMeasureForm"/>
+  <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
@@ -1994,6 +1996,19 @@ ClassMethod AnalyticsListingGroupCreate() As %Status
 ClassMethod AnalyticsListingCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.ListingSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/quality-measures/form</code> (Story 24.12): one quality measure for the Edit and Copy dialogs.</p>
+ClassMethod AnalyticsQualityMeasureForm() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureForm).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measures</code> (Story 24.12): Quality measures' New quality measure, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business

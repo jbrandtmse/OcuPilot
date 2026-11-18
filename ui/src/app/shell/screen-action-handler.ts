@@ -160,6 +160,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.11: the Listing groups and the Listings lists, whose Delete and Remove type the name, and whose New, Edit, Copy, Add, Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+  // Story 24.12: the Quality measures, whose Delete types the name and whose New, Edit and Copy dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -544,6 +546,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The Listing groups' page registers Edit and Copy itself, and the Listings' page Change listing, whose dialogs send the values (Story 24.11).
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': ['update', 'copy'],
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': ['set'],
+  // Story 24.12: the Quality measures' Edit and Copy, which their dialogs send.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': ['update', 'copy'],
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
@@ -762,6 +766,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.11: a deleted listing group takes its class, and a removed listing leaves its group; cubes lose them either way.
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': { delete: STRINGS.analyticsListingGroupDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { remove: STRINGS.analyticsListingRemoveConsequence },
+  // Story 24.12: a quality measure's deletion.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { delete: STRINGS.analyticsQualityMeasureDeleteConsequence },
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
@@ -860,6 +866,8 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.11: a delete types the listing group's name and a remove the listing's name.
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.12: a delete types the quality measure's full name, which the list's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };

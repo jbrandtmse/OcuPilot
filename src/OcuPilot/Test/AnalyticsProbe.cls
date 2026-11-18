@@ -21,6 +21,9 @@
 /// <method>CreateHidden</method> and <method>RemoveHidden</method> (a cube whose resource <parameter>HIDDENRESOURCE</parameter> no
 /// principal of the cube manager holds), and the cleanup of what a build leaves: the build tracking and statistics nodes of each probe
 /// cube, and the source classes' update node. <method>Gone</method> checks the hidden cube and that residue.</p>
+/// <p>Story 24.12 adds the quality measures: <method>CreateQualityMeasures</method> saves and compiles four measure classes in the probe's package (compiled, refused, linked and
+/// disabled), <method>CreateEdgeQualityMeasures</method> the edge measures (no subject area, a dangling link), <method>CreateTwinQualityMeasure</method> a second class declaring
+/// the compiled measure's name, which <method>RemoveTwinQualityMeasure</method> deletes, and <method>RemoveQualityMeasures</method> deletes them all with their <code>^DeepSee.QMsrs</code> nodes. <method>Remove</method> calls it and <method>Left</method> checks those nodes.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
 /// <code>USER</code> by explicit save and restore of the namespace, and a run needs a throwaway instance.</p>
 Class OcuPilot.Test.AnalyticsProbe Extends %RegisteredObject
@@ -158,6 +161,62 @@ Parameter LISTGROUPTWINLATECLASS = "OcuPilotProbe.Analytics.ZListingGroupTwin";
 Parameter LISTGROUPNOCUBE = "OcuPilotProbeNoSuchCube";
 
 Parameter LISTGROUPSQL = "SELECT ID FROM OcuPilotProbe_Analytics.Visit";
+
+/// <p>What the quality measure tests (Story 24.12) name: the catalog and set every probe measure carries, each measure's name and the class that declares it. The
+/// subject area of each is <parameter>VISITS</parameter>. <method>RemoveQualityMeasures</method> and <method>Left</method> find whatever a failed test left.</p>
+Parameter QMCATALOG = "OcuPilotProbe";
+
+Parameter QMSET = "Quality";
+
+/// <p>The measure whose class compiles: two groups, one disabled element, one documentation item.</p>
+Parameter QMCOMPILED = "OcuPilotProbe/Quality/Compiled";
+
+Parameter QMCOMPILEDCLASS = "OcuPilotProbe.Analytics.QMCompiled";
+
+/// <p>The measure whose expression names a group it does not hold: its compile is refused and its name is registered.</p>
+Parameter QMREFUSED = "OcuPilotProbe/Quality/Refused";
+
+Parameter QMREFUSEDCLASS = "OcuPilotProbe.Analytics.QMRefused";
+
+/// <p>The measure linked to <parameter>QMCOMPILED</parameter>, with a caption of its own and no group.</p>
+Parameter QMLINKED = "OcuPilotProbe/Quality/Linked";
+
+Parameter QMLINKEDCLASS = "OcuPilotProbe.Analytics.QMLinked";
+
+/// <p>The disabled measure: its class compiles and the vendor lists it with no name.</p>
+Parameter QMOFF = "OcuPilotProbe/Quality/Off";
+
+Parameter QMOFFCLASS = "OcuPilotProbe.Analytics.QMOff";
+
+/// <p>The classes <method>CreateTwinQualityMeasure</method> saves: each declares <parameter>QMCOMPILED</parameter>'s name, and their class names sort before and after the compiled measure's.</p>
+Parameter QMTWINCLASS = "OcuPilotProbe.Analytics.AQMTwin";
+
+Parameter QMTWINLATECLASS = "OcuPilotProbe.Analytics.ZQMTwin";
+
+/// <p>The edge measures <method>CreateEdgeQualityMeasures</method> saves: one whose subject area names no cube, and a measure linked to a master whose class is deleted afterwards (the
+/// master's name and class are <parameter>QMMASTER</parameter> and <parameter>QMMASTERCLASS</parameter>, which exist only while the link is made).</p>
+Parameter QMMISSINGAREA = "OcuPilotProbeNoSuchArea";
+
+Parameter QMNOAREA = "OcuPilotProbe/Quality/NoArea";
+
+Parameter QMNOAREACLASS = "OcuPilotProbe.Analytics.QMNoArea";
+
+Parameter QMMASTER = "OcuPilotProbe/Quality/Master";
+
+Parameter QMMASTERCLASS = "OcuPilotProbe.Analytics.QMMaster";
+
+Parameter QMDANGLING = "OcuPilotProbe/Quality/Dangling";
+
+Parameter QMDANGLINGCLASS = "OcuPilotProbe.Analytics.QMDangling";
+
+/// <p>What the quality measure write tests (Story 24.12, Batch 2) name: their measures' catalog and their classes' package start with <parameter>QMWRITE</parameter>
+/// (<parameter>QMWRITECLASS</parameter> for the classes they save), and the classes they save directly to show a write refuse OcuPilot's own code start with
+/// <parameter>QMWRITEOWNCLASS</parameter> in any letter case. <method>RemoveQualityMeasures</method> and <method>Left</method> cover every class and registry node under them.</p>
+Parameter QMWRITE = "OcuProbeQMW";
+
+Parameter QMWRITECLASS = "OcuProbeQMW.Analytics.QMW";
+
+Parameter QMWRITEOWNCLASS = "OcuPilotQMW.Analytics.QMW";
 
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
@@ -743,6 +802,229 @@ ClassMethod RemoveListingGroups() As %Status
     Quit tSC
 }
 
+/// <p>The class text of the quality measure <var>pWhich</var> (<code>compiled</code>, <code>refused</code>, <code>linked</code>, <code>off</code>, <code>noarea</code>,
+/// <code>master</code>, <code>dangling</code>, <code>twin</code> or <code>twinlate</code>): a class extending <class>%DeepSee.QualityMeasure.QualityMeasure</class> whose <code>QualityMeasure</code> XData holds the measure. A single quote
+/// in the XML stands for a double one.</p>
+ClassMethod QualityMeasureText(pWhich As %String) As %String [ Private ]
+{
+    Set tNL = $Char(13, 10)
+    Set tNS = "http://www.intersystems.com/deepsee/qualityMeasure"
+    Set tHead = "<qualityMeasure xmlns='" _ tNS _ "' catalog='" _ ..#QMCATALOG _ "' set='" _ ..#QMSET _ "' "
+    If pWhich = "compiled" {
+        Set tClass = ..#QMCOMPILEDCLASS
+        Set tXML = tHead _ "id='Compiled' caption='OcuPilot probe measure' description='Visits that ran long' subjectArea='" _ ..#VISITS _ "' expression='[Long]/[Everyone]' published='true' format='#.##' href='https://example.invalid/measure'>" _
+            "<group name='Long' caption='Long stays' description='Visits over the limit'>" _
+            "<element name='Over30' caption='Over 30 minutes' mdx='{[Minutes].&amp;[30]}'/>" _
+            "<element name='Retired' caption='Retired rule' mdx='{[Minutes].&amp;[99]}' disabled='true'/>" _
+            "</group>" _
+            "<group name='Everyone' caption='All visits' description='Every visit'>" _
+            "<element name='AllVisits' caption='All visits' mdx='{[Minutes].Members}'/>" _
+            "</group>" _
+            "<meta name='Purpose' caption='Purpose' section='Overview'>Counts the long visits &amp; their share.</meta>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "refused" {
+        Set tClass = ..#QMREFUSEDCLASS
+        Set tXML = tHead _ "id='Refused' caption='Names a missing group' subjectArea='" _ ..#VISITS _ "' expression='[Num]/[Missing]' published='false'>" _
+            "<group name='Num' caption='Numerator'><element name='One' mdx='{[Minutes].&amp;[1]}'/></group>" _
+            "<group name='Spare' caption='Spare group' description='Holds no element' disabled='true'/>" _
+            "<meta name='Draft' caption='Draft note' section='Notes' disabled='true'>Not yet reviewed.</meta>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "linked" {
+        Set tClass = ..#QMLINKEDCLASS
+        Set tXML = tHead _ "id='Linked' caption='Follows the compiled measure' description='Linked' linkedTo='" _ ..#QMCOMPILED _ "' subjectArea='" _ ..#VISITS _ "' expression='1'/>"
+    } ElseIf pWhich = "off" {
+        Set tClass = ..#QMOFFCLASS
+        Set tXML = tHead _ "id='Off' caption='Disabled' subjectArea='" _ ..#VISITS _ "' expression='[Long]/[Everyone]' disabled='true'/>"
+    } ElseIf pWhich = "noarea" {
+        Set tClass = ..#QMNOAREACLASS
+        Set tXML = tHead _ "id='NoArea' caption='Names no cube' subjectArea='" _ ..#QMMISSINGAREA _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='One' mdx='{[Minutes].&amp;[3]}'/></group>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "master" {
+        Set tClass = ..#QMMASTERCLASS
+        Set tXML = tHead _ "id='Master' caption='Master of the dangling link' subjectArea='" _ ..#VISITS _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='One' mdx='{[Minutes].&amp;[4]}'/></group>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "dangling" {
+        Set tClass = ..#QMDANGLINGCLASS
+        Set tXML = tHead _ "id='Dangling' caption='Follows a deleted master' linkedTo='" _ ..#QMMASTER _ "' subjectArea='" _ ..#VISITS _ "' expression='1'/>"
+    } Else {
+        Set tClass = $Select(pWhich = "twin": ..#QMTWINCLASS, 1: ..#QMTWINLATECLASS)
+        Set tXML = tHead _ "id='Compiled' caption='Twin of the compiled measure' subjectArea='" _ ..#VISITS _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='Twin' mdx='{[Minutes].&amp;[2]}'/></group>" _
+            "</qualityMeasure>"
+    }
+    Quit "Class " _ tClass _ " Extends %DeepSee.QualityMeasure.QualityMeasure" _ tNL _ "{" _ tNL _
+        "XData QualityMeasure [ XMLNamespace = ""http://www.intersystems.com/deepsee/qualityMeasure"" ]" _ tNL _ "{" _ tNL _
+        $Translate(tXML, "'", """") _ tNL _ "}" _ tNL _ "}" _ tNL
+}
+
+/// <p>Save the probe's quality measure classes in <code>USER</code> and compile each, the compiled measure first because the linked one names it: the compiled
+/// measure, the measure whose compile is refused (its name is registered anyway), the linked measure and the disabled one, which the vendor lists with no name. A compile
+/// that is refused for the second is the point of that measure, not a failure. <method>RemoveQualityMeasures</method> deletes them.</p>
+ClassMethod CreateQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tWhich = "compiled", "refused", "linked", "off" {
+            Set tClass = $Case(tWhich, "compiled": ..#QMCOMPILEDCLASS, "refused": ..#QMREFUSEDCLASS, "linked": ..#QMLINKEDCLASS, : ..#QMOFFCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCompile = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If (tWhich '= "refused") && $$$ISERR(tCompile) {
+                Set tSC = tCompile
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save the edge quality measures in <code>USER</code>: a measure whose subject area names no cube, and a measure linked to a master that is then deleted, so the link points at
+/// no measure. All three compile before the master is deleted. <method>RemoveQualityMeasures</method> deletes them.</p>
+ClassMethod CreateEdgeQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tWhich = "noarea", "master", "dangling" {
+            Set tClass = $Case(tWhich, "noarea": ..#QMNOAREACLASS, "master": ..#QMMASTERCLASS, : ..#QMDANGLINGCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tSC = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Delete(..#QMMASTERCLASS, "-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save a twin quality measure in <code>USER</code>: a second class that declares the compiled measure's name, its class name sorting before the compiled measure's
+/// or, when <var>pLate</var> is true, after it. It compiles and the vendor lists it, but its name stays registered to the compiled measure's class.
+/// <method>RemoveTwinQualityMeasure</method> and <method>RemoveQualityMeasures</method> delete it.</p>
+ClassMethod CreateTwinQualityMeasure(pLate As %Boolean = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = $Select(pLate: ..#QMTWINLATECLASS, 1: ..#QMTWINCLASS)
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText($Select(pLate: "twinlate", 1: "twin")))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $System.OBJ.Compile(tClass, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete both twin quality measures' classes from <code>USER</code>; nothing happens when they are not there. The registered measure's nodes stay.</p>
+ClassMethod RemoveTwinQualityMeasure() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#QMTWINCLASS, ..#QMTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the probe's quality measure classes from <code>USER</code>, the twins first, and kill what is left of the
+/// probe measures' registry nodes; nothing happens when there are none.</p>
+ClassMethod RemoveQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#QMTWINCLASS, ..#QMTWINLATECLASS, ..#QMLINKEDCLASS, ..#QMREFUSEDCLASS, ..#QMOFFCLASS, ..#QMCOMPILEDCLASS, ..#QMDANGLINGCLASS, ..#QMMASTERCLASS, ..#QMNOAREACLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+            Kill ^DeepSee.QMsrs("qmsrClasses", tClass)
+        }
+        For tName = ..#QMCOMPILED, ..#QMREFUSED, ..#QMLINKED, ..#QMOFF, ..#QMNOAREA, ..#QMMASTER, ..#QMDANGLING {
+            Kill ^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))
+        }
+        ; The write tests' measures and classes, whatever a failed test left of them, in any letter case.
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
+        }
+        Do ..KillQualityMeasureWriteNodes(1)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The registry nodes of the write tests' measures and classes, in the namespace the process is in: the names that start with <parameter>QMWRITE</parameter> and the classes that start with
+/// <parameter>QMWRITE</parameter> or <parameter>QMWRITEOWNCLASS</parameter>'s package, compared without regard to case. With <var>pKill</var> each is killed; the count found is answered.</p>
+ClassMethod KillQualityMeasureWriteNodes(pKill As %Boolean) As %Integer
+{
+    Set tCount = 0
+    Set tNamePrefix = $ZConvert(..#QMWRITE, "U") _ "/"
+    Set tClassPrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ ".", $ZConvert($Piece(..#QMWRITEOWNCLASS, ".", 1), "U") _ ".")
+    Set tName = ""
+    For {
+        Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tName))
+        If tName = "" Quit
+        If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrNames", tName)
+        }
+    }
+    Set tClass = ""
+    For {
+        Set tClass = $Order(^DeepSee.QMsrs("qmsrClasses", tClass))
+        If tClass = "" Quit
+        Set tUpper = $ZConvert(tClass, "U")
+        For tAt = 1:1:$ListLength(tClassPrefixes) {
+            Set tPrefix = $List(tClassPrefixes, tAt)
+            If $Extract(tUpper, 1, $Length(tPrefix)) '= tPrefix Continue
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrClasses", tClass)
+            Quit
+        }
+    }
+    Set tArea = ""
+    For {
+        Set tArea = $Order(^DeepSee.QMsrs("cubes", tArea))
+        If tArea = "" Quit
+        Set tName = ""
+        For {
+            Set tName = $Order(^DeepSee.QMsrs("cubes", tArea, tName))
+            If tName = "" Quit
+            If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+                Set tCount = tCount + 1
+                If pKill Kill ^DeepSee.QMsrs("cubes", tArea, tName)
+            }
+        }
+    }
+    Quit tCount
+}
+
 /// <p>Write the Category rows and the Visit rows, in <code>USER</code>, deterministically.</p>
 ClassMethod Fill() As %Status [ Private ]
 {
@@ -894,6 +1176,7 @@ ClassMethod Remove() As %Status
             If ##class(%Dictionary.CompiledClass).%ExistsId(tClass) Do $ClassMethod(tClass, "%KillExtent")
         }
         Do ..RemoveListingGroups()
+        Do ..RemoveQualityMeasures()
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
         Kill ^OBJ.DSTIME(..#VISITCLASS), ^OBJ.DSTIME(..#CATEGORYCLASS)
         Do ..ForgetBuilds()
@@ -1023,6 +1306,20 @@ ClassMethod Left() As %String
             Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", ..#LISTINGWRITE), -1)
             Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
             If $Extract(tListing, 1, $Length(..#LISTINGWRITE)) = ..#LISTINGWRITE Set tLeft = tLeft _ ",cube listing node " _ tCube _ "/" _ tListing
+        }
+        ; The quality measures' registry nodes, which a class delete removes only for the class the name is registered to.
+        For tName = ..#QMCOMPILED, ..#QMREFUSED, ..#QMLINKED, ..#QMOFF, ..#QMNOAREA, ..#QMMASTER, ..#QMDANGLING {
+            If $Data(^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure " _ tName
+            If $Data(^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure cube node " _ tName
+            If $Data(^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure missing-area node " _ tName
+        }
+        For tClass = ..#QMCOMPILEDCLASS, ..#QMREFUSEDCLASS, ..#QMLINKEDCLASS, ..#QMOFFCLASS, ..#QMTWINCLASS, ..#QMTWINLATECLASS, ..#QMNOAREACLASS, ..#QMMASTERCLASS, ..#QMDANGLINGCLASS {
+            If $Data(^DeepSee.QMsrs("qmsrClasses", tClass)) Set tLeft = tLeft _ ",quality measure class node " _ tClass
+        }
+        If ..KillQualityMeasureWriteNodes(0) Set tLeft = tLeft _ ",quality measure write nodes"
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",quality measure classes " _ tPrefix
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"

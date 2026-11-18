@@ -61,7 +61,7 @@ Method TestADatabaseThatIsReadOnlyOrNotMountedRefusesEveryWrite()
 /// <p>AC1, AC5: with every other pair held, a caller without READ on a database the namespace maps code from (the pairs <code>AtelierPort.WritePairs</code> adds to the screen's own) or without WRITE on
 /// the database the listing groups' global maps to, which the seam moves to another resource so that it is not a pair <code>WritePairs</code> names, is refused 403 naming that pair on each
 /// of the seven writes and writes nothing; with the destination's WRITE held the update is made, so the refusal was that pair's alone.</p>
-/// <p>Mutation (Rule 19): drop <code>tWritePairs</code> from the pair list of <method>OcuPilot.Port.AnalyticsPort.AdmitListingGroup</method> -- the two READ legs go red; drop the WRITE check from
+/// <p>Mutation (Rule 19): drop <code>tWritePairs</code> from the pair list of <method>OcuPilot.Port.AnalyticsPort.AdmitClassWrite</method> -- the two READ legs go red; drop the WRITE check from
 /// <method>OcuPilot.Port.AnalyticsPort.AdmitDestination</method> -- the destination leg goes red.</p>
 Method TestAWriteNeedsEveryDatabasePairItsCodeAndItsDestinationUse()
 {

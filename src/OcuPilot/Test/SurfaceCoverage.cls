@@ -300,6 +300,10 @@ XData Coverage
 <tool name="analytics.listinggrouplistings.add" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
 <tool name="analytics.listinggrouplistings.set" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
 <tool name="analytics.listinggrouplistings.remove" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.qualitymeasures.add" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAMeasureIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.qualitymeasures.update" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAnUpdateChangesTheHeaderAndKeepsEverythingElse"/>
+<tool name="analytics.qualitymeasures.copy" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestACopyMakesANewMeasureAndLeavesTheSource"/>
+<tool name="analytics.qualitymeasures.delete" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
@@ -334,6 +338,9 @@ XData Coverage
 <screen name="AnalyticsFolderItemList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsListingGroupList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
 <screen name="AnalyticsListingGroupListingList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureElementList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureMetaList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
 <screen name="AnalyticsArchitectLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsAnalyzerLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsUserPortalLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>

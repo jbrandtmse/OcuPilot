@@ -274,6 +274,17 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 If $List(tOwnPair, 1) = "" Continue
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsQualityMeasureAction") {
+            ; Story 24.12: the quality measure editor's four writes declare WRITE on the database ^DeepSee.QMsrs maps to and READ on the routines database of the request's
+            ; namespace, here this one's, then the source code API's own pairs and its write pairs for the namespace, after their screen's pairs, each once (AD-8, AD-61, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#QUALITYMEASUREGLOBAL, .tMeasureResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's quality measure database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild(tMeasureResource, "WRITE"), $ListBuild(tRoutineResource, "READ")) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs($Namespace)
+            For tOwnAt = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsListingGroupAction") {
             ; Story 24.11: the listing group editor's seven writes declare WRITE on the database ^DeepSee.ListingGroups maps to and READ on the routines
             ; database of the request's namespace, here this one's, then the edit pair, the source code API's own pairs and its write pairs for the

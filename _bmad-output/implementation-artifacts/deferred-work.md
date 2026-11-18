@@ -13756,6 +13756,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: AnalyticsListingGroupCopy (and AnalyticsTermListCopy) declare no CREATES/SENDSBODY/READBACKFIELDS, so ReadBack.Of takes the action kind; a copy's values are NewName/NewClass/NewCubes, which READBACKFIELDS cannot map to the created group's Name/Class/TargetCubes
 - 2026-11-18T05:45:22Z status=escalated owner=burndown by=cr note=decide: accept nothingSent for a copy (AD-58 action-style) or add a ReadBack mapping for copies
+- 2026-11-18T14:33:24Z occurrence=24-12-quality-measures by=spec_gate note=the quality-measure copy reads back nothingSent as the listing-group and term-list copies do
 
 ### DW-2726: Add listing with a name the group already holds is refused with LISTINGTAKEN's sentence, 'Choose other target cubes', which is the wrong advice for that case
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: low | footprint: in-story
@@ -13829,6 +13830,51 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Screen.Tool.Write.READBACKPAYLOAD and ReadBack.ComparesPayload (Story 21.5 rework 1) compare a bodyless write's query payload; AD-58 records READBACKTOOL and READBACKFIELDS but says an action-style write sends no value.
 - 2026-11-18T07:30:12Z status=decision-pending owner=burndown by=cr note=Rule 20 spine line for AD-58 is a veto-window amendment; lead-owned
+
+### DW-2734: Quality measures: the Documentation screen cannot be reached from a measure in the UI (only by URL or the agent's navigate tool); a tab group or a link from Groups and elements is needed
+- source: spec-24-12-quality-measures.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Both child screens are children of the Quality measures list; only Groups and elements opens from a row; the browser test opens Documentation by URL
+- 2026-11-18T13:28:30Z status=open owner=24-12-quality-measures by=harvest note=fix in Batch 3, which writes the documentation; a link or tab may need a strings row (veto)
+
+### DW-2735: Quality measures: AC4's first-call clause holds only when the journal-scan class runs before the other 24.12 classes on its throwaway
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestAAReadsMakeNoJournaledWrite scans its own process only; AnalyticsQualityMeasureGate reads over HTTP and in a JOB child, unscanned, and CI legs do not order the three classes. QA observed the scan first on a fresh instance once.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a fresh-instance TestAA scan run before any other 24.12 class records a write a later scan does not
+
+### DW-2736: Quality measures: the empty-state browser test needs USER to hold no quality measure at all, which it asserts first but did not make
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: analytics.browser-spec.mjs QMEMPTYHELD asserts %GetQualityMeasureList is empty after removing the probe; a namespace-wide empty state cannot be drawn otherwise.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=the QMEMPTYHELD precondition fails in a CI browser leg
+
+### DW-2737: Analytics read tests copy RowNamed and AssertSameFields per class (24.11 Read, 24.12 Read and Edge) instead of sharing a base
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AnalyticsQualityMeasureRead.RowNamed/AssertSameFields equal AnalyticsListingGroupRead's; Edge.AssertSame repeats Read's because the assert macros need the test instance.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a 24.12 Batch 2 or 3 test class adds another copy; then extract one analytics read test base
+
+### DW-2738: Quality measures: a name the vendor lists through an unregistered class is no row, a branch no test reaches
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Collect skips a name %GetQualityMeasureClass cannot find (Decided in-stage 2); deleting the registered class while a twin remains reaches it; no probe state does.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a measure listed by the classic page is missing from Quality measures while its registered class exists
+
+### DW-2743: Quality measures: a refused create's registry nodes and listed measures are compared with their prior state only through a seam that compiles nothing
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AnalyticsListingGroupAtelier answers errors without compiling, so the vendor never registers the name; the delete test pins node removal for a compiled class only
+- 2026-11-18T18:56:58Z status=wontfix-accepted owner=24-12-quality-measures by=harvest note=reopen_if=a refused create on a fresh instance leaves a ^DeepSee.QMsrs node or a listed measure behind
+
+### DW-2744: Quality measures' list page and four write tools repeat the listing groups' page wiring and tool bodies with renamed fields
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: quality-measure-list.page.ts repeats about 110 of listing-group-list.page.ts's 136 lines; AnalyticsQualityMeasureCopy repeats AnalyticsListingGroupCopy's schema, PortQuery and StateRows with Listings renamed Groups. Rule 2 copy with the spec's weak reason.
+- 2026-11-18T19:32:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=Batch 3 or another class editor adds a third copy of the page wiring or a copy tool body; then extract a shared base
+
+### DW-2745: A class write whose refused compile could not be put back (restorefailed) still answers the COMPILE sentence saying nothing was changed
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PerformQualityMeasure and PerformListingGroup answer 422 COMPILE for every refused compile; RestoreClass's restorefailed is logged and audited but the caller reads 'so nothing was changed'. Needs a new sentence.
+- 2026-11-18T19:32:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a ConfigChange row with outcome restorefailed is seen on any instance
+
+### DW-2746: Quality measures' Edit dialog stays disabled with no message when its form read fails, as the listing groups' does
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: QualityMeasureDialog.load returns on a null form (a measure deleted after its row was selected), so loaded stays false and Confirm stays aria-disabled; ListingGroupDialog.load does the same. A message needs a new string.
+- 2026-11-18T19:32:57Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a person reports an Edit dialog that never enables its button, or a browser spec meets one
 - 2026-11-18T10:43:58Z status=resolved-by:21-5-globals-and-the-data-tools by=runner note=AD-58_sentence_appended_(orchestrator_ruling;add-only)
 
 ### DW-2731: Prohibited.ImportedGlobals catches an exception without setting its status, so an error raised while judging an import's globals reads as permitted

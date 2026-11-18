@@ -307,30 +307,4 @@ Method TestTheRoutesAnswerJsonEnvelopesOfTheDeclaredShape()
     }
 }
 
-/// <p>The script steps of the write <var>pType</var> on the group <var>pId</var> with the body <var>pBody</var>, through the port.</p>
-ClassMethod Script(pType As %String, pId As %String, pBody As %DynamicObject) As %DynamicArray
-{
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = pId
-    Quit $ClassMethod(..#PORT, "Snippet", "ListingGroups", pType, .tQuery, pBody)
-}
-
-/// <p>Run the first step of <var>pSteps</var>, a script, line by line in this process; 1 when it left <code>tSC</code> a success, 0 when it left it an error.</p>
-ClassMethod RunScript(pSteps As %DynamicArray) As %Boolean
-{
-    Set tOrigNS = $NAMESPACE
-    XECUTE "Kill tSC"
-    Try {
-        Set tText = pSteps.%Get(0).text
-        For tAt = 1:1:$Length(tText, $Char(10)) {
-            Set tLine = $Piece(tText, $Char(10), tAt)
-            If tLine '= "" XECUTE tLine
-        }
-    } Catch {
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit ''$System.Status.IsOK($Get(@"tSC"))
-}
-
 }

@@ -110,6 +110,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Do ..HeldLeg("/analytics/listing-groups?ns=USER", "OcuPilot.Screen.Tool.AnalyticsListingGroupAdd", "OcuProbeHold2411", {"Name": "OcuProbeHold2411", "OcuProbeUnexpected": 1}.%ToJSON())
     Set tListingId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold2411", "hold"))
     Do ..HeldLeg("/analytics/listing-group-listings?ns=USER", "OcuPilot.Screen.Tool.AnalyticsListingAdd", tListingId, {"ListingGroup": "OcuProbeHold2411", "Name": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A quality measure is namespace-scoped and its id is its full name, catalog/set/id.
+    Do ..HeldLeg("/analytics/quality-measures?ns=USER", "OcuPilot.Screen.Tool.AnalyticsQualityMeasureAdd", "OcuProbeHold2412/Hold/Id", {"Name": "OcuProbeHold2412/Hold/Id", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A business partner is namespace-scoped and its id is its name alone.
     Do ..HeldLeg("/interop/business-partners?ns=USER", "OcuPilot.Screen.Tool.InteropPartnerAdd", "OcuProbeHold226", {"Name": "OcuProbeHold226", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.

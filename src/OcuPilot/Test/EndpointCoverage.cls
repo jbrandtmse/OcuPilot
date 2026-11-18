@@ -293,6 +293,8 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/analytics/listing-groups/form" path="/api/ocupilot/analytics/listing-groups/form" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/analytics/listing-groups" path="/api/ocupilot/analytics/listing-groups" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/analytics/listing-group-listings" path="/api/ocupilot/analytics/listing-group-listings" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/quality-measures/form" path="/api/ocupilot/analytics/quality-measures/form" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/quality-measures" path="/api/ocupilot/analytics/quality-measures" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/business-partners" path="/api/ocupilot/interop/business-partners" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/config/ddl-mappings" path="/api/ocupilot/config/ddl-mappings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/rest-service" path="/api/ocupilot/rest-service" disposition="envelope" refusal="1"/>

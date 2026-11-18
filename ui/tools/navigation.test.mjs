@@ -462,6 +462,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cubes/relationships',
       // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
       'analytics/listing-groups/listings',
+      // Story 24.12: a quality measure's Documentation and Groups and elements, unlisted, sort with them by class name.
+      'analytics/quality-measures/elements',
+      'analytics/quality-measures/documentation',
       'analytics/term-lists/entries',
       'analytics/cubes',
       'analytics/term-lists',
@@ -476,6 +479,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cube-manager',
       // Story 24.11: Listing groups, listed after them at position 9.
       'analytics/listing-groups',
+      // Story 24.12: Quality measures, listed after them at position 10.
+      'analytics/quality-measures',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -968,6 +973,21 @@ test('Story 20.11: a Cubes row opens the cube\'s Measures tab, a Relationships r
     screenForUrl(`/analytics/listing-groups/listings/${encodeEntityId('OcuPilotProbeListings')}`)?.descriptor,
     'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
     'a Listings URL resolves to the Listings list'
+  );
+  // Story 24.12: a quality measure's name opens its Groups and elements, whose name holds slashes the one-segment id carries.
+  const qualityMeasures = screenForRoute('analytics/quality-measures');
+  assert.ok(qualityMeasures, 'Quality measures is declared');
+  assert.equal(childListFor(qualityMeasures)?.route, 'analytics/quality-measures/elements', 'the Quality measures name cell opens the Groups and elements');
+  assert.equal(documentScreenFor(qualityMeasures), null, 'and Quality measures pairs no document viewer');
+  assert.equal(
+    screenForUrl(`/analytics/quality-measures/elements/${encodeEntityId('OcuPilotProbe/Set/Id')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+    'a Groups and elements URL resolves to the list, the name\'s slashes encoded in one segment'
+  );
+  assert.equal(
+    screenForUrl(`/analytics/quality-measures/documentation/${encodeEntityId('OcuPilotProbe/Set/Id')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+    'a Documentation URL resolves to the list'
   );
 });
 

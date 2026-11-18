@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:655 */
+  /** EXPERIENCE.md:657 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8202,6 +8202,74 @@ export const STRINGS = {
   analyticsListingGroupsEmptyAgent: 'create a listing group',
   /** EXPERIENCE.md:612 */
   analyticsListingGroupListingsEmptyAgent: 'add a listing to this listing group',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresLabel: 'Quality measures',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsLabel: 'Groups and elements',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureCriterion: 'Quality measure',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnPublished: 'Published',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnGroup: 'Group',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnMdx: 'MDX',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnContent: 'Content',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresEmpty: 'No quality measure is defined in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsEmpty: 'This quality measure no longer exists, or it has no groups.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasEmpty: 'This quality measure no longer exists, or it has no documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt1: 'Summarize the quality measures in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt2: 'Which quality measures are not compiled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt3: 'Which quality measures are linked to another measure?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt1: 'Summarize the groups of this quality measure.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt2: 'Which elements are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt3: 'Explain what each element\'s MDX selects.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt1: 'Summarize this quality measure\'s documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt2: 'Which documentation items are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt3: 'What does the documentation say this measure is for?',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureNewAction: 'New quality measure',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureCatalogLabel: 'Catalog',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSetLabel: 'Set',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureFormatLabel: 'Format',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureLinkedToLabel: 'Linked to',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureDeleteConsequence: 'Deleting this quality measure deletes its class. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSaveConsequence: 'The quality measure\'s class is saved and compiled.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureTaken: 'This namespace already holds a quality measure or class with that name.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAmbiguous: 'Two classes define this quality measure. Change it in its class instead.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureCompile: 'The instance refused to compile the quality measure, so nothing was changed.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAbsent: 'This quality measure no longer exists.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureReadonly: 'The database that holds quality measures is read-only.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureExpression: 'The expression names a group this quality measure does not hold, or its brackets do not match.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureLinked: 'This quality measure is linked to another measure, which defines its expression, format and URL.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasuresEmptyAgent: 'create a quality measure',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

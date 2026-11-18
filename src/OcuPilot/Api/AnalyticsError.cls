@@ -250,6 +250,51 @@ Parameter LISTINGGROUPSQL = "ANALYTICS.LISTINGGROUP.SQL";
 
 Parameter LISTINGGROUPSAVE = "ANALYTICS.LISTINGGROUP.SAVE";
 
+/// <p>409: a quality measure add or copy whose name is listed or registered, or whose class is already defined (Story 24.12).</p>
+Parameter QUALITYMEASURETAKEN = "ANALYTICS.QUALITYMEASURE.TAKEN";
+
+Parameter REASONQUALITYMEASURETAKEN = "This namespace already holds a quality measure or class with that name.";
+
+/// <p>409: two classes declare the quality measure's name, so a write keyed by the name cannot tell which to change.</p>
+Parameter QUALITYMEASUREAMBIGUOUS = "ANALYTICS.QUALITYMEASURE.AMBIGUOUS";
+
+Parameter REASONQUALITYMEASUREAMBIGUOUS = "Two classes define this quality measure. Change it in its class instead.";
+
+/// <p>422: the instance refused to compile the quality measure's class, or its model does not validate, and the write was undone or never made.</p>
+Parameter QUALITYMEASURECOMPILE = "ANALYTICS.QUALITYMEASURE.COMPILE";
+
+Parameter REASONQUALITYMEASURECOMPILE = "The instance refused to compile the quality measure, so nothing was changed.";
+
+/// <p>404: the quality measure is not there.</p>
+Parameter QUALITYMEASUREABSENT = "ANALYTICS.QUALITYMEASURE.ABSENT";
+
+Parameter REASONQUALITYMEASUREABSENT = "This quality measure no longer exists.";
+
+/// <p>409: the database that holds the namespace's quality measures is read-only or not mounted.</p>
+Parameter QUALITYMEASUREREADONLY = "ANALYTICS.QUALITYMEASURE.READONLY";
+
+Parameter REASONQUALITYMEASUREREADONLY = "The database that holds quality measures is read-only.";
+
+/// <p>422: the expression names a group the measure does not hold or whose elements are all disabled, or its brackets do not match.</p>
+Parameter QUALITYMEASUREEXPRESSION = "ANALYTICS.QUALITYMEASURE.EXPRESSION";
+
+Parameter REASONQUALITYMEASUREEXPRESSION = "The expression names a group this quality measure does not hold, or its brackets do not match.";
+
+/// <p>409: a quality measure linked to another measure, whose expression, format and URL the master defines, cannot have them changed.</p>
+Parameter QUALITYMEASURELINKED = "ANALYTICS.QUALITYMEASURE.LINKED";
+
+Parameter REASONQUALITYMEASURELINKED = "This quality measure is linked to another measure, which defines its expression, format and URL.";
+
+/// <p>422: a quality measure class name that is malformed, begins with <code>%</code> or is in an <code>OcuPilot</code> package; the listing groups' sentence.</p>
+Parameter QUALITYMEASURECLASS = "ANALYTICS.QUALITYMEASURE.CLASS";
+
+Parameter REASONQUALITYMEASURECLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+/// <p>The consequence codes of the quality measure delete and of every other quality measure write (Story 24.12).</p>
+Parameter QUALITYMEASUREDELETE = "ANALYTICS.QUALITYMEASURE.DELETE";
+
+Parameter QUALITYMEASURESAVE = "ANALYTICS.QUALITYMEASURE.SAVE";
+
 /// <p>The consequence code of the folder item delete.</p>
 Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
 
@@ -306,6 +351,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#LISTINGGROUPCOMPILE Quit ..#REASONLISTINGGROUPCOMPILE
     If pCode = ..#LISTINGGROUPABSENT Quit ..#REASONLISTINGGROUPABSENT
     If pCode = ..#LISTINGGROUPREADONLY Quit ..#REASONLISTINGGROUPREADONLY
+    If pCode = ..#QUALITYMEASURETAKEN Quit ..#REASONQUALITYMEASURETAKEN
+    If pCode = ..#QUALITYMEASUREAMBIGUOUS Quit ..#REASONQUALITYMEASUREAMBIGUOUS
+    If pCode = ..#QUALITYMEASURECOMPILE Quit ..#REASONQUALITYMEASURECOMPILE
+    If pCode = ..#QUALITYMEASUREABSENT Quit ..#REASONQUALITYMEASUREABSENT
+    If pCode = ..#QUALITYMEASUREREADONLY Quit ..#REASONQUALITYMEASUREREADONLY
+    If pCode = ..#QUALITYMEASUREEXPRESSION Quit ..#REASONQUALITYMEASUREEXPRESSION
+    If pCode = ..#QUALITYMEASURELINKED Quit ..#REASONQUALITYMEASURELINKED
+    If pCode = ..#QUALITYMEASURECLASS Quit ..#REASONQUALITYMEASURECLASS
     Quit ""
 }
 
@@ -351,6 +404,18 @@ ClassMethod ListingGroupCodes() As %List
 ClassMethod ListingGroupConsequenceCodes() As %List
 {
     Quit $ListBuild(..#LISTINGGROUPDELETE, ..#LISTINGGROUPREMOVE, ..#LISTINGGROUPSQL, ..#LISTINGGROUPSAVE)
+}
+
+/// <p>The quality measure writes' eight refusal codes (Story 24.12), as a <class>%List</class>.</p>
+ClassMethod QualityMeasureCodes() As %List
+{
+    Quit $ListBuild(..#QUALITYMEASURETAKEN, ..#QUALITYMEASUREAMBIGUOUS, ..#QUALITYMEASURECOMPILE, ..#QUALITYMEASUREABSENT, ..#QUALITYMEASUREREADONLY, ..#QUALITYMEASUREEXPRESSION, ..#QUALITYMEASURELINKED, ..#QUALITYMEASURECLASS)
+}
+
+/// <p>The consequence codes of the quality measure writes (Story 24.12), as a <class>%List</class>.</p>
+ClassMethod QualityMeasureConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#QUALITYMEASUREDELETE, ..#QUALITYMEASURESAVE)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

@@ -155,6 +155,9 @@ XData Elsewhere
 <screen name="AnalyticsFolderItemList"/>
 <screen name="AnalyticsListingGroupList"/>
 <screen name="AnalyticsListingGroupListingList"/>
+<screen name="AnalyticsQualityMeasureElementList"/>
+<screen name="AnalyticsQualityMeasureList"/>
+<screen name="AnalyticsQualityMeasureMetaList"/>
 <screen name="AnalyticsMdxQuery"/>
 <screen name="AnalyticsTermListEntryList"/>
 <screen name="AnalyticsTermListList"/>

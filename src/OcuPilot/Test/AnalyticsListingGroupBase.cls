@@ -51,6 +51,12 @@ Parameter GATE = "OcuPilot.Test.ScreenGate";
 
 Parameter SEAM = "OcuPilot.Test.AnalyticsGateSeam";
 
+/// <p>The port seam that fails a write's compile when armed (<method>Compiling</method>).</p>
+Parameter COMPILESEAM = "OcuPilot.Test.AnalyticsListingGroupSeam";
+
+/// <p>The port endpoint the definition's writes are made through (<method>Script</method>); a subclass for another definition names its own.</p>
+Parameter WRITEENDPOINT = "ListingGroups";
+
 /// <p>The principal the mint-time SQL rule is judged for: the pairs the listing tools declare, and not <code>%DeepSee_ListingGroupSQL:USE</code>.</p>
 Parameter NOSQLUSER = "OcuP2411LgwNoSql";
 
@@ -95,6 +101,12 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Reset")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Quit ..RemoveFixtures()
+}
+
+/// <p>Remove the definitions and classes a test made, before each test and after it: the listing groups' here, a subclass for another definition overrides it.</p>
+Method RemoveFixtures() As %Status
+{
     Quit $ClassMethod(..#PROBE, "RemoveListingGroups")
 }
 
@@ -110,7 +122,7 @@ Method OnAfterOneTest() As %Status
         Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy), "the policy found before the test is put back")
         Set ..PreparedPolicyTaken = 0
     }
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveListingGroups"), "the test's groups and classes are removed")
+    Do $$$AssertStatusOK(..RemoveFixtures(), "the test's definitions and classes are removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
 }
@@ -427,17 +439,75 @@ ClassMethod Seamed(pEndpoint As %String, pType As %String, pId As %String, pBody
     Quit tOut
 }
 
-/// <p>Hold every pair the listing group writes need in process, but <var>pExcept</var> (a <code>resource:permission</code>, <code>""</code> for none).</p>
+/// <p>The pair spec of the screen pairs the definition's writes need; a subclass for another definition names its own.</p>
+ClassMethod HeldPairSpec() As %String
+{
+    Quit $Parameter(..#PORT, "LISTINGGROUPPAIRS") _ "," _ $Parameter(..#PORT, "LISTINGGROUPEDITPAIRS") _ "," _ $Parameter(..#PORT, "LISTINGGROUPSQLPAIRS")
+}
+
+/// <p>Hold every pair the definition's writes need in process (<method>HeldPairSpec</method>, the source code API's and USER's), but <var>pExcept</var> (a <code>resource:permission</code>,
+/// <code>""</code> for none).</p>
 ClassMethod HoldEverythingBut(pExcept As %String)
 {
     Do $ClassMethod(..#GATE, "Reset")
-    Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec($Parameter(..#PORT, "LISTINGGROUPPAIRS") _ "," _ $Parameter(..#PORT, "LISTINGGROUPEDITPAIRS") _ "," _ $Parameter(..#PORT, "LISTINGGROUPSQLPAIRS"))
+    Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(..HeldPairSpec())
     Set tPairs = tPairs _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs(..#NAMESPACE) _ $ListBuild($ListBuild("%DB_USER", "WRITE"), $ListBuild("%DB_USER", "READ"))
     For tAt = 1:1:$ListLength(tPairs) {
         Set tPair = $List(tPairs, tAt)
         If $List(tPair, 1) _ ":" _ $List(tPair, 2) = pExcept Continue
         Do $ClassMethod(..#GATE, "Hold", $List(tPair, 1), $List(tPair, 2))
     }
+}
+
+/// <p>The write <var>pType</var> of <var>pEndpoint</var> on <var>pId</var> with <var>pBody</var> through the compile seam (<parameter>COMPILESEAM</parameter>), with the query members of
+/// <var>pExtra</var>: the HTTP status and the fault's code in one string.</p>
+ClassMethod Compiling(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject = "") As %String
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = pId
+    If $IsObject(pExtra) {
+        Set tIterator = pExtra.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Set tQuery(tKey) = tValue
+        }
+    }
+    Set tSC = $ClassMethod(..#COMPILESEAM, "Invoke", pEndpoint, pType, .tQuery, pBody, .tRes, .tHttp, .tFault)
+    Quit tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+}
+
+/// <p>The script steps of the write <var>pType</var> on <var>pId</var> with the body <var>pBody</var> and the query members <var>pExtra</var>, through the port's
+/// <parameter>WRITEENDPOINT</parameter>.</p>
+ClassMethod Script(pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject = "") As %DynamicArray
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = pId
+    If $IsObject(pExtra) {
+        Set tIterator = pExtra.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Set tQuery(tKey) = tValue
+        }
+    }
+    Quit $ClassMethod(..#PORT, "Snippet", ..#WRITEENDPOINT, pType, .tQuery, pBody)
+}
+
+/// <p>Run the first step of <var>pSteps</var>, a script, line by line in this process; 1 when it left <code>tSC</code> a success, 0 when it left it an error or a line threw.</p>
+ClassMethod RunScript(pSteps As %DynamicArray) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    XECUTE "Kill tSC"
+    Try {
+        Set tText = pSteps.%Get(0).text
+        For tAt = 1:1:$Length(tText, $Char(10)) {
+            Set tLine = $Piece(tText, $Char(10), tAt)
+            If tLine '= "" XECUTE tLine
+        }
+    } Catch {
+        XECUTE "Set tSC = $System.Status.Error(5001, ""a script line threw"")"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit ''$System.Status.IsOK($Get(@"tSC"))
 }
 
 /// <p>Mint <var>pTool</var> with <var>pArgs</var> as the principal without the SQL pair, in a child process that logs in as it, with the turn <var>pTurn</var> seeded for it: what the child

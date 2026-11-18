@@ -1,16 +1,23 @@
 /// <p>The text of a listing group's class (Story 24.11): a class extending <code>%DeepSee.ListingGroupDefinition</code> whose <code>Listings</code>
 /// XData holds the group, in the form the source code API keeps it (UDL, a line feed between lines and one after the last). The analytics port
 /// composes a group's XML from the model with the vendor's own writer and puts it here: a new group is <method>ClassText</method>, a changed one
-/// is <method>Splice</method> over the class's current text, which replaces the <code>Listings</code> XData body and the <code>DependsOn</code>
-/// keyword and keeps every other line as it is. Every method is pure and names no vendor class beyond the superclass's name.</p>
+/// is <method>Splice</method> over the class's current text, which replaces the XData body (<parameter>XDATANAME</parameter>) and, when
+/// <parameter>DEPENDSON</parameter> is 1, the <code>DependsOn</code> keyword, and keeps every other line as it is. Every method is pure and names no vendor
+/// class beyond the superclass's name. A subclass names another superclass, XML namespace and XData (<class>OcuPilot.Kernel.QualityMeasureText</class>).</p>
 Class OcuPilot.Kernel.ListingGroupText Extends %RegisteredObject
 {
 
 /// <p>The class every listing group's class extends.</p>
 Parameter SUPERCLASS = "%DeepSee.ListingGroupDefinition";
 
-/// <p>The XML namespace of the <code>Listings</code> XData.</p>
+/// <p>The XML namespace of the XData.</p>
 Parameter XMLNAMESPACE = "http://www.intersystems.com/deepsee/listinggroup";
+
+/// <p>The name of the XData that holds the definition.</p>
+Parameter XDATANAME = "Listings";
+
+/// <p>1 when the class declares the cube classes it depends on in its header, 0 when it carries no <code>DependsOn</code>.</p>
+Parameter DEPENDSON = 1;
 
 /// <p>The <code>DependsOn</code> keyword's value for the comma-separated class names <var>pClasses</var>: the one name, or the names in
 /// parentheses; <code>""</code> for none.</p>
@@ -20,14 +27,14 @@ ClassMethod DependsOnValue(pClasses As %String) As %String
     Quit pClasses
 }
 
-/// <p>The text of a new listing group class <var>pClass</var> that depends on the cube classes <var>pClasses</var> (comma-separated, may be
-/// empty) and holds the XML <var>pXml</var>.</p>
+/// <p>The text of a new class <var>pClass</var> that depends on the cube classes <var>pClasses</var> (comma-separated, may be
+/// empty; ignored when <parameter>DEPENDSON</parameter> is 0) and holds the XML <var>pXml</var>.</p>
 ClassMethod ClassText(pClass As %String, pClasses As %String, pXml As %String) As %String
 {
     Set tNL = $Char(10)
     Set tHeader = "Class " _ pClass _ " Extends " _ ..#SUPERCLASS
-    If pClasses '= "" Set tHeader = tHeader _ " [ DependsOn = " _ ..DependsOnValue(pClasses) _ " ]"
-    Quit tHeader _ tNL _ "{" _ tNL _ tNL _ "XData Listings [ XMLNamespace = """ _ ..#XMLNAMESPACE _ """ ]" _ tNL _ "{" _ tNL _ ..Body(pXml) _ tNL _ "}" _ tNL _ tNL _ "}" _ tNL
+    If ..#DEPENDSON && (pClasses '= "") Set tHeader = tHeader _ " [ DependsOn = " _ ..DependsOnValue(pClasses) _ " ]"
+    Quit tHeader _ tNL _ "{" _ tNL _ tNL _ "XData " _ ..#XDATANAME _ " [ XMLNamespace = """ _ ..#XMLNAMESPACE _ """ ]" _ tNL _ "{" _ tNL _ ..Body(pXml) _ tNL _ "}" _ tNL _ tNL _ "}" _ tNL
 }
 
 /// <p>The XML <var>pXml</var> as the lines of an XData body: no carriage return and no trailing line feed.</p>
@@ -40,9 +47,9 @@ ClassMethod Body(pXml As %String) As %String
     Quit tBody
 }
 
-/// <p>The class text <var>pText</var> with its <code>Listings</code> XData body replaced by <var>pXml</var> and its <code>DependsOn</code>
+/// <p>The class text <var>pText</var> with its XData body replaced by <var>pXml</var> and, when <parameter>DEPENDSON</parameter> is 1, its <code>DependsOn</code>
 /// made the cube classes <var>pClasses</var>, in <var>pSpliced</var>; every other character is kept, and the class header is rewritten only when
-/// its <code>DependsOn</code> names other classes. 0 when the text has no class header or no <code>Listings</code> XData.</p>
+/// its <code>DependsOn</code> names other classes. 0 when the text has no class header or no such XData.</p>
 ClassMethod Splice(pText As %String, pClasses As %String, pXml As %String, Output pSpliced As %String) As %Boolean
 {
     Set pSpliced = ""
@@ -57,7 +64,7 @@ ClassMethod Splice(pText As %String, pClasses As %String, pXml As %String, Outpu
     For tAt = 1:1:tCount {
         Set tHead = $ZConvert($ZStrip(tLine(tAt), "<W"), "U")
         If 'tHeader && ($Extract(tHead, 1, 6) = "CLASS ") Set tHeader = tAt
-        If tHeader && ($Extract(tHead, 1, 14) = "XDATA LISTINGS") {
+        If tHeader && ($Extract(tHead, 1, 6 + $Length(..#XDATANAME)) = ("XDATA " _ $ZConvert(..#XDATANAME, "U"))) {
             Set tXData = tAt
             Quit
         }
@@ -76,7 +83,7 @@ ClassMethod Splice(pText As %String, pClasses As %String, pXml As %String, Outpu
         }
     }
     If 'tOpen || 'tClose Quit 0
-    Set tLine(tHeader) = ..HeaderWith(tLine(tHeader), pClasses)
+    If ..#DEPENDSON Set tLine(tHeader) = ..HeaderWith(tLine(tHeader), pClasses)
     Set tSpliced = ""
     For tAt = 1:1:tOpen {
         Set tSpliced = tSpliced _ tLine(tAt) _ tNL
