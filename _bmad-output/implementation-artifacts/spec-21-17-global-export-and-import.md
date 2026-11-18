@@ -2,8 +2,8 @@
 title: 'Story 21.17: Global export and import'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: '50905467e2aafd599596e2f58221441f04cd8a28'
+status: 'done'
+baseline_revision: '66c32ffa5a7a3efd25e86360bed08af22c663430'
 baseline_commit: '50905467e2aafd599596e2f58221441f04cd8a28'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -151,11 +151,11 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 
 ### Review Findings
 
-- [ ] [Review] HIGH (orchestrator ruling 2026-11-18, option a; AD-61 rule 5 now records it, spine commit 1017325ca): `AtelierPort.ExportSet` converts a Globals export's failure to 422 `GLOBAL.TOOLARGE` only when the failure is positively the capture-ceiling one, identified by its own signal (not by any 503 from a globals export); every other 503 stays `PORT.UNAVAILABLE` and is logged as a fault as today; the expected too-large refusal writes no `PORT.UNAVAILABLE` fault. Pin both legs: too-large -> 422 with no fault row; a genuine unavailability (a seam forcing a non-ceiling port failure) -> 503 with a fault row; prove the ceiling leg load-bearing with a mutation and write its `mutation:` line.
+- [x] [Review] HIGH (orchestrator ruling 2026-11-18, option a; AD-61 rule 5 now records it, spine commit 1017325ca): `AtelierPort.ExportSet` converts a Globals export's failure to 422 `GLOBAL.TOOLARGE` only when the failure is positively the capture-ceiling one, identified by its own signal (not by any 503 from a globals export); every other 503 stays `PORT.UNAVAILABLE` and is logged as a fault as today; the expected too-large refusal writes no `PORT.UNAVAILABLE` fault. Pin both legs: too-large -> 422 with no fault row; a genuine unavailability (a seam forcing a non-ceiling port failure) -> 503 with a fault row; prove the ceiling leg load-bearing with a mutation and write its `mutation:` line.
 
 Code review 2026-11-18 (`50905467e..2b7a65791`, four layers, full-opus). Measured on `ocupilot-ci` over HTTP as a `%Development` holder without `OcuPilotAdmin` or `%All` (with and without `%Admin_FileSystemAccess`) and as `_SYSTEM`, in `HSCUSTOM` and `USER`: export to a server file and to this browser, a replacing import (server file and UTF-8 local file, a 40,000-character and a non-Latin value) all 200 and equal; a `%`-global, an `IRIS.Temp*` global, an OcuPilot-named global in any case and a file holding an ordinary and a `%`-global refused 403 with nothing loaded; an extended reference refused 400 before any load; `GLOBAL.OWNDATA` 403 in three cases on both exports. Without the file-system pair the server-file forms answer 403 `AUTH.NOPRIVILEGE` (AD-21's sixth case).
 
-- [ ] [Review][Decision] HIGH (Rule 6): a Globals export whose answer passes the capture answers 422 `GLOBAL.TOOLARGE`, where AD-61 rule 5 says `PORT.UNAVAILABLE` -- the matrix's "Too large" row asks for 422; `Outcome` has already logged a `PORT.UNAVAILABLE` fault, and the remap keys on status 503 [`AtelierPort.cls` `ExportSet`]. Needs the lead: an add-only AD-61 record (recommended, no code change) or the remap dropped with the matrix amended.
+- [x] [Review][Decision] HIGH (Rule 6): a Globals export whose answer passes the capture answers 422 `GLOBAL.TOOLARGE`, where AD-61 rule 5 says `PORT.UNAVAILABLE` -- the matrix's "Too large" row asks for 422; `Outcome` has already logged a `PORT.UNAVAILABLE` fault, and the remap keys on status 503 [`AtelierPort.cls` `ExportSet`]. Needs the lead: an add-only AD-61 record (recommended, no code change) or the remap dropped with the matrix amended.
 - [x] [Review][Patch] MED: `DeveloperFloor`'s roster lacked the two tools (red, run 871) [`Test/DeveloperFloor.cls` `TOOLS`, `HELDWRITES`]
 - [x] [Review][Patch] MED: no agent confirm of an unchanged replacing import was shown to load (the DW-2608 symptom) [`Test/GlobalTransfer.cls` `TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved`]
 - [x] [Review][Patch] MED: the browser spec took the row index before the filtered read answered [`ui/browser/system-explorer-global-transfer.browser-spec.mjs` `selectGlobalRow`]
@@ -201,6 +201,16 @@ Rejected:
   - `[low]` `reject` AC4's `oddDEP` case is checked at the arm only -- both cases reach the same routing; no named harm.
   - `[low]` `reject` (intent-alignment) agent turns are driven in process, not over HTTP -- descriptive; the dispatcher and confirm paths are the ones run.
   - `[low]` `reject` (intent-alignment) the shared code list page skips Compile and Delete for a list with no multi-select -- guarded by `checksRows`; the classes and routines page specs stay green.
+
+### 2026-11-18 — Review pass (rework 1, ceiling signal)
+
+- verdicts: 5 findings — high 0, medium 2, low 3, false 0, maybe-false 0
+- findings:
+  - `[medium]` `patch` The ceiling signal was set for a capture that could not be ended as well as for an answer above the ceiling -- `Route` now flags an answer above the ceiling (2) apart from a capture that cannot be ended (1, a 503 logged as a fault), and `EndCapture` is a seam the fixture fails.
+  - `[medium]` `patch` The non-ceiling leg ran through a fixture `Route` that bypassed `Route` and `Outcome` (verification-gap, intent-alignment) -- replaced by a real capture-end failure and a refused route (403), each with its fault row and no file, plus a `CallCount` of 1.
+  - `[low]` `patch` The test's doc comment said the route never runs for the second leg, unasserted -- rewritten to match the asserts.
+  - `[low]` `reject` (intent-alignment) a `<MAXSTRING>` from the vendor's own render counts as the ceiling -- it is the signal the live 90,000-node leg raises.
+  - `[low]` `reject` (verification-gap) the Auto Run Result lacked this pass -- written at finalize.
 
 ## Design Notes
 
@@ -315,7 +325,7 @@ Observed (each applied on `ocupilot-ci`, red, reverted byte-identical by `cmp` a
 - mutation: AC4 `If 0 &&` before the `global` import routing in `Prohibited.Prohibits` -> `GlobalTransfer.TestAnImportOfACodeOrPercentGlobalIsRefusedAndAnExportIsNeverJudged` red on the `oddDEP`, own-stem, list and agent rows (the `%` global is then loaded, which the test's teardown kills).
 - mutation: AC5 `onOpenExport` reads the checked set for every list in `code-list.page.ts` -> `code-list.page.spec.ts` "Export acts on the one selected global" red, and `system-explorer-global-transfer.browser-spec.mjs` AC5 red (no export dialog opens), after `npm run build` and the redeploy.
 - mutation: AC2 skip the XML length check after the export in `ExportSet` (`If 0 &&`) -> `GlobalTransfer.TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge` red on the canned 3,150,000-character leg (the file is written).
-- mutation: AC2 drop the 503 to 422 mapping in `ExportSet` -> the same test red on the live 90,000-node leg, answering `PORT.UNAVAILABLE`.
+- mutation: AC2 never set the ceiling signal (`Set pCeiling = 0` in `Outcome`) -> `GlobalTransfer.TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge` (live 90,000-node leg, 503) and `TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable` red (run 911); count a capture that cannot be ended as the ceiling (`Set tOverflow = 2` in `Route`'s `exEnd` catch) -> the second test red alone on the capture-end leg (run 908); set the ceiling for any failed call (`If $$$ISERR(tSC) Set pCeiling = 1` at the end of `Route`) -> the second test red alone (run 909); log the ceiling's fault although the caller owns it (`If 1 Do ..LogFault` in `Outcome`) -> the second test red alone on the empty-log row (run 910); each reverted byte-identical by `cmp`, reloaded, green (run 912).
 - mutation: AC2 drop the bound check in `GlobalPort.VendorTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal`, `TestAGlobalTooLargeToReplaceRefusesThePreviewAndTheWrite` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red; count only the values -> the exact-bound rows red.
 - mutation: AC2 (own data) drop the own-stem refusal in `GlobalPort.GlobalTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red (the missing global answers 404 in its place).
 - mutation: AC1 drop `.GBL` from the script's names in `AtelierPort.Snippet` -> `GlobalTransfer.TestTheTransfersRenderTheirScripts` red.
@@ -334,6 +344,8 @@ Observed (each applied on `ocupilot-ci`, red, reverted byte-identical by `cmp` a
 
 Status: done
 Blocking condition: none
+
+Rework 1 (AD-61 rule 5): a Globals export answers 422 `GLOBAL.TOOLARGE` only for an answer above the capture's ceiling, which `Route` flags apart from a capture that cannot be ended; that and every other port failure keep 503 or their own status with their fault row, and the ceiling writes none. `AtelierPort` (`Route`, `Outcome`, `ExportSet`, an `EndCapture` seam), `AtelierPortFixture` and `GlobalTransfer` (11 tests, green; `AtelierPortDocument`, `AtelierPortTransfer`, `AtelierPortWrite`, `AtelierPort`, `ExplorerTransfer` green; `check-objectscript` 0) changed; four mutations observed red and reverted. Both review items closed above; two medium patched, no high; follow-up review not recommended. Residual risk: the live HTTP leg runs in another process, so its fault row is read only on the canned legs.
 
 Review pass 2026-11-18: no high; two medium and one low patched (tests and mutation lines for the export to this browser, the one-name rule and the export skip in the arm; `GlobalTransfer` now 10 tests, green, three further mutations observed red and reverted byte-identical); four low rejected with reasons in the Review Triage Log. `check-objectscript` 0 problems and `lint-docs` clean after the patches. Follow-up review not recommended. Residual risk: the browser leg of the export and local import is proved for Latin-1 values only, because the test client sends non-Latin text as `?` (inference: a real browser sends UTF-8). The runner owns the full ObjectScript sweep, smoke, and the `ci-timings.json` refresh.
 

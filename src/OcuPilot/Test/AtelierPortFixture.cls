@@ -92,6 +92,20 @@ ClassMethod ArmThrow(pMethod As %String, pError As %String)
     Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 2, pError)
 }
 
+/// <p>Arm the capture's end to fail with an exception that is not the string ceiling, after the route has written nothing.</p>
+ClassMethod ArmEndFailure()
+{
+    Set ^||OcuPilotAtelierFixture("endfailure") = 1
+}
+
+/// <p>The capture's end, or, when <method>ArmEndFailure</method> armed it, an exception raised after the real end has run.</p>
+ClassMethod EndCapture(pCookie, Output pLines) As %Status [ Private ]
+{
+    Set tSC = ##super(pCookie, .pLines)
+    If $Get(^||OcuPilotAtelierFixture("endfailure")) Throw ##class(%Exception.General).%New("<FUNCTION>", 1, , "the capture could not be ended")
+    Quit tSC
+}
+
 /// <p>How many routes were called since the last <method>Clear</method>.</p>
 ClassMethod CallCount() As %Integer
 {

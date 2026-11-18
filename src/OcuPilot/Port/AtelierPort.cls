@@ -2090,9 +2090,10 @@ ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %
 /// (<method>ExportFile</method>) before the vendor call, the lines are written to it
 /// (<method>WriteLines</method>), and <var>pResult</var> is <code>{root, path}</code>; a file the call
 /// created is deleted when the write fails. Otherwise nothing is written and <var>pResult</var> is
-/// <code>{lines}</code>. For <parameter>ENDPOINTGLOBALS</parameter> the fresh read is <method>GlobalDocs</method>, and an answer the capture
-/// refused, or lines longer than <parameter>MAXIMPORTCHARACTERS</parameter> together, is 422 <code>GLOBAL.TOOLARGE</code> with nothing
-/// written.</p>
+/// <code>{lines}</code>. For <parameter>ENDPOINTGLOBALS</parameter> the fresh read is <method>GlobalDocs</method>, and an answer above the
+/// capture's ceiling (the route's own ceiling signal, <var>pCeiling</var> of <method>Route</method>, and no other failure), or lines longer than
+/// <parameter>MAXIMPORTCHARACTERS</parameter> together, is 422 <code>GLOBAL.TOOLARGE</code> with nothing written and no fault logged for the ceiling;
+/// every other failure of the route keeps its own refusal.</p>
 ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -2117,9 +2118,9 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
             Do tBody.%Push($List(pNames, tI), "string")
         }
         Kill tNoParams
-        Set tSC = ..Route(pVersion, pNamespace, "ExportToXMLFile", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+        Set tSC = ..Route(pVersion, pNamespace, "ExportToXMLFile", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault, 0, , , "", tGlobals, .tCeiling)
         If $$$ISERR(tSC) {
-            If tGlobals && (pHttpStatus = 503) Set tSC = ..GlobalTooLarge(.pHttpStatus, .pFault)
+            If tGlobals && $Get(tCeiling) Set tSC = ..GlobalTooLarge(.pHttpStatus, .pFault)
             Quit
         }
         Set tLines = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
@@ -3153,7 +3154,9 @@ ClassMethod PlainText(pDesc) As %String
 /// a <class>%DynamicAbstractObject</class> sent as an <code>application/json</code> body
 /// (<method>OcuPilot.Port.AtelierRequest.SetJsonBody</method>). Trailing route arguments are omitted
 /// rather than passed empty. <var>pIfNoneMatch</var>, when it is not <code>""</code>, is seeded as the
-/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).</p>
+/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).
+/// <var>pCeiling</var> is 1 when, and only when, the answer passed the capture's ceiling; with <var>pQuietCeiling</var> the caller
+/// owns that refusal and no fault is logged for it.</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code>,
 /// <code>%session</code> and <code>%SourceControl</code>, with fresh stubs. Its output is captured,
 /// or, for a route <parameter>FILEDEVICEROUTES</parameter> names, written to a temporary file that is
@@ -3162,10 +3165,11 @@ ClassMethod PlainText(pDesc) As %String
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
 /// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
 /// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "") As %Status [ Private ]
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "", pQuietCeiling As %Boolean = 0, Output pCeiling As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
+    Set pCeiling = 0
     Set tCallSC = $$$OK
     Set tHttp = 0
     Set tCapturing = 0
@@ -3223,12 +3227,12 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     If tCapturing {
         Try {
             Kill tLines
-            Set tEndSC = $$EndCapture^%SYS.Capture(tCookie, .tLines)
+            Set tEndSC = ..EndCapture(tCookie, .tLines)
             If $IsObject($Get(tLines)) {
                 Set tIterator = tLines.%GetIterator()
                 While tIterator.%GetNext(.tIndex, .tLine) {
                     If ($Length(tText) + $Length(tLine)) >= ..#CAPTURECEILING {
-                        Set tOverflow = 1
+                        Set tOverflow = 2
                         Quit
                     }
                     Set tText = tText _ tLine
@@ -3236,7 +3240,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
             }
         } Catch exEnd {
             If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-            Set tOverflow = 1
+            Set tOverflow = $Select(exEnd.Name = "<MAXSTRING>": 2, 1: 1)
             Set tText = ""
         }
     }
@@ -3253,7 +3257,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
                 While 'tStream.AtEnd {
                     Set tChunk = tStream.Read(32000)
                     If ($Length(tText) + $Length(tChunk)) >= ..#CAPTURECEILING {
-                        Set tOverflow = 1
+                        Set tOverflow = 2
                         Quit
                     }
                     Set tText = tText _ tChunk
@@ -3269,13 +3273,21 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     ; TempFilename creates the file, so it is deleted whether or not it was opened.
     If tFile '= "" Do ##class(%File).Delete(tFile)
     If $IsObject($Get(%response)) Set tHttp = +%response.Status
-    If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 1
-    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault, pSoft, .pConsole, .pErrors)
+    If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 2
+    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault, pSoft, .pConsole, .pErrors, pQuietCeiling, .pCeiling)
     Quit tSC
 }
 
+/// <p>End the capture <var>pCookie</var> began and read its lines into <var>pLines</var>. Overridable so a fixture can fail the end.</p>
+ClassMethod EndCapture(pCookie, Output pLines) As %Status [ Private ]
+{
+    Quit $$EndCapture^%SYS.Capture(pCookie, .pLines)
+}
+
 /// <p>What one route call's outcome means. <var>pText</var> is the captured envelope.</p>
-/// <p>An answer at the capture's ceiling is 503 <code>PORT.UNAVAILABLE</code>. A non-2xx status is
+/// <p>An answer the capture could not hold is 503 <code>PORT.UNAVAILABLE</code> with a fault logged. <var>pOverflow</var> 2 is an
+/// answer above the capture's ceiling: <var>pCeiling</var> is then 1 and, with <var>pQuietCeiling</var>, no fault is logged; 1 is a capture
+/// that could not be ended, which is never the ceiling. A non-2xx status is
 /// 404 <code>PORT.NOTFOUND</code> (not logged: a read answered 404 has found an absence), with the
 /// envelope's <code>result</code> in <var>pResult</var> where it parses, 400
 /// <code>PORT.VALIDATION</code>, 403 <code>PORT.ACCESSDENIED</code>, or the internal fault. Under a
@@ -3298,16 +3310,18 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, its text logged the same way, and any other 400 is
 /// <code>PORT.VALIDATION</code>; and, without <var>pSoft</var>, any other error under a 2xx status is 422
 /// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
-ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
+ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Integer, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pQuietCeiling As %Boolean = 0, Output pCeiling As %Boolean) As %Status [ Private ]
 {
     Set pResult = ""
     Set pConsole = ""
     Set pErrors = 0
+    Set pCeiling = 0
     Set tRaw = pMethod _ " answered HTTP " _ pHttp
     If $$$ISERR(pCallSC) Set tRaw = tRaw _ "; " _ $System.Status.GetErrorText(pCallSC)
     If pOverflow {
         Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, ..#REASONTOOLARGE, .pHttpStatus, .pFault)
-        Do ..LogFault(pMethod _ " answered above the capture ceiling", $$$ERROR($$$GeneralError, tRaw), pFault.code)
+        Set pCeiling = (pOverflow = 2)
+        If 'pCeiling || 'pQuietCeiling Do ..LogFault(pMethod _ $Select(pCeiling: " answered above the capture ceiling", 1: " could not end its capture"), $$$ERROR($$$GeneralError, tRaw), pFault.code)
         Quit tSC
     }
     Set tEnvelope = ""
