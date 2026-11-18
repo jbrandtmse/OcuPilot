@@ -570,7 +570,7 @@ test('Story 24.11: Listing groups shows each group with what the vendor\'s model
 });
 
 const WRITE_GROUP = 'OcuPilotProbeLGWBrowse';
-const WRITE_CLASS = 'OcuPilotProbe.Analytics.LGWBrowse';
+const WRITE_CLASS = 'OcuProbeLGW.Analytics.LGWBrowse';
 const WRITE_LISTING = 'LGWBrowseOne';
 
 /** Click the command bar's primary action, which opens the listing group dialog titled `label`. */

@@ -139,7 +139,11 @@ Parameter LISTGROUPBROKENCLASS = "OcuPilotProbe.Analytics.ListingGroupBroken";
 /// <method>Left</method> find whatever a failed test left.</p>
 Parameter LISTGROUPWRITE = "OcuPilotProbeLGW";
 
-Parameter LISTGROUPWRITECLASS = "OcuPilotProbe.Analytics.LGW";
+Parameter LISTGROUPWRITECLASS = "OcuProbeLGW.Analytics.LGW";
+
+/// <p>The prefix of the classes the write tests save directly, bypassing the port, whose names begin with <code>OcuPilot</code> so the writes' refusal of OcuPilot's own code
+/// can be shown against a group that exists. <method>RemoveListingGroups</method> and <method>Left</method> cover it as they cover <parameter>LISTGROUPWRITECLASS</parameter>.</p>
+Parameter LISTGROUPOWNCLASS = "OcuPilotLGW.Analytics.LGW";
 
 Parameter LISTINGWRITE = "LGW";
 
@@ -712,9 +716,11 @@ ClassMethod RemoveListingGroups() As %Status
             }
         }
         ; The write tests' groups and classes, whatever a failed test left of them.
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#LISTGROUPWRITECLASS)
-        While tRS.%Next() {
-            Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
         }
         Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#LISTGROUPWRITE, "U")), -1)
         For {
@@ -722,11 +728,13 @@ ClassMethod RemoveListingGroups() As %Status
             If $Extract(tName, 1, $Length(..#LISTGROUPWRITE)) '= $ZConvert(..#LISTGROUPWRITE, "U") Quit
             Kill ^DeepSee.ListingGroups("groups", tName)
         }
-        Set tName = $Order(^DeepSee.ListingGroups("classes", ..#LISTGROUPWRITECLASS), -1)
-        For {
-            Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
-            If $Extract(tName, 1, $Length(..#LISTGROUPWRITECLASS)) '= ..#LISTGROUPWRITECLASS Quit
-            Kill ^DeepSee.ListingGroups("classes", tName)
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            For {
+                Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+                If $Extract(tName, 1, $Length(tPrefix)) '= tPrefix Quit
+                Kill ^DeepSee.ListingGroups("classes", tName)
+            }
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -1004,9 +1012,13 @@ ClassMethod Left() As %String
         For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
             If $Data(^DeepSee.ListingGroups("classes", tClass)) Set tLeft = tLeft _ ",listing group class node " _ tClass
         }
-        Set tName = $Order(^DeepSee.ListingGroups("classes", ..#LISTGROUPWRITECLASS), -1)
-        Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
-        If $Extract(tName, 1, $Length(..#LISTGROUPWRITECLASS)) = ..#LISTGROUPWRITECLASS Set tLeft = tLeft _ ",listing group class node " _ tName
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+            If $Extract(tName, 1, $Length(tPrefix)) = tPrefix Set tLeft = tLeft _ ",listing group class node " _ tName
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",listing group classes " _ tPrefix
+        }
         For tCube = ..#VISITS, ..#CATEGORIES, ..#LISTGROUPNOCUBE {
             Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", ..#LISTINGWRITE), -1)
             Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))

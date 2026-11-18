@@ -153,9 +153,9 @@ Method TestADeleteRemovesTheClassAndItsNodesAndShipsOff()
 }
 
 /// <p>AC1, AC2: each refusal answers its own code and sentence, and the classes and registry nodes are as they were: a name taken (over a group, and over a class that holds
-/// none), a class outside the allowed shape (a <code>%</code> package, an <code>OcuPilot</code> package, no package), a target cube that does not exist, and the agent's mint
+/// none), a class outside the allowed shape (a <code>%</code> package, no package), a class in an <code>OcuPilot</code> package (403 <code>PROHIBITED.OCUPILOTCODE</code>), a target cube that does not exist, and the agent's mint
 /// refusing what the write would refuse before a proposal exists.</p>
-/// <p>Mutation (Rule 19): make the class check of <method>OcuPilot.Port.AnalyticsPort.ListingClassShaped</method> accept an <code>OcuPilot</code> package -- the class legs go red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.ListingClassShaped</method> answer 1 -- the <code>%</code> and no-package legs go red.</p>
 Method TestEachRefusalWritesNothing()
 {
     Set tName = ..#MARKER _ "Held"
@@ -163,13 +163,13 @@ Method TestEachRefusalWritesNothing()
     Do $$$AssertStatusOK(..SaveGroup(tName, tClass, "LGWHeld"), "a group is held")
     Set tBefore = ..Snapshot()
     Set tOk = {"Class": (..#CLASSMARKER _ "Free"), "TargetCubes": (..#VISITS)}
-    For tCase = $ListBuild(tName, ..#CLASSMARKER _ "Free", ..#VISITS, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a name already held"), $ListBuild(..#MARKER _ "Free", tClass, ..#VISITS, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a class already defined"), $ListBuild(..#MARKER _ "Free", "OcuPilot.Probe", ..#VISITS, "422 ANALYTICS.LISTINGGROUP.CLASS", "a class in an OcuPilot package"), $ListBuild(..#MARKER _ "Free", "%Probe.Free", ..#VISITS, "422 ANALYTICS.LISTINGGROUP.CLASS", "a class in a % package"), $ListBuild(..#MARKER _ "Free", "NoPackage", ..#VISITS, "422 ANALYTICS.LISTINGGROUP.CLASS", "a class with no package"), $ListBuild(..#MARKER _ "Free", ..#CLASSMARKER _ "Free", "NoSuchCubeLGW", "422 ANALYTICS.LISTINGGROUP.CUBE", "a cube that is not there"), $ListBuild(..#MARKER _ "Free", ..#CLASSMARKER _ "Free", "", "422 ANALYTICS.LISTINGGROUP.CUBE", "no cube at all") {
+    For tCase = $ListBuild(tName, ..#CLASSMARKER _ "Free", ..#VISITS, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a name already held"), $ListBuild(..#MARKER _ "Free", tClass, ..#VISITS, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a class already defined"), $ListBuild(..#MARKER _ "Free", "OcuPilot.Probe", ..#VISITS, "403 PROHIBITED.OCUPILOTCODE", "a class in an OcuPilot package"), $ListBuild(..#MARKER _ "Free", "%Probe.Free", ..#VISITS, "422 ANALYTICS.LISTINGGROUP.CLASS", "a class in a % package"), $ListBuild(..#MARKER _ "Free", "NoPackage", ..#VISITS, "422 ANALYTICS.LISTINGGROUP.CLASS", "a class with no package"), $ListBuild(..#MARKER _ "Free", ..#CLASSMARKER _ "Free", "NoSuchCubeLGW", "422 ANALYTICS.LISTINGGROUP.CUBE", "a cube that is not there"), $ListBuild(..#MARKER _ "Free", ..#CLASSMARKER _ "Free", "", "422 ANALYTICS.LISTINGGROUP.CUBE", "no cube at all") {
         Set tResult = ..Port("ListingGroups", "ADD", $List(tCase, 1), {"Name": ($List(tCase, 1)), "Class": ($List(tCase, 2)), "TargetCubes": ($List(tCase, 3))}, "", .tRes)
         Do $$$AssertEquals(tResult, $List(tCase, 4), $List(tCase, 5) _ " is refused by its own code")
     }
     Do $$$AssertEquals(..Snapshot(), tBefore, "and nothing was written")
     Do ..MintRefused(..#ADDTOOL, {"Name": (tName), "Class": (..#CLASSMARKER _ "Free"), "TargetCubes": (..#VISITS)}, "ANALYTICS.LISTINGGROUP.TAKEN")
-    Do ..MintRefused(..#ADDTOOL, {"Name": (..#MARKER _ "Free"), "Class": "OcuPilot.Probe", "TargetCubes": (..#VISITS)}, "TOOL.ARGUMENTS")
+    Do ..MintRefused(..#ADDTOOL, {"Name": (..#MARKER _ "Free"), "Class": "OcuPilot.Probe", "TargetCubes": (..#VISITS)}, "PROHIBITED.OCUPILOTCODE")
     Do ..MintRefused(..#UPDATETOOL, {"Name": (..#MARKER _ "Nothing"), "Caption": "x"}, "TOOL.ARGUMENTS")
     Do $$$AssertEquals(..Snapshot(), tBefore, "no proposal was minted and nothing was written")
     Do $$$AssertEquals(..Port("ListingGroups", "UPDATE", ..#MARKER _ "Nothing", {"Caption": "x"}, "", .tRes), "404 ANALYTICS.LISTINGGROUP.ABSENT", "an update of a group that is not there is refused")
@@ -177,9 +177,62 @@ Method TestEachRefusalWritesNothing()
     Do $$$AssertEquals(..Port("ListingGroups", "UPDATE", tName, {"Disabled": "yes"}, "", .tRes), "422 PORT.FIELD.SHAPE", "a member of the wrong type is refused by the shape rule")
 }
 
+/// <p>AD-58: target cubes sent with spaces around the commas, by the person's add and edit and by the agent's add and update, are stored trimmed, and each read-back says
+/// <code>matches</code> because each caller sends the form the port stores.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.AnalyticsListingGroupAction.CubesNormalized</method> answer its argument unchanged -- the four read-back legs go red.</p>
+Method TestTargetCubesWithSpacesReadBackAsSent()
+{
+    Set tPerson = ..#MARKER _ "CubesPerson"
+    Set tPersonClass = ..#CLASSMARKER _ "CubesPerson"
+    Set tStatus = ..Post("/analytics/listing-groups", {"Name": (tPerson), "Class": (tPersonClass), "TargetCubes": (..#VISITS _ " , " _ ..#CATEGORIES)}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.readBack.verdict, 1: ""), "201|matches", "the person's add with spaces around the comma reads back matching: " _ $Select($IsObject(tAnswer): $Extract(tAnswer.%ToJSON(), 1, 300), 1: ""))
+    Do $$$AssertEquals($Piece(..Model(tPersonClass), "|", 4), ..#VISITS _ "," _ ..#CATEGORIES, "and the model holds the trimmed list")
+    Set tStatus = ..Act(..#GROUPSCREEN, "update", tPerson, {"TargetCubes": (..#CATEGORIES _ ",  " _ ..#VISITS)}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.readBack.verdict, 1: ""), "200|matches", "the person's edit reads back matching: " _ $Select($IsObject(tAnswer): $Extract(tAnswer.%ToJSON(), 1, 300), 1: ""))
+    Do $$$AssertEquals($Piece(..Model(tPersonClass), "|", 4), ..#CATEGORIES _ "," _ ..#VISITS, "and the model holds the trimmed list")
+
+    Set tAgent = ..#MARKER _ "CubesAgent"
+    Set tAgentClass = ..#CLASSMARKER _ "CubesAgent"
+    Do ..Mint(..#ADDTOOL, {"Name": (tAgent), "Class": (tAgentClass), "TargetCubes": (" " _ ..#VISITS _ ", " _ ..#CATEGORIES _ " ")}, .tProposal, .tTurn)
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals(..Confirm(tProposal, .tAnswer, .tRaw), 200, "the agent's add confirms: " _ $Extract($Get(tRaw), 1, 300))
+    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, "matches", "the agent's add reads back matching")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Do ..Mint(..#UPDATETOOL, {"Name": (tAgent), "TargetCubes": (..#CATEGORIES _ " ,  " _ ..#VISITS)}, .tProposal, .tTurn)
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals(..Confirm(tProposal, .tAnswer, .tRaw), 200, "the agent's update confirms: " _ $Extract($Get(tRaw), 1, 300))
+    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, "matches", "the agent's update reads back matching")
+    Do $$$AssertEquals($Piece(..Model(tAgentClass), "|", 4), ..#CATEGORIES _ "," _ ..#VISITS, "and the model holds the trimmed list")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AD-10: a write whose class is one of OcuPilot's own is refused 403 <code>PROHIBITED.OCUPILOTCODE</code> with the published sentence, by the port, by the person's screen call and by
+/// the agent's mint, with nothing written, for each of the four group writes: an add into, and a copy into, a class whose name begins <code>OcuPilot</code> in any letter case and at any
+/// package depth, and an update and a delete of a group saved in such a class.</p>
+/// <p>Mutation (Rule 19): make the own-code checks of <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> and <method>OcuPilot.Port.AnalyticsPort.ReadListingGroup</method> answer
+/// 0 -- every leg goes red.</p>
+Method TestOwnCodeIsRefusedByEveryGroupWrite()
+{
+    Set tOwnName = ..#MARKER _ "Own"
+    Set tPlain = ..#MARKER _ "OwnSource"
+    Do $$$AssertStatusOK(..SaveGroup(tOwnName, ..#OWNCLASSMARKER _ "Held", "LGWOwn"), "a group saved in an OcuPilot class is held")
+    Do $$$AssertStatusOK(..SaveGroup(tPlain, ..#CLASSMARKER _ "OwnSource", "LGWOwnSource", ..#CATEGORIES), "and so is a group in an ordinary class")
+    Set tNew = ..#MARKER _ "OwnNew"
+    For tClass = ..#OWNCLASSMARKER _ "New", "ocupilotlgw.analytics.lgwdeep.pkg.new" {
+        Set tBody = {"Name": (tNew), "Class": (tClass), "TargetCubes": (..#VISITS)}
+        Do ..AssertOwnCodeRefused("an add into " _ tClass, "ListingGroups", "ADD", tNew, tBody, "", "/analytics/listing-groups", "", tBody, ..#ADDTOOL, tBody)
+        Set tExtra = {"newName": (tNew), "newClass": (tClass), "targetCubes": (..#VISITS)}
+        Do ..AssertOwnCodeRefused("a copy into " _ tClass, "ListingGroups", "COPY", tPlain, {}, tExtra, ..#GROUPSCREEN, "copy", {"NewName": (tNew), "NewClass": (tClass), "NewCubes": (..#VISITS)}, ..#COPYTOOL, {"Name": (tPlain), "NewName": (tNew), "NewClass": (tClass), "NewCubes": (..#VISITS)})
+    }
+    Do ..AssertOwnCodeRefused("an update of a group in an OcuPilot class", "ListingGroups", "UPDATE", tOwnName, {"Caption": "x"}, "", ..#GROUPSCREEN, "update", {"Caption": "x"}, ..#UPDATETOOL, {"Name": (tOwnName), "Caption": "x"})
+    Do ..EnableKey("analytics.listinggroups.delete")
+    Do ..AssertOwnCodeRefused("a delete of a group in an OcuPilot class", "ListingGroups", "DELETE", tOwnName, {}, "", ..#GROUPSCREEN, "delete", "", ..#DELETETOOL, {"Name": (tOwnName)})
+    Do $$$AssertEquals(..Registered(tOwnName, ..#OWNCLASSMARKER _ "Held"), 1, "and the group is still there")
+}
+
 /// <p>AC1, AC2: a copy's own refusals, each by its own code with the classes and registry nodes as they were: a new name already held by a group (409 <code>TAKEN</code>), a new class
-/// already defined (409 <code>TAKEN</code>), a new name that is empty or holds a control character (422 <code>PORT.FIELD.SHAPE</code>), and a new class in a <code>%</code> package, an
-/// <code>OcuPilot</code> package or with no package (422 <code>CLASS</code>). A copy with a free name and class succeeds, so the refusals are the new name's and class's alone.</p>
+/// already defined (409 <code>TAKEN</code>), a new name that is empty or holds a control character (422 <code>PORT.FIELD.SHAPE</code>), and a new class in a <code>%</code> package or with
+/// no package (422 <code>CLASS</code>), or in an <code>OcuPilot</code> package (403 <code>PROHIBITED.OCUPILOTCODE</code>). A copy with a free name and class succeeds, so the refusals are the new name's and class's alone.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.VendorListingGroupCompose</method> check only the new name of a copy for TAKEN -- the class leg goes red; make
 /// <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> skip the class shape of a copy -- the three class-shape legs go red.</p>
 Method TestEachCopyRefusalWritesNothing()
@@ -192,7 +245,7 @@ Method TestEachCopyRefusalWritesNothing()
     Set tBefore = ..Snapshot()
     Set tFreeName = ..#MARKER _ "CopyFree"
     Set tFreeClass = ..#CLASSMARKER _ "CopyFree"
-    For tCase = $ListBuild(tName, tFreeClass, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a new name already held by a group"), $ListBuild(tFreeName, tClass, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a new class already defined"), $ListBuild("", tFreeClass, "422 PORT.FIELD.SHAPE", "an empty new name"), $ListBuild(tFreeName _ $Char(9), tFreeClass, "422 PORT.FIELD.SHAPE", "a new name with a control character"), $ListBuild(tFreeName, "%Probe.Free", "422 ANALYTICS.LISTINGGROUP.CLASS", "a new class in a % package"), $ListBuild(tFreeName, "OcuPilot.Probe", "422 ANALYTICS.LISTINGGROUP.CLASS", "a new class in an OcuPilot package"), $ListBuild(tFreeName, "NoPackage", "422 ANALYTICS.LISTINGGROUP.CLASS", "a new class with no package") {
+    For tCase = $ListBuild(tName, tFreeClass, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a new name already held by a group"), $ListBuild(tFreeName, tClass, "409 ANALYTICS.LISTINGGROUP.TAKEN", "a new class already defined"), $ListBuild("", tFreeClass, "422 PORT.FIELD.SHAPE", "an empty new name"), $ListBuild(tFreeName _ $Char(9), tFreeClass, "422 PORT.FIELD.SHAPE", "a new name with a control character"), $ListBuild(tFreeName, "%Probe.Free", "422 ANALYTICS.LISTINGGROUP.CLASS", "a new class in a % package"), $ListBuild(tFreeName, "OcuPilot.Probe", "403 PROHIBITED.OCUPILOTCODE", "a new class in an OcuPilot package"), $ListBuild(tFreeName, "NoPackage", "422 ANALYTICS.LISTINGGROUP.CLASS", "a new class with no package") {
         Set tResult = ..Port("ListingGroups", "COPY", tSource, {}, {"newName": ($List(tCase, 1)), "newClass": ($List(tCase, 2)), "targetCubes": (..#VISITS)}, .tRes)
         Do $$$AssertEquals(tResult, $List(tCase, 3), $List(tCase, 4) _ " is refused by its own code")
         Do $$$AssertEquals(..Snapshot(), tBefore, $List(tCase, 4) _ ": nothing was written")

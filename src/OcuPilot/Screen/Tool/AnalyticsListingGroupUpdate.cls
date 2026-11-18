@@ -59,6 +59,12 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
+/// <p>The merge over the fresh read, with the target cubes in the form the port stores them (AD-58).</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Quit ##super(pFresh, ..CubesNormalized(pArgs), pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+}
+
 /// <p>The dialog's values as this tool's arguments: the strings as sent, <code>Disabled</code> as <code>true</code> or <code>false</code>; the port judges them.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
@@ -68,6 +74,7 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
         Do ..CarryText(pValues, pArgs, tName)
     }
     Set pProblem = ..CarryDisabled(pValues, pArgs)
+    Set pArgs = ..CubesNormalized(pArgs)
     Quit $$$OK
 }
 

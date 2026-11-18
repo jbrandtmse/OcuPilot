@@ -66,7 +66,7 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 }
 
 /// <p>The read always asks for the write it precedes, at the mint, at a screen action and at the confirm's re-read, so each carries the class's <code>Version</code>, which the
-/// fingerprint covers (AD-52); then the namespace the payload holds.</p>
+/// fingerprint covers (AD-52); then the namespace the payload holds, and for an add the new class, which the read refuses when it is one of OcuPilot's own (AD-10).</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     Set pQuery(##class(OcuPilot.Port.AnalyticsPort).#ACTIONKEY) = ..#WRITETYPE
@@ -74,6 +74,7 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     If (pPayload.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pPayload.%Get(..#NAMESPACEFIELD) '= "") {
         Set pQuery(##class(OcuPilot.Port.AnalyticsPort).#NAMESPACEKEY) = pPayload.%Get(..#NAMESPACEFIELD)
     }
+    If (..#WRITETYPE = ##class(OcuPilot.Port.AnalyticsPort).#TYPEADD) && (pPayload.%GetTypeOf("Class") = "string") Set pQuery(##class(OcuPilot.Port.AnalyticsPort).#NEWCLASSKEY) = pPayload.%Get("Class")
 }
 
 /// <p>The title the card gives the target: the fresh read's name, else the agent's own.</p>
@@ -143,6 +144,16 @@ ClassMethod RuleProblem(pIdValue As %String, pArgs As %DynamicObject, ByRef pPro
     Do ..ExtraQuery(pArgs, .tQuery)
     Set pProblem = $ClassMethod(..#PORTCLASS, "ListingGroupProblem", ..ArgumentNamespace(pArgs), ..PortWriteType(), tGroup, tListing, .tQuery, tBody)
     Quit $$$OK
+}
+
+/// <p>A copy of <var>pArgs</var> whose <code>TargetCubes</code>, when a string, is the form the port stores (<method>OcuPilot.Port.AnalyticsPort.NormalizedCubes</method>), so the
+/// payload both callers send reads back as sent (AD-58).</p>
+ClassMethod CubesNormalized(pArgs As %DynamicObject) As %DynamicObject
+{
+    If '$IsObject(pArgs) || 'pArgs.%IsA("%Library.DynamicObject") Quit pArgs
+    Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
+    If tArgs.%GetTypeOf("TargetCubes") = "string" Do tArgs.%Set("TargetCubes", ##class(OcuPilot.Port.AnalyticsPort).NormalizedCubes(tArgs.%Get("TargetCubes")), "string")
+    Quit tArgs
 }
 
 /// <p>The query members the port's judgement reads beyond the body: none here; a copy adds its new name, class and cubes.</p>

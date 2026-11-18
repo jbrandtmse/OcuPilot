@@ -137,6 +137,24 @@ Method TestAListingTheGroupOrACubeAlreadyHoldsIsRefused()
     Do $$$AssertEquals(..Registered(tGroup, tClass) _ ..Registered(tOther, ..#CLASSMARKER _ "Other"), "11", "and both groups are still registered")
 }
 
+/// <p>AD-10: a listing add, change or remove in a group saved in a class whose name begins <code>OcuPilot</code> is refused 403 <code>PROHIBITED.OCUPILOTCODE</code> with the published
+/// sentence, by the port, by the person's screen call and by the agent's mint, with nothing written.</p>
+/// <p>Mutation (Rule 19): make the own-code checks of <method>OcuPilot.Port.AnalyticsPort.PlanListingGroup</method> and <method>OcuPilot.Port.AnalyticsPort.ReadListingGroup</method> answer
+/// 0 -- every leg goes red.</p>
+Method TestOwnCodeIsRefusedByEveryListingWrite()
+{
+    Set tGroup = ..#MARKER _ "OwnListings"
+    Set tClass = ..#OWNCLASSMARKER _ "Listings"
+    Do $$$AssertStatusOK(..SaveGroup(tGroup, tClass, "LGWOwnBase"), "a group saved in an OcuPilot class is held")
+    Set tBefore = ..Model(tClass)
+    Set tAdd = {"ListingGroup": (tGroup), "Name": "LGWOwnNew", "Fields": "Amount"}
+    Do ..AssertOwnCodeRefused("a listing add", "ListingGroupListings", "ENTRYADD", ..IdOf(tGroup, "LGWOwnNew"), {"Fields": "Amount"}, "", "/analytics/listing-group-listings", "", tAdd, ..#ADDLISTINGTOOL, tAdd)
+    Do ..AssertOwnCodeRefused("a listing change", "ListingGroupListings", "ENTRYSET", ..IdOf(tGroup, "LGWOwnBase"), {"Description": "x"}, "", ..#LISTINGSCREEN, "set", {"Description": "x"}, ..#SETLISTINGTOOL, {"ListingGroup": (tGroup), "Name": "LGWOwnBase", "Description": "x"})
+    Do ..EnableKey("analytics.listinggrouplistings.remove")
+    Do ..AssertOwnCodeRefused("a listing remove", "ListingGroupListings", "ENTRYREMOVE", ..IdOf(tGroup, "LGWOwnBase"), {}, "", ..#LISTINGSCREEN, "remove", "", ..#REMOVELISTINGTOOL, {"ListingGroup": (tGroup), "Name": "LGWOwnBase"})
+    Do $$$AssertEquals(..Model(tClass), tBefore, "and the group's model is as it was")
+}
+
 /// <p>AC1, AC5: an agent's mint of a listing add or change that sets SQL carries the consequence <code>ANALYTICS.LISTINGGROUP.SQL</code> (not destructive), where an add that leaves SQL out
 /// carries the one every write states; and a principal without <code>%DeepSee_ListingGroupSQL:USE</code>, minting in a child process, is refused at the mint of either, 400
 /// <code>TOOL.ARGUMENTS</code> with the privilege sentence, and no proposal and no class change results.</p>

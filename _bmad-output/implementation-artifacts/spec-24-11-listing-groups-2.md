@@ -2,11 +2,11 @@
 title: 'Story 24.11: Listing groups (Batch 2: the seven writes)'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'ec633e8f9d15eefd74201e15277719d7aa7ece4f'
 baseline_commit: 'ec633e8f9d15eefd74201e15277719d7aa7ece4f'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-11-listing-groups.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-2-the-analytics-editors.md'
@@ -167,8 +167,8 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a8e43794
 
 Code review 2026-11-18 (Batch 2, first review; tier `full-opus`, four layers). Open items for the one rework iteration:
 
-- [ ] [Review][Patch] HIGH, AD-10 "OcuPilot's own code": the writes save, compile and delete a class whose name can begin with `OcuPilot` in any case. Add and copy refuse only a first package equal to `OcuPilot` (`ListingClassShaped`, as `ANALYTICS.LISTINGGROUP.CLASS`), and update, delete and the listing writes check nothing. Refuse `PROHIBITED.OCUPILOTCODE` with its published sentence before any write, from either caller and at the mint (as `ExplorerSaveMint.Forbidden` does), whenever `Prohibited.IsOcuPilotCode` holds for the class written: the new class of an add or copy, and the group's own class read at the write for the others. Move the fixtures out of the `OcuPilotProbe` stem (DevTool's tests use `OcuProbe241`), with `AnalyticsProbe.Left`/`RemoveListingGroups` still covering them, and add one refusal leg per write shape, using a fixture-made group whose class has the stem. In `Kernel/Proposal/Prohibited.cls`, change only lines this story added (its comment "AD-10 names no effect"); no baseline line changes. [`src/OcuPilot/Port/AnalyticsPort.cls` `PlanListingGroup`]
-- [ ] [Review][Patch] MED, AD-58: an update or add whose `TargetCubes` has spaces around a comma (`"A, B"`) is stored trimmed (`"A,B"`, `VendorListingGroupCompose`), so the read-back under the default rules says `differs` after a correct write. Send the port's normalized form from both callers, or declare a compare that equates them. Add a pinning leg. [`src/OcuPilot/Screen/Tool/AnalyticsListingGroupUpdate.cls`, `AnalyticsListingGroupAdd.cls`]
+- [x] [Review][Patch] HIGH, AD-10 "OcuPilot's own code": the writes save, compile and delete a class whose name can begin with `OcuPilot` in any case. Add and copy refuse only a first package equal to `OcuPilot` (`ListingClassShaped`, as `ANALYTICS.LISTINGGROUP.CLASS`), and update, delete and the listing writes check nothing. Refuse `PROHIBITED.OCUPILOTCODE` with its published sentence before any write, from either caller and at the mint (as `ExplorerSaveMint.Forbidden` does), whenever `Prohibited.IsOcuPilotCode` holds for the class written: the new class of an add or copy, and the group's own class read at the write for the others. Move the fixtures out of the `OcuPilotProbe` stem (DevTool's tests use `OcuProbe241`), with `AnalyticsProbe.Left`/`RemoveListingGroups` still covering them, and add one refusal leg per write shape, using a fixture-made group whose class has the stem. In `Kernel/Proposal/Prohibited.cls`, change only lines this story added (its comment "AD-10 names no effect"); no baseline line changes. [`src/OcuPilot/Port/AnalyticsPort.cls` `PlanListingGroup`]
+- [x] [Review][Patch] MED, AD-58: an update or add whose `TargetCubes` has spaces around a comma (`"A, B"`) is stored trimmed (`"A,B"`, `VendorListingGroupCompose`), so the read-back under the default rules says `differs` after a correct write. Send the port's normalized form from both callers, or declare a compare that equates them. Add a pinning leg. [`src/OcuPilot/Screen/Tool/AnalyticsListingGroupUpdate.cls`, `AnalyticsListingGroupAdd.cls`]
 
 Applied in this review (verified on `ocupilot-b-ci`: `AnalyticsListingGroupWrite` run 798, `AnalyticsListingWrite` 799, `AnalyticsListingGroupWriteEdge` 800, `AnalyticsListingGroupDatabase` 801, `CompositeMintSweep` 802; `test:tools` 2,302, the page spec 3 of 3, `check-objectscript`, `lint-docs`, `client-lint` clean):
 
@@ -244,6 +244,8 @@ Everything else in that file is added lines: the two type parameters, `IsListing
 - **Round trip.** The class text read through `TYPELIST` is the document's lines, the last of them empty; joined by a line feed it ends in one, and `TYPESAVE` writes it back as it was. The spliced text equals the original outside the `Listings` body and `DependsOn` in every test of `AnalyticsListingGroupWrite` and `AnalyticsListingWrite` (`Outside`). The writer adds `disabled="false"` and `selectMode="2"` where the source omitted them, so the XML differs from its source in those defaults while the model reads equal. The vendor's text service takes a carriage return and a line feed between lines; the Atelier save takes a line feed.
 - **Found in the writes.** The relationship's keys keep a gap after `RemoveAt`, so the compose walks the listings by key. `AtelierPort.WritePairs` carries no `%Development:USE` (the source code API's own `PAIRS` do), so the gate adds `AtelierPort.Pairs()`.
 
+8. **Rework 1 (AD-10, AD-58).** `AnalyticsPort` refuses `Prohibited.OCUPILOTCODE` (403, the published sentence) in `PlanListingGroup` (the write, both callers, the script form) and in `ReadListingGroup` (the mint's and the confirm's read, which carries the port's fault unchanged), by `Prohibited.IsOcuPilotCode` on the new class of an add or copy and on the group's class for the rest; a copy's source is only read. An add's `PortQuery` carries `Class` as `newClass` for that read. The tools send `AnalyticsPort.NormalizedCubes` (the port's own trim) from `ComposeCreate`, `MergeUpdate` and the Edit dialog's delta.
+
 **Proposed strings (veto; added to EXPERIENCE.md only once ruled).**
 
 - Kept from Batch 1: the agent empty-state phrases "create a listing group" and "add a listing to this listing group".
@@ -307,6 +309,9 @@ Everything else in that file is added lines: the two type parameters, `IsListing
 - mutation (P2, resource guard): `ResourceDenied` made to answer 0 -> `AnalyticsListingGroupWriteEdge` `TestAGroupsResourceGuardsItsWrites` went red on its four refusal legs and the legs after them, and no other test did (run 117).
 - mutation (P3, SQL mint): `AnalyticsListingAction.Consequence` made to answer the tool's own code -> `AnalyticsListingWrite` `TestAnAgentsSqlListingMintStatesItsConsequenceAndNeedsItsPair` went red on its two SQL consequence legs (run 118); `PlanListingGroup`'s SQL pair judged as held -> that test's two refusal legs and the existing SQL test's five legs went red (run 119). The mint-time refusal is 400 `TOOL.ARGUMENTS` carrying the privilege sentence, not the pair's name; the write's own refusal names the pair (`TestASqlChangeNeedsItsPairAndASilentOneKeepsTheSql`).
 - mutation (P4, client): the `copy` registration dropped from `ListingGroupListPage`, the `set` registration dropped from `ListingGroupListingListPage`, `Type` read as empty and `Disabled` read as false in its `onOpenSet`, each alone -> `listing-group-list.page.spec.ts` went red on that page's one registration-and-open test; each reverted by `cmp`. No bundle is involved: the component runner builds from source.
+- mutation (R1, AD-10 write): the group-class check in `PlanListingGroup` made `&& 0` -> `AnalyticsListingGroupWrite` `TestOwnCodeIsRefusedByEveryGroupWrite` went red on its update and delete port legs and `AnalyticsListingWrite` `TestOwnCodeIsRefusedByEveryListingWrite` on its three port legs (runs 814, 815); the add and copy class check there made `&& 0` -> the add and copy port legs, `TestEachRefusalWritesNothing` and `TestEachCopyRefusalWritesNothing` went red (run 816); both own-code checks in `ReadListingGroup` made `&& 0` -> `TestOwnCodeIsRefusedByEveryGroupWrite`, `TestEachRefusalWritesNothing` and `TestOwnCodeIsRefusedByEveryListingWrite` went red on the mint legs (runs 817, 818).
+- mutation (R1, AD-58): `AnalyticsListingGroupAction.CubesNormalized` made to answer its argument -> `AnalyticsListingGroupWrite` `TestTargetCubesWithSpacesReadBackAsSent` went red on its four read-back legs (run 819); the person's Edit leg alone was red before `ScreenActionDelta` normalized (run 803). Each reverted by rsync from the worktree, checked with `cmp`, the whole tree reloaded (`LoadDir`) and `OcuPilot.Screen.Tool` recompiled into `ocupilot-b-ci`; green after (the three write classes, `AnalyticsListingGroupDatabase`, `Prohibited`, `AnalyticsListingGroupRead`, `AnalyticsListingGroupGate`).
+- mutation (R1, AD-10 person's call): every own-code check in `PlanListingGroup` and `ReadListingGroup` made `&& 0 *` together -> `AnalyticsListingGroupWrite` `TestOwnCodeIsRefusedByEveryGroupWrite` went red on the add, copy, update and delete legs of the person's call, the port, the mint and "nothing was written" (run 3 on the rebuilt `ocupilot-b-ci`); reverted by `diff -rq` against the worktree, the whole tree reloaded, green after (run 4).
 - (P5) `Left()` was shown to report a seeded `classes` registry node and an `LGW` cube-listing node, and `""` after they were killed; the `Snapshot()` checksum, the `Prohibited.cls` block move and the browser spec comment are not behavior a test pins.
 - Each server mutation was reverted by `cmp` against the saved copy, the whole tree reloaded and compiled into `ocupilot-b-ci`, and the class that went red was green after. The client ones were reverted by `cmp`, rebuilt and redeployed.
 - (QA) `src/OcuPilot/Test/AnalyticsListingGroupDatabase.cls` (3 tests, run 794 green on a fresh load; armed through `AnalyticsListingGroupBase`, so no roster line beyond one comment line in `scripts/ci-throwaway.sh`) and `src/OcuPilot/Test/AnalyticsListingGroupDatabaseSeam.cls` (the seam it drives). New legs in `ui/src/app/shell/screen-action-handler-listinggroup.spec.ts`.
@@ -348,32 +353,32 @@ Everything else in that file is added lines: the two type parameters, `IsListing
   - `[low]` `[reject]` Intent auditor: the DB-WRITE gate (`READONLY`) has no test — a read-only database cannot be made on the throwaway without the database-directory hazard the rules forbid; the check is one `AdmitDestination` call shared with the term list's tested path.
   - `[low]` `[reject]` Intent auditor: the extra pair `WritePairs` adds has no leg of its own — the gate loop holds every pair but one for the two pairs the spec names; the rest is `AtelierPort`'s own tested set.
 
+### 2026-11-18 — Review pass (rework 1, this pass's diff only)
+
+- verdicts: 7 findings — high 0, medium 0, low 7, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The second own-code add and copy class, `ocupilotlgw.deeper.package.lgwnew`, starts with no prefix `Snapshot`, `RemoveListingGroups` or `Left` covers, so a regressed guard would leave it unseen and uncleaned — the class moved under the covered `OcuPilotLGW.Analytics.LGW` prefix in lower case (`ocupilotlgw.analytics.lgwdeep.pkg.new`), any depth and case kept.
+  - `[low]` `[patch]` The AD-10 `mutation:` line did not show the person's-call legs red, since each single-site mutation leaves the other check refusing — ran the combined mutation (run 3) and recorded it as the R1 person's-call line.
+  - `[low]` `[reject]` Cleanup of the `OcuPilotLGW` fixture prefix and `Left`'s class count have no mutation of their own — test infrastructure, and the 403 legs are the pin; the P5 line already shows `Left()` reporting a seeded node.
+  - `[low]` `[reject]` `ListingClassShaped`'s `OcuPilot` branch and the `.CLASS` sentence now never fire for that name — the branch is a kept pure guard and the sentence still serves the `%` and no-package cases; deleting it is more than a direct correction.
+  - `[low]` `[reject]` `PlanListingGroup`'s doc comment lists the own-class refusal before the group read while the code refuses after the existence check — an absent group answers 404 either way and the comment lists the refusals, not an order a caller can observe.
+  - `[low]` `[reject]` A spacing-only change of `TargetCubes` now composes as unchanged and no test asserts it — the reviewer calls it an observation, not a defect.
+  - `[low]` `[reject]` Intent auditor: the OcuPilot-package refusal uses `PROHIBITED.OCUPILOTCODE`, extends to update, delete and the listing writes, moves the fixture package and normalizes `TargetCubes` in the tools not the port — each is the dispatching lead's ruling for the open `[Review]` items, not a divergence from the contract's intent.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Implemented (Batch 2: the seven writes).** Listing groups and their listings are added, updated, copied, deleted and set or removed through `AnalyticsPort` for both callers. The group's class is composed from `%GetModel` and saved, compiled and deleted through `AtelierPort` by the new `Kernel/SourceDocument` and `Kernel/ListingGroupText` (`DevToolPort.ReadVersion` now delegates to `SourceDocument`). A refused compile restores the prior text or deletes the new class. Five keys ship on, delete and remove ship off.
+**This pass (rework 1: the two open `[Review]` items).**
 
-**Files changed (one line each).**
+- **AD-10.** `AnalyticsPort` refuses 403 `Prohibited.OCUPILOTCODE` with its published sentence, from both callers, the script form and the mint, whenever `Prohibited.IsOcuPilotCode` holds for the class written (the new class of an add or copy, the group's own class for update, delete and the listing writes). One refusal leg per write shape is in `AnalyticsListingGroupWrite` and `AnalyticsListingWrite`. The write fixtures moved to `OcuProbeLGW.Analytics.LGW*`, and the own-code fixtures use `OcuPilotLGW.Analytics.LGW*`. `Prohibited.cls` changed one comment this story added; no contended file changed.
+- **AD-58.** Both tools and the Edit dialog send `AnalyticsPort.NormalizedCubes`, so a correct add or update reads back `matches`; `TestTargetCubesWithSpacesReadBackAsSent` pins it.
 
-- Server: `Port/AnalyticsPort` (reads, pre-checks, writes, restore, audit, script forms), `Kernel/SourceDocument`, `Kernel/ListingGroupText`, `Port/DevToolPort`, nine tools under `Screen/Tool/AnalyticsListing*`, `Area/Analytics/ListingGroup{Save,Form}` and `ListingSave` with their routes, `Api/AnalyticsError`, `Kernel/Governance/Baseline`, `Kernel/Proposal/Prohibited`, the two descriptors.
-- Client: `ui/src/app/areas/analytics/listing-group*` (store, dialogs, two pages, specs), handler, outlet, action-label and proposal-view maps, strings, regenerated mirror, EXPERIENCE.md row.
-- Tests: `AnalyticsListingGroup{Base,Write,WriteEdge,Atelier,Seam}`, `AnalyticsListingWrite`, `AnalyticsProbe`, roster unions in the ten contended files and the other roster classes, `ui/tools/analytics.test.mjs`, the browser spec, an arming-roster comment in `scripts/ci-throwaway.sh`.
+**Files changed.** `Port/AnalyticsPort`, `Screen/Tool/AnalyticsListingGroup{Action,Add,Update}`, `Kernel/Proposal/Prohibited` (comment), `Test/AnalyticsListingGroup{Base,Write}`, `Test/AnalyticsListingWrite`, `Test/AnalyticsProbe`, `ui/browser/analytics.browser-spec.mjs` (the `WRITE_CLASS` constant).
 
-**Review.** One pass, two layers: 20 findings, patch 8 (medium 4, low 4), reject 12. The four medium patches (P1 to P4) added a copy-refusal test, a resource-guard test, an agent SQL-mint test and a page-registration spec, each with a mutation line. Triage and the rejected rows' reasons are in `## Review Triage Log`. No findings deferred.
+**Review.** Two layers over this pass's diff: 7 findings, low 7. Patched 2 (the deep-package fixture moved under a covered prefix; the person's-call mutation recorded), rejected 5, deferred none. Rows are in `## Review Triage Log`. Follow-up review recommended: false (no `high` patched).
 
-**Follow-up review recommended: true.** Four medium findings were patched. The unverified risk: the four new tests were written and mutated in one pass, and the agent mint's refusal answers the generic privilege sentence, not the pair name (the write names it).
+**Verification.** The throwaway `ocupilot-b-ci` was rebuilt, and `AnalyticsListingGroupWrite` and `AnalyticsListingWrite` passed on their first run on it. Then the full ObjectScript sweep ran once after the last patch: 17 shards, 6,004 tests, 0 failed, 0 probe leftovers, 0 overlaps. Earlier this pass: `AnalyticsListingGroupWriteEdge`, `AnalyticsListingGroupDatabase`, `AnalyticsListingGroupRead` and `Gate` green. `check-objectscript` 0 problems, `lint-docs` clean, `test:tools` 2,302 of 2,302. Mutation lines R1 are in `## Verification`. The component runner and the browser suite were not run (the one client-side change is a constant in the browser spec).
 
-**Deviations from the spec's wording, for the runner.**
-
-- `%Development:USE` comes from `AtelierPort.Pairs()`, not `WritePairs`; the gate adds both.
-- Copy's cube argument is `NewCubes`, because `Test/Prohibited` refuses `TargetCubes` on a no-body tool; the query key and screen row are unchanged.
-- Shape errors reuse `PORT.FIELD.SHAPE`; no new sentence was added.
-- The EXPERIENCE.md :611 sentence "offers no action" was replaced (it became false), as the spec asked; the `strings.ts` cite of that file moved one line.
-- The arming roster names `AnalyticsListingGroupBase`, the abstract class that declares `OCUPILOT_ALLOW_PRINCIPALS`.
-- `ci-timings.json` is untouched and has no rows for the new classes.
-
-**Verification.** On a throwaway rebuilt for this check, the three new classes were run first and each passed on its first run (8, 4 and 5 tests). The full ObjectScript sweep ran once after the last patch as 17 shards (k/17), all green, 0 failed, 0 probe leftovers, 0 overlaps. Earlier in the pass: the touched roster, read, gate and port classes, `test:tools` 2,302, `test:components` 3,550, `npm run build` (initial bundle 2.11 MB, under both budgets), the browser specs `analytics` 8 of 8 and `analytics-links` 6 of 6 on the redeployed bundle, `check-objectscript` 0 problems, `lint-docs` clean. One mutation per AC is in `## Verification`. The full browser suite is left to CI.
-
-**Residual risks.** The `TYPED_NAME_ROWS` entry for a group is unpinned by any mutation (a group's id is its name). The database-read-only refusal and the extra `WritePairs` pair have no test of their own. A patch-pass subagent sent two test-runner calls in one message once; the runner reported 0 overlaps and both classes were re-run alone, green.
+**Residual risks.** One implement subagent sent two test-runner calls in one message; both reported 0 overlaps and were re-run alone, green. The intent contract's text still names the `OcuPilotProbe.Analytics` fixture package.

@@ -60,10 +60,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The composed payload and diff of the create (AD-54), and the namespace the request is scoped to. The namespace adds no diff row.</p>
+/// <p>The composed payload and diff of the create (AD-54), and the namespace the request is scoped to. The namespace adds no diff row. The target cubes are sent as the port stores them (AD-58).</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
-    Set tSC = ##super(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    Set tSC = ##super(..CubesNormalized(pArgs), pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
     If $$$ISERR(tSC) || (pProblem '= "") || '$IsObject(pPayload) Quit tSC
     Do pPayload.%Set(..#NAMESPACEFIELD, ##class(OcuPilot.Kernel.Scope).Current(), "string")
     Quit tSC

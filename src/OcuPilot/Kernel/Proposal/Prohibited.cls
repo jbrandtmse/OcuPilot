@@ -772,8 +772,8 @@ Parameter TYPETERMLISTENTRY = "term-list-entry";
 /// AD-10 names no effect on one: OcuPilot holds no folder item, so a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPEFOLDERITEM = "folder-item";
 
-/// <p>A listing group, and one listing of it, written by the listing group editor (AD-65, Story 24.11). AD-10 names no effect on either: the one rule this product has against a
-/// class of its own is the port's (a listing group's class is never in an <code>OcuPilot</code> package), so a write passes the reviewed-few sweep and nothing else.</p>
+/// <p>A listing group, and one listing of it, written by the listing group editor (AD-65, Story 24.11). AD-10 names no effect on either beyond the class rule, which is the port's:
+/// <class>OcuPilot.Port.AnalyticsPort</class> refuses <code>OCUPILOTCODE</code> for a class of OcuPilot's own, so a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPELISTINGGROUP = "listing-group";
 
 Parameter TYPELISTINGGROUPLISTING = "listing-group-listing";

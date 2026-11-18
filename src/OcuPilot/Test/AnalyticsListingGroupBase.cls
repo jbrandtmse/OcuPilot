@@ -23,7 +23,10 @@ Parameter NAMESPACE = "USER";
 /// <p>The prefix every group this class makes starts with, and the prefix of their classes.</p>
 Parameter MARKER = "OcuPilotProbeLGW";
 
-Parameter CLASSMARKER = "OcuPilotProbe.Analytics.LGW";
+Parameter CLASSMARKER = "OcuProbeLGW.Analytics.LGW";
+
+/// <p>The prefix of the classes a test saves directly, never through the port, to show a write refuse a group whose class is one of OcuPilot's own (AD-10); the probe removes them too.</p>
+Parameter OWNCLASSMARKER = "OcuPilotLGW.Analytics.LGW";
 
 Parameter GROUPSCREEN = "/screens/analytics.listinggroups/action";
 
@@ -210,7 +213,7 @@ ClassMethod Registered(pName As %String, pClass As %String) As %Boolean
     Quit ''tHeld
 }
 
-/// <p>What the instance holds of this class's groups: every class of the write marker with the length and a SHA-1 checksum of its text, and every group node, as one string, so two calls
+/// <p>What the instance holds of this class's groups: every class of the write markers with the length and a SHA-1 checksum of its text, and every group node, as one string, so two calls
 /// compare equal when nothing was written between them.</p>
 ClassMethod Snapshot() As %String
 {
@@ -218,10 +221,12 @@ ClassMethod Snapshot() As %String
     Set tOut = ""
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ? ORDER BY Name", ..#CLASSMARKER)
-        While tRS.%Next() {
-            Set tText = ..TextOf(tRS.%GetData(1))
-            Set tOut = tOut _ tRS.%GetData(1) _ "=" _ $Length(tText) _ ":" _ $System.Encryption.Base64Encode($System.Encryption.SHA1Hash($ZConvert(tText, "O", "UTF8"))) _ ";"
+        For tPrefix = ..#CLASSMARKER, ..#OWNCLASSMARKER {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ? ORDER BY Name", tPrefix)
+            While tRS.%Next() {
+                Set tText = ..TextOf(tRS.%GetData(1))
+                Set tOut = tOut _ tRS.%GetData(1) _ "=" _ $Length(tText) _ ":" _ $System.Encryption.Base64Encode($System.Encryption.SHA1Hash($ZConvert(tText, "O", "UTF8"))) _ ";"
+            }
         }
         Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#MARKER, "U")), -1)
         For {
@@ -296,6 +301,20 @@ Method MintRefused(pTool As %String, pArgs As %DynamicObject, pCode As %String)
     Do $$$AssertStatusNotOK(tSC, $Parameter(pTool, "TOOLNAME") _ " is refused at the mint")
     Do $$$AssertTrue(('$IsObject($Get(tProposal))) && (+$Get(tHttp) >= 400), "with no proposal and a refusal status: " _ $Get(tHttp))
     Do $$$AssertTrue($IsObject($Get(tFault)) && ($Extract(tFault.%Get("code"), 1, $Length(pCode)) = pCode), "naming " _ pCode _ ": " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+}
+
+/// <p>The write refused as OcuPilot's own code (AD-10), by every caller, each with the published sentence and nothing written: the port's <var>pType</var> of <var>pEndpoint</var> on
+/// <var>pId</var> with <var>pBody</var> and the query members <var>pExtra</var>; the person's screen call (<var>pScreen</var>, the screen action <var>pAction</var> on <var>pId</var>,
+/// or, when <var>pAction</var> is empty, a post of <var>pValues</var> to the route <var>pScreen</var>); and the agent's mint of <var>pTool</var> with <var>pArgs</var>.</p>
+Method AssertOwnCodeRefused(pWhat As %String, pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject, pScreen As %String, pAction As %String, pValues As %DynamicObject, pTool As %String, pArgs As %DynamicObject)
+{
+    Set tCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTCODE
+    Set tBefore = ..Snapshot()
+    Do $$$AssertEquals(..Port(pEndpoint, pType, pId, pBody, pExtra, .tRes), "403 " _ tCode, pWhat _ ": the port refuses it")
+    Set tStatus = $Select(pAction = "": ..Post(pScreen, pValues, .tAnswer), 1: ..Act(pScreen, pAction, pId, pValues, .tAnswer))
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code") _ " " _ tAnswer.%Get("reason"), 1: ""), "403 " _ tCode _ " " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), pWhat _ ": the person's call is refused with the published sentence")
+    Do ..MintRefused(pTool, pArgs, tCode)
+    Do $$$AssertEquals(..Snapshot(), tBefore, pWhat _ ": nothing was written")
 }
 
 /// <p>Turn the governance key <var>pKey</var> on for this test; the policy found is restored by <method>OnAfterOneTest</method>.</p>

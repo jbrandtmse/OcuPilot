@@ -4543,6 +4543,23 @@ ClassMethod ListingGroupFacts(pNamespace As %String, pGroup As %String, Output p
     Quit $$$OK
 }
 
+/// <p>The cube names of the comma-separated <var>pText</var> as the write stores them: each stripped of surrounding whitespace, in order, an empty piece dropped. Pure.</p>
+ClassMethod CubeList(pText As %String) As %List
+{
+    Set tCubes = ""
+    For tPiece = 1:1:$Length(pText, ",") {
+        Set tCube = $ZStrip($Piece(pText, ",", tPiece), "<>W")
+        If tCube '= "" Set tCubes = tCubes _ $ListBuild(tCube)
+    }
+    Quit tCubes
+}
+
+/// <p>The target cubes <var>pText</var> as the write stores them (<method>CubeList</method> joined by a comma), the form a caller sends so the read-back finds the value it sent. Pure.</p>
+ClassMethod NormalizedCubes(pText As %String) As %String
+{
+    Quit $ListToString(..CubeList(pText), ",")
+}
+
 /// <p>Whether <var>pName</var> can be a listing group's or a listing's name: 1 to <parameter>LISTINGNAMEMAX</parameter> characters with no control character. Pure.</p>
 ClassMethod ListingNameShaped(pName As %String) As %Boolean
 {
@@ -4744,12 +4761,8 @@ ClassMethod VendorListingGroupCompose(pNamespace As %String, pOp As %String, pCl
         }
         If pCode = "" {
             ; The checks the vendor's compile makes, in its order, so that a refusal is known before anything is saved. A disabled group is not checked.
-            Set tCubes = ""
-            For tPiece = 1:1:$Length(tModel.targetCubes, ",") {
-                Set tCube = $ZStrip($Piece(tModel.targetCubes, ",", tPiece), "<>W")
-                If tCube '= "" Set tCubes = tCubes _ $ListBuild(tCube)
-            }
-            Set tModel.targetCubes = $ListToString(tCubes, ",")
+            Set tCubes = ..CubeList(tModel.targetCubes)
+            Set tModel.targetCubes = ..NormalizedCubes(tModel.targetCubes)
             If 'tModel.disabled {
                 If tCubes = "" Set pCode = "CUBE"
                 For tPiece = 1:1:$ListLength(tCubes) {
@@ -4861,10 +4874,12 @@ ClassMethod ReadListingGroup(pNamespace As %String, pType As %String, pGroup As 
     Set tSC = ..ListingGroupFacts(pNamespace, pGroup, .tData, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tHeld = +tData("exists")
+    If (pAction = ..#TYPEADD) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(pQuery(..#NEWCLASSKEY))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
     If pAction = ..#TYPEADD Quit $Select(tHeld: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPTAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
     If 'tHeld Quit ..AbsentFor(pAction, .pHttpStatus, .pFault)
     If pAction '= "" {
         If tData("classes") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pAction '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(tData("class"))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
         Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tData("class") _ ".cls", .tVersion, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
     } Else {
@@ -4906,6 +4921,13 @@ ClassMethod AbsentFor(pAction As %String, Output pHttpStatus As %Integer, Output
     Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..ListingGroupAbsent(.pHttpStatus, .pFault))
 }
 
+/// <p>The refusal of a write whose class is one of OcuPilot's own (AD-10): 403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter> with its published sentence.</p>
+ClassMethod OwnCodeRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTCODE
+    Quit ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), .pHttpStatus, .pFault)
+}
+
 /// <p>Whether the caller lacks WRITE on the resource <var>pResource</var>, which a group names as the one guarding it (the classic page's <code>canWrite</code>); a group
 /// that names none is writable. <var>pFailedPair</var> is the pair the caller lacks.</p>
 ClassMethod ResourceDenied(pResource As %String, Output pFailedPair As %String) As %Boolean [ Private ]
@@ -4916,7 +4938,8 @@ ClassMethod ResourceDenied(pResource As %String, Output pFailedPair As %String) 
 }
 
 /// <p>Judge the listing group write <var>pType</var> of <var>pGroup</var> (and of the listing <var>pListing</var>) before anything is written (Story 24.11). In order, each
-/// refusal before any save: the shape rules (<method>ListingGroupViolations</method>, 422) and the new class's (<code>ANALYTICS.LISTINGGROUP.CLASS</code>, 422); the group read
+/// refusal before any save: the shape rules (<method>ListingGroupViolations</method>, 422); a class of OcuPilot's own (the new class of an add or copy, the group's class for the
+/// others, 403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); the new class's shape (<code>ANALYTICS.LISTINGGROUP.CLASS</code>, 422); the group read
 /// now (<method>ReadListingGroupData</method>): a group not there is 404 <code>ABSENT</code>, one two classes declare 409 <code>AMBIGUOUS</code>, a held name on an add 409
 /// <code>TAKEN</code>; WRITE on the group's resource; then the model composed from <code>%GetModel</code> read now (<method>VendorListingGroupCompose</method>), whose refusals
 /// are <method>ComposeRefusal</method>'s. <var>pPlan</var> holds what the write needs: <code>class</code> (the class it saves or deletes), <code>text</code> (its new text),
@@ -4932,6 +4955,7 @@ ClassMethod PlanListingGroup(pNamespace As %String, pType As %String, pGroup As 
     If $$$ISERR(tSC) Quit tSC
     If (pType = ..#TYPECOPY) && '..ListingNameShaped(tNew) Set tViolations($Increment(tViolations)) = $ListBuild("NewName", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
     If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    If ((pType = ..#TYPEADD) || (pType = ..#TYPECOPY)) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tNewClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
     If ((pType = ..#TYPEADD) || (pType = ..#TYPECOPY)) && '..ListingClassShaped(tNewClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPCLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPCLASS, .pHttpStatus, .pFault)
     Set tSC = ..ListingGroupFacts(pNamespace, pGroup, .tData, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
@@ -4941,6 +4965,7 @@ ClassMethod PlanListingGroup(pNamespace As %String, pType As %String, pGroup As 
     } Else {
         If 'tData("exists") Quit ..ListingGroupAbsent(.pHttpStatus, .pFault)
         If tData("classes") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pType '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(tData("class"))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
         If ..ResourceDenied(tData("resource"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     }
     Set pPlan("class") = $Select(pType = ..#TYPEADD: tNewClass, pType = ..#TYPECOPY: tNewClass, 1: $Get(tData("class")))
