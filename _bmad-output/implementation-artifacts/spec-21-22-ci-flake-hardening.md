@@ -2,7 +2,7 @@
 title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -17,6 +17,8 @@ deferred: []
 **Problem:** Eight CI flakes are routed here, each red once and green on an unchanged rerun, plus two test-hygiene entries (DW-2202 literal roster counts, DW-2476 copied settle helpers). The story's criterion: each flake's test waits on the system's own readiness signal or is fixed at its cause, and its entry closes with the evidence.
 
 **Approach:** Fix the three flakes whose cause the code and CI log establish (DW-2534, DW-2565, DW-2553 after a Task 0 measurement). For the five whose cause is not established, land a named diagnosis step that makes the next red name its cause, add the readiness waits that are missing, and close them `wontfix-accepted` with a reopen condition. Take a bounded first slice of DW-2202 and DW-2476 and leave each residual ledgered with a scope note.
+
+**Re-plan ruling (2026-11-18, orchestrator priority):** DW-2721 comes first. The gates job's `client suite` step (`npm test`) on Node 22.22.3 hangs until the job is canceled at 25 minutes with no log (five times on 2026-11-18 across feature and both epics; node 24/26 pass in about 9 minutes). Batch 1 is DW-2721 with DW-2567 and is committable and pushable on its own: a step timeout well under the job's so a hang fails with a log; the resource sampler with OOM lines on failure or cancel; the vitest half run with a bounded worker count and a per-worker heap cap sized for the CI runner's 2 CPUs (a 2-CPU Linux container ran a vitest fork out of heap at file 90 of 286; 4 CPU and macOS stay green); a way for the log to name the hanging file; and the fix. The flakes routed here since the first plan (DW-2627, DW-2648, DW-2649, DW-2685, DW-2713, DW-2714, DW-2720) join the inbox: address each or decline it with a reason. If the whole does not fit in ordered batches, recommend a split, keeping Batch 1 here.
 
 ## Boundaries & Constraints
 
@@ -97,6 +99,8 @@ Batch 3, bounded slices:
 - Given the four derived counts and the twelve converted specs, when a member is added to a roster or a spec declares a new copy, then no literal needs editing and the ratchet test reddens (DW-2202, DW-2476).
 
 ## Spec Change Log
+
+- 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
 
 ## Review Triage Log
 
