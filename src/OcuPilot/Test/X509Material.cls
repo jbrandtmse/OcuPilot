@@ -199,6 +199,7 @@ ClassMethod FirstWrongPassword(pDirectory As %String, pKeyFile As %String, pPass
     Set tFound = ""
     For tN = 0:1:2999 {
         Set tCandidate = pPassword _ "Wrong" _ $Select(tN = 0: "", 1: tN)
+        Do ##class(%File).Delete(pDirectory _ "openssl.err")
         Set tSC = ..Run(pDirectory, "pkey", "-in", pKeyFile, "-passin", "pass:" _ tCandidate, "-noout")
         If $$$ISOK(tSC) Continue
         Set tBad = (..ReadText(pDirectory _ "openssl.err") [ "bad decrypt")

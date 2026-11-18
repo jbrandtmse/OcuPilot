@@ -58,7 +58,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#MATERIAL, "Run", tDirectory, "pkcs8", "-topk8", "-in", tDirectory _ "key.pem", "-out", tDirectory _ "ssl-key.pem", "-v2", "aes-256-cbc", "-passout", "pass:" _ ..Sentinel)
     If $$$ISERR(tSC) Quit tSC
     Set ..BadDecryptPassword = $ClassMethod(..#MATERIAL, "BadDecryptPassword", tDirectory, tDirectory _ "ssl-key.pem", ..Sentinel)
-    If ..BadDecryptPassword = "" Quit $$$ERROR($$$GeneralError, "no wrong password that OpenSSL reports as bad decrypt was found for the probe key")
+    If ..BadDecryptPassword = "" Quit $$$ERROR($$$GeneralError, "no wrong password that OpenSSL reports as bad decrypt was found for the probe key; the last openssl error: " _ $Extract($Translate($ClassMethod(..#MATERIAL, "ReadText", tDirectory _ "openssl.err"), $Char(10), " "), 1, 400))
     Quit ..EnsureProbe()
 }
 

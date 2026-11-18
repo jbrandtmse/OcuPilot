@@ -2733,7 +2733,7 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
   const clock = join(dir, 'clock.txt');
   mkdirSync(bin);
   // A `sleep` that records its argument and returns at once, so the backoff sequence is read
-  // without waiting it out. Only the budget's own clock (`date`) stays real.
+  // without waiting it out. The budget's own clock (`date`) stays real unless `steppedClock` is set.
   if (stubSleep) writeStub(bin, 'sleep', ['printf \'%s\\n\' "$1" >> "$OCUPILOT_SLEEP_CAPTURE"', 'exit 0']);
   // A `date +%s` that reads a counter file and adds one second per read, so the budget's own clock is
   // stepped and never straddles a real second; any other `date` call reaches the real one.
