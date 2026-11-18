@@ -10,8 +10,12 @@
 /// <p><b>Its privilege set is <parameter>OcuPilot.Port.GlobalPort.PAIRS</parameter></b>; the port also requires READ on the namespace's
 /// databases, resolved at call time (AD-29). It replaces <code>%CSP.UI.Portal.GlobalList</code>, whose custom resource also gates it
 /// (AD-44). It does not refresh (AD-43).</p>
-/// <p><b>Its one row action</b>, <code>delete</code>, deletes the whole global through
-/// <class>OcuPilot.Screen.Tool.ExplorerGlobalDelete</class>.</p>
+/// <p><b>Its row actions</b>: <code>delete</code> deletes the whole global through
+/// <class>OcuPilot.Screen.Tool.ExplorerGlobalDelete</class>; <code>export</code> and <code>export-browser</code> export the selected global as
+/// an XML document to a server file or to this browser through <class>OcuPilot.Screen.Tool.ExplorerGlobalExport</class>; <code>import</code> and
+/// <code>import-local</code> import one file from the server or from this browser through
+/// <class>OcuPilot.Screen.Tool.ExplorerGlobalImport</class> (Story 21.17). The list declares no <code>multiSelect</code>, so each acts on
+/// the one selected row, or on none.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerGlobalList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -33,7 +37,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": "protected-global"}],
+  "rowActions": [{"id": "delete", "selfProtection": "protected-global"}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}],
   "context": {"fields": ["Name", "Database", "Collation", "Journal"], "secretFields": []},
   "emptyStateKey": "explorerGlobalListEmpty",
   "commandAliases": ["globals", "global list"],

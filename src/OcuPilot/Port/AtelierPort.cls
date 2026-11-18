@@ -19,6 +19,10 @@
 /// <parameter>TYPESAVEDOCS</parameter> and the write <parameter>TYPESAVE</parameter>. Each write is
 /// composed here from the caller's declared values (AD-51); a compile, a delete, an import and a save
 /// are gated on WRITE on the namespace's routines database as well (AD-61).</p>
+/// <p><b>One global is also a document</b> (<parameter>ENDPOINTGLOBALS</parameter>, Story 21.17): an export of one global
+/// (<code>&lt;name&gt;.GBL</code>) and the three import types serve it through the same routes. Its export reads the global's
+/// presence and size through <method>GlobalPortClass</method> instead of the document list, and an import versions each global
+/// document it lists by that port's content digest (<method>Examine</method>); every other type of that endpoint is not served.</p>
 /// <p><b>Two reads find code</b> (<parameter>ENDPOINTSEARCH</parameter> and
 /// <parameter>ENDPOINTMACRO</parameter>). A search is always plain text: it sends
 /// <code>regex=0</code>, never <code>word</code> or <code>wild</code>, and its
@@ -85,6 +89,12 @@ Parameter ENDPOINTCLASSES = "Classes";
 
 /// <p>The endpoint answering a namespace's routines and include files.</p>
 Parameter ENDPOINTROUTINES = "Routines";
+
+/// <p>The endpoint answering one global, as the document its export and import carry (Story 21.17).</p>
+Parameter ENDPOINTGLOBALS = "Globals";
+
+/// <p>The extension of a global's document, as an export names it.</p>
+Parameter GLOBALDOCUMENTEXTENSION = ".GBL";
 
 /// <p>The endpoint answering one class's structure and text.</p>
 Parameter ENDPOINTCLASS = "Class";
@@ -385,7 +395,7 @@ Parameter TAKINGROUTINETYPES = "mac,int,bas,mvi,mvb";
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
 /// alone, an export from the set and its file, an import from its file, and a save or a create from
 /// its text, its version and its compile choice.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT,Classes/SAVE,Routines/SAVE,Classes/CREATE,Routines/CREATE";
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Globals/EXPORT,Classes/IMPORT,Routines/IMPORT,Globals/IMPORT,Classes/SAVE,Routines/SAVE,Classes/CREATE,Routines/CREATE";
 
 /// <p>The query key carrying an import's target, and the one target it takes, compared without
 /// regard to case.</p>
@@ -908,7 +918,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tOne = (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE)
         Set tFind = (pEndpoint = ..#ENDPOINTSEARCH) || (pEndpoint = ..#ENDPOINTMACRO)
         Set tCatalog = ..IsCatalog(pEndpoint)
-        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne || tFind || tCatalog)) || ((tSetType || tImportType) && tList)
+        Set tGlobals = (pEndpoint = ..#ENDPOINTGLOBALS)
+        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne || tFind || tCatalog)) || ((tSetType || tImportType) && tList) || (tGlobals && ((pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || tImportType))
         If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
@@ -956,6 +967,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Quit
             }
             If pType = ..#TYPEEXPORTDOCS {
+                If tGlobals {
+                    Set tSC = ..GlobalDocs(tNamespace, tNames, .pResult, .pHttpStatus, .pFault)
+                    Quit
+                }
                 Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault, $ListBuild(..#ROOTKEY, ..#PATHKEY))
                 Quit
             }
@@ -1750,6 +1765,9 @@ ClassMethod GlobMatches(pSubject As %String, pGlob As %String) As %Boolean
     Quit tMatched
 }
 
+/// <p>On <parameter>ENDPOINTGLOBALS</parameter> the set is the one global <var>pValue</var> names, as
+/// <class>OcuPilot.Port.GlobalPort</class> reads a name, answered as its <code>.GBL</code> document; any
+/// other value is <code>""</code>.</p>
 /// <p><var>pValue</var> as a canonical set of document names of <var>pEndpoint</var>'s kind, as a
 /// <class>%List</class>: split on commas, empty pieces dropped, each name once, sorted by character
 /// code. <code>""</code> when the set is empty, names more than <parameter>MAXDOCUMENTS</parameter>,
@@ -1757,6 +1775,7 @@ ClassMethod GlobMatches(pSubject As %String, pGlob As %String) As %Boolean
 /// list or a routine (<parameter>ROUTINENAMEPATTERN</parameter>) on the routines list.</p>
 ClassMethod SetNames(pEndpoint As %String, pValue As %String) As %List
 {
+    If pEndpoint = ..#ENDPOINTGLOBALS Quit $Select($ClassMethod(..GlobalPortClass(), "NameValid", pValue): $ListBuild(pValue _ ..#GLOBALDOCUMENTEXTENSION), 1: "")
     Set tPattern = $Select(pEndpoint = ..#ENDPOINTCLASSES: ..#CLASSNAMEPATTERN, 1: ..#ROUTINENAMEPATTERN)
     Kill tSorted
     Set tValid = 1
@@ -1970,6 +1989,48 @@ ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
     Quit tSC
 }
 
+/// <p>The class a global's presence, size and digest are read through. Overridable so a fixture can
+/// observe the read; production never overrides it.</p>
+ClassMethod GlobalPortClass() As %String
+{
+    Quit "OcuPilot.Port.GlobalPort"
+}
+
+/// <p>The read <var>pType</var> (<code>SIZE</code> or <code>DIGEST</code>) of global <var>pName</var> in <var>pNamespace</var>, through
+/// <method>GlobalPortClass</method>. The port's own refusal is answered unchanged.</p>
+ClassMethod GlobalRead(pNamespace As %String, pName As %String, pType As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill tQuery
+    Set tQuery(##class(OcuPilot.Port.GlobalPort).#NAMESPACEKEY) = pNamespace
+    Set tQuery(##class(OcuPilot.Port.GlobalPort).#NAMEKEY) = pName
+    Set pAnswer = ""
+    Set tSC = $ClassMethod(..GlobalPortClass(), "Invoke", ##class(OcuPilot.Port.GlobalPort).#ENDPOINTGLOBALS, pType, .tQuery, "", .pAnswer, .pHttpStatus, .pFault)
+    If $$$ISOK(tSC) && '$IsObject(pAnswer) Quit ..Fail("the global read answered no object", $$$ERROR($$$GeneralError, "the global read answered no object"), .pHttpStatus, .pFault)
+    Quit tSC
+}
+
+/// <p>An export's fresh read of the one global <var>pNames</var> names, in place of <method>Docs</method>: its size is read
+/// (<method>GlobalRead</method>, <code>SIZE</code>) and the answer has <method>Docs</method>' shape, <code>Present</code> its
+/// <code>.GBL</code> document, <code>Modified</code> and <code>Absent</code> empty, <code>Namespace</code>, and <code>root</code> and
+/// <code>path</code> <code>null</code>. A global that holds no data, one that is OcuPilot's own, and one above
+/// <parameter>MAXIMPORTCHARACTERS</parameter> are the port's refusals, answered unchanged.</p>
+ClassMethod GlobalDocs(pNamespace As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Extract($List(pNames, 1), 1, *-$Length(..#GLOBALDOCUMENTEXTENSION))
+    Set tSC = ..GlobalRead(pNamespace, tName, ##class(OcuPilot.Port.GlobalPort).#TYPESIZE, .tSize, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pResult = {}
+    Do pResult.%Set("Present", $List(pNames, 1), "string")
+    Do pResult.%Set("Modified", "", "string")
+    Do pResult.%Set("Absent", "", "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set(..#ROOTKEY, "", "null")
+    Do pResult.%Set(..#PATHKEY, "", "null")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
 /// <p>The class an export's or an import's file is resolved through (AD-21). Overridable so a
 /// fixture can observe the resolve; production never overrides it.</p>
 ClassMethod PathPortClass() As %String
@@ -2029,7 +2090,10 @@ ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %
 /// (<method>ExportFile</method>) before the vendor call, the lines are written to it
 /// (<method>WriteLines</method>), and <var>pResult</var> is <code>{root, path}</code>; a file the call
 /// created is deleted when the write fails. Otherwise nothing is written and <var>pResult</var> is
-/// <code>{lines}</code>.</p>
+/// <code>{lines}</code>. For <parameter>ENDPOINTGLOBALS</parameter> the fresh read is <method>GlobalDocs</method>, and an answer above the
+/// capture's ceiling (the route's own ceiling signal, <var>pCeiling</var> of <method>Route</method>, and no other failure), or lines longer than
+/// <parameter>MAXIMPORTCHARACTERS</parameter> together, is 422 <code>GLOBAL.TOOLARGE</code> with nothing written and no fault logged for the ceiling;
+/// every other failure of the route keeps its own refusal.</p>
 ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -2038,7 +2102,12 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
         Set tRoot = $Get(pQuery(..#ROOTKEY))
         Set tPath = $Get(pQuery(..#PATHKEY))
         Set tToFile = (tRoot '= "") || (tPath '= "")
-        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        Set tGlobals = (pEndpoint = ..#ENDPOINTGLOBALS)
+        If tGlobals {
+            Set tSC = ..GlobalDocs(pNamespace, pNames, .tGlobalDocs, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        }
         If $$$ISERR(tSC) Quit
         If tToFile {
             Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .tAbsent, .pHttpStatus, .pFault)
@@ -2049,14 +2118,21 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
             Do tBody.%Push($List(pNames, tI), "string")
         }
         Kill tNoParams
-        Set tSC = ..Route(pVersion, pNamespace, "ExportToXMLFile", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault)
-        If $$$ISERR(tSC) Quit
+        Set tSC = ..Route(pVersion, pNamespace, "ExportToXMLFile", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault, 0, , , "", tGlobals, .tCeiling)
+        If $$$ISERR(tSC) {
+            If tGlobals && $Get(tCeiling) Set tSC = ..GlobalTooLarge(.pHttpStatus, .pFault)
+            Quit
+        }
         Set tLines = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
         If '$IsObject(tLines) || 'tLines.%IsA("%Library.DynamicArray") {
             Set tSC = ..Fail("ExportToXMLFile answered no content array", $$$ERROR($$$GeneralError, "export answered no content array"), .pHttpStatus, .pFault)
             Quit
         }
         Set tLines = ..WholeLines(tLines)
+        If tGlobals && (..TextLength(tLines) > ..#MAXIMPORTCHARACTERS) {
+            Set tSC = ..GlobalTooLarge(.pHttpStatus, .pFault)
+            Quit
+        }
         If 'tToFile {
             Set pResult = {}
             Do pResult.%Set("lines", tLines)
@@ -2078,6 +2154,25 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
         Set tSC = ..Fail("the export failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The characters <var>pLines</var> read back as one text holds: each line and its line feed.</p>
+ClassMethod TextLength(pLines As %DynamicArray) As %Integer [ Private ]
+{
+    Set tLength = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tLength = tLength + $Length(tLine) + 1
+    }
+    Quit tLength
+}
+
+/// <p>The refusal of a global an export or an import cannot hold within <parameter>MAXIMPORTCHARACTERS</parameter>: 422
+/// <code>GLOBAL.TOOLARGE</code>.</p>
+ClassMethod GlobalTooLarge(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Api.GlobalError).#TOOLARGE
+    Quit ..Refuse(##class(OcuPilot.Api.GlobalError).HttpStatusFor(tCode), ##class(OcuPilot.Api.GlobalError).SlugFor(tCode), tCode, ##class(OcuPilot.Api.GlobalError).ReasonFor(tCode), .pHttpStatus, .pFault)
 }
 
 /// <p>The export's lines <var>pLines</var>, as the vendor answers them, with each line longer than
@@ -2301,7 +2396,8 @@ ClassMethod HeaderAt(pLines As %DynamicArray, Output pIndex As %Integer) As %Str
 /// <p>What an import of the file <var>pLabel</var>, whose extension is <var>pExtension</var> and whose
 /// lines are <var>pLines</var>, would do in <var>pNamespace</var>: <var>pSummary</var>, one entry per
 /// document, <code>&lt;name&gt; new</code> or <code>&lt;name&gt; replaces &lt;ts&gt;</code> where
-/// <code>ts</code> is the instance's own version, sorted by character code and joined by
+/// <code>ts</code> is the instance's own version, or for a global (<method>GlobalVersion</method>) <code>sha256 &lt;digest&gt;</code>
+/// of its nodes, sorted by character code and joined by
 /// <parameter>SUMMARYSEPARATOR</parameter>, then <code> (sha256 &lt;digest&gt;)</code>, the
 /// <method>Digest</method> of <var>pLines</var>, so a file rewritten with the same documents reads a
 /// different summary (AD-6); <var>pCount</var>, how many; <var>pSelected</var>, the
@@ -2345,15 +2441,21 @@ ClassMethod Examine(pVersion As %Integer, pNamespace As %String, pLabel As %Stri
         Quit ..Unreadable(.pHttpStatus, .pFault)
     }
     Kill tSorted
+    Set tVersioned = $$$OK
     Set tIterator = tDocuments.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tDocument) {
         If '$IsObject(tDocument) Continue
         Set tDocName = tDocument.%Get("name")
         If tDocName = "" Continue
         Set tTs = tDocument.%Get("ts")
+        If ..IsGlobalDocument(tDocName) {
+            Set tVersioned = ..GlobalVersion(pNamespace, tDocName, .tTs, .pHttpStatus, .pFault)
+            If $$$ISERR(tVersioned) Quit
+        }
         ; Subscripted behind a letter so every name collates as a string, never as a number.
         Set tSorted("n" _ tDocName) = $ListBuild(tDocName, $Select((tTs = "") || (tTs = -1): "", 1: tTs))
     }
+    If $$$ISERR(tVersioned) Quit tVersioned
     Set tKey = ""
     For {
         Set tKey = $Order(tSorted(tKey), 1, tPair)
@@ -2364,6 +2466,25 @@ ClassMethod Examine(pVersion As %Integer, pNamespace As %String, pLabel As %Stri
     }
     If pCount = 0 Quit ..Unreadable(.pHttpStatus, .pFault)
     Set pSummary = pSummary _ ..DigestNote(pLines)
+    Quit $$$OK
+}
+
+/// <p>Whether document <var>pName</var>, as an XML file lists it, is a global's: it ends <code>.gbl</code>, in any case.</p>
+ClassMethod IsGlobalDocument(pName As %String) As %Boolean [ Private ]
+{
+    Quit ($Length(pName) > $Length(..#GLOBALDOCUMENTEXTENSION)) && ($ZConvert($Extract(pName, *-($Length(..#GLOBALDOCUMENTEXTENSION) - 1), *), "U") = ..#GLOBALDOCUMENTEXTENSION)
+}
+
+/// <p>The version <var>pVersion</var> of the global document <var>pName</var> in <var>pNamespace</var> a summary shows: <code>""</code>
+/// when the namespace holds no such global, otherwise <code>sha256 &lt;digest&gt;</code> of its nodes, read through
+/// <method>GlobalRead</method> (<code>DIGEST</code>) in place of the vendor's time, which answers the current time for any global that
+/// exists. The port's own refusal, a global above <parameter>MAXIMPORTCHARACTERS</parameter> included, is answered unchanged.</p>
+ClassMethod GlobalVersion(pNamespace As %String, pName As %String, Output pVersion As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pVersion = ""
+    Set tSC = ..GlobalRead(pNamespace, $Extract(pName, 1, *-$Length(..#GLOBALDOCUMENTEXTENSION)), ##class(OcuPilot.Port.GlobalPort).#TYPEDIGEST, .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tAnswer.%Get("Defined") Set pVersion = ..#SUMMARYDIGEST _ " " _ tAnswer.%Get("Digest")
     Quit $$$OK
 }
 
@@ -3033,7 +3154,9 @@ ClassMethod PlainText(pDesc) As %String
 /// a <class>%DynamicAbstractObject</class> sent as an <code>application/json</code> body
 /// (<method>OcuPilot.Port.AtelierRequest.SetJsonBody</method>). Trailing route arguments are omitted
 /// rather than passed empty. <var>pIfNoneMatch</var>, when it is not <code>""</code>, is seeded as the
-/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).</p>
+/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).
+/// <var>pCeiling</var> is 1 when, and only when, the answer passed the capture's ceiling; with <var>pQuietCeiling</var> the caller
+/// owns that refusal and no fault is logged for it.</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code>,
 /// <code>%session</code> and <code>%SourceControl</code>, with fresh stubs. Its output is captured,
 /// or, for a route <parameter>FILEDEVICEROUTES</parameter> names, written to a temporary file that is
@@ -3042,10 +3165,11 @@ ClassMethod PlainText(pDesc) As %String
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
 /// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
 /// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "") As %Status [ Private ]
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "", pQuietCeiling As %Boolean = 0, Output pCeiling As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
+    Set pCeiling = 0
     Set tCallSC = $$$OK
     Set tHttp = 0
     Set tCapturing = 0
@@ -3103,12 +3227,12 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     If tCapturing {
         Try {
             Kill tLines
-            Set tEndSC = $$EndCapture^%SYS.Capture(tCookie, .tLines)
+            Set tEndSC = ..EndCapture(tCookie, .tLines)
             If $IsObject($Get(tLines)) {
                 Set tIterator = tLines.%GetIterator()
                 While tIterator.%GetNext(.tIndex, .tLine) {
                     If ($Length(tText) + $Length(tLine)) >= ..#CAPTURECEILING {
-                        Set tOverflow = 1
+                        Set tOverflow = 2
                         Quit
                     }
                     Set tText = tText _ tLine
@@ -3133,7 +3257,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
                 While 'tStream.AtEnd {
                     Set tChunk = tStream.Read(32000)
                     If ($Length(tText) + $Length(tChunk)) >= ..#CAPTURECEILING {
-                        Set tOverflow = 1
+                        Set tOverflow = 2
                         Quit
                     }
                     Set tText = tText _ tChunk
@@ -3149,13 +3273,21 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     ; TempFilename creates the file, so it is deleted whether or not it was opened.
     If tFile '= "" Do ##class(%File).Delete(tFile)
     If $IsObject($Get(%response)) Set tHttp = +%response.Status
-    If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 1
-    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault, pSoft, .pConsole, .pErrors)
+    If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 2
+    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault, pSoft, .pConsole, .pErrors, pQuietCeiling, .pCeiling)
     Quit tSC
 }
 
+/// <p>End the capture <var>pCookie</var> began and read its lines into <var>pLines</var>. Overridable so a fixture can fail the end.</p>
+ClassMethod EndCapture(pCookie, Output pLines) As %Status [ Private ]
+{
+    Quit $$EndCapture^%SYS.Capture(pCookie, .pLines)
+}
+
 /// <p>What one route call's outcome means. <var>pText</var> is the captured envelope.</p>
-/// <p>An answer at the capture's ceiling is 503 <code>PORT.UNAVAILABLE</code>. A non-2xx status is
+/// <p>An answer the capture could not hold is 503 <code>PORT.UNAVAILABLE</code> with a fault logged. <var>pOverflow</var> 2 is an
+/// answer above the capture's ceiling: <var>pCeiling</var> is then 1 and, with <var>pQuietCeiling</var>, no fault is logged; 1 is a capture
+/// that could not be ended, which is never the ceiling. A non-2xx status is
 /// 404 <code>PORT.NOTFOUND</code> (not logged: a read answered 404 has found an absence), with the
 /// envelope's <code>result</code> in <var>pResult</var> where it parses, 400
 /// <code>PORT.VALIDATION</code>, 403 <code>PORT.ACCESSDENIED</code>, or the internal fault. Under a
@@ -3178,16 +3310,18 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, its text logged the same way, and any other 400 is
 /// <code>PORT.VALIDATION</code>; and, without <var>pSoft</var>, any other error under a 2xx status is 422
 /// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
-ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
+ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Integer, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pQuietCeiling As %Boolean = 0, Output pCeiling As %Boolean) As %Status [ Private ]
 {
     Set pResult = ""
     Set pConsole = ""
     Set pErrors = 0
+    Set pCeiling = 0
     Set tRaw = pMethod _ " answered HTTP " _ pHttp
     If $$$ISERR(pCallSC) Set tRaw = tRaw _ "; " _ $System.Status.GetErrorText(pCallSC)
     If pOverflow {
         Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, ..#REASONTOOLARGE, .pHttpStatus, .pFault)
-        Do ..LogFault(pMethod _ " answered above the capture ceiling", $$$ERROR($$$GeneralError, tRaw), pFault.code)
+        Set pCeiling = (pOverflow = 2)
+        If 'pCeiling || 'pQuietCeiling Do ..LogFault(pMethod _ $Select(pCeiling: " answered above the capture ceiling", 1: " could not end its capture"), $$$ERROR($$$GeneralError, tRaw), pFault.code)
         Quit tSC
     }
     Set tEnvelope = ""
@@ -3369,12 +3503,13 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter>,
+/// <p><code>objectscript</code> for a global's <parameter>TYPEEXPORT</parameter> and <parameter>TYPEIMPORT</parameter>, and for a list endpoint's <parameter>TYPECOMPILE</parameter>,
 /// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter>,
 /// <parameter>TYPEIMPORT</parameter>, <parameter>TYPESAVE</parameter> and <parameter>TYPECREATE</parameter>,
 /// the writes this port carries; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If pEndpoint = ..#ENDPOINTGLOBALS Quit $Select((pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT): "objectscript", 1: "")
     If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
     If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) Quit "objectscript"
     Quit ""
@@ -3401,7 +3536,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    Set tNames = $Get(pQuery(..#NAMESKEY))
+    Set tNames = $Get(pQuery(..#NAMESKEY)) _ $Select(pEndpoint = ..#ENDPOINTGLOBALS: ..#GLOBALDOCUMENTEXTENSION, 1: "")
     If pType = ..#TYPECOMPILE {
         Do ..FlagValue($Get(pQuery(..#KEEPSOURCEKEY)), .tKeep)
         Do ..FlagValue($Get(pQuery(..#COMPILEDEPENDENTSKEY)), .tDependents)

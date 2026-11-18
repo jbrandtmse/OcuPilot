@@ -32,6 +32,8 @@ const SENTENCES = [
   ['REASONNODENOTFOUND', 'globalRefusalNodeNotFound'],
   ['REASONNODENOTEDITABLE', 'globalRefusalNodeNotEditable'],
   ['REASONVALUESHAPE', 'globalRefusalValueShape'],
+  ['REASONTOOLARGE', 'globalRefusalTooLarge'],
+  ['REASONOWNDATA', 'globalRefusalOwnData'],
   ['REASONDELETE', 'globalDeleteConsequence'],
   ['REASONNODEDELETE', 'globalNodeDeleteConsequence'],
 ];

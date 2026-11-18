@@ -11520,6 +11520,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": "protected-global"
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
       }
     ],
     "context": {

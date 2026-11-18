@@ -108,7 +108,8 @@ export const DECLARED_GATES = [
   `git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`,
   'npm ci',
   'npm run build',
-  'npm test',
+  'sh ../scripts/ci-resource-sample.sh -- npm test',
+  'sh scripts/ci-resource-sample.sh --report',
   'uv run scripts/check-objectscript.py',
   'uv run scripts/test_check_objectscript.py',
   'bash scripts/lint-docs.sh',
@@ -2878,6 +2879,9 @@ test('DW-2123: a budget or a first wait that is not a whole number is refused be
   }
 });
 
+// The gates job's client suite step, and the step that reports what the machine did when it fails.
+const CLIENT_SUITE_RUN = 'sh ../scripts/ci-resource-sample.sh -- npm test';
+
 test('DW-2501: the gates job fetches the release branch tips before it runs the tests that read them', () => {
   // The stored-order test reads `refs/remotes/origin/release/*`, and skips where a shallow clone holds none, so a
   // fetch that moved to another job or after `npm test` would turn the gate local-only with CI still green.
@@ -2885,9 +2889,29 @@ test('DW-2501: the gates job fetches the release branch tips before it runs the 
   // Mutation (Rule 19): move the step into another job, or below `npm test` -> red.
   const runs = jobSteps(workflow, 'gates').map((step) => step.run);
   const fetchAt = runs.indexOf(`git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`);
-  const testAt = runs.indexOf('npm test');
+  const testAt = runs.indexOf(CLIENT_SUITE_RUN);
   assert.ok(fetchAt >= 0, 'the gates job fetches the release branch tips, at depth 1');
   assert.ok(testAt > fetchAt, 'and does so before npm test');
+});
+
+// Mutation (Rule 19): drop the client suite step's `timeout-minutes`, or the report step's
+// `cancelled()` -> red; run `npm test` without the sampler -> red.
+test('the client suite step is bounded under the job, sampled, and followed by the resource report on failure or cancel', () => {
+  const steps = jobSteps(workflow, 'gates');
+  const at = steps.findIndex((step) => step.run === CLIENT_SUITE_RUN);
+  assert.ok(at >= 0, `the gates job runs the client suite through the sampler: ${CLIENT_SUITE_RUN}`);
+  const jobTimeout = Number(/^ {4}timeout-minutes:\s*(\d+)\s*$/m.exec(jobSlice(workflow, 'gates'))?.[1]);
+  const stepTimeout = Number(/^ {8}timeout-minutes:\s*(\d+)\s*$/m.exec(steps[at].text)?.[1]);
+  assert.ok(Number.isInteger(stepTimeout) && stepTimeout > 0, 'the client suite step carries its own timeout-minutes');
+  assert.ok(
+    stepTimeout < jobTimeout,
+    `the step's ${stepTimeout} minutes must be under the job's ${jobTimeout}, so a hang fails the step with its log and the report step still runs`
+  );
+  const report = steps[at + 1];
+  assert.equal(report?.run, 'sh scripts/ci-resource-sample.sh --report', 'the next step prints the kernel OOM lines');
+  assert.match(report.condition ?? '', /failure\(\)/, 'and runs after a failure');
+  assert.match(report.condition ?? '', /cancelled\(\)/, 'and after a cancellation, which is how a run ends when it is superseded or the job reaches its own bound');
+  assert.doesNotMatch(report.text, /working-directory:/, 'and from the repository root, where its scripts/ path resolves');
 });
 
 test('DW-439: the retry waits between attempts, and the waits are overridable', () => {

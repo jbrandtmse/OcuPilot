@@ -15,10 +15,11 @@ import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
-import { rowKey } from '../../core/table-model';
+import { rowFor, rowKey } from '../../core/table-model';
 import { reasonForField } from '../../core/violations';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { TypedNameDialog } from '../../shell/typed-name-dialog';
 import { CodeListSearch, CodeListWrite, compileLinesOf, deletedDocumentsOf, exportLinesOf, fillPlaceholders, importOutputOf, isYesNo } from './code-list.store';
@@ -135,13 +136,17 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
  * drawn on the picker's field, and any other, the version one included, in the dialog. An applied
  * import lists the documents it loaded and the console's lines in the pane.
  *
+ * **The Globals list is drawn by this page too** (Story 21.17). It declares no multi-select, so its Export acts on the one selected row, and the
+ * page registers neither Compile nor Delete for it: its Delete is the shell handler's typed-name confirm, whose dialog `app-screen-action-dialogs`
+ * renders. Its Import is this page's own, on the same one target.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-code-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, ExplorerCompileDialog, ExplorerExportDialog, ExplorerImportDialog, TypedNameDialog],
+  imports: [DataTable, ExplorerCompileDialog, ExplorerExportDialog, ExplorerImportDialog, ScreenActionDialogs, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" data-ocu-explorer="criteria" (submit)="onSearch($event)">
@@ -204,6 +209,7 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
         >{{ outputText }}</pre>
       }
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      <app-screen-action-dialogs [descriptor]="view.screen.descriptor" />
       @if (compileCount; as count) {
         <app-explorer-compile-dialog [count]="count" (confirmed)="onCompile($event)" (cancelled)="onCloseCompile()" />
       }
@@ -331,8 +337,10 @@ export class CodeListPage {
         this.search.useArrival(next);
         this.readNow();
       }) ?? null;
-    const stopCompile = this.actions.register(screen.descriptor, COMPILE_ACTION, () => this.onOpenCompile());
-    const stopDelete = this.actions.register(screen.descriptor, DELETE_ACTION, () => this.onOpenDelete());
+    // A list that checks no rows (the Globals) keeps the Delete the shell's handler registers, which asks its typed name and draws its own dialog.
+    const checksRows = screen.multiSelect !== null;
+    const stopCompile = checksRows ? this.actions.register(screen.descriptor, COMPILE_ACTION, () => this.onOpenCompile()) : () => undefined;
+    const stopDelete = checksRows ? this.actions.register(screen.descriptor, DELETE_ACTION, () => this.onOpenDelete()) : () => undefined;
     const stopExport = this.actions.register(screen.descriptor, EXPORT_ACTION, () => this.onOpenExport());
     const stopImport = this.actions.register(screen.descriptor, TASK_IMPORT_ACTION_ID, () => this.onOpenImport());
     const stopStore = store.subscribe(() => this.bump());
@@ -537,9 +545,9 @@ export class CodeListPage {
     if (applied) view.store.setChecked([]);
   }
 
-  /** Export on the checked rows: opens the export dialog, under the same conditions as Compile. */
+  /** Export on the checked rows, or on the one selected row of a list that checks none: opens the export dialog, under the same conditions as Compile. */
   protected onOpenExport(): void {
-    const names = this.checkedNames();
+    const names = this.checksRows() ? this.checkedNames() : this.selectedNames();
     if (names.length === 0) return;
     this.exporting.set(names);
     this.openTransfer();
@@ -658,6 +666,20 @@ export class CodeListPage {
     }
     for (const key of checked) if (!names.includes(key)) names.push(key);
     return names;
+  }
+
+  /** Whether the list declares a multi-select, so its export acts on the checked rows and not on the selected one. */
+  private checksRows(): boolean {
+    const screen = this.list?.screen;
+    return screen !== undefined && screen.multiSelect !== null;
+  }
+
+  /** The selected row's name, as a set of one, or `[]` where no write may open: one is running, a dialog is open, or no row is selected. */
+  private selectedNames(): readonly string[] {
+    const view = this.list;
+    if (view === null || this.dialogOpen()) return [];
+    const selected = view.store.selection()[0] ?? '';
+    return selected !== '' && rowFor(view.store.data(), view.screen, selected) !== null ? [selected] : [];
   }
 
   private readNow(): void {

@@ -548,6 +548,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': ['update', 'copy'],
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
+  // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['export', 'export-browser', 'import', 'import-local'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).

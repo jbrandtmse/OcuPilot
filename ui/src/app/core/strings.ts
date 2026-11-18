@@ -8663,6 +8663,10 @@ export const STRINGS = {
   globalRefusalValueShape: 'Enter plain text of 1,000 characters at most.',
   /** EXPERIENCE.md:613 */
   globalRefusalProtected: 'This global holds OcuPilot\'s own data or the instance\'s protected system data, so it cannot be changed or deleted from OcuPilot.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalTooLarge: 'This global is too large for OcuPilot to export or replace: the most is 3,000,000 characters.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalOwnData: 'OcuPilot\'s own data cannot be exported.',
 } as const;
 
 /**

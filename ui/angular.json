@@ -77,6 +77,7 @@
             "buildTarget": "ocupilot-ui:build:development",
             "tsConfig": "tsconfig.spec.json",
             "runner": "vitest",
+            "runnerConfig": "vitest-base.config.mjs",
             "watch": false,
             "include": [
               "src/**/*.spec.ts"

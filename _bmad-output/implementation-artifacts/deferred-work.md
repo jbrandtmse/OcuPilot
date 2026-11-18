@@ -12849,6 +12849,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; no earlier ledger entry for this spec
 - 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T14:11:27Z occurrence=21-22-ci-flake-hardening note=run_44314393989_browser_2/5_task-run.browser-spec_AC2_waiting_for_app-proposal-card_.ocu-proposal-card-confirm(same_card_wait_shape)
 
 ### DW-2550: The structural walk's per-visit record is pinned only by the a11y browser spec, which checks a numeric ms per visit but not that walkPass carries goInApp's settled and why into the visit
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
@@ -13179,6 +13180,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: GetDate on any existing global equals the current time (measured read-only on slot A); the refusal at the write is inferred from ImportSet's summary comparison
 - 2026-11-15T20:57:31Z status=routed owner=21-17-global-export-and-import by=harvest note=fix with 21.17's global import
+- 2026-11-18T12:01:44Z status=resolved-by:21-17-global-export-and-import by=adjudication note=replacing_import_versioned_by_content_digest(GlobalPort.DIGEST);GlobalTransfer_agent_replacing-import_leg;DW-2608_symptom_pinned
 
 ### DW-2609: flake: SqlDataRoutes.TestAPageAnswersItsShape went red once on a warm ocupilot-ci right after a reload, then green three times unchanged
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: low | fix-risk: low | footprint: in-epic
@@ -13343,6 +13345,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T02:08:21Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified(transient_instance_window); unchanged rerun
 - 2026-11-16T04:48:03Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43802365008(staging-21.24-b706fb831)job133085357475;same_OCUPROBE184BO_INTERNAL_seed;unchanged_rerun
 - 2026-11-16T05:07:19Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=reclassified_not_flake;config-settings.browser-spec.mjs_leaves_locale_or_sql_setting_changed;later_specs_in_leg_get_SQLCODE-428_on_vendor_FILTER_procs;epic-runner-21_fixes_it_on_the_21.24_staging_head_and_closes_this
+- 2026-11-18T12:28:31Z status=resolved-by:21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit by=spec_gate note=cause(config-settings_left_a_SQL_setting_changed)_fixed_by_6a5bcf05f_merged_48e3593a3;no_occurrence_after_2026-11-16T05:07Z;declined_in_21.22_re-plan
 
 ### DW-2653: A person's promote action that omits Reviewed is not held to the plan-hash compare; the client always sends it and the agent's confirm is held by PlanHash
 - source: spec-24-9-environment-promote.md | severity: low | fix-risk: low | footprint: in-footprint
@@ -13758,6 +13761,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: not reproduced: macOS Node 22.22.3 full and shallow clone, Linux node:22.22.3 4 CPU/15 GB 3x green 183s; a 2-CPU Linux container OOMed a vitest fork worker (heap limit) at file 90/286 (inference: same cause)
 - 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
 - 2026-11-18T10:38:51Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence 5: run 44283101753 att1 on OCU-1-epic24 eb6fbf706 (24.11 merged code head), node 22.22.3 client suite cancelled ~25 min; node 24/26 green
+- 2026-11-18T13:19:59Z occurrence=21-17-global-export-and-import note=run_44301357497_gates_node_26.0.0_cancelled_(not_only_node_22);rerun_green
 ### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
@@ -13853,3 +13857,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: QualityMeasureDialog.load returns on a null form (a measure deleted after its row was selected), so loaded stays false and Confirm stays aria-disabled; ListingGroupDialog.load does the same. A message needs a new string.
 - 2026-11-18T19:32:57Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a person reports an Edit dialog that never enables its button, or a browser spec meets one
+- 2026-11-18T10:43:58Z status=resolved-by:21-5-globals-and-the-data-tools by=runner note=AD-58_sentence_appended_(orchestrator_ruling;add-only)
+
+### DW-2731: Prohibited.ImportedGlobals catches an exception without setting its status, so an error raised while judging an import's globals reads as permitted
+- source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls ImportedGlobals Catch sets pProhibits=0 and keeps tSC OK, unlike Global and SqlPrivilege, which return ex.AsStatus(); reachability of a throw inside the loop is unmeasured (inference)
+- 2026-11-18T11:11:34Z status=routed owner=21-18-global-find-and-replace by=cr note=one-line fix Set tSC = ex.AsStatus(); not patched in 21.17 review: Prohibited.cls is contended with Epic 24
+
+### DW-2732: Story 21.18's matrix answers a protected-global refusal 409, but every protected-global and OcuPilot-code refusal answers 403
+- source: spec-21-17-global-export-and-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: spec-21-18 matrix row Protected says 409 PROHIBITED.PROTECTEDGLOBAL / OCUPILOTCODE; 21.5's and 21.17's tests and the 2026-11-18 measurement on ocupilot-ci answer 403 on every caller
+- 2026-11-18T11:11:38Z status=routed owner=21-18-global-find-and-replace by=cr note=plan 21.18's tests on 403, as 21.17's Design Notes record
+
+### DW-2733: A timed-out client suite step leaves the sampler and the hung suite running until the job ends, because the runner signals only the step's shell
+- source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: actions/runner ProcessInvoker.cs: on Linux SIGINT, SIGTERM and Process.Kill() go to the step's root pid only; simulated locally, the script and its sampler were re-parented and kept sampling. The step still fails with its log and the report step runs.
+- 2026-11-18T13:26:26Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=a timed-out gates client suite step delays or breaks the report step or job cleanup, or its log loses samples the diagnosis needed
