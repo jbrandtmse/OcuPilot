@@ -13832,3 +13832,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Task 0 on ocupilot-ci: 13 of 3000 candidates; PUT /ssl/<probe> answered 500 code INTERNAL, nothing stored; mapping 733 to a field error would also mislabel a genuine mismatch
 - 2026-11-18T14:48:16Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=harvest note=reopen_if=a person reports a 500 on an SSL configuration save with a wrong key password, or the vendor gives the two cases distinct codes
+
+### DW-2740: A list browser spec test that ends right after typing a filter can leave its view write in flight past the next test's reset; only web-applications AC1 waits for it
+- source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: web-applications AC5 also ends on a myapp filter (AC6 asserts no count); 12 more specs call filterToSubset and resetRememberedState; one sighting so far (DW-2534)
+- 2026-11-18T14:57:57Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=a list spec reds 'left N of N row(s)' after a test that ended on a filter; fix: waitForRememberedView there

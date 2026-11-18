@@ -588,3 +588,5 @@
 2026-11-18T14:48:16Z	Story 21.22	dev_complete	scope=batch2(DW-2534,DW-2553,DW-2565) spawn_at=2026-11-18T14:24Z model=sonnet build_sha=6ccb71f23 baseline_revision=0432b4561 followup_review_recommended=false deferred=1(wontfix-accepted) cycle_iteration=1 note=DW-2553_branch_b(733)
 2026-11-18T14:48:42Z	Story 21.22	code_head_pushed	sha=ead5f1f95 run=44328339684 missing=none note=B2_(6ccb71f23)+feature_7fe3f8659
 2026-11-18T14:48:42Z	Story 21.22	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-18T14:48:42Z model=opus agent_name=21-22-code-review-b2 cycle_iteration=1 baseline=0432b4561
+2026-11-18T15:01:43Z	Story 21.22	cr_complete	scope=batch2 spawn_at=2026-11-18T14:50Z model=opus high=0 med=0 low=11 rows=18 unresolved_high_med=0 new=DW-2740(wontfix-accepted) final=in-progress(batches3-4) commit=13746f82d closing_sections_present=true
+2026-11-18T15:01:43Z	Story 21.22	stage_spawned	stage=implement scope=batch3 spawn_at=2026-11-18T15:01:43Z model=sonnet agent_name=21-22-implement-b3 cycle_iteration=1

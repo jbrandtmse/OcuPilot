@@ -157,6 +157,24 @@ Rejected:
 - (false) `jobSteps` reads single-line `run:` only: a reformat makes the new test fail loudly, not pass.
 - (low) The shebang-shell test skips `../scripts/` paths: `DECLARED_GATES` pins the exact invocation.
 
+Code review of Batch 2 (`6ccb71f23` against `0432b4561`), 2026-11-18. Four layers, 18 raw findings, 12 entries after grouping.
+
+- [x] [Review][Patch] (low) The wrong-password search classified a candidate by an `openssl.err` an earlier run left when a launch wrote none, and a search that found nothing hid the cause; the file is now removed before each run and the setup error names the last openssl error [src/OcuPilot/Test/X509Material.cls:201, src/OcuPilot/Test/SslSecret.cls:61]
+- [x] [Review][Patch] (low) `runThrowawayUp`'s comment said the budget clock always stays real [ui/tools/ci.test.mjs:2736]
+- [x] [Review][Defer] (low) A list spec test that ends right after typing a filter can leave its view write past the next test's reset; only web-applications AC1 waits [ui/browser/web-applications.browser-spec.mjs:238] — deferred: DW-2740 `wontfix-accepted`; one sighting (DW-2534), and AC6 after AC5 asserts no count
+
+Rejected:
+
+- (false) `X509Wire`'s fixed wrong password has the same padding hazard: `X509Rules.KeyMatches` names a `DECODER` error on an encrypted key as the password, pinned by `X509Import`'s decodes-to-no-key test.
+- (low) "the same on every run for the same key" adds nothing: it is accurate, and the property is that the kind of refusal is fixed.
+- (low) A `$ZF(-100)` throw in the search escapes `OnBeforeAllTests`: `%UnitTest` reports it as the class's error; the fix is a new guard.
+- (low) A failed search leaves the key directory behind: the early quits above it already do, on a throwaway only.
+- (low) `waitForRememberedView` can overrun on a hung fetch, throws a bare `TypeError` on a body with no `views`, and stops at once on a non-200 naming the body: none is reachable from the product's read; the fixes are new guards.
+- (low) A red AC1 before its wait cascades into AC5: the run is already red.
+- (low) Deleting the wait call reddens nothing deterministically: the race is removed by construction (Residual); a reproduction needs a server-side delay seam, since a held browser request is aborted at `context.close()` (inference).
+- (low) `UndecodablePassword` has no executed host outside the mutation: the task requires it, and this pass re-ran the mutation.
+- (low) The Task 0 key count reads two ways in this spec: the fix is a spec edit.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
@@ -276,7 +294,7 @@ Every batch:
 - DW-2565: restore the second `date` read -> the stepped-clock test red.
   - mutation (Batch 2, observed): `BIND_REMAINING` back to `$(date +%s)` -> "the budget runs from the first bind failure" red ("still bound after 1 attempt(s) over a 1 second budget"). Reverted; the six `DW-2123` tests green.
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
-  - mutation (Batch 2, observed): `OnBeforeAllTests` drawing from `UndecodablePassword` -> `SslSecret`'s wrong-password test red ("a wrong password is refused on its field"). Reverted and reloaded; the class green (4 of 4). Branch (b): no entry and no second test, so no second mutation.
+  - mutation (Batch 2, observed): `OnBeforeAllTests` drawing from `UndecodablePassword` -> `SslSecret`'s wrong-password test red ("a wrong password is refused on its field"). Reverted and reloaded; the class green (4 of 4). Branch (b): no entry and no second test, so no second mutation. Re-observed after the review patch: red (run 823), reverted and reloaded, green (run 824).
 - Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs` red.
 - DW-2566: drop test 7's `waitForSlotFree` and delay test 6's slot release -> test 7 red.
 - DW-2714/DW-2548: `writeStatement` stops dispatching `input` -> AC1 red at `pressRun` naming the textarea and `aria-disabled` within the navigation timeout, not after 145 s; `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
