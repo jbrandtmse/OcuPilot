@@ -12849,6 +12849,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; no earlier ledger entry for this spec
 - 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T14:11:27Z occurrence=21-22-ci-flake-hardening note=run_44314393989_browser_2/5_task-run.browser-spec_AC2_waiting_for_app-proposal-card_.ocu-proposal-card-confirm(same_card_wait_shape)
 
 ### DW-2550: The structural walk's per-visit record is pinned only by the a11y browser spec, which checks a numeric ms per visit but not that walkPass carries goInApp's settled and why into the visit
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint

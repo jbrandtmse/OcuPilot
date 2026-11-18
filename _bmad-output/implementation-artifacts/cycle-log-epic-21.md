@@ -578,3 +578,9 @@
 2026-11-18T13:19:59Z	Story 21.17	ci_resolved	story=21.17 sha=80897abe6 runs=44301357497 result=success failed=none via=none resolved_at=gate note=infra_rerun(gates_node26_cancelled;DW-2721_occurrence)
 2026-11-18T13:30:45Z	Story 21.22	cr_complete	scope=batch1 spawn_at=2026-11-18T13:08Z model=opus high=0 med=1(patched) low=10 rows=29 unresolved_high_med=0 new=DW-2733(wontfix-accepted) final=in-progress(batches2-4) commit=d18d59f9a closing_sections_present=true note=a_review_layer_killed_the_stage's_own_timing_run(self-reported)
 2026-11-18T13:30:45Z	Story 21.22	code_head_pushed	sha=d18d59f9a run=44314393989 missing=none note=Batch1_DW-2721_alone
+2026-11-18T14:11:27Z	Story 21.22	ci_red_classified	run=44314393989 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=task-run.browser-spec_AC2(proposal_card_wait;DW-2549_shape) head=d18d59f9a note=client_suite_minutes:node22=7.3,node24=6.9,node26=8.3_vs_12_bound
+2026-11-18T14:24:08Z	Story 21.17	fresh_check	env=recipe(ci-throwaway_rebuild) tests=17_classes+3_specs result=pass order=forward,reverse(specs) head=80897abe6
+2026-11-18T14:24:08Z	Story 21.17	gate_step	step=sweep result=green shards=20/20 head=80897abe6
+2026-11-18T14:24:08Z	Story 21.17	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=49_passed=49_skipped=1(agentswitches:the_sweep_had_written_switches) model=claude-opus-5-5
+2026-11-18T14:24:08Z	Story 21.17	committed	sha=e69f9492e staging_head=80897abe6 submodules= ci=success runs=44301357497 amendments=AD-61_sentence(1017325ca)
+2026-11-18T14:24:08Z	Story 21.17	story_cycle	plan_to_commit_min=n/a implement_passes=2 reviews=2 rework=1 first_ci=infra(gates_node26_cancelled) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
