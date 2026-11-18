@@ -433,3 +433,4 @@
 2026-11-18T20:05:24Z	Story 24.12	fresh_check	env=recipe(merged_tree_ae36e9ddc) tests=23_classes+2_specs result=pass order=forward,reverse scope=batch2
 2026-11-18T20:05:24Z	Story 24.12	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_PASSED+analytics_11/11+a11y-structural-invariants_13/13 scope=batch2 model=claude-opus-5-5
 2026-11-18T20:05:24Z	Story 24.12	committed	sha=d59b5bda0 code_head=ae36e9ddc ci=pending runs=44387217094 scope=batch2(batches_1_2_merge_together) amendments=none footprint_extensions=EXPERIENCE.md(24.12_rows)
+2026-11-18T20:05:34Z	Story 24.12	stage_spawned	stage=pre-warm spawn_at=2026-11-18T20:05:34Z model=opus agent_name=epic-24-context-prewarm-7 cycle_iteration=3 reason=planning_artifact_newer(AD-58,AD-61_paragraphs+EXPERIENCE.md)
