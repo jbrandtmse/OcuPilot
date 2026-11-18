@@ -179,6 +179,31 @@ Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot
   - The `Node/PUT` snippet (no draft reaches either node tool).
   - The matrix says 409 for the protected rows (fixing it means editing the spec).
 
+Code review 2026-11-18 (reworks 1-2, `1ace574fe..2595695d4`): four layers on the full-opus tier; no HIGH. Measured on `ocupilot-ci` as a throwaway principal holding `%Development:USE`, `%DB_HSCUSTOM:RW` and `%DB_USER:RW` without `%All` or `OcuPilotAdmin`, in `USER`: an edit 200 `matches`, a stale edit 409 `STATE.CONFLICT`, a node kill 200, the global's delete 200, an empty global's delete 404 `GLOBAL.NOTFOUND`; `oddDEF` node edit, node kill and whole delete, `^%ZZOcuCr` (IRISSYS) edit and delete, and `^OcuPilotCrX` delete each 403 `PROHIBITED.PROTECTEDGLOBAL`; an extended reference 400 `PORT.VALIDATION`. Principal and globals removed.
+
+- [x] [Review][Patch] MED: no test wrote an ordinary global outside the install namespace through the real lookup, so a lookup that took the request's namespace for OcuPilot's own would refuse every `USER` global unseen [`GlobalWrite.cls` `TestAnOrdinaryGlobalInAnotherNamespaceIsWritten`].
+- [x] [Review][Patch] MED: no test opened the node page as the developer; `DeveloperFloorRoutes` skips POST roster rows [`GlobalWriteDeveloper.cls` `TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights`].
+- [x] [Review][Patch] The developer refusal test's mutation note claimed every row reddens; the observed red is the edit row [`GlobalWriteDeveloper.cls`].
+- [x] [Review][Patch] `READBACKPAYLOAD` on the node save had no doc comment, and `ReadBack.Of`'s contract did not say the payload is compared [`ExplorerGlobalNodeSave.cls`, `ReadBack.cls`].
+- [x] [Review][Patch] `ReadBack.TestAPayloadComparedWriteReadsBackTheValueItSent`'s own mutation was unobserved; observed and recorded under Verification.
+- [x] [Review][Defer] AD-58 does not record `READBACKPAYLOAD` [`Screen/Tool/Write.cls`] -- deferred: DW-2730, a Rule 20 spine line for the lead (veto window).
+- Rejected:
+  - `ScreenAction.Refuse` maps by sentence (low; `GlobalWrite` pins both codes, and a code channel would touch every `ScreenActionDelta`).
+  - `ProtectedDirectories` hard-codes this image's layout: probe globals, IRISSECURITY beside the manager directory, `SYSTEMDATABASES` not read (low; `GlobalProtectedLocation` pins all eight against the configuration; `^SECURITY` and `^WALLET` resolve to IRISSYS from `%SYS`, so no name reaches IRISSECURITY; `Prohibited.cls` is contended).
+  - Resolve OcuPilot's own database in the install namespace explicitly (low; every caller runs there, the code arm's `GetRoutineDest($NAMESPACE)` shares it, and the new `USER` leg pins it).
+  - The developer refusal test covers IRISLIB only (low; a real write at a writable system database would damage it on regression).
+  - The failing-lookup test asserts the status only (low; error-refuses is pinned by `GlobalWrite`'s failed-read leg).
+  - The stale-save sentence is pinned on Users only (false: the node page's sink receives the same `refusalReason`).
+  - A 404 list delete leaves the row shown (low; the shared refusal path, unchanged by the rework).
+  - The `pattern` criterion is unhinted (closed at rework 2).
+  - Frontmatter `deferred` items 1-2 are closed (fixing it edits the spec; DW-2723 and DW-2724 are ledgered).
+  - A numerically equal value matches (closed at rework 1).
+  - A stale `Was` on a protected node answers 409 before 403 (low; measured; the retry answers 403 with the sentence).
+  - The agent's empty-global proposal answers 400 (spec-bound: direction (3) names `ScreenAction`).
+  - `GlobalProtectedLocation`'s configuration assertions cannot fail (low; preconditions, the per-database assertion is the pin).
+  - "Nothing of it changed" cannot fail on IRISLIB (low; the 403 code pins before-any-write).
+  - `AssertPrincipal` does not check database grants (low; `EnsurePrincipals` reads the grants back).
+
 ## Spec Change Log
 
 - 2026-11-18 (runner, rework 2): CI run 44244846002 on the build head was red on three shared-surface tests the story did not update; re-opened with `[CI]` items.
@@ -226,7 +251,7 @@ Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot
   - `[medium]` `[patch]` the lookup's failure path is untested, so a fail-open change would pass — `GlobalProhibited` fails the lookup on demand and `GlobalProtectedLocation` asserts an error status; mutation observed red.
   - `[low]` `[reject]` no mutation line for the developer leg's 200 rows — the recorded lookup mutation reddens every one of them.
   - `[low]` `[reject]` the protected-side developer test depends on the instance's own `<PROTECT>` as a backstop — same shape as the `GlobalWrite` counterpart; the library is read-only for every principal.
-  - `[low]` `[reject]` the developer leg runs in `HSCUSTOM` only — the lookup uses the request's namespace and the principal holds the install namespace's databases alone.
+  - `[low]` `[reject]` the developer leg runs in `HSCUSTOM` only — the lookup reads the install namespace and `%SYS` whatever the request's namespace, and the principal holds the install namespace's databases alone.
   - `[low]` `[reject]` a numerically equal value reads back `matches` — the read-back's comparison rule is the shipped one for every merge write.
   - `[low]` `[reject]` no spec drives the Globals dialog with a 409 — the dialog reaches the same `refusalReason` the new spec pins.
   - `[low]` `[reject]` the agent's write path is not driven for a developer principal — both callers share the arm the developer class exercises.
@@ -330,6 +355,9 @@ Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot
 - mutation: AC1 (the Globals read's pattern is a comma list, rework 2) remove `explorer.globals.read:pattern` from `CriterionHints.COMMALISTS` -> `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` red (observed, rework 2).
 - mutation: AC3/AC4 (the node page route is on the developer-floor roster, rework 2) remove `POST /explorer/globals/nodes` from `DeveloperFloorRoutes.Roster` -> `DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` red (observed, rework 2).
 - mutation: AC2 (the node page route reads and takes no hold, rework 2) remove its row from `SaveHoldCoverage.Exemptions` -> `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` red (observed, rework 2).
+- mutation: AC3/AC4 (a write outside the install namespace, code review 2) `Prohibited.ProtectedDirectories` resolves OcuPilot's own global in `USER` rather than `$NAMESPACE` -> `GlobalWrite.TestAnOrdinaryGlobalInAnotherNamespaceIsWritten` red on all four rows (observed, code review 2).
+- mutation: AC3/AC4 (the developer opens the node page, code review 2) `GlobalNodes.Gate` also requires `OcuPilotAdmin:USE` -> `GlobalWriteDeveloper.TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights` red on the page row, 403 `AUTH.NOPRIVILEGE` (observed, code review 2).
+- mutation: AC3 (a bodyless write reads back its payload, code review 2) drop the `ComparesPayload` line of `ReadBack.KindOf` -> `ReadBack.TestAPayloadComparedWriteReadsBackTheValueItSent` red (observed, code review 2).
 
 ## Auto Run Result
 

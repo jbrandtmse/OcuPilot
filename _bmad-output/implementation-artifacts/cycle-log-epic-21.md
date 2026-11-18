@@ -535,3 +535,5 @@
 2026-11-18T07:10:39Z	Story 21.5	dev_complete	scope=rework2 spawn_at=2026-11-18T06:48Z model=sonnet build_sha=2595695d4 baseline_revision=1dae2426a followup_review_recommended=false deferred=0 cycle_iteration=3 note=test_rosters_only
 2026-11-18T07:10:39Z	Story 21.5	code_head_pushed	sha=2595695d4 run=44256813627 missing=none
 2026-11-18T07:10:39Z	Story 21.5	stage_spawned	stage=code-review scope=rework1+2 spawn_at=2026-11-18T07:10:39Z model=opus agent_name=21-5-code-review-2 cycle_iteration=3 baseline=1ace574fe
+2026-11-18T07:34:33Z	Story 21.5	cr_complete	scope=rework1+2 spawn_at=2026-11-18T07:11Z model=opus high=0 med=2(patched) low=16 rows=28 unresolved_high_med=0 new=DW-2730(decision-pending:AD-58_READBACKPAYLOAD_spine_line) final=done commit=b293049be closing_sections_present=true
+2026-11-18T07:34:33Z	Story 21.5	ledger_adjudicated	owned=2 resolved=2(DW-2607,DW-2722) reowned=0 terminal=0 note=DW-2723,DW-2724_resolved_at_review;DW-2730_decision_sheet

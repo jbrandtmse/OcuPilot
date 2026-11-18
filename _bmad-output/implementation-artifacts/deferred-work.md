@@ -13171,6 +13171,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-17-global-export-and-import.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: AtelierPort.Examine keeps every name xml/list answers; Prohibited.Code judges names by OwnNameStems only; 31 of 37 globals in OcuPilot's database are code globals (measured read-only on slot A); write not run (inference)
 - 2026-11-15T20:57:31Z status=routed owner=21-5-globals-and-the-data-tools by=harvest note=21.5's PROHIBITED.PROTECTEDGLOBAL arm (U-59) takes an import clause covering .GBL documents in 19.13's import
+- 2026-11-18T07:33:08Z status=resolved-by:21-5-globals-and-the-data-tools by=adjudication note=Prohibited_protected-globals_arm_with_import_clause;GlobalWrite_import_rows;own-stem_.gbl_import_refused_PROHIBITED.OCUPILOTCODE(measured_in_review)
 
 ### DW-2608: A System Explorer import that replaces an existing global reads its version from %RoutineMgr.GetDate, which answers the current time, so the reviewed summary changes every second and the write refuses EXPLORER.IMPORT.CHANGED
 - source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
@@ -13756,6 +13757,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ExplorerGlobalNodeSave.ScreenActionDelta compares the screen's Was with a fresh read; no fingerprint on the screen action route; nothing is written (AC3 holds). ExplorerGlobalNodeSave.cls:82
 - 2026-11-18T05:31:24Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred; CR to align with an existing ruled target-changed answer or escalate the string
 - 2026-11-18T06:01:11Z status=open owner=21-5-globals-and-the-data-tools by=cr note=rework: 409 STATE.CONFLICT rendered as formStaleSave (ruled, no new string); empty global delete 404
+- 2026-11-18T07:33:08Z status=resolved-by:21-5-globals-and-the-data-tools by=adjudication note=rework1:ScreenAction_maps_STATE.CONFLICT_409_and_GLOBAL.NOTFOUND_404;pinned;re-review_measured
 
 ### DW-2723: A saved global node value may reach a change event or audit payload, which AD-36 forbids (unverified)
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -13773,3 +13775,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: GlobalPort.REASONPAGE is the 400 reason for any Start node text that is not a canonical reference of the page's global; a better sentence needs a ruled string
 - 2026-11-18T06:01:12Z status=wontfix-accepted owner=21-5-globals-and-the-data-tools by=cr note=reopen_if=the owner rules a Start node refusal sentence or a person reports the page-size wording
+
+### DW-2730: AD-58 does not record READBACKPAYLOAD, the tool setting under which a write that sends no body is read back on its payload's READBACKFIELDS (the global node save)
+- source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Screen.Tool.Write.READBACKPAYLOAD and ReadBack.ComparesPayload (Story 21.5 rework 1) compare a bodyless write's query payload; AD-58 records READBACKTOOL and READBACKFIELDS but says an action-style write sends no value.
+- 2026-11-18T07:30:12Z status=decision-pending owner=burndown by=cr note=Rule 20 spine line for AD-58 is a veto-window amendment; lead-owned
