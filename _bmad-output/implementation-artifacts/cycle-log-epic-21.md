@@ -547,6 +547,10 @@
 2026-11-18T09:40:32Z	Story 21.5	committed	sha=b293049be staging_head=1de56e265 submodules= ci=success runs=44260017976 amendments=none
 2026-11-18T09:40:32Z	Story 21.5	story_cycle	plan_to_commit_min=n/a(multi-session) implement_passes=3(build,rework1,rework2_ci) reviews=2 rework=2 first_ci=story(3_shared-surface_rosters) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
 2026-11-18T09:41:00Z	Story 21.17	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T09:41:00Z model=sonnet agent_name=21-17-implement-1 cycle_iteration=1 story_base=17b1810a6
-2026-11-18T10:43:58Z	Epic 21	spine_updated	ad=AD-58 reason=decision(DW-2730,orchestrator_ruling) by=runner story=21-5-globals-and-the-data-tools lint=ok mode=add-only_append
+2026-11-18T10:43:58Z	Epic 21	spine_updated	ad=AD-58 reason=decision(DW-2730,orchestrator_ruling) by=runner story=21-5-globals-and-the-data-tools lint=preexisting_low_placeholder_only(line_215_{id}) mode=add-only_append
 2026-11-18T10:43:58Z	Story 21.17	protocol_violation	stage=implement depth=1 agent=21-17-implement-1 violation=wrote_^ZZOcuGlbDbg(1)_on_live_ocupilot_via_MCP_ocupilot-slot-a(debug_execute_command) consequence=stage_killed_it detected_by=stage_self_report outcome=runner_verified_undefined_in_HSCUSTOM_and_USER;stage-common_warning_added
 2026-11-18T10:43:58Z	Epic 21	ruling	question=story_order_after_21.17 choice=21.22_next(DW-2721_node22_hang_first) via=orchestrator note=priority_ruling
+2026-11-18T10:44:35Z	Story 21.17	dev_complete	scope=batches1+2 spawn_at=2026-11-18T09:40Z model=sonnet build_sha=2b7a65791 baseline_revision=50905467e story_base=50905467e review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1
+2026-11-18T10:44:35Z	Story 21.17	protocol_violation	stage=runner violation=code_head_2b7a65791_reached_origin_under_skip-ci_head_5d3a50fe5(spine_bookkeeping_pushed_before_the_code_head_was_pushed_alone) consequence=no_CI_run_for_2b7a65791 outcome=next_code_head_(CR_patches)_pushed_alone_covers_it
+2026-11-18T10:44:35Z	Story 21.17	adr_verifications_complete	result=none_required note=CR_measures
+2026-11-18T10:44:35Z	Story 21.17	stage_spawned	stage=code-review spawn_at=2026-11-18T10:44:35Z model=opus agent_name=21-17-code-review-1 cycle_iteration=1 baseline=50905467e

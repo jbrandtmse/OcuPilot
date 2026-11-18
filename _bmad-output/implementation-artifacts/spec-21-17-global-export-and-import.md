@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-11-15'
 status: 'done'
 baseline_revision: '50905467e2aafd599596e2f58221441f04cd8a28'
+baseline_commit: '50905467e2aafd599596e2f58221441f04cd8a28'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['{project-root}/_bmad-output/implementation-artifacts/spec-21-5-globals-and-the-data-tools.md', '{project-root}/_bmad-output/implementation-artifacts/spec-19-13-xml-export-and-import.md']
