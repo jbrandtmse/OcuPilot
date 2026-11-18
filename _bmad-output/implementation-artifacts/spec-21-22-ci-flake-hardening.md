@@ -199,6 +199,27 @@ Rejected:
 - (low) `$ZHorolog` wraps at midnight in `WaitJobs`' message: message-only, theoretical.
 - (false) A lowercase `ns` would never match the switch: every `pageUrl` caller passes an uppercase literal.
 
+Code review of Batch 4 (`a9ae71724` against `20229d63d`), 2026-11-18. Four layers, 28 raw findings, 4 entries after grouping.
+
+- [x] [Review][Patch] (low) The System usage test's doc comment still named eighteen fields after the count became derived [src/OcuPilot/Test/WireSecurityRead.cls:762]
+- [x] [Review][Patch] (low) The process-list row assertion said seven declared fields against an eight-name list [src/OcuPilot/Test/WireSecurityRead.cls:667]
+- [x] [Review][Patch] (low) The planned DW-2202 mutation (the read drops a declared field) cannot redden a derived count; reworded to the wire-side mutation that was observed [spec Verification]
+- [x] [Review][Defer] (low) 83 specs toggle the dark theme by a hard-coded class with a local `frames` beside panel-spec's `setDarkTheme` [ui/browser] — deferred: DW-2741 `wontfix-accepted`; pre-existing, outside DW-2476's `transitionsSettled` scope
+
+Rejected:
+
+- (false) A dropped declared field shrinks both sides unnoticed: the rosters' own literal pins (`SystemUsage.cls:94`, `Descriptor.cls:933,2245`, `data-browser-model.test.mjs:465`) redden.
+- (false) The residual specs' one-argument calls reach the shared helper without a timeout: they call their own copies.
+- (low) "Only shrinks" is a comment: a new copy reddens with a message naming the import; listing it is a visible edit.
+- (low) The `declared > 23` floor admits losing two helpers: the census pins all 23 copies exactly through the same parser.
+- (low) The derived checks compare sizes, not names: the replaced literals were sizes; the task derives the counts.
+- (low) The expectation ignores `context.secretFields`: all three are empty, and the replaced literal behaved the same.
+- (low) Three five-line derivations repeat in one class: inline `DeclarationJson` is the class's pattern; a helper adds surface.
+- (low) Aliased, namespace or string-literal mentions of the helper: each a false red or a loud run-time error.
+- (low) A missing `read.fields` or failed `DeclarationJson` ends the test early: it is already red.
+- (low) No observed mutation for the Locks and audit-list derivations: one mutation per AC is the bar.
+- (low) Spec wording (the Auto Run Result's residual label, the re-own notes' owner, the 13-spec run): spec edits, reported to the runner.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
@@ -363,7 +384,7 @@ Every batch:
   - mutation (Batch 3 code review, observed): AC7 with `GET /api/ocupilot/namespaces` held 8 s by request interception and `pressRun`'s scoped-call clause replaced by `true` -> red, "HSCUSTOM: the start POST carried the namespace the page names" (`null`); the clause restored, same hold -> green after waiting (22.9 s against 4.9 s). `AnalyticsPort.MdxAdmit` skipping `AdmitNamespace`, reloaded -> AC7 red, "HSCUSTOM: the start POST is refused before anything runs, not answered 200". Each reverted (ObjectScript reloaded); `analytics-mdx` 11 of 11.
 - DW-2720: pass AC2's `filterToSubset` a total one too high -> red naming the field, count and total. DW-2713: `StartProbe` waits for 2 jobs -> red naming state and seconds.
   - mutation (Batch 3, observed): users AC2's `total` plus one -> red in 32.9 s, "expected the cleared filter to bring back all 14 row(s) (aria-rowcount 15); the filter field holds "" and the grid's aria-rowcount reads 14"; `StartProbe` ending `WaitJobs(2)` -> six of nine `InteropItemRun` tests red, "the Jobs tab lists 1 jobs, not 2, after 10.1 seconds; the production reads Running|0 and the item enabled=1 stopped=0 own=1 jobs=1 needs=0". Each reverted (ObjectScript reloaded); `InteropItemRun` 9 of 9 and `InteropItemRunGate` 3 of 3 green.
-- DW-2202: the SystemUsage read drops one declared field -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red.
+- DW-2202: the SystemUsage answer drops a declared field on the wire side -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red. A field dropped from the declaration itself shrinks both sides; the roster's own literal pin (`SystemUsage.cls`, `Descriptor.cls`, `data-browser-model.test.mjs`) catches that.
   - mutation (Batch 4, observed): `secretFields` on `SystemUsage` naming `Usage.LastUpdate`, reloaded -> `WireSecurityRead` 24 of 25, "all the declared fields" red; `shortcutRows` ending `.slice(1)`, bundle rebuilt and redeployed -> the data-browser-tabs shortcut test red, "every shortcut is listed" (actual 9, expected 10). Each reverted (ObjectScript reloaded, bundle rebuilt and redeployed); `WireSecurityRead` 25 of 25 and the four data-browser-tabs tests green.
 - DW-2476: re-add a copy to a converted spec -> the ratchet red; drop a converted spec's import -> the import check red.
   - mutation (Batch 4, observed): a local `transitionsSettled` added to `ecp-settings` -> "the specs that declare their own transitionsSettled are the residual list" red, naming the file; the import dropped from `license-key` -> the same test red. Each reverted; `browser-settle.test.mjs` 19 of 19.

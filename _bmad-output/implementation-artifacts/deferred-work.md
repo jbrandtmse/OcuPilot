@@ -10731,6 +10731,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-21T07:05:48Z status=escalated owner=burndown by=adjudication note=parts 1-2 done (66a17632,47a160cd); residual: WireSecurityRead 19+WireOAuthRead 5 per-principal roster literals
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-15T22:56:38Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=adjudication note=slice_landed(a9ae71724:3_field_counts+shortcut_count_derived);residual:WireSecurityRead_19+WireOAuthRead_5_screen-roster_literals,WireSecurityRead_field-name_lists_tasks:440_and_processes:641,web-applications-actions:430_unchecked
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12405,6 +12406,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-21T05:18:23Z status=routed owner=burndown by=cr note=Rule 2 copy: import the shared helper in each spec and run that spec
 - 2026-11-14T00:50:20Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:38Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=adjudication note=slice_landed(a9ae71724:12_specs_on_the_shared_helper);residual:23_copies_in_browser-settle.test.mjs_RESIDUAL_COPIES(shrink-only_ratchet)
 
 ### DW-2477: browser-settle.test.mjs refuses an unsettled measure only in detectScreen passes and the two LOCAL_PASSES specs, so a spec that reads geometry after a viewport change any other way is not held
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: in-story
@@ -12754,6 +12756,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
 - 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);a_web-applications_browser-spec_flake_waits_for_Epic_21's_remaining-leaves_story,as_the_orchestrator_routed_Epic_23's_non-interop_overflow
 - 2026-11-15T22:56:35Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=waitForRememberedView_waits_on_the_stored_view_before_AC1_closes(6ccb71f23)
 
 ### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
 - source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
@@ -12778,6 +12781,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T22:15:24Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
 - 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);stream-reply_navigation-timeout_flake_waits_for_Epic_21's_remaining-leaves_story
 - 2026-11-15T22:56:35Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2545: The Change class dialog's dismissal (Cancel, Escape, scrim) and the page's close handler are not exercised by any spec
 - source: _bmad-output/implementation-artifacts/spec-20-41-item-change-of-class.md | severity: low | fix-risk: low | footprint: in-story
@@ -12843,6 +12847,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:35Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T01:31:55Z occurrence=24-3-interoperability-parity note=AC1 timed out (run did not answer within 145000 ms) in CI run 43779335677 browser shard 2/5; green on the unchanged rerun
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=AC7_namespace_race_reproduced(held_namespace_list_8s:start_POST_without_ns)and_closed_by_pressRun's_resolved-namespace_wait;AC7_asserts_ns+4xx(f9a4b89f5);reopen_if=AC7_reddens_again
 
 ### DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the unchanged rerun
 - source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12850,6 +12855,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-18T14:11:27Z occurrence=21-22-ci-flake-hardening note=run_44314393989_browser_2/5_task-run.browser-spec_AC2_waiting_for_app-proposal-card_.ocu-proposal-card-confirm(same_card_wait_shape)
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2550: The structural walk's per-visit record is pinned only by the a11y browser spec, which checks a numeric ms per visit but not that walkPass carries goInApp's settled and why into the visit
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
@@ -12871,6 +12877,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43553717520 attempt 1 red, attempt 2 green on 07b8d59e; batch 2 changed no src since the green 21d6495b
 - 2026-11-14T05:30:22Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=Task0_branch(b):deterministic_bad-decrypt_password_found_in_OnBeforeAllTests;the_733_case_is_DW-2739;reopen_if=SslSecret's_deterministic_wrong_password_reddens_again
 
 ### DW-2557: An Explorer compile, delete, import, save or create confirmed after its stored namespace stopped resolving answers 500, not a named refusal
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-epic
@@ -12923,6 +12930,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
 - 2026-11-15T22:56:36Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-16T19:25:47Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence=run43933412899(OCU-1-epic21-a7e5d04fa)gates_node24.15.0_2177ms;unchanged_rerun
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=ci-throwaway.sh_reads_the_clock_once_per_attempt(orchestrator_ruling);stepped_stub_clock_pin_reddens_without_it
 
 ### DW-2568: The agent's mint answers a missing backup task or database with the framework's not-present sentence, never the ruled BACKUP sentence, so BackupRules.WriteProblem's absent-target branch is unreachable from it
 - source: spec-21-2-backup.md | severity: low | fix-risk: med | footprint: in-story
@@ -12987,6 +12995,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43662142967 attempt 1 browser shard 5/5 red (6 passed, 3 failed, 162.7 s); no ui/src, ui/browser or src change since the last green feature run; attempt 2 green
 - 2026-11-15T02:26:04Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=routed with the other CI flakes to 21.10
 - 2026-11-15T22:56:37Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2567: flake: the component runner's fork pool crashed in CI gates (node 22.22.3) with 170 EPIPE write errors ('Worker forks emitted error'), leaving 3 of 102 files unfinished, on a planning-only commit
 - source: ci run 43675769752 (feature cee4d3671) | severity: low | fix-risk: low | footprint: ui/vitest config; ui/tools
@@ -12998,6 +13007,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-16T07:51:21Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43819841054(staging-24.3-feb6b71c7)job133140150868_node24.15.0_client_suite_cancelled_at_25min;rerun_by_epic-runner-24
 - 2026-11-16T13:52:02Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43875203822(OCU-1-epic21-edf36c82d)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
 - 2026-11-16T16:17:56Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=occurrence=run43897913630(OCU-1-epic24-e34cedcd7)gates_node22.22.3_cancelled_at_timeout;unchanged_rerun
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=folded_into_Batch1_with_DW-2721(same_fork_pool);sampler+per-file_start_line_name_the_file_next_time
 
 ### DW-2587: One failed backup-job start leaves the backup task reading Running with no backup process, so every later run is refused as already running until the instance is restarted
 - source: spec-21-2-backup.md | severity: med | fix-risk: med | footprint: in-epic
@@ -13418,6 +13428,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-21.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: e21u/21-32/gate/fresh/specs-forward.log, 2026-11-16T11:27Z, fresh rebuild
 - 2026-11-16T11:30:51Z status=routed owner=21-22-ci-flake-hardening by=lead note=cold first sign-in on a fresh instance; same family as the page-load hangs in DW-2544/2549/2566
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2651: The install-owned stores (WebApp, Stamp, Version, Demo) and the screen-access store (Access) still take any caller's public guarded write; WebApp.GuardedRecord drives what Installer.Uninstall deletes (code read, not reproduced)
 - source: spec-21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not.md | severity: high | fix-risk: med | footprint: out-of-footprint
@@ -13439,6 +13450,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43850988016 (feature 90799012d) | severity: low | fix-risk: medium | footprint: ui/browser; the CI throwaway instance
 - evidence: job log: Navigation timeout of 30000 ms exceeded, 1 request in flight permissions/users (30017 ms); run 43845475577 same sha green
 - 2026-11-16T11:21:07Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=flake_classified;unchanged_rerun
+- 2026-11-18T17:21:45Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2650: flake or leg contamination: interop-editors AC2 DTL compile answered ERROR #6220 Internal Server Error in CI browser shard 4/5 on feature after the Epic 24 merge (the DW-2395 symptom); config-settings was not in the leg
 - source: ci run 43862871865 (feature 2ef969841) | severity: med | fix-risk: medium | footprint: ui/browser; the CI throwaway instance; a web process's device or SQL state
@@ -13638,6 +13650,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44029722214 (feature dispatch head 4f3b7d2fe) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; the head was bookkeeping over green code 8c58f5edf; same navigation-timeout shape as DW-2544
 - 2026-11-17T07:20:51Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake found at the dispatch gate; for the flake-hardening story
+- 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=page-load_signature:panel-spec_probe_now_appends_a_node_fetch_line;context-chip_slot_waits(DW-2566);reopen_if=a_page.goto_timeout_whose_node_fetch_line_shows_the_instance_answering_or_not
 
 ### DW-2690: Write.IsRefusedRead maps every AccessDenied status to a non-owner answer, so an owner's read refused 822 for another reason would answer NOTYOURS or UNKNOWN
 - source: spec-21-35-ocupilot-s-install-records-and-other-users-state-answer-only.md | severity: low | fix-risk: low | footprint: in-story
@@ -13729,12 +13742,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; same start-timing family as DW-2535 (resolved by 20.25); 21.35 touches no interop code
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
+- 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=WaitJobs_names_the_job_count_or_an_unreadable_Jobs_tab;reopen_if=InteropItemRun_reddens_again
 
 ### DW-2714: flake: analytics-mdx.browser-spec.mjs AC1 waited 145 s for the first query's answer in CI browser shard 2/5
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
 - 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=pressRun_waits_for_Run_enabled_and_an_API_call_carrying_ns(f9a4b89f5)
 
 ### DW-2725: A listing group copy reads back nothingSent (action-style, no READBACKFIELDS), so AC2's 'matches' for each write does not hold for copy; 24.10's term-list copy is the same
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -13761,6 +13776,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
 - 2026-11-18T10:38:51Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence 5: run 44283101753 att1 on OCU-1-epic24 eb6fbf706 (24.11 merged code head), node 22.22.3 client suite cancelled ~25 min; node 24/26 green
 - 2026-11-18T13:19:59Z occurrence=21-17-global-export-and-import note=run_44301357497_gates_node_26.0.0_cancelled_(not_only_node_22);rerun_green
+- 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=mechanism=per-fork_heap_growth_in_non-isolated_vitest_forks(measured);isolate+maxWorkers2+1536MB_cap+12min_step_timeout;node22.22.3_leg_green_on_d18d59f9a(run44314393989)+later_heads
 ### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
@@ -13782,6 +13798,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44178940947 (Epic 21 head 20223ae5a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
+- 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -13837,3 +13854,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: web-applications AC5 also ends on a myapp filter (AC6 asserts no count); 12 more specs call filterToSubset and resetRememberedState; one sighting so far (DW-2534)
 - 2026-11-18T14:57:57Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=a list spec reds 'left N of N row(s)' after a test that ended on a filter; fix: waitForRememberedView there
+
+### DW-2741: 83 browser specs toggle the dark theme with a hard-coded 'ocu-theme-dark' and a local frames helper instead of panel-spec's setDarkTheme
+- source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: grep -l "classList.toggle('ocu-theme-dark'" ui/browser/*.mjs lists 83 files, 81 declare a local frames(page); panel-spec.mjs exports setDarkTheme reading THEME_DARK_CLASS from theme.ts
+- 2026-11-18T17:13:40Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=THEME_DARK_CLASS in ui/src/app/core/theme.ts stops being 'ocu-theme-dark'
+
+### DW-2742: flake: a11y-structural-invariants.browser-spec.mjs before-hook: 1280px light settle of /ocupilot/agent/governance timed out (abandoned by withDeadline after 60000 ms) in CI browser shard 1/5 and passed on the unchanged rerun
+- source: ci run 44328339684 (OCU-1-epic21 ead5f1f95) | severity: low | fix-risk: low | footprint: ui/browser
+- evidence: job log: hookFailed at a11y-structural-invariants.browser-spec.mjs:68; all four tests not ok; rerun green
+- 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=settle_deadline_family;21-22_closed

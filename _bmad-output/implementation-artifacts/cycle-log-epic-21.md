@@ -603,3 +603,7 @@
 2026-11-18T17:02:49Z	Story 21.22	ci_resolved	story=21.22 sha=f9a4b89f5 runs=44344107655 result=success failed=none via=none
 2026-11-18T17:02:49Z	Story 21.22	dev_complete	scope=batch4 spawn_at=2026-11-18T16:04Z model=sonnet build_sha=a9ae71724 baseline_revision=20229d63d followup_review_recommended=false deferred=0 cycle_iteration=1 final=done
 2026-11-18T17:02:49Z	Story 21.22	stage_spawned	stage=code-review scope=batch4 spawn_at=2026-11-18T17:02:49Z model=opus agent_name=21-22-code-review-b4 cycle_iteration=1 baseline=20229d63d
+2026-11-18T17:21:55Z	Story 21.22	cr_complete	scope=batch4 spawn_at=2026-11-18T17:04Z model=opus high=0 med=0 low=4 rows=28 unresolved_high_med=0 new=DW-2741(wontfix-accepted) final=done commit=5e1672bb3 closing_sections_present=true
+2026-11-18T17:21:55Z	Story 21.22	ledger_adjudicated	resolved=DW-2721,2567,2534,2565,2714,2548 wontfix=DW-2553,2544,2549,2566,2648,2649,2685,2720,2713 routed_to_21-23=DW-2202,2476(residual_slices) new_flake=DW-2742(->21-23) open_owned=0
+2026-11-18T17:22:35Z	Story 21.22	code_head_pushed	sha=5e1672bb3 run=44357940400 missing=none note=final_code_head(B4+review);supersedes_a9ae71724_run_44354218970
+2026-11-18T17:22:35Z	Story 21.22	gate_step	step=fresh_check+full_sweep+smoke head=5e1672bb3 started=2026-11-18T17:22:35Z dir=e21u/21-22/gate
