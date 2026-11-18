@@ -664,7 +664,7 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
         }
         If (tBad '= "") || (tNotNumber '= "") Quit
     }
-    Do $$$AssertEquals(tBad, "", "every row carries exactly the seven declared fields, none of the four CanBe* gates among them")
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the eight declared fields, none of the four CanBe* gates among them")
     Do $$$AssertEquals(tNotNumber, "", "and both counter columns arrive as JSON numbers, which is what makes their sort numeric")
     ; A list screen that declares no banner answers the key as the empty string rather than omitting
     ; it, so the client's strip has one thing to read on every list. The type is asserted beside the
@@ -759,8 +759,8 @@ Method TestTheProcessDetailsPairSetIsEnforcedForARealPrincipal()
 /// <p>Story 6.9, Matrix "Pairs" -- System usage declares exactly two pairs,
 /// <code>%Admin_Operate:USE</code> then <code>%DB_IRISSYS:READ</code>: a real principal holding
 /// only the first (<parameter>OPERATEONLYUSER</parameter>) is refused naming the second, and one
-/// holding both (<parameter>OPERATEUSER</parameter>) reads 200 with one row carrying the eighteen
-/// parts-merged fields, its <code>Usage.AllGlobalReferences</code> and
+/// holding both (<parameter>OPERATEUSER</parameter>) reads 200 with one row carrying every
+/// declared parts-merged field, its <code>Usage.AllGlobalReferences</code> and
 /// <code>SharedMemory.SMHAllocated</code> both JSON numbers (AD-29, AD-36).</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.SystemUsage</class> -&gt; the operate-only principal's refusal
