@@ -392,3 +392,6 @@
 2026-11-18T10:15:25Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(feature_merges_21.14_21.5+EXPERIENCE.md) model=claude-opus-5-5
 2026-11-18T10:15:25Z	Epic 24	orchestrator_message	one_ci-runner_call_per_message_in_first_lines_of_every_implement_and_QA_prompt_from_24.12
 2026-11-18T10:15:25Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T10:15:25Z model=opus agent_name=24-12-quality-measures-plan-1 cycle_iteration=1
+2026-11-18T10:27:15Z	Story 24.12	story_created	spawn_at=2026-11-18T10:16:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-12-quality-measures.md build_status=blocked(intent_gap_batches_strings) epic_context=reused
+2026-11-18T10:27:15Z	Story 24.12	ruling	question=batches(3),strings,read_pairs(equal_classic),spine_line choice=three_batches_in_story;keep category=veto inbox=U-111 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-18T10:27:15Z	Story 24.12	spec_validated	service_introducing=true integration_ac=present(AC2) adr_constrained_acs=AD-51,AD-52,AD-53,AD-65,AD-22 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false(batch1_reads) scope=batch1_reads
