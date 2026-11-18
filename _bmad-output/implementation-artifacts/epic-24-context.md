@@ -4,21 +4,21 @@
 
 ## Goal
 
-This epic is the share of Stage 5 (custom-REST parity built from harvested MCP-suite handler bodies) that runs on slot B beside Epic 21: the remaining interoperability surfaces, the analytics editors Epic 20 left out, a developer-tools set, and for the agent the 28 harvested inspection tools plus undo by snapshot and revert. No story depends on one Epic 21 still holds. Stories 24.1 to 24.6 and 24.8 to 24.10 are done. Story 24.7, the web terminal, is parked at plan (U-104): its backing class, the vendor's Atelier v7 terminal WebSocket, cannot be reached under the spine as it stands, and its scope is the owner's call. The next story is 24.11; the analytics stories (24.11 to 24.14) come before the interoperability (24.15 to 24.19) and agent-tool (24.20 to 24.23) stories.
+Epic 24 was split from Epic 21 (Stage 5, custom-REST parity) so that a second slot can run it beside Epic 21. It takes the remaining classic-portal leaves that have a backing class but no route: the rest of the interoperability area, the analytics editors the Epic 20 rider left out, and a developer-tools set harvested from the MCP suite. It also grows the agent: the 28 inspection tools harvested from iris-session-agent, and undo by snapshot and revert. Every surface is built under the same staged-delivery contract as earlier stages, so the product reaches parity without a second way of building a screen, a tool or a write.
 
 ## Stories
 
-- Story 24.1: Developer tools: code metrics and document hashes (done)
-- Story 24.2: The analytics editors: the term-list editor (done)
-- Story 24.3: Interoperability parity: auto-start, shutdown groups and Epic 20 cleanup fixes (done)
-- Story 24.4: The agent gains the harvested tools: the fourteen session and message reads (done)
-- Story 24.5: Unit-test runner and its run record; work-queue viewer not planned (done)
-- Story 24.6: The command and class-method consoles (done)
-- Story 24.7: Web terminal (parked, owner's call)
-- Story 24.8: Environment diff, same instance only; remote profiles not planned (done)
-- Story 24.9: Environment promote, same instance only (done)
-- Story 24.10: Folder manager transfer and term-list import, export and copy (done)
-- Story 24.11: Listing groups (next)
+- Story 24.1: Developer tools (LOC metrics and drift hashes)
+- Story 24.2: The analytics editors (term-list editor)
+- Story 24.3: Interoperability parity (auto-start and shutdown groups, plus routed cleanup entries)
+- Story 24.4: The agent gains the harvested tools and undo (14 session and message read tools)
+- Story 24.5: Unit-test runner and work-queue viewer
+- Story 24.6: The command and class-method consoles
+- Story 24.7: Web terminal
+- Story 24.8: Remote instance profiles and environment diff
+- Story 24.9: Environment promote
+- Story 24.10: Folder manager transfer and term-list import, export and copy
+- Story 24.11: Listing groups
 - Story 24.12: Quality measures
 - Story 24.13: Analytics settings
 - Story 24.14: PMML model tester and dashboard viewer
@@ -34,29 +34,43 @@ This epic is the share of Stage 5 (custom-REST parity built from harvested MCP-s
 
 ## Requirements & Constraints
 
-- **One contract per screen (Epic 21's preamble, unchanged).** Acceptance is the parity contract plus each row "round-trips over its backing class". Every write is a confirmed proposal; every new destructive key defaults to disabled. Handler bodies are taken and nothing else (the suite's manifest is stale, its bootstrap TypeScript-driven); read the current body before harvesting.
-- **Governance.** Every new write key joins the baseline in its story; every new destructive key ships `false`. Read-only surfaces add no key.
-- **Harvest cautions.** Rename every harvested token, comments included; the ObjectScript checker refuses the siblings' names, globals, output markers, the `iris_` prefix and `IRIS_*` variables. Where a body cannot do what the page needs, extend the port, never edit the body.
-- **Secrets and paths.** No credential reaches a screen or a log; no caller value is concatenated into SQL; no endpoint takes a filesystem path. A file transfer uses the existing server-file case only: an overwriting export whose directory must exist, an import read as text up to the 3,000,000-character transfer bound (larger is refused), and a local file's name and content as screen values, never in a tool's schema.
-- **Analytics writes (24.10's precedent for 24.11 to 24.14).** Gate before any vendor call: the screen's pairs, the namespace's shape, analytics on, then the vendor's own resource checks; an item the caller cannot see is absent. A write needs WRITE on the database its vendor global maps to, read-write and journaled, refused by name otherwise. An import parses the file side-effect free before writing, is create-only (a held name refused before any write), re-reads the file at the write and refuses a moved digest, and writes inside one transaction rolled back on failure. Never load or compile through `$system.OBJ`, and never call a vendor read not measured to write nothing. Each write records OcuPilot's own `ConfigChange` row.
-- **Later stories.** 24.13 carries DW-2518 (a vendor cube build that ran then failed records no change row) with its audit sentence at the spec gate (U-34); 24.15 carries a secret and DW-2636 (environment diff gains a per-namespace default-settings comparison); 24.19's deployment produces log and rollback files and its history offers rollback and delete; 24.20 writes the undo decision into the spine at its spec gate (U-72): snapshot before the write, revert as its own confirmed proposal with its own diff and audit marker, the state-capture model designed here rather than retrofitted.
+- **The staged-delivery contract governs every story.** Acceptance is that contract plus each catalog row's own backing class, and each surface must round-trip over that class. Every new screen is declared by exactly one screen descriptor and reaches outside OcuPilot through exactly one port. Its read tool and its write tools' field lists derive from that descriptor, never from hand-written tool code. The agent gains its read tool and its confirmed write tool in the same story as the screen.
+- **Every write is a confirmed proposal**: server-minted, with a diff computed on the instance, an explicit confirmation and an agent audit marker. A confirmed write reads its target back and reports whether the instance holds what was sent.
+- **Governance:** each new write key joins the governance baseline in the story that ships it, enabled unless the story sets it disabled. **Every new destructive key defaults to disabled.** A mutating key absent from the baseline is disabled.
+- **Harvest discipline:** take handler bodies and nothing else. The MCP suite's manifest is stale and its bootstrap is TypeScript-driven. Read the current body before harvesting it, because two known defects (the task-history filter, and creating a resource with a description) have unverified fix status.
+- **Single instance only.** No request leaves the instance except to the configured LLM provider. OcuPilot manages only the instance that serves it, so environment diff and promote work between namespaces of this instance only. Remote instance profiles and the work-queue viewer are recorded in the exclusion register as not planned, each with its stated reason.
+- The interface stays English. Every confirmation names its consequence in plain words.
 
 ## Technical Decisions
 
-- **Harvest seam (AD-23).** Bodies inherit `OcuPilot.Port.Harvest.Handler` and run only through `HarvestPort.Invoke` from one area port, which validates shape, refuses wide input and applies cost caps first (count, then refuse over the cap; never truncate after the scan). A new body adds its `HARVEST_CALLERS` row and a `PortGate` `<body>` row. Namespace switches save and restore (AD-16).
-- **`AnalyticsPort` (AD-65)** calls the vendor's `%DeepSee` classes in process as the signed-in person, never `/api/deepsee`; it refuses a namespace without analytics (`ANALYTICS.NAMESPACE`) and never calls `%GetMemberTree`, `%GetDimensionMembers` or `%GetFavoritesForUser`. **`InteropPort` (AD-62)** alone reads and writes production configuration, default settings included, with no compile-time dependency on interoperability classes. **`DevToolPort`** is the only caller of the developer-tool bodies; it is not yet in AD-29's Binds, which is the owner's attended update, never edited here.
-- **Write model.** Single-use, fingerprinted, expiring proposal (AD-6, AD-34); complete merged body over a port-composed read (AD-4, AD-51, AD-56); a create fingerprints the target's absence (AD-54); screen action and agent write are one operation (AD-53); read-back (AD-58); one change event (AD-14); prohibited review in the kernel only (AD-10); script form for every write tool (AD-59); OcuPilot's own `ConfigChange` where the vendor audits nothing (AD-15). Server refusals are shown as the server sent them (AD-39).
-- **Reads (AD-36, AD-5, AD-24, AD-44).** A screen and its tool share one capped read that reports truncation; screens are namespace-scoped; each descriptor names the classic page it replaces, or `""`.
-- **Harvested agent tools (24.4's pattern).** Take the sibling's rules and query, never its classes or names; each tool is a declaration over `InteropInspect` that declares `KIND` and passes `Governance.Gate.Decide` once.
+- **Harvest seam.** Harvested `ExecuteMCPv2.REST.*` bodies inherit an OcuPilot base that exposes `RenderResponseBody(pStatus, pMsgPart, pResPart)` and emits OcuPilot's single error/response envelope. Only the base class changes, and a body is never edited to change response shape. The no-double-envelope assertion must keep passing. The seam (Story 21.1) is already on the feature branch. An open ledger item (from 21.2) notes that nothing yet polices harvested body classes past the harvest port's gate.
+- **Ports and gates.** Interoperability work goes through `InteropPort`, which calls `Ens.Director` and the configuration classes in process behind its own gate. Analytics goes through `AnalyticsPort`, which calls `%DeepSee` classes in process, never `/api/deepsee`, and uses only reads measured to write nothing. Source and document work goes through `AtelierPort`. Each port checks its own resource/permission pairs at call time, before any vendor call. The vendor's checks are a lower bound, not the whole requirement. Switch namespaces by explicit save and restore, and never with `New $NAMESPACE`. No caller value is ever concatenated into SQL, and no endpoint accepts a path.
+- **Run-code exception** (Stories 24.5 to 24.7): the unit-test runner, the command and class-method consoles and the web terminal run code with the signed-in person's rights, under three rules:
+  - The tool is a person's alone. It declares `PERSONGATE` and is unadvertised. A call the agent can reach is refused `PROHIBITED.PERSONONLY`, and the tool has no mint, no proposal card and no copy-out draft.
+  - It is off by default. Its governance key ships `false` and is asked by `POST /screens/:screen/action`.
+  - Every run passes a confirmation that names its consequence.
+
+  Shipped keys: `explorer.unittests.run`, `explorer.command.run` and `explorer.classmethod.run`. The port refuses a target in an `OcuPilot` package, or a command that names OcuPilot in any letter case. Console output, return values, by-reference values and error text reach the screen only, as text. They never reach the model, a tool result, a ledger row, an audit payload, a log line or screen context. Console output is bounded by the harvested output ceiling. Each console run records OcuPilot's own `SecurityChange` row: the console, the namespace and, for a class method, the class and method, never the command, the arguments or the answer. A unit-test run records no vendor audit event, which is a named gap.
+- **Harvested agent tools (28).** Each tool declares `read` or `write` at definition time and passes the single call-time gate. They come from iris-session-agent, where all 28 are non-mutating and Ens-specific. Take the rules, not the mechanism:
+  - Use the locked JSON-Schema subset, with no `$ref`, `oneOf`, `anyOf`, `allOf` or `pattern`.
+  - Tools never touch `%session`, `%request` or `$NAMESPACE` directly.
+  - Rename everything into OcuPilot's own names, including the `iris_` prefix.
+  - Tool results and log text reach the model only through the sanitizer, and an agent read tool never executes code.
+- **Undo (24.20).** Capture a snapshot before the write and offer a one-click revert. The revert is itself a confirmed proposal with its own diff and audit marker. Undo is deferred to Stage 5 because the write path has no state-capture model, so the model is designed here and not retrofitted.
+- **Promote (24.9)** keeps its four-gate model: plan, execute-with-confirm, a steps allow-list, and plan-hash freshness. It states that there is no rollback. The harvested "promote" guided workflow stays empty until this tool exists. Any workflow is a catalog entry, and every write in it is one confirmed proposal.
+- **Deployment (24.19)** produces its log and rollback files, and the deployment history offers rollback and delete.
+- **Interoperability writes** are identified by `[Production, Name]` and never by the vendor's integer id. A namespace under source control refuses item writes. Production stop, restart and update are capped at 15 s and never call clean.
 
 ## UX & Interaction Patterns
 
-- The proposal card shows target, before/after rows, an "N unchanged fields" fold, rationale, impact and a "Reverse:" line where a reversal exists. A destructive action uses the typed-name confirm, ending "This cannot be undone from OcuPilot." where true.
-- Transfers reuse the published words Export and Import, to a server file or to this browser; an applied write leaves a status line on the screen ("Exported <name>.", "Imported <name>.").
-- An empty-state agent string is a lowercase action phrase completing "Or ask the agent: ...", never a sentence. Every new label, help line, refusal and status line goes into EXPERIENCE.md's Fixed strings in its story.
+- Each confirm dialog states the write's consequence. A destructive confirm says "This cannot be undone" where that applies. All copy goes in the experience spec's copy tables.
+- Run-code screens draw their action off with the key's refusal sentence while the governance key is disabled.
+- List screens and their read tools share one bounded, declared read that reports when it truncated.
 
 ## Cross-Story Dependencies
 
-- 24.11 to 24.14 extend 24.2's and 24.10's `AnalyticsPort` work (the term-list and folder-item tools, transfer helpers and the generalized write admit); 24.15 to 24.19 extend 24.3's `InteropPort` work; 24.19's deployment follows 24.9's promote pattern (plan, execute-with-confirm, a steps allow-list, plan-hash freshness).
-- 24.20 consumes the proposal kernel (`Confirm`, `Mint`); its first declaring writes include 24.2's, 24.3's and 24.10's. 24.21 builds on `InteropInspect`; 24.22 reuses `ListSessions`' window.
-- Epic 21 runs on slot A, most of its stories still ready-for-dev. Shared rosters, counts and registries (`Test/ReadTool.cls`, `PortGate`, `Screen/Read.cls`, `Registry.cls`, `Navigation`, `ToolRoundTrip`, the governance baseline, the exclusion register) take append-only edits, unioned at integrate-forward with counts re-derived. Check each against `origin/OCU-1-epic21` before editing; never take Epic 21's stories.
+- Every story harvests through Story 21.1's seam, which is on the feature branch. No story depends on a story Epic 21 still holds.
+- The interoperability stories (24.3, 24.15 to 24.19) and the analytics stories (24.2, 24.10 to 24.14) extend Epic 20's merged `InteropPort` and `AnalyticsPort`. 24.10 builds on 24.2's term-list editor.
+- 24.6 and 24.7 come in under the run-code exception that 24.5 established. The consoles also rely on Story 21.30's guarded stores to keep OcuPilot's protected state refused to non-administrators.
+- 24.9 depends on 24.8, which supplies the same-instance environment diff. One ledger entry asks 24.15's default-settings read to feed environment diff per namespace.
+- 24.20 to 24.23 complete the 28-tool set that 24.4 started.

@@ -357,3 +357,5 @@
 2026-11-18T00:10:21Z	Story 24.11	committed	sha=d0e2b83bc code_head=d65c399a1 ci=pending runs=44205531488 scope=batch1 amendments=none footprint_extensions=EXPERIENCE.md(add-only_row)
 2026-11-18T00:10:21Z	Story 24.11	ruling	question=tracker_status_between_batches choice=in-progress(batch2_follows) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-18T00:10:21Z	Story 24.11	stage_spawned	stage=pre-warm spawn_at=2026-11-18T00:10:21Z model=opus agent_name=epic-24-context-prewarm-4 cycle_iteration=3 reason=planning_artifact_newer(EXPERIENCE.md_24.11)
+2026-11-18T00:12:44Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_24.11) model=claude-opus-5-5
+2026-11-18T00:12:44Z	Story 24.11	stage_spawned	stage=plan spawn_at=2026-11-18T00:12:44Z model=opus agent_name=24-11-listing-groups-plan-batch2 cycle_iteration=3 scope=batch2_writes
