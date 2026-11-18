@@ -414,3 +414,6 @@
 2026-11-18T14:19:05Z	Story 24.12	ruling	question=tracker_status_between_batches choice=in-progress(batches_2_3_follow) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-18T14:19:05Z	Story 24.12	stage_spawned	stage=plan spawn_at=2026-11-18T14:19:05Z model=opus agent_name=24-12-quality-measures-plan-batch2 cycle_iteration=2 scope=batch2_measure_writes
 2026-11-18T14:22:08Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_24.12) model=claude-opus-5-5
+2026-11-18T14:33:32Z	Story 24.12	story_created	spawn_at=2026-11-18T14:23:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-12-quality-measures-2.md build_status=ready-for-dev epic_context=reused scope=batch2_measure_writes cycle_iteration=2
+2026-11-18T14:33:32Z	Story 24.12	ruling	question=batch2_starter_model,linked_refusal,keys,strings,spine_lines choice=keep category=veto inbox=U-112 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-18T14:33:32Z	Story 24.12	spec_validated	service_introducing=true integration_ac=present(AC2) adr_constrained_acs=AD-51,AD-52,AD-53,AD-61,AD-65,AD-22,AD-58,AD-10 decision_dependency=none sections_created=none owned_ledger=DW-2734 addressed=0 declined=1(DW-2734_batch3) mutates_shared_runtime=true(throwaway_only) scope=batch2 contended=Kernel/Proposal/Prohibited.cls(one_condition_term_IsQualityMeasureType)

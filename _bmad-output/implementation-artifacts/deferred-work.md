@@ -13737,6 +13737,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: AnalyticsListingGroupCopy (and AnalyticsTermListCopy) declare no CREATES/SENDSBODY/READBACKFIELDS, so ReadBack.Of takes the action kind; a copy's values are NewName/NewClass/NewCubes, which READBACKFIELDS cannot map to the created group's Name/Class/TargetCubes
 - 2026-11-18T05:45:22Z status=escalated owner=burndown by=cr note=decide: accept nothingSent for a copy (AD-58 action-style) or add a ReadBack mapping for copies
+- 2026-11-18T14:33:24Z occurrence=24-12-quality-measures by=spec_gate note=the quality-measure copy reads back nothingSent as the listing-group and term-list copies do
 
 ### DW-2726: Add listing with a name the group already holds is refused with LISTINGTAKEN's sentence, 'Choose other target cubes', which is the wrong advice for that case
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: low | footprint: in-story
