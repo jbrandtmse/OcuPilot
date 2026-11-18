@@ -234,6 +234,9 @@ test('the specs that measure without detectScreen settle after every viewport ch
  *   CSSTransition` guard dropped -> the shared transitionsSettled test goes red.
  * - the shared `settleViewport` without its width wait, with the wait before the viewport change, or
  *   with one frame in place of two -> the shared settleViewport test goes red.
+ * - a converted spec given its own `transitionsSettled` again, or a listed spec's copy deleted
+ *   without the import -> "the specs that declare their own transitionsSettled are the residual
+ *   list" goes red, naming the file.
  */
 
 /** The bodies of the functions named `name` in `code`, read by `browser-reset.mjs`'s `functionUnits`, as `{ line, body }`. */
@@ -288,6 +291,71 @@ test('a settle helper that waits on nothing is found, and one that reads what it
   assert.deepEqual(settleHelpers('// function transitionsSettled(page) { return 1; }\nconst x = 1;'), { declared: 0, hollow: [] }, 'a comment declares nothing');
 });
 
+/**
+ * The specs that still declare their own `transitionsSettled` rather than import the one in
+ * `panel-spec.mjs`. The list only shrinks: a spec converted to the shared helper leaves it, and the
+ * list goes with the last copy.
+ */
+const RESIDUAL_COPIES = [
+  'database-operations.browser-spec.mjs',
+  'ecp-data-servers.browser-spec.mjs',
+  'encryption-key-file.browser-spec.mjs',
+  'interop-editors.browser-spec.mjs',
+  'interop-lookup-transfer.browser-spec.mjs',
+  'interop-message-trace.browser-spec.mjs',
+  'interop-messages.browser-spec.mjs',
+  'interop-transform-test.browser-spec.mjs',
+  'interop-viewers.browser-spec.mjs',
+  'journal-records.browser-spec.mjs',
+  'journals.browser-spec.mjs',
+  'ldap-editor.browser-spec.mjs',
+  'local-databases.browser-spec.mjs',
+  'namespace-interop.browser-spec.mjs',
+  'namespace-mappings.browser-spec.mjs',
+  'namespaces.browser-spec.mjs',
+  'oauth-client-editor.browser-spec.mjs',
+  'oauth-resource-server-editor.browser-spec.mjs',
+  'oauth-server-editor.browser-spec.mjs',
+  'remote-databases.browser-spec.mjs',
+  'service-editor.browser-spec.mjs',
+  'system-explorer-write.browser-spec.mjs',
+  'wallet-secret.browser-spec.mjs',
+];
+
+/**
+ * `{ copies, unimported }` over `sources` (`[name, source]` pairs, `panel-spec.mjs` apart): the specs
+ * that declare their own `transitionsSettled`, and the specs that call one they do not declare
+ * without importing it from `./panel-spec.mjs`.
+ */
+function settleCensus(sources) {
+  const copies = [];
+  const unimported = [];
+  for (const [name, source] of sources) {
+    if (name === 'panel-spec.mjs') continue;
+    const code = stripComments(source);
+    if (declarations(code, 'transitionsSettled').length > 0) {
+      copies.push(name);
+    } else if (/(?<![A-Za-z0-9_$])transitionsSettled\s*\(/.test(code) && !/import\s*\{[^}]*\btransitionsSettled\b[^}]*\}\s*from\s*'\.\/panel-spec\.mjs'/.test(code)) {
+      unimported.push(name);
+    }
+  }
+  return { copies: copies.sort(), unimported: unimported.sort() };
+}
+
+test('a spec that declares its own transitionsSettled is a copy, and a caller that declares none must import the shared one', () => {
+  const copy = 'function transitionsSettled(page) {\n  return page.waitForFunction(() => true);\n}\nawait transitionsSettled(page);';
+  const shared = "import { signedInAt, transitionsSettled } from './panel-spec.mjs';\nawait transitionsSettled(page, 1);";
+  const sources = [
+    ['a.browser-spec.mjs', copy],
+    ['b.browser-spec.mjs', shared],
+    ['c.browser-spec.mjs', 'await transitionsSettled(page, 1);'],
+    ['d.browser-spec.mjs', "import { transitionsSettled } from './other.mjs';\nawait transitionsSettled(page, 1);"],
+    ['e.browser-spec.mjs', '// function transitionsSettled(page) {}\nawait page.goto(url);'],
+    ['panel-spec.mjs', 'export function transitionsSettled(page, timeoutMs) {\n  return page.waitForFunction(() => true);\n}'],
+  ];
+  assert.deepEqual(settleCensus(sources), { copies: ['a.browser-spec.mjs'], unimported: ['c.browser-spec.mjs', 'd.browser-spec.mjs'] });
+});
+
 test('every transitionsSettled and panelSettlesAt the browser specs define waits on what its name says', () => {
   const dir = join(dirname(fileURLToPath(import.meta.url)), '..', BROWSER_DIR);
   let declared = 0;
@@ -297,8 +365,15 @@ test('every transitionsSettled and panelSettlesAt the browser specs define waits
     declared += found.declared;
     for (const line of found.hollow) hollow.push(`${name}:${line}`);
   }
-  assert.ok(declared >= 30, `the scan found ${declared} settle helpers, fewer than the thirty the specs define`);
+  assert.ok(declared > RESIDUAL_COPIES.length, `the scan found ${declared} settle helpers, fewer than the ${RESIDUAL_COPIES.length} residual copies and the shared one`);
   assert.deepEqual(hollow, [], 'each helper above lacks the read its name promises (running CSS transitions, or the panel width)');
+});
+
+test('the specs that declare their own transitionsSettled are the residual list, and every other caller imports the shared one', () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '..', BROWSER_DIR);
+  const { copies, unimported } = settleCensus(readSources(dir));
+  assert.deepEqual(copies, [...RESIDUAL_COPIES].sort(), 'a spec that declares a copy is not on RESIDUAL_COPIES, or a listed spec no longer declares one: import the shared transitionsSettled from ./panel-spec.mjs and drop the spec from the list');
+  assert.deepEqual(unimported, [], 'each spec above calls transitionsSettled without declaring it or importing it from ./panel-spec.mjs');
 });
 
 /** Run `run` with `values` set on `globalThis`, and put every one back as it was. */

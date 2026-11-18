@@ -2,8 +2,8 @@
 title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: 'ac041a7793002a967357b53d5e11e97cd8c81d6b'
+status: 'done'
+baseline_revision: '20229d63d6b756478169e63fa4ab77acbe539415'
 baseline_commit: 'ac041a7793002a967357b53d5e11e97cd8c81d6b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -83,7 +83,7 @@ Batch 4 (bounded slices):
 
 **Execution (four batches in order; each is verifiable, committable and pushable alone; Batch 1 first):**
 
-**Scope of the current pass: Batch 3 only** (Batches 1 and 2 are built, reviewed and pushed). Do the Batch 3 tasks (page-load probe, `pressRun` and AC7, `clearFilter`, `WaitJobs`), and run the Batch 3 lines of Verification, the "Every batch" lines and the Batch 3 mutations; do not start Batch 4. Every ObjectScript or browser run goes to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. A diagnosis step never retries, never lengthens a timeout and never hides the original error. The pass finalizes at `status: in-progress`, and its `## Auto Run Result` says Batches 1 to 3 are done and 4 is not started.
+**Scope of the current pass: Batch 4 only** (Batches 1 to 3 are built, reviewed and pushed). Do the Batch 4 tasks (the DW-2202 derived counts, the DW-2476 twelve converted specs and the ratchet), and run the Batch 4 lines of Verification (the `WireSecurityRead` class, the data-browser-tabs spec, the twelve specs in two calls of six, `ci.test.mjs`/`panel-spec.test.mjs`/`browser-settle.test.mjs`), the "Every batch" lines and the Batch 4 mutations. Every ObjectScript or browser run goes to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. Edit files only with the Edit and Write tools, never through python, sed, perl or a heredoc in Bash; one step per Bash call, each bounded with `timeout 600`. This is the last batch: the pass finalizes at `status: done`, and its `## Auto Run Result` says all four batches are done.
 
 Batch 1 -- the node 22 client-suite hang (DW-2721, DW-2567):
 
@@ -257,6 +257,18 @@ Rejected:
   - `[low]` `[reject]` intent audit: `clearFilter` and `WaitJobs` change the failure text only — the spec's Batch 3 text asks for exactly that; the waits and their bounds are untouched.
   - `[low]` `[reject]` intent audit: the front matter reads `in-review` while the scope paragraph says the pass finalizes at `in-progress` — the review step sets the status, and finalize writes `in-progress` as the dispatch instructs.
 
+### 2026-11-18 — Review pass (Batch 4)
+
+- verdicts: 7 findings — high 0, medium 0, low 7, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` the data-browser shortcut assertion compared the rendered count to `DATA_BROWSER_SHORTCUTS.length` with no non-empty floor, so an emptied roster read `0 === 0` — an `assert.ok(length > 0)` now precedes it, matching the `WireSecurityRead` floors; the spec re-ran 4 of 4.
+  - `[low]` `[reject]` a converted spec could drop `transitionsSettled`'s second argument and the census would stay green — an omitted timeout falls back to Puppeteer's own bounded default, no spec does it today, and an arity check is a new parsing branch for a regression nobody is expected to write.
+  - `[low]` `[reject]` verification-gap: the audit list's 24 fields are no longer pinned by a literal anywhere — the spec's task is to derive the count through `DeclarationJson` as `Dashboard.cls:99` does, and the declaration is the one source the wire answer is built from; `SystemUsage` keeps its own 18 in `SystemUsage.cls` and the wire test keeps the answer-equals-declaration pin.
+  - `[low]` `[reject]` intent audit: the derived side of the field counts is the registry the surface is built from, so a field lost in both places stays green — that is the reading the spec's task states (derive, so no literal needs editing when a roster changes); the residual per-principal literals stay ledgered.
+  - `[low]` `[reject]` intent audit: the shortcut spec reads the roster from the TypeScript model through a dynamic import, as `rail.browser-spec.mjs` does for core TS — the pattern is the sibling's, and Node 22.22.3 handling is an inference from that sibling running in CI.
+  - `[low]` `[reject]` intent audit: the import check does not see an aliased import or a re-export — it would report a false red, never a false green, and no spec aliases the helper.
+  - `[low]` `[reject]` intent audit: the twelve conversions are exercised only by the recorded browser runs and the census, with no new test of the helper's timeout argument — the helper's behavior is unchanged from the copies it replaces and `panel-spec.test.mjs` already pins its export.
+
 ## Design Notes
 
 **ADs:** none binds the client test runner's pool settings; the spine's Stack rows "Client test runners" and "CI" stay true as written. AD-19 (the screen's own signal is the readiness signal: Run's `aria-disabled`, the stored view), AD-14, AD-43, AD-7 (a turn's slot), AD-17 (test classes only on a throwaway), AD-36. Test-and-CI only apart from Task 0's branch (a). No AD change.
@@ -352,14 +364,16 @@ Every batch:
 - DW-2720: pass AC2's `filterToSubset` a total one too high -> red naming the field, count and total. DW-2713: `StartProbe` waits for 2 jobs -> red naming state and seconds.
   - mutation (Batch 3, observed): users AC2's `total` plus one -> red in 32.9 s, "expected the cleared filter to bring back all 14 row(s) (aria-rowcount 15); the filter field holds "" and the grid's aria-rowcount reads 14"; `StartProbe` ending `WaitJobs(2)` -> six of nine `InteropItemRun` tests red, "the Jobs tab lists 1 jobs, not 2, after 10.1 seconds; the production reads Running|0 and the item enabled=1 stopped=0 own=1 jobs=1 needs=0". Each reverted (ObjectScript reloaded); `InteropItemRun` 9 of 9 and `InteropItemRunGate` 3 of 3 green.
 - DW-2202: the SystemUsage read drops one declared field -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red.
+  - mutation (Batch 4, observed): `secretFields` on `SystemUsage` naming `Usage.LastUpdate`, reloaded -> `WireSecurityRead` 24 of 25, "all the declared fields" red; `shortcutRows` ending `.slice(1)`, bundle rebuilt and redeployed -> the data-browser-tabs shortcut test red, "every shortcut is listed" (actual 9, expected 10). Each reverted (ObjectScript reloaded, bundle rebuilt and redeployed); `WireSecurityRead` 25 of 25 and the four data-browser-tabs tests green.
 - DW-2476: re-add a copy to a converted spec -> the ratchet red; drop a converted spec's import -> the import check red.
+  - mutation (Batch 4, observed): a local `transitionsSettled` added to `ecp-settings` -> "the specs that declare their own transitionsSettled are the residual list" red, naming the file; the import dropped from `license-key` -> the same test red. Each reverted; `browser-settle.test.mjs` 19 of 19.
 
 ## Auto Run Result
 
-Status: in-progress
+Status: done
 Blocking condition: none
 
-Batches 1 to 3 are done; Batch 4 is not started. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
+All four batches are done. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
 
 Batch 2 pass: DW-2534 `waitForRememberedView` in `preferences-reset.mjs`, called before web-applications AC1 closes its context. DW-2565 `scripts/ci-throwaway.sh` reads the clock once per attempt (the two `date` lines only, per the ruling), and `ci.test.mjs`'s `runThrowawayUp` takes a stepped stub clock the first `up` advances without sleeping. DW-2553 `X509Material.BadDecryptPassword` and `UndecodablePassword`; `SslSecret` draws its wrong password from the first, in `OnBeforeAllTests`. Task 0 landed on branch (b): the vendor answers an undecodable-key password with error 733 and HTTP 500, shared with the certificate and key mismatch, so there is no `PROPERTYFAULTS` entry and one `deferred:` item.
 
@@ -371,4 +385,10 @@ Batch 3 pass: `panel-spec.mjs` `gotoNamingInflight` takes a bounded probe and ap
 
 Verified on `ocupilot-ci` after reload (`LOADERRORS=0`) and a rebuilt, redeployed bundle: `InteropItemRun` 9 of 9, `InteropItemRunGate` 3 of 3; `analytics-mdx` 11 of 11, `users` 4 of 4, `context-chip` 9 of 9, and `web-applications`, `stream-reply`, `agent-code-save` 18 of 18; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 131 of 131; `check-objectscript` 0 problems, its harness OK, `lint-docs` 0 issues, `npm run test:tools` 2323 of 2323. The Batch 3 mutations above each went red and were reverted. Not run here: `WireSecurityRead` and `SslSecret` (Batches 2 and 4), the runner-owned sweep and `smoke.sh`. Residual: test 7's slot race is shown by a held lock, not by a slow turn; no browser run reproduced a page-load timeout, so the probe line is pinned against a fake page and a local server only.
 
-Batch 3 review: 14 findings, none high, 1 medium and 2 low patched (the probe's time bound and abort, `agent: false`, `pressRun`'s namespace clause; each now pinned with a recorded mutation), 11 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: `panel-spec.test.mjs` 11 of 11, AC1 green again, `lint-docs` 0 issues, `npm run test:tools` 2324 of 2324. Files changed this batch: `ui/browser/panel-spec.mjs` (probe), `ui/browser/context-chip.browser-spec.mjs`, `ui/browser/analytics-mdx.browser-spec.mjs`, `ui/browser/list-spec.mjs`, `src/OcuPilot/Test/InteropItemRun.cls`, `ui/tools/panel-spec.test.mjs`, `ui/tools/ci-flake-waits.test.mjs`. Batch 4 is not started.
+Batch 3 review: 14 findings, none high, 1 medium and 2 low patched (the probe's time bound and abort, `agent: false`, `pressRun`'s namespace clause; each now pinned with a recorded mutation), 11 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: `panel-spec.test.mjs` 11 of 11, AC1 green again, `lint-docs` 0 issues, `npm run test:tools` 2324 of 2324. Files changed this batch: `ui/browser/panel-spec.mjs` (probe), `ui/browser/context-chip.browser-spec.mjs`, `ui/browser/analytics-mdx.browser-spec.mjs`, `ui/browser/list-spec.mjs`, `src/OcuPilot/Test/InteropItemRun.cls`, `ui/tools/panel-spec.test.mjs`, `ui/tools/ci-flake-waits.test.mjs`.
+
+Batch 4 pass (re-run after a discarded first pass): DW-2202 `WireSecurityRead` derives the three field counts (System usage, Locks, audit list) from each descriptor's `DeclarationJson` `read.fields`, each beside a non-empty check, and the data-browser-tabs spec derives its shortcut count from `DATA_BROWSER_SHORTCUTS`. DW-2476 the twelve named specs drop their local `transitionsSettled`, import panel-spec's and pass `config.navigationTimeoutMs`; `browser-settle.test.mjs` replaces the `>= 30` floor with `RESIDUAL_COPIES` (the 23 specs still declaring a copy; it only shrinks), a census unit test, and the check that every other caller imports the shared helper; the hollow-body check stays.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`) and a rebuilt, redeployed bundle: `WireSecurityRead` 25 of 25; the twelve converted specs plus data-browser-tabs 38 of 38 in two calls; `stream-reply`, `agent-code-save` and data-browser-tabs 18 of 18; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 136 of 136; `check-objectscript` 0 problems, its harness OK, `lint-docs` 0 issues, `npm run test:tools` 2328 of 2328. The Batch 4 mutations above each went red and were reverted. Not run here: the other Batch 2 and 3 classes and specs (their batches), the runner-owned sweep and `smoke.sh`. Residual: the 23 copies in `RESIDUAL_COPIES`, the 24 per-principal field-list literals in `WireSecurityRead` and `WireOAuthRead`, and `web-applications-actions:430` stay ledgered as the Design Notes name; no review layer ran in the implement pass.
+
+Batch 4 review: 7 findings, none high or medium; 1 low patched (the shortcut assertion's non-empty floor, the spec re-ran 4 of 4 on a redeployed bundle), 6 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. Files changed this batch: `src/OcuPilot/Test/WireSecurityRead.cls`, `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs`, the twelve converted `ui/browser/*.browser-spec.mjs`, `ui/tools/browser-settle.test.mjs`.

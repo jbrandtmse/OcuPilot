@@ -779,7 +779,11 @@ Method TestTheSystemUsagePairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tAnswer.rows.%Size(), 1, "exactly one row, the instance's own")
     If tAnswer.rows.%Size() '= 1 Quit
     Set tRow = tAnswer.rows.%Get(0)
-    Do $$$AssertEquals(tAnswer.fields.%Size(), 18, "all eighteen declared fields")
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.SystemUsage).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(tDeclaration.read.fields.%Size() > 0, "the declaration declares fields")
+    Do $$$AssertEquals(tAnswer.fields.%Size(), tDeclaration.read.fields.%Size(), "all the declared fields")
     Do $$$AssertEquals(tRow.%GetTypeOf("Usage.AllGlobalReferences"), "number", "the counter arrives as a JSON number")
     Do $$$AssertEquals(tRow.%GetTypeOf("SharedMemory.SMHAllocated"), "number", "and so does the shared-memory allocation")
 }
@@ -812,7 +816,11 @@ Method TestTheLocksListPairSetIsEnforcedForARealPrincipal()
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "at least one row -- this instance always holds at least a system lock")
-    Do $$$AssertEquals(tAnswer.fields.%Size(), 9, "all nine declared fields")
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.LockList).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(tDeclaration.read.fields.%Size() > 0, "the declaration declares fields")
+    Do $$$AssertEquals(tAnswer.fields.%Size(), tDeclaration.read.fields.%Size(), "all the declared fields")
 }
 
 /// <p>AC4, Story 6.12 -- the Devices list declares the same two pairs as the Databases General
@@ -1236,7 +1244,11 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tStatus, 200, "and answers")
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tAnswer.fields.%Size(), 24, "with the twenty-four declared fields")
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.AuditList).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(tDeclaration.read.fields.%Size() > 0, "the declaration declares fields")
+    Do $$$AssertEquals(tAnswer.fields.%Size(), tDeclaration.read.fields.%Size(), "with every declared field")
     Do $$$AssertEquals(tAnswer.fields.%Get(0), "SystemID", "in the vendor's own ROWSPEC order")
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's audit rows listed: " _ tAnswer.rows.%Size())
     Do $$$AssertTrue(tAnswer.rows.%Size() <= 25, "bounded by the cap: " _ tAnswer.rows.%Size())

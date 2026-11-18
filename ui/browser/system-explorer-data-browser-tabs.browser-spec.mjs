@@ -26,6 +26,8 @@ import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
+const { DATA_BROWSER_SHORTCUTS } = await import(new URL('../src/app/core/data-browser-model.ts', import.meta.url).href);
+
 const config = browserConfig();
 const STRINGS = loadStrings();
 const PROBE = 'OcuPilot.Test.SqlSaveProbe';
@@ -310,7 +312,8 @@ test('AC5, AC10: Go to row reads row 105 of 120 on its own page and makes it act
 
     await withControl(page, 'Slash');
     await page.waitForSelector('[data-ocu-data="shortcut-list"]', { visible: true, timeout: config.navigationTimeoutMs });
-    assert.equal((await page.$$('[data-ocu-data="shortcut-label"]')).length, 10, 'every shortcut is listed');
+    assert.ok(DATA_BROWSER_SHORTCUTS.length > 0, 'the model declares shortcuts');
+    assert.equal((await page.$$('[data-ocu-data="shortcut-label"]')).length, DATA_BROWSER_SHORTCUTS.length, 'every shortcut is listed');
     assert.deepEqual(await structural(page, ROUTE), [], 'Data browser with Keyboard shortcuts open adds no structural entry');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
