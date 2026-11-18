@@ -81,6 +81,9 @@ Parameter FOLDERITEMDISABLED = "analytics.folderitems.delete";
 /// <p>Story 24.11: the listing group delete and the listing remove, the two listing group lines the baseline ships off.</p>
 Parameter LISTINGGROUPDISABLED = "analytics.listinggroups.delete,analytics.listinggrouplistings.remove";
 
+/// <p>Story 24.12: the quality measure delete, the one quality measure line the baseline ships off.</p>
+Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -211,6 +214,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#FOLDERITEMDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LISTINGGROUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#QUALITYMEASUREDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"

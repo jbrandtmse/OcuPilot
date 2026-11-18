@@ -623,6 +623,8 @@ services:
       # and the SQL rule, and the edge class the twin, the refused compile, the stale proposal, the baseline and the gate in process.
       # The database class inherits it too: it drives the gate's destination database half in process and the SQL pair's mint in a child process.
       # classes: AnalyticsListingGroupBase
+      # The quality measure write classes (Story 24.12, Batch 2) inherit it through AnalyticsQualityMeasureBase: the write class drives the four measure writes at both callers, and the edge class
+      # the twin, the refused compile, the stale proposal, the baseline and the gate in process.
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in

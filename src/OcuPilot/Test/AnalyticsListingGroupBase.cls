@@ -95,6 +95,12 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Reset")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Quit ..RemoveFixtures()
+}
+
+/// <p>Remove the definitions and classes a test made, before each test and after it: the listing groups' here, a subclass for another definition overrides it.</p>
+Method RemoveFixtures() As %Status
+{
     Quit $ClassMethod(..#PROBE, "RemoveListingGroups")
 }
 
@@ -110,7 +116,7 @@ Method OnAfterOneTest() As %Status
         Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy), "the policy found before the test is put back")
         Set ..PreparedPolicyTaken = 0
     }
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveListingGroups"), "the test's groups and classes are removed")
+    Do $$$AssertStatusOK(..RemoveFixtures(), "the test's definitions and classes are removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
 }

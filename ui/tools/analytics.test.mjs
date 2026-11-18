@@ -508,6 +508,60 @@ test('Story 24.12: the port reads quality measures through the three measured pu
   }
 });
 
+/** The refusals of the quality measure writes (Story 24.12, Batch 2), each pinned to its `strings.ts` key; the class sentence is the listing groups'. */
+const QUALITY_MEASURE_SENTENCES = [
+  ['REASONQUALITYMEASURETAKEN', 'analyticsRefusalQualityMeasureTaken'],
+  ['REASONQUALITYMEASUREAMBIGUOUS', 'analyticsRefusalQualityMeasureAmbiguous'],
+  ['REASONQUALITYMEASURECOMPILE', 'analyticsRefusalQualityMeasureCompile'],
+  ['REASONQUALITYMEASUREABSENT', 'analyticsRefusalQualityMeasureAbsent'],
+  ['REASONQUALITYMEASUREREADONLY', 'analyticsRefusalQualityMeasureReadonly'],
+  ['REASONQUALITYMEASUREEXPRESSION', 'analyticsRefusalQualityMeasureExpression'],
+  ['REASONQUALITYMEASURELINKED', 'analyticsRefusalQualityMeasureLinked'],
+  ['REASONQUALITYMEASURECLASS', 'analyticsRefusalListingGroupClass'],
+];
+
+const QUALITY_MEASURE_TOOLS = ['AnalyticsQualityMeasureAdd', 'AnalyticsQualityMeasureUpdate', 'AnalyticsQualityMeasureCopy', 'AnalyticsQualityMeasureDelete'].map((name) =>
+  join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`)
+);
+
+test('Story 24.12 Batch 2: each quality measure refusal and consequence is published once, and the port writes only through the source code port and the model', () => {
+  // Mutation (Rule 19): change one word of REASONQUALITYMEASURELINKED in AnalyticsError.cls (or of analyticsRefusalQualityMeasureLinked in strings.ts) -> this goes red naming the pair;
+  // swap the delete and save returns in proposal-view.ts's `consequenceSentence` -> this goes red naming the constant;
+  // call %SaveQMsrDefinition, DeleteQMeasure or $System.OBJ.Delete from AnalyticsPort.cls -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of QUALITY_MEASURE_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [code, key] of [
+    ['ANALYTICS.QUALITYMEASURE.DELETE', 'analyticsQualityMeasureDeleteConsequence'],
+    ['ANALYTICS.QUALITYMEASURE.SAVE', 'analyticsQualityMeasureSaveConsequence'],
+  ]) {
+    const constant = `CONSEQUENCE_ANALYTICSQUALITYMEASURE${code.split('.').pop()}`;
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(classParameter(QUALITY_MEASURE_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.QUALITYMEASURE.DELETE', 'the delete names its consequence code');
+  for (const file of QUALITY_MEASURE_TOOLS) {
+    assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsQualityMeasureAction'), `${file} extends the quality measure tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsQualityMeasureAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.QualityMeasures";'), 'the base declares the classic Quality Measures Manager');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$System\.OBJ\.(?!IsUpToDate\()/i, /%Api\.Atelier/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  assert.ok(code.includes('##class(OcuPilot.Kernel.QualityMeasureText).ClassText('), 'a new measure is composed by the shared class text helper');
+  assert.ok(code.includes('##class(OcuPilot.Kernel.SourceDocument).Save('), 'and saved through the shared source document helper');
+  assert.equal([...code.matchAll(/\.%Validate\(\)/g)].length, 1, 'the model validates itself once, the one added pure call');
+});
+
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
   // Mutation (Rule 19): call $System.OBJ.Load or an XML reader from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
   for (const file of FOLDER_ITEM_TOOLS) {

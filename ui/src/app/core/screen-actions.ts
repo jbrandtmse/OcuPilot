@@ -215,6 +215,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     delete: STRINGS.actionDelete,
   },
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { add: STRINGS.analyticsListingAddAction, set: STRINGS.analyticsListingChangeAction, remove: STRINGS.analyticsListingRemoveAction },
+  // Story 24.12: Quality measures' New quality measure opens the dialog that creates a measure, its Edit the dialog that changes one, its Copy the dialog that copies one and its Delete removes one.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': {
+    add: STRINGS.analyticsQualityMeasureNewAction,
+    update: STRINGS.agentPanelSecretWarningEdit,
+    copy: STRINGS.auditDatabaseCopyConfirm,
+    delete: STRINGS.actionDelete,
+  },
   // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {

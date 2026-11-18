@@ -209,6 +209,15 @@ Parameter QMDANGLING = "OcuPilotProbe/Quality/Dangling";
 
 Parameter QMDANGLINGCLASS = "OcuPilotProbe.Analytics.QMDangling";
 
+/// <p>What the quality measure write tests (Story 24.12, Batch 2) name: their measures' catalog and their classes' package start with <parameter>QMWRITE</parameter>
+/// (<parameter>QMWRITECLASS</parameter> for the classes they save), and the classes they save directly to show a write refuse OcuPilot's own code start with
+/// <parameter>QMWRITEOWNCLASS</parameter> in any letter case. <method>RemoveQualityMeasures</method> and <method>Left</method> cover every class and registry node under them.</p>
+Parameter QMWRITE = "OcuProbeQMW";
+
+Parameter QMWRITECLASS = "OcuProbeQMW.Analytics.QMW";
+
+Parameter QMWRITEOWNCLASS = "OcuPilotQMW.Analytics.QMW";
+
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
 
@@ -955,11 +964,65 @@ ClassMethod RemoveQualityMeasures() As %Status
         For tName = ..#QMCOMPILED, ..#QMREFUSED, ..#QMLINKED, ..#QMOFF, ..#QMNOAREA, ..#QMMASTER, ..#QMDANGLING {
             Kill ^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))
         }
+        ; The write tests' measures and classes, whatever a failed test left of them, in any letter case.
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
+        }
+        Do ..KillQualityMeasureWriteNodes(1)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
     Quit tSC
+}
+
+/// <p>The registry nodes of the write tests' measures and classes, in the namespace the process is in: the names that start with <parameter>QMWRITE</parameter> and the classes that start with
+/// <parameter>QMWRITE</parameter> or <parameter>QMWRITEOWNCLASS</parameter>'s package, compared without regard to case. With <var>pKill</var> each is killed; the count found is answered.</p>
+ClassMethod KillQualityMeasureWriteNodes(pKill As %Boolean) As %Integer
+{
+    Set tCount = 0
+    Set tNamePrefix = $ZConvert(..#QMWRITE, "U") _ "/"
+    Set tClassPrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ ".", $ZConvert($Piece(..#QMWRITEOWNCLASS, ".", 1), "U") _ ".")
+    Set tName = ""
+    For {
+        Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tName))
+        If tName = "" Quit
+        If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrNames", tName)
+        }
+    }
+    Set tClass = ""
+    For {
+        Set tClass = $Order(^DeepSee.QMsrs("qmsrClasses", tClass))
+        If tClass = "" Quit
+        Set tUpper = $ZConvert(tClass, "U")
+        For tAt = 1:1:$ListLength(tClassPrefixes) {
+            Set tPrefix = $List(tClassPrefixes, tAt)
+            If $Extract(tUpper, 1, $Length(tPrefix)) '= tPrefix Continue
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrClasses", tClass)
+            Quit
+        }
+    }
+    Set tArea = ""
+    For {
+        Set tArea = $Order(^DeepSee.QMsrs("cubes", tArea))
+        If tArea = "" Quit
+        Set tName = ""
+        For {
+            Set tName = $Order(^DeepSee.QMsrs("cubes", tArea, tName))
+            If tName = "" Quit
+            If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+                Set tCount = tCount + 1
+                If pKill Kill ^DeepSee.QMsrs("cubes", tArea, tName)
+            }
+        }
+    }
+    Quit tCount
 }
 
 /// <p>Write the Category rows and the Visit rows, in <code>USER</code>, deterministically.</p>
@@ -1252,6 +1315,11 @@ ClassMethod Left() As %String
         }
         For tClass = ..#QMCOMPILEDCLASS, ..#QMREFUSEDCLASS, ..#QMLINKEDCLASS, ..#QMOFFCLASS, ..#QMTWINCLASS, ..#QMTWINLATECLASS, ..#QMNOAREACLASS, ..#QMMASTERCLASS, ..#QMDANGLINGCLASS {
             If $Data(^DeepSee.QMsrs("qmsrClasses", tClass)) Set tLeft = tLeft _ ",quality measure class node " _ tClass
+        }
+        If ..KillQualityMeasureWriteNodes(0) Set tLeft = tLeft _ ",quality measure write nodes"
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",quality measure classes " _ tPrefix
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"

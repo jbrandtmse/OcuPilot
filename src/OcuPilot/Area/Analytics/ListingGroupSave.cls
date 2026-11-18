@@ -21,11 +21,14 @@ Parameter TAKENCODE = "ANALYTICS.LISTINGGROUP.TAKEN";
 
 Parameter TAKENREASON = "This namespace already holds a listing group or class with that name.";
 
+/// <p>The port method that judges the body's shape; a subclass for another definition names its own, of the same signature.</p>
+Parameter VIOLATIONSMETHOD = "ListingGroupViolations";
+
 ClassMethod Violations(pNamespace As %String, pParent As %String, pName As %String, pFields As %DynamicObject, Output pViolations) As %Status
 {
     Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pFields.%ToJSON())
     Do tBody.%Set("Name", pName, "string")
-    Quit $ClassMethod(..PortClass(), "ListingGroupViolations", $ClassMethod(..#CREATETOOL, "WriteType"), pName, "", tBody, .pViolations)
+    Quit $ClassMethod(..PortClass(), ..#VIOLATIONSMETHOD, $ClassMethod(..#CREATETOOL, "WriteType"), pName, "", tBody, .pViolations)
 }
 
 }

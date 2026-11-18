@@ -679,6 +679,85 @@ test('Story 24.12: a namespace with no quality measure, and a measure no one hol
   }
 });
 
+const MEASURE_NAME = 'OcuProbeQMW/Browse/One';
+const MEASURE_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseOne';
+const COPY_NAME = 'OcuProbeQMW/Browse/Two';
+const COPY_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseTwo';
+
+/** Type `fields` into the open dialog's inputs, each found by `attribute` and its member, then confirm with `confirm`, which closes the dialog once the write was applied. */
+async function fillDialog(page, dialog, attribute, confirm, fields) {
+  for (const [member, text] of Object.entries(fields)) {
+    await page.type(`${dialog} [${attribute}="${member}"]`, text);
+  }
+  await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs }, confirm);
+  await page.click(confirm);
+  await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, dialog);
+}
+
+// Story 24.12 AC4 (Batch 2). Mutation (Rule 19): make the New quality measure dialog post to the listing groups' route (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red;
+// the measures' own `TYPED_NAME_ROWS` entry is pinned in `screen-action-handler-qualitymeasure.spec.ts`, whose fixture's key differs from its name; here a measure's id is its name.
+test('Story 24.12: a person creates a quality measure, edits it, copies it and deletes the copy by typing its name, and the screen shows each change', async () => {
+  const { context, page } = await signedInAt(browser, config, url(QUALITY_MEASURES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-confirm]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsQualityMeasureNewAction, 'the primary action opens New quality measure');
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', {
+      Catalog: 'OcuProbeQMW',
+      Set: 'Browse',
+      Id: 'One',
+      Class: MEASURE_CLASS,
+      Caption: 'Browser measure',
+      SubjectArea: VISITS,
+    });
+    const nameShown = (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+    await page.waitForFunction(nameShown, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, MEASURE_NAME);
+    assert.deepEqual(
+      (await rowsStartingWith(page, MEASURE_NAME)).map((row) => row.slice(1, 5)),
+      [['Browser measure', VISITS, STRINGS.tableStatusYes, STRINGS.tableStatusYes]],
+      'Quality measures shows the new measure, published and compiled'
+    );
+    assert.equal(inUser('QMWNEW', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${MEASURE_CLASS}")`]).value, '1', 'and the instance holds its class');
+
+    await rowAction(page, MEASURE_NAME, STRINGS.agentPanelSecretWarningEdit);
+    await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-field="Caption"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value !== '', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, 'Browser measure edited');
+    assert.equal(
+      inUser('QMWEDIT', [`Set out=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${MEASURE_NAME}",,0).caption`]).value,
+      'Browser measure edited',
+      'the edit changed the vendor\'s model, and Quality measures shows the caption'
+    );
+
+    await rowAction(page, MEASURE_NAME, STRINGS.auditDatabaseCopyConfirm);
+    await page.waitForSelector('app-listing-group-copy-dialog [data-listing-group-copy-confirm]', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-listing-group-copy-dialog', 'data-listing-group-copy-field', '[data-listing-group-copy-confirm]', { NewName: COPY_NAME, NewClass: COPY_CLASS });
+    await page.waitForFunction(nameShown, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, COPY_NAME);
+    assert.deepEqual(
+      (await rowsStartingWith(page, COPY_NAME)).map((row) => row.slice(1, 5)),
+      [['Browser measure edited', VISITS, STRINGS.tableStatusYes, STRINGS.tableStatusYes]],
+      'Quality measures shows the copy, with the source\'s caption and subject area'
+    );
+
+    await page.goto(new URL(url(QUALITY_MEASURES), page.url()).href, { waitUntil: 'networkidle2' });
+    await answered(page);
+    await rowAction(page, COPY_NAME, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.analyticsQualityMeasureDeleteConsequence, 'Delete states its consequence and asks for the measure\'s name typed');
+    await page.type('.ocu-typed-name-field', COPY_NAME);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowGone(page, COPY_NAME);
+    assert.equal(inUser('QMWGONE', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${COPY_CLASS}")_$Data(^DeepSee.QMsrs("qmsrNames","${COPY_NAME.toUpperCase()}"))`]).value, '00', 'the copy\'s class and registry node are gone');
+    assert.equal((await rowsStartingWith(page, MEASURE_NAME)).length, 1, 'and the source measure is still listed');
+  } finally {
+    await context.close();
+    probe('QMWCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  }
+});
+
 const WRITE_GROUP = 'OcuPilotProbeLGWBrowse';
 const WRITE_CLASS = 'OcuProbeLGW.Analytics.LGWBrowse';
 const WRITE_LISTING = 'LGWBrowseOne';

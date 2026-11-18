@@ -286,6 +286,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.11: Listing groups with their New listing group, Edit and Copy dialogs, and a group's listings with their Add listing and Change listing dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': () => import('../areas/analytics/listing-group-list.page').then((m) => m.ListingGroupListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': () => import('../areas/analytics/listing-group-listing-list.page').then((m) => m.ListingGroupListingListPage),
+  // Story 24.12: Quality measures with their New quality measure, Edit and Copy dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': () => import('../areas/analytics/quality-measure-list.page').then((m) => m.QualityMeasureListPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };

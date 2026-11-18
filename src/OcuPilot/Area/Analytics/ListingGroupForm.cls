@@ -11,6 +11,28 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AnalyticsListingGroupLis
 /// <p>The query parameter naming the listing group.</p>
 Parameter NAMEPARAM = "name";
 
+/// <p>The port method that judges a name's shape; a subclass for another definition (<class>OcuPilot.Area.Analytics.QualityMeasureForm</class>) overrides it, and the three methods
+/// below, which are methods so the port is not needed while this class compiles.</p>
+Parameter SHAPEMETHOD = "ListingNameShaped";
+
+/// <p>The endpoint the form is read through.</p>
+ClassMethod Endpoint() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#ENDPOINTLISTINGGROUPS
+}
+
+/// <p>The read type the form is read through.</p>
+ClassMethod ReadType() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#TYPELISTINGGROUP
+}
+
+/// <p>The sentence of a missing or malformed name.</p>
+ClassMethod RequiredReason() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#REASONLISTINGGROUPREQUIRED
+}
+
 /// <p>The port the read goes through. Overridable so a fixture can observe it; production never overrides it.</p>
 ClassMethod PortClass() As %String
 {
@@ -27,14 +49,14 @@ ClassMethod HandleRead() As %Status
             Quit
         }
         Set tName = %request.Get(..#NAMEPARAM, "")
-        If (tName = "") || '$ClassMethod(..PortClass(), "ListingNameShaped", tName) {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Port.AnalyticsPort).#REASONLISTINGGROUPREQUIRED, ##class(OcuPilot.Api.Error).#PORTVALIDATION)
+        If (tName = "") || '$ClassMethod(..PortClass(), ..#SHAPEMETHOD, tName) {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ..RequiredReason(), ##class(OcuPilot.Api.Error).#PORTVALIDATION)
             Quit
         }
         Kill tQuery
         Set tQuery(##class(OcuPilot.Port.AnalyticsPort).#IDKEY) = tName
         Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", ##class(OcuPilot.Port.AnalyticsPort).#ENDPOINTLISTINGGROUPS, ##class(OcuPilot.Port.AnalyticsPort).#TYPELISTINGGROUP, .tQuery, "", .tRow, .tHttp, .tFault)
+        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", ..Endpoint(), ..ReadType(), .tQuery, "", .tRow, .tHttp, .tFault)
         If $$$ISERR(tReadSC) {
             If '$IsObject($Get(tFault)) || (tFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
                 Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))

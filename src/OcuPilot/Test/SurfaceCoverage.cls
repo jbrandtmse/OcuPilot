@@ -300,6 +300,10 @@ XData Coverage
 <tool name="analytics.listinggrouplistings.add" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
 <tool name="analytics.listinggrouplistings.set" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
 <tool name="analytics.listinggrouplistings.remove" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.qualitymeasures.add" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAMeasureIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.qualitymeasures.update" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAnUpdateChangesTheHeaderAndKeepsEverythingElse"/>
+<tool name="analytics.qualitymeasures.copy" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestACopyMakesANewMeasureAndLeavesTheSource"/>
+<tool name="analytics.qualitymeasures.delete" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

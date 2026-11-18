@@ -13,16 +13,24 @@ export const LISTING_GROUP_COPY_ACTION = 'copy';
 let dialogCount = 0;
 
 /** One field the dialog draws, by the value the tool declares it under. */
-interface Drawn {
-  readonly value: 'NewName' | 'NewClass' | 'NewCubes';
+export interface CopyField {
+  readonly value: string;
   readonly label: string;
   readonly required: boolean;
 }
 
+/** The fields a listing group's copy draws: the new name and class, and optional target cubes. */
+export const LISTING_GROUP_COPY_FIELDS: readonly CopyField[] = [
+  { value: 'NewName', label: STRINGS.analyticsListingGroupNewNameLabel, required: true },
+  { value: 'NewClass', label: STRINGS.analyticsListingGroupNewClassLabel, required: true },
+  { value: 'NewCubes', label: STRINGS.analyticsColumnTargetCubes, required: false },
+];
+
 /**
  * Listing groups' Copy (Story 24.11): the classic Save As, as a new listing group under a name and a class the person types, with the
  * source's listings and, when typed, other target cubes. Its primary button sends the row action `copy` on the source through the shell's
- * handler, which publishes the change event that re-reads the list (AD-14).
+ * handler, which publishes the change event that re-reads the list (AD-14). The descriptor and the fields it draws are inputs, so the Quality
+ * measures' Copy is this dialog with its own screen and two fields.
  *
  * **Every sentence it shows is the server's** (AD-39): a violation on a field is drawn under it, any other refusal above the fields. A name
  * or class already held is refused by the server; nothing is overwritten.
@@ -71,6 +79,12 @@ export class ListingGroupCopyDialog {
   /** The namespace the copy is made in, which the send is pinned to. */
   readonly namespace = input.required<string>();
 
+  /** The screen whose `copy` row action the dialog sends. */
+  readonly descriptor = input<string>(LISTING_GROUP_LIST);
+
+  /** The fields the dialog draws, by the value the tool declares each under. */
+  readonly fields = input<readonly CopyField[]>(LISTING_GROUP_COPY_FIELDS);
+
   /** Emitted once, after the instance applied the copy. */
   readonly done = output<void>();
 
@@ -83,11 +97,9 @@ export class ListingGroupCopyDialog {
 
   private readonly id = ++dialogCount;
 
-  protected readonly drawn: readonly Drawn[] = [
-    { value: 'NewName', label: STRINGS.analyticsListingGroupNewNameLabel, required: true },
-    { value: 'NewClass', label: STRINGS.analyticsListingGroupNewClassLabel, required: true },
-    { value: 'NewCubes', label: STRINGS.analyticsColumnTargetCubes, required: false },
-  ];
+  protected get drawn(): readonly CopyField[] {
+    return this.fields();
+  }
 
   private readonly typed = signal<Readonly<Record<string, string>>>({});
 
@@ -130,7 +142,7 @@ export class ListingGroupCopyDialog {
   }
 
   protected get confirmDisabled(): string | null {
-    return this.busy() || this.valueOf('NewName').trim() === '' || this.valueOf('NewClass').trim() === '' ? 'true' : null;
+    return this.busy() || this.drawn.some((field) => field.required && this.valueOf(field.value).trim() === '') ? 'true' : null;
   }
 
   protected onText(value: string, event: Event): void {
@@ -150,9 +162,11 @@ export class ListingGroupCopyDialog {
     this.busy.set(true);
     this.reason.set('');
     this.violations.set([]);
-    const values: Record<string, string> = { NewName: this.valueOf('NewName'), NewClass: this.valueOf('NewClass') };
-    if (this.valueOf('NewCubes').trim() !== '') values['NewCubes'] = this.valueOf('NewCubes');
-    const applied = await this.handler.sendFor(LISTING_GROUP_LIST, LISTING_GROUP_COPY_ACTION, this.source(), values, { setRefusal: () => undefined }, this.namespace());
+    const values: Record<string, string> = {};
+    for (const field of this.drawn) {
+      if (field.required || this.valueOf(field.value).trim() !== '') values[field.value] = this.valueOf(field.value);
+    }
+    const applied = await this.handler.sendFor(this.descriptor(), LISTING_GROUP_COPY_ACTION, this.source(), values, { setRefusal: () => undefined }, this.namespace());
     const refused = this.handler.lastRefusal();
     if (!applied && !this.closed) {
       this.violations.set(refused?.violations ?? []);

@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:656 */
+  /** EXPERIENCE.md:657 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8240,6 +8240,36 @@ export const STRINGS = {
   analyticsQualityMeasureMetasPrompt2: 'Which documentation items are disabled?',
   /** EXPERIENCE.md:614 */
   analyticsQualityMeasureMetasPrompt3: 'What does the documentation say this measure is for?',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureNewAction: 'New quality measure',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureCatalogLabel: 'Catalog',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSetLabel: 'Set',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureFormatLabel: 'Format',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureLinkedToLabel: 'Linked to',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureDeleteConsequence: 'Deleting this quality measure deletes its class. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSaveConsequence: 'The quality measure\'s class is saved and compiled.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureTaken: 'This namespace already holds a quality measure or class with that name.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAmbiguous: 'Two classes define this quality measure. Change it in its class instead.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureCompile: 'The instance refused to compile the quality measure, so nothing was changed.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAbsent: 'This quality measure no longer exists.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureReadonly: 'The database that holds quality measures is read-only.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureExpression: 'The expression names a group this quality measure does not hold, or its brackets do not match.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureLinked: 'This quality measure is linked to another measure, which defines its expression, format and URL.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasuresEmptyAgent: 'create a quality measure',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

@@ -47,9 +47,9 @@ function text(value: unknown): string {
 export class ListingGroupStore {
   private readonly injector = inject(Injector);
 
-  /** The group `name` in `namespace` as the form route answers it, or `null` when the instance does not answer one. */
-  async form(namespace: string, name: string): Promise<ListingGroupForm | null> {
-    const result = await this.injector.get(ApiService).requestJson<unknown>(`${LISTING_GROUP_FORM_PATH}?name=${encodeURIComponent(name)}`, {
+  /** The object `name` in `namespace` as the form route `path` answers it, or `null` when the instance does not answer one. */
+  async form(namespace: string, name: string, path: string = LISTING_GROUP_FORM_PATH): Promise<ListingGroupForm | null> {
+    const result = await this.injector.get(ApiService).requestJson<unknown>(`${path}?name=${encodeURIComponent(name)}`, {
       method: 'GET',
       scope: namespace,
     });
@@ -72,7 +72,7 @@ export class ListingGroupStore {
     return this.post(LISTING_PATH, namespace, body, LISTING_ENTITY, LISTING_ADD_TOOL);
   }
 
-  private async post(path: string, namespace: string, body: Readonly<Record<string, unknown>>, type: string, tool: string): Promise<ListingGroupOutcome> {
+  protected async post(path: string, namespace: string, body: Readonly<Record<string, unknown>>, type: string, tool: string): Promise<ListingGroupOutcome> {
     const result: JsonResult<unknown> = await this.injector.get(ApiService).requestJson<unknown>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

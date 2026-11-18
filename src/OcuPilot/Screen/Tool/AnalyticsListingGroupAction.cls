@@ -33,6 +33,18 @@ Parameter CONSEQUENCECODE = "ANALYTICS.LISTINGGROUP.SAVE";
 /// <p>The consequence of a listing that sets SQL, which the listing then runs with the rights of whoever opens it.</p>
 Parameter SQLCONSEQUENCECODE = "ANALYTICS.LISTINGGROUP.SQL";
 
+/// <p>The pairs the write needs beyond the screen's own and the source code API's: the classic page's edit resource, <code>""</code> for none. A method, not a parameter, so the
+/// port is not needed while this class compiles.</p>
+ClassMethod EditPairs() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#LISTINGGROUPEDITPAIRS
+}
+
+/// <p>The port methods <method>RuleProblem</method> calls for the shape rules and for the state's first refusal; a subclass for another definition names its own, of the same signatures.</p>
+Parameter VIOLATIONSMETHOD = "ListingGroupViolations";
+
+Parameter PROBLEMMETHOD = "ListingGroupProblem";
+
 /// <p>The removal rows the card shows.</p>
 Parameter REMOVALROWS = "";
 
@@ -47,7 +59,7 @@ ClassMethod IdArgument() As %String
     Quit "Name"
 }
 
-/// <p>The pairs <method>OcuPilot.Screen.Tool.AnalyticsAction.PrivilegePairs</method> names, then <code>%DeepSee_ListingGroupEdit:USE</code>, the source code API's own pairs
+/// <p>The pairs <method>OcuPilot.Screen.Tool.AnalyticsAction.PrivilegePairs</method> names, then <method>EditPairs</method>, the source code API's own pairs
 /// (<code>AtelierPort.Pairs</code>, which carry <code>%Development:USE</code>) and the pairs <code>AtelierPort.WritePairs</code> names for the namespace the request is scoped to, each once. <var>pResolved</var> is 0 when a database names no resource.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
@@ -58,7 +70,7 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
         Set pResolved = 0
         Quit ""
     }
-    Set tExtra = ##class(OcuPilot.Screen.Gate).ParsePairSpec(##class(OcuPilot.Port.AnalyticsPort).#LISTINGGROUPEDITPAIRS) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ tWrite
+    Set tExtra = ##class(OcuPilot.Screen.Gate).ParsePairSpec(..EditPairs()) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ tWrite
     For tAt = 1:1:$ListLength(tExtra) {
         If '$ListFind(tPairs, $List(tExtra, tAt)) Set tPairs = tPairs _ $ListBuild($List(tExtra, tAt))
     }
@@ -134,7 +146,7 @@ ClassMethod RuleProblem(pIdValue As %String, pArgs As %DynamicObject, ByRef pPro
     Do ..TargetParts(pIdValue, .tGroup, .tListing)
     Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
     If ..#WRITETYPE = ##class(OcuPilot.Port.AnalyticsPort).#TYPEADD Do tBody.%Set("Name", tGroup, "string")
-    Set tSC = $ClassMethod(..#PORTCLASS, "ListingGroupViolations", ..PortWriteType(), tGroup, tListing, tBody, .tViolations)
+    Set tSC = $ClassMethod(..#PORTCLASS, ..#VIOLATIONSMETHOD, ..PortWriteType(), tGroup, tListing, tBody, .tViolations)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Get(tViolations) {
         Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
@@ -142,7 +154,7 @@ ClassMethod RuleProblem(pIdValue As %String, pArgs As %DynamicObject, ByRef pPro
     If (pProblem '= "") || 'pChecksState Quit $$$OK
     Kill tQuery
     Do ..ExtraQuery(pArgs, .tQuery)
-    Set pProblem = $ClassMethod(..#PORTCLASS, "ListingGroupProblem", ..ArgumentNamespace(pArgs), ..PortWriteType(), tGroup, tListing, .tQuery, tBody)
+    Set pProblem = $ClassMethod(..#PORTCLASS, ..#PROBLEMMETHOD, ..ArgumentNamespace(pArgs), ..PortWriteType(), tGroup, tListing, .tQuery, tBody)
     Quit $$$OK
 }
 
@@ -180,13 +192,19 @@ ClassMethod CarryText(pValues As %DynamicObject, pArgs As %DynamicObject, pName 
     If $IsObject(pValues) && (pValues.%GetTypeOf(pName) = "string") Do pArgs.%Set(pName, pValues.%Get(pName), "string")
 }
 
-/// <p>The dialog's <code>Disabled</code> value, <code>true</code> or <code>false</code>, as a boolean argument; the sentence refusing any other text, else <code>""</code>.</p>
+/// <p>The dialog's boolean value <var>pName</var>, <code>true</code> or <code>false</code>, as a boolean argument; the sentence refusing any other text, else <code>""</code>.</p>
+ClassMethod CarryBoolean(pValues As %DynamicObject, pArgs As %DynamicObject, pName As %String) As %String
+{
+    If '$IsObject(pValues) || (pValues.%GetTypeOf(pName) '= "string") Quit ""
+    If '$ListFind($ListBuild("true", "false"), pValues.%Get(pName)) Quit "'" _ pName _ "' is true or false"
+    Do pArgs.%Set(pName, (pValues.%Get(pName) = "true"), "boolean")
+    Quit ""
+}
+
+/// <p>The dialog's <code>Disabled</code> value as a boolean argument (<method>CarryBoolean</method>).</p>
 ClassMethod CarryDisabled(pValues As %DynamicObject, pArgs As %DynamicObject) As %String
 {
-    If '$IsObject(pValues) || (pValues.%GetTypeOf("Disabled") '= "string") Quit ""
-    If '$ListFind($ListBuild("true", "false"), pValues.%Get("Disabled")) Quit "'Disabled' is true or false"
-    Do pArgs.%Set("Disabled", (pValues.%Get("Disabled") = "true"), "boolean")
-    Quit ""
+    Quit ..CarryBoolean(pValues, pArgs, "Disabled")
 }
 
 }
