@@ -1,6 +1,9 @@
 /// <p>Global nodes' route (Story 21.5): <code>POST /explorer/globals/nodes</code>, answering this screen only (AD-36, AD-39). In order: the
 /// screen gate (<method>Gate</method>); the body's shape (<method>OcuPilot.Port.GlobalPort.PageRequest</method>); and the page
 /// (<method>OcuPilot.Port.GlobalPort.Page</method>), which gates again and reads only the caller's namespace.</p>
+/// <p>The body may also carry <code>find</code>, a text of 1 to 1,000 characters with no control character, and <code>matchCase</code>
+/// (Story 21.18): the page then holds only the nodes whose plain-text value holds the text. Both are shape-checked by
+/// <method>OcuPilot.Port.GlobalPort.PageRequest</method>, as a replace's find is.</p>
 /// <p>Nothing of the request or the nodes is logged. The answer never enters screen context, a tool, the ledger or an audit payload.</p>
 Class OcuPilot.Area.Explorer.GlobalNodes Extends %RegisteredObject
 {

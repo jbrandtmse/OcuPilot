@@ -14,8 +14,9 @@
 /// <class>OcuPilot.Screen.Tool.ExplorerGlobalDelete</class>; <code>export</code> and <code>export-browser</code> export the selected global as
 /// an XML document to a server file or to this browser through <class>OcuPilot.Screen.Tool.ExplorerGlobalExport</class>; <code>import</code> and
 /// <code>import-local</code> import one file from the server or from this browser through
-/// <class>OcuPilot.Screen.Tool.ExplorerGlobalImport</class> (Story 21.17). The list declares no <code>multiSelect</code>, so each acts on
-/// the one selected row, or on none.</p>
+/// <class>OcuPilot.Screen.Tool.ExplorerGlobalImport</class> (Story 21.17); <code>replace</code> replaces a text in the plain-text values of the whole
+/// global through <class>OcuPilot.Screen.Tool.ExplorerGlobalReplace</class> (Story 21.18), and no list row draws it: the Global nodes page
+/// reviews and confirms it. The list declares no <code>multiSelect</code>, so each acts on the one selected row, or on none.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerGlobalList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -37,7 +38,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": "protected-global"}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}],
+  "rowActions": [{"id": "delete", "selfProtection": "protected-global"}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}, {"id": "replace", "selfProtection": "protected-global"}],
   "context": {"fields": ["Name", "Database", "Collation", "Journal"], "secretFields": []},
   "emptyStateKey": "explorerGlobalListEmpty",
   "commandAliases": ["globals", "global list"],

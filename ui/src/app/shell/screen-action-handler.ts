@@ -439,6 +439,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
   // Story 24.9: Compare namespaces' Promote lists the steps and the documents left alone before it is confirmed.
   [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
+  // Story 21.18: the Global nodes page's Replace counts the nodes and occurrences it would change before it is confirmed.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['replace'],
 };
 
 /**
@@ -545,7 +547,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
-  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['export', 'export-browser', 'import', 'import-local'],
+  // The Global nodes page draws Replace itself, beside its Find field, and starts its review (Story 21.18).
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['export', 'export-browser', 'import', 'import-local', 'replace'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
@@ -752,7 +755,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
   [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence },
   // Story 21.5: a deleted global takes all of its data.
-  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence, replace: STRINGS.globalReplaceConsequence },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
@@ -2071,8 +2074,12 @@ function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
   return [...textLines(row.before).map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
 }
 
-/** One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. */
+/**
+ * One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. A row that is not removed
+ * and has no before-text (a replace's counts, Story 21.18) states its value alone, `<field>: <after>`.
+ */
 function fieldReviewLines(row: DryRunRow): readonly string[] {
+  if (row.removed !== true && row.before === '') return [`${row.field}: ${row.after}`.trimEnd()];
   const before = `- ${row.field}: ${row.before}`.trimEnd();
   return row.removed === true ? [before] : [before, `+ ${row.field}: ${row.after}`.trimEnd()];
 }

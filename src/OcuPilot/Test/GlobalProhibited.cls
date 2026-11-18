@@ -6,7 +6,15 @@ Class OcuPilot.Test.GlobalProhibited Extends OcuPilot.Kernel.Proposal.Prohibited
 
 ClassMethod GlobalPortClass() As %String
 {
+    If $Get(^||OcuPilotGlobalPortBroken) Quit "OcuPilot.Test.GlobalProhibited"
     Quit "OcuPilot.Test.GlobalLocationSeam"
+}
+
+/// <p>Make the arm's globals port a class that has none of the port's methods (<var>pBroken</var> 1), so the first call into it raises an error inside the arm,
+/// or restore the seam (0).</p>
+ClassMethod BreakPort(pBroken As %Boolean = 1)
+{
+    Set ^||OcuPilotGlobalPortBroken = pBroken
 }
 
 /// <p>Fail the protected-directory lookup (<var>pFail</var> 1), or let it answer as shipped (0).</p>

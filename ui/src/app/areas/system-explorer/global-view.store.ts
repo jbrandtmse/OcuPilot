@@ -14,6 +14,11 @@
  *
  * **A write is a screen action** (AD-53) of `explorer.globalnodes.save` or `explorer.globalnodes.delete`, sent through the action handler; its answer
  * is the change event, and the page is read again over as many pages as were loaded.
+ *
+ * **Find filters the rows** (Story 21.18): the text applied with the start node, and whether case matters, travel in every page request, so the page
+ * holds only the nodes whose plain-text value holds the text. **Replace is reviewed first** (AD-53): `review` asks the action handler for the review of
+ * `explorer.globals.replace` with the Find, Replace and Match case fields as they stand, which opens its typed-name dialog over the counts the instance
+ * answers; the confirm and the change event that re-reads the page are the handler's.
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
@@ -30,11 +35,18 @@ export const GLOBAL_VIEW_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.ExplorerGlobal
 export const NODE_SAVE_ACTION = 'save';
 export const NODE_DELETE_ACTION = 'delete';
 
+/** The Globals list's descriptor and its `replace` action, which the Global nodes page reviews and confirms (Story 21.18). */
+export const GLOBAL_LIST_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.ExplorerGlobalList';
+export const GLOBAL_REPLACE_ACTION = 'replace';
+
 /** The rows a page asks for. */
 export const PAGE_SIZE = 100;
 
 /** The longest value the instance edits, and a display cut. */
 export const MAX_VALUE = 1000;
+
+/** The longest text a find or a replacement holds. */
+export const MAX_TEXT = 1000;
 
 /** One node of the page. */
 export interface NodeRow {
@@ -52,6 +64,7 @@ export interface GlobalViewDeps {
   readonly sender: {
     sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink, scope?: string): Promise<boolean>;
     lastRefusal(): ActionRefusal | null;
+    startDryRun(descriptor: string, actionId: string, id: string, values: ActionValues | undefined, sink: ActionSink, name?: string): Promise<boolean>;
   };
 }
 
@@ -100,6 +113,17 @@ export class GlobalViewStore {
   private startValue = '';
 
   private draftValue = '';
+
+  /** The Find text last applied and the draft its field holds, whether case matters in each, and the Replace text. */
+  private findValue = '';
+
+  private findDraftValue = '';
+
+  private caseValue = true;
+
+  private caseDraftValue = true;
+
+  private replaceDraftValue = '';
 
   /** Bumped by each read, so an answer that arrives after a newer request is dropped. */
   private generation = 0;
@@ -158,6 +182,40 @@ export class GlobalViewStore {
     this.notify();
   }
 
+  /** The Find field's text, and the one the rows are filtered by. */
+  findDraft(): string {
+    return this.findDraftValue;
+  }
+
+  find(): string {
+    return this.findValue;
+  }
+
+  setFindDraft(text: string): void {
+    this.findDraftValue = text;
+    this.notify();
+  }
+
+  /** Whether case matters, as the field holds it. */
+  matchCaseDraft(): boolean {
+    return this.caseDraftValue;
+  }
+
+  setMatchCaseDraft(matchCase: boolean): void {
+    this.caseDraftValue = matchCase;
+    this.notify();
+  }
+
+  /** The Replace with field's text. */
+  replaceDraft(): string {
+    return this.replaceDraftValue;
+  }
+
+  setReplaceDraft(text: string): void {
+    this.replaceDraftValue = text;
+    this.notify();
+  }
+
   /** Open global `name` (a name without `^`, or with it), forgetting what was read. Answers whether the name changed. */
   open(name: string): boolean {
     const bare = name.startsWith('^') ? name.slice(1) : name;
@@ -178,13 +236,36 @@ export class GlobalViewStore {
     this.refusalValue = '';
     this.startValue = '';
     this.draftValue = '';
+    this.findValue = '';
+    this.findDraftValue = '';
+    this.caseValue = true;
+    this.caseDraftValue = true;
+    this.replaceDraftValue = '';
     this.notify();
   }
 
-  /** Read the first page from the draft start node. */
+  /** Read the first page from the draft start node, holding only the nodes the draft Find text is in. */
   async go(deps: GlobalViewDeps): Promise<void> {
     this.startValue = this.draftValue.trim();
+    this.findValue = this.findDraftValue;
+    this.caseValue = this.caseDraftValue;
     await this.readFrom(deps, this.startValue, 1);
+  }
+
+  /**
+   * Review the replace the Find, Replace with and Match case fields name (Story 21.18): the action handler dry-runs it and opens its typed-name
+   * dialog, typed by the global's name, over the counts. A refusal is `refusal()`; with no Find text nothing is asked.
+   */
+  async review(deps: GlobalViewDeps): Promise<void> {
+    if (this.nameValue === '' || this.findDraftValue === '') return;
+    const sink: ActionSink = {
+      setRefusal: (reason) => {
+        this.refusalValue = reason;
+        this.notify();
+      },
+    };
+    const values: ActionValues = { Find: this.findDraftValue, Replace: this.replaceDraftValue, MatchCase: this.caseDraftValue ? 'true' : 'false' };
+    await deps.sender.startDryRun(GLOBAL_LIST_DESCRIPTOR, GLOBAL_REPLACE_ACTION, this.nameValue, values, sink, this.nameValue);
   }
 
   /** Read the page after the last row, and show it below. */
@@ -248,10 +329,11 @@ export class GlobalViewStore {
   }
 
   private post(deps: GlobalViewDeps, extra: Record<string, string>): Promise<JsonResult<unknown>> {
+    const filter = this.findValue === '' ? {} : { find: this.findValue, matchCase: this.caseValue };
     return deps.api.requestJson<unknown>(NODES_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ global: this.nameValue, pageSize: PAGE_SIZE, ...extra }),
+      body: JSON.stringify({ global: this.nameValue, pageSize: PAGE_SIZE, ...filter, ...extra }),
       scope: deps.scope(),
     });
   }

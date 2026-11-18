@@ -492,6 +492,7 @@ XData Coverage
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globals.export" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
 <tool name="explorer.globals.import" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
+<tool name="explorer.globals.replace" class="OcuPilot.Test.GlobalReplace" method="TestTheAgentProposesAndAPersonConfirms"/>
 <tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>
 <tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
 <tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>

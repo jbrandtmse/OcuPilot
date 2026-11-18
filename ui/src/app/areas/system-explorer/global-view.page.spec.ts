@@ -33,10 +33,11 @@ function node(reference: string, value: string, editable = true, below = false, 
   return { reference, value, cut, editable, below };
 }
 
-function mount(name: string, pages: Record<string, unknown>) {
+function mount(name: string, pages: Record<string, unknown>, namespace = 'USER') {
   TestBed.resetTestingModule();
   const posted: Record<string, unknown>[] = [];
   const actions: unknown[][] = [];
+  const reviews: unknown[][] = [];
   const api = {
     requestJson: async <T,>(_path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
@@ -52,6 +53,11 @@ function mount(name: string, pages: Record<string, unknown>) {
       return true;
     },
     lastRefusal: () => null,
+    pending: () => null,
+    startDryRun: async (descriptor: string, action: string, id: string, values: unknown, _sink: unknown, typed?: string) => {
+      reviews.push([descriptor, action, id, values, typed]);
+      return true;
+    },
   };
   TestBed.configureTestingModule({
     providers: [
@@ -59,7 +65,7 @@ function mount(name: string, pages: Record<string, unknown>) {
       { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: ScreenActionHandler, useValue: handler as unknown as ScreenActionHandler },
-      { provide: ScopeService, useValue: { namespace: () => 'USER', loaded: () => true, subscribe: () => () => undefined } as unknown as ScopeService },
+      { provide: ScopeService, useValue: { namespace: () => namespace, loaded: () => true, subscribe: () => () => undefined } as unknown as ScopeService },
       { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: name })) } },
     ],
   });
@@ -67,7 +73,13 @@ function mount(name: string, pages: Record<string, unknown>) {
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
-  return { fixture, host: fixture.nativeElement as HTMLElement, posted, actions, bus };
+  return { fixture, host: fixture.nativeElement as HTMLElement, posted, actions, reviews, bus };
+}
+
+function type(host: HTMLElement, selector: string, text: string): void {
+  const input = host.querySelector(selector) as HTMLInputElement;
+  input.value = text;
+  input.dispatchEvent(new Event('input'));
 }
 
 afterEach(() => {
@@ -158,6 +170,66 @@ describe('the Global nodes page', () => {
       expect(button.getAttribute('aria-disabled')).toBe('true');
       expect(button.getAttribute('title')).toBe(sentence);
     }
+  });
+
+  it('AC1: Find and Match case filter the rows through the page request, and an empty filtered page says no node holds the text', async () => {
+    const { fixture, host, posted } = mount('G', { first: { rows: [node('^G(1)', 'abc')], next: '', cut: false } });
+    await settle(fixture);
+    expect(posted[0]).toEqual({ global: 'G', pageSize: 100 });
+    type(host, '[data-global-find]', 'abc');
+    (host.querySelector('[data-global-case]') as HTMLInputElement).click();
+    (host.querySelector('[data-global-go]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posted[1]).toEqual({ global: 'G', pageSize: 100, find: 'abc', matchCase: false });
+    const empty = mount('G', { first: { rows: [], next: '', cut: false } });
+    await settle(empty.fixture);
+    expect(empty.host.querySelector('[data-global-empty]')?.textContent?.trim()).toBe(STRINGS.explorerGlobalNodesEmpty);
+    type(empty.host, '[data-global-find]', 'zzz');
+    (empty.host.querySelector('[data-global-go]') as HTMLButtonElement).click();
+    await settle(empty.fixture);
+    expect(empty.host.querySelector('[data-global-empty]')?.textContent?.trim()).toBe(STRINGS.explorerGlobalFindEmpty);
+  });
+
+  it('AC1: Review sends the Globals list\u2019s replace with the Find, Replace with and Match case fields and the global\u2019s name to type, and nothing without Find text', async () => {
+    // Mutation (Rule 19): pass the Find text where `onReview` passes the Replace with text -> the values assertion goes red.
+    const { fixture, host, reviews } = mount('G', { first: { rows: [node('^G(1)', 'abc')], next: '', cut: false } });
+    await settle(fixture);
+    const review = host.querySelector('[data-global-review]') as HTMLButtonElement;
+    expect(review.textContent?.trim()).toBe(STRINGS.interopEditResendReview);
+    expect(review.getAttribute('aria-disabled')).toBe('true');
+    review.click();
+    await settle(fixture);
+    expect(reviews).toEqual([]);
+    type(host, '[data-global-find]', 'abc');
+    type(host, '[data-global-replace]', 'xyz');
+    await settle(fixture);
+    expect((host.querySelector('[data-global-review]') as HTMLButtonElement).getAttribute('aria-disabled')).toBeNull();
+    (host.querySelector('[data-global-review]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(reviews).toEqual([['OcuPilot.Screen.Descriptor.ExplorerGlobalList', 'replace', 'G', { Find: 'abc', Replace: 'xyz', MatchCase: 'true' }, 'G']]);
+  });
+
+  it('AC4, AC5: Review is drawn disabled with the sentence in the %SYS namespace and for a global OcuPilot protects, and sends nothing', async () => {
+    const sys = mount('G', { first: { rows: [node('^G(1)', 'abc')], next: '', cut: false } }, '%SYS');
+    await settle(sys.fixture);
+    type(sys.host, '[data-global-find]', 'abc');
+    await settle(sys.fixture);
+    const sysReview = sys.host.querySelector('[data-global-review]') as HTMLButtonElement;
+    expect(sysReview.getAttribute('aria-disabled')).toBe('true');
+    expect(sysReview.getAttribute('title')).toBe(STRINGS.globalRefusalReplaceSystem);
+    expect(sys.host.querySelector('[data-global-replace-reason]')?.textContent?.trim()).toBe(STRINGS.globalRefusalReplaceSystem);
+    sysReview.click();
+    await settle(sys.fixture);
+    expect(sys.reviews).toEqual([]);
+    const own = mount('OcuPilotTurnSignal', { first: { rows: [node('^OcuPilotTurnSignal(1)', 'abc')], next: '', cut: false } });
+    await settle(own.fixture);
+    type(own.host, '[data-global-find]', 'abc');
+    await settle(own.fixture);
+    const ownReview = own.host.querySelector('[data-global-review]') as HTMLButtonElement;
+    expect(ownReview.getAttribute('title')).toBe(STRINGS.globalRefusalProtected);
+    ownReview.click();
+    await settle(own.fixture);
+    expect(own.reviews).toEqual([]);
   });
 
   it('AC3: reads the page again on a node\u2019s change event', async () => {

@@ -867,6 +867,10 @@ Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
 /// arm does not judge.</p>
 Parameter EXPORTWRITETYPE = "EXPORT";
 
+/// <p>The write type of the Globals list's find and replace (Story 21.18), which the globals arm judges by the directories of the nodes it
+/// would change.</p>
+Parameter REPLACEWRITETYPE = "REPLACEALL";
+
 /// <p>The write type of a tool that imports a file whose one lookup table replaces the table of that name (Story 20.5), and of the Globals
 /// list's import, which the code arm judges as a class import is (Story 21.17).</p>
 Parameter LOOKUPIMPORTWRITETYPE = "IMPORT";
@@ -1628,7 +1632,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
 
         ; Story 21.5: a global or a node is judged by its name, read again with where it is stored, through the globals port.
         If (tType = ..#TYPEGLOBAL) || (tType = ..#TYPEGLOBALNODE) {
-            Set tSC = ..Global(tType, tId, tScope, ..ToolClassNamed(pToolName), .pProhibits, .pCode)
+            Set tSC = ..Global(tType, tId, tScope, ..ToolClassNamed(pToolName), .pProhibits, .pCode, pPayload)
             Quit
         }
 
@@ -2935,7 +2939,7 @@ ClassMethod GlobalPortClass() As %String
 /// global, at a node whose first subscript begins with an own stem, or at any node of <parameter>NESTEDCODEGLOBALS</parameter>, is
 /// <parameter>OCUPILOTCODE</parameter>.</li>
 /// </ol>
-ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToolClass As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToolClass As %String, Output pProhibits As %Boolean, Output pCode As %String, pPayload As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
@@ -2958,10 +2962,17 @@ ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToo
             Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
             Quit
         }
-        ; Only a value edit is judged by the node's own directory; any other write, an unresolved tool's included, by every mapping row.
-        Set tEdit = tNode && (..WriteTypeOf(pToolClass) = "PUT")
-        Set tSC = ..GlobalLocations(tPort, tName, tReference, tEdit, pNamespace, .tLocations)
-        If $$$ISERR(tSC) Quit
+        If 'tNode && (..WriteTypeOf(pToolClass) = ..#REPLACEWRITETYPE) {
+            ; Story 21.18: a replace is judged by the directories of the nodes it would change, read again as the write reads them.
+            Set tSC = ..ReplaceLocations(pToolClass, tName, pNamespace, pPayload, .tLocations, .tUnreadable)
+            ; A read the port refuses with a 4xx is answered by the write itself, which refuses the same way before it changes anything.
+            If $$$ISERR(tSC) || tUnreadable Quit
+        } Else {
+            ; Only a value edit is judged by the node's own directory; any other write, an unresolved tool's included, by every mapping row.
+            Set tEdit = tNode && (..WriteTypeOf(pToolClass) = "PUT")
+            Set tSC = ..GlobalLocations(tPort, tName, tReference, tEdit, pNamespace, .tLocations)
+            If $$$ISERR(tSC) Quit
+        }
         Kill tDirectories
         Set tSC = ..ProtectedLocation(tLocations, .tDirectories, .tProtected)
         If $$$ISERR(tSC) Quit
@@ -2985,6 +2996,35 @@ ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToo
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The directories of the nodes the replace tool <var>pToolClass</var> would change in global <var>pName</var> of <var>pNamespace</var>
+/// (<var>pLocations</var>, a <code>%List</code>), from its fresh read composed from the stored payload <var>pPayload</var>, as the caller reads
+/// it through <method>GlobalPortClass</method>. A read the port refuses with a 4xx leaves <var>pUnreadable</var> 1 and no directory; any other
+/// failure, or a read that answers no directory, is an error status.</p>
+ClassMethod ReplaceLocations(pToolClass As %String, pName As %String, pNamespace As %String, pPayload As %String, Output pLocations As %List, Output pUnreadable As %Boolean) As %Status [ Private ]
+{
+    Set pLocations = ""
+    Set pUnreadable = 0
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(pToolClass, $ClassMethod(pToolClass, "IdParam"), pName, pPayload, .tQuery)
+    If '$Data(tQuery("namespace")) Set tQuery("namespace") = pNamespace
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(pToolClass, ..GlobalPortClass(), $ClassMethod(pToolClass, "Endpoint"), .tQuery, pName, .tFresh, .tHttp, .tFault)
+    If $$$ISERR(tSC) {
+        If (+$Get(tHttp) >= 400) && (+$Get(tHttp) < 500) {
+            Set pUnreadable = 1
+            Quit $$$OK
+        }
+        Quit tSC
+    }
+    If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") Quit $$$ERROR($$$GeneralError, "the globals arm read a replace and was answered no object")
+    If tFresh.%GetTypeOf("Locations") = "array" {
+        Set tIterator = tFresh.%Get("Locations").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLocation) {
+            If tLocation '= "" Set pLocations = pLocations _ $ListBuild(tLocation)
+        }
+    }
+    If pLocations = "" Quit $$$ERROR($$$GeneralError, "the globals arm could not tell where a replace would write")
+    Quit $$$OK
 }
 
 /// <p>The directories <var>pLocations</var> (a <code>%List</code>) global <var>pName</var> is stored in, in <var>pNamespace</var>, as the

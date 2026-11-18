@@ -4,8 +4,8 @@
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit of 1,000 parameters
 /// (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and <method>OcuPilot.Api.Error.ReasonForViolation</method> answer
 /// these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>DELETE</parameter> and <parameter>NODEDELETE</parameter> are not refusals: they are the consequence codes the proposal card
-/// and the dialog of a global's delete and of a node's delete carry.</p>
+/// <p><parameter>DELETE</parameter>, <parameter>NODEDELETE</parameter> and <parameter>REPLACE</parameter> are not refusals: they are the
+/// consequence codes the proposal card and the dialog of a global's delete, of a node's delete and of a replace carry.</p>
 Class OcuPilot.Api.GlobalError Extends %RegisteredObject
 {
 
@@ -49,9 +49,39 @@ Parameter NODEDELETE = "GLOBAL.NODE.DELETE";
 
 Parameter REASONNODEDELETE = "Deleting removes this node and every node below it. This cannot be undone.";
 
+/// <p>409: no plain-text value of the global holds the text a replace looks for (Story 21.18).</p>
+Parameter NOCHANGE = "GLOBAL.REPLACE.NOCHANGE";
+
+Parameter REASONNOCHANGE = "No plain-text value in this global holds that text, so nothing would change.";
+
+/// <p>409: the global holds more nodes than one replace walks, or a replaced value would be longer than one value may be.</p>
+Parameter REPLACETOOLARGE = "GLOBAL.REPLACE.TOOLARGE";
+
+Parameter REASONREPLACETOOLARGE = "This global is too large to replace in here: it holds more than 20,000 nodes, or a replaced value would be longer than 32,767 characters.";
+
+/// <p>409: the nodes a replace would change are not the ones that were reviewed, so nothing was written.</p>
+Parameter REVIEWCHANGED = "GLOBAL.REPLACE.REVIEWCHANGED";
+
+Parameter REASONREVIEWCHANGED = "This global changed after the replace was reviewed, so nothing was replaced. Review the replace again.";
+
+/// <p>409: a replace is not offered in the <code>%SYS</code> namespace.</p>
+Parameter SYSNAMESPACE = "GLOBAL.REPLACE.SYSNAMESPACE";
+
+Parameter REASONSYSNAMESPACE = "Find and replace is not available in the %SYS namespace.";
+
+/// <p>The consequence code a global's replace carries.</p>
+Parameter REPLACE = "GLOBAL.REPLACE";
+
+Parameter REASONREPLACE = "Replacing changes every value the review counts. This cannot be undone.";
+
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not declare.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
+    If pCode = ..#NOCHANGE Quit ..#REASONNOCHANGE
+    If pCode = ..#REPLACETOOLARGE Quit ..#REASONREPLACETOOLARGE
+    If pCode = ..#REVIEWCHANGED Quit ..#REASONREVIEWCHANGED
+    If pCode = ..#SYSNAMESPACE Quit ..#REASONSYSNAMESPACE
+    If pCode = ..#REPLACE Quit ..#REASONREPLACE
     If pCode = ..#NOTFOUND Quit ..#REASONNOTFOUND
     If pCode = ..#NODENOTFOUND Quit ..#REASONNODENOTFOUND
     If pCode = ..#NODENOTEDITABLE Quit ..#REASONNODENOTEDITABLE
@@ -71,6 +101,7 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer
     If pCode = ..#NODENOTEDITABLE Quit 409
     If pCode = ..#TOOLARGE Quit 422
     If pCode = ..#OWNDATA Quit 403
+    If (pCode = ..#NOCHANGE) || (pCode = ..#REPLACETOOLARGE) || (pCode = ..#REVIEWCHANGED) || (pCode = ..#SYSNAMESPACE) Quit 409
     Quit 0
 }
 

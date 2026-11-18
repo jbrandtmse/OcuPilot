@@ -58,6 +58,7 @@ Method OnAfterOneTest() As %Status
     Do ..Remove()
     Do ##class(OcuPilot.Test.GlobalLocationSeam).Reset()
     Kill ^||OcuPilotDatabaseWritePort
+    Kill ^||OcuPilotGlobalPortBroken
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Kill tRows
@@ -447,6 +448,20 @@ Method TestAnImportIsJudgedByTheGlobalsItNames()
     Set tSC = ##class(OcuPilot.Test.GlobalProhibited).Prohibits("explorer.classes.import", tImportRef, {"documents": "ZZOcuGlb.gbl new"}.%ToJSON(), "[]", .tProhibits, .tCode)
     Do $$$AssertStatusNotOK(tSC, "a global whose mapping rows cannot be read refuses the import")
     Do ##class(OcuPilot.Test.GlobalLocationSeam).Reset()
+}
+
+/// <p>DW-2731. An error raised inside the import clause itself, not a failed read, refuses the import: the clause's status is the error, so the caller refuses, and
+/// the import is not read as permitted.</p>
+/// <p>Mutation (Rule 19): drop <code>Set tSC = ex.AsStatus()</code> from the <code>Catch</code> of <method>OcuPilot.Kernel.Proposal.Prohibited.ImportedGlobals</method> -> the
+/// status assertion goes red.</p>
+Method TestAnErrorRaisedWhileJudgingAnImportRefusesIt()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("class", ..#NAMESPACE, "import", .tImportRef), "the import's target key is built")
+    Do ##class(OcuPilot.Test.GlobalProhibited).BreakPort()
+    Set tSC = ##class(OcuPilot.Test.GlobalProhibited).Prohibits("explorer.classes.import", tImportRef, {"documents": "ZZOcuGlb.gbl new"}.%ToJSON(), "[]", .tProhibits, .tCode)
+    Do ##class(OcuPilot.Test.GlobalProhibited).BreakPort(0)
+    Do $$$AssertStatusNotOK(tSC, "an error raised while judging an import's globals is an error status, which the caller refuses on")
+    Do $$$AssertEquals(tProhibits _ "|" _ tCode, "0|", "and the arm reports no verdict of its own")
 }
 
 }

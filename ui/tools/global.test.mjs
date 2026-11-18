@@ -36,12 +36,18 @@ const SENTENCES = [
   ['REASONOWNDATA', 'globalRefusalOwnData'],
   ['REASONDELETE', 'globalDeleteConsequence'],
   ['REASONNODEDELETE', 'globalNodeDeleteConsequence'],
+  ['REASONNOCHANGE', 'globalRefusalNoChange'],
+  ['REASONREPLACETOOLARGE', 'globalRefusalReplaceTooLarge'],
+  ['REASONREVIEWCHANGED', 'globalRefusalReviewChanged'],
+  ['REASONSYSNAMESPACE', 'globalRefusalReplaceSystem'],
+  ['REASONREPLACE', 'globalReplaceConsequence'],
 ];
 
 /** The consequences a card or dialog states: the code parameter, the code, the `proposal-view.ts` constant and the string. */
 const CONSEQUENCES = [
   ['DELETE', 'GLOBAL.DELETE', 'CONSEQUENCE_GLOBALDELETE', 'globalDeleteConsequence', 'REASONDELETE'],
   ['NODEDELETE', 'GLOBAL.NODE.DELETE', 'CONSEQUENCE_GLOBALNODEDELETE', 'globalNodeDeleteConsequence', 'REASONNODEDELETE'],
+  ['REPLACE', 'GLOBAL.REPLACE', 'CONSEQUENCE_GLOBALREPLACE', 'globalReplaceConsequence', 'REASONREPLACE'],
 ];
 
 function stringValue(key) {
@@ -84,9 +90,10 @@ test('Story 21.5: the two delete cards state the sentence their consequence code
   }
   assert.equal(classParameter(join(TOOLS, 'ExplorerGlobalDelete.cls'), 'CONSEQUENCECODE'), 'GLOBAL.DELETE');
   assert.equal(classParameter(join(TOOLS, 'ExplorerGlobalNodeDelete.cls'), 'CONSEQUENCECODE'), 'GLOBAL.NODE.DELETE');
+  assert.equal(classParameter(join(TOOLS, 'ExplorerGlobalReplace.cls'), 'CONSEQUENCECODE'), 'GLOBAL.REPLACE');
   const handler = readFileSync(HANDLER, 'utf8');
   assert.ok(
-    handler.includes("'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence }"),
-    "the Globals list's Delete dialog states the global's consequence"
+    handler.includes("'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence, replace: STRINGS.globalReplaceConsequence }"),
+    "the Globals list's Delete and Replace dialogs state their consequences"
   );
 });
