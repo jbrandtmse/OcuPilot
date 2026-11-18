@@ -32,6 +32,8 @@
 import { resetRememberedState } from './preferences-reset.mjs';
 
 import assert from 'node:assert/strict';
+import { get as httpGet } from 'node:http';
+import { get as httpsGet } from 'node:https';
 
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 
@@ -74,12 +76,63 @@ export function trackInflightRequests(page) {
   return () => [...inflight].map(([request, started]) => `${request.url()} (${Date.now() - started} ms)`);
 }
 
+/** How long the node-side probe of a timed-out navigation may take. */
+const PROBE_TIMEOUT_MS = 10_000;
+
+/**
+ * Fetch `url` from Node over a connection of its own, answering the HTTP status; aborts when `signal` does.
+ * The `probe` that `signedInAt` hands `gotoNamingInflight`.
+ */
+export function fetchFromNode(url, signal) {
+  return new Promise((resolve, reject) => {
+    const get = url.startsWith('https:') ? httpsGet : httpGet;
+    const request = get(url, { agent: false, signal }, (response) => {
+      response.resume();
+      resolve(response.statusCode);
+    });
+    request.on('error', reject);
+  });
+}
+
+/** The reason a probe failed, as one phrase: an error's code and message, or what was thrown. */
+function probeFailure(error) {
+  const named = [error?.code, error?.message].filter((part) => typeof part === 'string' && part !== '');
+  return named.length > 0 ? named.join(' ') : String(error);
+}
+
+/**
+ * Ask `probe` for the status of `url`, bounded by `timeoutMs`, and answer one line: `node fetch: <status> in <ms> ms`, or
+ * `node fetch failed: <reason>`. Never throws.
+ */
+async function probeLine(probe, url, timeoutMs) {
+  const started = Date.now();
+  const controller = new AbortController();
+  let timer;
+  const bound = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`no answer within ${timeoutMs} ms`));
+    }, timeoutMs);
+  });
+  try {
+    const status = await Promise.race([probe(url, controller.signal), bound]);
+    return `node fetch: ${status} in ${Date.now() - started} ms`;
+  } catch (error) {
+    return `node fetch failed: ${probeFailure(error)}`;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * `page.goto` that, on a navigation timeout, rethrows the same error with its message extended by
- * each request still in flight (from `listInflight`) and that request's age. Any other error, and
- * the success path, pass through unchanged.
+ * each request still in flight (from `listInflight`) and that request's age, and, when `probe` is
+ * given, by one line saying whether a fresh fetch of the same URL from Node answered. Any other
+ * error, and the success path, pass through unchanged; a probe that fails is reported in that line,
+ * never thrown in place of the navigation's error. The probe is aborted and reported as failed
+ * when it has not answered within `probeTimeoutMs`.
  */
-export async function gotoNamingInflight(page, url, options, listInflight) {
+export async function gotoNamingInflight(page, url, options, listInflight, probe = null, probeTimeoutMs = PROBE_TIMEOUT_MS) {
   try {
     return await page.goto(url, options);
   } catch (error) {
@@ -87,6 +140,7 @@ export async function gotoNamingInflight(page, url, options, listInflight) {
     if (timedOut && error instanceof Error) {
       const pending = listInflight();
       error.message += pending.length === 0 ? '\nno request was in flight' : `\n${pending.length} request(s) still in flight:\n  ${pending.join('\n  ')}`;
+      if (probe !== null) error.message += `\n${await probeLine(probe, url, probeTimeoutMs)}`;
     }
     throw error;
   }
@@ -112,7 +166,7 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   if (mediaFeatures !== null) await page.emulateMediaFeatures(mediaFeatures);
   const listInflight = trackInflightRequests(page);
   if (prepare !== null) await prepare(page);
-  await gotoNamingInflight(page, `${config.origin}${url}`, { waitUntil: 'networkidle2' }, listInflight);
+  await gotoNamingInflight(page, `${config.origin}${url}`, { waitUntil: 'networkidle2' }, listInflight, fetchFromNode);
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
   await page.type('#ocu-signin-password', config.password);

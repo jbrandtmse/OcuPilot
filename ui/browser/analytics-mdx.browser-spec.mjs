@@ -118,9 +118,76 @@ async function writeStatement(page, text) {
   );
 }
 
-/** Press Run with a real pointer. */
+/** What the page shows of Run's readiness: the statement field's text, Run's `aria-disabled` and the namespace the shell reads. */
+function describeRunState(page) {
+  return page
+    .evaluate(() => ({
+      statement: document.querySelector('textarea[data-ocu-mdx="statement"]')?.value ?? '(statement field absent)',
+      ariaDisabled: document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') ?? '(Run absent or without aria-disabled)',
+      namespace: document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() ?? '(namespace switch absent)',
+    }))
+    .then((state) => JSON.stringify(state))
+    .catch((error) => `(page unreadable: ${error.message})`);
+}
+
+/**
+ * Press Run with a real pointer, once the page can start a run: Run's `aria-disabled` reads `false` (the screen's store holds the
+ * statement that was written) and the namespace switch reads the namespace the page's address names, which is the scope the start
+ * carries. A press before either is a press the page ignores or sends to the wrong scope.
+ */
 async function pressRun(page) {
+  const namespace = new URL(page.url()).searchParams.get('ns');
+  try {
+    await page.waitForFunction(
+      (wanted) =>
+        document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') === 'false' &&
+        (wanted === null || document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() === wanted),
+      { timeout: config.navigationTimeoutMs },
+      namespace
+    );
+  } catch (error) {
+    throw new Error(`expected Run to be ready (aria-disabled false, namespace ${namespace}); the page shows ${await describeRunState(page)} (underlying: ${error.message})`);
+  }
   await page.click('button[data-ocu-mdx="run"]');
+}
+
+/** The start route a run is posted to, as the page sends it. */
+const START_PATH = '/api/ocupilot/analytics/mdx/background';
+
+/**
+ * Record every POST the page makes to the start route from now on: `{ ns, status }` each, `status` null until the answer lands. Attach
+ * it before pressing Run.
+ */
+function watchStarts(page) {
+  const starts = [];
+  const byRequest = new Map();
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (request.method() !== 'POST' || url.pathname !== START_PATH) return;
+    const start = { ns: url.searchParams.get('ns'), status: null };
+    byRequest.set(request, start);
+    starts.push(start);
+  });
+  page.on('response', (response) => {
+    const start = byRequest.get(response.request());
+    if (start !== undefined) start.status = response.status();
+  });
+  return starts;
+}
+
+/** What the start POSTs did, as a phrase: none sent, or each one's `ns` and status. */
+function describeStarts(starts) {
+  if (starts.length === 0) return 'no start POST was sent';
+  return starts.map((start) => `a start POST was sent with ns ${JSON.stringify(start.ns)} and ${start.status === null ? 'no answer yet' : `answered ${start.status}`}`).join('; ');
+}
+
+/** Wait until the first start POST has been answered and return it, or fail naming what the POSTs did. */
+async function firstStartAnswered(starts) {
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  while (!starts.some((start) => start.status !== null) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+  const answered = starts.find((start) => start.status !== null);
+  if (answered === undefined) throw new Error(`expected the start POST to be answered within ${config.navigationTimeoutMs} ms; ${describeStarts(starts)}`);
+  return answered;
 }
 
 /** Wait until the status line reads `text`. */
@@ -556,9 +623,17 @@ test('AC7 (QA): a namespace without analytics and one whose cache is read-only s
   ]) {
     const { context, page } = await signedInAt(browser, config, pageUrl(ns), VIEWPORTS.wide, REDUCED_MOTION);
     try {
+      const starts = watchStarts(page);
       await writeStatement(page, 'SELECT FROM [OcuPilotProbeVisits]');
       await pressRun(page);
-      await page.waitForSelector('[data-ocu-mdx="banner"]', { visible: true, timeout: config.navigationTimeoutMs });
+      const start = await firstStartAnswered(starts);
+      assert.equal(start.ns, ns, `${ns}: the start POST carried the namespace the page names`);
+      assert.ok(start.status >= 400 && start.status < 500, `${ns}: the start POST is refused before anything runs, not answered ${start.status}`);
+      try {
+        await page.waitForSelector('[data-ocu-mdx="banner"]', { visible: true, timeout: config.navigationTimeoutMs });
+      } catch (error) {
+        throw new Error(`expected ${ns}'s refusal banner; ${describeStarts(starts)}; the page shows ${await describeAnswer(page)} (underlying: ${error.message})`);
+      }
       assert.equal(await page.$eval('[data-ocu-mdx="banner"]', (node) => node.textContent.trim()), sentence, `${ns} shows its refusal sentence`);
       assert.equal(await page.$('[data-ocu-mdx="grid"]'), null, `and ${ns} draws no grid`);
     } finally {

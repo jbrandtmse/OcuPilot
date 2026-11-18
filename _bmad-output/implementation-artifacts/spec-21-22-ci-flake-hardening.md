@@ -3,7 +3,7 @@ title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
 status: 'in-progress'
-baseline_revision: '0432b4561c2a79b2a9d502ba8a929628d7251fe9'
+baseline_revision: 'ac041a7793002a967357b53d5e11e97cd8c81d6b'
 baseline_commit: '0432b4561c2a79b2a9d502ba8a929628d7251fe9'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -83,7 +83,7 @@ Batch 4 (bounded slices):
 
 **Execution (four batches in order; each is verifiable, committable and pushable alone; Batch 1 first):**
 
-**Scope of the current pass: Batch 2 only** (Batch 1 is built, reviewed and pushed). Do Task 0 first, then the Batch 2 tasks (DW-2534, DW-2553, DW-2565), and run the Batch 2 lines of Verification, the "Every batch" lines and the Batch 2 mutations; do not start Batches 3 and 4. Task 0 and every ObjectScript or browser run go to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. The pass finalizes at `status: in-progress`, and its `## Auto Run Result` says Batches 1 and 2 are done and 3 and 4 are not started.
+**Scope of the current pass: Batch 3 only** (Batches 1 and 2 are built, reviewed and pushed). Do the Batch 3 tasks (page-load probe, `pressRun` and AC7, `clearFilter`, `WaitJobs`), and run the Batch 3 lines of Verification, the "Every batch" lines and the Batch 3 mutations; do not start Batch 4. Every ObjectScript or browser run goes to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. A diagnosis step never retries, never lengthens a timeout and never hides the original error. The pass finalizes at `status: in-progress`, and its `## Auto Run Result` says Batches 1 to 3 are done and 4 is not started.
 
 Batch 1 -- the node 22 client-suite hang (DW-2721, DW-2567):
 
@@ -214,6 +214,25 @@ Rejected:
   - `[low]` `[reject]` intent audit: the password is deterministic per key, not across runs — the key is made fresh each run, and the intent asks that the wrong password never be one OpenSSL accepts as other than `bad decrypt`.
   - `[low]` `[reject]` intent audit: the rate of 13 in 3000 is measured on two keys only — the spec says so under Residual.
 
+### 2026-11-18 — Review pass (Batch 3)
+
+- verdicts: 14 findings — high 0, medium 1, low 13, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the probe's time bound and abort had no test: every probe in the tests settled at once, so removing the bound left all green, and a hung probe would replace the navigation error with a step timeout — the bound became a parameter (`probeTimeoutMs`), a never-answering probe test pins the named failure and the abort; mutation recorded.
+  - `[low]` `[patch]` `agent: false` was pinned by nothing — the `fetchFromNode` test counts connections across two probes; mutation recorded.
+  - `[low]` `[patch]` `pressRun`'s namespace clause had no mutation line — the expected namespace changed to `USERX` turns AC1 red at `pressRun` naming the namespace; line recorded.
+  - `[low]` `[reject]` the new failure messages (`clearFilter`, `WaitJobs`, `pressRun`, AC7's POSTs) rest on one observed mutation each, with no standing fake-page test — each AC asks that the error names the state, one demonstrated mutation per AC is the bar, and a fake-page harness for four helpers is more than a direct correction.
+  - `[low]` `[reject]` `ci-flake-waits.test.mjs` matches source positions, not behavior — it is the sibling pin the story's existing waits already use; the behavior is shown by the held-lock mutation.
+  - `[low]` `[reject]` the `ECONNREFUSED` check reuses a port it just freed — another process taking that port in the same few milliseconds is not a reachable failure.
+  - `[low]` `[reject]` intent audit: only navigations through `gotoNamingInflight` get the probe line, not the roughly 66 specs with their own sign-in — the six named flakes failed in `signedInAt`; the other specs have no sighting.
+  - `[low]` `[reject]` intent audit: the probe is pinned against a fake page and a local server, with no browser run that times out — the spec's Residual says so; a real timeout cannot be produced on demand.
+  - `[low]` `[reject]` intent audit: the probe runs after the timeout and from Node without a session — the matrix row asks whether a fresh fetch answered, not what it did during the stall.
+  - `[low]` `[reject]` intent audit: DW-2566's slot wait is a different surface from the page-load hang and is shown by a held lock — the spec's mutation wording was a slow turn that cannot be reproduced; the Residual line says which was used.
+  - `[low]` `[reject]` intent audit: `pressRun` and AC7's helpers have no `ui/tools` test — they are browser code whose pinning tests are the specs and their recorded mutations.
+  - `[low]` `[reject]` intent audit: `pressRun` takes its namespace from the page address, not an argument — every `analytics-mdx` page URL carries `ns` and the helper waits for no namespace when it does not.
+  - `[low]` `[reject]` intent audit: `clearFilter` and `WaitJobs` change the failure text only — the spec's Batch 3 text asks for exactly that; the waits and their bounds are untouched.
+  - `[low]` `[reject]` intent audit: the front matter reads `in-review` while the scope paragraph says the pass finalizes at `in-progress` — the review step sets the status, and finalize writes `in-progress` as the dispatch instructs.
+
 ## Design Notes
 
 **ADs:** none binds the client test runner's pool settings; the spine's Stack rows "Client test runners" and "CI" stay true as written. AD-19 (the screen's own signal is the readiness signal: Run's `aria-disabled`, the stored view), AD-14, AD-43, AD-7 (a turn's slot), AD-17 (test classes only on a throwaway), AD-36. Test-and-CI only apart from Task 0's branch (a). No AD change.
@@ -251,6 +270,7 @@ Rejected:
 - Batch 2: `waitForRememberedView` takes the route and filter, so the next spec that ends on a typed filter can use it; only web-applications AC1 does here.
 - The page-load group gains DW-2648, DW-2649 and DW-2685: each failed in `signedInAt` with one request in flight.
 - DW-2714 joins DW-2548 in `pressRun`: the page state shows Run pressed while the statement was not yet in the store.
+- Batch 3: `gotoNamingInflight`'s probe is a function `(url, signal) => status`, bounded at 10 s by the caller; `signedInAt` passes `fetchFromNode`, which uses a connection of its own (`agent: false`). `pressRun` reads the namespace to wait for from the page's `?ns=`. context-chip keeps a one-line `signedInAt` wrapper over the shared one, because it also waits for an enabled composer.
 - DW-2476 takes twelve non-interop copies under a ratchet; DW-2202 takes the four count literals (the 24 per-principal literals carry high fix-risk).
 
 ## Verification
@@ -296,9 +316,15 @@ Every batch:
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
   - mutation (Batch 2, observed): `OnBeforeAllTests` drawing from `UndecodablePassword` -> `SslSecret`'s wrong-password test red ("a wrong password is refused on its field"). Reverted and reloaded; the class green (4 of 4). Branch (b): no entry and no second test, so no second mutation. Re-observed after the review patch: red (run 823), reverted and reloaded, green (run 824).
 - Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs` red.
+  - mutation (Batch 3, observed): `signedInAt` calls `gotoNamingInflight` without `fetchFromNode` -> the `signedInAt` timeout test red (9 of 10 pass); the probe line dropped from the rethrown message -> the answering-probe, failing-probe and `signedInAt` tests red. Each reverted; ten of ten green.
+  - mutation (Batch 3 review, observed): the probe's `Promise.race` against its bound removed -> the never-answering-probe test red; `agent: false` dropped from `fetchFromNode` -> the connection-count assertion red ("each probe opens a connection of its own"). Each reverted; eleven of eleven green.
 - DW-2566: drop test 7's `waitForSlotFree` and delay test 6's slot release -> test 7 red.
+  - mutation (Batch 3, observed): the slot is held for 25 s by a second IRIS process (`Lock +^OcuPilotTurnSlot` in `HSCUSTOM`) started at the end of test 6, with test 7's new `waitForSlotFree` removed -> test 7 red (`TimeoutError: Waiting failed: 30000ms exceeded`, 37.6 s); with the hold at 12 s and the wait restored -> test 7 green after waiting (21.2 s against 16.6 s). The hold and the removal reverted; the wait stays.
 - DW-2714/DW-2548: `writeStatement` stops dispatching `input` -> AC1 red at `pressRun` naming the textarea and `aria-disabled` within the navigation timeout, not after 145 s; `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
+  - mutation (Batch 3, observed): `writeStatement` without the `input` event -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {"statement":"SELECT ...","ariaDisabled":"true","namespace":"USER"}"; `scope: () => ''` at `mdx-query.page.ts:201`, bundle rebuilt and redeployed -> AC7 red, "HSCUSTOM: the start POST carried the namespace the page names". Each reverted (the bundle rebuilt and redeployed again); the eleven specs green.
+  - mutation (Batch 3 review, observed): the namespace `pressRun` waits for changed to `USERX` -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {... \"ariaDisabled\":\"false\",\"namespace\":\"USER\"}". Reverted; AC1 green.
 - DW-2720: pass AC2's `filterToSubset` a total one too high -> red naming the field, count and total. DW-2713: `StartProbe` waits for 2 jobs -> red naming state and seconds.
+  - mutation (Batch 3, observed): users AC2's `total` plus one -> red in 32.9 s, "expected the cleared filter to bring back all 14 row(s) (aria-rowcount 15); the filter field holds "" and the grid's aria-rowcount reads 14"; `StartProbe` ending `WaitJobs(2)` -> six of nine `InteropItemRun` tests red, "the Jobs tab lists 1 jobs, not 2, after 10.1 seconds; the production reads Running|0 and the item enabled=1 stopped=0 own=1 jobs=1 needs=0". Each reverted (ObjectScript reloaded); `InteropItemRun` 9 of 9 and `InteropItemRunGate` 3 of 3 green.
 - DW-2202: the SystemUsage read drops one declared field -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red.
 - DW-2476: re-add a copy to a converted spec -> the ratchet red; drop a converted spec's import -> the import check red.
 
@@ -307,10 +333,16 @@ Every batch:
 Status: in-progress
 Blocking condition: none
 
-Batches 1 and 2 are done; Batches 3 and 4 are not started. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
+Batches 1 to 3 are done; Batch 4 is not started. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
 
 Batch 2 pass: DW-2534 `waitForRememberedView` in `preferences-reset.mjs`, called before web-applications AC1 closes its context. DW-2565 `scripts/ci-throwaway.sh` reads the clock once per attempt (the two `date` lines only, per the ruling), and `ci.test.mjs`'s `runThrowawayUp` takes a stepped stub clock the first `up` advances without sleeping. DW-2553 `X509Material.BadDecryptPassword` and `UndecodablePassword`; `SslSecret` draws its wrong password from the first, in `OnBeforeAllTests`. Task 0 landed on branch (b): the vendor answers an undecodable-key password with error 733 and HTTP 500, shared with the certificate and key mismatch, so there is no `PROPERTYFAULTS` entry and one `deferred:` item.
 
 Verified on `ocupilot-ci` after reload (`LOADERRORS=0`): `SslSecret` 4 of 4; web-applications browser spec 4 of 4 on a rebuilt and redeployed bundle; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 127 of 127; `check-objectscript` 0 problems, its harness 163 OK, `lint-docs` 0 issues, `npm run test:tools` 2319 of 2319. The three Batch 2 mutations above each went red and were reverted, tree checked. Not run here: the other two ObjectScript classes and the Batch 3 and 4 specs (their batches), and `smoke.sh` and ObjectScript sweep (runner-owned). Residual: the one-second-boundary and late-write races are removed by construction, not reproduced; DW-2553's rate (13 in 3000) is measured on two keys only.
 
 Batch 2 review: 11 findings, none high or medium; 1 low patched (a doc comment's unmeasured rate), 10 rejected with reasons in the triage log, none deferred by review (the one `deferred:` item is Task 0's branch (b) finding); follow-up review not recommended. After the patch: source reloaded into `ocupilot-ci` (`LOADERRORS=0`), `SslSecret` 4 of 4, `check-objectscript` 0 problems. Files changed: `scripts/ci-throwaway.sh` (one clock read per attempt), `ui/tools/ci.test.mjs` (stepped stub clock), `ui/browser/preferences-reset.mjs` (`waitForRememberedView`), `ui/browser/web-applications.browser-spec.mjs` (AC1 waits on it), `src/OcuPilot/Test/X509Material.cls` and `SslSecret.cls` (deterministic `bad decrypt` password).
+
+Batch 3 pass: `panel-spec.mjs` `gotoNamingInflight` takes a bounded probe and appends `node fetch: <status> in <ms> ms` or `node fetch failed: <reason>`; `signedInAt` passes `fetchFromNode`; `panel-spec.test.mjs` pins the answering, failing and absent probe and `signedInAt`'s own call. `context-chip.browser-spec.mjs` signs in through the shared helper and waits for the turn slot before test 7's first Send (`ci-flake-waits.test.mjs`'s pin follows). `analytics-mdx.browser-spec.mjs` `pressRun` waits for Run's `aria-disabled` `false` and the namespace switch, naming the textarea, `aria-disabled` and namespace on failure; AC7 records the start POSTs, asserts `ns` and a 4xx, then waits for the banner with the POSTs named. `list-spec.mjs` `clearFilter` names the field, `aria-rowcount` and total. `InteropItemRun.WaitJobs` names the seconds, the production's state and `Facts()`.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`) and a rebuilt, redeployed bundle: `InteropItemRun` 9 of 9, `InteropItemRunGate` 3 of 3; `analytics-mdx` 11 of 11, `users` 4 of 4, `context-chip` 9 of 9, and `web-applications`, `stream-reply`, `agent-code-save` 18 of 18; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 131 of 131; `check-objectscript` 0 problems, its harness OK, `lint-docs` 0 issues, `npm run test:tools` 2323 of 2323. The Batch 3 mutations above each went red and were reverted. Not run here: `WireSecurityRead` and `SslSecret` (Batches 2 and 4), the runner-owned sweep and `smoke.sh`. Residual: test 7's slot race is shown by a held lock, not by a slow turn; no browser run reproduced a page-load timeout, so the probe line is pinned against a fake page and a local server only.
+
+Batch 3 review: 14 findings, none high, 1 medium and 2 low patched (the probe's time bound and abort, `agent: false`, `pressRun`'s namespace clause; each now pinned with a recorded mutation), 11 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: `panel-spec.test.mjs` 11 of 11, AC1 green again, `lint-docs` 0 issues, `npm run test:tools` 2324 of 2324. Files changed this batch: `ui/browser/panel-spec.mjs` (probe), `ui/browser/context-chip.browser-spec.mjs`, `ui/browser/analytics-mdx.browser-spec.mjs`, `ui/browser/list-spec.mjs`, `src/OcuPilot/Test/InteropItemRun.cls`, `ui/tools/panel-spec.test.mjs`, `ui/tools/ci-flake-waits.test.mjs`. Batch 4 is not started.

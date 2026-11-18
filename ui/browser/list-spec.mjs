@@ -53,18 +53,35 @@ export function viewCount(page) {
   }, '[role="grid"]');
 }
 
-/** Empty the filter and wait until the whole list, `total` rows, is back in the view. */
+/**
+ * Empty the filter and wait until the whole list, `total` rows, is back in the view. On a timeout the throw names what the page
+ * holds now -- the filter field's text, the grid's `aria-rowcount` and the total expected -- before the wait's own message.
+ */
 export async function clearFilter(page, total, timeoutMs) {
   await page.click(FILTER_SELECTOR, { clickCount: 3 });
   await page.keyboard.press('Backspace');
-  await page.waitForFunction(
-    (wanted) => {
-      const grid = document.querySelector('[role="grid"]');
-      return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === wanted;
-    },
-    { timeout: timeoutMs },
-    total
-  );
+  try {
+    await page.waitForFunction(
+      (wanted) => {
+        const grid = document.querySelector('[role="grid"]');
+        return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === wanted;
+      },
+      { timeout: timeoutMs },
+      total
+    );
+  } catch (error) {
+    const read = await page
+      .evaluate(
+        (filterSelector) => ({
+          filter: document.querySelector(filterSelector)?.value ?? '(filter field absent)',
+          rowcount: document.querySelector('[role="grid"]')?.getAttribute('aria-rowcount') ?? '(grid absent or without aria-rowcount)',
+        }),
+        FILTER_SELECTOR
+      )
+      .then((state) => `the filter field holds ${JSON.stringify(state.filter)} and the grid's aria-rowcount reads ${state.rowcount}`)
+      .catch((readError) => `the page is unreadable (${readError.message})`);
+    throw new Error(`expected the cleared filter to bring back all ${total} row(s) (aria-rowcount ${total + 1}); ${read} (underlying: ${error.message})`);
+  }
 }
 
 /**

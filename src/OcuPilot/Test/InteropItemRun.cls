@@ -114,15 +114,18 @@ Method StartProbe(pExtras As %List = "") As %Status
 }
 
 /// <p>Wait, ten seconds at most, until the plain operation's Jobs tab lists at least <var>pWant</var> jobs (0 waits until it lists
-/// none); a failing status when it never does.</p>
+/// none); a failing status when it never does, naming the jobs read, the seconds waited, the probe production's state and the item's
+/// <method>Facts</method>.</p>
 ClassMethod WaitJobs(pWant As %Integer) As %Status
 {
+    Set tStart = $ZHorolog
     For tTry = 1:1:20 {
         Set tCount = ..JobsTab()
         If $Select(pWant = 0: tCount = 0, 1: tCount >= pWant) Quit
         Hang 0.5
     }
-    Quit $Select($Select(pWant = 0: tCount = 0, 1: tCount >= pWant): $$$OK, 1: $$$ERROR($$$GeneralError, "the Jobs tab lists " _ tCount _ " jobs, not " _ pWant))
+    If $Select(pWant = 0: tCount = 0, 1: tCount >= pWant) Quit $$$OK
+    Quit $$$ERROR($$$GeneralError, "the Jobs tab lists " _ tCount _ " jobs, not " _ pWant _ ", after " _ $FNumber($ZHorolog - tStart, "", 1) _ " seconds; the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ " and the item " _ ..Facts())
 }
 
 /// <p>How many jobs the plain operation's Jobs tab lists, read through its screen; -1 when the read fails.</p>

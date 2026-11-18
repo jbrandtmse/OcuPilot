@@ -5,13 +5,18 @@
 // - drop the in-flight list from the rethrown message -> the first test goes red.
 // - make `signedInAt` call `page.goto` directly -> the `signedInAt` run and the last test go red.
 // - start tracking after `prepare` in `signedInAt` -> the `signedInAt` run and the last test go red.
+// - drop the probe argument from `signedInAt`'s `gotoNamingInflight` call -> the `signedInAt` run goes red.
+// - drop the probe line from the rethrown message -> the answering and failing probe tests go red.
+// - drop the probe's time bound or its abort -> the never-answering probe test goes red.
+// - drop `agent: false` from `fetchFromNode` -> the connection count in its test goes red.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
+import { createServer } from 'node:http';
 import test from 'node:test';
 
-const { gotoNamingInflight, signedInAt, trackInflightRequests } = await import(new URL('../browser/panel-spec.mjs', import.meta.url).href);
+const { fetchFromNode, gotoNamingInflight, signedInAt, trackInflightRequests } = await import(new URL('../browser/panel-spec.mjs', import.meta.url).href);
 
 const request = (url) => ({ url: () => url });
 
@@ -45,6 +50,102 @@ test('a navigation timeout is rethrown with the request still in flight and its 
       return true;
     }
   );
+});
+
+/** A page whose goto times out with `original`, and a lister that reports nothing in flight. */
+function timingOutPage(original) {
+  const page = new EventEmitter();
+  page.goto = async () => {
+    throw original;
+  };
+  return { page, listInflight: trackInflightRequests(page) };
+}
+
+test('a timeout names the answer of a probe that answers, with its status and time', async () => {
+  const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
+  const { page, listInflight } = timingOutPage(original);
+  const probed = [];
+  const probe = async (url) => {
+    probed.push(url);
+    return 200;
+  };
+  await assert.rejects(
+    () => gotoNamingInflight(page, 'http://localhost/ocupilot/', {}, listInflight, probe),
+    (error) => {
+      assert.equal(error, original, 'the same error object');
+      assert.match(error.message, /^Navigation timeout of 30000 ms exceeded\nno request was in flight\nnode fetch: 200 in \d+ ms$/, 'the probe line comes last, with the status and the time');
+      return true;
+    }
+  );
+  assert.deepEqual(probed, ['http://localhost/ocupilot/'], 'the probe was asked for the URL the navigation timed out on');
+});
+
+test('a timeout names why a probe failed, and the probe never replaces the navigation error', async () => {
+  const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
+  const { page, listInflight } = timingOutPage(original);
+  const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:52776'), { code: 'ECONNREFUSED' });
+  await assert.rejects(
+    () =>
+      gotoNamingInflight(page, 'http://localhost/ocupilot/', {}, listInflight, async () => {
+        throw refused;
+      }),
+    (error) => {
+      assert.equal(error, original, 'the navigation error, not the probe\'s');
+      assert.match(error.message, /\nnode fetch failed: ECONNREFUSED connect ECONNREFUSED 127\.0\.0\.1:52776$/, 'the probe line names the reason');
+      return true;
+    }
+  );
+});
+
+test('a probe that never answers is aborted at its bound and named, and the navigation error still comes out', { timeout: 5000 }, async () => {
+  const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
+  const { page, listInflight } = timingOutPage(original);
+  let aborted = false;
+  const probe = (url, signal) =>
+    new Promise(() => {
+      signal.addEventListener('abort', () => {
+        aborted = true;
+      });
+    });
+  await assert.rejects(
+    () => gotoNamingInflight(page, 'http://localhost/ocupilot/', {}, listInflight, probe, 50),
+    (error) => {
+      assert.equal(error, original, 'the navigation error, not a hung probe');
+      assert.match(error.message, /\nnode fetch failed: no answer within 50 ms$/, 'the probe line names the bound');
+      return true;
+    }
+  );
+  assert.equal(aborted, true, 'the probe was told to stop');
+});
+
+test('a timeout with no probe appends no probe line', async () => {
+  const original = new TimeoutError('Navigation timeout of 30000 ms exceeded');
+  const { page, listInflight } = timingOutPage(original);
+  await assert.rejects(
+    () => gotoNamingInflight(page, 'http://localhost/ocupilot/', {}, listInflight),
+    (error) => error === original && !/node fetch/.test(error.message)
+  );
+});
+
+test('fetchFromNode answers the status a server gives, and rejects with the error code when nothing listens', async () => {
+  const server = createServer((request, response) => {
+    response.statusCode = 503;
+    response.end('busy');
+  });
+  let connections = 0;
+  server.on('connection', () => {
+    connections += 1;
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    assert.equal(await fetchFromNode(`http://127.0.0.1:${port}/ocupilot/`, new AbortController().signal), 503);
+    assert.equal(await fetchFromNode(`http://127.0.0.1:${port}/ocupilot/`, new AbortController().signal), 503);
+    assert.equal(connections, 2, 'each probe opens a connection of its own, so a pooled socket cannot answer for the instance');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+  await assert.rejects(() => fetchFromNode(`http://127.0.0.1:${port}/ocupilot/`, new AbortController().signal), (error) => error.code === 'ECONNREFUSED');
 });
 
 test('a failed or finished request leaves the list, and another error passes through unchanged', async () => {
@@ -118,18 +219,26 @@ test('signedInAt, run against a page whose goto times out, names a request that 
   const prepare = async (target) => {
     target.emit('request', request('http://throwaway.invalid/ocupilot/assets/from-prepare.css'));
   };
-  await withStubbedInstance(() =>
-    assert.rejects(
-      () => signedInAt(fakeBrowser(page), config, '/ocupilot/', config.viewport, null, prepare),
-      (error) => {
-        assert.equal(error, original, 'the same error object');
-        assert.match(error.message, /^Navigation timeout of 30000 ms exceeded/, 'its own message first');
-        assert.match(error.message, /from-prepare\.css \(\d+ ms\)/, 'a request made while the spec prepared the page is tracked');
-        assert.match(error.message, /late\.js \(\d+ ms\)/, 'and one made by the navigation itself');
-        return true;
-      }
-    )
-  );
+  const server = createServer((request, response) => response.end('ok'));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const local = { ...config, origin: `http://127.0.0.1:${server.address().port}` };
+  try {
+    await withStubbedInstance(() =>
+      assert.rejects(
+        () => signedInAt(fakeBrowser(page), local, '/ocupilot/', config.viewport, null, prepare),
+        (error) => {
+          assert.equal(error, original, 'the same error object');
+          assert.match(error.message, /\nnode fetch: 200 in \d+ ms$/, 'and the shared helper asks Node for the same URL');
+          assert.match(error.message, /^Navigation timeout of 30000 ms exceeded/, 'its own message first');
+          assert.match(error.message, /from-prepare\.css \(\d+ ms\)/, 'a request made while the spec prepared the page is tracked');
+          assert.match(error.message, /late\.js \(\d+ ms\)/, 'and one made by the navigation itself');
+          return true;
+        }
+      )
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('signedInAt rethrows a failure that is not a navigation timeout unchanged', async () => {
