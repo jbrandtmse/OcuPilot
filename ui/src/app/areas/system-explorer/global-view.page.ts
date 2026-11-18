@@ -148,7 +148,7 @@ let pageCount = 0;
     @if (refusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-global-refusal>{{ refusal }}</p>
     }
-    @if (loaded && rows.length === 0) {
+    @if (loaded && rows.length === 0 && !hasMore) {
       <p class="ocu-empty-state" data-global-empty>{{ emptyText }}</p>
     }
     @if (rows.length > 0) {

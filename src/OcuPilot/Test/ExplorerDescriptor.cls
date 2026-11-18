@@ -138,7 +138,7 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 /// saves, drop and SQL run are), its fingerprint subject and its precondition -- a delete covers each
 /// document's modified time, an import its reviewed documents and a save the text, version and compile
 /// choice. The compile, export, save, class and routine create, and document database create keys ship
-/// enabled, and the delete, import, SQL run, data browser save and document database drop keys disabled.
+/// enabled, and the delete, import, replace, SQL run, data browser save and document database drop keys disabled.
 /// The two lists declare the seven row actions, with compile, delete and export acting on the checked rows,
 /// at most one hundred. The SQL query screen declares its run, the data browser its save, and the document
 /// database list its create and a row's drop; the viewers and editors declare none. The two saves are
@@ -169,7 +169,7 @@ Method TestTheAreaAdvertisesItsReadsAndWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=true,explorer.routines.save=true,explorer.classes.create=true,explorer.routines.create=true,explorer.sqlquery.run=false,explorer.routines.import=false,explorer.sqldata.save=false,explorer.docdb.create=true,explorer.docdb.delete=false,explorer.namespacediff.promote=false,explorer.unittests.run=false,explorer.command.run=false,explorer.classmethod.run=false,explorer.globals.delete=false,explorer.globalnodes.save=false,explorer.globalnodes.delete=false,explorer.globals.export=true,explorer.globals.import=false,explorer.globals.replace=false", "the compile, export, save, class and routine create and document database create keys ship enabled and the delete, import, SQL run, data browser save and document database drop keys disabled")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=true,explorer.routines.save=true,explorer.classes.create=true,explorer.routines.create=true,explorer.sqlquery.run=false,explorer.routines.import=false,explorer.sqldata.save=false,explorer.docdb.create=true,explorer.docdb.delete=false,explorer.namespacediff.promote=false,explorer.unittests.run=false,explorer.command.run=false,explorer.classmethod.run=false,explorer.globals.delete=false,explorer.globalnodes.save=false,explorer.globalnodes.delete=false,explorer.globals.export=true,explorer.globals.import=false,explorer.globals.replace=false", "the compile, export, save, class and routine create and document database create keys ship enabled and the delete, import, replace, SQL run, data browser save and document database drop keys disabled")
     For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)

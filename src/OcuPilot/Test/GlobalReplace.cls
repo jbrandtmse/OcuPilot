@@ -1,12 +1,14 @@
 /// <p>Pins Story 21.18's find and replace on both callers (AC1 to AC5; AD-6, AD-10, AD-34, AD-36, AD-51, AD-53, AD-58): a person's review and confirmed
 /// replace and the agent's confirmed proposal replacing every occurrence in the plain-text values of the test's own global and nothing else, with the
 /// case rule; a global that moved after the review or the mint written by neither caller, and a recorded node that moved rolled back whole; a global
-/// over 20,000 nodes, a replaced value over 32,767 characters, a replace that changes nothing and the <code>%SYS</code> namespace refused; text of the wrong shape
-/// refused before anything is read; the card and the tool's answer holding counts and no value or subscript; and the kernel's globals arm refusing a
-/// protected replace before any write.</p>
+/// over 20,000 nodes, a replaced value over 32,767 characters, a replace that changes nothing and the <code>%SYS</code> namespace refused on both callers; text of
+/// the wrong shape refused before anything is read; the card and the tool's answer holding counts and no value or subscript; and the kernel's globals arm
+/// refusing a protected replace before any write, on both callers for a global stored in a system database.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account. Each test makes
 /// its own global <code>^ZZOcuRep&lt;pid&gt;</code> in <code>HSCUSTOM</code> and kills it, and snapshots the stored governance policy before and puts it
-/// back after. It writes no protected global.</p>
+/// back after. The name-stem test names its global in lower case, which the install namespace stores in its own database, not OcuPilot's. The system
+/// database test makes the <code>%</code> copy of the test's global, which the namespace stores in the system database, and kills it; no other global of a
+/// protected database is written.</p>
 Class OcuPilot.Test.GlobalReplace Extends %UnitTest.TestCase
 {
 
@@ -56,6 +58,7 @@ Method OnAfterOneTest() As %Status
 {
     Do ..Remove()
     Do ##class(OcuPilot.Test.GlobalLocationSeam).Reset()
+    Do ##class(OcuPilot.Test.GlobalReplaceMoveSeam).Reset()
     Kill ^||OcuPilotDatabaseWritePort
     Kill ^||OcuPilotGlobalReplace
     Do ##class(OcuPilot.Kernel.Scope).Clear()
@@ -65,11 +68,13 @@ Method OnAfterOneTest() As %Status
     Quit ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
 }
 
-/// <p>Kill the test's global.</p>
+/// <p>Kill the test's global and its <code>%</code> copy.</p>
 Method Remove()
 {
     Set tRoot = "^" _ ..PreparedName
     Kill @tRoot
+    Set tPercent = "^%" _ $Translate(..PreparedName, "%")
+    Kill @tPercent
 }
 
 /// <p>The test's global: three plain-text nodes holding <code>abc</code> (five occurrences, one value and one subscript carrying the marker), one holding it
@@ -285,10 +290,12 @@ Method TestTheAgentProposesAndAPersonConfirms()
 
 /// <p>AC3. A person's replace whose global moved after the review is 409 <code>GLOBAL.REPLACE.REVIEWCHANGED</code> and writes nothing; so is the agent's
 /// confirm of a proposal whose global moved after the mint, which is not written either; and a recorded node that moved between the walk and the transaction
-/// rolls every earlier node back and writes nothing.</p>
+/// rolls every earlier node back and writes nothing, which the port answers 409 <code>GLOBAL.REPLACE.REVIEWCHANGED</code>
+/// (<class>OcuPilot.Test.GlobalReplaceMoveSeam</class>); and an error inside the transaction rolls back the node set before it.</p>
 /// <p>Mutation (Rule 19): drop the per-node old-value check in <method>OcuPilot.Port.GlobalPort.VendorReplaceApply</method> -> the rollback leg goes red; drop the
 /// digest comparison in <method>OcuPilot.Port.GlobalPort.ReplacingRun</method> -> the person's leg goes red; shorten the tool's <code>FINGERPRINTSUBJECT</code> to its
-/// name, texts and namespace -> the agent's legs go red.</p>
+/// name, texts and namespace -> the agent's legs go red; drop the stale refusal in <method>OcuPilot.Port.GlobalPort.ReplacingRun</method> -> the seam's leg goes
+/// red; drop the rollback loop from <method>OcuPilot.Port.GlobalPort.VendorReplaceApply</method>'s <code>Catch</code> -> the error leg goes red.</p>
 Method TestAMovedGlobalIsNotWrittenOnEitherCaller()
 {
     Do ..Make()
@@ -332,19 +339,41 @@ Method TestAMovedGlobalIsNotWrittenOnEitherCaller()
     Do ##class(OcuPilot.Port.GlobalPort).VendorReplaceApply(..#NAMESPACE, .tStale, .tCaught)
     Do $$$AssertEquals(tStale _ "|" _ ..Snapshot(), 1 _ "|" _ tMoved, "a recorded node that moved rolls every earlier one back and writes nothing")
     Do $$$AssertEquals($TLevel, 0, "and no transaction is left open")
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("name") = ..PreparedName
+    Set tQuery("find") = "abc"
+    Set tQuery("replace") = "xyz"
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Globals", "REPLACE", .tQuery, "", .tFresh, .tHttp, .tFault)
+    Set tQuery("digest") = $Select($IsObject($Get(tFresh)): tFresh.Digest, 1: "")
+    Do ##class(OcuPilot.Test.GlobalReplaceMoveSeam).Arm("moved before the transaction")
+    Set tSC = ##class(OcuPilot.Test.GlobalReplaceMoveSeam).Invoke("Globals", "REPLACEALL", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do ##class(OcuPilot.Test.GlobalReplaceMoveSeam).Reset()
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: "") _ "|" _ @tRoot@(1) _ "|" _ @tRoot@(3) _ "|" _ $TLevel, "409|GLOBAL.REPLACE.REVIEWCHANGED|" _ ..PreparedMarker _ " abc and abc|moved before the transaction|0", "a node that moves between the walk and the transaction is answered REVIEWCHANGED through the port, with the node set before it rolled back")
+    Kill ^||OcuPilotGlobalReplace
+    Set ^||OcuPilotGlobalReplace(1) = $ListBuild("^" _ ..PreparedName _ "(1)", @tRoot@(1), "set before the failure")
+    Set ^||OcuPilotGlobalReplace(2) = $ListBuild("^" _ ..PreparedName _ "(", "x", "y")
+    Set tBefore = ..Snapshot()
+    Do ##class(OcuPilot.Port.GlobalPort).VendorReplaceApply(..#NAMESPACE, .tStale, .tCaught)
+    Do $$$AssertEquals($IsObject(tCaught) _ "|" _ (..Snapshot() = tBefore) _ "|" _ $TLevel, "1|1|0", "an error inside the transaction rolls back the node set before it and leaves no transaction open")
 }
 
-/// <p>AC4. A global of 20,001 nodes is 409 <code>GLOBAL.REPLACE.TOOLARGE</code> and one of 20,000 is reviewed; a replaced value over 32,767 characters is the
-/// same refusal; a replace that changes nothing, because the text is absent or equals its replacement, is 409 <code>GLOBAL.REPLACE.NOCHANGE</code>; a global that
-/// holds nothing is 404 <code>GLOBAL.NOTFOUND</code>; and the <code>%SYS</code> namespace is 409 <code>GLOBAL.REPLACE.SYSNAMESPACE</code>, over HTTP and at the port.
-/// Nothing is written by any.</p>
-/// <p>Mutation (Rule 19): raise <parameter>REPLACESCAN</parameter> past 20,001 in <class>OcuPilot.Port.GlobalPort</class> -> the 20,001-node leg goes red.</p>
+/// <p>AC4. A global of 20,001 nodes is 409 <code>GLOBAL.REPLACE.TOOLARGE</code> to the person and to the agent's mint, and one of 20,000 is reviewed; a replaced
+/// value over 32,767 characters is the same refusal, and one of exactly 32,767 is reviewed; a replace that changes nothing, because the text is absent or equals
+/// its replacement, is 409 <code>GLOBAL.REPLACE.NOCHANGE</code> to the person and to the agent's mint; a global that holds nothing is 404
+/// <code>GLOBAL.NOTFOUND</code>; and the <code>%SYS</code> namespace is 409 <code>GLOBAL.REPLACE.SYSNAMESPACE</code>, over HTTP and at the port. Nothing is
+/// written or minted by any.</p>
+/// <p>Mutation (Rule 19): raise <parameter>REPLACESCAN</parameter> past 20,001 in <class>OcuPilot.Port.GlobalPort</class> -> the 20,001-node legs go red;
+/// compare the replaced value's length with <code>'&lt;</code> in <method>OcuPilot.Port.GlobalPort.VendorReplaceScan</method> -> the 32,767 leg goes red.</p>
 Method TestARefusedReplaceWritesNothing()
 {
     Set tRoot = "^" _ ..PreparedName
     For tI = 1:1:20001 Set @tRoot@(tI) = "abc"
     Set tStatus = ..Review("abc", "xyz", 1, .tReview)
     Do $$$AssertEquals(..Verdict(tStatus, tReview), "409 GLOBAL.REPLACE.TOOLARGE", "a global of 20,001 nodes is too large")
+    Do ..EnableKey()
+    Set tSC = ..MintAgent(..AgentArgs(), .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals($IsObject($Get(tProposal)) _ "|" _ tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "0|409|GLOBAL.REPLACE.TOOLARGE", "and the agent's proposal of it is refused with nothing minted")
     Kill @tRoot@(20001)
     Set tStatus = ..Review("abc", "xyz", 1, .tReview)
     Do $$$AssertEquals(tStatus _ " " _ ..RowText($Select($IsObject($Get(tReview)): tReview.rows, 1: "")), "200 Find=abc|Replace=xyz|MatchCase=true|Nodes=20000|Occurrences=20000", "and one of 20,000 is reviewed")
@@ -352,6 +381,8 @@ Method TestARefusedReplaceWritesNothing()
     Set @tRoot@(1) = $Translate($Justify("", 32000), " ", "x") _ "abc"
     Set tStatus = ..Review("abc", $Translate($Justify("", 1000), " ", "y"), 1, .tReview)
     Do $$$AssertEquals(..Verdict(tStatus, tReview) _ "|" _ $Length(@tRoot@(1)), "409 GLOBAL.REPLACE.TOOLARGE|32003", "a replaced value over 32,767 characters is too large, and the value is as it was")
+    Set tStatus = ..Review("abc", $Translate($Justify("", 767), " ", "y"), 1, .tReview)
+    Do $$$AssertEquals(tStatus, 200, "and a replaced value of exactly 32,767 characters is reviewed")
     Kill @tRoot
     Do ..Make()
     Set tBefore = ..Snapshot()
@@ -361,6 +392,8 @@ Method TestARefusedReplaceWritesNothing()
     Do $$$AssertEquals(..Verdict(tStatus, tReview), "409 GLOBAL.REPLACE.NOCHANGE", "and neither does a replacement equal to the text")
     Set tStatus = ..Replace("zzz", "xyz", 1, "", .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "409 GLOBAL.REPLACE.NOCHANGE", "the replace itself is refused the same way")
+    Set tSC = ..MintAgent(..AgentArgs("zzz"), .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals($IsObject($Get(tProposal)) _ "|" _ tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "0|409|GLOBAL.REPLACE.NOCHANGE", "and so is the agent's proposal, with nothing minted")
     Do $$$AssertEquals(..Snapshot(), tBefore, "and nothing is written")
     Do ..Remove()
     Set tStatus = ..Review("abc", "xyz", 1, .tReview)
@@ -438,12 +471,34 @@ Method TestTheArmRefusesAProtectedReplaceBeforeAnyWrite()
     Do ##class(OcuPilot.Test.GlobalLocationSeam).Reset()
 }
 
-/// <p>AC5, on both callers. A global whose name begins with an OcuPilot stem is refused <code>PROHIBITED.PROTECTEDGLOBAL</code> with the published sentence
-/// before any write: the person's review and the agent's mint or confirm with its key on. The test's own global, named so, is not changed.</p>
+/// <p>AC5, on both callers. A global whose name begins with an OcuPilot stem, here in lower case, is refused <code>PROHIBITED.PROTECTEDGLOBAL</code> with the
+/// published sentence before any write: the person's replace after its review and the agent's mint or confirm with its key on. The test's own global, named
+/// so, is not changed.</p>
 /// <p>Mutation (Rule 19): skip the globals arm in <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -> both legs go red.</p>
 Method TestAnOcuPilotNamedGlobalIsNotReplacedOnEitherCaller()
 {
-    Set ..PreparedName = "OcuPilotZZRep" _ $Job
+    Set ..PreparedName = "ocupilotzzrep" _ $Job
+    Do ..AssertRefusedOnEitherCaller()
+}
+
+/// <p>AC5, on both callers, for a changing node stored in a system database: the <code>%</code> copy of the test's global, which the namespace stores in the
+/// system database, is refused <code>PROHIBITED.PROTECTEDGLOBAL</code> before any write, the arm reading where the changing nodes are stored from the
+/// payload each caller's write carries.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ReplaceLocations</method> answer every read as one the port refused -> both legs go
+/// red.</p>
+Method TestAGlobalStoredInASystemDatabaseIsNotReplacedOnEitherCaller()
+{
+    Set ..PreparedName = "%ZZOcuRep" _ $Job
+    Set tStored = $Piece(##class(%SYS.Namespace).GetGlobalDest(..#NAMESPACE, "^" _ ..PreparedName), "^", 2)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GlobalProhibited).DirectoriesOf(.tProtected), "the protected directories are read")
+    Do $$$AssertTrue((tStored '= "") && ($ListFind($Get(tProtected), tStored) > 0), "the global is stored in a protected database: " _ tStored)
+    Do ..AssertRefusedOnEitherCaller()
+}
+
+/// <p>Make the test's global, then assert that the person's replace after its review and the agent's proposal with its key on are refused
+/// <code>PROHIBITED.PROTECTEDGLOBAL</code> with the published sentence, and that nothing of the global changes.</p>
+Method AssertRefusedOnEitherCaller()
+{
     Do ..Make()
     Set tBefore = ..Snapshot()
     Set tSentence = ##class(OcuPilot.Kernel.Proposal.Prohibited).#PROTECTEDGLOBALREASON

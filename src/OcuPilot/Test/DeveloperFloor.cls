@@ -8,7 +8,7 @@
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
 /// admits it, and the tools whose required pairs it holds are exactly the declared seventy-eight,
 /// whose writes are the three exports, the SQL console's run, the data browser's save, Screen permissions' three,
-/// and the saves, creates, compiles, deletes and imports, whose WRITE pair is an argument pair the developer
+/// and the saves, creates, compiles, deletes, imports and the global replace, whose WRITE pair is an argument pair the developer
 /// lacks in the install namespace (Story 20.20, DW-2242).</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
@@ -502,7 +502,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredRoster()
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
     Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared seventy-eight")
-    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the three exports, the SQL run, the data browser save, Screen permissions' three writes and the saves, creates, compiles, deletes and imports")
+    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the three exports, the SQL run, the data browser save, Screen permissions' three writes and the saves, creates, compiles, deletes, imports and the global replace")
 }
 
 /// <p>Whether the class dictionary holds a compiled class named exactly <var>pClass</var>, Hidden

@@ -190,6 +190,17 @@ describe('the Global nodes page', () => {
     expect(empty.host.querySelector('[data-global-empty]')?.textContent?.trim()).toBe(STRINGS.explorerGlobalFindEmpty);
   });
 
+  it('AC1: a filtered page that scanned out with nodes still to read says nothing is found only once none are left, and offers More', async () => {
+    // Mutation (Rule 19): drop `!hasMore` from the empty state's condition -> the empty-state assertion goes red.
+    const { fixture, host } = mount('G', { first: { rows: [], next: '^G(20000)', cut: false } });
+    await settle(fixture);
+    type(host, '[data-global-find]', 'zzz');
+    (host.querySelector('[data-global-go]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('[data-global-empty]')).toBeNull();
+    expect(host.querySelector('[data-global-more]')).not.toBeNull();
+  });
+
   it('AC1: Review sends the Globals list\u2019s replace with the Find, Replace with and Match case fields and the global\u2019s name to type, and nothing without Find text', async () => {
     // Mutation (Rule 19): pass the Find text where `onReview` passes the Replace with text -> the values assertion goes red.
     const { fixture, host, reviews } = mount('G', { first: { rows: [node('^G(1)', 'abc')], next: '', cut: false } });
