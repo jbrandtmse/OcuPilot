@@ -68,6 +68,9 @@ const {
   CONSEQUENCE_BACKUPFREEZE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
+  CONSEQUENCE_CONFIGNLSRELOAD,
+  CONSEQUENCE_LOCALEINSTALL,
+  CONSEQUENCE_LOCALEDELETE,
   CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
@@ -1182,6 +1185,17 @@ test('Story 21.13: a DDL mapping delete states the delete sentence on the card',
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('DdlMappingDelete'))?.[1], CONSEQUENCE_CONFIGMAPPINGDELETE, 'DdlMappingDelete.cls declares the code the card reads');
   for (const name of ['DdlSystemMappingDelete', 'DdlUserMappingDelete']) {
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.DdlMappingDelete/.test(tool(name)), `${name} inherits the code`);
+  }
+});
+
+// Story 21.14: the locale-format switch, a locale's install and a locale's delete each state their published sentence on the card.
+// Mutation (Rule 19): delete the `CONSEQUENCE_LOCALEINSTALL` line from `consequenceSentence` -> the install assertion goes red on ''.
+test('Story 21.14: the locale cards state the sentence their consequence code names', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGNLSRELOAD), STRINGS.nlsDefaultReloadConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_LOCALEINSTALL), STRINGS.localeInstallConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_LOCALEDELETE), STRINGS.localeDeleteConsequence);
+  for (const sentence of [STRINGS.nlsDefaultReloadConsequence, STRINGS.localeInstallConsequence, STRINGS.localeDeleteConsequence]) {
+    assert.notEqual(sentence, '', 'each code names a published sentence');
   }
 });
 

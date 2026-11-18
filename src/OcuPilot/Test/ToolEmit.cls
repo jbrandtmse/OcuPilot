@@ -424,10 +424,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
-        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsMdxRead") {
+        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsMdxRead") || (tTool.class = "OcuPilot.Screen.Tool.LocaleValidate") {
             ; Story 19.11: a read with a class of its own, gated as SQL query is; the statement's SQL
             ; privileges and the namespace's database pairs are the port's to check at its prepare.
             ; Story 20.35: the agent's MDX read is gated as MDX query is; the port checks the rest.
+            ; Story 21.14: the locale validation read is gated as Locale definitions is; the port checks the same pairs again.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropEditorSource") {

@@ -3,7 +3,8 @@
 /// refusal in a process holding <code>%All</code>, and with <method>SendProperties</method> recording the call instead of making it, so a
 /// test sees what the port would send and no setting changes; <method>VendorRefuses</method> makes it answer an error. The SQL Shell,
 /// ISQL and TSQL writes and the purge of the cached queries are recorded the same way (<method>SendNode</method>,
-/// <method>SendTsql</method>, <method>PurgeCachedQueries</method>), the stored TSQL dialect a flag set passes on is the one
+/// <method>SendTsql</method>, <method>PurgeCachedQueries</method>), and so are the locale-format node and the reload of the current locale
+/// (<method>SendNlsNode</method>, <method>ReloadLocale</method>; <method>ReloadFails</method> makes the reload answer an error), the stored TSQL dialect a flag set passes on is the one
 /// <method>HoldDialect</method> names, and <method>PurgeFails</method> makes the purge answer an error. <method>WriteThrough</method> makes
 /// <method>SendProperties</method> make its call after recording it; the DDL mapping entry calls (<method>SendEntry</method>, <method>CreateEntry</method>, <method>DeleteEntry</method>) are recorded and made through alike, and <method>HoldEntry</method> makes a named entry read as held. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -19,7 +20,19 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough
+    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough, ^||OcuPilotConfigReloads, ^||OcuPilotConfigReloadFails
+}
+
+/// <p>The number of reloads <method>ReloadLocale</method> recorded.</p>
+ClassMethod Reloads() As %Integer
+{
+    Quit +$Get(^||OcuPilotConfigReloads)
+}
+
+/// <p>Answer an error from <method>ReloadLocale</method> until <method>Reset</method>.</p>
+ClassMethod ReloadFails()
+{
+    Set ^||OcuPilotConfigReloadFails = 1
 }
 
 /// <p>Make <method>StoredDialect</method> answer <var>pDialect</var> (possibly empty) until <method>Reset</method>.</p>
@@ -204,6 +217,20 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
 {
     Set ^||OcuPilotConfigModifies($Increment(^||OcuPilotConfigModifies)) = $ListBuild(pEndpoint _ "|" _ pName _ "|" _ pStored, "")
     If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit $$$OK
+}
+
+ClassMethod SendNlsNode(pValue As %String) As %Status [ Private ]
+{
+    Set ^||OcuPilotConfigModifies($Increment(^||OcuPilotConfigModifies)) = $ListBuild("NLS|LocaleFormat|" _ pValue, "")
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit $$$OK
+}
+
+ClassMethod ReloadLocale() As %Status
+{
+    Set ^||OcuPilotConfigReloads = $Get(^||OcuPilotConfigReloads) + 1
+    If $Get(^||OcuPilotConfigReloadFails) Quit $$$ERROR($$$GeneralError, "a reload failure fed by the test")
     Quit $$$OK
 }
 

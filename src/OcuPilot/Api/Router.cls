@@ -280,6 +280,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
+  <Route Url="/locales/:name/validation" Method="GET" Call="LocaleValidation"/>
 </Routes>
 }
 
@@ -1976,6 +1977,13 @@ ClassMethod InteropPartnerCreate() As %Status
 ClassMethod DdlMappingCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DdlMappingSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /locales/:name/validation</code> (Story 21.14): Locale definitions' Validate dialog,
+/// screen-only.</p>
+ClassMethod LocaleValidation(pName As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleRules).HandleValidate(pName)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

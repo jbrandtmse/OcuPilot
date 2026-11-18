@@ -13731,3 +13731,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator CI triage 2026-11-18 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: not reproduced: macOS Node 22.22.3 full and shallow clone, Linux node:22.22.3 4 CPU/15 GB 3x green 183s; a 2-CPU Linux container OOMed a vitest fork worker (heap limit) at file 90/286 (inference: same cause)
 - 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
+### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
+- 2026-11-17T21:35:37Z status=decision-pending owner=burndown by=cr note=product call: what Valid means without compiling (IsValid alone, or IsValid and IsLoadable), and whether the dialog states Installable
+- 2026-11-17T21:45:05Z status=routed owner=21-14-nls-configured-defaults-and-locale-definitions by=unattended note=decided_veto_U-109:Valid=IsValid_alone,no_Installable_in_Validate;built_in_21.14_rework_1
+- 2026-11-17T22:24:35Z status=resolved-by:21-14-nls-configured-defaults-and-locale-definitions by=cr note=built in rework 1 (37da85735): Valid is IsValid alone; measured on ocupilot-ci 27 of 36 shipped locales read valid, the 9 refused being those whose IsInstallable fills empty accent fields; pinned by LocaleWrite per-locale verdict loop
+
+### DW-2716: The NLS defaults filter matches the Source column's stored values, not the words it draws
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: applyView (ui/src/app/core/screen-read.ts) filters on the raw config/locale, mirroring the server's ApplyView; typing 'Configured' finds no row.
+- 2026-11-17T21:35:43Z status=wontfix-accepted owner=21-14-nls-configured-defaults-and-locale-definitions by=cr note=reopen_if=a person reports that filtering on Source by its drawn word finds no row
+
+### DW-2717: LocaleRules repeats the private Flag, IsRefusal and RenderRefusal helpers other rules classes hold
+- source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: LocaleRules.Flag is BackupRules.Flag inlined; RenderRefusal is JournalRecordDetail.RenderRefusal; each rules class keeps its own private copy.
+- 2026-11-17T21:35:43Z status=wontfix-accepted owner=21-14-nls-configured-defaults-and-locale-definitions by=cr note=reopen_if=a fourth rules class copies the same helpers or two copies diverge
+
+### DW-2720: flake: users.browser-spec.mjs AC2 (disabled and expired accounts) timed out waiting 30 s in CI browser shard 1/5
+- source: CI run 44178940947 (Epic 21 head 20223ae5a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
+- 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head

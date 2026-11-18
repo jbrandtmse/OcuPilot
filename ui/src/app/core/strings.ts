@@ -8398,6 +8398,53 @@ export const STRINGS = {
   configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
   /** EXPERIENCE.md:604 */
   configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
+  // Story 21.14: NLS configured defaults and Locale definitions -- their titles, entity nouns, the two words a default's source
+  // reads, the action Install, the Validate dialog's two sentences, the empty state, the empty-agent phrases, the three
+  // prompts, the four refusals and the three consequences the server sends.
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsLabel: 'NLS configured defaults',
+  /** EXPERIENCE.md:604 */
+  localesLabel: 'Locale definitions',
+  /** EXPERIENCE.md:604 */
+  aboutNlsDefault: 'NLS configured default',
+  /** EXPERIENCE.md:604 */
+  aboutLocaleDefinition: 'locale',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultSourceConfig: 'Configured',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultSourceLocale: 'From the locale',
+  /** EXPERIENCE.md:604 */
+  localeInstallAction: 'Install',
+  /** EXPERIENCE.md:604 */
+  localeValidateValid: 'This locale is valid.',
+  /** EXPERIENCE.md:604 */
+  localeValidateProblems: 'This locale has problems.',
+  /** EXPERIENCE.md:604 */
+  localesEmpty: 'No locales.',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsEmptyAgent: 'change an NLS configured default',
+  /** EXPERIENCE.md:604 */
+  localesEmptyAgent: 'install a locale',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsPrompt1: 'Which collation does this instance use by default?',
+  /** EXPERIENCE.md:604 */
+  localesPrompt1: 'Which locale is current?',
+  /** EXPERIENCE.md:604 */
+  localesPrompt2: 'Is this locale valid?',
+  /** EXPERIENCE.md:604 */
+  localeRefusalNotFound: 'There is no locale with that name.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalNotInstallable: 'This locale cannot be installed on this instance.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalSystem: 'A locale InterSystems ships cannot be deleted; only a custom locale, whose name starts with y, can.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCurrent: 'The current locale cannot be deleted.',
+  /** EXPERIENCE.md:604 */
+  localeInstallConsequence: 'Installing makes this locale the instance\'s current locale, purges every cached query, and can change IRISTEMP\'s default collation.',
+  /** EXPERIENCE.md:604 */
+  localeDeleteConsequence: 'The locale and its definition are removed from this instance.',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultReloadConsequence: 'Changing this reloads the current locale, so new processes take its date, time and number formats.',
   // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
   // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
   /** EXPERIENCE.md:594 */

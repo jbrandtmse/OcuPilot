@@ -152,3 +152,11 @@ test('saveText saves the text under its name and type through an anchor it remov
     URL.revokeObjectURL = realRevoke;
   }
 });
+
+// Mutation (Rule 19): drop the `wordedValue` call from `tableCsvRows` -> the file holds `config` and this goes red.
+test('Story 21.14: a file written for the NLS defaults holds the source words the table displays', () => {
+  const columns = [{ field: 'Source', labelKey: 'auditEventFieldSource', kind: 'status' }];
+  const rows = [{ Source: 'config' }, { Source: 'locale' }];
+  assert.deepEqual(csv.tableCsvRows(rows, columns, stringFor, [], 'OcuPilot.Screen.Descriptor.NlsDefaultList'), [[STRINGS.nlsDefaultSourceConfig], [STRINGS.nlsDefaultSourceLocale]]);
+  assert.deepEqual(csv.tableCsvRows(rows, columns, stringFor), [['config'], ['locale']], 'a screen that declares no words writes the values');
+});

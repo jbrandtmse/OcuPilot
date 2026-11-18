@@ -6,9 +6,9 @@
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit of 1,000
 /// parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>SETTINGRESTART</parameter>, <parameter>SETTINGPURGE</parameter> and <parameter>MAPPINGDELETE</parameter> are not refusals: each is the consequence
+/// <p><parameter>SETTINGRESTART</parameter>, <parameter>SETTINGPURGE</parameter>, <parameter>MAPPINGDELETE</parameter> and <parameter>NLSRELOAD</parameter> are not refusals: each is the consequence
 /// code the proposal card, the dialog and the Save of a setting that takes effect only at the next restart, that purges the
-/// cached queries when it changes, or of a delete of a DDL mapping, carry.</p>
+/// cached queries when it changes, of a delete of a DDL mapping, or of a set of the locale-format switch, carry.</p>
 Class OcuPilot.Api.ConfigError Extends %RegisteredObject
 {
 
@@ -52,6 +52,11 @@ Parameter MAPPINGDELETE = "CONFIG.MAPPING.DELETE";
 
 Parameter REASONMAPPINGDELETE = "DDL that names this type no longer maps it to this datatype.";
 
+/// <p>The consequence code of a set of the locale-format switch, which reloads the current locale (Story 21.14).</p>
+Parameter NLSRELOAD = "CONFIG.NLS.RELOAD";
+
+Parameter REASONNLSRELOAD = "Changing this reloads the current locale, so new processes take its date, time and number formats.";
+
 /// <p>What a row's <code>Accepts</code> reads, one sentence per kind. <code>%1</code> and <code>%2</code> are replaced
 /// by <method>Accepting</method>.</p>
 Parameter ACCEPTSBOOLEAN = "0 (off) or 1 (on).";
@@ -81,6 +86,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MAPPINGTAKEN Quit ..#REASONMAPPINGTAKEN
     If pCode = ..#MAPPINGNAME Quit ..#REASONMAPPINGNAME
     If pCode = ..#MAPPINGDELETE Quit ..#REASONMAPPINGDELETE
+    If pCode = ..#NLSRELOAD Quit ..#REASONNLSRELOAD
     Quit ""
 }
 

@@ -353,3 +353,17 @@ test('Story 15.8: a resize never goes below the label, rounds to whole pixels an
 test('Story 15.8: the width announcement names the column and its width', () => {
   assert.equal(model.formatColumnWidth(STRINGS.tableColumnWidthAnnouncement, 'Name', 272), 'Name column, 272 px wide');
 });
+
+// Mutation (Rule 19): make `wordedValue` return the value unchanged -> the NLS defaults' words case goes red.
+test('Story 21.14: an NLS default\u2019s source reads as its words, and any other value or column reads as it is', () => {
+  const nls = 'OcuPilot.Screen.Descriptor.NlsDefaultList';
+  assert.equal(model.wordedValue(nls, 'Source', 'config'), STRINGS.nlsDefaultSourceConfig);
+  assert.equal(model.wordedValue(nls, 'Source', 'locale'), STRINGS.nlsDefaultSourceLocale);
+  assert.equal(STRINGS.nlsDefaultSourceConfig, 'Configured');
+  assert.equal(STRINGS.nlsDefaultSourceLocale, 'From the locale');
+  assert.equal(model.wordedValue(nls, 'Source', 'other'), 'other');
+  assert.equal(model.wordedValue(nls, 'Name', 'config'), 'config');
+  assert.equal(model.wordedValue('OcuPilot.Screen.Descriptor.LocaleList', 'Source', 'config'), 'config');
+  assert.equal(model.wordedValue(nls, 'Source', true), true);
+  assert.equal(model.wordedValue(nls, 'Source', 'constructor'), 'constructor');
+});

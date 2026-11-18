@@ -121,6 +121,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
+
 ## Review Triage Log
 
 ## Design Notes
