@@ -3,7 +3,7 @@
  *
  * What it pins: the Globals list shows the spec's own global; its node page pages through it (a hundred nodes, then More for the rest, each once); an
  * edit round-trips through the Edit dialog to the instance; a node delete asks for the global's name, removes the node and everything below it and
- * leaves the global; and a global whose name begins with OcuPilot draws Delete unavailable with the published sentence on the list.
+ * leaves the global; the list's Delete asks for the global's name, states the published consequence and deletes the whole global; and a global whose name begins with OcuPilot draws Delete unavailable with the published sentence on the list.
  *
  * **It writes only its own global**, `^ZZOcuGlbB<pid>` in `HSCUSTOM`, which it kills first and again after, so it runs on a throwaway only.
  *
@@ -81,6 +81,7 @@ async function nodeRows(page, count) {
 }
 
 test('the Globals list shows the spec\'s own global', async () => {
+  assert.equal(makeGlobal().value, '1', 'the spec\'s own global is made afresh');
   const { context, page } = await signedInAt(browser, config, listRoute, VIEWPORTS.wide);
   try {
     await waitForMapAnswered(page, config.navigationTimeoutMs);
@@ -99,6 +100,7 @@ test('the Globals list shows the spec\'s own global', async () => {
 });
 
 test('the node page pages through the global: a hundred nodes, then More for the rest, each once', async () => {
+  assert.equal(makeGlobal().value, '1', 'the spec\'s own global is made afresh');
   const { context, page } = await signedInAt(browser, config, nodesRoute, VIEWPORTS.wide);
   try {
     const first = await nodeRows(page, 100);
@@ -114,6 +116,7 @@ test('the node page pages through the global: a hundred nodes, then More for the
 });
 
 test('an edit round-trips through the Edit dialog to the instance', async () => {
+  assert.equal(makeGlobal().value, '1', 'the spec\'s own global is made afresh');
   const { context, page } = await signedInAt(browser, config, nodesRoute, VIEWPORTS.wide);
   try {
     await nodeRows(page, 100);
@@ -133,6 +136,7 @@ test('an edit round-trips through the Edit dialog to the instance', async () => 
 });
 
 test('a node delete asks for the global\'s name and removes the node and everything below it', async () => {
+  assert.equal(makeGlobal().value, '1', 'the spec\'s own global is made afresh');
   const { context, page } = await signedInAt(browser, config, nodesRoute, VIEWPORTS.wide);
   try {
     await nodeRows(page, 100);
@@ -147,6 +151,36 @@ test('a node delete asks for the global\'s name and removes the node and everyth
     await page.waitForSelector('[data-global-typed]', { hidden: true, timeout: config.navigationTimeoutMs });
     assert.equal(nodeData('50'), '0', 'the node and the node below it are gone');
     assert.equal(nodeValue('51'), 'v51', 'and a sibling is not');
+  } finally {
+    await context.close();
+  }
+});
+
+test('the list\'s Delete asks for the global\'s name, states the published consequence and deletes the whole global', async () => {
+  assert.equal(makeGlobal().value, '1', 'the spec\'s own global is made afresh');
+  const { context, page } = await signedInAt(browser, config, listRoute, VIEWPORTS.wide);
+  try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await waitForRows(page, config.navigationTimeoutMs);
+    await page.click(FILTER_SELECTOR, { clickCount: 3 });
+    await page.type(FILTER_SELECTOR, GLOBAL);
+    await page.waitForFunction((rowSelector, wanted) => [...document.querySelectorAll(rowSelector)].some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, GLOBAL);
+    const at = await page.$$eval(ROW_SELECTOR, (rows, wanted) => rows.findIndex((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), GLOBAL);
+    assert.ok(at >= 0, 'the spec\'s global is listed');
+    await clickRowCentre(page, { index: at, cell: 2 });
+    await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+    await page.evaluate((wanted) => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted)?.click(), STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-field', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.globalDeleteConsequence, 'the dialog states the published consequence');
+    assert.equal(await page.$eval('.ocu-dialog-actions .ocu-button-destructive', (node) => node.getAttribute('aria-disabled')), 'true', 'Delete waits for the name');
+    assert.equal(nodeData('1'), '1', 'nothing is deleted before the name is typed');
+    await page.type('.ocu-typed-name-field', GLOBAL);
+    await page.waitForFunction(() => document.querySelector('.ocu-dialog-actions .ocu-button-destructive')?.getAttribute('aria-disabled') !== 'true', { timeout: config.navigationTimeoutMs });
+    await page.click('.ocu-dialog-actions .ocu-button-destructive');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction((rowSelector, wanted) => ![...document.querySelectorAll(rowSelector)].some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, GLOBAL);
+    assert.equal(probe('GLBGONE', [`Set result=$Data(${ROOT})`]).value, '0', 'the whole global is gone');
   } finally {
     await context.close();
   }

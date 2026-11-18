@@ -14,7 +14,7 @@ Parameter TOOLNAME = "explorer.globals.delete";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerGlobalList";
 
-Parameter DESCRIPTION = "Propose deleting one whole global from this namespace: every node in it, which cannot be restored. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the global as this namespace's Globals list reports it, without the ^. A global that holds OcuPilot's own data or the instance's protected system data is refused, and nothing is deleted for a global the list does not report.";
+Parameter DESCRIPTION = "Propose deleting one whole global from this namespace: every node in it, which cannot be restored. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the global as this namespace's Globals list reports it, without the ^. A global that holds OcuPilot's own data or the instance's protected system data is refused, and so is a global that holds no data.";
 
 Parameter READTYPE = "GET";
 
@@ -38,7 +38,7 @@ Parameter FINGERPRINTSUBJECT = "Name,Defined,Locations,Namespace";
 /// <p>The card's removal rows: what the deleted global is named.</p>
 Parameter REMOVALROWS = "Name";
 
-Parameter IDDESCRIPTION = "The global to delete, named as this namespace's Globals list reports it in its Name column, without the ^. A global the list does not report is refused.";
+Parameter IDDESCRIPTION = "The global to delete, named as this namespace's Globals list reports it in its Name column, without the ^.";
 
 /// <p>The client maps it to the delete consequence (<code>OcuPilot.Api.GlobalError</code>'s <code>DELETE</code>).</p>
 Parameter CONSEQUENCECODE = "GLOBAL.DELETE";

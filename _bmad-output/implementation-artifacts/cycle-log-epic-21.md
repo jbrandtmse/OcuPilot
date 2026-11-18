@@ -524,3 +524,7 @@
 2026-11-18T05:31:49Z	Story 21.5	code_head_pushed	sha=25d79403d run=44244846002 missing=none
 2026-11-18T05:31:49Z	Story 21.5	adr_verifications_complete	result=none_required note=AD-10/AD-36/AD-53_pinned_by_GlobalRead,GlobalWrite;CR_measures_DW-2723
 2026-11-18T05:31:49Z	Story 21.5	stage_spawned	stage=code-review spawn_at=2026-11-18T05:31:49Z model=opus agent_name=21-5-code-review-1 cycle_iteration=1 baseline=81f86d9c4
+2026-11-18T06:05:30Z	Story 21.5	cr_complete	spawn_at=2026-11-18T05:33Z model=opus high=1(developer_writes_500:Prohibited_reads_config_as_caller) med=8 low=7 rows=42 unresolved_high_med=3 resolved=DW-2723(measured),DW-2724 new=DW-2729 occurrence=DW-2613(audit_gap) final=in-progress closing_sections_present=true
+2026-11-18T06:05:30Z	Story 21.5	ruling	question=rework_directions(HIGH_source,readback,409/404_mapping) choice=caller-readable_GetGlobalDest+ManagerDirectory;HALT_if_escalation_needed;compare_Value;add-only_ScreenAction_mapping_for_STATE.CONFLICT_and_GLOBAL.NOTFOUND rejected=AD-9_escalated_read(cross-epic_AD,orchestrator),amend_AC3 why=no_new_privilege;existing_ruled_strings category=decide policy=b9ff703e
+2026-11-18T06:05:30Z	Story 21.5	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=developer_writes_500,readback_nothingSent,DW-2722 scope_baseline=c469ec9a4
+2026-11-18T06:05:30Z	Story 21.5	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T06:05:30Z model=sonnet agent_name=21-5-implement-rework-1 cycle_iteration=2

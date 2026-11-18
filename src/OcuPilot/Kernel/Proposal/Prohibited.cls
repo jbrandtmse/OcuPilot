@@ -2884,7 +2884,7 @@ ClassMethod GlobalPortClass() As %String
 /// caller refuses on. In order:</p>
 /// <ol>
 /// <li>a global whose name begins with one of <method>OwnNameStems</method>, in any case, is <parameter>PROTECTEDGLOBAL</parameter>;</li>
-/// <li>a value edit of a node whose directory, or a kill of a node or a whole global any of whose mapping rows' directories, is one of
+/// <li>a value edit of a node whose directory, or any other write of a node or a whole global any of whose mapping rows' directories, is one of
 /// OcuPilot's own database's or <parameter>SYSTEMDATABASES</parameter>' (<method>OwnDatabaseDirectories</method>) is
 /// <parameter>PROTECTEDGLOBAL</parameter>;</li>
 /// <li>a global of <parameter>CODEGLOBALS</parameter> that resolves to the install namespace's routines database, written as a whole
@@ -2914,22 +2914,17 @@ ClassMethod Global(pType As %String, pId As %String, pNamespace As %String, pToo
             Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
             Quit
         }
-        Set tEdit = tNode && (..WriteTypeOf(pToolClass) '= "DELETE")
+        ; Only a value edit is judged by the node's own directory; any other write, an unresolved tool's included, by every mapping row.
+        Set tEdit = tNode && (..WriteTypeOf(pToolClass) = "PUT")
         Set tSC = ..GlobalLocations(tPort, tName, tReference, tEdit, pNamespace, .tLocations)
         If $$$ISERR(tSC) Quit
-        Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
-        Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
+        Kill tDirectories
+        Set tSC = ..ProtectedLocation(tLocations, .tDirectories, .tProtected)
         If $$$ISERR(tSC) Quit
-        For tI = 1:1:$ListLength(tLocations) {
-            For tJ = 1:1:$ListLength(tDirectories) {
-                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tLocations, tI), $List(tDirectories, tJ)) {
-                    Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
-                    Quit
-                }
-            }
-            If pProhibits Quit
+        If tProtected {
+            Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+            Quit
         }
-        If pProhibits Quit
         If '$ListFind($ListFromString(..#CODEGLOBALS), tName) Quit
         Set tRoutines = $Piece(##class(%SYS.Namespace).GetRoutineDest($NAMESPACE), "^", 2)
         Set tResolves = 0
@@ -2978,6 +2973,27 @@ ClassMethod GlobalLocations(pPort As %String, pName As %String, pReference As %S
     Quit $$$OK
 }
 
+/// <p>Whether any directory of <var>pLocations</var> (a <code>%List</code>) is OcuPilot's own database's or one of
+/// <parameter>SYSTEMDATABASES</parameter>' (<var>pProtected</var>), those directories read once through <method>OwnDatabaseDirectories</method>
+/// into <var>pDirectories</var> when it is undefined and reused while it is defined. A read that fails is an error status.</p>
+ClassMethod ProtectedLocation(pLocations As %List, ByRef pDirectories As %List, Output pProtected As %Boolean) As %Status [ Private ]
+{
+    Set pProtected = 0
+    If '$Data(pDirectories) {
+        Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+        Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
+        If $$$ISERR(tSC) Quit tSC
+        Set pDirectories = tDirectories
+    }
+    For tI = 1:1:$ListLength(pLocations) {
+        For tJ = 1:1:$ListLength(pDirectories) {
+            If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(pLocations, tI), $List(pDirectories, tJ)) Set pProtected = 1
+        }
+        If pProtected Quit
+    }
+    Quit $$$OK
+}
+
 /// <p>The global documents, <code>.gbl</code> in any case, of the comma-separated names <var>pNames</var> an import reviewed, judged in
 /// namespace <var>pNamespace</var> (AD-10 as amended, Story 21.5, DW-2607): a global of <parameter>CODEGLOBALS</parameter>, or one any of
 /// whose mapping rows resolves to OcuPilot's own database or one of <parameter>SYSTEMDATABASES</parameter>, is
@@ -2990,8 +3006,7 @@ ClassMethod ImportedGlobals(pNames As %String, pNamespace As %String, Output pPr
     Set tSC = $$$OK
     Try {
         Set tPort = ..GlobalPortClass()
-        Set tDirectories = ""
-        Set tRead = 0
+        Kill tDirectories
         For tI = 1:1:$Length(pNames, ",") {
             Set tName = $Piece(pNames, ",", tI)
             If ($Length(tName) '> $Length(..#GLOBALEXTENSION)) || ($ZConvert($Extract(tName, *-($Length(..#GLOBALEXTENSION) - 1), *), "L") '= ..#GLOBALEXTENSION) Continue
@@ -3006,18 +3021,12 @@ ClassMethod ImportedGlobals(pNames As %String, pNamespace As %String, Output pPr
             }
             Set tSC = ..GlobalLocations(tPort, tGlobal, "", 0, pNamespace, .tLocations)
             If $$$ISERR(tSC) Quit
-            If 'tRead {
-                Set tOwn = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
-                Set tSC = ..OwnDatabaseDirectories(..PortClass(), tOwn, .tDirectories)
-                If $$$ISERR(tSC) Quit
-                Set tRead = 1
+            Set tSC = ..ProtectedLocation(tLocations, .tDirectories, .tProtected)
+            If $$$ISERR(tSC) Quit
+            If tProtected {
+                Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
+                Quit
             }
-            For tJ = 1:1:$ListLength(tLocations) {
-                For tK = 1:1:$ListLength(tDirectories) {
-                    If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tLocations, tJ), $List(tDirectories, tK)) Do ..Refuse(..#PROTECTEDGLOBAL, .pProhibits, .pCode)
-                }
-            }
-            If pProhibits Quit
         }
     } Catch ex {
         Set pProhibits = 0

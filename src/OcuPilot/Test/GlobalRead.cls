@@ -114,6 +114,8 @@ Method TestTheScreensDeclareTheirShape()
     Do $$$AssertEquals(tView.%GetTypeOf("read"), "unassigned", "the node page declares no read")
     Do $$$AssertEquals(tView.rowActions.%Get(0).id _ "," _ tView.rowActions.%Get(1).id, "save,delete", "its actions are save and delete")
     Do $$$AssertEquals(tView.classicPage, "%cspapp.exp.utilexpglobalview", "it replaces the classic Global view page")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.globals.read", .tListTool, 1), "the registry resolves")
+    Do $$$AssertTrue($IsObject($Get(tListTool)), "and it registers the Globals list's read tool")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.globalnodes.read", .tTool, 1)
     Do $$$AssertTrue('$IsObject($Get(tTool)), "and no read tool of the node page is registered")
 }
@@ -279,6 +281,16 @@ Method TestAPageStartsWhereItIsToldAndLogsNoValue()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.code, 1: ""), "500|INTERNAL", "a node read that fails answers the generic fault")
     Set tLogged = ##class(OcuPilot.Test.GlobalSeamPort).Logged()
     Do $$$AssertTrue((tLogged [ "UNDEFINED") && (tLogged '[ ##class(OcuPilot.Test.GlobalSeamPort).#SECRET), "and its log line carries no node text either: " _ tLogged)
+    For tType = "PUT", "DELETE" {
+        Do ##class(OcuPilot.Test.GlobalSeamPort).Reset()
+        Do ##class(OcuPilot.Test.GlobalSeamPort).ArmWrites()
+        Kill tQuery("value")
+        If tType = "PUT" Set tQuery("value") = "x"
+        Set tSC = ##class(OcuPilot.Test.GlobalSeamPort).Invoke("Node", tType, .tQuery, "", .tNode, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.code, 1: ""), "500|INTERNAL", "a node " _ tType _ " that fails answers the generic fault")
+        Set tLogged = ##class(OcuPilot.Test.GlobalSeamPort).Logged()
+        Do $$$AssertTrue((tLogged [ "UNDEFINED") && (tLogged '[ ##class(OcuPilot.Test.GlobalSeamPort).#SECRET), "and its log line carries no node text: " _ tLogged)
+    }
     Do ##class(OcuPilot.Test.GlobalSeamPort).Reset()
 }
 

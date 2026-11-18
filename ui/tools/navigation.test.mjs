@@ -405,7 +405,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/document-hashes',
       // Story 21.5: Globals, after Document hashes.
       'system-explorer/globals',
-      // Story 24.8: Compare namespaces, after Document hashes.
+      // Story 24.8: Compare namespaces, after Globals.
       'system-explorer/namespace-diff',
       // Story 24.5: Unit tests, after Compare namespaces.
       'system-explorer/unit-tests',

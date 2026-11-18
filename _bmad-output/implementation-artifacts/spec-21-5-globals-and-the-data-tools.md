@@ -2,7 +2,7 @@
 title: 'Story 21.5: Globals and the data tools'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '81f86d9c497c70b9c73a17a73d576ea20fe3f718'
 baseline_commit: '81f86d9c497c70b9c73a17a73d576ea20fe3f718'
 review_loop_iteration: 0
@@ -142,7 +142,45 @@ deferred:
 - AC5. Given any write to an `^OcuPilot*` global, a node in OcuPilot's own database or one of the seven protected databases, or OcuPilot's code globals, when either caller makes it, then it is refused before any write with that refusal's sentence, which the client mirror pins equal.
 - AC6 (DW-2607). Given a System Explorer import whose file holds a code global or a `%`-global, when the person or the agent imports it, then it is refused `PROHIBITED.PROTECTEDGLOBAL` before anything loads; a file holding only an ordinary global of the namespace is not refused by this clause.
 
+### Review Findings
+
+**Rework 1 directions (runner, 2026-11-18, decide):** (1) HIGH: find the protected locations without reading configuration as the caller — the destination of each global through the caller-readable namespace mapping (`%SYS.Namespace.GetGlobalDest`, or the vendor's equivalent the caller may call), the manager directory for IRISSYS (`$System.Util.ManagerDirectory()`), and OcuPilot's own database as the destination of one of OcuPilot's own globals; measure as `OcuPilotProbeDeveloper` that each write answers as the classic page would (200, or 403 for a protected global). If no caller-readable source exists and the lookup would need an escalated read, HALT `blocked` naming the read (an AD-9 escalation case is the orchestrator's ruling, not this stage's). (2) MED read-back: compare the node's `Value` (AC3 stands; no amendment). (3) MED DW-2722: answer the stale save with 409 `STATE.CONFLICT` (the client shows EXPERIENCE.md's `formStaleSave`) and the empty global with 404 `GLOBAL.NOTFOUND`, through an add-only mapping in `Api/ScreenAction.Run` for those two codes (every other problem keeps 400); no new user-facing string.
+
+Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot-ci` as `OcuPilotProbeDeveloper` (`%Developer` plus code READ, without `%All` or `OcuPilotAdmin`) and as `_SYSTEM`.
+
+- [ ] [Review][Patch] HIGH: every global write by a `%Development` holder without administrator rights answers 500 `INTERNAL` [`Prohibited.cls` `ProtectedLocation`]. The arm reads the directories of OcuPilot's database and the system databases through `AdminPort` `Database.ConfigCRUD` `LIST`, as the caller, and the developer meets `<PROTECT>` on IRISSYS. As the developer, a node save and a node kill in `USER` and in `HSCUSTOM`, and a delete of `oddDEF`, each answered 500. The same writes as `_SYSTEM` answered 200, or 403 for the protected globals. This breaks AD-10's arm ("as writable as the classic page leaves them"), and it breaks AC3 and AC4 for the screen's own pair. Fix: read the directories from a source the screen's caller can read; all three call sites now go through `ProtectedLocation`. An AD-9 privileged read would change privileges, which needs a veto. Add a developer-principal leg (`DeveloperFloorFixture`, armed). Fix-risk: med.
+- [ ] [Review][Patch] MED: the node save's read-back reports `nothingSent` (measured), but a value was sent [`ExplorerGlobalNodeSave.cls`]. This breaks AC3 ("the read-back matches") and AD-58. The value travels in the port query (`COMPOSEDTYPES`), so `ReadBack.KindOf` treats the save as action-style. Fix: compare `Value`, or have the runner amend AC3. Fix-risk: med.
+- [ ] [Review][Patch] MED (DW-2722): two refusals cannot carry their own code. A node that changed after the dialog opened answers 400 `TOOL.ARGUMENTS`. A global that holds nothing answers 400, not 404 `GLOBAL.NOTFOUND` [`ExplorerGlobalNodeSave.cls`:82, `ExplorerGlobalDelete.StateDiff`]. `ScreenAction.Run` answers every delta problem with 400. Fix: answer the stale save with the existing stale-save refusal, 409 `STATE.CONFLICT`, which the client renders as EXPERIENCE.md's `formStaleSave`, so no new string is needed. Fix-risk: med, since it touches the shared route.
+- [x] [Review][Defer] AD-53 named audit gap. With auditing on, a save, a node kill and a whole-global delete wrote 0 `%SYS.Audit` rows, while control rows were present. Recorded as an occurrence on DW-2613.
+- [x] [Review][Patch] The arm judges every write except a value edit (`PUT`) by every mapping row, including a write by an unresolved tool [`Prohibited.Global`].
+- [x] [Review][Patch] One protected-directory helper, `ProtectedLocation`, replaces the copy in `Global` and `ImportedGlobals` (Rule 2/31).
+- [x] [Review][Patch] AD-36 pin: after a save and a node kill, the value is in no node of the OCUPILOT or IRISAUDIT databases and in no new `messages.log` line (`GlobalWrite.TestANodesValueReachesNoStoreAndNoLog`). DW-2723 measured false.
+- [x] [Review][Patch] The read-back verdicts of the screen's two deletes and of the agent's confirm are asserted (`notFound`).
+- [x] [Review][Patch] A failing set and a failing node kill log no node text (`GlobalSeamPort.ArmWrites`, `GlobalRead`).
+- [x] [Review][Patch] DW-2724: the list's Delete is pinned in the browser. It asks for the typed name, states `globalDeleteConsequence` and deletes the global. Each browser test now makes its own global.
+- [x] [Review][Patch] Small corrections: the `oddDEF` test asserts the node is stored in IRISLIB before it acts; `GlobalRead` asserts `Resolve`'s status and adds a positive control; an import of an own-stem `.gbl` is pinned refused (`OCUPILOTCODE`); a false claim was removed from the agent-facing text of `explorer.globals.delete`; a stale `navigation.test.mjs` comment was corrected.
+- [x] [Review][Defer] LOW: if the Start node field holds anything other than a canonical reference, the person is answered with `REASONPAGE`, a sentence about a page size they never set. Changing it needs a ruled string. Closed wontfix-accepted.
+- Rejected:
+  - `Page` re-validation (no caller skips `PageRequest`).
+  - Delete on a row whose reference is cut (needs a reference over 1,000 characters, and the fix adds a server flag).
+  - A subscript over 511 bytes answers 500 (a loud failure on invalid input).
+  - The race between the `Was` check and the set (OcuPilot's hold orders its own writers).
+  - `PRECONDITIONFIELD` on the save (no harm named).
+  - The `Was` check is skipped without a fresh read: false, because `Run` answers 404 first.
+  - The "Database" column shows a directory (spec-bound).
+  - The `ExplorerGlobalView` id doc (cosmetic).
+  - The stale port list in `CriteriaProblem` (pre-existing, and the file is contended).
+  - `REASONNAME` omits dots (cosmetic, and the fix needs a ruled string).
+  - An own-stem `.gbl` import is not refused: false, because the code arm refuses it first, and that is now pinned.
+  - Mutation lines for sub-claims (every AC has one).
+  - The dead `MAXCHARS` branch (the bound holds anyway).
+  - Change-event ids carry subscripts (by design, AD-13).
+  - The `Node/PUT` snippet (no draft reaches either node tool).
+  - The matrix says 409 for the protected rows (fixing it means editing the spec).
+
 ## Spec Change Log
+
+- 2026-11-18 (runner, rework 1): code review found developer writes failing 500 (`Prohibited` read configuration as the caller), the node save's read-back reporting `nothingSent`, and two refusals answering 400; re-opened with the directions under Review Findings.
 
 - 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
 
@@ -250,6 +288,10 @@ deferred:
 - mutation: AC6 drop the `.gbl` clause from the import branch of `Prohibited.Prohibits` -> `GlobalWrite.TestAnImportIsJudgedByTheGlobalsItNames` and `ExplorerTransfer.TestAnImportOfAPercentGlobalIsRefusedAndLoadsNothing` red.
 - mutation: AC2 (node calls log no node text) drop the quiet flag of `GlobalPort.NodeState`'s `Mapped` call -> `GlobalRead.TestAPageStartsWhereItIsToldAndLogsNoValue` red (observed).
 - mutation: AC3 (a reload keeps the pages shown) read one page in `GlobalViewStore.reload` -> `global-view.store.spec.ts` "reads again as many pages as are shown" red (observed).
+- mutation: AC2 (AD-36, a saved value is never stored or logged) log the new value in `ExplorerGlobalNodeSave.PortQuery` -> `GlobalWrite.TestANodesValueReachesNoStoreAndNoLog` red (observed, code review).
+- mutation: AC4 (read-back) `ExplorerGlobalDelete.ReadBackGone` answers 0 -> `GlobalWrite.TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn` red on the screen and confirm verdicts (observed, code review).
+- mutation: AC2 (a failing set logs no node text) quiet flag 0 on `GlobalPort.NodeSet`'s set -> `GlobalRead.TestAPageStartsWhereItIsToldAndLogsNoValue` red (observed, code review).
+- mutation: AC4 (the list's typed-name Delete, DW-2724) map `ExplorerGlobalList`'s delete to `globalNodeDeleteConsequence` in `screen-action-handler.ts`, rebuild and redeploy -> `system-explorer-globals.browser-spec.mjs` list-Delete test red (observed, code review).
 
 ## Auto Run Result
 

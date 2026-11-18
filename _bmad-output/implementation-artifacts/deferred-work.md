@@ -13191,6 +13191,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-18-global-find-and-replace.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 21.18 plan: the gap sentence was proposed inside its AD-51 entry; AD-53 wording is the owner's
 - 2026-11-15T22:25:05Z status=decision-pending owner=burndown by=spec_gate note=owner's attended architecture update: record the named gap in AD-53, or enable the event
+- 2026-11-18T06:01:11Z occurrence=21-5-globals-and-the-data-tools
+- 2026-11-18T06:01:12Z status=decision-pending owner=burndown by=cr note=measured with auditing on (ocupilot-ci): save, node kill, global delete wrote 0 audit rows
 
 ### DW-2614: PM-23 TOTP QR code is not built: the QR code displays the shared secret, which AD-35 keeps from every surface
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: low | footprint: in-epic
@@ -13753,13 +13755,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ExplorerGlobalNodeSave.ScreenActionDelta compares the screen's Was with a fresh read; no fingerprint on the screen action route; nothing is written (AC3 holds). ExplorerGlobalNodeSave.cls:82
 - 2026-11-18T05:31:24Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred; CR to align with an existing ruled target-changed answer or escalate the string
+- 2026-11-18T06:01:11Z status=open owner=21-5-globals-and-the-data-tools by=cr note=rework: 409 STATE.CONFLICT rendered as formStaleSave (ruled, no new string); empty global delete 404
 
 ### DW-2723: A saved global node value may reach a change event or audit payload, which AD-36 forbids (unverified)
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ExplorerGlobalNodeSave carries the new value in its tool payload and port query; reading the event and audit rows after a save on ocupilot-ci settles it
 - 2026-11-18T05:31:25Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred; CR to measure
+- 2026-11-18T06:01:11Z status=resolved-by:21-5-globals-and-the-data-tools by=cr note=measured false on ocupilot-ci; GlobalWrite.TestANodesValueReachesNoStoreAndNoLog pins it, mutation observed
 
 ### DW-2724: The Globals list's whole-global Delete typed-name dialog has no component or browser spec for an ordinary global
 - source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The browser spec checks only the disabled Delete of an OcuPilot global; global.test.mjs matches source text
 - 2026-11-18T05:31:25Z status=open owner=21-5-globals-and-the-data-tools by=harvest note=build-auto deferred
+- 2026-11-18T06:01:11Z status=resolved-by:21-5-globals-and-the-data-tools by=cr note=browser list-Delete test added (typed name, consequence, gone); mutation observed
+
+### DW-2729: The Global nodes Start node field answers a non-canonical entry with the page-request sentence, which names a page size the person never set
+- source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GlobalPort.REASONPAGE is the 400 reason for any Start node text that is not a canonical reference of the page's global; a better sentence needs a ruled string
+- 2026-11-18T06:01:12Z status=wontfix-accepted owner=21-5-globals-and-the-data-tools by=cr note=reopen_if=the owner rules a Start node refusal sentence or a person reports the page-size wording

@@ -199,11 +199,70 @@ Method TestANodeKillRemovesTheNodeAndEverythingBelowIt()
     Set tRoot = "^" _ ..PreparedName
     Set tStatus = ..Act(..#NODESCREEN, "delete", ..Ref("""t"""), , , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type, 1: ""), "200|deleted|global-node", "the delete is answered with its verb and target")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer), "notFound", "and its read-back finds the node gone")
     Do $$$AssertEquals($Data(@tRoot@("t")) _ "|" _ $Data(@tRoot@("t", 1)) _ "|" _ $Data(@tRoot@(1)), "0|0|1", "the node and its descendants are gone and a sibling is not")
     Set tStatus = ..Act(..#NODESCREEN, "delete", ..Ref("""t"""), , , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "404 GLOBAL.NODE.NOTFOUND", "a node already gone is refused")
     Set tStatus = ..Act(..#NODESCREEN, "delete", "^" _ ..PreparedName _ "($$x())", , , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "400 PORT.VALIDATION", "and text that is not a reference reaches nothing")
+}
+
+/// <p>AC2, AD-36. A node's value saved by the screen's action, and the value of a node it kills, reach no stored row and no log line: after both, the
+/// value is in no node of OcuPilot's own database or the audit database, and in none of the lines <code>messages.log</code> gained.</p>
+/// <p>Mutation (Rule 19): log the new value in <method>OcuPilot.Screen.Tool.ExplorerGlobalNodeSave.PortQuery</method> -> the log assertion goes red.</p>
+Method TestANodesValueReachesNoStoreAndNoLog()
+{
+    Do ..Make()
+    Set tRoot = "^" _ ..PreparedName
+    Set tMarker = "ZZOcuSecret" _ $Job _ $Random(1000000)
+    Set tLog = $System.Util.ManagerDirectory() _ "messages.log"
+    Set tLogSize = ##class(%File).GetFileSize(tLog)
+    Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(1), {"Value": (tMarker), "Was": "v1"}, , .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ @tRoot@(1), "200|" _ tMarker, "the edit is written")
+    Do $$$AssertTrue($IsObject(tAnswer) && (tAnswer.%ToJSON() '[ tMarker), "and its answer carries no value")
+    Set @tRoot@("m") = tMarker
+    Set tStatus = ..Act(..#NODESCREEN, "delete", ..Ref("""m"""), , , .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $Data(@tRoot@("m")), "200|0", "a node holding the value is killed")
+    For tDatabase = ##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "IRISAUDIT" {
+        Do $$$AssertEquals(..Holding(tDatabase, tMarker), "", "the value is in no node of " _ tDatabase)
+    }
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    Do tStream.LinkToFile(tLog)
+    Do tStream.MoveTo(tLogSize + 1)
+    Set tFound = 0
+    While 'tStream.AtEnd {
+        If tStream.ReadLine() [ tMarker Set tFound = 1
+    }
+    Do $$$AssertTrue('tFound, "and in no line messages.log gained")
+}
+
+/// <p>The first node of database <var>pDatabase</var> whose reference or value holds <var>pText</var>, or <code>""</code>.</p>
+ClassMethod Holding(pDatabase As %String, pText As %String) As %String
+{
+    Set tFound = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDirectory = ##class(Config.Databases).Open(pDatabase).Directory
+        Set tRS = ##class(%ResultSet).%New("%SYS.GlobalQuery:DirectoryList")
+        Do tRS.Execute(tDirectory, "", "*", 1)
+        While (tFound = "") && tRS.Next() {
+            Set tRef = "^|""^^" _ tDirectory _ """|" _ tRS.Get("Name")
+            If $Get(@tRef) [ pText Set tFound = tRef
+            For {
+                Quit:tFound'=""
+                Set tRef = $Query(@tRef)
+                Quit:tRef=""
+                ; A $List keeps a plain-text element's characters as they are, so one containment test reads both forms.
+                If (tRef [ pText) || ($Get(@tRef) [ pText) Set tFound = tRef
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tFound = "(could not be read: " _ ex.Name _ ")"
+    }
+    Quit tFound
 }
 
 /// <p>AC4 (global). A whole global deleted by the screen's action is gone, and the agent's proposal to delete it is refused by governance while its key ships
@@ -216,6 +275,7 @@ Method TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn()
     Set tRoot = "^" _ ..PreparedName
     Set tStatus = ..Act(..#LISTSCREEN, "delete", ..PreparedName, , , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, 1: "") _ "|" _ $Data(@tRoot), "200|deleted|global|" _ ..PreparedName _ "|0", "the screen's delete answers and the global is gone")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer), "notFound", "and its read-back finds the global gone")
     Set tStatus = ..Act(..#LISTSCREEN, "delete", ..PreparedName, , , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "400 TOOL.ARGUMENTS", "a global that holds nothing is refused")
     Do ..Make()
@@ -234,6 +294,7 @@ Method TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn()
     Do $$$AssertEquals($Data(@tRoot), 10, "and nothing is deleted by the mint")
     Set tConfirm = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
     Do $$$AssertEquals(tConfirm _ "|" _ $Data(@tRoot), "200 |0", "the confirm deletes it: " _ tConfirm)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)), "notFound", "and the confirm's read-back finds it gone")
 }
 
 /// <p>The delete tool's name, which the governance decision is asked about.</p>
@@ -289,6 +350,10 @@ Method TestTheInstancesProtectedGlobalIsRefusedOnBothCallers()
     Set tBefore = $Data(^oddDEF) _ "|" _ $Get(@tNode)
     Set $NAMESPACE = tOrigNS
     Do $$$AssertTrue(tNode '= "", "USER holds a node of oddDEF: " _ tNode)
+    Set tLibrary = $Piece(##class(%SYS.Namespace).GetGlobalDest("USER", "^%qZZOcuGlb"), "^", 2)
+    Set tStored = $Piece(##class(%SYS.Namespace).GetGlobalDest("USER", "^oddDEF", ##class(OcuPilot.Port.GlobalPort).SubscriptText(tNode)), "^", 2)
+    Do $$$AssertTrue((tStored '= "") && (tStored = tLibrary), "that node is stored in the read-only system library, so a regressed arm meets the instance's own refusal: " _ tStored)
+    If (tStored = "") || (tStored '= tLibrary) Quit
     Set tSentence = ##class(OcuPilot.Kernel.Proposal.Prohibited).#PROTECTEDGLOBALREASON
     Set tStatus = ..Act(..#NODESCREEN, "save", tNode, {"Value": "x", "Was": ($Piece(..ReadIn("USER", tNode), "|", 1))}, "USER", .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer): tAnswer.reason, 1: ""), "403 PROHIBITED.PROTECTEDGLOBAL|" _ tSentence, "an edit of its node is refused with the published sentence")
@@ -342,14 +407,14 @@ Method TestAVendorProtectIsAnsweredAsAnAccessRefusal()
 }
 
 /// <p>AC6 (DW-2607). An import is judged by the global documents its reviewed file names, after its code: a code global or a <code>%</code>-global, in any case of
-/// the extension, is <code>PROHIBITED.PROTECTEDGLOBAL</code>; an ordinary global of the namespace, or a file naming classes alone, is not refused by this clause;
+/// the extension, is <code>PROHIBITED.PROTECTEDGLOBAL</code>, and a global whose name begins with an OcuPilot stem, in any case, is refused by the code arm before it; an ordinary global of the namespace, or a file naming classes alone, is not refused by this clause;
 /// a code global is refused although its file also names ordinary documents; and a read that fails refuses.</p>
 /// <p>Mutation (Rule 19): drop the <code>.gbl</code> clause from the import branch of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -> the
 /// refused rows go red.</p>
 Method TestAnImportIsJudgedByTheGlobalsItNames()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("class", ..#NAMESPACE, "import", .tImportRef), "the import's target key is built")
-    For tCase = $ListBuild("oddDEP.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("%ZZOcuGlb.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("ZZOcuGlb.gbl new", "0 "), $ListBuild("ZZOcuGlb.GBL replaces 2026-11-15 10:00:00.5", "0 "), $ListBuild("oddDEF.GBL new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("Foo.Bar.cls new, ZZOcuGlb.gbl new", "0 "), $ListBuild("Foo.Bar.cls new, oddDEP.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("Foo.Bar.cls new", "0 ") {
+    For tCase = $ListBuild("oddDEP.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("%ZZOcuGlb.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("ZZOcuGlb.gbl new", "0 "), $ListBuild("ZZOcuGlb.GBL replaces 2026-11-15 10:00:00.5", "0 "), $ListBuild("oddDEF.GBL new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("Foo.Bar.cls new, ZZOcuGlb.gbl new", "0 "), $ListBuild("Foo.Bar.cls new, oddDEP.gbl new", "1 PROHIBITED.PROTECTEDGLOBAL"), $ListBuild("Foo.Bar.cls new", "0 "), $ListBuild("ocupilotZZOcuGlb.gbl new", "1 PROHIBITED.OCUPILOTCODE") {
         Set tPayload = {}
         Do tPayload.%Set("documents", $List(tCase, 1), "string")
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("explorer.classes.import", tImportRef, tPayload.%ToJSON(), "[]", .tProhibits, .tCode)
