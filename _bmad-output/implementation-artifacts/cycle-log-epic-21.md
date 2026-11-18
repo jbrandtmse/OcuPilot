@@ -515,3 +515,7 @@
 2026-11-18T01:51:10Z	Story 21.5	stage_deferred	stage=implement agent_name=21-5-implement-1 spawned=no reason=orchestrator_Rule33:integrate_feature_e50a321a0_and_gate_before_21.5 note=the_preceding_stage_spawned_marker_is_void
 2026-11-18T01:51:10Z	Epic 21	integrated	feature=e50a321a0 merge=6b6f44743 conflicts_resolved=sprint-status(ours),EntityType,Descriptor(93:base89+2+2),ReadTool(490),ToolRoundTrip,screens.generated.ts(regenerated_by_screen-mirror) method=union+recount category=decide checks=8_classes_green,test:tools_2309,check-objectscript_0
 2026-11-18T01:51:10Z	Epic 21	gate_step	step=fresh_check+full_sweep+smoke head=6b6f44743 started=2026-11-18T01:51:10Z dir=e21u/21-5/gate scope=staging_head_for_21.14
+2026-11-18T03:57:45Z	Epic 21	gate_step	step=fresh_check result=green classes=21/21 specs=3(analytics,analytics-links,nls-locales)fwd+rev head=6b6f44743
+2026-11-18T03:57:45Z	Epic 21	gate_step	step=sweep result=green shards=20/20 head=6b6f44743
+2026-11-18T03:57:45Z	Epic 21	gate_step	step=smoke result=pass executed=50 passed=50 head=6b6f44743
+2026-11-18T03:57:45Z	Epic 21	ci_green_verified	sha=6b6f44743 runs=44218981008 result=success missing=none note=staging_head_21.14+feature_e50a321a0
