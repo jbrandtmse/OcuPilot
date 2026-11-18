@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-11-12'
+updated: '2026-11-18'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -1386,6 +1386,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Rule:** [ADDED 2026-09-26, Story 16.17 spec gate, Rule 20.] After a write reads OK, its caller re-reads the target through the tool's declared port and read type with the caller's own privileges (a create whose declared read is a list row re-reads by its created id through its update tool's read, `READBACKTOOL` [AMENDED 2026-10-06, Story 23.4, DW-1710, Rule 20]), outside any transaction and after the ledger row and marker, and answers `readBack {verdict, fields, written, reason?}` beside the write's own answer, which it never fails or alters. The kind decides the subject: a merge or create compares each top-level key of the sent body that the tool's derived field list names, except the descriptor's `fingerprintExcludes`; a delete expects absence; an action-style write sends no value and says so; a secret is reported written and its read value is never examined, returned or logged. A 202 continuation (AD-26) or a failed re-read is `unchecked`. How a field the instance normalizes on save is compared is declared in the tool's reviewed Classification entry (`compare`, a closed vocabulary) and emitted with the derived list (AD-3). Its `caller` mode reads a blank sent value as the reading account, which the instance stores in its place (a task create's `RunAsUser`) [AMENDED 2026-10-06, Story 23.4, DW-1710, Rule 20]. Only names and a verdict leave the instance. The verdict rides the change event as an annotation beside the row mark, never as row data (AD-14), and is kept on the proposal row.
 
   **A tool whose port has no derived field list may declare `READBACKFIELDS`** [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20]: a tool setting naming the fields `ReadBack` compares, each under the default rules, so a create's present re-read reads `matches` rather than a false `unchecked`. `explorer.docdb.create` declares `Name` (Story 19.17). The three `agent.screenpermissions.*` tools declare `Pairs` (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20]; add and remove are action-style, so their read-back says `nothingSent` and compares nothing, and the reset's expects the adjustment gone [AMENDED 2026-10-08, Story 20.15 code review, DW-2179, Rule 20].
+
+  **A tool that sends no body may declare `READBACKPAYLOAD`** [AMENDED 2026-11-18, Story 21.5 code review, DW-2730, orchestrator ruling, Rule 20]: its read-back compares the fields its `READBACKFIELDS` names against the values carried in its port query instead of a sent body, each under the default rules, so it reads `matches` or `differs` rather than `nothingSent`. `explorer.globalnodes.save` declares it with `Value` (Story 21.5).
 
 ### AD-59 -- A copy-out draft is rendered on the instance from the stored proposal, through the branches of the tool's declared port, and runs no write
 

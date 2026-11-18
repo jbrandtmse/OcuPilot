@@ -13785,3 +13785,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-5-globals-and-the-data-tools.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Screen.Tool.Write.READBACKPAYLOAD and ReadBack.ComparesPayload (Story 21.5 rework 1) compare a bodyless write's query payload; AD-58 records READBACKTOOL and READBACKFIELDS but says an action-style write sends no value.
 - 2026-11-18T07:30:12Z status=decision-pending owner=burndown by=cr note=Rule 20 spine line for AD-58 is a veto-window amendment; lead-owned
+- 2026-11-18T10:43:58Z status=resolved-by:21-5-globals-and-the-data-tools by=runner note=AD-58_sentence_appended_(orchestrator_ruling;add-only)
