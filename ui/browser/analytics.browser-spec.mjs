@@ -652,6 +652,33 @@ test('Story 24.12: Quality measures shows each measure with what the vendor\'s m
   }
 });
 
+// Story 24.12 QA, matrix rows Unknown and the empty namespace. Mutation (Rule 19): point the Documentation screen's `emptyStateKey` at `analyticsQualityMeasureElementsEmpty` in
+// `AnalyticsQualityMeasureMetaList.cls` (mirror regenerated, bundle rebuilt and redeployed) -> the Documentation leg draws the Groups and elements sentence and goes red.
+test('Story 24.12: a namespace with no quality measure, and a measure no one holds, draw each screen\'s own empty sentence and no row', async () => {
+  const cleaned = probe('QMEMPTYCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  assert.equal(cleaned.value, '1', `the probe's quality measures are removed: ${cleaned.output}`);
+  const held = inUser('QMEMPTYHELD', ['Set sc=##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.l),out=$Select($System.Status.IsOK(sc):+$Order(l("")),1:"unreadable")']);
+  assert.equal(held.value, '0', `the namespace holds no quality measure, so the list is empty: ${held.output}`);
+  const unknown = 'OcuPilotProbe/Quality/NoSuchMeasure';
+  const screens = [
+    { route: `/ocupilot/${QUALITY_MEASURES}?ns=USER`, empty: STRINGS.analyticsQualityMeasuresEmpty },
+    { route: `/ocupilot/${QUALITY_ELEMENTS}/${encodeEntityId(unknown)}?ns=USER`, empty: STRINGS.analyticsQualityMeasureElementsEmpty },
+    { route: `/ocupilot/${QUALITY_DOCUMENTATION}/${encodeEntityId(unknown)}?ns=USER`, empty: STRINGS.analyticsQualityMeasureMetasEmpty },
+  ];
+  assert.equal(new Set(screens.map((screen) => screen.empty)).size, screens.length, 'the three screens have three sentences of their own');
+  for (const screen of screens) {
+    const { context, page } = await signedInAt(browser, config, screen.route, VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), screen.empty, `${screen.route}: the screen draws its own empty sentence`);
+      assert.equal((await allRows(page)).length, 0, `${screen.route}: and no row`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 const WRITE_GROUP = 'OcuPilotProbeLGWBrowse';
 const WRITE_CLASS = 'OcuProbeLGW.Analytics.LGWBrowse';
 const WRITE_LISTING = 'LGWBrowseOne';

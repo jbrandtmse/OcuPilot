@@ -637,9 +637,9 @@ services:
       # The globals writes' developer class (Story 21.5) signs in over HTTP as a principal holding the development resource and the install namespace's
       # databases, and edits, kills and deletes a global of its own.
       # classes: GlobalWriteDeveloper
-      # The quality measure read class (Story 24.12) turns analytics on in USER and saves and compiles marker-named quality measure classes there; it drives the three
-      # reads at the port, over HTTP and as the agent's tools.
-      # classes: AnalyticsQualityMeasureRead
+      # The quality measure read, edge and gate classes (Story 24.12) turn analytics on in USER and save and compile marker-named quality measure classes there; they drive the three
+      # reads at the port, over HTTP and as the agent's tools, and the gate class creates and deletes OcuP2412* principals.
+      # classes: AnalyticsQualityMeasureEdge, AnalyticsQualityMeasureGate, AnalyticsQualityMeasureRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

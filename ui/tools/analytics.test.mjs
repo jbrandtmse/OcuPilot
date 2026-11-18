@@ -503,7 +503,7 @@ test('Story 24.12: the port reads quality measures through the three measured pu
   assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetModel', '%GetQualityMeasureClass', '%GetQualityMeasureList'], 'and only those Utils calls');
   const objCalls = [...code.matchAll(/\$System\.OBJ\.(\w+)\(/gi)].map((match) => match[1]);
   assert.deepEqual([...new Set(objCalls)], ['IsUpToDate'], 'and the one $System.OBJ call');
-  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$classmethod\([^)]*%GetModel/i]) {
+  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$classmethod\([^)]*%GetModel/i, /##class\(%SYSTEM\.OBJ\)/i]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
 });

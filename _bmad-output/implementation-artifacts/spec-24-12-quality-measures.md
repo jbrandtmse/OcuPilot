@@ -104,6 +104,35 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `17b9e506
 - **AC5 (declared and rostered).** Given the three descriptors. When the roster tests run. Then each holds their rows and the classic page, and removing one row reddens that test alone.
 - **AC6 (leaves USER as found).** Given any new or changed test, in either order. When it ends. Then no marker class and no marker `^DeepSee.QMsrs` node remains.
 
+### Review Findings
+
+Code review 2026-11-18 (Batch 1), tier `full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 10 patch, 4 ledgered, 7 rejected.
+
+- [x] [Review][Patch] (med) The twin test could pass with no twin: `CreateTwinQualityMeasure` dropped its compile status and nothing checked the vendor listed the name twice; the status is returned and the test asserts `Listed` = 2 first [src/OcuPilot/Test/AnalyticsProbe.cls, src/OcuPilot/Test/AnalyticsQualityMeasureRead.cls]
+- [x] [Review][Patch] (med) Rule 30: the measures reads of the Read, Edge and Gate classes asserted on every measure in USER; they now judge the probe's rows by catalog (`ProbeNames`, `ProbeCount`, `RowsOf` prefix) [src/OcuPilot/Test/AnalyticsQualityMeasureRead.cls, src/OcuPilot/Test/AnalyticsQualityMeasureEdge.cls, src/OcuPilot/Test/AnalyticsQualityMeasureGate.cls]
+- [x] [Review][Patch] (low) The removal test ran mid-class and later tests used its re-create; renamed `TestZRemovingTheQualityMeasuresLeavesNothing` so it sorts last [src/OcuPilot/Test/AnalyticsQualityMeasureRead.cls]
+- [x] [Review][Patch] (low) AC4's scan covered no capped read; `ReadEverything` adds a measures and an elements read under a cap of one [src/OcuPilot/Test/AnalyticsQualityMeasureRead.cls]
+- [x] [Review][Patch] (low) Two descriptor comments and the EXPERIENCE.md row said a measure's name opens Documentation; they now say it is reached by its route or the agent [src/OcuPilot/Screen/Descriptor/AnalyticsQualityMeasureList.cls, AnalyticsQualityMeasureMetaList.cls, EXPERIENCE.md:614]
+- [x] [Review][Patch] (low) "A linked measure shows its master's groups" now says when both classes are compiled, as `%GetModel` merges [src/OcuPilot/Screen/Descriptor/AnalyticsQualityMeasureElementList.cls, AnalyticsQualityMeasureMetaList.cls]
+- [x] [Review][Patch] (low) No probe state set a group's or an item's `disabled` or a model's `published` false, so a constant would pass; the refused measure is unpublished with a disabled empty group and a disabled item [src/OcuPilot/Test/AnalyticsProbe.cls]
+- [x] [Review][Patch] (low) The empty-state browser test read an unreadable vendor list as empty; the precondition now answers `unreadable` on an error status [ui/browser/analytics.browser-spec.mjs]
+- [x] [Review][Patch] (low) The Story 24.12 source guard missed `##class(%SYSTEM.OBJ)`; it is now refused [ui/tools/analytics.test.mjs]
+- [x] [Review][Patch] (low) Stale probe prose: the class header's method list, `QualityMeasureText`'s nine values, "Both compile", and a twin that "registers" [src/OcuPilot/Test/AnalyticsProbe.cls]
+- [x] [Review][Defer] (low) AC4's first-call clause holds only when the scan class runs before the other 24.12 classes on its throwaway -- DW-2735 wontfix-accepted
+- [x] [Review][Defer] (low) The empty-state browser test needs USER to hold no quality measure, which it asserts first but did not make -- DW-2736 wontfix-accepted
+- [x] [Review][Defer] (low) Rule 2: `RowNamed` and `AssertSameFields` are copied across the 24.11 and 24.12 read classes and Edge -- DW-2737 wontfix-accepted
+- [x] [Review][Defer] (low) A name the vendor lists through an unregistered class is no row, and no test reaches that branch -- DW-2738 wontfix-accepted
+
+Rejected:
+
+- (low) A twin's row takes the first-listed class's spelling of the name: the registry keys names without case, and the model's name can differ from the registered one when an edited XData's compile is refused, so the listed name is the safer key.
+- (low) A model the vendor cannot read is silent: its row's `Published` 0 and `Groups` 0, the sub-screens' empty sentences for a dangling link, and an unread `tModelStatus` are Decided in-stage 3, pinned by the edge class; the master-not-a-measure branch needs a corrupt registry.
+- (med, duplicate) Documentation has no UI path from a measure: DW-2734, owned by Batch 3.
+- (low) The commit message counts one test class: QA's two classes are uncommitted, and a pushed message is not rewritten.
+- (low) Documentation's title reuses `linksDocumentation`: Decided in-stage 1 (implement), since strings are unique by value and the label was ruled (U-111).
+- (low) No `LinkedTo` or `Expression` column: the columns are the ruled proposal (U-111); the agent reads both fields.
+- (low) The empty sentence is shown when USER holds only disabled measures: the matrix's Nameless row makes them no row, and the sentence is ruled.
+
 ## Spec Change Log
 
 - 2026-11-18, spec gate: blocked -> ready-for-dev on the runner's rulings (U-111); this spec is Batch 1.
@@ -211,8 +240,16 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `17b9e506
 - mutation: AC3 the elements branch pushes `""` for `mdx` -> the Story 24.12 browser test red on the Groups and elements leg (class reloaded).
 - mutation: AC4 the measures branch sets `^OcuPilotProbeQmMutation` -> `TestAAReadsMakeNoJournaledWrite` red, naming the record.
 - mutation: AC5 the `AnalyticsQualityMeasureMetaList` row removed from `StageTwoTools` -> `TestTheRosterAndElsewhereAreEveryRegisteredScreen` red alone; `QUALITYMEASUREPAIRS` without the edit pair -> `PortGate` red on the three endpoints; a `%SaveQMsrDefinition` call in the port -> the Story 24.12 `analytics.test.mjs` test red.
-- mutation: AC6 `RemoveQualityMeasures` deletes no class -> `TestRemovingTheQualityMeasuresLeavesNothing` red, naming the four classes.
+- mutation: AC6 `RemoveQualityMeasures` deletes no class -> `TestZRemovingTheQualityMeasuresLeavesNothing` red, naming the four classes.
+- (review) mutation: AC1 `CreateTwinQualityMeasure` saves without compiling -> `TestTheRegisteredClassAnswersWhenTwoClassesDeclareOneName` red on both `Listed` legs alone (run 7); the empty group's `GroupDisabled` read as 0 -> `TestAMeasuresElementsAndDocumentationAreTheModels` red on the refused row 2 (run 10); AC5 a `##class(%SYSTEM.OBJ).Load` call in the port -> the Story 24.12 `analytics.test.mjs` test red. Each restored (`diff -rq` / `cmp` identical, reloaded); `AnalyticsQualityMeasureRead` (run 11), `Edge` (run 8), `Gate` (run 9) and the two Story 24.12 browser tests green after.
 - mutation: Gate `AdmitNamespace` without its analytics check -> `TestANamespaceWithoutAnalyticsIsRefusedBeforeAnyVendorCall` red on all three endpoints.
+- (QA) `src/OcuPilot/Test/AnalyticsQualityMeasureEdge.cls` (armed, `OCUPILOT_ALLOW_PRINCIPALS`): the dangling link, the missing subject area, odd criteria, the journal scan of those reads, the leftover check. `src/OcuPilot/Test/AnalyticsQualityMeasureGate.cls` (armed): the privilege pair as real principals (screens, the agent's tools in a child process) and in process. `src/OcuPilot/Test/AnalyticsProbe.cls` (`CreateEdgeQualityMeasures`, cleanup and `Left`), `scripts/ci-throwaway.sh` (arming roster, add-only) and `ui/browser/analytics.browser-spec.mjs` (empty sentences).
+- (QA) mutation: AC1 the unreadable-model branch of the measures read answers no row -> `TestADanglingLinkIsOneRowFromTheListAndHoldsNoGroups` red (with the recount in `TestZRemovingTheEdgeMeasuresLeavesNothing`); the subject area read as empty for a cube the registry does not hold -> `TestAMeasureOverAMissingSubjectAreaReadsLikeAnyOther` red alone; the model-name check dropped from the elements and documentation branches -> `TestAnOddCriterionNamesNoMeasure` red alone, on the name followed by a slash.
+- (QA) mutation: AC4 the unreadable-model branch sets `^OcuPilotProbeQmEdgeMutation` -> `TestAAEdgeReadsMakeNoJournaledWrite` red alone, naming the record.
+- (QA) mutation: AC6 `RemoveQualityMeasures` leaves out the no-area class -> `TestZRemovingTheEdgeMeasuresLeavesNothing` and the class's `OnAfterAllTests` red, naming the class and its node.
+- (QA) mutation: Gate `QUALITYMEASUREPAIRS` the portal's pair alone -> the reader's three tool legs and the portal-alone port legs of `AnalyticsQualityMeasureGate` red; `%DeepSee_Admin:USE` in place of the edit pair -> the editor's tool legs red (403); the edit pair listed first -> the nothing-held leg red alone.
+- (QA) mutation: AC3 the Documentation screen's `emptyStateKey` pointed at the Groups and elements sentence in the generated mirror (bundle rebuilt and copied in) -> the empty-sentence browser test red on the Documentation leg; restored (`cmp` equal), rebuilt, green.
+- (QA) Each server mutation was applied to `ocupilot-b-ci`'s copy of the source only, restored by syncing the tree (`diff -rq` identical) and reloaded. After the last one `ocupilot-b-ci` was rebuilt fresh: `AnalyticsQualityMeasureRead` (run 1, journal scan first on a fresh instance), `AnalyticsQualityMeasureEdge` (run 2) and `AnalyticsQualityMeasureGate` (run 3) each passed on their first run; `AnalyticsQualityMeasureRead` again (run 4) and `AnalyticsListingGroupRead` (run 5) green after them; the two Story 24.12 browser tests green.
 
 ## Auto Run Result
 

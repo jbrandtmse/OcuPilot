@@ -13811,3 +13811,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Both child screens are children of the Quality measures list; only Groups and elements opens from a row; the browser test opens Documentation by URL
 - 2026-11-18T13:28:30Z status=open owner=24-12-quality-measures by=harvest note=fix in Batch 3, which writes the documentation; a link or tab may need a strings row (veto)
+
+### DW-2735: Quality measures: AC4's first-call clause holds only when the journal-scan class runs before the other 24.12 classes on its throwaway
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestAAReadsMakeNoJournaledWrite scans its own process only; AnalyticsQualityMeasureGate reads over HTTP and in a JOB child, unscanned, and CI legs do not order the three classes. QA observed the scan first on a fresh instance once.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a fresh-instance TestAA scan run before any other 24.12 class records a write a later scan does not
+
+### DW-2736: Quality measures: the empty-state browser test needs USER to hold no quality measure at all, which it asserts first but did not make
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: analytics.browser-spec.mjs QMEMPTYHELD asserts %GetQualityMeasureList is empty after removing the probe; a namespace-wide empty state cannot be drawn otherwise.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=the QMEMPTYHELD precondition fails in a CI browser leg
+
+### DW-2737: Analytics read tests copy RowNamed and AssertSameFields per class (24.11 Read, 24.12 Read and Edge) instead of sharing a base
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AnalyticsQualityMeasureRead.RowNamed/AssertSameFields equal AnalyticsListingGroupRead's; Edge.AssertSame repeats Read's because the assert macros need the test instance.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a 24.12 Batch 2 or 3 test class adds another copy; then extract one analytics read test base
+
+### DW-2738: Quality measures: a name the vendor lists through an unregistered class is no row, a branch no test reaches
+- source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Collect skips a name %GetQualityMeasureClass cannot find (Decided in-stage 2); deleting the registered class while a twin remains reaches it; no probe state does.
+- 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a measure listed by the classic page is missing from Quality measures while its registered class exists

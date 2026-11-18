@@ -1,8 +1,8 @@
 /// <p>Analytics' Quality measures: the quality measures the namespace holds, each with its caption, subject area, whether it is published and whether its class is compiled,
 /// read through <class>OcuPilot.Port.AnalyticsPort</class> (source kind <code>analytics</code>, endpoint <code>QualityMeasures</code>) and rendered by the <code>list</code> archetype's page from
 /// the declared <code>table</code> (AD-5, AD-29, AD-36, AD-44, AD-65, Story 24.12). A measure the vendor lists with no name is absent, and so is a name the vendor's registry does not hold.</p>
-/// <p><b>A measure's name opens its groups and elements and its documentation</b>: <code>analytics/quality-measures/elements/&lt;measure&gt;</code> and <code>analytics/quality-measures/documentation/&lt;measure&gt;</code>
-/// declare this list's route as their <code>parentScope</code>. <b>Its id is the measure's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>.</p>
+/// <p><b>A measure's name opens its groups and elements</b> (<code>analytics/quality-measures/elements/&lt;measure&gt;</code>); its documentation,
+/// <code>analytics/quality-measures/documentation/&lt;measure&gt;</code>, is reached by its route or the agent's navigate tool. Both declare this list's route as their <code>parentScope</code>. <b>Its id is the measure's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>.</p>
 /// <p><b>Its pairs</b> are the classic Quality Measures Manager's: <code>%DeepSee_Portal:USE</code> and, as its own, <code>%DeepSee_PortalEdit:USE</code>; the port also checks READ on
 /// the namespace's databases before any vendor call (AD-8, AD-65). It offers no action and does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList Extends OcuPilot.Screen.Descriptor.Base

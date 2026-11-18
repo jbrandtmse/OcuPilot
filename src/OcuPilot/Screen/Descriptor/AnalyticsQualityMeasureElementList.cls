@@ -1,6 +1,6 @@
 /// <p>Analytics' Groups and elements: the groups one quality measure holds and the MDX elements of each, one row per element and one row for a group with none, read through
 /// <class>OcuPilot.Port.AnalyticsPort</class> (source kind <code>analytics</code>, endpoint <code>QualityMeasureElements</code>) and rendered from the declared <code>table</code> (AD-5, AD-11, AD-29, AD-36, AD-44, AD-65,
-/// Story 24.12). A linked measure shows its master's groups. An element's MDX is shown as text and never rendered.</p>
+/// Story 24.12). A linked measure shows its master's groups when both classes are compiled. An element's MDX is shown as text and never rendered.</p>
 /// <p><b>It is a sub-resource of the Quality measures list and never listed</b> (<code>sideBarPosition</code> 0): it declares <code>parentScope</code> <code>analytics/quality-measures</code> and is reached from that
 /// list's name cell. Its one declared criterion, <code>qualitymeasure</code>, is the route id, required as a single-object read's is (AD-36); a measure that does not exist reads no rows.</p>
 /// <p><b>Its id is the composite <code>[QualityMeasure, Group, Name]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its pairs are the Quality measures list's; it offers no action and does

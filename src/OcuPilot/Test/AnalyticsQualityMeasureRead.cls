@@ -89,6 +89,51 @@ ClassMethod Names(pRows As %DynamicArray) As %String
     Quit tNames
 }
 
+/// <p>The <code>Name</code>s of the rows of <var>pRows</var> that are probe measures (their catalog is the probe's), comma-separated, so a measures read is judged on
+/// the probe's own rows whatever else <code>USER</code> holds; <code>"unreadable"</code> for no array.</p>
+ClassMethod ProbeNames(pRows As %DynamicArray) As %String
+{
+    If '$IsObject(pRows) Quit "unreadable"
+    Set tPrefix = $Parameter(..#PROBE, "QMCATALOG") _ "/"
+    Set tNames = ""
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $Extract(tRow.%Get("Name"), 1, $Length(tPrefix)) = tPrefix Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRow.%Get("Name")
+    }
+    Quit tNames
+}
+
+/// <p>How many rows of <var>pRows</var> are probe measures; -1 when it is no array.</p>
+ClassMethod ProbeCount(pRows As %DynamicArray) As %Integer
+{
+    If '$IsObject(pRows) Quit -1
+    Set tNames = ..ProbeNames(pRows)
+    Quit $Select(tNames = "": 0, 1: $Length(tNames, ","))
+}
+
+/// <p>How many entries of the vendor's <code>%GetQualityMeasureList</code> in <code>USER</code> carry the name <var>pName</var>; -1 when the list cannot be read.</p>
+ClassMethod Listed(pName As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If $$$ISOK(##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)) {
+            Set tCount = 0
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tList(tAt))
+                If tAt = "" Quit
+                If $List(tList(tAt), 1) = pName Set tCount = tCount + 1
+            }
+        }
+    } Catch ex {
+        Set tCount = -1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
+}
+
 /// <p>The row of <var>pRows</var> whose <code>Name</code> is <var>pName</var>, or <code>""</code>.</p>
 ClassMethod RowNamed(pRows As %DynamicArray, pName As %String) As %DynamicObject
 {
@@ -205,7 +250,7 @@ Method TestTheMeasuresAreTheModelsOfTheirClasses()
     Set tCompiled = $Parameter(..#PROBE, "QMCOMPILED")
     Set tRefused = $Parameter(..#PROBE, "QMREFUSED")
     Set tLinked = $Parameter(..#PROBE, "QMLINKED")
-    Do $$$AssertEquals(..Names(tRows), tCompiled _ "," _ tLinked _ "," _ tRefused, "the three measures the vendor names are rows, in the vendor's order, and the disabled one is not")
+    Do $$$AssertEquals(..ProbeNames(tRows), tCompiled _ "," _ tLinked _ "," _ tRefused, "the three probe measures the vendor names are rows, in the vendor's order, and the disabled one is not")
     For tCase = $ListBuild(tCompiled, 1, 2), $ListBuild(tRefused, 0, 2), $ListBuild(tLinked, 1, 2) {
         Set tFacts = ..Facts($List(tCase, 1))
         Do $$$AssertEquals(tFacts.%Get("error"), "", $List(tCase, 1) _ ": the model reads")
@@ -274,8 +319,9 @@ Method TestTheRegisteredClassAnswersWhenTwoClassesDeclareOneName()
     For tLate = 0, 1 {
         Set tLabel = $Select(tLate: "the late twin", 1: "the early twin")
         Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateTwinQualityMeasure", tLate), tLabel _ " is saved and compiled")
+        Do $$$AssertEquals(..Listed(tName), 2, tLabel _ ": the vendor lists the name twice, once per class, so the reads below meet two classes")
         Set tSC = ..Read("QualityMeasures", "", 100, .tRows, .tHttp, .tFault)
-        Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tRows), "200|3", tLabel _ ": the measures read still answers three rows")
+        Do $$$AssertEquals(tHttp _ "|" _ ..ProbeCount(tRows), "200|3", tLabel _ ": the measures read still answers three probe rows")
         Set tRow = ..RowNamed(tRows, tName)
         If $IsObject(tRow) Do $$$AssertEquals(tRow.Class _ "|" _ tRow.Caption _ "|" _ tRow.Groups, $Parameter(..#PROBE, "QMCOMPILEDCLASS") _ "|OcuPilot probe measure|2", tLabel _ ": the compiled measure's row is the registered class's")
         Set tSC = ..Read("QualityMeasureElements", tName, 100, .tElements, .tHttp, .tFault)
@@ -323,7 +369,7 @@ Method TestTheScreensAndTheAgentsToolsAnswerTheSameRows()
         Do $$$AssertEquals(tLeg.%Get("http") _ "|" _ tLeg.%Get("error"), "200|", tId _ ": the agent's read tool answers: " _ tLeg.%ToJSON())
         Do $$$AssertTrue($IsObject(tScreen) && $IsObject(tLeg.%Get("rows")) && $IsObject(tScreen.%Get("rows")), tId _ ": both reads carry rows")
         If $IsObject(tScreen) && $IsObject(tLeg.%Get("rows")) && $IsObject(tScreen.%Get("rows")) {
-            Do $$$AssertEquals(tLeg.rows.%Size(), $List(tCase, 3), tId _ ": with the rows the probe holds, so the comparison is never of two empty reads")
+            Do $$$AssertEquals($Select($List(tCase, 2) = "": ..ProbeCount(tLeg.rows), 1: tLeg.rows.%Size()), $List(tCase, 3), tId _ ": with the rows the probe holds, so the comparison is never of two empty reads")
             Do $$$AssertEquals(..Canonical(tLeg.rows), ..Canonical(tScreen.rows), tId _ ": the tool's rows are the screen's, the tool's in its descriptor's sort order and the screen's in the port's")
         }
     }
@@ -402,13 +448,13 @@ Method TestAAReadsMakeNoJournaledWrite()
     For tI = 1:1:tTotal {
         If $Get(tAllWrites(tI)) [ "OcuPilotProbeAnalyticsScan" Set tSeen = tSeen + 1, tControl = tAllWrites(tI)
     }
-    Do $$$AssertEquals(tAnswers, "200|200,200,200,200,200|200,200,200,200,200|200,200,200", "the measures read, the elements and documentation reads of five names and the agent's three reads answer")
+    Do $$$AssertEquals(tAnswers, "200|200,200,200,200,200|200,200,200,200,200|200,200,200|200,200", "the measures read, the elements and documentation reads of five names, the agent's three reads and the two capped reads answer")
     Do $$$AssertEquals(tReads, 0, "the reads made no journaled write" _ $Select(tReads > 0: ": " _ tFirst, tReads < 0: " (the journal rolled to another file)", 1: ""))
     Do $$$AssertEquals(tSeen, 1, "while the scan finds the control write made after them" _ $Select(tTotal < 0: " (the journal rolled to another file)", tSeen '= 1: " (records: " _ tTotal _ ")", 1: ": " _ tControl))
 }
 
-/// <p>Every read the AC4 scan covers: the measures read, the elements and documentation reads of each probe measure, the disabled one and one that does not exist, and the agent's three
-/// read tools. Answers the HTTP statuses as <code>measures|elements...|documentation...|tools...</code>.</p>
+/// <p>Every read the AC4 scan covers: the measures read, the elements and documentation reads of each probe measure, the disabled one and one that does not exist, the agent's three
+/// read tools, and a measures and an elements read cut by a cap of one. Answers the HTTP statuses as <code>measures|elements...|documentation...|tools...|capped...</code>.</p>
 Method ReadEverything() As %String
 {
     Set tSC = ..Read("QualityMeasures", "", 100, .tRows, .tMeasuresHttp, .tFault)
@@ -428,21 +474,23 @@ Method ReadEverything() As %String
     Set tToolsHttp = tToolsHttp _ "," _ ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.qualitymeasureelements.read", {"qualitymeasure": (tName)}, tCap).%Get("http")
     Set tToolsHttp = tToolsHttp _ "," _ ##class(OcuPilot.Test.AnalyticsGate).ToolLeg("analytics.qualitymeasuremetas.read", {"qualitymeasure": (tName)}, tCap).%Get("http")
     Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Quit tMeasuresHttp _ "|" _ tElementsHttp _ "|" _ tMetasHttp _ "|" _ tToolsHttp
+    Set tSC = ..Read("QualityMeasures", "", 1, .tRows, .tCapHttp, .tFault)
+    Set tSC = ..Read("QualityMeasureElements", tName, 1, .tElements, .tHttp, .tFault)
+    Quit tMeasuresHttp _ "|" _ tElementsHttp _ "|" _ tMetasHttp _ "|" _ tToolsHttp _ "|" _ tCapHttp _ "," _ tHttp
 }
 
 /// <p>AC6: removing the probe's quality measures deletes every class and every registry node of a probe measure, so <method>OcuPilot.Test.AnalyticsProbe.Left</method> names none; creating
-/// them again restores them. The registry nodes are read directly, not through the probe.</p>
+/// them again restores them. The registry nodes are read directly, not through the probe. It sorts last, so no other test of the class runs on what it re-creates.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Test.AnalyticsProbe.RemoveQualityMeasures</method> delete no class -- this goes red.</p>
-Method TestRemovingTheQualityMeasuresLeavesNothing()
+Method TestZRemovingTheQualityMeasuresLeavesNothing()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveQualityMeasures"), "the measures are removed")
     Do $$$AssertEquals(..Left(), "", "no class and no registry node of a probe measure remains: " _ ..Left())
     Set tSC = ..Read("QualityMeasures", "", 100, .tRows, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tRows), "200|0", "and the measures read answers none of them")
+    Do $$$AssertEquals(tHttp _ "|" _ ..ProbeCount(tRows), "200|0", "and the measures read answers none of them")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateQualityMeasures"), "the measures are made again")
     Set tSC = ..Read("QualityMeasures", "", 100, .tRows, .tHttp, .tFault)
-    Do $$$AssertEquals(..RowCount(tRows), 3, "and the read answers them again")
+    Do $$$AssertEquals(..ProbeCount(tRows), 3, "and the read answers them again")
 }
 
 /// <p>What the probe's quality measures leave in <code>USER</code>: a measure class, or a registry node of a probe name, class or subject area, read directly.</p>
