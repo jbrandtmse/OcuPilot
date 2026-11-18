@@ -175,6 +175,30 @@ Rejected:
 - (low) `UndecodablePassword` has no executed host outside the mutation: the task requires it, and this pass re-ran the mutation.
 - (low) The Task 0 key count reads two ways in this spec: the fix is a spec edit.
 
+Code review of Batch 3 (`a23ce11fd` against `ac041a779`), 2026-11-18. Four layers, 22 raw findings, 18 entries after grouping.
+
+- [x] [Review][Patch] (med) `pressRun`'s namespace clause read the switch, which shows the address's namespace before the shell resolves it (`namespace-switch.ts:150`), so a start could still go without `ns`; it now also waits for a finished API call that carried the namespace, which no call does before resolution (`scope.ts:214`, `api.ts:442`) [ui/browser/analytics-mdx.browser-spec.mjs:138]
+- [x] [Review][Patch] (low) AC7's 4xx assertion had no observed mutation; observed (Verification) [ui/browser/analytics-mdx.browser-spec.mjs:651]
+- [x] [Review][Patch] (low) `fetchFromNode` left the response open after reading the status, and nothing showed it acting on its abort; it now destroys the response, pinned with a stalled body and a silent server [ui/browser/panel-spec.mjs:86, ui/tools/panel-spec.test.mjs]
+- [x] [Review][Patch] (low) The probe's 10-second default was unpinned; a mock-timer test now pins it [ui/tools/panel-spec.test.mjs]
+- [x] [Review][Patch] (low) `pressRun`'s comment said Run enabled means the store holds the statement just written; it means a non-empty statement and no busy run [ui/browser/analytics-mdx.browser-spec.mjs:130]
+- [x] [Review][Patch] (low) A start POST that never answered failed without the page's state; `firstStartAnswered` now names it [ui/browser/analytics-mdx.browser-spec.mjs:200]
+- [x] [Review][Patch] (low) `WaitJobs` printed a failed read (-1) as a job count; it now says the tab could not be read [src/OcuPilot/Test/InteropItemRun.cls:126]
+- [x] [Review][Patch] (low) Three more context-chip first Sends follow a test whose turn just ended (DW-2566's mechanism) and did not wait for the slot; they now do [ui/browser/context-chip.browser-spec.mjs:473,661,690]
+- [x] [Review][Patch] (low) `browser-reset.test.mjs` named a demonstration on context-chip's reset import, which this batch removed, and two stale counts; re-observed on `about-help-links` and corrected [ui/tools/browser-reset.test.mjs:26,69]
+
+Rejected:
+
+- (low) No `requestfailed` listener in `watchStarts`: a failed POST still fails AC7, naming "no answer yet" and the page state; the fix is a new branch.
+- (low) Only AC7 records the start POSTs: the task places that record in AC7; DW-2714's cause is the readiness wait, and `answeredWith` names the page state.
+- (low) `clearFilter` wraps every error in a new one: no caller tells the classes apart, the underlying message is kept, and `answeredWith` does the same.
+- (low) `error-log` calls `gotoNamingInflight` without the probe: the task scopes the probe to the shared `signedInAt`.
+- (low) No mutation reaches the no-answer and missing-banner messages: one mutation per AC is the bar, and this AC has four.
+- (low) The `ECONNREFUSED` check reuses a port it just freed: not reachable in practice.
+- (low) `ci-flake-waits.test.mjs` pins source positions: the sibling pin pattern; behavior is shown by the held-lock mutation.
+- (low) `$ZHorolog` wraps at midnight in `WaitJobs`' message: message-only, theoretical.
+- (false) A lowercase `ns` would never match the switch: every `pageUrl` caller passes an uppercase literal.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
@@ -318,11 +342,13 @@ Every batch:
 - Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs` red.
   - mutation (Batch 3, observed): `signedInAt` calls `gotoNamingInflight` without `fetchFromNode` -> the `signedInAt` timeout test red (9 of 10 pass); the probe line dropped from the rethrown message -> the answering-probe, failing-probe and `signedInAt` tests red. Each reverted; ten of ten green.
   - mutation (Batch 3 review, observed): the probe's `Promise.race` against its bound removed -> the never-answering-probe test red; `agent: false` dropped from `fetchFromNode` -> the connection-count assertion red ("each probe opens a connection of its own"). Each reverted; eleven of eleven green.
+  - mutation (Batch 3 code review, observed): `PROBE_TIMEOUT_MS` raised to 20 000 -> the ten-seconds test red; `response.resume()` in place of `response.destroy()`, or `signal` dropped from `fetchFromNode` -> the connection-closing test red at its 5 s bound. Each reverted; thirteen of thirteen green.
 - DW-2566: drop test 7's `waitForSlotFree` and delay test 6's slot release -> test 7 red.
   - mutation (Batch 3, observed): the slot is held for 25 s by a second IRIS process (`Lock +^OcuPilotTurnSlot` in `HSCUSTOM`) started at the end of test 6, with test 7's new `waitForSlotFree` removed -> test 7 red (`TimeoutError: Waiting failed: 30000ms exceeded`, 37.6 s); with the hold at 12 s and the wait restored -> test 7 green after waiting (21.2 s against 16.6 s). The hold and the removal reverted; the wait stays.
 - DW-2714/DW-2548: `writeStatement` stops dispatching `input` -> AC1 red at `pressRun` naming the textarea and `aria-disabled` within the navigation timeout, not after 145 s; `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
   - mutation (Batch 3, observed): `writeStatement` without the `input` event -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {"statement":"SELECT ...","ariaDisabled":"true","namespace":"USER"}"; `scope: () => ''` at `mdx-query.page.ts:201`, bundle rebuilt and redeployed -> AC7 red, "HSCUSTOM: the start POST carried the namespace the page names". Each reverted (the bundle rebuilt and redeployed again); the eleven specs green.
   - mutation (Batch 3 review, observed): the namespace `pressRun` waits for changed to `USERX` -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {... \"ariaDisabled\":\"false\",\"namespace\":\"USER\"}". Reverted; AC1 green.
+  - mutation (Batch 3 code review, observed): AC7 with `GET /api/ocupilot/namespaces` held 8 s by request interception and `pressRun`'s scoped-call clause replaced by `true` -> red, "HSCUSTOM: the start POST carried the namespace the page names" (`null`); the clause restored, same hold -> green after waiting (22.9 s against 4.9 s). `AnalyticsPort.MdxAdmit` skipping `AdmitNamespace`, reloaded -> AC7 red, "HSCUSTOM: the start POST is refused before anything runs, not answered 200". Each reverted (ObjectScript reloaded); `analytics-mdx` 11 of 11.
 - DW-2720: pass AC2's `filterToSubset` a total one too high -> red naming the field, count and total. DW-2713: `StartProbe` waits for 2 jobs -> red naming state and seconds.
   - mutation (Batch 3, observed): users AC2's `total` plus one -> red in 32.9 s, "expected the cleared filter to bring back all 14 row(s) (aria-rowcount 15); the filter field holds "" and the grid's aria-rowcount reads 14"; `StartProbe` ending `WaitJobs(2)` -> six of nine `InteropItemRun` tests red, "the Jobs tab lists 1 jobs, not 2, after 10.1 seconds; the production reads Running|0 and the item enabled=1 stopped=0 own=1 jobs=1 needs=0". Each reverted (ObjectScript reloaded); `InteropItemRun` 9 of 9 and `InteropItemRunGate` 3 of 3 green.
 - DW-2202: the SystemUsage read drops one declared field -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red.

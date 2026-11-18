@@ -593,3 +593,7 @@
 2026-11-18T15:41:07Z	Story 21.22	ci_red_classified	run=44328339684 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=a11y-structural-invariants_hook(settle_governance_60s_deadline) head=ead5f1f95
 2026-11-18T15:41:07Z	Story 21.22	dev_complete	scope=batch3 spawn_at=2026-11-18T15:01Z model=sonnet build_sha=a23ce11fd baseline_revision=ac041a779 followup_review_recommended=false deferred=0 cycle_iteration=1
 2026-11-18T15:41:07Z	Story 21.22	stage_spawned	stage=code-review scope=batch3 spawn_at=2026-11-18T15:41:07Z model=opus agent_name=21-22-code-review-b3 cycle_iteration=1 baseline=ac041a779
+2026-11-18T16:08:59Z	Story 21.22	ci_resolved	story=21.22 sha=ead5f1f95 runs=44328339684 result=success failed=none via=none resolved_at=next_implement note=flake_rerun(a11y-structural-invariants_settle)
+2026-11-18T16:10:48Z	Story 21.22	cr_complete	scope=batch3 spawn_at=2026-11-18T15:43Z model=opus high=0 med=1(patched:pressRun_namespace_resolution) low=16 rows=22 unresolved_high_med=0 final=in-progress commit=f9a4b89f5 closing_sections_present=true
+2026-11-18T16:10:48Z	Story 21.22	code_head_pushed	sha=f9a4b89f5 run=44344107655 missing=none
+2026-11-18T16:10:48Z	Story 21.22	stage_spawned	stage=implement scope=batch4 spawn_at=2026-11-18T16:10:48Z model=sonnet agent_name=21-22-implement-b4 cycle_iteration=1
