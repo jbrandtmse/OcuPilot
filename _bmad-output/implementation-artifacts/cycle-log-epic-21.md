@@ -615,3 +615,5 @@
 2026-11-18T19:39:01Z	Story 21.22	story_green	code_head=5e1672bb3 ci=44357940400(success_after_flake_rerun) gates=fresh+sweep20/20+smoke50/50 status=done
 2026-11-18T19:39:23Z	Story 21.18	spec_validated	owned_ledger=DW-2731,DW-2732 addressed=2(runner_spec_change_log:403_row;Batch1_task) depends_on=21.5,21.17(done)
 2026-11-18T19:39:23Z	Story 21.18	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T19:39:23Z model=sonnet agent_name=21-18-implement-1 cycle_iteration=1 story_base=4bd9ea4ef
+2026-11-18T21:01:39Z	Story 21.18	dev_complete	scope=batches1+2 spawn_at=2026-11-18T19:39Z model=sonnet build_sha=8e74ecbd4 followup_review_recommended=true(3_med_patched_in_tests) deferred=0 cycle_iteration=1 note=DW-2731_Catch_already_set_tSC_at_base;pinned_by_GlobalWrite_test
+2026-11-18T21:01:39Z	Epic 21	ruling	question=21.22_merge+DW-2731_catch via=orchestrator choice=21.22_merged(feature_ff_c9242b054+4ef2c30ea);DW-2731_catch_rewrite_ok_report_only_on_integrate_conflict;feature_51da56768(24.12_B1-2)_integrate_at_21.18_code_head
