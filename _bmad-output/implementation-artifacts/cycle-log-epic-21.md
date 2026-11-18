@@ -584,3 +584,4 @@
 2026-11-18T14:24:08Z	Story 21.17	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=49_passed=49_skipped=1(agentswitches:the_sweep_had_written_switches) model=claude-opus-5-5
 2026-11-18T14:24:08Z	Story 21.17	committed	sha=e69f9492e staging_head=80897abe6 submodules= ci=success runs=44301357497 amendments=AD-61_sentence(1017325ca)
 2026-11-18T14:24:08Z	Story 21.17	story_cycle	plan_to_commit_min=n/a implement_passes=2 reviews=2 rework=1 first_ci=infra(gates_node26_cancelled) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus
+2026-11-18T14:24:39Z	Story 21.22	stage_spawned	stage=implement scope=batch2(DW-2534,DW-2553,DW-2565) spawn_at=2026-11-18T14:24:39Z model=sonnet agent_name=21-22-implement-b2 cycle_iteration=1
