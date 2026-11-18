@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 // Pins the AC: "the only builder named is @angular/build:application and no
@@ -116,7 +116,9 @@ test('production optimization keeps critical-CSS inlining off, spelled out rathe
 //   every rendered assertion in `src/**/*.spec.ts` stays green and unrun.
 // - change the runner to "karma" -> the runner assertion goes red (and the suite would need a
 //   browser launcher the contest floor does not carry).
-test('DW-93: a component test target exists, runs vitest, and is what npm test invokes', () => {
+// - drop `runnerConfig` from the target, or set `isolate: false` in vitest-base.config.mjs, or take
+//   its heap cap out of `execArgv` -> the runner-config assertions go red.
+test('DW-93: a component test target exists, runs vitest, and is what npm test invokes', async () => {
   const target = parsed.projects['ocupilot-ui'].architect.test;
   assert.ok(target, 'the project must carry a test target');
   assert.equal(
@@ -128,6 +130,41 @@ test('DW-93: a component test target exists, runs vitest, and is what npm test i
   assert.equal(target.options.watch, false, 'a watching runner never exits, so it can never gate');
   assert.deepEqual(target.options.include, ['src/**/*.spec.ts']);
   assert.equal(target.options.tsConfig, 'tsconfig.spec.json');
+
+  // The runner's pool settings live in a plain config file the builder merges into its own
+  // project configuration: isolated forks, at most two at once, each with a heap cap, and a
+  // reporter that names every test file as it starts.
+  assert.equal(target.options.runnerConfig, 'vitest-base.config.mjs', 'the target names the runner config file');
+  const runnerConfigPath = join(dirname(angularJsonPath), target.options.runnerConfig);
+  assert.ok(existsSync(runnerConfigPath), `the runner config ${target.options.runnerConfig} exists beside angular.json`);
+  const { default: runnerConfig } = await import(pathToFileURL(runnerConfigPath).href);
+  assert.equal(runnerConfig.test.isolate, true, 'every test file runs isolated: no worker carries the graph of earlier files');
+  assert.ok(
+    [1, 2].includes(runnerConfig.test.maxWorkers),
+    `maxWorkers is 1 or 2 (a 2-CPU runner), not ${JSON.stringify(runnerConfig.test.maxWorkers)}`
+  );
+  const heapCaps = (runnerConfig.test.execArgv ?? []).filter((arg) => /^--max-old-space-size=/.test(arg));
+  assert.equal(heapCaps.length, 1, 'execArgv carries exactly one --max-old-space-size');
+  const heapMb = Number(heapCaps[0].split('=')[1]);
+  assert.ok(heapMb >= 1024 && heapMb <= 2048, `the heap cap is 1024 to 2048 MB, not ${heapMb}`);
+  const named = (runnerConfig.test.reporters ?? []).filter((reporter) => typeof reporter?.onTestModuleStart === 'function');
+  assert.equal(named.length, 1, 'one reporter object names each test file as it starts');
+  const lines = [];
+  const log = console.log;
+  console.log = (line) => lines.push(line);
+  try {
+    const module = { relativeModuleId: 'src/app/x.spec.ts', moduleId: '/abs/src/app/x.spec.ts' };
+    named[0].onTestModuleQueued(module);
+    named[0].onTestModuleStart(module);
+    named[0].onTestModuleStart({ moduleId: '/abs/src/app/y.spec.ts' });
+  } finally {
+    console.log = log;
+  }
+  assert.deepEqual(
+    lines,
+    ['vitest start src/app/x.spec.ts', 'vitest start /abs/src/app/y.spec.ts'],
+    'each file is printed once, as soon as its worker begins it, by its path relative to ui/'
+  );
 
   const packageJson = JSON.parse(
     readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')

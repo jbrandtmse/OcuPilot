@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -373,4 +373,95 @@ test('ledger.sh new writes a caller-supplied note= prefix once, against a tempor
     assert.doesNotMatch(trailers[0], /note=note=/, 'never twice');
     assert.match(trailers[1], / note=plain note$/, 'a note without the prefix is written as given');
   });
+});
+
+// --- ci-resource-sample.sh --------------------------------------------------------------------
+
+const SAMPLER = join(REPO_ROOT, 'scripts', 'ci-resource-sample.sh');
+
+/** Stub `free`, `ps`, `sudo` and `dmesg` on PATH; `dmesg` prints OCUPILOT_TEST_DMESG, or fails when it is `FAIL`. */
+function samplerStubs(dir) {
+  const bin = join(dir, 'bin');
+  writeStub(bin, 'free', ['printf "              total   used\\nMem:           7000   1000\\nSwap:             0      0\\n"']);
+  writeStub(bin, 'ps', ['printf "2048 4242 node /work/vitest-worker.js\\n 512 4243 /usr/bin/bash\\n"']);
+  writeStub(bin, 'sudo', ['exit 1']);
+  writeStub(bin, 'dmesg', ['[ "$OCUPILOT_TEST_DMESG" = FAIL ] && exit 1', 'printf "%s\\n" "$OCUPILOT_TEST_DMESG"']);
+  return bin;
+}
+
+/** The processes on this machine whose command line holds `marker`, read through the real `ps`. */
+function processesWith(marker) {
+  const listed = spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
+  return listed.stdout
+    .split('\n')
+    .filter((line) => line.includes(marker))
+    .map((line) => ({ pid: Number(line.trim().split(/\s+/)[0]), line: line.trim() }));
+}
+
+// Mutation (Rule 19): make the script `exit 0` after the command instead of `exit "$STATUS"` -> the
+// status assertion goes red; drop `stop_sampler` and its EXIT trap -> a process carrying the marker
+// survives the run.
+test('ci-resource-sample.sh samples while the command runs, exits with its status and leaves no sampler', () => {
+  for (const shell of shellsFor('sh')) {
+    withScratch('ocupilot-sample-', (dir) => {
+      const bin = samplerStubs(dir);
+      const marker = `ocupilot-sampler-marker-${process.pid}-${Date.now()}`;
+      // Output goes to a file, not a pipe: a sampler that outlived the script would hold a pipe open
+      // and hang this test instead of failing it.
+      const outPath = join(dir, 'out.txt');
+      const fd = openSync(outPath, 'w');
+      let result;
+      try {
+        result = spawnSync(shell, [SAMPLER, '--interval', '1', '--', 'sh', '-c', 'sleep 2; exit 3', marker], {
+          stdio: ['ignore', fd, fd],
+          env: stubEnv(bin),
+          timeout: 30000,
+        });
+      } finally {
+        closeSync(fd);
+      }
+      const out = readFileSync(outPath, 'utf8');
+      const survivors = processesWith(marker);
+      for (const { pid } of survivors) process.kill(pid, 'SIGKILL');
+      assert.equal(result.status, 3, `${shell}: the command's own status is the script's: ${out}`);
+      const stamps = out.split('\n').filter((line) => /^ci-resource-sample: \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(line));
+      assert.ok(stamps.length >= 1, `${shell}: at least one sample line: ${out}`);
+      assert.match(out, /mem: Mem: +7000 +1000/, `${shell}: memory is the Mem line free reports`);
+      assert.match(out, /2048 4242 node \/work\/vitest-worker\.js/, `${shell}: the node process is listed`);
+      assert.doesNotMatch(out, /\/usr\/bin\/bash/, `${shell}: and only node processes are`);
+      assert.deepEqual(survivors, [], `${shell}: no process carrying the marker survives the run, the sampler included`);
+    });
+  }
+});
+
+test('ci-resource-sample.sh refuses a missing command and a bad interval', () => {
+  for (const shell of shellsFor('sh')) {
+    const none = spawnSync(shell, [SAMPLER], { encoding: 'utf8' });
+    assert.equal(none.status, 2, `${shell}: no command is a caller error`);
+    const bad = spawnSync(shell, [SAMPLER, '--interval', '0', '--', 'true'], { encoding: 'utf8' });
+    assert.equal(bad.status, 2, `${shell}: a zero interval is a caller error`);
+  }
+});
+
+// Mutation (Rule 19): drop `killed process` from the script's pattern -> the OOM line goes unreported.
+test('ci-resource-sample.sh --report prints the kernel OOM lines, says none, or says it cannot read the log', () => {
+  const oom = 'oom-kill:constraint=CONSTRAINT_NONE,task=node,pid=4242\nKilled process 4242 (node) total-vm:9000kB';
+  for (const shell of shellsFor('sh')) {
+    withScratch('ocupilot-sample-report-', (dir) => {
+      const bin = samplerStubs(dir);
+      const report = (log) =>
+        spawnSync(shell, [SAMPLER, '--report'], { encoding: 'utf8', env: stubEnv(bin, { OCUPILOT_TEST_DMESG: log }) });
+      const found = report(`${oom}\nunrelated line`);
+      assert.equal(found.status, 0, `${shell}: a report exits 0`);
+      assert.match(found.stdout, /oom-kill:constraint/, `${shell}: the kernel's oom-kill line is printed`);
+      assert.match(found.stdout, /Killed process 4242 \(node\)/, `${shell}: and so is the killed-process line`);
+      assert.doesNotMatch(found.stdout, /unrelated line/, `${shell}: and only the OOM lines`);
+      const clean = report('eth0: link up');
+      assert.equal(clean.status, 0);
+      assert.match(clean.stdout, /no OOM lines/, `${shell}: a log without one says so`);
+      const unreadable = report('FAIL');
+      assert.equal(unreadable.status, 0);
+      assert.match(unreadable.stdout, /kernel log unavailable/, `${shell}: an unreadable log says so`);
+    });
+  }
 });

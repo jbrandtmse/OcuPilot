@@ -2,7 +2,8 @@
 title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '71dbd288249a605e50cd8193417b84c57acface6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -74,6 +75,8 @@ Batch 4 (bounded slices):
 
 **Execution (four batches in order; each is verifiable, committable and pushable alone; Batch 1 first):**
 
+**Scope of the current pass: Batch 1 only.** Implement the Batch 1 tasks and run the Batch 1 and "Every batch" verification lines and the Batch 1 mutations; do not start Batches 2 to 4 (no `ocupilot-ci`, ObjectScript or browser work). The pass finalizes at `status: in-progress`.
+
 Batch 1 -- the node 22 client-suite hang (DW-2721, DW-2567):
 
 - `ui/vitest-base.config.mjs` (new) -- plain default export (no import): `test.isolate: true` (the fix: no fork carries the module graph of earlier files), `test.maxWorkers: 2`, `test.execArgv: ['--max-old-space-size=1536']` (three times the measured isolated peak), and `test.reporters: ['default', <object reporter>]` whose `onTestModuleStart` prints `vitest start <file relative to ui/>` -- so the file in flight at a cut is named.
@@ -128,6 +131,23 @@ Batch 4 -- bounded slices (DW-2202, DW-2476):
 
 ## Review Triage Log
 
+### 2026-11-18 — Review pass (Batch 1)
+
+- verdicts: 12 findings — high 0, medium 0, low 10, false 1, maybe-false 1
+- findings:
+  - `[low]` `[patch]` sampler header promised signal handling the script defers until the command returns — verified by the reviewer under sh and bash; the header now states what the trap does (a group signal ends command and sampler; a signal to the script alone is acted on after the command returns). No test added: the deferral is not a promised behavior.
+  - `[low]` `[reject]` reporter and `maxWorkers` reaching the real builder are pinned only on the config file, plus the manual `vitest start` lines and the cap mutation — an include-limited `ng test` inside `test:tools` is a heavy fix for a regression only a toolchain bump could cause.
+  - `[low]` `[reject]` no mutation for the 15-second clause or the `out of memory` and `oom_reaper` patterns — one demonstrated mutation per AC is the bar and each Batch 1 AC has one.
+  - `[low]` `[reject]` AC3 (fork out of heap fails non-zero naming its file) rests on the observed macOS mutation — it cannot be reproduced on 2-CPU Linux here; CI's node 22.22.3 leg is the evidence the spec names.
+  - `[low]` `[patch]` the `ci.test.mjs` message said a timed-out step becomes canceled — a step timeout fails the step; the message now says the cancel condition covers a superseded run or the job's own bound.
+  - `[low]` `[reject]` the `if:` pin is two loose regexes, so `failure() && !cancelled()` would pass — nobody is expected to write that; a stricter match adds a parser for no named harm.
+  - `[false]` `[reject]` module-level `printed` Set makes the reporter test order-dependent — the test imports the module once and prints two distinct files; the Set only dedupes within one run.
+  - `[maybe-false]` `[reject]` 12-minute bound against the isolated 2-worker run time on a 2-CPU runner — the green node 22 run took 4 m 33 s and isolation added 35% locally (about 6 minutes, inference); the node 22.22.3 gates leg judges it. Would be low if wrong: a red step with its log.
+  - `[low]` `[reject]` intent audit: the expectation lives on the hosted node 22.22.3 runner and the local runs are macOS and Node 26 — known; the spec names that leg as DW-2721's evidence.
+  - `[low]` `[reject]` intent audit: the cause is measured on macOS and the 2-CPU extrapolation is an inference — the spec labels it so; no code claims otherwise.
+  - `[low]` `[reject]` intent audit: the sampler and report run against stubs, not the runner's real `/proc` and `dmesg` — the three outcomes are each a reported sentence; the CI log shows the real read.
+  - `[low]` `[reject]` intent audit: the log names the file by its start line, and with two workers the last line may not be the hung file — the default reporter prints each file as it finishes, so the unfinished files are the difference.
+
 ## Design Notes
 
 **ADs:** none binds the client test runner's pool settings; the spine's Stack rows "Client test runners" and "CI" stay true as written. AD-19 (the screen's own signal is the readiness signal: Run's `aria-disabled`, the stored view), AD-14, AD-43, AD-7 (a turn's slot), AD-17 (test classes only on a throwaway), AD-36. Test-and-CI only apart from Task 0's branch (a). No AD change.
@@ -152,6 +172,8 @@ Batch 4 -- bounded slices (DW-2202, DW-2476):
 
 **Decided in-stage:**
 
+- Batch 1: the start reporter prints on `onTestModuleQueued` as well as `onTestModuleStart`, once per file. Vitest reports a file as started only after its import, so a fork that runs out of memory during the import never named its file; it is reported as queued when the worker begins it (measured: two forks died on files with no start line until this change).
+- Batch 1: `maxWorkers: 2` and the 1536 MB cap hold on macOS; the spec's mutation cap of 512 does not fail there, so the recorded mutation uses 256.
 - The fix is isolation, not the cap: the measurement shows growth per fork, and a cap alone turns a hang into a crash. `maxWorkers: 2` keeps a 2-CPU runner from oversubscribing and leaves a 4-CPU runner one worker short (plan-measured cost: isolation added 35% locally).
 - 12 minutes for the step is over twice the slowest green client suite (4 m 33 s) and leaves the 20-minute job room for its report step.
 - `runnerConfig` goes in `angular.json` so `npx ng test` and `npm test` load the same settings.
@@ -191,7 +213,10 @@ Every batch:
 **Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), reverted ObjectScript reloaded:**
 
 - Isolation and cap: set `isolate: false` and the cap to 512 -> the os-management and security call exits non-zero naming the out-of-memory fork, with a `vitest start` line for a file that never finished, inside the call; drop `runnerConfig` from `angular.json` -> `angular-json.test.mjs` red.
+  - mutation (Batch 1, observed): `isolate: false` with the cap at 512 stayed green on macOS (92 files, 2 forks peaked near 380 MB RSS); with the cap at 256 the call exited 1 in 45 s with two `FATAL ERROR ... JavaScript heap out of memory` blocks, two `Worker exited unexpectedly` errors, and `vitest start` lines for `mapping-form.page.spec.ts` and `superserver-actions.spec.ts`, which never finished. Reverted; tree identical.
+  - mutation (Batch 1, observed): delete `runnerConfig` from `angular.json` -> `angular-json.test.mjs` red at "the target names the runner config file"; set `isolate: false` in `vitest-base.config.mjs` -> the same test red. Reverted; tree identical.
 - Step bound: drop the step's `timeout-minutes`, or the `--report` step's `cancelled()` -> `ci.test.mjs` red; the sampler stops propagating the command's status, or stops killing its sampler -> `shell-scripts.test.mjs` red.
+  - mutation (Batch 1, observed): delete the step's `timeout-minutes` -> `ci.test.mjs` red ("carries its own timeout-minutes"); the report step's `if:` narrowed to `failure()` -> red ("after a cancellation"); the script ends `exit 0` -> `shell-scripts.test.mjs` red ("the command's own status"); drop `trap stop_sampler EXIT` and the `stop_sampler` call -> red ("no process carrying the marker survives"); drop `killed process` from the OOM pattern -> the `--report` test red. Each reverted; tree identical.
 - DW-2534: delete AC5's `resetRememberedState()` -> AC5 red with CI's message; point AC1's wait at `myap` -> AC1 red naming the stored view.
 - DW-2565: restore the second `date` read -> the stepped-clock test red.
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
@@ -204,5 +229,7 @@ Every batch:
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-progress
 Blocking condition: none
+
+Batch 1 implemented (DW-2721, DW-2567); Batches 2 to 4 not started. Added `ui/vitest-base.config.mjs` (isolated forks, `maxWorkers: 2`, 1536 MB heap cap, start reporter), `runnerConfig` in `ui/angular.json`, `scripts/ci-resource-sample.sh`, the workflow's bounded `client suite` step (12 minutes) and `client suite resources` report step, and the pins in `ci.test.mjs`, `angular-json.test.mjs` and `shell-scripts.test.mjs`. Verified: the three test files green (135), the component suite in three sampled calls (92 + 121 + 80 = 293 files, 3581 tests green), `--report` exit 0, the Batch 1 mutations above, `check-objectscript` clean. Review: 12 findings, none high or medium; 2 low patches applied (sampler header wording, one test message), 9 rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: the three test files green (135), `npm run test:tools` green (2319). Residual: nothing was run on Linux or Node 22; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence, and the 12-minute step bound against the isolated run time is judged there.
