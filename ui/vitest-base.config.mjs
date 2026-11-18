@@ -1,9 +1,9 @@
 // Settings for the component suite's vitest runner, loaded through `runnerConfig` in angular.json.
 //
 // Every test file runs in its own isolated module graph: a worker that carries the graph of every
-// earlier file grows without bound, which a 2-CPU CI runner (one worker, all files) cannot absorb.
-// `maxWorkers` keeps a small runner from oversubscribing its CPUs; `execArgv` caps each worker's
-// heap so a worker that outgrows it fails the run, naming itself, instead of stalling it.
+// earlier file grows with each file it runs. `maxWorkers` bounds how many workers run at once on a
+// small runner; `execArgv` caps each worker's heap so a worker that outgrows it fails the run,
+// naming itself, instead of stalling it.
 //
 // Plain object, no imports: the Angular builder merges this file's `test` block into its own
 // project configuration, and `ui/tools/angular-json.test.mjs` imports the file to pin the values.

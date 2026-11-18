@@ -2911,6 +2911,7 @@ test('the client suite step is bounded under the job, sampled, and followed by t
   assert.equal(report?.run, 'sh scripts/ci-resource-sample.sh --report', 'the next step prints the kernel OOM lines');
   assert.match(report.condition ?? '', /failure\(\)/, 'and runs after a failure');
   assert.match(report.condition ?? '', /cancelled\(\)/, 'and after a cancellation, which is how a run ends when it is superseded or the job reaches its own bound');
+  assert.doesNotMatch(report.text, /working-directory:/, 'and from the repository root, where its scripts/ path resolves');
 });
 
 test('DW-439: the retry waits between attempts, and the waits are overridable', () => {

@@ -10,9 +10,10 @@
 # The first form runs the command, takes one sample at once and then one every --interval seconds
 # (default 15), and exits with the command's own status. The sampler is stopped when the command
 # ends. A signal sent to the script alone is acted on once the command returns; a signal sent to
-# the script's process group ends the command and the sampler together. Each sample is one UTC-stamped line each for memory (`free -m`),
-# load (/proc/loadavg) and the three largest node processes by resident set (`ps`); a source the
-# platform lacks reads `unavailable`.
+# the script's process group ends the command and the sampler together. Each sample is a UTC stamp
+# and one line each for memory and swap (`free -m`), load (/proc/loadavg) and online CPUs (`getconf`),
+# then the three largest Node processes by resident set (`ps`): those whose program is node, ng,
+# npm or npx, since `ng` renames its own process. A source the platform lacks reads `unavailable`.
 #
 # The second form prints the kernel's out-of-memory lines (`sudo -n dmesg`, else `dmesg`), or
 # `no OOM lines` when the log holds none, or `kernel log unavailable` when it cannot be read. It
@@ -25,7 +26,9 @@ REPORT=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --interval) INTERVAL="$2"; shift 2 ;;
+        --interval)
+            [ $# -ge 2 ] || { echo "ci-resource-sample: --interval needs a value"; exit 2; }
+            INTERVAL="$2"; shift 2 ;;
         --report) REPORT=1; shift ;;
         --) shift; break ;;
         *) echo "ci-resource-sample: unknown argument $1"; exit 2 ;;
@@ -52,22 +55,31 @@ report() {
 sample() {
     stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     mem=unavailable
+    swap=unavailable
     if out=$(free -m 2>/dev/null); then
-        mem=$(printf '%s\n' "$out" | awk '/^Mem/ { print; found = 1 } END { if (!found) print "unavailable" }')
+        mem=$(free_line Mem)
+        swap=$(free_line Swap)
     fi
     load=unavailable
     if [ -r /proc/loadavg ]; then
         load=$(cat /proc/loadavg)
     fi
+    cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null)
+    [ -n "$cpus" ] || cpus=unavailable
     procs=unavailable
     if out=$(ps -eo rss=,pid=,args= 2>/dev/null); then
-        procs=$(printf '%s\n' "$out" | awk '$3 ~ /node/ { print }' | sort -rn | head -n 3 | cut -c 1-160)
+        procs=$(printf '%s\n' "$out" | awk '$3 ~ /(^|\/)(node|ng|npm|npx)$/ { print }' | sort -rn | head -n 3 | cut -c 1-160)
         if [ -z "$procs" ]; then
             procs="no node process"
         fi
     fi
-    printf 'ci-resource-sample: %s\n  mem: %s\n  load: %s\n  node (rss KiB, pid, command):\n%s\n' \
-        "$stamp" "$mem" "$load" "$(printf '%s\n' "$procs" | sed 's/^/    /')"
+    printf 'ci-resource-sample: %s\n  mem: %s\n  swap: %s\n  load: %s\n  cpus: %s\n  node (rss KiB, pid, command):\n%s\n' \
+        "$stamp" "$mem" "$swap" "$load" "$cpus" "$(printf '%s\n' "$procs" | sed 's/^/    /')"
+}
+
+# The line of `free -m`'s output in $out that starts with $1, or `unavailable`.
+free_line() {
+    printf '%s\n' "$out" | awk -v want="$1" 'index($0, want) == 1 { print; found = 1 } END { if (!found) print "unavailable" }'
 }
 
 sample_loop() {
@@ -89,8 +101,9 @@ fi
 
 [ $# -gt 0 ] || { echo "ci-resource-sample: a command after -- is required"; exit 2; }
 case "$INTERVAL" in
-    ''|*[!0-9]*|0) echo "ci-resource-sample: --interval must be a positive whole number of seconds"; exit 2 ;;
+    ''|*[!0-9]*) INTERVAL=0 ;;
 esac
+[ "$INTERVAL" -gt 0 ] || { echo "ci-resource-sample: --interval must be a positive whole number of seconds"; exit 2; }
 
 SAMPLER=""
 stop_sampler() {

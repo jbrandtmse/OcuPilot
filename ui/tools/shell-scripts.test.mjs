@@ -379,12 +379,23 @@ test('ledger.sh new writes a caller-supplied note= prefix once, against a tempor
 
 const SAMPLER = join(REPO_ROOT, 'scripts', 'ci-resource-sample.sh');
 
-/** Stub `free`, `ps`, `sudo` and `dmesg` on PATH; `dmesg` prints OCUPILOT_TEST_DMESG, or fails when it is `FAIL`. */
+/**
+ * Stub `free`, `ps`, `sudo` and `dmesg` on PATH. `dmesg` prints OCUPILOT_TEST_DMESG, or fails when it
+ * is `FAIL`; `sudo -n` fails unless OCUPILOT_TEST_SUDO_DMESG is set, and then runs its command with
+ * that log in place of OCUPILOT_TEST_DMESG.
+ */
 function samplerStubs(dir) {
   const bin = join(dir, 'bin');
-  writeStub(bin, 'free', ['printf "              total   used\\nMem:           7000   1000\\nSwap:             0      0\\n"']);
-  writeStub(bin, 'ps', ['printf "2048 4242 node /work/vitest-worker.js\\n 512 4243 /usr/bin/bash\\n"']);
-  writeStub(bin, 'sudo', ['exit 1']);
+  writeStub(bin, 'free', ['printf "              total   used\\nMem:           7000   1000\\nSwap:          4095   2000\\n"']);
+  writeStub(bin, 'ps', [
+    'printf "2048 4242 node /work/vitest-worker.js\\n 512 4243 /usr/bin/bash\\n9000 4244 ng test --watch=false (ocupilot-ui)\\n"',
+    'printf " 300 4245 /usr/bin/node /work/small.js\\n4096 4246 /work/node_modules/@esbuild/linux-x64/bin/esbuild --service\\n1024 4247 npm test\\n"',
+  ]);
+  writeStub(bin, 'sudo', [
+    '[ "$1" = -n ] && [ -n "$OCUPILOT_TEST_SUDO_DMESG" ] || exit 1',
+    'shift',
+    'OCUPILOT_TEST_DMESG="$OCUPILOT_TEST_SUDO_DMESG" exec "$@"',
+  ]);
   writeStub(bin, 'dmesg', ['[ "$OCUPILOT_TEST_DMESG" = FAIL ] && exit 1', 'printf "%s\\n" "$OCUPILOT_TEST_DMESG"']);
   return bin;
 }
@@ -427,8 +438,14 @@ test('ci-resource-sample.sh samples while the command runs, exits with its statu
       const stamps = out.split('\n').filter((line) => /^ci-resource-sample: \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(line));
       assert.ok(stamps.length >= 1, `${shell}: at least one sample line: ${out}`);
       assert.match(out, /mem: Mem: +7000 +1000/, `${shell}: memory is the Mem line free reports`);
-      assert.match(out, /2048 4242 node \/work\/vitest-worker\.js/, `${shell}: the node process is listed`);
-      assert.doesNotMatch(out, /\/usr\/bin\/bash/, `${shell}: and only node processes are`);
+      assert.match(out, /swap: Swap: +4095 +2000/, `${shell}: and swap its Swap line`);
+      assert.match(out, /cpus: (\d+|unavailable)\n/, `${shell}: the online CPU count is sampled`);
+      assert.match(
+        out,
+        /\n {4}9000 4244 ng test[^\n]*\n {4}2048 4242 node \/work\/vitest-worker\.js\n {4}1024 4247 npm test\n/,
+        `${shell}: the three largest Node processes, ng's renamed one included, largest first`
+      );
+      assert.doesNotMatch(out, /\/usr\/bin\/bash|esbuild|small\.js/, `${shell}: and no other process, nor a fourth`);
       assert.deepEqual(survivors, [], `${shell}: no process carrying the marker survives the run, the sampler included`);
     });
   }
@@ -438,8 +455,12 @@ test('ci-resource-sample.sh refuses a missing command and a bad interval', () =>
   for (const shell of shellsFor('sh')) {
     const none = spawnSync(shell, [SAMPLER], { encoding: 'utf8' });
     assert.equal(none.status, 2, `${shell}: no command is a caller error`);
-    const bad = spawnSync(shell, [SAMPLER, '--interval', '0', '--', 'true'], { encoding: 'utf8' });
-    assert.equal(bad.status, 2, `${shell}: a zero interval is a caller error`);
+    for (const interval of ['0', '00', 'x']) {
+      const bad = spawnSync(shell, [SAMPLER, '--interval', interval, '--', 'true'], { encoding: 'utf8' });
+      assert.equal(bad.status, 2, `${shell}: interval ${interval} is a caller error`);
+    }
+    const missing = spawnSync(shell, [SAMPLER, '--interval'], { encoding: 'utf8', timeout: 10000 });
+    assert.equal(missing.status, 2, `${shell}: an --interval with no value is a caller error, not a loop`);
   }
 });
 
@@ -449,8 +470,13 @@ test('ci-resource-sample.sh --report prints the kernel OOM lines, says none, or 
   for (const shell of shellsFor('sh')) {
     withScratch('ocupilot-sample-report-', (dir) => {
       const bin = samplerStubs(dir);
-      const report = (log) =>
-        spawnSync(shell, [SAMPLER, '--report'], { encoding: 'utf8', env: stubEnv(bin, { OCUPILOT_TEST_DMESG: log }) });
+      const report = (log, sudoLog = '') =>
+        spawnSync(shell, [SAMPLER, '--report'], {
+          encoding: 'utf8',
+          env: stubEnv(bin, { OCUPILOT_TEST_DMESG: log, OCUPILOT_TEST_SUDO_DMESG: sudoLog }),
+        });
+      const privileged = report('FAIL', oom);
+      assert.match(privileged.stdout, /Killed process 4242 \(node\)/, `${shell}: the log is read through sudo -n first`);
       const found = report(`${oom}\nunrelated line`);
       assert.equal(found.status, 0, `${shell}: a report exits 0`);
       assert.match(found.stdout, /oom-kill:constraint/, `${shell}: the kernel's oom-kill line is printed`);
