@@ -3,7 +3,7 @@
  *
  * What it pins: the spec's own global's row Export, to a server file through the export dialog, reports done; the screen's Import of that file, after the
  * spec kills the global, restores it, read back through the node page; and a local import of a file holding a `%`-global shows the protected-global sentence in
- * the dialog and loads nothing.
+ * the dialog and loads nothing; and a local import of a UTF-8 file holding a non-Latin value loads the value as written.
  *
  * **It writes only its own global**, `^ZZOcuGlbT<pid>` in `HSCUSTOM`, which it kills first and again after, and the files `OcuPilot.Test.GlobalTransferProbe`
  * names, so it runs on a throwaway only. The `%`-global is never loaded: the instance refuses the file before anything loads, and the spec kills it
@@ -82,8 +82,12 @@ async function selectGlobalRow(page, name) {
   await page.click('input[data-ocu-criterion="pattern"]', { clickCount: 3 });
   await page.type('input[data-ocu-criterion="pattern"]', name);
   await page.click('.ocu-criteria-controls button[type="submit"]');
+  // The submitted read's own answer: every row listed is the filtered one, so the index below is not taken from the unfiltered first read.
   await page.waitForFunction(
-    (selector, wanted) => [...document.querySelectorAll(selector)].some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)),
+    (selector, wanted) => {
+      const rows = [...document.querySelectorAll(selector)];
+      return rows.length > 0 && rows.every((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+    },
     { timeout: config.navigationTimeoutMs },
     ROW_SELECTOR,
     name
@@ -205,5 +209,40 @@ test('a local import of a file holding a % global shows the protected-global sen
     assert.equal(probe('GTPCT', [`Set result=$Data(^${PERCENT})`]).value, '0', 'and the % global stays undefined');
   } finally {
     await context.close();
+  }
+});
+
+test('a local import of a UTF-8 file holding a non-Latin value loads it as written', async () => {
+  probe('GTKILL3', [`Kill ${ROOT}`, 'Set result=1']);
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<Export generator="IRIS" version="26">',
+    '<Global>',
+    `<Node><Sub>${ROOT}</Sub>`,
+    '<Node><Sub>1</Sub>',
+    '<Data>\u03bb\u20ac\u65e5</Data>',
+    '</Node>',
+    '</Node>',
+    '</Global>',
+    '</Export>',
+    '',
+  ].join('\n');
+  const local = join(localDirectory, 'wide.xml');
+  writeFileSync(local, xml, 'utf8');
+  const { context, page } = await signedInAt(browser, config, listRoute, VIEWPORTS.wide);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await commandBar(page, STRINGS.actionImport);
+    assert.ok((await pickerRoot(page)) !== '', 'the dialog opens on the server file, its picker drawn');
+    await page.click('input[data-explorer-import-source="local"]');
+    await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
+    await (await page.$('input[data-explorer-import-file]')).uploadFile(local);
+    await page.waitForFunction(() => document.querySelector('[data-explorer-import-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-import-confirm]');
+    await statusReads(page, STRINGS.explorerImportDoneOne);
+    assert.equal(probe('GTWIDE', [`Set result=($Get(${ROOT}(1))=$Char(955,8364,26085))_":"_$Length($Get(${ROOT}(1)))`]).value, '1:3', 'the instance holds the three characters the file holds');
+  } finally {
+    await context.close();
+    probe('GTKILL4', [`Kill ${ROOT}`, 'Set result=1']);
   }
 });

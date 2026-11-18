@@ -457,8 +457,7 @@ ClassMethod GlobalTotals(pNamespace As %String, pType As %String, ByRef pQuery, 
 
 /// <p>One bounded walk of global <var>pName</var> in <var>pNamespace</var>, every node that holds a value in <code>$Query</code> order
 /// from the root, the root included: <var>pDefined</var> is whether the global holds data, <var>pCharacters</var> the characters of every
-/// node's <code>$Name</code> reference and value, and <var>pOver</var> whether that passed <var>pBound</var> (the walk stops there, and a
-/// value too long for a string counts as past it). With <var>pDigest</var>, <var>pStream</var> holds each node as the length of its
+/// node's <code>$Name</code> reference and value, and <var>pOver</var> whether that passed <var>pBound</var> (the walk stops there). With <var>pDigest</var>, <var>pStream</var> holds each node as the length of its
 /// reference, the reference, the length of its value and the value, UTF-8 encoded and written in batches of about
 /// <parameter>DIGESTBATCH</parameter> characters. The namespace is switched for the call alone.</p>
 ClassMethod VendorTotals(pNamespace As %String, pName As %String, pBound As %Integer, pDigest As %Boolean, Output pDefined As %Boolean, Output pCharacters As %Integer, Output pOver As %Boolean, Output pStream As %Stream.TmpBinary, Output pCaught)
@@ -478,36 +477,35 @@ ClassMethod VendorTotals(pNamespace As %String, pName As %String, pBound As %Int
             Set tBatch = ""
             Set tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot))
             While (tNext '= "") && 'pOver {
-                Set tValue = ""
-                Try {
-                    Set tValue = $Get(@tNext)
-                } Catch exValue {
-                    If exValue.Name '[ "<MAXSTRING>" Throw exValue
+                Set tValue = $Get(@tNext)
+                Set pCharacters = pCharacters + $Length(tNext) + $Length(tValue)
+                If pCharacters > pBound {
                     Set pOver = 1
-                }
-                If 'pOver {
-                    Set pCharacters = pCharacters + $Length(tNext) + $Length(tValue)
-                    If pCharacters > pBound {
-                        Set pOver = 1
-                    } ElseIf pDigest {
+                } Else {
+                    If pDigest {
                         Set tBatch = tBatch _ $Length(tNext) _ ":" _ tNext _ $Length(tValue) _ ":" _ tValue
-                        If $Length(tBatch) '< ..#DIGESTBATCH {
-                            Do pStream.Write($ZConvert(tBatch, "O", "UTF8"))
-                            Set tBatch = ""
-                        }
-                        Set tNext = $Query(@tNext)
-                    } Else {
-                        Set tNext = $Query(@tNext)
+                        If $Length(tBatch) '< ..#DIGESTBATCH Do ..WriteDigestBatch(pStream, .tBatch)
                     }
+                    Set tNext = $Query(@tNext)
                 }
             }
-            If pDigest && 'pOver && (tBatch '= "") Do pStream.Write($ZConvert(tBatch, "O", "UTF8"))
+            If pDigest && 'pOver Do ..WriteDigestBatch(pStream, .tBatch)
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
+}
+
+/// <p>Write <var>pBatch</var> to <var>pStream</var> as UTF-8, <parameter>DIGESTBATCH</parameter> characters at a time so that no one conversion
+/// passes the longest string, and empty it.</p>
+ClassMethod WriteDigestBatch(pStream As %Stream.TmpBinary, ByRef pBatch As %String) [ Private ]
+{
+    For tAt = 1:..#DIGESTBATCH:$Length(pBatch) {
+        Do pStream.Write($ZConvert($Extract(pBatch, tAt, tAt + ..#DIGESTBATCH - 1), "O", "UTF8"))
+    }
+    Set pBatch = ""
 }
 
 /// <p>Kill the global the query names and every node in it: 404 <code>GLOBAL.NOTFOUND</code> when it holds no data.</p>

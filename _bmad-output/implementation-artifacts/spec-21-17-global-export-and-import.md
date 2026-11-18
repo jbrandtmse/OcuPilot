@@ -149,6 +149,35 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 - AC4. Given the Globals list's import of a file holding a code global or a `%`-global, when either caller imports it, then it is refused `PROHIBITED.PROTECTEDGLOBAL` before anything loads. An export of a global is never judged by the arm.
 - AC5. Given the browser, when the person exports the spec's global from its row and imports the file back, then the global's nodes read back as exported (Rule 3).
 
+### Review Findings
+
+Code review 2026-11-18 (`50905467e..2b7a65791`, four layers, full-opus). Measured on `ocupilot-ci` over HTTP as a `%Development` holder without `OcuPilotAdmin` or `%All` (with and without `%Admin_FileSystemAccess`) and as `_SYSTEM`, in `HSCUSTOM` and `USER`: export to a server file and to this browser, a replacing import (server file and UTF-8 local file, a 40,000-character and a non-Latin value) all 200 and equal; a `%`-global, an `IRIS.Temp*` global, an OcuPilot-named global in any case and a file holding an ordinary and a `%`-global refused 403 with nothing loaded; an extended reference refused 400 before any load; `GLOBAL.OWNDATA` 403 in three cases on both exports. Without the file-system pair the server-file forms answer 403 `AUTH.NOPRIVILEGE` (AD-21's sixth case).
+
+- [ ] [Review][Decision] HIGH (Rule 6): a Globals export whose answer passes the capture answers 422 `GLOBAL.TOOLARGE`, where AD-61 rule 5 says `PORT.UNAVAILABLE` -- the matrix's "Too large" row asks for 422; `Outcome` has already logged a `PORT.UNAVAILABLE` fault, and the remap keys on status 503 [`AtelierPort.cls` `ExportSet`]. Needs the lead: an add-only AD-61 record (recommended, no code change) or the remap dropped with the matrix amended.
+- [x] [Review][Patch] MED: `DeveloperFloor`'s roster lacked the two tools (red, run 871) [`Test/DeveloperFloor.cls` `TOOLS`, `HELDWRITES`]
+- [x] [Review][Patch] MED: no agent confirm of an unchanged replacing import was shown to load (the DW-2608 symptom) [`Test/GlobalTransfer.cls` `TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved`]
+- [x] [Review][Patch] MED: the browser spec took the row index before the filtered read answered [`ui/browser/system-explorer-global-transfer.browser-spec.mjs` `selectGlobalRow`]
+- [x] [Review][Patch] MED: `DIGEST` failed 500 on a value whose UTF-8 passes the longest string; the dead `<MAXSTRING>` trap removed [`Port/GlobalPort.cls` `VendorTotals`, `WriteDigestBatch`]
+- [x] [Review][Patch] MED: no developer-principal test of the new paths [`Test/GlobalWriteDeveloper.cls` `TestADeveloperExportsAndImportsItsOwnGlobalAndIsRefusedAProtectedOne`]
+- [x] [Review][Patch] MED: the browser path's non-Latin value was unproven [`ui/browser/system-explorer-global-transfer.browser-spec.mjs`, third test]
+- [x] [Review][Patch] LOW: Design Notes record 403 for the matrix's 409 and drop the stale "export of `^OcuPilot*` is not refused" line [this spec]
+- [x] [Review][Defer] `Prohibited.ImportedGlobals`' catch keeps an OK status [`Prohibited.cls`] — deferred: pre-existing (21.5), contended file; DW-2731 routed to 21-18
+- [x] [Review][Defer] Story 21.18's matrix says 409 for a protected global [spec-21-18] — deferred: another spec; DW-2732 routed to 21-18
+
+Rejected:
+
+- `false` extended reference in a file (`^|"ns"|X`): measured, listed as `|"USER"|X.gbl` and refused 400 before any load.
+- `low` published 3,000,000-character limit vs many-node globals: the ruled sentence and the XML bound are the spec's.
+- `low` an OcuPilot-named global import gets the code sentence; `DIGEST` reads own globals: the spec judges the import as 19.13's and leaves `DIGEST` unrefused (Design Notes).
+- `low` the digest of a replaced global reaches the agent's card: SHA-256 over the framed nodes; no realistic offline guessing by the agent.
+- `low` no total bound across a file's globals: each walk is bounded; a file naming many large existing globals is self-inflicted.
+- `low` Export drawn enabled on an OcuPilot-named row: refused with its sentence; an up-front kind needs a new string.
+- `low` the import arm repeats the class/routine branch and the `.gbl` check: add-only lines in a contended file, the spec's stated reason.
+- `low` Globals list moved to `CodeListPage`: recorded under Decided in-stage, no copy.
+- `low` registration edits not add-only: Epic 24 has no change pending on either line.
+- `low` `GlobalTransfer` at 557 lines: within reach of the 500-line guide.
+- `low` Export while the shell's Delete sends: export only reads the global; each write is confirmed.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
@@ -195,7 +224,6 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 - The bound is the import's own 3,000,000, so every export imports back. Past it, an import that would replace an existing global is refused rather than left unversioned. Before this story every such import refused `CHANGED`.
 - The Globals list's import is 19.13's operation unchanged: it imports every document the file holds, all listed in the reviewed summary, and it asks routines WRITE as AD-61 rule 1 states. That is stricter than a globals-only import needs.
 - Done and dialog lines reuse 19.13's "1 document" strings, since a global exports as one document, `<name>.GBL`.
-- An export of `^OcuPilot*` is not refused: it reads only what the caller's database READ allows, as the classic page does and as 21.5's node view does (AD-9 keeps the data behind its resource).
 - Tests are not armed: each makes and kills its own global and files.
 
 **Strings, escalated for the spec gate's ruling:**
@@ -238,6 +266,8 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 - The import dialog opens with Compile checked, as for the other lists, and the Globals list sends it as the dialog holds it.
 - `ExplorerGlobalExport` and `ExplorerGlobalImport` keep the classic Export and Import dialog pages (`CLASSICPAGES`), and both join the classic-gate rosters (`ClassicPageGate`, `MappingDescriptor`).
 - `ExplorerTransfer`'s new test makes its global in `USER`, the namespace its other tests probe; `GlobalTransfer` makes its in `HSCUSTOM`.
+
+**Decided in-stage (code review):** the matrix's "Code or `%` global" row reads 403, not 409: every refusal of a protected global answers 403 `PROHIBITED.PROTECTEDGLOBAL`, or 403 `PROHIBITED.OCUPILOTCODE` for an OcuPilot-named one, as Story 21.5's arm does on every caller (measured on `ocupilot-ci`, 2026-11-18).
 
 ## Verification
 
@@ -288,6 +318,11 @@ Observed (each applied on `ocupilot-ci`, red, reverted byte-identical by `cmp` a
 - mutation: AC1 (export to this browser) answer `[]` for the no-file branch's lines in `AtelierPort.ExportSet` -> `GlobalTransfer.TestAnExportToThisBrowserAnswersTheLinesAndANameIsOneGlobal` red alone.
 - mutation: AC1 (one name) `If 0 &&` before the `Globals` case in `AtelierPort.SetNames` -> that test and five more in `GlobalTransfer` red.
 - mutation: AC4 (an export is never judged) `If 0 &&` before the export skip in `Prohibited.Prohibits` -> `GlobalTransfer.TestAnImportOfACodeOrPercentGlobalIsRefusedAndAnExportIsNeverJudged` red alone.
+- mutation: (shared surface) `DeveloperFloor`'s roster as committed, without the two tools -> `TestTheToolsTheDeveloperHoldsAreTheDeclaredRoster` red (run 871); with them green (run 873).
+- mutation: AC3 `If 0 &&` before `IsGlobalDocument` in `AtelierPort.Examine` -> also the agent's confirm a second later in `GlobalTransfer.TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved` red (run 877).
+- mutation: AC3 one UTF-8 conversion per batch in `GlobalPort.WriteDigestBatch` -> `GlobalTransfer.TestTheSizeAndTheDigestReadTheWholeGlobal` red on the wide-value row alone (run 876).
+- mutation: AC1 (developer) `GlobalTotals` requires `OcuPilotAdmin:USE` for `SIZE` -> `GlobalWriteDeveloper.TestADeveloperExportsAndImportsItsOwnGlobalAndIsRefusedAProtectedOne` red (run 892).
+- mutation: AC1 (browser, non-Latin) `explorer-import-dialog.ts` reads the file as `iso-8859-1` -> `system-explorer-global-transfer.browser-spec.mjs` third test red (`0:8`), after the build and redeploy.
 
 ## Auto Run Result
 

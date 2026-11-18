@@ -13786,3 +13786,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen.Tool.Write.READBACKPAYLOAD and ReadBack.ComparesPayload (Story 21.5 rework 1) compare a bodyless write's query payload; AD-58 records READBACKTOOL and READBACKFIELDS but says an action-style write sends no value.
 - 2026-11-18T07:30:12Z status=decision-pending owner=burndown by=cr note=Rule 20 spine line for AD-58 is a veto-window amendment; lead-owned
 - 2026-11-18T10:43:58Z status=resolved-by:21-5-globals-and-the-data-tools by=runner note=AD-58_sentence_appended_(orchestrator_ruling;add-only)
+
+### DW-2731: Prohibited.ImportedGlobals catches an exception without setting its status, so an error raised while judging an import's globals reads as permitted
+- source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls ImportedGlobals Catch sets pProhibits=0 and keeps tSC OK, unlike Global and SqlPrivilege, which return ex.AsStatus(); reachability of a throw inside the loop is unmeasured (inference)
+- 2026-11-18T11:11:34Z status=routed owner=21-18-global-find-and-replace by=cr note=one-line fix Set tSC = ex.AsStatus(); not patched in 21.17 review: Prohibited.cls is contended with Epic 24
+
+### DW-2732: Story 21.18's matrix answers a protected-global refusal 409, but every protected-global and OcuPilot-code refusal answers 403
+- source: spec-21-17-global-export-and-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: spec-21-18 matrix row Protected says 409 PROHIBITED.PROTECTEDGLOBAL / OCUPILOTCODE; 21.5's and 21.17's tests and the 2026-11-18 measurement on ocupilot-ci answer 403 on every caller
+- 2026-11-18T11:11:38Z status=routed owner=21-18-global-find-and-replace by=cr note=plan 21.18's tests on 403, as 21.17's Design Notes record

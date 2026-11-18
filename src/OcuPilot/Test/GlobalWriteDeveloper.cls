@@ -2,11 +2,14 @@
 /// no <code>OcuPilotAdmin</code> and no <code>%All</code> (AC3, AC4, AC5; AD-8, AD-10): every call is an HTTP request signed in as that principal, so the
 /// kernel's globals arm finds its protected locations with calls such a caller may make. Its edit of a node, its kill of a node and its delete of a
 /// global of its own are answered 200, and its edit, kill and delete of a node or a global stored in a system database are refused
-/// <code>PROHIBITED.PROTECTEDGLOBAL</code> before any write, as the classic page would not write them either.</p>
+/// <code>PROHIBITED.PROTECTEDGLOBAL</code> before any write, as the classic page would not write them either. Story 21.17's transfers, the way a
+/// developer without a server-file pair reaches them: its own global exported to this browser and imported back over itself from the local file, a
+/// non-Latin value included, a local file holding a <code>%</code>-global refused, and an export of one of OcuPilot's own globals refused
+/// <code>GLOBAL.OWNDATA</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because the class creates and deletes a user and a role. <method>OnBeforeAllTests</method> refuses anywhere it does not, and
 /// <method>OnAfterAllTests</method> removes the principal. Each test makes its own <code>^ZZOcuGlbDev&lt;pid&gt;</code> in <code>HSCUSTOM</code> and kills it.
-/// It writes no protected global.</p>
+/// It writes no protected global, and kills the <code>%</code>-global a refused import names.</p>
 Class OcuPilot.Test.GlobalWriteDeveloper Extends %UnitTest.TestCase
 {
 
@@ -81,6 +84,8 @@ Method Remove()
 {
     Set tRoot = "^" _ ..PreparedName
     Kill @tRoot
+    Set tPercent = "^%" _ ..PreparedName
+    Kill @tPercent
 }
 
 /// <p>The canonical reference of the test's node <var>pSubscripts</var> (the text inside the parentheses).</p>
@@ -97,7 +102,7 @@ Method Act(pScreen As %String, pAction As %String, pId As %String, pValues As %D
     Do tBody.%Set("id", pId, "string")
     If $IsObject(pValues) Do tBody.%Set("values", pValues)
     Set pAnswer = ""
-    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/screens/" _ pScreen _ "/action?ns=" _ ..#NAMESPACE, ..#DEVUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody.%ToJSON())
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/screens/" _ pScreen _ "/action?ns=" _ ..#NAMESPACE, ..#DEVUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $ZConvert(tBody.%ToJSON(), "O", "UTF8"))
     If $$$ISERR(tSC) Quit 0
     Try {
         Set pAnswer = ##class(%DynamicObject).%FromJSON(tText)
@@ -169,6 +174,40 @@ Method TestADeveloperIsRefusedAGlobalStoredInASystemDatabase()
     Set tStatus = ..Act(..#LISTSCREEN, "delete", "oddDEF", , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "403 PROHIBITED.PROTECTEDGLOBAL", "and so is the delete of the whole global")
     Do $$$AssertEquals($Data(^oddDEF) _ "|" _ $Get(@tNode), tBefore, "nothing of it changed")
+}
+
+/// <p>Story 21.17. The developer exports its own global, a non-Latin value included, to this browser, and imports the lines back from a local file
+/// over the changed global, which is then as it was; a local file holding the <code>%</code> copy of it is refused
+/// <code>PROHIBITED.PROTECTEDGLOBAL</code> with nothing loaded; and an export of a global named for OcuPilot is refused <code>GLOBAL.OWNDATA</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.GlobalPort.GlobalTotals</method> also requires <code>OcuPilotAdmin:USE</code> -> the export row answers 403
+/// and goes red.</p>
+Method TestADeveloperExportsAndImportsItsOwnGlobalAndIsRefusedAProtectedOne()
+{
+    Set tRoot = "^" _ ..PreparedName
+    Set @tRoot@(1) = "plain"
+    Set @tRoot@(2) = $Char(955, 8364, 26085)
+    Set tBefore = $Get(@tRoot@(1)) _ "|" _ $Get(@tRoot@(2)) _ "|" _ $Data(@tRoot@(9))
+    Do ..AssertPrincipal()
+    Set tStatus = ..Act(..#LISTSCREEN, "export-browser", ..PreparedName, , .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the developer exports its own global to this browser: " _ $Extract($Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""), 1, 200))
+    Set tText = ""
+    If $IsObject(tAnswer) && $IsObject(tAnswer.%Get("output")) {
+        Set tIterator = tAnswer.output.lines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            Set tText = tText _ $Select(tIndex = 0: "", 1: $Char(10)) _ tLine
+        }
+    }
+    Do $$$AssertTrue(tText [ ("<Sub>" _ tRoot _ "</Sub>"), "its output is the XML of the global")
+    Set @tRoot@(1) = "changed"
+    Set @tRoot@(9) = "extra"
+    Set tStatus = ..Act(..#LISTSCREEN, "import-local", "import", {"fileName": "dev.xml", "content": (tText), "Compile": "false"}, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "and imports the lines back over the changed global: " _ $Extract($Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""), 1, 200))
+    Do $$$AssertEquals($Get(@tRoot@(1)) _ "|" _ $Get(@tRoot@(2)) _ "|" _ $Data(@tRoot@(9)), tBefore, "which is as it was, its non-Latin value included")
+    Set tPercent = "^%" _ ..PreparedName
+    Set tStatus = ..Act(..#LISTSCREEN, "import-local", "import", {"fileName": "pct.xml", "content": ($Replace(tText, "<Sub>" _ tRoot _ "</Sub>", "<Sub>" _ tPercent _ "</Sub>")), "Compile": "false"}, .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Data(@tPercent), "403 PROHIBITED.PROTECTEDGLOBAL|0", "a local file holding its % copy is refused and loads nothing")
+    Set tStatus = ..Act(..#LISTSCREEN, "export-browser", "OcuPilotZZ" _ $Job, , .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "403 GLOBAL.OWNDATA", "an export of a global named for OcuPilot is refused")
 }
 
 /// <p>The principal this class signs in as holds <code>%Development:USE</code> and neither <code>OcuPilotAdmin</code> nor <code>%All</code>.</p>

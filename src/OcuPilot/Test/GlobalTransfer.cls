@@ -192,11 +192,12 @@ ClassMethod Atelier(pEndpoint As %String, pType As %String, pPairs As %List, Out
 
 /// <p>The globals port's reads of the test's own global (<code>SIZE</code> and <code>DIGEST</code>), pinned by what an independent walk finds: the characters
 /// of every node's reference and value, the root included; a digest that is the same across reads, is the SHA-256 of each node's reference length,
-/// reference, value length and value as UTF-8, and moves with any value edit or subscript change; a global that holds nothing, which is a 404 to
+/// reference, value length and value as UTF-8, and moves with any value edit or subscript change, and is read for a value whose UTF-8 is longer than the longest string; a global that holds nothing, which is a 404 to
 /// <code>SIZE</code> and an undefined global to <code>DIGEST</code>; a name beginning with OcuPilot, refused 403 <code>GLOBAL.OWNDATA</code> to
 /// <code>SIZE</code> alone; and the bound, passed by one character.</p>
 /// <p>Mutation (Rule 19): count only the value's characters in <method>OcuPilot.Port.GlobalPort.VendorTotals</method> -> the size assertion goes red; leave the
-/// value out of the digest batch -> the known-answer and value-edit assertions go red; drop the bound check -> the bound assertions go red.</p>
+/// value out of the digest batch -> the known-answer and value-edit assertions go red; drop the bound check -> the bound assertions go red; convert a batch to UTF-8 in one call in
+/// <method>OcuPilot.Port.GlobalPort.WriteDigestBatch</method> -> the wide-value assertion goes red.</p>
 Method TestTheSizeAndTheDigestReadTheWholeGlobal()
 {
     Set tRoot = "^" _ ..PreparedName
@@ -228,6 +229,8 @@ Method TestTheSizeAndTheDigestReadTheWholeGlobal()
     Set tKnown = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(tInput, "O", "UTF8"))), "L")
     Do ..Read("DIGEST", ..PreparedName, .tKnownRead)
     Do $$$AssertEquals(tKnownRead.Digest, tKnown, "the digest is the SHA-256 of each node's reference length, reference, value length and value as UTF-8")
+    Set @tRoot@("w") = $Translate($Justify("", 1300000), " ", $Char(26085))
+    Do $$$AssertEquals(..Read("DIGEST", ..PreparedName, .tWide) _ " " _ $Select($IsObject($Get(tWide)): tWide.Defined, 1: ""), "200  1", "a value whose UTF-8 is longer than the longest string is digested")
     Kill @tRoot
     Do $$$AssertEquals(..Read("SIZE", ..PreparedName), "404 GLOBAL.NOTFOUND", "a global that holds nothing is not found")
     Do $$$AssertEquals(..Read("DIGEST", ..PreparedName, .tNone) _ " " _ tNone.Defined _ " " _ tNone.Digest, "200  0 ", "and is an undefined global with no digest")
@@ -380,9 +383,10 @@ Method TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge()
 
 /// <p>AC3 (DW-2608). An import that replaces the existing global reads a summary that names its content, <code>&lt;name&gt;.gbl replaces sha256 &lt;digest&gt;</code>,
 /// the same across two previews a second apart, and a new global reads <code>new</code>; the Globals list's import loads it and the global equals the file's;
-/// and the agent's import, minted over the global and confirmed after a node changed, is refused 409 <code>EXPLORER.IMPORT.CHANGED</code> with nothing loaded.</p>
+/// the agent's import, minted over the global and confirmed a second later, loads it; and one confirmed after a node changed is refused 409
+/// <code>EXPLORER.IMPORT.CHANGED</code> with nothing loaded.</p>
 /// <p>Mutation (Rule 19): take the vendor's time for a <code>.gbl</code> document in <method>OcuPilot.Port.AtelierPort.Examine</method> -> the equal-previews leg
-/// goes red; digest the references without the values in <method>OcuPilot.Port.GlobalPort.VendorTotals</method> -> the moved leg goes red, the confirm loading.</p>
+/// and the agent's confirm a second later go red; digest the references without the values in <method>OcuPilot.Port.GlobalPort.VendorTotals</method> -> the moved leg goes red, the confirm loading.</p>
 Method TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved()
 {
     Set tProbe = ..#PROBE
@@ -412,8 +416,16 @@ Method TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved()
     Set tArgs = {"Id": "import", "Compile": false}
     Do tArgs.%Set("root", tValues.root, "string")
     Do tArgs.%Set("path", tValues.path, "string")
+    Set @tRoot@(1) = "changed"
     Do ..MintFor(..#IMPORTTOOL, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertTrue($IsObject($Get(tProposal)), "the agent's import is minted over the existing global: " _ ..Json($Get(tFault)))
+    If '$IsObject($Get(tProposal)) Quit
+    Hang 1.1
+    Do $$$AssertEquals(..ConfirmFor(tProposal, .tResult), "200 ", "a second later, over the unchanged global, the confirm is answered")
+    Do $$$AssertEquals(..Walk(), tBefore, "and loads the file over it")
+    Set @tRoot@(1) = "changed"
+    Do ..MintFor(..#IMPORTTOOL, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertTrue($IsObject($Get(tProposal)), "the agent's import is minted over the existing global again: " _ ..Json($Get(tFault)))
     If '$IsObject($Get(tProposal)) Quit
     Set @tRoot@(2) = "moved"
     Do $$$AssertEquals(..ConfirmFor(tProposal, .tResult), "409 " _ ##class(OcuPilot.Api.AtelierError).#IMPORTCHANGED, "a node that changed after the mint refuses the confirm")
