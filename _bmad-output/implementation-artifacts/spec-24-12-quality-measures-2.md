@@ -124,6 +124,42 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `18d6eecbb`).
 - **AC5 (governed, audited, declared).** Given the four tools. When the roster tests run. Then each declares `write`, `AnalyticsPort` and `%DeepSee.UI.QualityMeasures`; the baseline holds three keys `true` and one `false`; each write records `ConfigChange`; removing any one roster row reddens that test alone.
 - **AC6 (leaves USER as found).** Given any new or changed test, in either order, on a fresh instance. When it ends. Then no marked class and no marked `^DeepSee.QMsrs` node remains.
 
+### Review Findings
+
+Code review of Batch 2 (2026-11-18, `full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 0 decision-needed, 11 patch (all applied), 3 defer (ledgered `wontfix-accepted`), 15 rejected.
+
+- [x] [Review][Patch] (medium) Test helpers copied from 24.11's tests instead of shared: `Compiling`, `Script`, `RunScript`, `HoldEverythingBut` and `Recorded` repeated in `AnalyticsQualityMeasureBase`/`WriteEdge`/`WriteReal` and `AnalyticsListingGroupWrite`/`WriteEdge` [src/OcuPilot/Test/AnalyticsListingGroupBase.cls] — lifted into `AnalyticsListingGroupBase` (`COMPILESEAM`, `WRITEENDPOINT`, `HeldPairSpec`) and `AnalyticsQualityMeasureBase` (`Recorded`).
+- [x] [Review][Patch] (medium) The script form's free-name check lacked the vendor-list half 24.11's has, so a name listed through an unregistered class could get a second twin [src/OcuPilot/Port/AnalyticsPort.cls:QualityMeasureSnippet] — prelude reads `%GetQualityMeasureList`; new listed and other-class legs in `TestEachWritesScriptFormMakesTheSameChange`.
+- [x] [Review][Patch] (medium) `QualityMeasureViolations`' length and type rules had no test [src/OcuPilot/Test/AnalyticsQualityMeasureWrite.cls:TestEachRefusalWritesNothing] — legs for a 251-character name part, a 2,001-character caption, a 256-character format and a non-string caption.
+- [x] [Review][Patch] (medium) `Snapshot` read only `qmsrNames`, so AC3's "`^DeepSee.QMsrs` equal before" missed class and subject-area nodes [src/OcuPilot/Test/AnalyticsQualityMeasureBase.cls:Snapshot] — walks every marked node; `QGone` checks every subject area.
+- [x] [Review][Patch] `RunScript` read a thrown line as success [src/OcuPilot/Test/AnalyticsListingGroupBase.cls:RunScript]
+- [x] [Review][Patch] `WriteReal` relied on `^OcuProbeQMWFail` being absent at start [src/OcuPilot/Test/AnalyticsQualityMeasureWriteReal.cls:OnBeforeOneTest]
+- [x] [Review][Patch] Mutation notes naming renamed or wrong methods (`RestoreListingGroup`, `AdmitListingGroup`'s `tWritePairs`, "every leg") [AnalyticsListingGroupWriteEdge.cls, AnalyticsListingGroupDatabase.cls, AnalyticsQualityMeasureWriteEdge.cls, AnalyticsQualityMeasureWriteReal.cls]
+- [x] [Review][Patch] Save doc comments called `Class` optional [src/OcuPilot/Area/Analytics/QualityMeasureSave.cls, ListingGroupSave.cls]
+- [x] [Review][Patch] `QUALITYMEASURETEXTMAX` claimed to be the model's own limit for a URL [src/OcuPilot/Port/AnalyticsPort.cls:505]
+- [x] [Review][Patch] The dialog's `required` comment claimed the server refuses an empty value [ui/src/app/areas/analytics/quality-measure-dialog.ts:28]
+- [x] [Review][Patch] `ci-throwaway.sh`'s arming comment omitted the real-compiler class (one added line); `test:tools` re-run after P7's EXPERIENCE.md edit, 2,317 of 2,317 [scripts/ci-throwaway.sh]
+- [x] [Review][Defer] Page and copy-tool bodies repeat the listing groups' with renamed fields [ui/src/app/areas/analytics/quality-measure-list.page.ts] — deferred: DW-2744, `wontfix-accepted`.
+- [x] [Review][Defer] A `restorefailed` refused compile still answers "nothing was changed" [src/OcuPilot/Port/AnalyticsPort.cls:PerformQualityMeasure] — deferred: DW-2745, `wontfix-accepted` (needs a new sentence).
+- [x] [Review][Defer] Edit dialog dead-ends on a failed form read, as the listing groups' does [ui/src/app/areas/analytics/quality-measure-dialog.ts:load] — deferred: DW-2746, `wontfix-accepted` (needs a new string).
+
+Rejected:
+
+- Linked target missing or circular: spec-ruled (Decided in-stage 2, as the vendor's compile).
+- Deleting a master leaves followers dangling: the classic page's behavior; a guard adds a scan and a code.
+- Empty `Expression` or `SubjectArea` from the agent: low; the screen cannot send one, and a guard is new rules.
+- EXPRESSION sentence names a missing group for a disabled one: the sentence is ruled (U-112).
+- No assertion that an update moves the subject-area node: vendor projection, covered by the model read.
+- Linked fields editable in Edit: low; the server refuses with its sentence.
+- `%GetQualityMeasureList` error reads as zero listed: no reachable trigger shown.
+- A class with an inherited XData answers ABSENT: such a subclass is a twin first (AMBIGUOUS).
+- `Splice` matches an XData name by prefix; 3,000,000-character XML read: theoretical.
+- `COPYTARGET` composed for a non-copy action: no tool does.
+- Dialog sends an empty `Class`: the server's sentence answers it.
+- `Recorded` passes if any of three rows reads `restored`: each caller's text and registered legs pin the restore.
+- Matrix says 400 for a malformed part, code answers 422: the code follows 24.11; the fix is a spec edit.
+- Auto Run Result's file count: spec narration.
+
 ## Spec Change Log
 
 - 2026-11-18, spec gate: the runner kept the starter model, the linked-measure refusal, the key states, the proposed strings and the proposed spine lines (veto item U-112); the one Prohibited.cls condition term is the carve-out the orchestrator allows.
@@ -232,6 +268,13 @@ Everything else in that file is added lines: `TYPEQUALITYMEASURE`, `IsQualityMea
 - mutation (review P4): `PlanQualityMeasure`'s skip of a disabled group removed -> `TestAnExpressionNamingAGroupThatCannotCountIsRefused` went red on its disabled-group legs; its test of an element's `disabled` made always true -> the same test went red on its all-disabled-elements legs.
 - mutation (script): a create's compile line in `ClassWriteSnippet` made `Set tSC = 1` -> the script test went red from its registered leg on; that create line made to ignore its free-name condition -> its two late-script legs went red.
 - mutation (client): the page's `copy` registration dropped -> `quality-measure-list.page.spec.ts` went red on its registration and Copy tests; the Quality measures' `UNDRAWN_ACTIONS` and `TYPED_NAME_ROWS` entries dropped -> `screen-action-handler-qualitymeasure.spec.ts` went red on both tests.
+
+- (QA) `src/OcuPilot/Test/AnalyticsQualityMeasureWriteReal.cls`: the vendor's real compiler refusing an update (a one-shot failing class generator) at the person's Edit, the agent's confirm and the port, the restore of a not-compiled class, a linked measure's changed fields at both callers, a twin at the person's call and the agent's copy and delete mints (4 tests, green; inherits the arming through `AnalyticsQualityMeasureBase`).
+- mutation (QA, AC3): `RestoreClass`'s recompile made `&& 0` -> `TestARefusedCompileOfAnUpdateIsUndoneAtEveryCaller` went red on its three registered-and-compiled legs alone; the recompile made unconditional -> `TestARefusedCompileOfAStaleMeasureIsUndoneAndLeftStale` went red on its still-not-compiled leg alone.
+- mutation (QA, linked): the linked check of `VendorQualityMeasureCompose` made `0 &&` -> `TestALinkedMeasureRefusesAChangedFieldAtBothCallers` went red on the person's three refusal legs, the mint's three sentence legs and the nothing-written leg.
+- mutation (QA, twin): the ambiguity check of `ReadQualityMeasure` made `0 &&` -> `TestATwinIsRefusedAtThePersonsCallAndTheAgentsMint` went red on a mint leg; the same mutation in `PlanQualityMeasure` leaves it green, because the read refuses first (the port's check is pinned by `AnalyticsQualityMeasureWriteEdge`).
+- mutation (review 2, script list half): `'tListed` dropped from `QualityMeasureSnippet`'s free-name check -> `TestEachWritesScriptFormMakesTheSameChange` went red on its listed leg alone.
+- mutation (review 2, shape rules): the length and type clause of `QualityMeasureViolations` made `If 0` -> `TestEachRefusalWritesNothing` went red on its three text legs and the nothing-written leg after them.
 
 **Verification roster** (the Rule 30 grep for `analytics.listinggroups.copy` and `AnalyticsListingGroupAdd`, re-run): `ReadTool` (508 tools, five names), `SurfaceCoverage` (four rows), `Governance` and `ToolDispatch` (`QUALITYMEASUREDISABLED`), `GovernanceBaseline`, `ClassicPageGate` (`OWNPAIRS`, the delete key), `MappingDescriptor`, `ToolRoundTrip`, `ToolWrite` (other-port count 113), `Prohibited` (covered types, the copy's two values), `ToolEmit` (a quality measure branch), `EndpointCoverage` (two probes), `AnalyticsDescriptor`, `SaveHoldCoverage`, `ui/tools/analytics.test.mjs` (a Batch 2 test; the Batch 1 pin already allowed the model's `%Validate()`), `strings.ts`, `proposal-view.ts`, `screens.generated.ts`, `ci-throwaway.sh` (two comment lines; the new classes inherit the arming variable through `AnalyticsListingGroupBase`). `CompositeMintSweep` needed nothing: a measure has no composite id. Green after: those classes, `AnalyticsListingGroupWrite`, `AnalyticsListingWrite`, `AnalyticsListingGroupWriteEdge`, `AnalyticsListingGroupDatabase`, `AnalyticsQualityMeasureRead`, `Edge`, `Gate`, `PortGate`, `StageTwoTools`, `Descriptor`.
 

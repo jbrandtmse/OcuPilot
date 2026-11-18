@@ -1,7 +1,7 @@
 /// <p>Listing groups' New listing group (AD-55, AD-54, Story 24.11): <code>POST /analytics/listing-groups</code> creates one listing group, with its class, in the request's namespace
 /// through <class>OcuPilot.Screen.Tool.AnalyticsListingGroupAdd</class>, the tool the agent's mint and confirm read. It is <class>OcuPilot.Area.Interop.ItemSave</class>'s Save for a
 /// member with no parent: the order of the Save, its hold on the group's name, its absence read, the prohibited set, the port's add and the read-back are the superclass's. The body's
-/// members are <code>Name</code> and, optionally, <code>Class</code>, <code>Caption</code>, <code>Description</code>, <code>TargetCubes</code>, <code>Resource</code>,
+/// members are <code>Name</code>, <code>Class</code> and, optionally, <code>Caption</code>, <code>Description</code>, <code>TargetCubes</code>, <code>Resource</code>,
 /// <code>DefaultResource</code> and <code>Disabled</code>; the rules over them are <method>OcuPilot.Port.AnalyticsPort.ListingGroupViolations</method>'s and the port's own.</p>
 Class OcuPilot.Area.Analytics.ListingGroupSave Extends OcuPilot.Area.Interop.ItemSave
 {

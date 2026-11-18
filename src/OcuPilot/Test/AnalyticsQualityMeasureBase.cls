@@ -26,6 +26,8 @@ Parameter COPYTOOL = "OcuPilot.Screen.Tool.AnalyticsQualityMeasureCopy";
 
 Parameter DELETETOOL = "OcuPilot.Screen.Tool.AnalyticsQualityMeasureDelete";
 
+Parameter WRITEENDPOINT = "QualityMeasures";
+
 Method RemoveFixtures() As %Status
 {
     Quit $ClassMethod(..#PROBE, "RemoveQualityMeasures")
@@ -159,8 +161,9 @@ ClassMethod QRegistered(pName As %String, pClass As %String) As %Boolean
     Quit ''tHeld
 }
 
-/// <p>What the instance holds of the write tests' measures: every class under the two class markers with the length and a SHA-1 checksum of its text, and every registry node of a measure
-/// under the catalog, as one string, so two calls compare equal when nothing was written between them.</p>
+/// <p>What the instance holds of the write tests' measures: every class under the two class markers with the length and a SHA-1 checksum of its text, and every node of
+/// <code>^DeepSee.QMsrs</code> whose subscripts name the catalog or either class package (the name, class and subject area nodes), as one string, so two calls compare equal when nothing
+/// was written between them.</p>
 ClassMethod Snapshot() As %String
 {
     Set tOrigNS = $NAMESPACE
@@ -174,12 +177,14 @@ ClassMethod Snapshot() As %String
                 Set tOut = tOut _ tRS.%GetData(1) _ "=" _ $Length(tText) _ ":" _ $System.Encryption.Base64Encode($System.Encryption.SHA1Hash($ZConvert(tText, "O", "UTF8"))) _ ";"
             }
         }
-        Set tPrefix = $ZConvert(..#MARKER, "U") _ "/"
-        Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tPrefix), -1)
+        Set tMarks = $ListBuild($ZConvert(..#MARKER, "U"), $ZConvert($Piece(..#OWNCLASSMARKER, ".", 1), "U"))
+        Set tNode = "^DeepSee.QMsrs"
         For {
-            Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tName))
-            If $Extract(tName, 1, $Length(tPrefix)) '= tPrefix Quit
-            Set tOut = tOut _ "node " _ tName _ "=" _ ^DeepSee.QMsrs("qmsrNames", tName) _ ";"
+            Set tNode = $Query(@tNode)
+            If tNode = "" Quit
+            Set tUpper = $ZConvert(tNode, "U")
+            If ($Find(tUpper, $List(tMarks, 1)) = 0) && ($Find(tUpper, $List(tMarks, 2)) = 0) Continue
+            Set tOut = tOut _ "node " _ tNode _ "=" _ @tNode _ ";"
         }
     } Catch {
         Set tOut = "unreadable"
@@ -188,14 +193,20 @@ ClassMethod Snapshot() As %String
     Quit tOut
 }
 
-/// <p>1 when the class <var>pClass</var> is not defined and the measure <var>pName</var> has no node in the registry.</p>
+/// <p>1 when the class <var>pClass</var> is not defined and the measure <var>pName</var> has no node in the registry, under any subject area.</p>
 ClassMethod QGone(pName As %String, pClass As %String) As %Boolean
 {
     Set tOrigNS = $NAMESPACE
     Set tGone = 0
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        Set tGone = '##class(%Dictionary.ClassDefinition).%ExistsId(pClass) && '$Data(^DeepSee.QMsrs("qmsrNames", $ZConvert(pName, "U"))) && '$Data(^DeepSee.QMsrs("qmsrClasses", pClass)) && '$Data(^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(pName, "U")))
+        Set tGone = '##class(%Dictionary.ClassDefinition).%ExistsId(pClass) && '$Data(^DeepSee.QMsrs("qmsrNames", $ZConvert(pName, "U"))) && '$Data(^DeepSee.QMsrs("qmsrClasses", pClass))
+        Set tArea = ""
+        For {
+            Set tArea = $Order(^DeepSee.QMsrs("cubes", tArea))
+            If tArea = "" Quit
+            If $Data(^DeepSee.QMsrs("cubes", tArea, $ZConvert(pName, "U"))) Set tGone = 0
+        }
     } Catch {
         Set tGone = 0
     }
@@ -203,49 +214,17 @@ ClassMethod QGone(pName As %String, pClass As %String) As %Boolean
     Quit ''tGone
 }
 
-/// <p>Hold every pair the quality measure writes need in process, but <var>pExcept</var> (a <code>resource:permission</code>, <code>""</code> for none).</p>
-ClassMethod HoldEverythingBut(pExcept As %String)
+/// <p>The quality measure screen's pairs, which its writes need beside the source code API's.</p>
+ClassMethod HeldPairSpec() As %String
 {
-    Do $ClassMethod(..#GATE, "Reset")
-    Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec($Parameter(..#PORT, "QUALITYMEASUREPAIRS"))
-    Set tPairs = tPairs _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs(..#NAMESPACE) _ $ListBuild($ListBuild("%DB_USER", "WRITE"), $ListBuild("%DB_USER", "READ"))
-    For tAt = 1:1:$ListLength(tPairs) {
-        Set tPair = $List(tPairs, tAt)
-        If $List(tPair, 1) _ ":" _ $List(tPair, 2) = pExcept Continue
-        Do $ClassMethod(..#GATE, "Hold", $List(tPair, 1), $List(tPair, 2))
-    }
+    Quit $Parameter(..#PORT, "QUALITYMEASUREPAIRS")
 }
 
-/// <p>The script steps of the write <var>pType</var> on the measure <var>pId</var> with the body <var>pBody</var> and the query members <var>pExtra</var>, through the port.</p>
-ClassMethod Script(pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject = "") As %DynamicArray
+/// <p>1 when the <code>ConfigChange</code> row of the verb <var>pVerb</var> on the measure <var>pId</var> since <var>pSince</var> records the outcome <var>pOutcome</var>.</p>
+ClassMethod Recorded(pSince As %String, pId As %String, pVerb As %String, pOutcome As %String) As %Boolean
 {
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = pId
-    If $IsObject(pExtra) {
-        Set tIterator = pExtra.%GetIterator()
-        While tIterator.%GetNext(.tKey, .tValue) {
-            Set tQuery(tKey) = tValue
-        }
-    }
-    Quit $ClassMethod(..#PORT, "Snippet", "QualityMeasures", pType, .tQuery, pBody)
-}
-
-/// <p>Run the first step of <var>pSteps</var>, a script, line by line in this process; 1 when it left <code>tSC</code> a success, 0 when it left it an error.</p>
-ClassMethod RunScript(pSteps As %DynamicArray) As %Boolean
-{
-    Set tOrigNS = $NAMESPACE
-    XECUTE "Kill tSC"
-    Try {
-        Set tText = pSteps.%Get(0).text
-        For tAt = 1:1:$Length(tText, $Char(10)) {
-            Set tLine = $Piece(tText, $Char(10), tAt)
-            If tLine '= "" XECUTE tLine
-        }
-    } Catch {
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit ''$System.Status.IsOK($Get(@"tSC"))
+    Do $ClassMethod(..#QUEUES, "AuditRows", pSince, "quality-measure", pId, pVerb, .tData)
+    Quit ''(tData [ ("""outcome"":""" _ pOutcome _ """"))
 }
 
 }

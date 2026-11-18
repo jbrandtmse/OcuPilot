@@ -502,7 +502,7 @@ Parameter VERBQUALITYMEASUREDELETE = "analytics.qualitymeasures.delete";
 /// <p>The global whose database the quality measure writes need WRITE on.</p>
 Parameter QUALITYMEASUREGLOBAL = "^DeepSee.QMsrs";
 
-/// <p>The longest caption, description, subject area, link or URL of a quality measure: the model's own limit.</p>
+/// <p>The longest caption, description, subject area, link or URL a quality measure write accepts: the model's limit for a description, subject area and link.</p>
 Parameter QUALITYMEASURETEXTMAX As INTEGER = 2000;
 
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
@@ -5822,7 +5822,7 @@ ClassMethod PerformQualityMeasure(pNamespace As %String, pType As %String, pName
 
 /// <p>The lines <method>Snippet</method> adds for a quality measure write <var>pType</var> of the measure the id <var>pId</var> names (Story 24.12, AD-59): the class the write would
 /// save, compiled, and, as the write does, put back when the compile is refused (<method>ClassWriteSnippet</method>). A write <method>PlanQualityMeasure</method> refuses is a script
-/// that only sets the refusal's sentence. An add's or a copy's steps are gated on one line by a free-name check (the name registered, or its class defined).</p>
+/// that only sets the refusal's sentence. An add's or a copy's steps are gated on one line by a free-name check (the name listed or registered, or its class defined).</p>
 ClassMethod QualityMeasureSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
 {
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
@@ -5830,8 +5830,9 @@ ClassMethod QualityMeasureSnippet(pType As %String, pId As %String, pBody As %Dy
     Set tSC = ..PlanQualityMeasure(tNamespace, pType, pId, .pQuery, pBody, .tPlan, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit $Char(10) _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
     Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
-    Set tFree = "'$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
-    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), "", tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
+    Set tPrelude = $Char(10) _ " Kill tList Set tListed = 0, tAt = """" Do ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList) For { Set tAt = $Order(tList(tAt)) Quit:tAt=""""  Set:($ZConvert($List(tList(tAt), 1), ""U"") = " _ tNameU _ ") tListed = 1 }"
+    Set tFree = "'tListed, '$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
+    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
 }
 
 }

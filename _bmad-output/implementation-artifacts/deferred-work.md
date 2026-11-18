@@ -13838,3 +13838,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AnalyticsListingGroupAtelier answers errors without compiling, so the vendor never registers the name; the delete test pins node removal for a compiled class only
 - 2026-11-18T18:56:58Z status=wontfix-accepted owner=24-12-quality-measures by=harvest note=reopen_if=a refused create on a fresh instance leaves a ^DeepSee.QMsrs node or a listed measure behind
+
+### DW-2744: Quality measures' list page and four write tools repeat the listing groups' page wiring and tool bodies with renamed fields
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: quality-measure-list.page.ts repeats about 110 of listing-group-list.page.ts's 136 lines; AnalyticsQualityMeasureCopy repeats AnalyticsListingGroupCopy's schema, PortQuery and StateRows with Listings renamed Groups. Rule 2 copy with the spec's weak reason.
+- 2026-11-18T19:32:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=Batch 3 or another class editor adds a third copy of the page wiring or a copy tool body; then extract a shared base
+
+### DW-2745: A class write whose refused compile could not be put back (restorefailed) still answers the COMPILE sentence saying nothing was changed
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PerformQualityMeasure and PerformListingGroup answer 422 COMPILE for every refused compile; RestoreClass's restorefailed is logged and audited but the caller reads 'so nothing was changed'. Needs a new sentence.
+- 2026-11-18T19:32:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a ConfigChange row with outcome restorefailed is seen on any instance
+
+### DW-2746: Quality measures' Edit dialog stays disabled with no message when its form read fails, as the listing groups' does
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: QualityMeasureDialog.load returns on a null form (a measure deleted after its row was selected), so loaded stays false and Confirm stays aria-disabled; ListingGroupDialog.load does the same. A message needs a new string.
+- 2026-11-18T19:32:57Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a person reports an Edit dialog that never enables its button, or a browser spec meets one

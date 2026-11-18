@@ -25,7 +25,7 @@ interface Member {
   readonly changeOnly?: boolean;
   /** Shown fixed on a change. */
   readonly fixed?: boolean;
-  /** Sent on a change only when it holds text, because the server refuses an empty value for it. */
+  /** Sent on a change only when it holds text, so a change never clears it. */
   readonly required?: boolean;
 }
 

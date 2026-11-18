@@ -7,8 +7,6 @@
 Class OcuPilot.Test.AnalyticsQualityMeasureWriteEdge Extends OcuPilot.Test.AnalyticsQualityMeasureBase
 {
 
-Parameter COMPILESEAM = "OcuPilot.Test.AnalyticsListingGroupSeam";
-
 Parameter ATELIERSEAM = "OcuPilot.Test.AnalyticsListingGroupAtelier";
 
 Method OnAfterOneTest() As %Status
@@ -17,32 +15,9 @@ Method OnAfterOneTest() As %Status
     Quit ##super()
 }
 
-/// <p>The write <var>pType</var> of the measure <var>pId</var> with <var>pBody</var> through the compile seam, with the query members of <var>pExtra</var>: the HTTP status and the fault's code in one string.</p>
-ClassMethod Compiling(pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject = "") As %String
-{
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = pId
-    If $IsObject(pExtra) {
-        Set tIterator = pExtra.%GetIterator()
-        While tIterator.%GetNext(.tKey, .tValue) {
-            Set tQuery(tKey) = tValue
-        }
-    }
-    Set tSC = $ClassMethod(..#COMPILESEAM, "Invoke", "QualityMeasures", pType, .tQuery, pBody, .tRes, .tHttp, .tFault)
-    Quit tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
-}
-
-/// <p>1 when the <code>ConfigChange</code> row of the verb <var>pVerb</var> on the measure <var>pId</var> since <var>pSince</var> records the outcome <var>pOutcome</var>.</p>
-ClassMethod Recorded(pSince As %String, pId As %String, pVerb As %String, pOutcome As %String) As %Boolean
-{
-    Do $ClassMethod(..#QUEUES, "AuditRows", pSince, "quality-measure", pId, pVerb, .tData)
-    Quit ''(tData [ ("""outcome"":""" _ pOutcome _ """"))
-}
-
 /// <p>AC1: two classes that declare the measure's name refuse every write that is keyed by the name, each 409 <code>ANALYTICS.QUALITYMEASURE.AMBIGUOUS</code> and before any write, for an update, a copy
 /// and a delete; an add of the name is refused as taken. The classes, their text and the registry are as they were.</p>
-/// <p>Mutation (Rule 19): drop the ambiguity check from <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- every leg goes red.</p>
+/// <p>Mutation (Rule 19): drop the ambiguity check from <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- the update, copy and delete legs go red.</p>
 Method TestTwoClassesThatDeclareAMeasureRefuseEveryWrite()
 {
     Set tName = ..Name("Twin")
@@ -65,7 +40,7 @@ Method TestTwoClassesThatDeclareAMeasureRefuseEveryWrite()
 /// <p>AC3: a compile the instance refuses, after the pre-checks passed, undoes each of the three writes that compile. An update saves the prior text back and compiles it again, so the class text, the model
 /// and the registry equal their state before the write; a measure that was not compiled is saved back and not compiled; an add and a copy delete the class they created. Each answers 422
 /// <code>ANALYTICS.QUALITYMEASURE.COMPILE</code>, never the compiler's own text, and each records its audit row.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.RestoreClass</method> do nothing -- every leg goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.RestoreClass</method> do nothing -- the text, model, registered, unregistered and snapshot legs go red.</p>
 Method TestARefusedCompileUndoesEachWrite()
 {
     Set tName = ..Name("Undo")
@@ -82,22 +57,22 @@ Method TestARefusedCompileUndoesEachWrite()
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tCode = "422 ANALYTICS.QUALITYMEASURE.COMPILE"
     Do $ClassMethod(..#ATELIERSEAM, "Arm", 1)
-    Do $$$AssertEquals(..Compiling("UPDATE", tName, {"Caption": "changed"}), tCode, "an update: the refused compile answers the compile's code")
+    Do $$$AssertEquals(..Compiling("QualityMeasures", "UPDATE", tName, {"Caption": "changed"}), tCode, "an update: the refused compile answers the compile's code")
     Do $$$AssertEquals(..TextOf(tClass), tText, "the class text is as it was")
     Do $$$AssertEquals(..QModel(tName), tModel, "the model is as it was")
     Do $$$AssertEquals(..QRegistered(tName, tClass), 1, "the measure is compiled and registered again")
     Do $$$AssertEquals(..Rows(tSince, "quality-measure", tName, "analytics.qualitymeasures.update"), 1, "the write recorded its audit row")
     Do $ClassMethod(..#ATELIERSEAM, "Arm", 1)
-    Do $$$AssertEquals(..Compiling("UPDATE", tOff, {"Expression": "[Long]"}), tCode, "an update of a measure that was not compiled answers the compile's code")
+    Do $$$AssertEquals(..Compiling("QualityMeasures", "UPDATE", tOff, {"Expression": "[Long]"}), tCode, "an update of a measure that was not compiled answers the compile's code")
     Do $$$AssertEquals(..TextOf(tOffClass) _ "|" _ ..QRegistered(tOff, tOffClass), tOffText _ "|0", "its text is saved back and it is not compiled")
     Do $$$AssertEquals(..Recorded(tSince, tOff, "analytics.qualitymeasures.update", "restored"), 1, "and its audit row records the outcome restored, so the restore did not try to compile the saved-back text")
     Do $ClassMethod(..#ATELIERSEAM, "Arm", 1)
-    Do $$$AssertEquals(..Compiling("ADD", ..Name("UndoNew"), {"Name": (..Name("UndoNew")), "Class": (..#CLASSMARKER _ "UndoNew"), "SubjectArea": (..#VISITS)}), tCode, "an add answers the compile's code")
+    Do $$$AssertEquals(..Compiling("QualityMeasures", "ADD", ..Name("UndoNew"), {"Name": (..Name("UndoNew")), "Class": (..#CLASSMARKER _ "UndoNew"), "SubjectArea": (..#VISITS)}), tCode, "an add answers the compile's code")
     Do $ClassMethod(..#ATELIERSEAM, "Arm", 1)
-    Do $$$AssertEquals(..Compiling("COPY", tName, {}, {"newName": (..Name("UndoCopy")), "newClass": (..#CLASSMARKER _ "UndoCopy")}), tCode, "a copy answers the compile's code")
+    Do $$$AssertEquals(..Compiling("QualityMeasures", "COPY", tName, {}, {"newName": (..Name("UndoCopy")), "newClass": (..#CLASSMARKER _ "UndoCopy")}), tCode, "a copy answers the compile's code")
     Do $$$AssertEquals(..Snapshot(), tBefore, "no class was added or left and no node changed")
     Do $$$AssertEquals(..Rows(tSince, "quality-measure", ..Name("UndoNew"), "analytics.qualitymeasures.add") + ..Rows(tSince, "quality-measure", ..Name("UndoCopy"), "analytics.qualitymeasures.copy"), 2, "the add and the copy recorded their audit rows")
-    Do $$$AssertEquals(..Compiling("UPDATE", tName, {"Caption": "applied"}), "200 ", "with no failure armed the same write applies")
+    Do $$$AssertEquals(..Compiling("QualityMeasures", "UPDATE", tName, {"Caption": "applied"}), "200 ", "with no failure armed the same write applies")
 }
 
 /// <p>The proposal of <var>pTool</var> with <var>pArgs</var>, on the measure whose id is <var>pId</var> in the class <var>pClass</var>, is minted; the class is then saved again with the class

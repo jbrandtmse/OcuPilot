@@ -158,7 +158,8 @@ Method TestADeleteRemovesTheClassAndItsNodesAndShipsOff()
 /// expression names a group the measure lacks or does not close its brackets (422 <code>EXPRESSION</code>), whose flag is not a boolean (422), or that changes a linked measure's format (409
 /// <code>LINKED</code>); a measure that is not there (404); and the agent's mint refusing what the write would refuse before a proposal exists.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.ExpressionHolds</method> answer 1 -- the expression legs and the mint leg go red; skip the class shape check in
-/// <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- the <code>%</code> and no-package legs go red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- the <code>%</code> and no-package legs go red; drop the length and type clause of
+/// <method>OcuPilot.Port.AnalyticsPort.QualityMeasureViolations</method> -- the three text legs go red.</p>
 Method TestEachRefusalWritesNothing()
 {
     Set tName = ..Name("Held")
@@ -173,6 +174,13 @@ Method TestEachRefusalWritesNothing()
         Set tResult = ..Port("QualityMeasures", "ADD", $List(tCase, 1), {"Name": ($List(tCase, 1)), "Class": ($List(tCase, 2)), "SubjectArea": (..#VISITS)}, "", .tRes)
         Do $$$AssertEquals(tResult, $List(tCase, 3), $List(tCase, 4) _ " is refused by its own code")
         Do $$$AssertEquals(..Snapshot(), tBefore, $List(tCase, 4) _ ": nothing was written")
+    }
+    Set tLongPart = ..#MARKER _ "/Probe/" _ $Translate($Justify("", 251), " ", "p")
+    Do $$$AssertEquals(..Port("QualityMeasures", "ADD", tLongPart, {"Name": (tLongPart), "Class": (tFreeClass), "SubjectArea": (..#VISITS)}, "", .tRes), "422 PORT.FIELD.SHAPE", "a name part of 251 characters is refused by the shape rule")
+    For tCase = $ListBuild("Caption", $Translate($Justify("", 2001), " ", "c"), "a caption of 2,001 characters", "string"), $ListBuild("Format", $Translate($Justify("", 256), " ", "f"), "a format of 256 characters", "string"), $ListBuild("Caption", 7, "a caption that is no string", "number") {
+        Set tBody = {}
+        Do tBody.%Set($List(tCase, 1), $List(tCase, 2), $List(tCase, 4))
+        Do $$$AssertEquals(..Port("QualityMeasures", "UPDATE", tName, tBody, "", .tRes), "422 PORT.FIELD.SHAPE", $List(tCase, 3) _ " is refused by the shape rule")
     }
     For tCase = $ListBuild(tName, "{""Expression"":""[Missing]/[Everyone]""}", "422 ANALYTICS.QUALITYMEASURE.EXPRESSION", "an expression naming a group the measure lacks"), $ListBuild(tName, "{""Expression"":""[Long]/[Everyone""}", "422 ANALYTICS.QUALITYMEASURE.EXPRESSION", "an expression that does not close its bracket"), $ListBuild(tName, "{""Expression"":""[]""}", "422 ANALYTICS.QUALITYMEASURE.EXPRESSION", "an expression with an empty group name"), $ListBuild(tName, "{""Published"":""yes""}", "422 PORT.FIELD.SHAPE", "a published flag that is no boolean"), $ListBuild(tLinked, "{""Format"":""x""}", "409 ANALYTICS.QUALITYMEASURE.LINKED", "a linked measure's format changed"), $ListBuild(tLinked, "{""Expression"":""2""}", "409 ANALYTICS.QUALITYMEASURE.LINKED", "a linked measure's expression changed"), $ListBuild(tName, "{""LinkedTo"":""" _ ..Name("Nothing") _ """,""Format"":""x""}", "409 ANALYTICS.QUALITYMEASURE.LINKED", "a link set while the format changes") {
         Do $$$AssertEquals(..Port("QualityMeasures", "UPDATE", $List(tCase, 1), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 2)), "", .tRes), $List(tCase, 3), $List(tCase, 4) _ " is refused")
@@ -235,9 +243,11 @@ Method TestOwnCodeIsRefusedByEveryMeasureWrite()
 }
 
 /// <p>AC1: each write has a script form (AD-59) that makes the same change: the add's script saves and compiles the class, the update's changes the caption, the delete's deletes the class, and a script
-/// for a write the port refuses only sets the refusal's sentence. An add's script run after another writer took the name leaves that writer's class as it is.</p>
+/// for a write the port refuses only sets the refusal's sentence. An add's script run after another writer took the name, under its class or another, or after another class came to declare
+/// the name without registering it, makes no class and leaves that writer's class as it is.</p>
 /// <p>Mutation (Rule 19): make a create's compile line in <method>OcuPilot.Port.AnalyticsPort.ClassWriteSnippet</method> do nothing -- the registered leg and the legs after it go red; make that create line
-/// ignore its free-name condition -- the late script's two legs go red.</p>
+/// ignore its free-name condition -- the late script's two legs go red; drop the list half of <method>OcuPilot.Port.AnalyticsPort.QualityMeasureSnippet</method>'s free-name check -- the
+/// listed leg goes red, and the other-class leg too when the registry half is dropped with it.</p>
 Method TestEachWritesScriptFormMakesTheSameChange()
 {
     Set tName = ..Name("Script")
@@ -262,6 +272,20 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Set tTaken = ..TextOf(tLateClass)
     Do $$$AssertEquals(..RunScript(tSteps), 0, "the earlier add's script finds the name taken and only sets the refusal")
     Do $$$AssertEquals((..TextOf(tLateClass) = tTaken) _ "|" _ ..QRegistered(tLate, tLateClass), "1|1", "and the other writer's class is neither replaced nor deleted")
+    Set tOther = ..Name("ScriptOther")
+    Set tSteps = ..Script("ADD", tOther, {"Name": (tOther), "Class": (..#CLASSMARKER _ "ScriptOther"), "SubjectArea": (..#VISITS)})
+    Do $$$AssertStatusOK(..SaveMeasure("ScriptOther", ..#CLASSMARKER _ "ScriptOtherTaken"), "another writer registers the name under another class after the add's script was rendered")
+    Do $$$AssertEquals(..RunScript(tSteps) _ "|" _ $Length(..TextOf(..#CLASSMARKER _ "ScriptOther")), "0|0", "the earlier add's script finds the name registered and makes no class")
+    Set tGhost = ..Name("ScriptGhost")
+    Set tSteps = ..Script("ADD", tGhost, {"Name": (tGhost), "Class": (..#CLASSMARKER _ "ScriptGhost"), "SubjectArea": (..#VISITS)})
+    Do $$$AssertStatusOK(..SaveMeasure("ScriptGhost", ..#CLASSMARKER _ "ScriptGhostOne"), "another class declares the name and registers it")
+    Do $$$AssertStatusOK(..SaveMeasure("ScriptGhost", ..#CLASSMARKER _ "ScriptGhostTwo"), "and a second class declares it too")
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tSC = $System.OBJ.Delete(..#CLASSMARKER _ "ScriptGhostOne", "-d")
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSC, "the registered class is deleted, so the name is listed and not registered")
+    Do $$$AssertEquals(..RunScript(tSteps) _ "|" _ $Length(..TextOf(..#CLASSMARKER _ "ScriptGhost")), "0|0", "the earlier add's script finds the name listed and makes no class")
 }
 
 /// <p>The two routes the editor adds answer JSON envelopes of the declared type and shape as the HTTP account: <code>POST /analytics/quality-measures</code> creates a measure (201

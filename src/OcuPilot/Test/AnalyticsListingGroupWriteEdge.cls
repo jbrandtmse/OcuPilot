@@ -8,31 +8,12 @@
 Class OcuPilot.Test.AnalyticsListingGroupWriteEdge Extends OcuPilot.Test.AnalyticsListingGroupBase
 {
 
-Parameter COMPILESEAM = "OcuPilot.Test.AnalyticsListingGroupSeam";
-
 Parameter ATELIERSEAM = "OcuPilot.Test.AnalyticsListingGroupAtelier";
 
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#ATELIERSEAM, "Reset")
     Quit ##super()
-}
-
-/// <p>The write <var>pType</var> of <var>pEndpoint</var> on <var>pId</var> with <var>pBody</var> through the compile seam, with the query members of <var>pExtra</var>: the HTTP status and the
-/// fault's code in one string.</p>
-ClassMethod Compiling(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicObject, pExtra As %DynamicObject = "") As %String
-{
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = pId
-    If $IsObject(pExtra) {
-        Set tIterator = pExtra.%GetIterator()
-        While tIterator.%GetNext(.tKey, .tValue) {
-            Set tQuery(tKey) = tValue
-        }
-    }
-    Set tSC = $ClassMethod(..#COMPILESEAM, "Invoke", pEndpoint, pType, .tQuery, pBody, .tRes, .tHttp, .tFault)
-    Quit tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
 }
 
 /// <p>AC1: two classes that declare the group's name refuse every write that is keyed by the name, each 409 <code>ANALYTICS.LISTINGGROUP.AMBIGUOUS</code> and before any write, for an
@@ -65,7 +46,7 @@ Method TestTwoClassesThatDeclareAGroupRefuseEveryWrite()
 /// <p>AC3: a compile the instance refuses, after the pre-checks passed, undoes each of the six writes that compile. A change saves the prior text back and compiles it again, so the
 /// class text, the model and the registry equal their state before the write; a group that was not registered is saved back and not compiled; an add and a copy delete the class they
 /// created. Each answers 422 <code>ANALYTICS.LISTINGGROUP.COMPILE</code>, never the compiler's own text, and each records its audit row.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.RestoreListingGroup</method> do nothing -- every leg goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.RestoreClass</method> do nothing -- the text, model and registry legs go red.</p>
 Method TestARefusedCompileUndoesEachWrite()
 {
     Set tName = ..#MARKER _ "Undo"
