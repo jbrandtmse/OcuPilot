@@ -180,6 +180,25 @@ Rejected:
 - `low` `GlobalTransfer` at 557 lines: within reach of the 500-line guide.
 - `low` Export while the shell's Delete sends: export only reads the global; each write is confirmed.
 
+Code review 2026-11-18, rework 1 (`66c32ffa5..bc25e1609`, four layers, full-opus): the HIGH above is closed; no new high.
+
+- [x] [Review][Patch] MED: the capture's line walk passing the ceiling (`tOverflow = 2`) was unpinned, since every oversize leg also failed `<MAXSTRING>` [`AtelierPortFixture.cls` `ArmOversizeLines`; `GlobalTransfer.cls` lines leg]
+- [x] [Review][Patch] MED: nothing pinned the quiet ceiling to the Globals export [`AtelierPortTransfer.cls` `TestAnExportAboveTheCeilingIsUnavailable`, log assertion]
+- [x] [Review][Patch] LOW: the `<MAXSTRING>` arm of `Route`'s end-capture catch was unreachable (`EndCapture^%SYS.Capture` traps its own errors and returns 1) [`AtelierPort.cls` `Route`]
+- [x] [Review][Patch] LOW: the refused leg did not assert the call count its doc states [`GlobalTransfer.cls`]
+- [x] [Review][Patch] LOW: stale fixture and test doc wording (`ArmEndFailure`, the class header, "the capture refused") [`AtelierPortFixture.cls`, `GlobalTransfer.cls`]
+
+Rejected (rework 1):
+
+- `low` a capture that cannot be ended still gives the too-large reason: unchanged from before, reachable only through the fixture's seam, and a new reason would change every route's answer.
+- `low` any `<MAXSTRING>` in the route's status counts as the ceiling: triaged before; real only if the vendor's export raises it for XML under the ceiling.
+- `false` `EndCapture` answering an error status, or throwing before it restores the device: the vendor routine restores the device first and always returns 1.
+- `low` an iteration error logged as "could not end its capture": log text only, no reachable case.
+- `false` the overflow-1 doc overclaims: it names a capture that could not be ended, which is what 1 is.
+- `low` the live leg does not assert the empty log: it runs in another process; the canned legs run the same `Outcome` branch.
+- `low` `GlobalTransfer` over 500 lines: already 558; a split is not a direct correction.
+- `low` the spec's Tasks and Design Notes still say "the capture refused": a spec edit is not a fix here; AD-61 rule 5 holds the narrowed rule.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner, rework 1): code review left one HIGH (AD-61 rule 5 vs the matrix's 422); ruled (a) by the orchestrator; re-opened for the narrowed conversion.
@@ -211,6 +230,10 @@ Rejected:
   - `[low]` `patch` The test's doc comment said the route never runs for the second leg, unasserted -- rewritten to match the asserts.
   - `[low]` `reject` (intent-alignment) a `<MAXSTRING>` from the vendor's own render counts as the ceiling -- it is the signal the live 90,000-node leg raises.
   - `[low]` `reject` (verification-gap) the Auto Run Result lacked this pass -- written at finalize.
+
+### 2026-11-18 — Code review (rework 1)
+
+- verdicts: 20 rows, 14 entries — high 0, medium 2, low 9, false 3; patched 6, rejected 8 (listed under Review Findings). Green after the patches: `GlobalTransfer` 11 (run 928), `AtelierPortTransfer` 15 (run 924), `AtelierPortDocument` 11 (run 925); `check-objectscript` 0.
 
 ## Design Notes
 
@@ -326,6 +349,7 @@ Observed (each applied on `ocupilot-ci`, red, reverted byte-identical by `cmp` a
 - mutation: AC5 `onOpenExport` reads the checked set for every list in `code-list.page.ts` -> `code-list.page.spec.ts` "Export acts on the one selected global" red, and `system-explorer-global-transfer.browser-spec.mjs` AC5 red (no export dialog opens), after `npm run build` and the redeploy.
 - mutation: AC2 skip the XML length check after the export in `ExportSet` (`If 0 &&`) -> `GlobalTransfer.TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge` red on the canned 3,150,000-character leg (the file is written).
 - mutation: AC2 never set the ceiling signal (`Set pCeiling = 0` in `Outcome`) -> `GlobalTransfer.TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge` (live 90,000-node leg, 503) and `TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable` red (run 911); count a capture that cannot be ended as the ceiling (`Set tOverflow = 2` in `Route`'s `exEnd` catch) -> the second test red alone on the capture-end leg (run 908); set the ceiling for any failed call (`If $$$ISERR(tSC) Set pCeiling = 1` at the end of `Route`) -> the second test red alone (run 909); log the ceiling's fault although the caller owns it (`If 1 Do ..LogFault` in `Outcome`) -> the second test red alone on the empty-log row (run 910); each reverted byte-identical by `cmp`, reloaded, green (run 912).
+- mutation: AC2 count lines that together pass the ceiling as a capture that cannot be ended (`Set tOverflow = 1` in `Route`'s line walk) -> `TestOnlyTheCaptureCeilingIsTooLargeAndAnyOtherPortFailureStaysUnavailable` red alone on the lines leg (run 927); pass a quiet ceiling for every endpoint's export (`1` for `tGlobals` in `ExportSet`) -> `AtelierPortTransfer.TestAnExportAboveTheCeilingIsUnavailable` red on its log row (run 922); each reverted byte-identical by `cmp`, reloaded, green (runs 924, 928).
 - mutation: AC2 drop the bound check in `GlobalPort.VendorTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal`, `TestAGlobalTooLargeToReplaceRefusesThePreviewAndTheWrite` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red; count only the values -> the exact-bound rows red.
 - mutation: AC2 (own data) drop the own-stem refusal in `GlobalPort.GlobalTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red (the missing global answers 404 in its place).
 - mutation: AC1 drop `.GBL` from the script's names in `AtelierPort.Snippet` -> `GlobalTransfer.TestTheTransfersRenderTheirScripts` red.

@@ -563,3 +563,5 @@
 2026-11-18T11:42:14Z	Story 21.17	dev_complete	scope=rework1 spawn_at=2026-11-18T11:19Z model=sonnet build_sha=bc25e1609 baseline_revision=66c32ffa5 followup_review_recommended=false deferred=0 cycle_iteration=2
 2026-11-18T11:42:14Z	Story 21.17	code_head_pushed	sha=bc25e1609 run=44297052903 missing=none
 2026-11-18T11:42:14Z	Story 21.17	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T11:42:14Z model=opus agent_name=21-17-code-review-2 cycle_iteration=2 baseline=66c32ffa5
+2026-11-18T12:03:09Z	Story 21.17	cr_complete	scope=rework1 spawn_at=2026-11-18T11:43Z model=opus high=0 med=2(patched) low=4 rows=20 unresolved_high_med=0 resolved=AD-61_HIGH final=done commit=e69f9492e closing_sections_present=true
+2026-11-18T12:03:09Z	Story 21.17	ledger_adjudicated	owned=1 resolved=1(DW-2608) reowned=0 terminal=0 note=DW-2731,DW-2732_routed_21-18
