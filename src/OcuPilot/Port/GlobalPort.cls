@@ -14,7 +14,8 @@
 /// <p><b>Endpoints and request types.</b> <parameter>ENDPOINTGLOBALS</parameter>: <code>LIST</code> (rows
 /// <code>{Name, Database, Collation, Journal}</code> of the namespace's globals, a row of a subscript-level mapping left out),
 /// <code>GET</code> (<code>{Name, Defined, Locations, Namespace}</code>, <code>Locations</code> every directory the global's rows answer,
-/// subscript-level rows included) and <code>DELETE</code> (<code>Kill ^Name</code>). <parameter>ENDPOINTNODE</parameter>: <code>GET</code>
+/// subscript-level rows included), <code>DELETE</code> (<code>Kill ^Name</code>), and the two reads an export and an import version a global
+/// by (<code>SIZE</code>, <code>DIGEST</code>; <method>GlobalSize</method>, <method>GlobalDigest</method>). <parameter>ENDPOINTNODE</parameter>: <code>GET</code>
 /// (<code>{Reference, Value, Defined, Editable, Location, Namespace}</code>), <code>PUT</code> (sets the value the query's
 /// <parameter>VALUEKEY</parameter> carries) and <code>DELETE</code> (kills the node and every node below it). A value is editable when
 /// the node holds a value, <code>%Studio.Global.format</code> reads it as plain text and it is at most
@@ -22,7 +23,7 @@
 /// <p><b><method>Page</method> is screen-only</b> (AD-36): a bounded walk of one global's nodes in <code>$Query</code> order from an
 /// explicit cursor. Node values and subscripts are never logged, and a failure in it logs the exception's name alone.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>, <method>VendorList</method>,
-/// <method>VendorLocations</method>, <method>VendorNode</method>, <method>VendorWalk</method>, <method>VendorSet</method>,
+/// <method>VendorLocations</method>, <method>VendorTotals</method>, <method>VendorNode</method>, <method>VendorWalk</method>, <method>VendorSet</method>,
 /// <method>VendorKillNode</method> and <method>VendorKillGlobal</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on return.</p>
 Class OcuPilot.Port.GlobalPort Extends %RegisteredObject
@@ -51,6 +52,14 @@ Parameter TYPEGET = "GET";
 Parameter TYPEPUT = "PUT";
 
 Parameter TYPEDELETE = "DELETE";
+
+/// <p>The two reads on <parameter>ENDPOINTGLOBALS</parameter> that version a global for an export and an import (Story 21.17).</p>
+Parameter TYPESIZE = "SIZE";
+
+Parameter TYPEDIGEST = "DIGEST";
+
+/// <p>About how many characters of a <code>DIGEST</code> walk are written to the hash stream at once.</p>
+Parameter DIGESTBATCH As INTEGER = 32000;
 
 /// <p>The query keys: the namespace, a global's name, a node's reference, a new value, the rows a list is read for, and the list's two
 /// criteria.</p>
@@ -239,6 +248,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..Listing(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             } ElseIf pType = ..#TYPEGET {
                 Set tSC = ..GlobalState(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } ElseIf (pType = ..#TYPESIZE) || (pType = ..#TYPEDIGEST) {
+                Set tSC = ..GlobalTotals(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tSC = ..GlobalRemove(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             }
@@ -260,7 +271,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 /// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
-    If pEndpoint = ..#ENDPOINTGLOBALS Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPEDELETE)
+    If pEndpoint = ..#ENDPOINTGLOBALS Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPEDELETE) || (pType = ..#TYPESIZE) || (pType = ..#TYPEDIGEST)
     If pEndpoint = ..#ENDPOINTNODE Quit (pType = ..#TYPEGET) || (pType = ..#TYPEPUT) || (pType = ..#TYPEDELETE)
     Quit 0
 }
@@ -398,6 +409,100 @@ ClassMethod VendorLocations(pNamespace As %String, pName As %String, Output pLoc
             If (tLocation '= "") && '$ListFind(pLocations, tLocation) Set pLocations = pLocations _ $ListBuild(tLocation)
         }
         Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The global named by the query read for an export (<code>SIZE</code>: <code>{Name, Defined, Characters}</code>) or an import
+/// (<code>DIGEST</code>: <code>{Name, Defined, Digest}</code>), by one bounded walk of every node (<method>VendorTotals</method>). Refused
+/// 400 <code>PORT.VALIDATION</code> for a name of the wrong shape; for <code>SIZE</code> alone, 403 <code>GLOBAL.OWNDATA</code> for a global
+/// whose name begins with one of OcuPilot's own name stems, in any case, and 404 <code>GLOBAL.NOTFOUND</code> for one that holds no data;
+/// and 422 <code>GLOBAL.TOOLARGE</code> for either when the walk passes <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>,
+/// the most an XML file is read or written at, so whatever exports also imports. An undefined global
+/// answers <code>Defined</code> false and an empty <code>Digest</code> to a <code>DIGEST</code>.</p>
+ClassMethod GlobalTotals(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    If '..NameValid(tName) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAME, .pHttpStatus, .pFault)
+    }
+    Set tSize = (pType = ..#TYPESIZE)
+    If tSize && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tName) Quit ..Violation(##class(OcuPilot.Api.GlobalError).#OWNDATA, .pHttpStatus, .pFault)
+    Do ..VendorTotals(pNamespace, tName, ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS, 'tSize, .tDefined, .tCharacters, .tOver, .tStream, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the global could not be read", .pHttpStatus, .pFault, 1)
+    If tOver Quit ..Violation(##class(OcuPilot.Api.GlobalError).#TOOLARGE, .pHttpStatus, .pFault)
+    If tSize && 'tDefined Quit ..Violation(##class(OcuPilot.Api.GlobalError).#NOTFOUND, .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Name", tName, "string")
+    Do pResult.%Set("Defined", ''tDefined, "boolean")
+    If tSize {
+        Do pResult.%Set("Characters", tCharacters, "number")
+    } Else {
+        Set tDigest = ""
+        If tDefined {
+            Set tStatus = $$$OK
+            Do tStream.Rewind()
+            Set tHash = $System.Encryption.SHAHashStream(256, tStream, .tStatus)
+            If $$$ISERR(tStatus) Quit ..Fail("the global's digest could not be computed", tStatus, .pHttpStatus, .pFault)
+            Set tDigest = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
+        }
+        Do pResult.%Set("Digest", tDigest, "string")
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One bounded walk of global <var>pName</var> in <var>pNamespace</var>, every node that holds a value in <code>$Query</code> order
+/// from the root, the root included: <var>pDefined</var> is whether the global holds data, <var>pCharacters</var> the characters of every
+/// node's <code>$Name</code> reference and value, and <var>pOver</var> whether that passed <var>pBound</var> (the walk stops there, and a
+/// value too long for a string counts as past it). With <var>pDigest</var>, <var>pStream</var> holds each node as the length of its
+/// reference, the reference, the length of its value and the value, UTF-8 encoded and written in batches of about
+/// <parameter>DIGESTBATCH</parameter> characters. The namespace is switched for the call alone.</p>
+ClassMethod VendorTotals(pNamespace As %String, pName As %String, pBound As %Integer, pDigest As %Boolean, Output pDefined As %Boolean, Output pCharacters As %Integer, Output pOver As %Boolean, Output pStream As %Stream.TmpBinary, Output pCaught)
+{
+    Set pDefined = 0
+    Set pCharacters = 0
+    Set pOver = 0
+    Set pStream = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRoot = "^" _ pName
+        Set pDefined = ($Data(@tRoot) > 0)
+        If pDefined {
+            If pDigest Set pStream = ##class(%Stream.TmpBinary).%New()
+            Set tBatch = ""
+            Set tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot))
+            While (tNext '= "") && 'pOver {
+                Set tValue = ""
+                Try {
+                    Set tValue = $Get(@tNext)
+                } Catch exValue {
+                    If exValue.Name '[ "<MAXSTRING>" Throw exValue
+                    Set pOver = 1
+                }
+                If 'pOver {
+                    Set pCharacters = pCharacters + $Length(tNext) + $Length(tValue)
+                    If pCharacters > pBound {
+                        Set pOver = 1
+                    } ElseIf pDigest {
+                        Set tBatch = tBatch _ $Length(tNext) _ ":" _ tNext _ $Length(tValue) _ ":" _ tValue
+                        If $Length(tBatch) '< ..#DIGESTBATCH {
+                            Do pStream.Write($ZConvert(tBatch, "O", "UTF8"))
+                            Set tBatch = ""
+                        }
+                        Set tNext = $Query(@tNext)
+                    } Else {
+                        Set tNext = $Query(@tNext)
+                    }
+                }
+            }
+            If pDigest && 'pOver && (tBatch '= "") Do pStream.Write($ZConvert(tBatch, "O", "UTF8"))
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

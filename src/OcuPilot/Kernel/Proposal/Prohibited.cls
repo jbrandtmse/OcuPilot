@@ -861,7 +861,8 @@ Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
 /// arm does not judge.</p>
 Parameter EXPORTWRITETYPE = "EXPORT";
 
-/// <p>The write type of a tool that imports a file whose one lookup table replaces the table of that name (Story 20.5).</p>
+/// <p>The write type of a tool that imports a file whose one lookup table replaces the table of that name (Story 20.5), and of the Globals
+/// list's import, which the code arm judges as a class import is (Story 21.17).</p>
 Parameter LOOKUPIMPORTWRITETYPE = "IMPORT";
 
 /// <p>The one target a class or routine import takes (Story 19.13), compared without regard to case;
@@ -1592,6 +1593,19 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If tType = ..#TYPEMIRROR {
             Do ..Mirror(pPayload, .pProhibits, .pCode)
             Quit
+        }
+
+        ; Story 21.17: an export of a global only reads and is not judged, and an import is judged as a class or routine import is: by
+        ; the documents its reviewed file holds, a global's by the globals' own rules after the code arm.
+        If tType = ..#TYPEGLOBAL {
+            Set tGlobalWriteType = ..WriteTypeOf(..ToolClassNamed(pToolName))
+            If tGlobalWriteType = ..#EXPORTWRITETYPE Quit
+            If (tGlobalWriteType = ..#LOOKUPIMPORTWRITETYPE) && ($ZConvert(tId, "L") = ..#IMPORTTARGET) {
+                Set tNames = ..ImportedNames(pPayload)
+                Set tSC = ..Code(tNames, .pProhibits, .pCode)
+                If $$$ISOK(tSC) && 'pProhibits Set tSC = ..ImportedGlobals(tNames, tScope, .pProhibits, .pCode)
+                Quit
+            }
         }
 
         ; Story 21.5: a global or a node is judged by its name, read again with where it is stored, through the globals port.

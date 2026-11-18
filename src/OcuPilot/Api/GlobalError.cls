@@ -29,6 +29,16 @@ Parameter VALUESHAPE = "GLOBAL.VALUE.SHAPE";
 
 Parameter REASONVALUESHAPE = "Enter plain text of 1,000 characters at most.";
 
+/// <p>422: the global's node text, or the XML of its export, is above the most one export or import reads (Story 21.17).</p>
+Parameter TOOLARGE = "GLOBAL.TOOLARGE";
+
+Parameter REASONTOOLARGE = "This global is too large for OcuPilot to export or replace: the most is 3,000,000 characters.";
+
+/// <p>403: the global is OcuPilot's own, whose data an export never reads (Story 21.17).</p>
+Parameter OWNDATA = "GLOBAL.OWNDATA";
+
+Parameter REASONOWNDATA = "OcuPilot's own data cannot be exported.";
+
 /// <p>The consequence code a global's delete carries.</p>
 Parameter DELETE = "GLOBAL.DELETE";
 
@@ -46,17 +56,21 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#NODENOTFOUND Quit ..#REASONNODENOTFOUND
     If pCode = ..#NODENOTEDITABLE Quit ..#REASONNODENOTEDITABLE
     If pCode = ..#VALUESHAPE Quit ..#REASONVALUESHAPE
+    If pCode = ..#TOOLARGE Quit ..#REASONTOOLARGE
+    If pCode = ..#OWNDATA Quit ..#REASONOWNDATA
     If pCode = ..#DELETE Quit ..#REASONDELETE
     If pCode = ..#NODEDELETE Quit ..#REASONNODEDELETE
     Quit ""
 }
 
-/// <p>The HTTP status <var>pCode</var> is answered with: 400, 404 or 409, and 0 for a code that is no refusal.</p>
+/// <p>The HTTP status <var>pCode</var> is answered with: 400, 403, 404, 409 or 422, and 0 for a code that is no refusal.</p>
 ClassMethod HttpStatusFor(pCode As %String) As %Integer
 {
     If pCode = ..#VALUESHAPE Quit 400
     If (pCode = ..#NOTFOUND) || (pCode = ..#NODENOTFOUND) Quit 404
     If pCode = ..#NODENOTEDITABLE Quit 409
+    If pCode = ..#TOOLARGE Quit 422
+    If pCode = ..#OWNDATA Quit 403
     Quit 0
 }
 
@@ -66,6 +80,8 @@ ClassMethod SlugFor(pCode As %String) As %String
     Set tStatus = ..HttpStatusFor(pCode)
     If tStatus = 400 Quit ##class(OcuPilot.Api.Error).#BADREQUEST
     If tStatus = 404 Quit ##class(OcuPilot.Api.Error).#NOTFOUND
+    If tStatus = 403 Quit ##class(OcuPilot.Api.Error).#FORBIDDEN
+    If tStatus = 422 Quit ##class(OcuPilot.Api.Error).#VALIDATIONFAILED
     Quit ##class(OcuPilot.Api.Error).#CONFLICT
 }
 

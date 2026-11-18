@@ -108,7 +108,12 @@ Method TestTheScreensDeclareTheirShape()
         Set tParams = tParams _ $Select(tParams = "": "", 1: ",") _ tField.param _ "=" _ tField.default
     }
     Do $$$AssertEquals(tParams, "pattern=*,system=no", "its criteria are the pattern, default *, and system, default no")
-    Do $$$AssertEquals(tList.rowActions.%Size() _ "|" _ tList.rowActions.%Get(0).id, "1|delete", "its one row action is delete")
+    Set tActions = ""
+    Set tIterator = tList.rowActions.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tAction) {
+        Set tActions = tActions _ $Select(tActions = "": "", 1: ",") _ tAction.id
+    }
+    Do $$$AssertEquals(tActions, "delete,export,export-browser,import,import-local", "its row actions are delete, and the export and import actions Story 21.17 adds")
     Do $$$AssertEquals(tList.classicPage, "%CSP.UI.Portal.GlobalList", "it replaces the classic Globals page")
     Do $$$AssertEquals(tView.route _ "|" _ tView.sideBarPosition _ "|" _ tView.entityType _ "|" _ tView.archetype _ "|" _ tView.toolIdentifier, "system-explorer/globals/document|0|global-node|form-page|explorer.globalnodes", "the node page's route, position, entity type, archetype and identifier")
     Do $$$AssertEquals(tView.%GetTypeOf("read"), "unassigned", "the node page declares no read")

@@ -2,7 +2,8 @@
 title: 'Story 21.17: Global export and import'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '50905467e2aafd599596e2f58221441f04cd8a28'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['{project-root}/_bmad-output/implementation-artifacts/spec-21-5-globals-and-the-data-tools.md', '{project-root}/_bmad-output/implementation-artifacts/spec-19-13-xml-export-and-import.md']
@@ -100,7 +101,7 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 
 - (a) `xml/load` of a file holding `^ZZOcuGlb<pid>`, with flags `""` and `cuk`, replaces the global: a node absent from the file is gone afterwards.
 - (b) `xml/list` names it `ZZOcuGlb<pid>.GBL`, with `ts` the current time when it is defined (DW-2608 reproduces: two previews a second apart differ).
-- (c) `ExportToXMLFile` through `AtelierPort.Route` with `["ZZOcuGlb<pid>.GBL"]` answers its XML lines, and answers success with no `<Global>` for an undefined one.
+- (c) `ExportToXMLFile` through `AtelierPort.Route` with `["ZZOcuGlb<pid>.GBL"]` answers its XML lines, and answers success with an empty `<Global>` node for an undefined one (measured; see Design Notes).
 - (d) The size of a many-short-node global at which the answer passes the capture ceiling.
 
 **Batch 1, server (commit when its loop commands are green):**
@@ -152,6 +153,18 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 - 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
 
 ## Review Triage Log
+
+### 2026-11-18 — Review pass
+
+- verdicts: 7 findings — high 0, medium 2, low 5, false 0, maybe-false 0
+- findings:
+  - `[medium]` `patch` Agent export accepts one name only (`SetNames`, `SetProblem`) with no test -- added `GlobalTransfer.TestAnExportToThisBrowserAnswersTheLinesAndANameIsOneGlobal` rows for `A,B`, `^A`, empty and one good name; mutation line recorded.
+  - `[medium]` `patch` Export to this browser never run for a global -- same new test exports to the browser, kills the global and imports the lines back with the list's local import; mutation line recorded. The test's global omits the long and non-Latin nodes: the test client reads 32,000 characters of an answer and sends non-Latin text as `?`.
+  - `[low]` `patch` AC4's "an export is never judged" half had no mutation -- applied `If 0 &&` before the export skip in `Prohibited.Prohibits`, observed red, reverted, line recorded.
+  - `[low]` `reject` Matrix row says 409 `PROHIBITED.PROTECTEDGLOBAL` and the tests assert 403 -- 21.5's clause answers 403; the matrix is in the read-only intent contract and a spec edit is not a fix.
+  - `[low]` `reject` AC4's `oddDEP` case is checked at the arm only -- both cases reach the same routing; no named harm.
+  - `[low]` `reject` (intent-alignment) agent turns are driven in process, not over HTTP -- descriptive; the dispatcher and confirm paths are the ones run.
+  - `[low]` `reject` (intent-alignment) the shared code list page skips Compile and Delete for a list with no multi-select -- guarded by `checksRows`; the classes and routines page specs stay green.
 
 ## Design Notes
 
@@ -207,6 +220,24 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 
 **Runner ruling at the spec gate (2026-11-15):** export of a global whose name begins with one of OcuPilot's name stems is refused from either caller before any vendor call, stricter than the classic page (AD-35: OcuPilot's stored state includes protected settings), with the sentence "OcuPilot's own data cannot be exported." under a `GLOBAL.OWNDATA` code (a read refusal, not an AD-10 arm, which covers writes); add a matrix row and a test. The other escalated strings and the in-stage choices are kept (veto U-64). Implement after Story 21.5.
 
+**Task 0, measured on `ocupilot-ci` (2026-11-18):**
+
+- (a) `xml/load` of a file holding `^ZZOcuGlb<pid>` replaces the global with flags `""` and with `cuk`: a node added after the export is gone, a node killed after it is back, a 40,000-character value and a non-Latin value come back whole.
+- (b) `xml/list` names it `<name>.gbl`, in lower case, with `ts` the current time while it is defined: two lists two seconds apart read 09:44:52 and 09:44:54 (DW-2608 reproduces). `ts` is -1 for an undefined global.
+- (c) `ExportToXMLFile` through `AtelierPort.Route` with `["<name>.GBL"]` answers the XML lines. For an undefined global it answers success **with** a `<Global>` holding one empty `<Node><Sub>^<name></Sub></Node>`, not without one, so the size read must refuse it before the call, which it does.
+- (d) The answer passes the capture ceiling (3,641,144) between 70,000 and 80,000 one-character numeric nodes (210,007 lines pass, 80,000 nodes answer 503), at about 21 characters of node text per node, well under the 3,000,000 bound.
+
+**Decided in-stage (implement):**
+
+- A summary entry keeps the vendor's spelling, `<name>.gbl new` or `<name>.gbl replaces sha256 <digest>`, since `selected` must be the names as listed; the arm reads any case.
+- The digest writes each node as the length of its reference, `:`, the reference, the length of its value, `:` and the value, UTF-8 encoded, so no node's text can read as another's framing.
+- An export of one of OcuPilot's own names is refused in `GlobalPort`'s `SIZE` read, which every caller's mint, screen action and confirm make before any vendor call: 403 `GLOBAL.OWNDATA`, "OcuPilot's own data cannot be exported." (runner ruling above). The intent contract's matrix is read-only here, so its row is recorded as: an export naming an OcuPilot-stem global, either caller, writes nothing and refuses 403 `GLOBAL.OWNDATA` at mint, screen and confirm, and the vendor's export is not called. The `DIGEST` read, which versions an import, does not refuse it, since an import is judged by the arm.
+- An answer the capture refused is 422 `GLOBAL.TOOLARGE` (from 503) for a global's export only. A name in a file that `GlobalPort` cannot read as a global name refuses the preview with that port's 400.
+- The Globals list is drawn by the shared code list page (`shell/screen-outlet.ts` maps it there; it was the criteria page before). That page registers neither Compile nor Delete for a list that declares no multi-select, so the shell handler's typed-name Delete stays, and renders its pending dialog through `app-screen-action-dialogs`. Its criteria form is the code list's (a System checkbox in place of the criteria page's any/yes/no select). The handler's `UNDRAWN_ACTIONS` names the four transfer actions, which the page sends.
+- The import dialog opens with Compile checked, as for the other lists, and the Globals list sends it as the dialog holds it.
+- `ExplorerGlobalExport` and `ExplorerGlobalImport` keep the classic Export and Import dialog pages (`CLASSICPAGES`), and both join the classic-gate rosters (`ClassicPageGate`, `MappingDescriptor`).
+- `ExplorerTransfer`'s new test makes its global in `USER`, the namespace its other tests probe; `GlobalTransfer` makes its in `HSCUSTOM`.
+
 ## Verification
 
 **Shared surfaces:**
@@ -238,9 +269,30 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - AC4: drop the `global` import routing in `Prohibited`.
 - AC5: send the Globals export with the checked set instead of the selected row.
 
+Observed (each applied on `ocupilot-ci`, red, reverted byte-identical by `cmp` against a copy, source reloaded or bundle rebuilt and redeployed):
+
+- mutation: AC1 skip `WholeLines` for a global in `AtelierPort.ExportSet` -> `GlobalTransfer.TestAGlobalRoundTripsThroughTheScreenAndTheAgent` red on both "every node is as it was" rows, and `TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved` red on "the global is the file's".
+- mutation: AC2 replace the `GlobalDocs` size read in `ExportSet` for a global with `$$$OK` -> `GlobalTransfer.TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red on its three port rows, answering 500 `INTERNAL` where the read would have refused (the mint and the screen refuse through the fresh read, which this leaves).
+- mutation: AC3 take the vendor's `ts` for a `.gbl` document in `AtelierPort.Examine` (`If 0 && ..IsGlobalDocument`) -> `GlobalTransfer.TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved` and `TestAGlobalTooLargeToReplaceRefusesThePreviewAndTheWrite` red, and `ExplorerTransfer.TestAnImportReplacingAGlobalReadsOneSummaryTwice` red on its equal-previews assertion.
+- mutation: AC3 digest the references without the values in `GlobalPort.VendorTotals` -> `GlobalTransfer.TestAReplacingImportReadsOneSummaryAndIsRefusedWhenTheGlobalMoved` red (the confirm loads over a moved node) and `TestTheSizeAndTheDigestReadTheWholeGlobal` red on the value-edit and known-answer rows.
+- mutation: AC4 `If 0 &&` before the `global` import routing in `Prohibited.Prohibits` -> `GlobalTransfer.TestAnImportOfACodeOrPercentGlobalIsRefusedAndAnExportIsNeverJudged` red on the `oddDEP`, own-stem, list and agent rows (the `%` global is then loaded, which the test's teardown kills).
+- mutation: AC5 `onOpenExport` reads the checked set for every list in `code-list.page.ts` -> `code-list.page.spec.ts` "Export acts on the one selected global" red, and `system-explorer-global-transfer.browser-spec.mjs` AC5 red (no export dialog opens), after `npm run build` and the redeploy.
+- mutation: AC2 skip the XML length check after the export in `ExportSet` (`If 0 &&`) -> `GlobalTransfer.TestAnAnswerTheCaptureRefusedOrXmlAboveTheBoundIsTooLarge` red on the canned 3,150,000-character leg (the file is written).
+- mutation: AC2 drop the 503 to 422 mapping in `ExportSet` -> the same test red on the live 90,000-node leg, answering `PORT.UNAVAILABLE`.
+- mutation: AC2 drop the bound check in `GlobalPort.VendorTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal`, `TestAGlobalTooLargeToReplaceRefusesThePreviewAndTheWrite` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red; count only the values -> the exact-bound rows red.
+- mutation: AC2 (own data) drop the own-stem refusal in `GlobalPort.GlobalTotals` -> `TestTheSizeAndTheDigestReadTheWholeGlobal` and `TestAnExportOfAMissingOwnOrOversizedGlobalIsRefusedBeforeTheVendor` red (the missing global answers 404 in its place).
+- mutation: AC1 drop `.GBL` from the script's names in `AtelierPort.Snippet` -> `GlobalTransfer.TestTheTransfersRenderTheirScripts` red.
+- mutation: the import key (Governance) `explorer.globals.import` `true` in `Baseline` -> `GlobalTransfer.TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff` red on the baseline and dispatch rows.
+- mutation: AC5 (Delete stays the handler's) `checksRows` true in `CodeListPage` -> `code-list.page.spec.ts` "Delete stays the shell handler's" red.
+- mutation: AC1 (export to this browser) answer `[]` for the no-file branch's lines in `AtelierPort.ExportSet` -> `GlobalTransfer.TestAnExportToThisBrowserAnswersTheLinesAndANameIsOneGlobal` red alone.
+- mutation: AC1 (one name) `If 0 &&` before the `Globals` case in `AtelierPort.SetNames` -> that test and five more in `GlobalTransfer` red.
+- mutation: AC4 (an export is never judged) `If 0 &&` before the export skip in `Prohibited.Prohibits` -> `GlobalTransfer.TestAnImportOfACodeOrPercentGlobalIsRefusedAndAnExportIsNeverJudged` red alone.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan on Story 21.5's design: export and import through 19.13's `AtelierPort` case, with presence, size and digest read through two new `GlobalPort` types; no AD entry needed; DW-2608 addressed. Probes were read-only on slot A `ocupilot`; nothing ran against `ocupilot-ci`.
+Review pass 2026-11-18: no high; two medium and one low patched (tests and mutation lines for the export to this browser, the one-name rule and the export skip in the arm; `GlobalTransfer` now 10 tests, green, three further mutations observed red and reverted byte-identical); four low rejected with reasons in the Review Triage Log. `check-objectscript` 0 problems and `lint-docs` clean after the patches. Follow-up review not recommended. Residual risk: the browser leg of the export and local import is proved for Latin-1 values only, because the test client sends non-Latin text as `?` (inference: a real browser sends UTF-8). The runner owns the full ObjectScript sweep, smoke, and the `ci-timings.json` refresh.
+
+Implement pass (both batches, one finalize commit): Task 0 measured (Design Notes). Server: `GlobalPort` `SIZE` and `DIGEST`, `GlobalError` `TOOLARGE` and `OWNDATA`, `AtelierPort`'s `Globals` endpoint (export read, bound, script form, `.gbl` versioned by digest), the arm's export and import routing, two tools, the descriptor's row actions and the baseline keys. Client: the Globals list drawn by the shared code list page (export on the selected row, screen-level import, the handler's typed-name Delete kept), the label, the two sentences in EXPERIENCE.md and `strings.ts`, the regenerated mirror and a browser spec. Verified on `ocupilot-ci`: `GlobalTransfer` 9, `ExplorerTransfer` 12 and every roster class the story touches green one at a time; `check-objectscript` 0 problems, `test_check_objectscript` 163 OK, `lint-docs` clean; `test:tools` 2314, `test:components` 3568, `npm run build` (initial 2.12 MB) and the three browser specs green; thirteen mutations observed red and reverted byte-identical. The intent contract's matrix is read-only here, so the `GLOBAL.OWNDATA` row is recorded under Design Notes.
