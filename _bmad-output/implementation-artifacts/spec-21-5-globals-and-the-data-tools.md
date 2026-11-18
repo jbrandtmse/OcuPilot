@@ -2,7 +2,7 @@
 title: 'Story 21.5: Globals and the data tools'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '1ace574fe2ca2064abbe39f543c780870a11610c'
 baseline_commit: '81f86d9c497c70b9c73a17a73d576ea20fe3f718'
 review_loop_iteration: 0
@@ -146,6 +146,12 @@ deferred:
 
 ### Review Findings
 
+- [ ] [CI] instance shard 4/8: `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` — `explorer.globals.read:pattern declares a hint` — run 44244846002 — give the `pattern` criterion a hint (agent-facing tool text; if it is a string a person reads, escalate instead of adding it).
+- [ ] [CI] instance shard 7/8: `DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` — `POST /explorer/globals/nodes` is admitted for the developer (answered `PORT.VALIDATION`) but is not on the developer-floor roster — run 44244846002 — add the route to the roster the test reads, as the screen's read route.
+- [ ] [CI] instance shard 7/8: `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` — `POST /explorer/globals/nodes` is treated as a write route that takes no target hold — run 44244846002 — it is a read sent as POST: exempt it with its reason where the test's exemptions live.
+- [ ] [CI] Run every shared-surface roster class the story touches on `ocupilot-ci` (at least `CriterionHints`, `DeveloperFloorRoutes`, `SaveHoldCoverage`, `EndpointCoverage`, `SurfaceCoverage`, `RouteCoverage` if present, `ToolEmit`, `ReadDescriptions`, `Descriptor`, `Navigation`), one class per call, and fix any other roster the story left at its old shape.
+- [ ] [Spec] Correct the stale Design Notes sentence that says the stale save answers 400, and frontmatter `deferred` item 1 (DW-2722 is closed by rework 1: 409 `STATE.CONFLICT`), with the Edit tool.
+
 **Rework 1 directions (runner, 2026-11-18, decide):** (1) HIGH: find the protected locations without reading configuration as the caller — the destination of each global through the caller-readable namespace mapping (`%SYS.Namespace.GetGlobalDest`, or the vendor's equivalent the caller may call), the manager directory for IRISSYS (`$System.Util.ManagerDirectory()`), and OcuPilot's own database as the destination of one of OcuPilot's own globals; measure as `OcuPilotProbeDeveloper` that each write answers as the classic page would (200, or 403 for a protected global). If no caller-readable source exists and the lookup would need an escalated read, HALT `blocked` naming the read (an AD-9 escalation case is the orchestrator's ruling, not this stage's). (2) MED read-back: compare the node's `Value` (AC3 stands; no amendment). (3) MED DW-2722: answer the stale save with 409 `STATE.CONFLICT` (the client shows EXPERIENCE.md's `formStaleSave`) and the empty global with 404 `GLOBAL.NOTFOUND`, through an add-only mapping in `Api/ScreenAction.Run` for those two codes (every other problem keeps 400); no new user-facing string.
 
 Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot-ci` as `OcuPilotProbeDeveloper` (`%Developer` plus code READ, without `%All` or `OcuPilotAdmin`) and as `_SYSTEM`.
@@ -181,6 +187,8 @@ Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot
   - The matrix says 409 for the protected rows (fixing it means editing the spec).
 
 ## Spec Change Log
+
+- 2026-11-18 (runner, rework 2): CI run 44244846002 on the build head was red on three shared-surface tests the story did not update; re-opened with `[CI]` items.
 
 - 2026-11-18 (runner, rework 1): code review found developer writes failing 500 (`Prohibited` read configuration as the caller), the node save's read-back reporting `nothingSent`, and two refusals answering 400; re-opened with the directions under Review Findings.
 
