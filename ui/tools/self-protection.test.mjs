@@ -335,6 +335,9 @@ const KERNEL_REFUSALS = [
   ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
   // Story 24.5: a call of the unit-test runner through a tool the agent can reach, which either caller is refused with.
   ['PERSONONLY', 'personOnlyRefusal'],
+  // Story 21.5: a global that holds OcuPilot's own data or the instance's protected system data, which either caller is refused changing or
+  // deleting, and which the Globals list and the node page draw on the action before a click for a global OcuPilot's own name begins.
+  ['PROTECTEDGLOBAL', 'globalRefusalProtected'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -1095,4 +1098,17 @@ test('Story 18.40, C4: no tool, read or screen class names the egress row or its
     return /State\.Egress\b/.test(source) || source.includes('switches/egress');
   });
   assert.deepEqual(naming, [], 'no class under Screen/ reaches the egress row or its route');
+});
+
+test("Story 21.5: protected-global answers the sentence for a name beginning with OcuPilot in any case, with or without ^, and nothing for another global", async () => {
+  // Mutation (Rule 19): compare the stem case-sensitively in `selfProtectionReason` -> the upper-case leg goes red.
+  const { selfProtectionReason, PROTECTED_GLOBAL_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(PROTECTED_GLOBAL_RULE, 'protected-global');
+  for (const name of ['OcuPilotTurnSignal', 'ocupilotx', 'OCUPILOTX', '^OcuPilotTurnSignal']) {
+    assert.equal(selfProtectionReason(PROTECTED_GLOBAL_RULE, name), STRINGS.globalRefusalProtected, name);
+  }
+  for (const name of ['ZZProbe', 'oddDEF', '%ocupilot', '']) assert.equal(selfProtectionReason(PROTECTED_GLOBAL_RULE, name), '', `'${name}' is not protected by name`);
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('protected-global'), 'the instance declares the rule in SELFPROTECTIONRULES');
 });

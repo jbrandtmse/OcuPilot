@@ -1055,6 +1055,18 @@ ClassMethod ReadBackFields() As %List
     Quit tNames
 }
 
+/// <p>Whether the read-back compares <parameter>READBACKFIELDS</parameter> of the write's payload with the re-read although the write sends
+/// no body: a write whose values reach its port in the query (<method>PortQuery</method>) names them in <parameter>READBACKFIELDS</parameter>
+/// and sets this to 1, so its verdict is <code>matches</code> or <code>differs</code> rather than <code>nothingSent</code>. 0 here, so every
+/// other tool reads back as before.</p>
+Parameter READBACKPAYLOAD As BOOLEAN = 0;
+
+/// <p><parameter>READBACKPAYLOAD</parameter> as a boolean, for the read-back, which resolves a tool by name and holds only its class.</p>
+ClassMethod ReadBackPayload() As %Boolean
+{
+    Quit ''..#READBACKPAYLOAD
+}
+
 /// <p>The write tool whose read re-reads this create's target by the id the instance allocated, or
 /// <code>""</code> (AD-58). A create whose own read is a list row (<parameter>READROWKEY</parameter>)
 /// names its update tool here: the read-back then asks that tool's single-object read for the

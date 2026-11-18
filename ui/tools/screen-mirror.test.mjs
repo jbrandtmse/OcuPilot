@@ -1570,6 +1570,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerClassList',
       'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics',
       'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes',
+      'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
       'OcuPilot.Screen.Descriptor.ExplorerMacro',
       'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
@@ -3160,7 +3161,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');

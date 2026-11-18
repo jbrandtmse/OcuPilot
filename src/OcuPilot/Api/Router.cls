@@ -251,6 +251,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
+  <Route Url="/explorer/globals/nodes" Method="POST" Call="ExplorerGlobalNodes"/>
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
   <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
@@ -1887,6 +1888,13 @@ ClassMethod EcpSettingsFormRead() As %Status
 ClassMethod EcpSettingsUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/globals/nodes</code> (Story 21.5): Global nodes' page read, delegating to
+/// <class>OcuPilot.Area.Explorer.GlobalNodes</class>.</p>
+ClassMethod ExplorerGlobalNodes() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.GlobalNodes).HandleNodes()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data

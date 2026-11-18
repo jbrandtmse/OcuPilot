@@ -634,6 +634,9 @@ services:
       # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
       # class is armed by the database variable too.
       # classes: CompileWithoutInterop
+      # The globals writes' developer class (Story 21.5) signs in over HTTP as a principal holding the development resource and the install namespace's
+      # databases, and edits, kills and deletes a global of its own.
+      # classes: GlobalWriteDeveloper
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

@@ -2,12 +2,28 @@
 title: 'Story 21.5: Globals and the data tools'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1dae2426a903abd504b85f10759425a57fd15d2a'
+baseline_commit: '1ace574fe2ca2064abbe39f543c780870a11610c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A saved node value may reach a change event or an audit payload, which AD-36 forbids for node values.
+    evidence: |-
+      ExplorerGlobalNodeSave carries the person's new value in its tool payload and the port query. Reading the change event and the audit record written after a save on ocupilot-ci would settle whether the value is stored.
+    location: >-
+      src/OcuPilot/Screen/Tool/ExplorerGlobalNodeSave.cls
+    severity: medium (unverified)
+  - summary: >-
+      The Globals list's whole-global Delete typed-name dialog has no component or browser spec for an ordinary global.
+    evidence: |-
+      The browser spec only checks the disabled Delete row of an OcuPilot-named global; global.test.mjs matches source text. A spec in the style of interop-lookup-table-list.page.spec.ts would pin the dialog and its sentence.
+    location: >-
+      ui/src/app/shell/screen-action-handler.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -110,6 +126,8 @@ deferred: []
 - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` -- the ruled strings into Fixed strings (add-only).
 - `ui/browser/system-explorer-globals.browser-spec.mjs` (new) -- each step waits for the answered signal: the list shows the spec's own global; the view pages through it; an edit round-trips; a node delete asks for the typed name and removes the node; an `^OcuPilot*` row shows Delete disabled with the sentence.
 
+**Rework 2 task (this pass):** work only the unchecked `[CI]` items under `### Review Findings` and the three tests they name (`CriterionHints`, `DeveloperFloorRoutes`, `SaveHoldCoverage`): reproduce each red on `ocupilot-ci` first, fix it where its roster or exemption lives, then run the shared-surface roster classes listed in the sweep item one class per call, and check the `ci-throwaway.sh` arming roster and `ui/tools/ci.test.mjs` for `GlobalWriteDeveloper` and `GlobalProtectedLocation`. Write or update each touched pinning test's `mutation:` line under Verification. Every other item is closed; the `[Spec]` item is done.
+
 **Acceptance Criteria:**
 
 - AC1. Given a namespace holding the test's own global, when the person opens Globals and the agent calls `explorer.globals.read`, then both answer the same capped rows for the same criteria, and no row is a subscript-level mapping.
@@ -119,11 +137,135 @@ deferred: []
 - AC5. Given any write to an `^OcuPilot*` global, a node in OcuPilot's own database or one of the seven protected databases, or OcuPilot's code globals, when either caller makes it, then it is refused before any write with that refusal's sentence, which the client mirror pins equal.
 - AC6 (DW-2607). Given a System Explorer import whose file holds a code global or a `%`-global, when the person or the agent imports it, then it is refused `PROHIBITED.PROTECTEDGLOBAL` before anything loads; a file holding only an ordinary global of the namespace is not refused by this clause.
 
+### Review Findings
+
+- [x] [CI] instance shard 4/8: `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` — `explorer.globals.read:pattern declares a hint` — run 44244846002 — give the `pattern` criterion a hint (agent-facing tool text; if it is a string a person reads, escalate instead of adding it; closed as a comma list, which the mask is).
+- [x] [CI] instance shard 7/8: `DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` — `POST /explorer/globals/nodes` is admitted for the developer (answered `PORT.VALIDATION`) but is not on the developer-floor roster — run 44244846002 — add the route to the roster the test reads, as the screen's read route.
+- [x] [CI] instance shard 7/8: `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` — `POST /explorer/globals/nodes` is treated as a write route that takes no target hold — run 44244846002 — it is a read sent as POST: exempt it with its reason where the test's exemptions live.
+- [x] [CI] Run every shared-surface roster class the story touches on `ocupilot-ci` (at least `CriterionHints`, `DeveloperFloorRoutes`, `SaveHoldCoverage`, `EndpointCoverage`, `SurfaceCoverage`, `RouteCoverage` if present, `ToolEmit`, `ReadDescriptions`, `Descriptor`, `Navigation`), one class per call, and fix any other roster the story left at its old shape.
+- [x] [Spec] Correct the stale Design Notes sentence that says the stale save answers 400, and frontmatter `deferred` item 1 (DW-2722 is closed by rework 1: 409 `STATE.CONFLICT`), with the Edit tool.
+
+**Rework 1 directions (runner, 2026-11-18, decide):** (1) HIGH: find the protected locations without reading configuration as the caller — the destination of each global through the caller-readable namespace mapping (`%SYS.Namespace.GetGlobalDest`, or the vendor's equivalent the caller may call), the manager directory for IRISSYS (`$System.Util.ManagerDirectory()`), and OcuPilot's own database as the destination of one of OcuPilot's own globals; measure as `OcuPilotProbeDeveloper` that each write answers as the classic page would (200, or 403 for a protected global). If no caller-readable source exists and the lookup would need an escalated read, HALT `blocked` naming the read (an AD-9 escalation case is the orchestrator's ruling, not this stage's). (2) MED read-back: compare the node's `Value` (AC3 stands; no amendment). (3) MED DW-2722: answer the stale save with 409 `STATE.CONFLICT` (the client shows EXPERIENCE.md's `formStaleSave`) and the empty global with 404 `GLOBAL.NOTFOUND`, through an add-only mapping in `Api/ScreenAction.Run` for those two codes (every other problem keeps 400); no new user-facing string.
+
+Code review 2026-11-18: four layers on the full-opus tier. Measured on `ocupilot-ci` as `OcuPilotProbeDeveloper` (`%Developer` plus code READ, without `%All` or `OcuPilotAdmin`) and as `_SYSTEM`.
+
+- [x] [Review][Patch] HIGH: every global write by a `%Development` holder without administrator rights answers 500 `INTERNAL` [`Prohibited.cls` `ProtectedLocation`]. The arm reads the directories of OcuPilot's database and the system databases through `AdminPort` `Database.ConfigCRUD` `LIST`, as the caller, and the developer meets `<PROTECT>` on IRISSYS. As the developer, a node save and a node kill in `USER` and in `HSCUSTOM`, and a delete of `oddDEF`, each answered 500. The same writes as `_SYSTEM` answered 200, or 403 for the protected globals. This breaks AD-10's arm ("as writable as the classic page leaves them"), and it breaks AC3 and AC4 for the screen's own pair. Fix: read the directories from a source the screen's caller can read; all three call sites now go through `ProtectedLocation`. An AD-9 privileged read would change privileges, which needs a veto. Add a developer-principal leg (`DeveloperFloorFixture`, armed). Fix-risk: med.
+- [x] [Review][Patch] MED: the node save's read-back reports `nothingSent` (measured), but a value was sent [`ExplorerGlobalNodeSave.cls`]. This breaks AC3 ("the read-back matches") and AD-58. The value travels in the port query (`COMPOSEDTYPES`), so `ReadBack.KindOf` treats the save as action-style. Fix: compare `Value`, or have the runner amend AC3. Fix-risk: med.
+- [x] [Review][Patch] MED (DW-2722): two refusals cannot carry their own code. A node that changed after the dialog opened answers 400 `TOOL.ARGUMENTS`. A global that holds nothing answers 400, not 404 `GLOBAL.NOTFOUND` [`ExplorerGlobalNodeSave.cls`:82, `ExplorerGlobalDelete.StateDiff`]. `ScreenAction.Run` answers every delta problem with 400. Fix: answer the stale save with the existing stale-save refusal, 409 `STATE.CONFLICT`, which the client renders as EXPERIENCE.md's `formStaleSave`, so no new string is needed. Fix-risk: med, since it touches the shared route.
+- [x] [Review][Defer] AD-53 named audit gap. With auditing on, a save, a node kill and a whole-global delete wrote 0 `%SYS.Audit` rows, while control rows were present. Recorded as an occurrence on DW-2613.
+- [x] [Review][Patch] The arm judges every write except a value edit (`PUT`) by every mapping row, including a write by an unresolved tool [`Prohibited.Global`].
+- [x] [Review][Patch] One protected-directory helper, `ProtectedLocation`, replaces the copy in `Global` and `ImportedGlobals` (Rule 2/31).
+- [x] [Review][Patch] AD-36 pin: after a save and a node kill, the value is in no node of the OCUPILOT or IRISAUDIT databases and in no new `messages.log` line (`GlobalWrite.TestANodesValueReachesNoStoreAndNoLog`). DW-2723 measured false.
+- [x] [Review][Patch] The read-back verdicts of the screen's two deletes and of the agent's confirm are asserted (`notFound`).
+- [x] [Review][Patch] A failing set and a failing node kill log no node text (`GlobalSeamPort.ArmWrites`, `GlobalRead`).
+- [x] [Review][Patch] DW-2724: the list's Delete is pinned in the browser. It asks for the typed name, states `globalDeleteConsequence` and deletes the global. Each browser test now makes its own global.
+- [x] [Review][Patch] Small corrections: the `oddDEF` test asserts the node is stored in IRISLIB before it acts; `GlobalRead` asserts `Resolve`'s status and adds a positive control; an import of an own-stem `.gbl` is pinned refused (`OCUPILOTCODE`); a false claim was removed from the agent-facing text of `explorer.globals.delete`; a stale `navigation.test.mjs` comment was corrected.
+- [x] [Review][Defer] LOW: if the Start node field holds anything other than a canonical reference, the person is answered with `REASONPAGE`, a sentence about a page size they never set. Changing it needs a ruled string. Closed wontfix-accepted.
+- Rejected:
+  - `Page` re-validation (no caller skips `PageRequest`).
+  - Delete on a row whose reference is cut (needs a reference over 1,000 characters, and the fix adds a server flag).
+  - A subscript over 511 bytes answers 500 (a loud failure on invalid input).
+  - The race between the `Was` check and the set (OcuPilot's hold orders its own writers).
+  - `PRECONDITIONFIELD` on the save (no harm named).
+  - The `Was` check is skipped without a fresh read: false, because `Run` answers 404 first.
+  - The "Database" column shows a directory (spec-bound).
+  - The `ExplorerGlobalView` id doc (cosmetic).
+  - The stale port list in `CriteriaProblem` (pre-existing, and the file is contended).
+  - `REASONNAME` omits dots (cosmetic, and the fix needs a ruled string).
+  - An own-stem `.gbl` import is not refused: false, because the code arm refuses it first, and that is now pinned.
+  - Mutation lines for sub-claims (every AC has one).
+  - The dead `MAXCHARS` branch (the bound holds anyway).
+  - Change-event ids carry subscripts (by design, AD-13).
+  - The `Node/PUT` snippet (no draft reaches either node tool).
+  - The matrix says 409 for the protected rows (fixing it means editing the spec).
+
+Code review 2026-11-18 (reworks 1-2, `1ace574fe..2595695d4`): four layers on the full-opus tier; no HIGH. Measured on `ocupilot-ci` as a throwaway principal holding `%Development:USE`, `%DB_HSCUSTOM:RW` and `%DB_USER:RW` without `%All` or `OcuPilotAdmin`, in `USER`: an edit 200 `matches`, a stale edit 409 `STATE.CONFLICT`, a node kill 200, the global's delete 200, an empty global's delete 404 `GLOBAL.NOTFOUND`; `oddDEF` node edit, node kill and whole delete, `^%ZZOcuCr` (IRISSYS) edit and delete, and `^OcuPilotCrX` delete each 403 `PROHIBITED.PROTECTEDGLOBAL`; an extended reference 400 `PORT.VALIDATION`. Principal and globals removed.
+
+- [x] [Review][Patch] MED: no test wrote an ordinary global outside the install namespace through the real lookup, so a lookup that took the request's namespace for OcuPilot's own would refuse every `USER` global unseen [`GlobalWrite.cls` `TestAnOrdinaryGlobalInAnotherNamespaceIsWritten`].
+- [x] [Review][Patch] MED: no test opened the node page as the developer; `DeveloperFloorRoutes` skips POST roster rows [`GlobalWriteDeveloper.cls` `TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights`].
+- [x] [Review][Patch] The developer refusal test's mutation note claimed every row reddens; the observed red is the edit row [`GlobalWriteDeveloper.cls`].
+- [x] [Review][Patch] `READBACKPAYLOAD` on the node save had no doc comment, and `ReadBack.Of`'s contract did not say the payload is compared [`ExplorerGlobalNodeSave.cls`, `ReadBack.cls`].
+- [x] [Review][Patch] `ReadBack.TestAPayloadComparedWriteReadsBackTheValueItSent`'s own mutation was unobserved; observed and recorded under Verification.
+- [x] [Review][Defer] AD-58 does not record `READBACKPAYLOAD` [`Screen/Tool/Write.cls`] -- deferred: DW-2730, a Rule 20 spine line for the lead (veto window).
+- Rejected:
+  - `ScreenAction.Refuse` maps by sentence (low; `GlobalWrite` pins both codes, and a code channel would touch every `ScreenActionDelta`).
+  - `ProtectedDirectories` hard-codes this image's layout: probe globals, IRISSECURITY beside the manager directory, `SYSTEMDATABASES` not read (low; `GlobalProtectedLocation` pins all eight against the configuration; `^SECURITY` and `^WALLET` resolve to IRISSYS from `%SYS`, so no name reaches IRISSECURITY; `Prohibited.cls` is contended).
+  - Resolve OcuPilot's own database in the install namespace explicitly (low; every caller runs there, the code arm's `GetRoutineDest($NAMESPACE)` shares it, and the new `USER` leg pins it).
+  - The developer refusal test covers IRISLIB only (low; a real write at a writable system database would damage it on regression).
+  - The failing-lookup test asserts the status only (low; error-refuses is pinned by `GlobalWrite`'s failed-read leg).
+  - The stale-save sentence is pinned on Users only (false: the node page's sink receives the same `refusalReason`).
+  - A 404 list delete leaves the row shown (low; the shared refusal path, unchanged by the rework).
+  - The `pattern` criterion is unhinted (closed at rework 2).
+  - Frontmatter `deferred` items 1-2 are closed (fixing it edits the spec; DW-2723 and DW-2724 are ledgered).
+  - A numerically equal value matches (closed at rework 1).
+  - A stale `Was` on a protected node answers 409 before 403 (low; measured; the retry answers 403 with the sentence).
+  - The agent's empty-global proposal answers 400 (spec-bound: direction (3) names `ScreenAction`).
+  - `GlobalProtectedLocation`'s configuration assertions cannot fail (low; preconditions, the per-database assertion is the pin).
+  - "Nothing of it changed" cannot fail on IRISLIB (low; the 403 code pins before-any-write).
+  - `AssertPrincipal` does not check database grants (low; `EnsurePrincipals` reads the grants back).
+
 ## Spec Change Log
+
+- 2026-11-18 (runner, rework 2): CI run 44244846002 on the build head was red on three shared-surface tests the story did not update; re-opened with `[CI]` items.
+
+- 2026-11-18 (runner, rework 1): code review found developer writes failing 500 (`Prohibited` read configuration as the caller), the node save's read-back reporting `nothingSent`, and two refusals answering 400; re-opened with the directions under Review Findings.
 
 - 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
 
 ## Review Triage Log
+
+### 2026-11-17 — Review pass
+
+- verdicts: 24 findings — high 0, medium 5, low 17, false 1, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` reload with more than one page loaded is never exercised (store spec asserts `>= 3` sends over one page) — store spec now loads 101 rows, asserts the two requests and the rows; mutation (one page) observed red.
+  - `[medium]` `[patch]` `GLOBAL.DELETE` and `GLOBAL.NODE.DELETE` sentences pinned by source text only — runtime `consequenceSentence` assertions added to `proposal-view.test.mjs`; the list dialog residual is the deferred item below.
+  - `[medium]` `[patch]` hostile-text cursor leg refused by the other-global check, not the parse — the cursor now names the page's own global in `TestEveryHostileTextIsRefusedBeforeAnythingIsRead`.
+  - `[low]` `[reject]` `TestTheToolsDeclareTheirWritePath` list-pairs `'>` can pass on equal sets — the `ClassicPageGate` roster pins the classic pages; not worth a guard.
+  - `[low]` `[reject]` `ToolEmit` expected pairs use the production helpers — sibling tools' pin is the same oracle; a wrong formula is caught by `GlobalWrite` and `ClassicPageGate`.
+  - `[low]` `[reject]` the edit's read-back is asserted present, not equal — line 168 asserts the instance holds the new value; the read-back is the framework's own step.
+  - `[low]` `[reject]` the import failed-read leg asserts a not-OK status alone — the leg pins that a failed read refuses; the code is the arm's generic read error.
+  - `[low]` `[reject]` `TestTheScreensDeclareTheirShape` passes for any unresolved read tool — the registry roster tests pin the registered tools.
+  - `[low]` `[patch]` the store reload `toBeGreaterThanOrEqual(3)` — same root as the first row, closed there.
+  - `[low]` `[reject]` browser spec test 2 relies on running before test 4 — one file is one ordered flow on its own global; each test waits for its answer.
+  - `[low]` `[reject]` browser spec test 1 finds the global in the capped default list — the namespace holds far fewer than the cap's rows; the test would fail loud.
+  - `[low]` `[reject]` `TestTheInstancesProtectedGlobalIsRefusedOnBothCallers` drives real writes at `^oddDEF` in `USER` — that global is stored in IRISLIB, read-only, so a regressed arm meets the vendor `<PROTECT>`; reopen if a different database holds it.
+  - `[low]` `[patch]` `ExplorerTransfer`'s percent-global test has no teardown — `OnAfterOneTest` now kills both `^ZZOcuGlb<job>` and `^%ZZOcuGlb<job>`.
+  - `[low]` `[reject]` client pins carry their mutation in code comments — the spec's `## Verification` carries a line for every AC.
+  - `[medium]` `[patch]` node GET, PUT and DELETE log the vendor exception's text, which can name a subscript — the node calls now log the exception's name alone; `GlobalSeamPort` fails a node read and `GlobalRead` asserts no node text; mutation observed red.
+  - `[low]` `[reject]` the Code Map and Tasks name the node route `.../nodes`, the descriptor ships `.../document` — the fix edits this spec; the code follows the repository's `<list route>/document` convention.
+  - `[low]` `[reject]` `ImportedGlobals` is tested for a class import target only — the `.gbl` clause sits in the branch class and routine imports share.
+  - `[medium]` `[patch]` a node changed after the dialog opened answered 400 `TOOL.ARGUMENTS`, where the matrix says 409; closed in rework 1 (409 `STATE.CONFLICT`).
+  - `[false]` `[reject]` AC4 "given the delete keys true" read as gating the person's own deletes — AD-53's record makes person-only writes ask no key; `GlobalWrite` pins that.
+  - `[low]` `[reject]` the descriptor route differs from the spec's `.../nodes` — same as the route row above; the HTTP route is `/explorer/globals/nodes`.
+  - `[low]` `[reject]` AC1 screen and agent parity is not driven in the browser — `GlobalRead` compares the port, the screen read path and the agent read.
+  - `[maybe-false]` `[defer]` a saved node value may reach a change event or audit payload — the tool carries the person's new value and AD-36 forbids node values in an audit payload; inspecting the event after a save would settle it (deferred item 2).
+  - `[low]` `[defer]` the list's whole-global Delete dialog (typed name) has no component or browser spec for an ordinary global (deferred item 3).
+  - `[low]` `[reject]` no end-to-end write to a real `^OcuPilot*` global — the arm's refusal is before any write and is pinned at the arm for both callers; writing one is what the spec forbids.
+
+### 2026-11-17 — Review pass (rework 1)
+
+- verdicts: 11 findings — high 0, medium 2, low 9, false 0, maybe-false 0 (the intent-alignment layer is descriptive; its observations are the shared-route, agent-path and armed-class rows)
+- findings:
+  - `[medium]` `[patch]` the lookup's content is pinned for one system database only — `GlobalProtectedLocation` compares it with `Config.Databases` for OcuPilot's database and all seven; mutation (drop `%cspSession`) observed red.
+  - `[medium]` `[patch]` the lookup's failure path is untested, so a fail-open change would pass — `GlobalProhibited` fails the lookup on demand and `GlobalProtectedLocation` asserts an error status; mutation observed red.
+  - `[low]` `[reject]` no mutation line for the developer leg's 200 rows — the recorded lookup mutation reddens every one of them.
+  - `[low]` `[reject]` the protected-side developer test depends on the instance's own `<PROTECT>` as a backstop — same shape as the `GlobalWrite` counterpart; the library is read-only for every principal.
+  - `[low]` `[reject]` the developer leg runs in `HSCUSTOM` only — the lookup reads the install namespace and `%SYS` whatever the request's namespace, and the principal holds the install namespace's databases alone.
+  - `[low]` `[reject]` a numerically equal value reads back `matches` — the read-back's comparison rule is the shipped one for every merge write.
+  - `[low]` `[reject]` no spec drives the Globals dialog with a 409 — the dialog reaches the same `refusalReason` the new spec pins.
+  - `[low]` `[reject]` the agent's write path is not driven for a developer principal — both callers share the arm the developer class exercises.
+  - `[low]` `[reject]` the shared `ScreenAction.Refuse` maps by sentence — it maps two constants, and every other problem keeps 400.
+  - `[low]` `[reject]` the protected directories are found by one probe global per database — now pinned against the configuration by the first row.
+  - `[low]` `[reject]` the armed class is red outside a throwaway — by design, armed by `OCUPILOT_ALLOW_PRINCIPALS`.
+
+### 2026-11-18 — Review pass (rework 2)
+
+- verdicts: 3 findings — high 0, medium 0, low 3, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` `DeveloperFloorRoutes` skips every non-GET roster entry, so the node page's POST is no longer sent as the developer — the sweep's shape for every POST row (the Data browser's route too), and a developer-signed leg is new test surface, not a correction.
+  - `[low]` `[reject]` the `SaveHoldCoverage` exemption also covers urls continuing after a slash — the same property as every `reads only` row.
+  - `[low]` `[reject]` `explorer.globals.read:pattern` is classed as a comma list rather than hinted — the mask is the vendor's comma-separated list of masks (`GlobalQuery.cls:339-344`), the same case as the classes and routines criteria, and the text is agent-facing.
 
 ## Design Notes
 
@@ -166,6 +308,10 @@ deferred: []
 
 **Contended paths:** Epic 24 (slot B) has no committed change beyond feature in any file named here (`origin/OCU-1-epic24`, checked 2026-11-15); its worktree holds uncommitted edits to `EXPERIENCE.md`, `Baseline.cls`, `Prohibited.cls`, `Screen/Read.cls`, `strings.ts`, `screen-action-handler.ts`, `proposal-view.ts`, `screens.generated.ts`, `ClassicPageGate`, `Descriptor`, `MappingDescriptor`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `ToolWrite`. Every edit there is add-only. No Epic 22 branch or worktree exists.
 
+**Task 0, measured on `ocupilot-ci` (2026-11-18):** (d) the instance registers 80 audit events and none names a global's `Set` or `Kill` (auditing was off, so no event was observed being written; (inference) a global write records none). (e) a write of `^%qZZOcuProbe` (IRISLIB) with no roles is `<PROTECT>`, code 202, status text `ERROR #5002: ObjectScript error: <PROTECT> ^%qZZOcuProbe,/usr/irissys/mgr/irislib/`; as `_SYSTEM` it is `<PROTECT>` too, since IRISLIB is read-only. (h) an `$System.OBJ.Export` of `ZZOcuGlb<pid>.GBL` carries the name as `<Sub>^ZZOcuGlb<pid></Sub>`; rewritten to `^%ZZOcuGlb<pid>` it lists through `xml/list` as one global document and the screen's local import is refused `PROHIBITED.PROTECTEDGLOBAL` (`ExplorerTransfer`). A subscript holds 511 characters with the global's name, so a reference over 1,000 characters needs quotation marks in its subscript, which `$Name` doubles.
+
+**Decided in-stage (implement):** `Globals` `GET` and `Node` `GET` also answer `Namespace`, so a confirm writes where the proposal read (as `DocDbPort`). The person's stale-node guard is the screen value `Was`, compared with the fresh read in `ExplorerGlobalNodeSave.ScreenActionDelta`: a node that changed since the dialog opened answers 409 `STATE.CONFLICT` (the stale-save refusal, through `ScreenAction.Refuse`), as the I/O table names. The save's fingerprint subject keeps `Value`, but the merge replaces `Value` with the new value, so dropping it changes no digest; AC3's mutation targets `Was`. The node page's descriptor route is `system-explorer/globals/document`, the list's paired document screen, because a `list (server criteria)` list declares no `rowTarget` and the name cell opens a paired `document` screen; its HTTP route stays `/explorer/globals/nodes`. The list's title reuses `processColumnGlobals` and the Edit button `agentPanelSecretWarningEdit` (`strings.test.mjs` refuses a repeated value). `Node/PUT` is a `COMPOSEDTYPES` member of `GlobalPort`, the new value travelling in its query. `GlobalPort` defines `Snippet` and `SnippetForm` for its three writes (the draft registry requires it). The classic Global view and Global edit pages, `/csp/sys/exp` pages like Open Table, are added to `DeveloperFloor.INTERNALCHECKS` (the application's resource, `%Development`, was read on the instance; that the two pages are served by it is (inference)). The new tools and descriptors take positions and rosters 15 (free; Epic 24 holds 16-19).
+
 **Runner ruling at the spec gate (2026-11-15):** the three AD records are written into the spine (owner answer U-59); the AD-29 Binds addition stays a proposal beside DW-2559; the escalated strings and the stricter data posture are kept (veto U-60).
 
 ## Verification
@@ -177,20 +323,51 @@ deferred: []
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):
 
 - `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected `LOADERRORS=0`.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.GlobalRead`, then the same, one class per call, for `GlobalWrite`, `ExplorerTransfer`, `PortGate`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Prohibited`, `ReadTool`, `ToolEmit`, `ToolDispatch`, `ToolRoundTrip`, `ToolWrite`, `Descriptor`, `Navigation`, `ClassicPageGate`, `MappingDescriptor`, `TeardownGuard` -- expected green.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.GlobalRead`, then the same, one class per call, for `GlobalWrite`, `GlobalWriteDeveloper` (armed; throwaway only), `GlobalProtectedLocation`, `ReadBack`, `ExplorerTransfer`, `PortGate`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Prohibited`, `ReadTool`, `ToolEmit`, `ToolDispatch`, `ToolRoundTrip`, `ToolWrite`, `Descriptor`, `Navigation`, `ClassicPageGate`, `MappingDescriptor`, `TeardownGuard` -- expected green.
 - `(loop)` `uv run scripts/check-objectscript.py`; `uv run scripts/test_check_objectscript.py`; `bash scripts/lint-docs.sh` -- expected clean.
 - `(loop)` `cd ui && node --test tools/strings.test.mjs tools/screen-mirror.test.mjs tools/navigation.test.mjs tools/proposal-view.test.mjs` plus every `ui/tools` test the sweep changes -- expected green.
 - `(loop)` `cd ui && npm run build && npm run test:components`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/system-explorer-globals.browser-spec.mjs browser/system-explorer.browser-spec.mjs` -- expected green.
 - `(once)` `cd ui && npm run test:tools` -- expected green.
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`, Rule 30's fresh check. The full browser suite is left to CI.
 
-**Mutations (Rule 19)** -- apply, observe red, revert byte-identical, reload, record `mutation: <change> -> <test red>`:
+**Mutations (Rule 19)** -- each applied on `ocupilot-ci`, observed red, reverted byte-identical (checksum) and reloaded:
 
-- AC1: drop the subscript-row filter. AC2: make the cursor inclusive. AC3: remove `Value` from the fingerprint subject. AC4: set `explorer.globals.delete` `true` in `Baseline`. AC5: drop the own-stem check from the `Global` arm. AC6: drop the `.gbl` clause from the import branch.
+- mutation: AC1 drop the `(` filter in `GlobalPort.VendorList` -> `GlobalRead.TestTheListAndTheAgentsReadAnswerTheSameRowsWithNoMappingRow` red.
+- mutation: AC2 make the cursor inclusive in `GlobalPort.VendorWalk` -> `GlobalRead.TestAPageWalksTheGlobalOnceInOrderWithLongValuesCut` and `TestAPageStartsWhereItIsToldAndLogsNoValue` red.
+- mutation: AC3 drop the `Was` comparison in `ExplorerGlobalNodeSave.ScreenActionDelta` (the spec's "remove `Value` from the fingerprint subject" is unobservable, see Design Notes) -> `GlobalWrite.TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten` red.
+- mutation: AC4 set `explorer.globals.delete` `true` in `Baseline` -> `GlobalWrite.TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn` and `TestTheToolsDeclareTheirWritePath` red.
+- mutation: AC5 drop the own-stem check from `Prohibited.Global` -> `GlobalWrite.TestTheArmRefusesOwnAndProtectedGlobalsBeforeAnyWrite` red (the client mirror's pin is `ui/tools/self-protection.test.mjs`).
+- mutation: AC6 drop the `.gbl` clause from the import branch of `Prohibited.Prohibits` -> `GlobalWrite.TestAnImportIsJudgedByTheGlobalsItNames` and `ExplorerTransfer.TestAnImportOfAPercentGlobalIsRefusedAndLoadsNothing` red.
+- mutation: AC2 (node calls log no node text) drop the quiet flag of `GlobalPort.NodeState`'s `Mapped` call -> `GlobalRead.TestAPageStartsWhereItIsToldAndLogsNoValue` red (observed).
+- mutation: AC3 (a reload keeps the pages shown) read one page in `GlobalViewStore.reload` -> `global-view.store.spec.ts` "reads again as many pages as are shown" red (observed).
+- mutation: AC2 (AD-36, a saved value is never stored or logged) log the new value in `ExplorerGlobalNodeSave.PortQuery` -> `GlobalWrite.TestANodesValueReachesNoStoreAndNoLog` red (observed, code review).
+- mutation: AC4 (read-back) `ExplorerGlobalDelete.ReadBackGone` answers 0 -> `GlobalWrite.TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn` red on the screen and confirm verdicts (observed, code review).
+- mutation: AC2 (a failing set logs no node text) quiet flag 0 on `GlobalPort.NodeSet`'s set -> `GlobalRead.TestAPageStartsWhereItIsToldAndLogsNoValue` red (observed, code review).
+- mutation: AC4 (the list's typed-name Delete, DW-2724) map `ExplorerGlobalList`'s delete to `globalNodeDeleteConsequence` in `screen-action-handler.ts`, rebuild and redeploy -> `system-explorer-globals.browser-spec.mjs` list-Delete test red (observed, code review).
+- mutation: AC3/AC4/AC5 (a developer's writes, rework 1) `Prohibited.ProtectedLocation` finds the protected directories through `OwnDatabaseDirectories` and the `Database.ConfigCRUD` list as the caller -> `GlobalWriteDeveloper` both tests red, answering 500 (observed, rework 1).
+- mutation: AC5 (rework 1) drop `%qCacheObjectErrors` from the globals `ProtectedDirectories` finds in `%SYS` -> `GlobalWriteDeveloper.TestADeveloperIsRefusedAGlobalStoredInASystemDatabase` red on the edit leg (observed, rework 1).
+- mutation: AC3 (read-back, rework 1) `READBACKPAYLOAD` 0 on `ExplorerGlobalNodeSave` -> `GlobalWrite.TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten` red on the read-back verdict (observed, rework 1); `ReadBack.TestAPayloadComparedWriteReadsBackTheValueItSent` pins the `differs` side.
+- mutation: AC3 (stale save, rework 1) `ScreenActionDelta` answers its former plain sentence instead of `Error.REASONSTATECONFLICT` -> `GlobalWrite.TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten` red on the `409 STATE.CONFLICT` row (observed, rework 1).
+- mutation: AC4 (empty global, rework 1) drop the `GlobalError.REASONNOTFOUND` line of `ScreenAction.Refuse` -> `GlobalWrite.TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn` red on the `404 GLOBAL.NOTFOUND` row (observed, rework 1).
+- mutation: AC3 (the stale-save sentence, rework 1) drop the `STATE_CONFLICT_CODE` branch of `refusalReason` in `screen-action-handler.ts` -> `screen-action-handler.spec.ts` "shows the published stale-save sentence" red (observed, rework 1).
+- mutation: AC5 (the lookup holds every protected database, review) leave `%cspSession` out of `Prohibited.ProtectedDirectories` -> `GlobalProtectedLocation.TestTheLookupHoldsEveryProtectedDatabasesDirectory` red (observed, review).
+- mutation: AC5 (a failing lookup refuses, review) drop the `$$$ISERR` quit after the `ProtectedDirectories` call in `Prohibited.ProtectedLocation` -> `GlobalProtectedLocation.TestALookupThatFailsRefusesTheWrite` red (observed, review; dropping the quit after `ProtectedLocation` in `Global` stays green, since the later quit still carries the error).
+- mutation: AC1 (the Globals read's pattern is a comma list, rework 2) remove `explorer.globals.read:pattern` from `CriterionHints.COMMALISTS` -> `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` red (observed, rework 2).
+- mutation: AC3/AC4 (the node page route is on the developer-floor roster, rework 2) remove `POST /explorer/globals/nodes` from `DeveloperFloorRoutes.Roster` -> `DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` red (observed, rework 2).
+- mutation: AC2 (the node page route reads and takes no hold, rework 2) remove its row from `SaveHoldCoverage.Exemptions` -> `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` red (observed, rework 2).
+- mutation: AC3/AC4 (a write outside the install namespace, code review 2) `Prohibited.ProtectedDirectories` resolves OcuPilot's own global in `USER` rather than `$NAMESPACE` -> `GlobalWrite.TestAnOrdinaryGlobalInAnotherNamespaceIsWritten` red on all four rows (observed, code review 2).
+- mutation: AC3/AC4 (the developer opens the node page, code review 2) `GlobalNodes.Gate` also requires `OcuPilotAdmin:USE` -> `GlobalWriteDeveloper.TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights` red on the page row, 403 `AUTH.NOPRIVILEGE` (observed, code review 2).
+- mutation: AC3 (a bodyless write reads back its payload, code review 2) drop the `ComparesPayload` line of `ReadBack.KindOf` -> `ReadBack.TestAPayloadComparedWriteReadsBackTheValueItSent` red (observed, code review 2).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan after the split ruling and U-59: scope narrowed to list, view, edit and kill; the three AD records written final in Design Notes; DW-2607 addressed (import clause, AC6); new strings remain escalated for the spec gate. Probes were read-only on slot A `ocupilot`; nothing ran against `ocupilot-ci`.
+Rework 2 pass: the three CI-red roster tests are closed, with no product code changed. `CriterionHints.COMMALISTS` gains `explorer.globals.read:pattern` (the mask is a comma list, like the classes and routines masks), `DeveloperFloorRoutes.Roster` gains `POST /explorer/globals/nodes`, and `SaveHoldCoverage.Exemptions` gains it as a read. The `[Spec]` item is closed (the stale-save sentence, deferred item 1). Verified on `ocupilot-ci`: `CriterionHints` 4, `DeveloperFloorRoutes` 1, `SaveHoldCoverage` 2 green; `EndpointCoverage`, `SurfaceCoverage`, `ToolEmit`, `ReadDescriptions`, `Descriptor`, `Navigation` green; `GlobalWriteDeveloper` is in the `ci-throwaway.sh` arming roster and `ci.test.mjs` passes; `test:tools` 2314, `check-objectscript` 0 problems, `test_check_objectscript` 163 OK; three roster-row mutations observed red and reverted byte-identical. Review: 3 lows rejected with reasons in the triage log, none patched. Follow-up review: not recommended (no high patched).
+
+Rework 1 pass: the three open review items are closed. A developer's global writes no longer meet `<PROTECT>`: `Prohibited.ProtectedDirectories` finds OcuPilot's own database and the system databases through the namespace mapping and the manager directory, with no read of the database configuration, so no escalated read was needed. The node save reads back its `Value` (`Write.READBACKPAYLOAD`, `ReadBack.ComparesPayload`). `ScreenAction.Refuse` answers the stale save 409 `STATE.CONFLICT` and an empty global's delete 404 `GLOBAL.NOTFOUND`, and `refusalReason` shows `formStaleSave` for the 409; every other problem keeps 400 and no string is new. New: `GlobalWriteDeveloper` (armed, registered in `ci-throwaway.sh`), `GlobalProtectedLocation`, `ReadBack` and `GlobalWrite` rows, one client spec. Review patched two mediums (the lookup's content and its failure path, `GlobalProtectedLocation`) and rejected nine lows with reasons in the triage log. Verified on `ocupilot-ci`: every `(loop)` class green, `check-objectscript` 0 problems, `lint-docs` clean, `test:tools` 2314, `test:components` 3565, both browser specs green; eight mutations observed red and reverted byte-identical. Follow-up review: not recommended (no high patched).
+
+Review pass: 24 findings (medium 5, low 17, false 1, maybe-false 1); patched 4 mediums and 2 lows (a multi-page reload spec, runtime consequence-sentence pins, the hostile cursor leg, node calls logging the exception name alone, an `ExplorerTransfer` teardown), deferred 3 (the stale-node sentence and status, whether a saved value reaches an event payload (unverified), the list's delete dialog spec), rejected 16 with reasons in the triage log. Re-verified after the patches on `ocupilot-ci`: `GlobalRead`, `GlobalWrite` and `ExplorerTransfer` green one at a time, `npm run test:components` 3,564 green, `proposal-view` and `global` tool tests green; two mutations observed red and reverted byte-identical. Follow-up review recommended: the patched code is not covered by a re-run of the browser specs or the other ObjectScript classes.
+
+Implement pass: Task 0 measured; Batch 1 (`GlobalPort`, `GlobalError`, `GlobalNodes` route, the arm and import clause in `Prohibited`, three tools, two descriptors, registrations, `GlobalRead` and `GlobalWrite`, one `ExplorerTransfer` test, shared-surface rosters) and Batch 2 (node page and store with specs, strings, EXPERIENCE.md row, consequences, the `protected-global` rule, regenerated mirror, `global.test.mjs`, browser spec). Verified on `ocupilot-ci`: every `(loop)` class green one at a time, `check-objectscript` clean, `lint-docs` clean, `npm run build` (initial bundle 2.12 MB, under the 2,500 kB warning), `npm run test:components` 3,564 green, both browser specs green, six mutations red and reverted. Open: the stale-node refusal's sentence (Design Notes).

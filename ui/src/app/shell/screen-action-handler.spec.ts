@@ -459,6 +459,16 @@ describe('the Users list row actions (Story 7.2)', () => {
     ]);
   });
 
+  it('shows the published stale-save sentence for a refused write that answers a row moved since it was read', async () => {
+    // A 409 STATE.CONFLICT is the row-moved refusal for every screen (EXPERIENCE.md): its sentence, not the envelope's own.
+    // Mutation (Rule 19): drop the STATE_CONFLICT_CODE branch of `refusalReason` -> this goes red.
+    const refused = mountUsers([{ kind: 'error', status: 409, code: 'STATE.CONFLICT', reason: 'the envelope sentence', detail: null }]);
+    refused.actions.run(USERS.descriptor, SET_PASSWORD);
+    await refused.handler.submitPassword('pw1', false);
+    expect(refused.calls).toHaveLength(1);
+    expect(refused.store.refusal()).toBe(STRINGS.formStaleSave);
+  });
+
   it('offers a remove of the row\u2019s own roles and an add of the form read\u2019s others, sending one role', async () => {
     // Story 9.1 (DW-1523): the add's choices come from `GET /users/form`, each with the server's own
     // privilege mark, which the dialog states the grant's consequence from.

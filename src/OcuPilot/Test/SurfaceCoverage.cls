@@ -193,6 +193,8 @@ XData Coverage
 <screen name="ExplorerSqlSchemaViews" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlSchemaProcedures" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
 <screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
+<screen name="ExplorerGlobalList" class="OcuPilot.Test.GlobalRead" method="TestTheScreensDeclareTheirShape" corpus="one declaration test pins both screens Story 21.5 adds, the list and the node page beneath it"/>
+<screen name="ExplorerGlobalView" class="OcuPilot.Test.GlobalRead" method="TestTheScreensDeclareTheirShape" corpus="one declaration test pins both screens Story 21.5 adds, the list and the node page beneath it"/>
 <screen name="ExplorerCodeMetrics" class="OcuPilot.Test.DevToolRead" method="TestMetricsAreTheProbesComposition"/>
 <screen name="ExplorerDocumentHashes" class="OcuPilot.Test.DevToolRead" method="TestHashesAreTheSha256OfTheStoredText"/>
 <screen name="ExplorerNamespaceDiff" class="OcuPilot.Test.NamespaceDiffRead" method="TestTheDiffListsEachDifferenceAndNotTheSameDocument"/>
@@ -485,6 +487,9 @@ XData Coverage
 <tool name="explorer.classmethod.run" class="OcuPilot.Test.ConsoleGate" method="TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
+<tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
+<tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>
 <tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
 <tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>

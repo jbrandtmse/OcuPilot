@@ -68,6 +68,9 @@ Parameter DDLMAPPINGDISABLED = "osmgmt.systemddlmappings.delete,osmgmt.userddlma
 /// default collation, and a delete removes a locale OcuPilot cannot restore. The locale-format set ships enabled.</p>
 Parameter LOCALEDISABLED = "osmgmt.locales.install,osmgmt.locales.delete";
 
+/// <p>Story 21.5's globals delete, node save and node delete, each listed false in the baseline.</p>
+Parameter GLOBALDISABLED = "explorer.globals.delete,explorer.globalnodes.save,explorer.globalnodes.delete";
+
 /// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
 /// other four term list writes ship enabled.</p>
 Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
@@ -210,6 +213,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#LISTINGGROUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"

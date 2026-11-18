@@ -519,3 +519,30 @@
 2026-11-18T03:57:45Z	Epic 21	gate_step	step=sweep result=green shards=20/20 head=6b6f44743
 2026-11-18T03:57:45Z	Epic 21	gate_step	step=smoke result=pass executed=50 passed=50 head=6b6f44743
 2026-11-18T03:57:45Z	Epic 21	ci_green_verified	sha=6b6f44743 runs=44218981008 result=success missing=none note=staging_head_21.14+feature_e50a321a0
+2026-11-18T03:58:12Z	Story 21.5	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T03:58:12Z model=sonnet agent_name=21-5-implement-1 cycle_iteration=1 story_base=ba9ac0135
+2026-11-18T05:31:49Z	Story 21.5	dev_complete	scope=batches1+2 spawn_at=2026-11-18T03:58Z model=sonnet build_sha=25d79403d baseline_revision=81f86d9c4 story_base=81f86d9c4 review_loop_iteration=0 followup_review_recommended=true deferred=3(DW-2722,DW-2723,DW-2724) cycle_iteration=1
+2026-11-18T05:31:49Z	Story 21.5	code_head_pushed	sha=25d79403d run=44244846002 missing=none
+2026-11-18T05:31:49Z	Story 21.5	adr_verifications_complete	result=none_required note=AD-10/AD-36/AD-53_pinned_by_GlobalRead,GlobalWrite;CR_measures_DW-2723
+2026-11-18T05:31:49Z	Story 21.5	stage_spawned	stage=code-review spawn_at=2026-11-18T05:31:49Z model=opus agent_name=21-5-code-review-1 cycle_iteration=1 baseline=81f86d9c4
+2026-11-18T06:05:30Z	Story 21.5	cr_complete	spawn_at=2026-11-18T05:33Z model=opus high=1(developer_writes_500:Prohibited_reads_config_as_caller) med=8 low=7 rows=42 unresolved_high_med=3 resolved=DW-2723(measured),DW-2724 new=DW-2729 occurrence=DW-2613(audit_gap) final=in-progress closing_sections_present=true
+2026-11-18T06:05:30Z	Story 21.5	ruling	question=rework_directions(HIGH_source,readback,409/404_mapping) choice=caller-readable_GetGlobalDest+ManagerDirectory;HALT_if_escalation_needed;compare_Value;add-only_ScreenAction_mapping_for_STATE.CONFLICT_and_GLOBAL.NOTFOUND rejected=AD-9_escalated_read(cross-epic_AD,orchestrator),amend_AC3 why=no_new_privilege;existing_ruled_strings category=decide policy=b9ff703e
+2026-11-18T06:05:30Z	Story 21.5	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=developer_writes_500,readback_nothingSent,DW-2722 scope_baseline=c469ec9a4
+2026-11-18T06:05:30Z	Story 21.5	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T06:05:30Z model=sonnet agent_name=21-5-implement-rework-1 cycle_iteration=2
+2026-11-18T06:46:54Z	Story 21.5	dev_complete	scope=rework1 spawn_at=2026-11-18T06:09Z model=sonnet build_sha=bed5aa01e baseline_revision=1ace574fe followup_review_recommended=false deferred=0 cycle_iteration=2
+2026-11-18T06:46:54Z	Story 21.5	ci_red_classified	run=44244846002 workflow=.github/workflows/ci.yml class=story test=CriterionHints(explorer.globals.read:pattern_hint),DeveloperFloorRoutes(POST_/explorer/globals/nodes),SaveHoldCoverage(same_route) head=25d79403d
+2026-11-18T06:46:54Z	Story 21.5	rework_opened	cycle_iteration=3 iteration=2 trigger=ci items=CriterionHints,DeveloperFloorRoutes,SaveHoldCoverage,roster_sweep,spec_stale_text scope_baseline=bed5aa01e
+2026-11-18T06:46:54Z	Story 21.5	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-18T06:46:54Z model=sonnet agent_name=21-5-implement-rework-2 cycle_iteration=3
+2026-11-18T07:10:39Z	Story 21.5	dev_complete	scope=rework2 spawn_at=2026-11-18T06:48Z model=sonnet build_sha=2595695d4 baseline_revision=1dae2426a followup_review_recommended=false deferred=0 cycle_iteration=3 note=test_rosters_only
+2026-11-18T07:10:39Z	Story 21.5	code_head_pushed	sha=2595695d4 run=44256813627 missing=none
+2026-11-18T07:10:39Z	Story 21.5	stage_spawned	stage=code-review scope=rework1+2 spawn_at=2026-11-18T07:10:39Z model=opus agent_name=21-5-code-review-2 cycle_iteration=3 baseline=1ace574fe
+2026-11-18T07:34:33Z	Story 21.5	cr_complete	scope=rework1+2 spawn_at=2026-11-18T07:11Z model=opus high=0 med=2(patched) low=16 rows=28 unresolved_high_med=0 new=DW-2730(decision-pending:AD-58_READBACKPAYLOAD_spine_line) final=done commit=b293049be closing_sections_present=true
+2026-11-18T07:34:33Z	Story 21.5	ledger_adjudicated	owned=2 resolved=2(DW-2607,DW-2722) reowned=0 terminal=0 note=DW-2723,DW-2724_resolved_at_review;DW-2730_decision_sheet
+2026-11-18T07:34:43Z	Epic 21	integrated	feature=50cb0b1de merge=1de56e265 conflicts=none note=21.14_merged_on_feature;timings
+2026-11-18T07:34:43Z	Story 21.5	gate_step	step=fresh_check+full_sweep+smoke head=1de56e265 started=2026-11-18T07:34:43Z dir=e21u/21-5/gate2
+2026-11-18T08:23:27Z	Story 21.5	ci_red_classified	run=44260017976 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=analytics-mdx_AC1(browser_5/5;DW-2714_occurrence_2) head=1de56e265
+2026-11-18T08:59:35Z	Story 21.5	ci_resolved	story=21.5 sha=1de56e265 runs=44260017976 result=success failed=none via=none resolved_at=gate note=flake_rerun(analytics-mdx_AC1,DW-2714)
+2026-11-18T09:40:32Z	Story 21.5	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+2_specs(system-explorer-globals,nls-locales) result=pass order=forward,reverse(specs) head=1de56e265
+2026-11-18T09:40:32Z	Story 21.5	gate_step	step=sweep result=green shards=20/20 head=1de56e265
+2026-11-18T09:40:32Z	Story 21.5	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-18T09:40:32Z	Story 21.5	committed	sha=b293049be staging_head=1de56e265 submodules= ci=success runs=44260017976 amendments=none
+2026-11-18T09:40:32Z	Story 21.5	story_cycle	plan_to_commit_min=n/a(multi-session) implement_passes=3(build,rework1,rework2_ci) reviews=2 rework=2 first_ci=story(3_shared-surface_rosters) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus

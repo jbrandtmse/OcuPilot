@@ -357,6 +357,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
       'system-explorer/classes/editor',
+      // Story 21.5: Global nodes, the Globals list's unlisted document screen, by descriptor class name.
+      'system-explorer/globals/document',
       'system-explorer/routines/document',
       'system-explorer/routines/editor',
       // Stories 19.5 and 19.14: a SQL table's nine unlisted tabs, a view's three and a procedure's
@@ -401,7 +403,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.1: Code metrics and Document hashes, after Document databases.
       'system-explorer/code-metrics',
       'system-explorer/document-hashes',
-      // Story 24.8: Compare namespaces, after Document hashes.
+      // Story 21.5: Globals, after Document hashes.
+      'system-explorer/globals',
+      // Story 24.8: Compare namespaces, after Globals.
       'system-explorer/namespace-diff',
       // Story 24.5: Unit tests, after Compare namespaces.
       'system-explorer/unit-tests',

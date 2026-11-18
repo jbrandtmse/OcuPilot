@@ -71,6 +71,8 @@ const {
   CONSEQUENCE_CONFIGNLSRELOAD,
   CONSEQUENCE_LOCALEINSTALL,
   CONSEQUENCE_LOCALEDELETE,
+  CONSEQUENCE_GLOBALDELETE,
+  CONSEQUENCE_GLOBALNODEDELETE,
   CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
@@ -1225,4 +1227,11 @@ test('Story 24.10: the analytics deletes and the entry remove state their conseq
     assert.ok(typeof sentence === 'string' && sentence !== '', `${code} has a published sentence`);
     assert.equal(view.consequenceSentence(code), sentence, `${code} reads its published sentence`);
   }
+});
+
+test('Story 21.5: the global delete cards state the sentence their consequence code names', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_GLOBALDELETE), STRINGS.globalDeleteConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_GLOBALNODEDELETE), STRINGS.globalNodeDeleteConsequence);
+  assert.notEqual(STRINGS.globalDeleteConsequence, '', 'the global delete code names a published sentence');
+  assert.notEqual(STRINGS.globalNodeDeleteConsequence, '', 'the node delete code names a published sentence');
 });

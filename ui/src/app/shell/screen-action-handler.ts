@@ -18,7 +18,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { entityKeyOf, rowKey } from '../core/table-model';
-import { violationsOf, type Violation } from '../core/violations';
+import { STATE_CONFLICT_CODE, violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
@@ -175,6 +175,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.14: NLS configured defaults, whose Set value its settings page's dialog sends, and Locale definitions, whose Install and Delete type the locale's name and whose Validate its own page's dialog runs.
   'OcuPilot.Screen.Descriptor.NlsDefaultList',
   'OcuPilot.Screen.Descriptor.LocaleList',
+  // Story 21.5: Globals, whose Delete types the global's name.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -747,6 +749,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
   // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
   [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence },
+  // Story 21.5: a deleted global takes all of its data.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
@@ -1007,8 +1011,13 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
 /** The entity type of a production, which the re-read event names (AD-14). */
 const PRODUCTION_ENTITY = 'production';
 
-/** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
-function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
+/** The sentence a refused action shows: the stale-save sentence for a row that moved, a published state refusal, else the envelope's own reason. */
+function refusalReason(result: {
+  readonly reason: string | null;
+  readonly code?: string | null;
+  readonly detail: Record<string, unknown> | null;
+}): string {
+  if (result.code === STATE_CONFLICT_CODE) return STRINGS.formStaleSave;
   const problem = result.detail === null || result.detail === undefined ? undefined : result.detail['problem'];
   if (typeof problem === 'string' && PUBLISHED_PROBLEMS.includes(problem)) return problem;
   return result.reason ?? '';
