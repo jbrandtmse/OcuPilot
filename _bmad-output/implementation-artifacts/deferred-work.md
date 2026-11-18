@@ -13759,6 +13759,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: not reproduced: macOS Node 22.22.3 full and shallow clone, Linux node:22.22.3 4 CPU/15 GB 3x green 183s; a 2-CPU Linux container OOMed a vitest fork worker (heap limit) at file 90/286 (inference: same cause)
 - 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
 - 2026-11-18T10:38:51Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=occurrence 5: run 44283101753 att1 on OCU-1-epic24 eb6fbf706 (24.11 merged code head), node 22.22.3 client suite cancelled ~25 min; node 24/26 green
+- 2026-11-18T13:19:59Z occurrence=21-17-global-export-and-import note=run_44301357497_gates_node_26.0.0_cancelled_(not_only_node_22);rerun_green
 ### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
@@ -13820,3 +13821,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-17-global-export-and-import.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: spec-21-18 matrix row Protected says 409 PROHIBITED.PROTECTEDGLOBAL / OCUPILOTCODE; 21.5's and 21.17's tests and the 2026-11-18 measurement on ocupilot-ci answer 403 on every caller
 - 2026-11-18T11:11:38Z status=routed owner=21-18-global-find-and-replace by=cr note=plan 21.18's tests on 403, as 21.17's Design Notes record
+
+### DW-2733: A timed-out client suite step leaves the sampler and the hung suite running until the job ends, because the runner signals only the step's shell
+- source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: actions/runner ProcessInvoker.cs: on Linux SIGINT, SIGTERM and Process.Kill() go to the step's root pid only; simulated locally, the script and its sampler were re-parented and kept sampling. The step still fails with its log and the report step runs.
+- 2026-11-18T13:26:26Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=cr note=reopen_if=a timed-out gates client suite step delays or breaks the report step or job cleanup, or its log loses samples the diagnosis needed

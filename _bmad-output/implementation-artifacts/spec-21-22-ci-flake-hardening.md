@@ -126,6 +126,30 @@ Batch 4 -- bounded slices (DW-2202, DW-2476):
 - Given `clearFilter` or `WaitJobs` times out, when the error is raised, then it names the state it last read (DW-2720, DW-2713).
 - Given the four derived counts and the twelve converted specs, when a roster gains a member or a spec declares a new copy, then no literal needs editing and the ratchet reddens (DW-2202, DW-2476).
 
+### Review Findings
+
+Code review of Batch 1 (`c7d487258` against `71dbd2882`), 2026-11-18. Four layers, 29 raw findings, 11 entries after grouping.
+
+- [x] [Review][Patch] (med) The process sample dropped `ng test`, which renames itself (`@angular/cli/bin/ng.js:28`), and admitted any program path holding "node" (esbuild under `node_modules`); it now keeps programs named node, ng, npm or npx [scripts/ci-resource-sample.sh:71]
+- [x] [Review][Patch] (low) `--interval` with no value looped forever under bash, and `00` busy-looped; both now exit 2 [scripts/ci-resource-sample.sh:56,127]
+- [x] [Review][Patch] (low) Samples now carry the Swap line and the online CPU count, so a swap stall and the runner's size show in the log [scripts/ci-resource-sample.sh:58]
+- [x] [Review][Patch] (low) The config comment and a test message asserted a 2-CPU CI runner; the public repo's hosted runner is 4 vCPU per GitHub's documentation (inference), so both now state only what the settings do [ui/vitest-base.config.mjs:3, ui/tools/angular-json.test.mjs:144]
+- [x] [Review][Patch] (low) The runner-config pin missed the builder's overrides: a target `isolate` or `reporters`, a script flag, and dropping `'default'` all stayed green; now pinned [ui/tools/angular-json.test.mjs:146]
+- [x] [Review][Patch] (low) The `sudo -n dmesg` branch, the one CI takes, was never exercised; the stub `sudo` can now succeed [ui/tools/shell-scripts.test.mjs:297]
+- [x] [Review][Patch] (low) "Three largest, largest first" was never observed; the stub `ps` lists six processes in mixed order [ui/tools/shell-scripts.test.mjs:301]
+- [x] [Review][Patch] (low) The report step's working directory was unpinned; `working-directory: ui` would break its path with the suite green [ui/tools/ci.test.mjs:2915]
+- [x] [Review][Patch] (low) The script was added as mode 100644 beside twelve 100755 scripts [scripts/ci-resource-sample.sh]
+- [x] [Review][Patch] (low) `docs/DEVELOPMENT.md`'s CI table still listed a bare `npm test` for the gates job [docs/DEVELOPMENT.md:464]
+- [x] [Review][Defer] (low) A step timeout signals only the step's `bash`, so the script never sees it and its sampler and the hung suite run on until the job's orphan cleanup [scripts/ci-resource-sample.sh] — deferred: DW-2733 `wontfix-accepted`; the step still fails with its log and the report step runs (actions/runner `ProcessInvoker.cs`)
+
+Rejected:
+
+- (low) `--report -- <cmd>` skips the command: no caller passes both; the fix is a new guard.
+- (low) The start reporter's `printed` set never resets in watch mode: the line serves CI, where watch is off; the fix is a new hook.
+- (low) A deferred INT exits 143 and drops the command's status: nothing reads the difference.
+- (false) `jobSteps` reads single-line `run:` only: a reformat makes the new test fail loudly, not pass.
+- (low) The shebang-shell test skips `../scripts/` paths: `DECLARED_GATES` pins the exact invocation.
+
 ## Spec Change Log
 
 - 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
@@ -218,6 +242,7 @@ Every batch:
   - mutation (Batch 1, observed): delete `runnerConfig` from `angular.json` -> `angular-json.test.mjs` red at "the target names the runner config file"; set `isolate: false` in `vitest-base.config.mjs` -> the same test red. Reverted; tree identical.
 - Step bound: drop the step's `timeout-minutes`, or the `--report` step's `cancelled()` -> `ci.test.mjs` red; the sampler stops propagating the command's status, or stops killing its sampler -> `shell-scripts.test.mjs` red.
   - mutation (Batch 1, observed): delete the step's `timeout-minutes` -> `ci.test.mjs` red ("carries its own timeout-minutes"); the report step's `if:` narrowed to `failure()` -> red ("after a cancellation"); the script ends `exit 0` -> `shell-scripts.test.mjs` red ("the command's own status"); drop `trap stop_sampler EXIT` and the `stop_sampler` call -> red ("no process carrying the marker survives"); drop `killed process` from the OOM pattern -> the `--report` test red. Each reverted; tree identical.
+  - mutation (Batch 1 review, observed): process filter back to `$3 ~ /node/` -> sampler test red ("three largest Node processes"); `sudo -n dmesg` branch replaced by `false` -> `--report` test red ("read through sudo -n first"); interval check `!= 0` -> refusal test red ("interval 00"); `[ $# -ge 2 ]` guard removed -> red under `/bin/sh` ("not a loop", 10 s bound); `"isolate": false` on the test target -> `angular-json.test.mjs` red; `'default'` dropped from `reporters` -> red; `working-directory: ui` on the report step -> `ci.test.mjs` red. Each reverted; tree identical.
 - DW-2534: delete AC5's `resetRememberedState()` -> AC5 red with CI's message; point AC1's wait at `myap` -> AC1 red naming the stored view.
 - DW-2565: restore the second `date` read -> the stepped-clock test red.
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
