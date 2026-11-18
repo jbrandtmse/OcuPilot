@@ -512,3 +512,6 @@
 2026-11-18T01:24:16Z	Story 21.14	ci_red_classified	run=44209857864 workflow=.github/workflows/ci.yml class=infra(cancelled) test=none job=gates(node_22.22.3)_cancelled_after_25min_while_node_24/26_gates_passed_in_10-12min note=rerun_--failed
 2026-11-18T01:45:06Z	Story 21.14	ci_resolved	story=21.14 sha=b015728ad runs=44209857864 result=success failed=none via=none resolved_at=next_implement note=infra_rerun(gates_node22_cancelled)
 2026-11-18T01:45:28Z	Story 21.5	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T01:45:28Z model=sonnet agent_name=21-5-implement-1 cycle_iteration=1 story_base=4c3c0f67e
+2026-11-18T01:51:10Z	Story 21.5	stage_deferred	stage=implement agent_name=21-5-implement-1 spawned=no reason=orchestrator_Rule33:integrate_feature_e50a321a0_and_gate_before_21.5 note=the_preceding_stage_spawned_marker_is_void
+2026-11-18T01:51:10Z	Epic 21	integrated	feature=e50a321a0 merge=6b6f44743 conflicts_resolved=sprint-status(ours),EntityType,Descriptor(93:base89+2+2),ReadTool(490),ToolRoundTrip,screens.generated.ts(regenerated_by_screen-mirror) method=union+recount category=decide checks=8_classes_green,test:tools_2309,check-objectscript_0
+2026-11-18T01:51:10Z	Epic 21	gate_step	step=fresh_check+full_sweep+smoke head=6b6f44743 started=2026-11-18T01:51:10Z dir=e21u/21-5/gate scope=staging_head_for_21.14
