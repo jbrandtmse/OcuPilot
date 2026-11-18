@@ -71,6 +71,9 @@ Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentri
 /// <p>Story 24.10: the folder item delete, the one folder manager line the baseline ships off.</p>
 Parameter FOLDERITEMDISABLED = "analytics.folderitems.delete";
 
+/// <p>Story 24.11: the listing group delete and the listing remove, the two listing group lines the baseline ships off.</p>
+Parameter LISTINGGROUPDISABLED = "analytics.listinggroups.delete,analytics.listinggrouplistings.remove";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -200,6 +203,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#FOLDERITEMDISABLED Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#LISTINGGROUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"

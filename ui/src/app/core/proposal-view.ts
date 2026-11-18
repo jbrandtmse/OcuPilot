@@ -413,6 +413,11 @@ export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
 /** Story 24.10: the folder item delete; one published sentence. */
 export const CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE';
+/** Story 24.11: the listing group editor's four consequences: the delete, the listing remove, a listing that sets SQL and every other write; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPDELETE = 'ANALYTICS.LISTINGGROUP.DELETE';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPREMOVE = 'ANALYTICS.LISTINGGROUP.REMOVE';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPSQL = 'ANALYTICS.LISTINGGROUP.SQL';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE = 'ANALYTICS.LISTINGGROUP.SAVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
@@ -608,6 +613,11 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSTERMLISTREMOVE) return STRINGS.analyticsTermListRemoveConsequence;
+  // Story 24.11: the listing group editor's sentences, each published once.
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPDELETE) return STRINGS.analyticsListingGroupDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPREMOVE) return STRINGS.analyticsListingRemoveConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPSQL) return STRINGS.analyticsListingSqlConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE) return STRINGS.analyticsListingGroupSaveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

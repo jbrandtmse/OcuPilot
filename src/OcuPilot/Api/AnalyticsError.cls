@@ -201,6 +201,55 @@ Parameter FOLDERITEMIMPORTCHANGED = "ANALYTICS.FOLDERITEM.IMPORTCHANGED";
 
 Parameter REASONFOLDERITEMIMPORTCHANGED = "The file changed after it was reviewed, so nothing was imported.";
 
+/// <p>409: a listing group add or copy whose name matches a group the namespace holds, or whose class is already defined (Story 24.11).</p>
+Parameter LISTINGGROUPTAKEN = "ANALYTICS.LISTINGGROUP.TAKEN";
+
+Parameter REASONLISTINGGROUPTAKEN = "This namespace already holds a listing group or class with that name.";
+
+/// <p>422: a listing group class name that is malformed, begins with <code>%</code> or is in an <code>OcuPilot</code> package.</p>
+Parameter LISTINGGROUPCLASS = "ANALYTICS.LISTINGGROUP.CLASS";
+
+Parameter REASONLISTINGGROUPCLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+/// <p>422: a target cube that does not exist or does not accept listing groups.</p>
+Parameter LISTINGGROUPCUBE = "ANALYTICS.LISTINGGROUP.CUBE";
+
+Parameter REASONLISTINGGROUPCUBE = "A target cube does not exist or does not accept listing groups.";
+
+/// <p>409: a listing the group repeats, or that a target cube or another listing group already defines.</p>
+Parameter LISTINGGROUPLISTINGTAKEN = "ANALYTICS.LISTINGGROUP.LISTINGTAKEN";
+
+Parameter REASONLISTINGGROUPLISTINGTAKEN = "A listing of this group is already defined for a target cube. Choose other target cubes.";
+
+/// <p>409: two classes declare the listing group's name, so a write keyed by the name cannot tell which to change.</p>
+Parameter LISTINGGROUPAMBIGUOUS = "ANALYTICS.LISTINGGROUP.AMBIGUOUS";
+
+Parameter REASONLISTINGGROUPAMBIGUOUS = "Two classes define this listing group. Change it in its class instead.";
+
+/// <p>422: the instance refused to compile the listing group's class, and the write was undone.</p>
+Parameter LISTINGGROUPCOMPILE = "ANALYTICS.LISTINGGROUP.COMPILE";
+
+Parameter REASONLISTINGGROUPCOMPILE = "The instance refused to compile the listing group, so nothing was changed.";
+
+/// <p>404: the listing group, or the listing, is not there.</p>
+Parameter LISTINGGROUPABSENT = "ANALYTICS.LISTINGGROUP.ABSENT";
+
+Parameter REASONLISTINGGROUPABSENT = "This listing group or listing no longer exists.";
+
+/// <p>409: the database that holds the namespace's listing groups is read-only or not mounted.</p>
+Parameter LISTINGGROUPREADONLY = "ANALYTICS.LISTINGGROUP.READONLY";
+
+Parameter REASONLISTINGGROUPREADONLY = "The database that holds listing groups is read-only.";
+
+/// <p>The consequence codes of the listing group delete, the listing remove, a listing that sets SQL, and every other listing group write (Story 24.11).</p>
+Parameter LISTINGGROUPDELETE = "ANALYTICS.LISTINGGROUP.DELETE";
+
+Parameter LISTINGGROUPREMOVE = "ANALYTICS.LISTINGGROUP.REMOVE";
+
+Parameter LISTINGGROUPSQL = "ANALYTICS.LISTINGGROUP.SQL";
+
+Parameter LISTINGGROUPSAVE = "ANALYTICS.LISTINGGROUP.SAVE";
+
 /// <p>The consequence code of the folder item delete.</p>
 Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
 
@@ -249,6 +298,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#FOLDERITEMTOOLARGE Quit ..#REASONFOLDERITEMTOOLARGE
     If pCode = ..#FOLDERITEMIMPORTSHAPE Quit ..#REASONFOLDERITEMIMPORTSHAPE
     If pCode = ..#FOLDERITEMIMPORTCHANGED Quit ..#REASONFOLDERITEMIMPORTCHANGED
+    If pCode = ..#LISTINGGROUPTAKEN Quit ..#REASONLISTINGGROUPTAKEN
+    If pCode = ..#LISTINGGROUPCLASS Quit ..#REASONLISTINGGROUPCLASS
+    If pCode = ..#LISTINGGROUPCUBE Quit ..#REASONLISTINGGROUPCUBE
+    If pCode = ..#LISTINGGROUPLISTINGTAKEN Quit ..#REASONLISTINGGROUPLISTINGTAKEN
+    If pCode = ..#LISTINGGROUPAMBIGUOUS Quit ..#REASONLISTINGGROUPAMBIGUOUS
+    If pCode = ..#LISTINGGROUPCOMPILE Quit ..#REASONLISTINGGROUPCOMPILE
+    If pCode = ..#LISTINGGROUPABSENT Quit ..#REASONLISTINGGROUPABSENT
+    If pCode = ..#LISTINGGROUPREADONLY Quit ..#REASONLISTINGGROUPREADONLY
     Quit ""
 }
 
@@ -282,6 +339,18 @@ ClassMethod TermListCodes() As %List
 ClassMethod FolderItemCodes() As %List
 {
     Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED)
+}
+
+/// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>
+ClassMethod ListingGroupCodes() As %List
+{
+    Quit $ListBuild(..#LISTINGGROUPTAKEN, ..#LISTINGGROUPCLASS, ..#LISTINGGROUPCUBE, ..#LISTINGGROUPLISTINGTAKEN, ..#LISTINGGROUPAMBIGUOUS, ..#LISTINGGROUPCOMPILE, ..#LISTINGGROUPABSENT, ..#LISTINGGROUPREADONLY)
+}
+
+/// <p>The consequence codes of the listing group writes (Story 24.11), as a <class>%List</class>.</p>
+ClassMethod ListingGroupConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#LISTINGGROUPDELETE, ..#LISTINGGROUPREMOVE, ..#LISTINGGROUPSQL, ..#LISTINGGROUPSAVE)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

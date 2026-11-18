@@ -275,6 +275,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/term-lists/form" Method="GET" Call="AnalyticsTermListForm"/>
   <Route Url="/analytics/term-lists" Method="POST" Call="AnalyticsTermListCreate"/>
   <Route Url="/analytics/term-list-entries" Method="POST" Call="AnalyticsTermListEntryCreate"/>
+  <Route Url="/analytics/listing-groups/form" Method="GET" Call="AnalyticsListingGroupForm"/>
+  <Route Url="/analytics/listing-groups" Method="POST" Call="AnalyticsListingGroupCreate"/>
+  <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
@@ -1962,6 +1965,26 @@ ClassMethod AnalyticsTermListCreate() As %Status
 ClassMethod AnalyticsTermListEntryCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.TermListEntrySave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/listing-groups/form</code> (Story 24.11): one listing group for the Edit and Copy dialogs.</p>
+ClassMethod AnalyticsListingGroupForm() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingGroupForm).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/listing-groups</code> (Story 24.11): Listing groups' New listing group, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsListingGroupCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingGroupSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/listing-group-listings</code> (Story 24.11): the Listings screen's Add listing, resolved through the one tool the agent's confirm
+/// uses (AD-55).</p>
+ClassMethod AnalyticsListingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business

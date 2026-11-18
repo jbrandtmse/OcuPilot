@@ -278,6 +278,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.2: Term lists with their New term list and Edit term list dialogs, and a term list's entries with their Add entry and Change entry dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': () => import('../areas/analytics/term-list-list.page').then((m) => m.TermListListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': () => import('../areas/analytics/term-list-entry-list.page').then((m) => m.TermListEntryListPage),
+  // Story 24.11: Listing groups with their New listing group, Edit and Copy dialogs, and a group's listings with their Add listing and Change listing dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': () => import('../areas/analytics/listing-group-list.page').then((m) => m.ListingGroupListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': () => import('../areas/analytics/listing-group-listing-list.page').then((m) => m.ListingGroupListingListPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };

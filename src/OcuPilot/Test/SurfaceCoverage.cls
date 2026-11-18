@@ -291,6 +291,13 @@ XData Coverage
 <tool name="analytics.folderitems.export" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestAnExportWritesTheVendorsXmlToAFileAndToTheBrowser"/>
 <tool name="analytics.folderitems.import" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestAnExportImportsBackAsTheSameItem"/>
 <tool name="analytics.folderitems.delete" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestADeleteRemovesAnUnlockedItemAndRefusesALockedOrAbsentOne"/>
+<tool name="analytics.listinggroups.add" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestAGroupIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.listinggroups.update" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestAnUpdateChangesTheHeaderAndKeepsTheSqlAndEveryOtherLine"/>
+<tool name="analytics.listinggroups.copy" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestACopyMakesANewGroupAndLeavesTheSource"/>
+<tool name="analytics.listinggroups.delete" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
+<tool name="analytics.listinggrouplistings.add" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.listinggrouplistings.set" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.listinggrouplistings.remove" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

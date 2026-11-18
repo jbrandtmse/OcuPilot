@@ -3,8 +3,8 @@
 /// <code>%DeepSee_ListingGroupSQL:USE</code> and is empty for everyone else.</p>
 /// <p><b>It is a sub-resource of the Listing groups list and never listed</b> (<code>sideBarPosition</code> 0): it declares <code>parentScope</code> <code>analytics/listing-groups</code> and is reached from that
 /// list's name cell. Its one declared criterion, <code>listinggroup</code>, is the route id, required as a single-object read's is (AD-36); a group that does not exist reads no rows.</p>
-/// <p><b>Its id is the composite <code>[ListingGroup, Name]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its pairs are the Listing groups list's; it offers no action and does
-/// not refresh (AD-43).</p>
+/// <p><b>Its id is the composite <code>[ListingGroup, Name]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its pairs are the Listing groups list's. <b>It writes</b> (Story 24.11): its primary action
+/// Add listing and its row actions Change listing and Remove listing are the tools <code>analytics.listinggrouplistings.add</code>, <code>.set</code> and <code>.remove</code>. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -26,8 +26,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "analytics/listing-groups",
   "id": {"kind": "composite", "parts": ["ListingGroup", "Name"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["ListingGroup", "Name", "DisplayName", "Type", "Fields", "OrderBy", "Joins", "Formats", "Source", "Resource", "SelectMode", "Disabled", "Description", "SQL"], "secretFields": []},
   "emptyStateKey": "analyticsListingGroupListingsEmpty",
   "commandAliases": [],
@@ -57,8 +57,8 @@ XData Declaration
       {"field": "Source", "labelKey": "analyticsColumnDataConnector", "kind": "text"},
       {"field": "Description", "labelKey": "tableColumnDescription", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsListingGroupListingsEmptyAgent"
   },
   "toolIdentifier": "analytics.listinggrouplistings"
 }

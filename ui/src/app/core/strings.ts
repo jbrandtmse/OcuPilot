@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:653 */
+  /** EXPERIENCE.md:654 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8154,6 +8154,54 @@ export const STRINGS = {
   analyticsListingGroupListingsPrompt2: 'Which listings use a custom SQL query?',
   /** EXPERIENCE.md:611 */
   analyticsListingGroupListingsPrompt3: 'Which listings need a resource to open?',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewAction: 'New listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingAddAction: 'Add listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingChangeAction: 'Change listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveAction: 'Remove listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDefaultResourceLabel: 'Default resource',
+  /** EXPERIENCE.md:612 */
+  analyticsListingOrderByLabel: 'Order by',
+  /** EXPERIENCE.md:612 */
+  analyticsListingFormatsLabel: 'Formats',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSelectModeLabel: 'Select mode',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewNameLabel: 'New name',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewClassLabel: 'New class',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDeleteConsequence: 'Deleting this listing group deletes its class, and cubes lose its listings. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveConsequence: 'Removing this listing takes it out of its group, and cubes lose it. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSqlConsequence: 'This listing runs its SQL with the rights of whoever opens it.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupSaveConsequence: 'The listing group\'s class is saved and compiled.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupTaken: 'This namespace already holds a listing group or class with that name.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupClass: 'Name the class with letters, digits and dots, outside the % and OcuPilot packages.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCube: 'A target cube does not exist or does not accept listing groups.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupListingTaken: 'A listing of this group is already defined for a target cube. Choose other target cubes.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAmbiguous: 'Two classes define this listing group. Change it in its class instead.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCompile: 'The instance refused to compile the listing group, so nothing was changed.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAbsent: 'This listing group or listing no longer exists.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupReadonly: 'The database that holds listing groups is read-only.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupsEmptyAgent: 'create a listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupListingsEmptyAgent: 'add a listing to this listing group',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

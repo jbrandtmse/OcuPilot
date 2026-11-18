@@ -2,9 +2,10 @@
 title: 'Story 24.11: Listing groups (Batch 2: the seven writes)'
 type: 'feature'
 created: '2026-11-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ec633e8f9d15eefd74201e15277719d7aa7ece4f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-11-listing-groups.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-2-the-analytics-editors.md'
@@ -143,6 +144,15 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a8e43794
   - in `ui/browser/analytics.browser-spec.mjs`, add, edit, add a listing, then a typed-name delete;
   - every roster under Code Map.
 
+**Review patches (open items only; one fresh pass).** Each new pinning test gets its `mutation:` line in `## Verification`; hermetic, first run on a fresh instance.
+
+- [x] **P1** `Test/AnalyticsListingGroupWrite.cls` (or the class holding `TestEachRefusalWritesNothing`): COPY rows for a new name already a group (409 `TAKEN`), a new class already defined (409 `TAKEN`), a malformed new name (`PORT.FIELD.SHAPE`) and a `%` or `OcuPilot.` new class (422 `CLASS`), each asserting an unchanged `Snapshot()`.
+- [x] **P2** `Test/AnalyticsListingGroupWriteEdge.cls`: a group saved with a `resource` and a caller holding every pair but WRITE on it is refused (403 naming that pair) on update, delete and copy; an add whose `Resource` the caller cannot write is refused; a copy needs it only on the copy's own resource. Snapshot unchanged.
+- [x] **P3** `Test/AnalyticsListingWrite.cls`: an agent mint of `listinggrouplistings.add` and `.set` with SQL carries `ANALYTICS.LISTINGGROUP.SQL` as its consequence; a mint without the SQL pair is refused naming `%DeepSee_ListingGroupSQL:USE`.
+- [x] **P4** `ui/src/app/areas/analytics/`: a page-level vitest spec mounting `ListingGroupListPage` and `ListingGroupListingListPage` asserting `add`, `update` and `copy` (groups) and `add`, `set` (listings) are registered, and that Change listing's `initial` carries the row's members. Remove listing needs no page entry (typed-name confirm in the handler); say so only if true.
+- [x] **P5** Comment and fixture fixes: the browser spec's `TYPED_NAME_ROWS` comment states what is true; `Kernel/Proposal/Prohibited.cls` moves the added 24.11 block above the Story 20.5 comment it split (added lines only, nothing else on those lines changed); `Snapshot()` adds a checksum of the text; `Left()` reports leftover `classes` registry nodes and `LGW*` cube-listing nodes.
+
+
 **Acceptance Criteria:**
 
 - **AC1 (round trip, both callers).** Given a group made by each write, through the screen action and through the agent's confirmed proposal. When Batch 1's reads and `%GetModel` read it. Then they hold exactly what was sent, and every class line outside `Listings` and `DependsOn` is unchanged.
@@ -174,6 +184,23 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a8e43794
    - `Prohibited.cls`'s one-line type condition at :1543.
 
    Each is a roster union, and the integrate-forward resolves it (Rule 22, `resolve-plain`). Everything else is appended. Batch 1 changed the same count. The runner rules this exception.
+
+7. **Contention ruling (orchestrator, Option A; supersedes the in-line edit wording of item 6).** Epic 21's Story 21.14 also changes `Test/ReadTool.cls`, `Test/GovernanceBaseline.cls`, `Test/ClassicPageGate.cls`, `Test/MappingDescriptor.cls`, `Test/ToolRoundTrip.cls`, `Kernel/Proposal/Prohibited.cls`, `Test/Prohibited.cls`, `Test/ToolDispatch.cls`, `Test/ToolEmit.cls` and `Kernel/Governance/Baseline.cls`. In those ten files make only roster-union edits: add list entries, keys or branches, and change a roster count to the new derived value. The one logic edit allowed is the widened type condition in `Kernel/Proposal/Prohibited.cls`: one condition term added, nothing else on or around those lines changed. Record its exact before/after line under "Contended logic edit" below. Do not reformat, reorder or reword anything else in those files.
+
+**Contended logic edit.** `Kernel/Proposal/Prohibited.cls` line 1561 (the one-line type condition of `Prohibits`). The line is otherwise byte-identical; the one term added is the new `IsListingGroupType` method's call, which names both types:
+
+- before: `... && (tType '= ..#TYPEFOLDERITEM) && (tType '= ..#TYPESTARTUPSETTING) && ...`
+- after: `... && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && (tType '= ..#TYPESTARTUPSETTING) && ...`
+
+Everything else in that file is added lines: the two type parameters, `IsListingGroupType`, the two `COVEREDTYPES` entries, the change and create field lists, and the create and reviewed-few branches.
+
+**Measured** (Task 0, 2026-11-18, `ocupilot-b-ci`, USER; probe classes and groups removed afterwards):
+
+- **Delete.** `AtelierPort` `TYPEDELETE` of the compiled probe group answered `deleted` and removed the class, its `groups` and `classes` nodes and the group's `cubes` listing nodes (`$Data` 1, 1, 10 before; 0, 0, 0 after).
+- **Refused compile.** Saving the class with a missing target cube (`TYPESAVE`, `Compile` 0) and compiling it answered `errors` true with "Target cube does not exist". The class text stays as saved, `CompiledClass` stays present, and the group's registry nodes are gone (`$Data` 0, 0, 0; absent from the compiled list). Saving the prior text back and compiling it re-registered the group (1, 1, 10; present in the compiled list).
+- **Journal.** `%XML.Writer` over the model, with `NoXMLDeclaration` and `Indent` as `%SaveToClass` sets them, wrote 928 characters and the journal scan of this process found 0 set or kill records.
+- **Round trip.** The class text read through `TYPELIST` is the document's lines, the last of them empty; joined by a line feed it ends in one, and `TYPESAVE` writes it back as it was. The spliced text equals the original outside the `Listings` body and `DependsOn` in every test of `AnalyticsListingGroupWrite` and `AnalyticsListingWrite` (`Outside`). The writer adds `disabled="false"` and `selectMode="2"` where the source omitted them, so the XML differs from its source in those defaults while the model reads equal. The vendor's text service takes a carriage return and a line feed between lines; the Atelier save takes a line feed.
+- **Found in the writes.** The relationship's keys keep a gap after `RemoveAt`, so the compose walks the listings by key. `AtelierPort.WritePairs` carries no `%Development:USE` (the source code API's own `PAIRS` do), so the gate adds `AtelierPort.Pairs()`.
 
 **Proposed strings (veto; added to EXPERIENCE.md only once ruled).**
 
@@ -226,17 +253,76 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a8e43794
 
 **Hermeticity:** every test added or changed passes on its first run on a fresh instance, and in either order. IRIS journals its own SQL statistics and statement-index records on first use (Batch 1), so no test counts journal records without Batch 1's engine exclusions.
 
-**Mutations:** one `mutation:` line per AC, written by the implement stage.
+**Mutations:**
+
+- mutation (AC1): `Splice` made to keep the class header -> `AnalyticsListingGroupWrite` `TestAnUpdateChangesTheHeaderAndKeepsTheSqlAndEveryOtherLine` went red on the `DependsOn` leg alone (run 94); the SQL pair judged as held in the compose -> `AnalyticsListingWrite` `TestASqlChangeNeedsItsPairAndASilentOneKeepsTheSql` went red on its five legs without the pair (run 95).
+- mutation (AC2): `Caption` answered empty in `ListingGroupRow` -> `AnalyticsListingGroupWrite` `TestAGroupIsAddedByEachCallerAndReadsBack` and `TestAnUpdateChangesTheHeaderAndKeepsTheSqlAndEveryOtherLine` went red on their read-back verdicts (run 107); `Version` blanked in `ListingGroupRow` -> `AnalyticsListingGroupWriteEdge` `TestAChangedClassClosesTheProposalAndTheBaselineShipsTwoKeysOff` went red (run 97).
+- mutation (AC3): `RestoreListingGroup` made to return before it does anything -> `AnalyticsListingGroupWriteEdge` `TestARefusedCompileUndoesEachWrite` went red on the text, model, unregistered and snapshot legs (run 96).
+- mutation (AC4): `LISTING_GROUP_PATH` made the term lists' route, bundle rebuilt and redeployed -> the browser spec's Story 24.11 write test timed out waiting for the new row; the listings' `TYPED_NAME_ROWS` entry dropped -> `screen-action-handler-listinggroup.spec.ts` went red on the composite-id leg. The groups' own entry is unproven by any mutation: a group's id is its name, so the dialog types the same text whether the entry is declared.
+- mutation (AC5): `analytics.listinggroups.delete` shipped `true` in `Baseline.cls` -> `AnalyticsListingGroupWrite` `TestADeleteRemovesTheClassAndItsNodesAndShipsOff` went red (run 98); the `analytics.listinggroups.copy` row removed from `SurfaceCoverage` -> its write-tool test went red alone (run 99); the `analytics.listinggroups.update` entry removed from `ToolRoundTrip` -> its sweep went red alone (run 100); the listing set entry removed from `MappingDescriptor` -> its roster test went red alone (run 101); `analytics.listinggrouplistings.remove` removed from `GovernanceBaseline` -> its disabled-line test went red alone (run 102).
+- mutation (AC6): `AnalyticsProbe.RemoveListingGroups` made not to delete the write marker's classes -> `AnalyticsListingGroupWrite` `TestAGroupIsAddedByEachCallerAndReadsBack` went red on the leftover groups (run 103).
+- mutation (P1, copy refusals): the new-class half of `VendorListingGroupCompose`'s taken check dropped for a copy -> `AnalyticsListingGroupWrite` `TestEachCopyRefusalWritesNothing` went red on the class-taken leg alone (run 115); the copy dropped from `PlanListingGroup`'s class-shape check -> its `%`, `OcuPilot` and no-package legs and the free-copy leg went red (run 116).
+- mutation (P2, resource guard): `ResourceDenied` made to answer 0 -> `AnalyticsListingGroupWriteEdge` `TestAGroupsResourceGuardsItsWrites` went red on its four refusal legs and the legs after them, and no other test did (run 117).
+- mutation (P3, SQL mint): `AnalyticsListingAction.Consequence` made to answer the tool's own code -> `AnalyticsListingWrite` `TestAnAgentsSqlListingMintStatesItsConsequenceAndNeedsItsPair` went red on its two SQL consequence legs (run 118); `PlanListingGroup`'s SQL pair judged as held -> that test's two refusal legs and the existing SQL test's five legs went red (run 119). The mint-time refusal is 400 `TOOL.ARGUMENTS` carrying the privilege sentence, not the pair's name; the write's own refusal names the pair (`TestASqlChangeNeedsItsPairAndASilentOneKeepsTheSql`).
+- mutation (P4, client): the `copy` registration dropped from `ListingGroupListPage`, the `set` registration dropped from `ListingGroupListingListPage`, `Type` read as empty and `Disabled` read as false in its `onOpenSet`, each alone -> `listing-group-list.page.spec.ts` went red on that page's one registration-and-open test; each reverted by `cmp`. No bundle is involved: the component runner builds from source.
+- (P5) `Left()` was shown to report a seeded `classes` registry node and an `LGW` cube-listing node, and `""` after they were killed; the `Snapshot()` checksum, the `Prohibited.cls` block move and the browser spec comment are not behavior a test pins.
+- Each server mutation was reverted by `cmp` against the saved copy, the whole tree reloaded and compiled into `ocupilot-b-ci`, and the class that went red was green after. The client ones were reverted by `cmp`, rebuilt and redeployed.
+
+**Verification roster.** The grep for the write tools' pins over `src/OcuPilot/Test`, `ui/tools` and `ui/browser` found, and this pass changed: `ReadTool` (the count 491, the seven names, the write count), `SurfaceCoverage` (seven rows), `Governance` (`LISTINGGROUPDISABLED`), `GovernanceBaseline`, `ClassicPageGate` (`OWNPAIRS`, the principals' resources, the two enabled keys), `MappingDescriptor` (`CLASSICROSTER`), `ToolRoundTrip` (`REFUSEEMPTY`), `ToolDispatch`, `ToolEmit` (a listing group branch), `Prohibited` (the covered types, the copy's three values), `EndpointCoverage` (three probes), `AnalyticsDescriptor`, `CompositeMintSweep`, `SaveHoldCoverage`, `ToolWrite` (the other-port count 103), `AnalyticsProbe`, `ui/tools/analytics.test.mjs`, `ui/browser/analytics.browser-spec.mjs`, and `scripts/ci-throwaway.sh`. `PortGate`, `Descriptor`, `ToolNavigateContract`, `StageTwoTools` and `Navigation` ran green unchanged.
+
+## Review Triage Log
+
+### 2026-11-18 — Review pass
+
+- verdicts: 20 findings — high 0, medium 4, low 16, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Copy's own refusals (taken name, taken class, malformed name, `%`/`OcuPilot` class) have no test; the refusal table runs on ADD only — `VendorListingGroupCompose` can lose its `pNewClass` half unseen. Fix: COPY rows (task P1).
+  - `[medium]` `[patch]` `ResourceDenied` (WRITE on the group's resource, on an add's resource, copy's own resource) is pinned by no test; making it `Quit 0` stays green — a caller could change a guarded group. Fix: task P2.
+  - `[medium]` `[patch]` The agent's SQL listing mint: the `ANALYTICS.LISTINGGROUP.SQL` consequence and the mint-time SQL-pair refusal are never exercised. Fix: task P3.
+  - `[medium]` `[patch]` Copy, Change listing and Remove listing controls run on pages no spec mounts; dropping the `copy` or `set` registration stays green. Fix: task P4.
+  - `[low]` `[patch]` The groups' `TYPED_NAME_ROWS` entry has no mutation and the browser spec comment says it does; correct the comment at its origin (task P5).
+  - `[low]` `[patch]` In `Prohibited.cls` the new 24.11 comment splits the Story 20.5 comment from the block it describes; move the added block above that comment, added lines only (task P5).
+  - `[low]` `[patch]` `Snapshot()` fingerprints a class by text length and its doc comment overclaims; fingerprint with a checksum too (task P5).
+  - `[low]` `[patch]` `AnalyticsProbe.Left()` does not report leftover `classes` registry nodes or `LGW*` cube-listing nodes that `RemoveListingGroups` kills; AC6 reads wider than the check (task P5).
+  - `[low]` `[reject]` AC5 mutation line covers five of the roster edits — Rule 19 asks one demonstrated mutation per AC, and the rosters are declared-versus-derived completeness tests; not worth more lines.
+  - `[low]` `[reject]` The refused-compile audit row is checked for existence, not its `restored`/`restorefailed` outcome — the `restorefailed` branch needs a second seam; a failed restore is logged and audited, and no user-reachable path was shown.
+  - `[low]` `[reject]` `listing-group-dialogs.spec.ts` `settle()` is time-based — the stub answers immediately; no flake shown.
+  - `[low]` `[reject]` `TestAChangedClassCloses...` calls `GovernanceFixture.Clear()` before any policy snapshot — wipes rows only a fresh instance lacks; harmless on every instance the suite runs on.
+  - `[low]` `[reject]` AC2 says verdict `gone`; the code and tests say `notFound` — fix would edit the intent contract, which this build cannot; the shipped vocabulary is `ReadBack`'s.
+  - `[low]` `[reject]` Intent auditor: the restore's "recompile only if `Compiled`" is unobservable through the seam — Task 0 measured it on a real refused compile; no further test is worth its seam.
+  - `[low]` `[reject]` Intent auditor: the typed name is enforced by the client only — as 24.10's folder-item delete; spec-bound.
+  - `[low]` `[reject]` Intent auditor: an update that sets a new `Resource` is not checked against it — the stored resource guards the change and a new one only narrows access; spec-bound (classic `canWrite` reads the stored resource).
+  - `[low]` `[reject]` Intent auditor: the script form uses `$System.OBJ.*` text while the code path does not — the script form is the person's own console equivalent (AD-59), the port never calls it.
+  - `[low]` `[reject]` Intent auditor: no test compares the writer's XML with `%SaveToClass`'s — Task 0 measured the equivalence, and a compare would call the forbidden method.
+  - `[low]` `[reject]` Intent auditor: the DB-WRITE gate (`READONLY`) has no test — a read-only database cannot be made on the throwaway without the database-directory hazard the rules forbid; the check is one `AdmitDestination` call shared with the term list's tested path.
+  - `[low]` `[reject]` Intent auditor: the extra pair `WritePairs` adds has no leg of its own — the gate loop holds every pair but one for the two pairs the spec names; the rest is `AtelierPort`'s own tested set.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Planned (Batch 2: the seven writes).** The plan meets READY-FOR-DEVELOPMENT and halts after planning, as asked. Three items are left for the runner's gate under Design Notes:
+**Implemented (Batch 2: the seven writes).** Listing groups and their listings are added, updated, copied, deleted and set or removed through `AnalyticsPort` for both callers. The group's class is composed from `%GetModel` and saved, compiled and deleted through `AtelierPort` by the new `Kernel/SourceDocument` and `Kernel/ListingGroupText` (`DevToolPort.ReadVersion` now delegates to `SourceDocument`). A refused compile restores the prior text or deletes the new class. Five keys ship on, delete and remove ship off.
 
-- the proposed strings, which are a veto item;
-- Decided in-stage 2: copy into the same cubes is refused, while the classic Save As does not compile its copy;
-- Decided in-stage 6: line edits in contended rosters, resolved as roster unions.
+**Files changed (one line each).**
 
-One pass is planned. If the runner prefers to split, the natural boundary is the four group writes plus the class-write helper, then the three listing writes. The plan read the vendor source, and its four measurements are Task 0's, on `ocupilot-b-ci`. The spec is `oversized`.
+- Server: `Port/AnalyticsPort` (reads, pre-checks, writes, restore, audit, script forms), `Kernel/SourceDocument`, `Kernel/ListingGroupText`, `Port/DevToolPort`, nine tools under `Screen/Tool/AnalyticsListing*`, `Area/Analytics/ListingGroup{Save,Form}` and `ListingSave` with their routes, `Api/AnalyticsError`, `Kernel/Governance/Baseline`, `Kernel/Proposal/Prohibited`, the two descriptors.
+- Client: `ui/src/app/areas/analytics/listing-group*` (store, dialogs, two pages, specs), handler, outlet, action-label and proposal-view maps, strings, regenerated mirror, EXPERIENCE.md row.
+- Tests: `AnalyticsListingGroup{Base,Write,WriteEdge,Atelier,Seam}`, `AnalyticsListingWrite`, `AnalyticsProbe`, roster unions in the ten contended files and the other roster classes, `ui/tools/analytics.test.mjs`, the browser spec, an arming-roster comment in `scripts/ci-throwaway.sh`.
+
+**Review.** One pass, two layers: 20 findings, patch 8 (medium 4, low 4), reject 12. The four medium patches (P1 to P4) added a copy-refusal test, a resource-guard test, an agent SQL-mint test and a page-registration spec, each with a mutation line. Triage and the rejected rows' reasons are in `## Review Triage Log`. No findings deferred.
+
+**Follow-up review recommended: true.** Four medium findings were patched. The unverified risk: the four new tests were written and mutated in one pass, and the agent mint's refusal answers the generic privilege sentence, not the pair name (the write names it).
+
+**Deviations from the spec's wording, for the runner.**
+
+- `%Development:USE` comes from `AtelierPort.Pairs()`, not `WritePairs`; the gate adds both.
+- Copy's cube argument is `NewCubes`, because `Test/Prohibited` refuses `TargetCubes` on a no-body tool; the query key and screen row are unchanged.
+- Shape errors reuse `PORT.FIELD.SHAPE`; no new sentence was added.
+- The EXPERIENCE.md :611 sentence "offers no action" was replaced (it became false), as the spec asked; the `strings.ts` cite of that file moved one line.
+- The arming roster names `AnalyticsListingGroupBase`, the abstract class that declares `OCUPILOT_ALLOW_PRINCIPALS`.
+- `ci-timings.json` is untouched and has no rows for the new classes.
+
+**Verification.** On a throwaway rebuilt for this check, the three new classes were run first and each passed on its first run (8, 4 and 5 tests). The full ObjectScript sweep ran once after the last patch as 17 shards (k/17), all green, 0 failed, 0 probe leftovers, 0 overlaps. Earlier in the pass: the touched roster, read, gate and port classes, `test:tools` 2,302, `test:components` 3,550, `npm run build` (initial bundle 2.11 MB, under both budgets), the browser specs `analytics` 8 of 8 and `analytics-links` 6 of 6 on the redeployed bundle, `check-objectscript` 0 problems, `lint-docs` clean. One mutation per AC is in `## Verification`. The full browser suite is left to CI.
+
+**Residual risks.** The `TYPED_NAME_ROWS` entry for a group is unpinned by any mutation (a group's id is its name). The database-read-only refusal and the extra `WritePairs` pair have no test of their own. A patch-pass subagent sent two test-runner calls in one message once; the runner reported 0 overlaps and both classes were re-run alone, green.

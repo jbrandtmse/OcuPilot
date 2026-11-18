@@ -618,6 +618,10 @@ services:
       # The listing group classes (Story 24.11) turn analytics on in USER and save and compile marker-named listing group classes there: the read class
       # drives the two reads at the port, over HTTP and as the agent's tools, and the gate class signs in as probe principals that hold different pairs.
       # classes: AnalyticsListingGroupGate, AnalyticsListingGroupRead
+      # The listing group write classes (Story 24.11, Batch 2) turn analytics on in USER and save, compile and delete marker-named listing group classes there. The base class
+      # declares the variable and the three test classes inherit it: the write class drives the four group writes at both callers, the listing class the three listing writes
+      # and the SQL rule, and the edge class the twin, the refused compile, the stale proposal, the baseline and the gate in process.
+      # classes: AnalyticsListingGroupBase
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
