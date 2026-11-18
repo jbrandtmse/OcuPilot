@@ -13730,6 +13730,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
 
+### DW-2721: flake: CI gates (node 22.22.3) client suite (npm test) hangs until the job is cancelled at 25 min, with no log (BlobNotFound); seen 4x on 2026-11-18 (run 44209857864 att1 on OCU-1-epic21, run 44218128864 att1-3 on feature e50a321a0) while node 24/26 legs pass in ~9 min
+- source: orchestrator CI triage 2026-11-18 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: not reproduced: macOS Node 22.22.3 full and shallow clone, Linux node:22.22.3 4 CPU/15 GB 3x green 183s; a 2-CPU Linux container OOMed a vitest fork worker (heap limit) at file 90/286 (inference: same cause)
+- 2026-11-18T03:53:24Z status=routed owner=21-22-ci-flake-hardening by=orchestrator note=suggest a step timeout on client suite so a hang fails with a log, a bounded vitest maxWorkers, and a heap cap per worker
 ### DW-2715: Locale Validate reads 'This locale has problems.' for most shipped locales, whose tables compile only at install
 - source: spec-21-14-nls-configured-defaults-and-locale-definitions.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-17: 31 of 36 shipped locales answer Valid 0 (IsLoadable 'is not compiled' lines) while IsInstallable answers 1; the classic page compiles before it validates.
