@@ -123,10 +123,11 @@ Method Shown(pReference As %String) As %String
     Quit $Select($IsObject($Get(tNode)): tNode.Value, 1: "")
 }
 
-/// <p>AC3, AC4. The developer edits a node of its own global, kills a node with everything below it, and deletes the global, each by the screen's action
-/// and each answered 200: the edit's read-back matches, and the instance holds what the answers say.</p>
+/// <p>AC3, AC4. The developer opens the node page on its own global, edits a node, kills a node with everything below it, and deletes the global, each
+/// answered 200: the page holds the global's nodes, the edit's read-back matches, and the instance holds what the answers say.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.ProtectedDirectories</method> reads the database configuration through
-/// <code>Database.ConfigCRUD</code> as the caller again -> every row answers 500 and goes red.</p>
+/// <code>Database.ConfigCRUD</code> as the caller again -> every write row answers 500 and goes red; <method>OcuPilot.Area.Explorer.GlobalNodes.Gate</method>
+/// also requires <code>OcuPilotAdmin:USE</code> -> the page row answers 403 and goes red.</p>
 Method TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights()
 {
     Set tRoot = "^" _ ..PreparedName
@@ -134,6 +135,10 @@ Method TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights()
     Set @tRoot@("t") = "top"
     Set @tRoot@("t", 1) = "a"
     Do ..AssertPrincipal()
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/explorer/globals/nodes?ns=" _ ..#NAMESPACE, ..#DEVUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, {"global": (..PreparedName)}.%ToJSON())
+    Set tPage = ""
+    If $$$ISOK(tSC) && ($Get(tStatus) = 200) Set tPage = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals($Get(tStatus) _ "|" _ $Select($IsObject(tPage): tPage.rows.%Size(), 1: ""), "200|3", "the developer opens the node page on its own global and it holds its three nodes: " _ $Extract($Get(tText), 1, 200))
     Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(1), {"Value": "new", "Was": "v1"}, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ @tRoot@(1), "200|new", "the developer's edit is answered 200 and the node holds the new value: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.readBack): tAnswer.readBack.verdict, 1: ""), "matches", "and its read-back matches")
@@ -146,7 +151,8 @@ Method TestADeveloperWritesAnOrdinaryGlobalWithoutAdministratorRights()
 /// <p>AC5. The developer is refused <code>PROHIBITED.PROTECTEDGLOBAL</code>, as <code>403</code> and before any write, for an edit and a kill of a node
 /// stored in the system library and for the delete of the global that holds it, and nothing of it changes.</p>
 /// <p>Mutation (Rule 19): drop the directory comparison in <method>OcuPilot.Kernel.Proposal.Prohibited.ProtectedLocation</method> -> every row goes red;
-/// leave out the library's global from <method>OcuPilot.Kernel.Proposal.Prohibited.ProtectedDirectories</method> -> they go red as well.</p>
+/// leave out the library's global from <method>OcuPilot.Kernel.Proposal.Prohibited.ProtectedDirectories</method> -> the edit row goes red (the kill and
+/// the delete judge every mapping row of the global, so another row can still refuse them).</p>
 Method TestADeveloperIsRefusedAGlobalStoredInASystemDatabase()
 {
     Set tNode = $Query(^oddDEF)

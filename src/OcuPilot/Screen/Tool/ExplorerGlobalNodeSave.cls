@@ -32,6 +32,7 @@ Parameter PRECONDITIONFIELD = "Value";
 /// <p>The value reaches the port in its query, so the read-back compares the payload's <code>Value</code> with the node's.</p>
 Parameter READBACKFIELDS = "Value";
 
+/// <p>The read-back compares the payload's <code>Value</code> although the save sends no body.</p>
 Parameter READBACKPAYLOAD As BOOLEAN = 1;
 
 Parameter FINGERPRINTSUBJECT = "Reference,Value,Namespace";

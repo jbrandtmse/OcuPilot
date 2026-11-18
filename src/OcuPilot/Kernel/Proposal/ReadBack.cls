@@ -76,7 +76,8 @@ Parameter TOOLFIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 /// <code>unchecked</code> where none was allocated; a tool whose read is a list row and that
 /// declares no such tool is asked by the value <var>pSent</var> carries under its row key, and a
 /// sent name that row does not answer is not compared. <var>pPayloadJson</var> is the payload the
-/// tool's own port query is read from (the stored one for the agent's caller). <var>pPort</var> is
+/// tool's own port query is read from (the stored one for the agent's caller), and what is compared
+/// in place of <var>pSent</var> for a tool that sends no body and sets <code>READBACKPAYLOAD</code>. <var>pPort</var> is
 /// the port the caller resolved; <code>""</code> resolves the tool's own declaration. A caller whose
 /// write answered 202 calls <method>Running</method> instead. The answer is always an object and
 /// this method never throws.</p>

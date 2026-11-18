@@ -5,7 +5,7 @@
 /// both callers against the instance's own protected global; a vendor <code>&lt;PROTECT&gt;</code> answered 403; and an import judged by the globals it
 /// names (DW-2607).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, and a
-/// <code>USER</code> namespace. Each test makes its own global <code>^ZZOcuGlb&lt;pid&gt;</code> in <code>HSCUSTOM</code> and kills it, and snapshots the stored
+/// <code>USER</code> namespace. Each test makes its own global <code>^ZZOcuGlb&lt;pid&gt;</code> in <code>HSCUSTOM</code> (one also in <code>USER</code>) and kills it, and snapshots the stored
 /// governance policy before and puts it back after. It writes no protected global.</p>
 Class OcuPilot.Test.GlobalWrite Extends %UnitTest.TestCase
 {
@@ -65,10 +65,12 @@ Method OnAfterOneTest() As %Status
     Quit ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
 }
 
-/// <p>Kill the test's global.</p>
+/// <p>Kill the test's global, and its copy in <code>USER</code>.</p>
 Method Remove()
 {
     Set tRoot = "^" _ ..PreparedName
+    Kill @tRoot
+    Set tRoot = "^|""USER""|" _ ..PreparedName
     Kill @tRoot
 }
 
@@ -302,6 +304,26 @@ Method TestAGlobalDeleteWorksOnTheScreenAndForTheAgentOnceItsKeyIsOn()
 ClassMethod DELETETOOLNAME() As %String
 {
     Quit $Parameter(..#DELETETOOL, "TOOLNAME")
+}
+
+/// <p>AC3, AC4. A global of the test's own in <code>USER</code>, a namespace OcuPilot does not run in, is written as one in <code>HSCUSTOM</code> is: an
+/// edit whose read-back matches, a node kill and the global's delete, each answered 200. The protected-location lookup never takes the request's
+/// namespace for the one OcuPilot's own globals are mapped in.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.ProtectedDirectories</method> resolves OcuPilot's own global in <code>USER</code>
+/// rather than <code>$NAMESPACE</code> -> every row answers 403 <code>PROHIBITED.PROTECTEDGLOBAL</code> and goes red.</p>
+Method TestAnOrdinaryGlobalInAnotherNamespaceIsWritten()
+{
+    Set tRoot = "^|""USER""|" _ ..PreparedName
+    Set @tRoot@(1) = "v1"
+    Set @tRoot@("t") = "top"
+    Set @tRoot@("t", 1) = "a"
+    Set tStatus = ..Act(..#NODESCREEN, "save", ..Ref(1), {"Value": "new", "Was": "v1"}, "USER", .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ @tRoot@(1), "200 |new", "an edit in USER is answered 200 and the node holds the new value")
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.readBack): tAnswer.readBack.verdict, 1: ""), "matches", "and its read-back matches")
+    Set tStatus = ..Act(..#NODESCREEN, "delete", ..Ref("""t"""), , "USER", .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Data(@tRoot@("t")), "200 |0", "a node kill in USER is answered 200 and takes everything below the node")
+    Set tStatus = ..Act(..#LISTSCREEN, "delete", ..PreparedName, , "USER", .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Data(@tRoot), "200 |0", "the global's delete in USER is answered 200 and the global is gone")
 }
 
 /// <p>AC5. The kernel's globals arm, asked about a global stored where a test says (<class>OcuPilot.Test.GlobalLocationSeam</class>), refuses before any
