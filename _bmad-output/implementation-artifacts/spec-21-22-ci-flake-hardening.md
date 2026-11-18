@@ -4,7 +4,7 @@ type: 'chore'
 created: '2026-11-15'
 status: 'in-progress'
 baseline_revision: 'ac041a7793002a967357b53d5e11e97cd8c81d6b'
-baseline_commit: '0432b4561c2a79b2a9d502ba8a929628d7251fe9'
+baseline_commit: 'ac041a7793002a967357b53d5e11e97cd8c81d6b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []

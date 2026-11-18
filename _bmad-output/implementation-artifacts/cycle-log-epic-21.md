@@ -590,3 +590,6 @@
 2026-11-18T14:48:42Z	Story 21.22	stage_spawned	stage=code-review scope=batch2 spawn_at=2026-11-18T14:48:42Z model=opus agent_name=21-22-code-review-b2 cycle_iteration=1 baseline=0432b4561
 2026-11-18T15:01:43Z	Story 21.22	cr_complete	scope=batch2 spawn_at=2026-11-18T14:50Z model=opus high=0 med=0 low=11 rows=18 unresolved_high_med=0 new=DW-2740(wontfix-accepted) final=in-progress(batches3-4) commit=13746f82d closing_sections_present=true
 2026-11-18T15:01:43Z	Story 21.22	stage_spawned	stage=implement scope=batch3 spawn_at=2026-11-18T15:01:43Z model=sonnet agent_name=21-22-implement-b3 cycle_iteration=1
+2026-11-18T15:41:07Z	Story 21.22	ci_red_classified	run=44328339684 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=a11y-structural-invariants_hook(settle_governance_60s_deadline) head=ead5f1f95
+2026-11-18T15:41:07Z	Story 21.22	dev_complete	scope=batch3 spawn_at=2026-11-18T15:01Z model=sonnet build_sha=a23ce11fd baseline_revision=ac041a779 followup_review_recommended=false deferred=0 cycle_iteration=1
+2026-11-18T15:41:07Z	Story 21.22	stage_spawned	stage=code-review scope=batch3 spawn_at=2026-11-18T15:41:07Z model=opus agent_name=21-22-code-review-b3 cycle_iteration=1 baseline=ac041a779
