@@ -597,3 +597,5 @@
 2026-11-18T16:10:48Z	Story 21.22	cr_complete	scope=batch3 spawn_at=2026-11-18T15:43Z model=opus high=0 med=1(patched:pressRun_namespace_resolution) low=16 rows=22 unresolved_high_med=0 final=in-progress commit=f9a4b89f5 closing_sections_present=true
 2026-11-18T16:10:48Z	Story 21.22	code_head_pushed	sha=f9a4b89f5 run=44344107655 missing=none
 2026-11-18T16:10:48Z	Story 21.22	stage_spawned	stage=implement scope=batch4 spawn_at=2026-11-18T16:10:48Z model=sonnet agent_name=21-22-implement-b4 cycle_iteration=1
+2026-11-18T16:40:17Z	Story 21.22	stage_dead	stage=implement scope=batch4 agent=ac6d4661df455b68e child=a7c3f25bdf77f0474 hung_since=2026-11-18T16:12:36Z(one_bash_heredoc_call) stopped_by=main@16:40Z evidence=<state>/evidence/epic-21/21-22-b4-dead-implement-20261118T1640Z.patch(14_files,never_applied) restored_to=742fad040 action=re-run
+2026-11-18T16:40:32Z	Story 21.22	stage_spawned	stage=implement scope=batch4 spawn_at=2026-11-18T16:40:32Z model=sonnet agent_name=21-22-implement-b4-rerun cycle_iteration=1 note=U11_rerun(file_tools_only)
