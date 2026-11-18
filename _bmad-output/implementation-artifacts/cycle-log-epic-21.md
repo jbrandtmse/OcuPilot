@@ -571,3 +571,4 @@
 2026-11-18T12:10:44Z	Story 21.22	stage_spawned	stage=plan spawn_at=2026-11-18T12:10:44Z model=opus agent_name=21-22-plan-2 cycle_iteration=2
 2026-11-18T12:28:31Z	Story 21.22	story_created	spawn_at=2026-11-18T12:06Z model=opus path=_bmad-output/implementation-artifacts/spec-21-22-ci-flake-hardening.md build_status=ready-for-dev cycle_iteration=2 batches=4(B1=DW-2721+DW-2567)
 2026-11-18T12:28:31Z	Story 21.22	spec_validated	service_introducing=false integration_ac=n/a adr_constrained_acs=none owned_ledger=18 addressed=17 declined=1(DW-2627_resolved-by_21.24) footprint_extensions=ui/angular.json(not_contended) pending=DW-2565_ci-throwaway.sh_line_replacement(orchestrator;Epic24_uncommitted_edit) mutates_shared_runtime=false
+2026-11-18T12:28:57Z	Story 21.22	stage_spawned	stage=implement scope=batch1(DW-2721,DW-2567) spawn_at=2026-11-18T12:28:57Z model=sonnet agent_name=21-22-implement-b1 cycle_iteration=1 story_base=2f53179bd
