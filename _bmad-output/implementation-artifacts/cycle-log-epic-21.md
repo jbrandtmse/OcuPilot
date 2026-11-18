@@ -519,3 +519,4 @@
 2026-11-18T03:57:45Z	Epic 21	gate_step	step=sweep result=green shards=20/20 head=6b6f44743
 2026-11-18T03:57:45Z	Epic 21	gate_step	step=smoke result=pass executed=50 passed=50 head=6b6f44743
 2026-11-18T03:57:45Z	Epic 21	ci_green_verified	sha=6b6f44743 runs=44218981008 result=success missing=none note=staging_head_21.14+feature_e50a321a0
+2026-11-18T03:58:12Z	Story 21.5	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T03:58:12Z model=sonnet agent_name=21-5-implement-1 cycle_iteration=1 story_base=ba9ac0135
