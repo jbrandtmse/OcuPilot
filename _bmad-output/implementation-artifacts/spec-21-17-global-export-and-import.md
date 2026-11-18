@@ -2,7 +2,7 @@
 title: 'Story 21.17: Global export and import'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '50905467e2aafd599596e2f58221441f04cd8a28'
 baseline_commit: '50905467e2aafd599596e2f58221441f04cd8a28'
 review_loop_iteration: 0
@@ -151,6 +151,8 @@ Story 21.5 is planned (ready-for-dev, its spec final) and the owner allowed its 
 
 ### Review Findings
 
+- [ ] [Review] HIGH (orchestrator ruling 2026-11-18, option a; AD-61 rule 5 now records it, spine commit 1017325ca): `AtelierPort.ExportSet` converts a Globals export's failure to 422 `GLOBAL.TOOLARGE` only when the failure is positively the capture-ceiling one, identified by its own signal (not by any 503 from a globals export); every other 503 stays `PORT.UNAVAILABLE` and is logged as a fault as today; the expected too-large refusal writes no `PORT.UNAVAILABLE` fault. Pin both legs: too-large -> 422 with no fault row; a genuine unavailability (a seam forcing a non-ceiling port failure) -> 503 with a fault row; prove the ceiling leg load-bearing with a mutation and write its `mutation:` line.
+
 Code review 2026-11-18 (`50905467e..2b7a65791`, four layers, full-opus). Measured on `ocupilot-ci` over HTTP as a `%Development` holder without `OcuPilotAdmin` or `%All` (with and without `%Admin_FileSystemAccess`) and as `_SYSTEM`, in `HSCUSTOM` and `USER`: export to a server file and to this browser, a replacing import (server file and UTF-8 local file, a 40,000-character and a non-Latin value) all 200 and equal; a `%`-global, an `IRIS.Temp*` global, an OcuPilot-named global in any case and a file holding an ordinary and a `%`-global refused 403 with nothing loaded; an extended reference refused 400 before any load; `GLOBAL.OWNDATA` 403 in three cases on both exports. Without the file-system pair the server-file forms answer 403 `AUTH.NOPRIVILEGE` (AD-21's sixth case).
 
 - [ ] [Review][Decision] HIGH (Rule 6): a Globals export whose answer passes the capture answers 422 `GLOBAL.TOOLARGE`, where AD-61 rule 5 says `PORT.UNAVAILABLE` -- the matrix's "Too large" row asks for 422; `Outcome` has already logged a `PORT.UNAVAILABLE` fault, and the remap keys on status 503 [`AtelierPort.cls` `ExportSet`]. Needs the lead: an add-only AD-61 record (recommended, no code change) or the remap dropped with the matrix amended.
@@ -180,9 +182,13 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-11-18 (runner, rework 1): code review left one HIGH (AD-61 rule 5 vs the matrix's 422); ruled (a) by the orchestrator; re-opened for the narrowed conversion.
+
 - 2026-11-18 (runner, decide): Batches 1 and 2 land in one finalize commit; the pre-commit `screen-mirror.mjs --check` refuses a new descriptor until its client exists (Story 21.14).
 
 ## Review Triage Log
+
+- 2026-11-18, orchestrator ruling (option a): the Globals export's too-large answer stays 422 `GLOBAL.TOOLARGE`; AD-61 rule 5 gains an add-only sentence recording it (spine commit 1017325ca); the conversion is narrowed to the capture-ceiling failure in rework 1. No owner veto item: it makes an error answer more accurate.
 
 ### 2026-11-18 — Review pass
 

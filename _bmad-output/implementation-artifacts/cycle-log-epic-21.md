@@ -558,3 +558,5 @@
 2026-11-18T11:15:42Z	Story 21.17	stage_clarification_requested	stage=cr question=AD-61_rule5_PORT.UNAVAILABLE_vs_spec_422_GLOBAL.TOOLARGE routed_to=orchestrator(AD_amendment,Epic24_cites_AD-61) recommendation=a(add-only_AD-61_record)
 2026-11-18T11:18:44Z	Epic 21	spine_updated	ad=AD-61 reason=decision(orchestrator_ruling,Story_21.17_code_review) by=runner story=21-17-global-export-and-import lint=preexisting_low_placeholder_only(line_215_{id}) mode=add-only_sentence_in_rule_5
 2026-11-18T11:18:44Z	Story 21.17	ruling	question=AD-61_rule5_vs_GLOBAL.TOOLARGE choice=a(add-only_AD-61_sentence;convert_only_on_capture-ceiling_signal;no_fault_row_for_too-large;pin_both_legs) via=orchestrator category=decide
+2026-11-18T11:18:58Z	Story 21.17	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=AD-61_capture-ceiling_conversion(orchestrator_ruling_a) scope_baseline=1017325ca
+2026-11-18T11:18:58Z	Story 21.17	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T11:18:58Z model=sonnet agent_name=21-17-implement-rework-1 cycle_iteration=2
