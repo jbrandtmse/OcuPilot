@@ -539,3 +539,10 @@
 2026-11-18T07:34:33Z	Story 21.5	ledger_adjudicated	owned=2 resolved=2(DW-2607,DW-2722) reowned=0 terminal=0 note=DW-2723,DW-2724_resolved_at_review;DW-2730_decision_sheet
 2026-11-18T07:34:43Z	Epic 21	integrated	feature=50cb0b1de merge=1de56e265 conflicts=none note=21.14_merged_on_feature;timings
 2026-11-18T07:34:43Z	Story 21.5	gate_step	step=fresh_check+full_sweep+smoke head=1de56e265 started=2026-11-18T07:34:43Z dir=e21u/21-5/gate2
+2026-11-18T08:23:27Z	Story 21.5	ci_red_classified	run=44260017976 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=analytics-mdx_AC1(browser_5/5;DW-2714_occurrence_2) head=1de56e265
+2026-11-18T08:59:35Z	Story 21.5	ci_resolved	story=21.5 sha=1de56e265 runs=44260017976 result=success failed=none via=none resolved_at=gate note=flake_rerun(analytics-mdx_AC1,DW-2714)
+2026-11-18T09:40:32Z	Story 21.5	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+2_specs(system-explorer-globals,nls-locales) result=pass order=forward,reverse(specs) head=1de56e265
+2026-11-18T09:40:32Z	Story 21.5	gate_step	step=sweep result=green shards=20/20 head=1de56e265
+2026-11-18T09:40:32Z	Story 21.5	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-18T09:40:32Z	Story 21.5	committed	sha=b293049be staging_head=1de56e265 submodules= ci=success runs=44260017976 amendments=none
+2026-11-18T09:40:32Z	Story 21.5	story_cycle	plan_to_commit_min=n/a(multi-session) implement_passes=3(build,rework1,rework2_ci) reviews=2 rework=2 first_ci=story(3_shared-surface_rosters) models=plan:opus,implement:sonnet,qa:none(in-implement),cr:opus

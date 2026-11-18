@@ -13729,6 +13729,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 44143834574 (Epic 21 staging head cbde8563a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 11/11 locally on ocupilot-ci; same first-query shape as DW-2522 (resolved by 23.10)
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
+- 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
 
 ### DW-2721: flake: CI gates (node 22.22.3) client suite (npm test) hangs until the job is cancelled at 25 min, with no log (BlobNotFound); seen 4x on 2026-11-18 (run 44209857864 att1 on OCU-1-epic21, run 44218128864 att1-3 on feature e50a321a0) while node 24/26 legs pass in ~9 min
 - source: orchestrator CI triage 2026-11-18 | severity: med | fix-risk: low | footprint: out-of-footprint
