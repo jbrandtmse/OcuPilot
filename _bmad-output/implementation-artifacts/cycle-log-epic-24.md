@@ -420,3 +420,6 @@
 2026-11-18T15:05:39Z	Epic 24	orchestrator_message	feature_7fe3f8659(21.17,21.22_batch1;AD-58_READBACKPAYLOAD,AD-61_GLOBAL.TOOLARGE_additive);prewarm_before_next_plan
 2026-11-18T15:05:39Z	Story 24.12	ci_resolved	story=24.12 sha=1e2e176d2 runs=44322844055 result=success failed=none via=none resolved_at=next_plan scope=batch1
 2026-11-18T15:05:39Z	Story 24.12	stage_spawned	stage=implement spawn_at=2026-11-18T15:05:39Z model=sonnet agent_name=24-12-quality-measures-implement-batch2 cycle_iteration=2 story_base=aadcaa3ca scope=batch2_measure_writes
+2026-11-18T18:56:59Z	Story 24.12	dev_complete	spawn_at=2026-11-18T15:06:00Z model=sonnet build_sha=1b92f5a8a baseline_revision=ec96af82d review_loop_iteration=0 followup_review_recommended=true deferred=1(DW-2743_wontfix-accepted_LOW) sweep=17/17_green(shard13_rerun_after_CompileWithoutInterop_fix) fresh_instance_first_run=pass scope=batch2_measure_writes contended=Kernel/Proposal/Prohibited.cls(one_term_IsQualityMeasureType) cycle_iteration=2
+2026-11-18T18:56:59Z	Story 24.12	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none scope=batch2 model=claude-opus-5-5
+2026-11-18T18:56:59Z	Story 24.12	stage_spawned	stage=qa spawn_at=2026-11-18T18:56:59Z model=sonnet agent_name=24-12-quality-measures-qa-batch2 cycle_iteration=2

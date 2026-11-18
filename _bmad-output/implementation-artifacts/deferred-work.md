@@ -13833,3 +13833,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Collect skips a name %GetQualityMeasureClass cannot find (Decided in-stage 2); deleting the registered class while a twin remains reaches it; no probe state does.
 - 2026-11-18T14:03:56Z status=wontfix-accepted owner=24-12-quality-measures by=cr note=reopen_if=a measure listed by the classic page is missing from Quality measures while its registered class exists
+
+### DW-2743: Quality measures: a refused create's registry nodes and listed measures are compared with their prior state only through a seam that compiles nothing
+- source: spec-24-12-quality-measures-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AnalyticsListingGroupAtelier answers errors without compiling, so the vendor never registers the name; the delete test pins node removal for a compiled class only
+- 2026-11-18T18:56:58Z status=wontfix-accepted owner=24-12-quality-measures by=harvest note=reopen_if=a refused create on a fresh instance leaves a ^DeepSee.QMsrs node or a listed measure behind
