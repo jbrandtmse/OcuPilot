@@ -607,3 +607,9 @@
 2026-11-18T17:21:55Z	Story 21.22	ledger_adjudicated	resolved=DW-2721,2567,2534,2565,2714,2548 wontfix=DW-2553,2544,2549,2566,2648,2649,2685,2720,2713 routed_to_21-23=DW-2202,2476(residual_slices) new_flake=DW-2742(->21-23) open_owned=0
 2026-11-18T17:22:35Z	Story 21.22	code_head_pushed	sha=5e1672bb3 run=44357940400 missing=none note=final_code_head(B4+review);supersedes_a9ae71724_run_44354218970
 2026-11-18T17:22:35Z	Story 21.22	gate_step	step=fresh_check+full_sweep+smoke head=5e1672bb3 started=2026-11-18T17:22:35Z dir=e21u/21-22/gate
+2026-11-18T18:00:35Z	Story 21.22	ci_red_classified	run=44357940400 workflow=.github/workflows/ci.yml class=flake(pending_rerun) test=a11y-structural-invariants_hook(settle_governance_60s,after_its_one_retry) head=5e1672bb3 ledger=DW-1822_reopened(->21-23);DW-2742_dropped_as_duplicate
+2026-11-18T18:48:07Z	Story 21.22	ci_resolved	story=21.22 sha=5e1672bb3 runs=44357940400 result=success failed=none via=none resolved_at=gate note=flake_rerun(a11y-structural-invariants;DW-1822_reopened)
+2026-11-18T19:39:01Z	Story 21.22	fresh_check	env=recipe(ci-throwaway_rebuild) tests=3_classes+17_specs(66_tests_forward) result=pass order=forward,reverse(specs) head=5e1672bb3
+2026-11-18T19:39:01Z	Story 21.22	gate_step	step=sweep result=green shards=20/20 head=5e1672bb3
+2026-11-18T19:39:01Z	Story 21.22	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-18T19:39:01Z	Story 21.22	story_green	code_head=5e1672bb3 ci=44357940400(success_after_flake_rerun) gates=fresh+sweep20/20+smoke50/50 status=done
