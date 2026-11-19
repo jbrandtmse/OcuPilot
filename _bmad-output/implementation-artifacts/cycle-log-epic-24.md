@@ -497,3 +497,4 @@
 2026-11-19T17:03:08Z	Story 24.13	ledger_adjudicated	resolved=DW-2771 rerouted=DW-2774(burndown_residual) new_open=DW-2775(batch3) routed_burndown=DW-2776 to_decision_sheet=DW-2777,DW-2778,DW-2779 born_terminal=DW-2780 scope=batch2 model=claude-opus-5-5
 2026-11-19T17:06:13Z	Story 24.13	integrated_feature	feature=cdbb7912b(21.15) merge=a365495ce conflicts=5(roster_unions;counts_ReadTool533+302_writes,ToolWrite133) prohibited=auto-merged_both_kept(orchestrator_ruling) test_tools=2335/2335 check_objectscript=0 scope=batch2
 2026-11-19T17:06:13Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=a365495ce
+2026-11-19T17:23:16Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=a365495ce forward=5/5_classes_40_tests_first_run reverse+rosters=17/17_classes_176_tests(Prohibited,ToolWrite,DraftRegistry_per_ruling) browser=analytics+links+a11y34/34,config-settings+interop-item-settings10/10 smoke=50/50 bundle=2.15MB scope=batch2
