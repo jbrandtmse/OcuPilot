@@ -454,3 +454,5 @@
 2026-11-19T02:11:21Z	Story 24.12	code_head_pushed	sha=f9eed84eb run=44442413595 missing=none scope=batch3(final_batch)
 2026-11-19T02:12:04Z	Story 24.12	tracker_set	key=24-12-quality-measures status=done (all three batches committed; code head f9eed84eb)
 2026-11-19T02:12:04Z	Story 24.13	stage_spawned	stage=pre-warm spawn_at=2026-11-19T02:12:04Z model=opus agent_name=epic-24-context-prewarm-8 cycle_iteration=1 reason=planning_artifact_newer(AD-51_21.18_sentence)
+2026-11-19T02:15:03Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(AD-51_21.18_sentence) model=claude-opus-5-5
+2026-11-19T02:15:03Z	Story 24.13	stage_spawned	stage=plan spawn_at=2026-11-19T02:15:03Z model=opus agent_name=24-13-analytics-settings-plan cycle_iteration=1

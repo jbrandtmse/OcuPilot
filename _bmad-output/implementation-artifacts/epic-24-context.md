@@ -36,8 +36,8 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
 
 - **One contract for every stage.** Each new screen has exactly one screen descriptor and reaches the outside through exactly one port. Its read tool and its write tools' field lists derive from that descriptor, never from hand-written tool code. Every agent write goes through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker. A story is accepted on that contract plus a round trip over each row's own backing class. Nothing finer is invented in advance.
 - **Governance.** Every new write key joins the governance baseline in the change that ships it. It is enabled unless the story's criteria say otherwise, and every new destructive key ships disabled. A key missing from the baseline defaults to disabled when it mutates, and a test names any write key the baseline lacks.
-- **Harvest discipline.** Take handler bodies only. The MCP suite's manifest is stale and its bootstrap is driven by TypeScript, so nothing else is taken. Read the current body before harvesting it, because known defects have unverified fix status. Rename every harvested name: packages, globals, audit sources, web paths and the `iris_` tool prefix, which becomes `<area>.<screen>.<verb>`.
-- **Single instance.** No request leaves the instance. Environment diff and promote work only between namespaces of this instance. Remote instance profiles and the work-queue viewer are recorded as not planned in the test-held exclusion register (`docs/exclusion-register.md`), each with its reason.
+- **Harvest discipline.** Take handler bodies only. The MCP suite's manifest is stale and its bootstrap is driven by TypeScript, so nothing else is taken. Read the current body before harvesting it, because known defects (the task-history filter, resource creation with a description) have unverified fix status. Rename every harvested name: packages, globals, audit sources, web paths and the `iris_` tool prefix, which becomes `<area>.<screen>.<verb>`.
+- **Single instance.** No request leaves the instance. Environment diff and promote work only between namespaces of this instance. Remote instance profiles and the work-queue viewer are recorded as not planned in the test-held exclusion register (`docs/exclusion-register.md`), each with its reason; the unit-test runner's own run record replaces the work-queue viewer.
 - **Developer tools.**
   - The execute-command console's output is bounded by the harvested output ceiling.
   - Promote keeps four gates: plan, execute-with-confirm, a steps allow-list, and plan-hash freshness. It states that it has no rollback rather than implying one.
@@ -60,7 +60,8 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
   - MDX that runs code is detected by the shared detector, which fails closed.
   - Analytics ids, such as a term-list name or a folder-item full name, are kept exactly.
 - **Class-backed definitions** (listing groups, quality measures) are written by saving and compiling their class. A compile the instance refuses puts the class back as it was. Class names are refused in the `%` and `OcuPilot` packages, and two classes defining one item are refused.
-- **AtelierPort** is the only class naming `%Api.Atelier.*`. Its writes (save, compile, delete, import) also require WRITE on the target namespace's routines-database resource, resolved at call time, because the API checks none itself. An answer above the capture ceiling (about 3.6 million characters) is refused `PORT.UNAVAILABLE`.
+- **AtelierPort** is the only class naming `%Api.Atelier.*`. Its writes (save, compile, delete, import) also require WRITE on the target namespace's routines-database resource, resolved at call time, because the API checks none itself. A port answer above the capture ceiling (about 3.6 million characters) is refused `PORT.UNAVAILABLE`; only the Globals export has its own `GLOBAL.TOOLARGE`.
+- **Write and fresh-read types are distinct.** A read and a write cannot share a request type, so a port-composed fresh read gets its own type name beside the write's.
 - **Read-back.** After a write reads OK, its caller re-reads the target through the tool's declared port with the caller's own privileges and reports `readBack {verdict, fields, written, reason?}` without altering the write's answer. A tool with no derived field list may declare `READBACKFIELDS`. A tool that sends no body may also declare `READBACKPAYLOAD`, which compares those fields against its port query's values so it reads `matches` or `differs` rather than `nothingSent`.
 - **Run-code exception (unit-test runner, consoles, terminal):**
   - The tool belongs to a person alone: it declares `PERSONGATE`, is unadvertised, and is refused `PROHIBITED.PERSONONLY` if the agent reaches it.
@@ -77,12 +78,13 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
 ## UX & Interaction Patterns
 
 - Every screen registers the standard screen contract: route with `?ns=`, side-bar entry, archetype, privilege resource, entity-type key, context serializer, actions (destructive last), empty-state sentence, fixed strings and aliases.
+- A sub-screen opened from an item's name (a listing group's listings, a quality measure's groups and documentation tabs) is never in the side bar and carries its own actions and empty-state agent phrase.
 - On write-capable lists the "Or ask the agent: …" line takes a short phrase, never a full sentence. A screen with no action names no agent phrase.
 - Gated controls stay focusable with `aria-disabled` and name their reason; they are never hidden.
-- A screen's destructive action uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target, and a delete that OcuPilot cannot reverse says so in its consequence.
+- A screen's destructive action or removal uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target, and a delete or removal that OcuPilot cannot reverse says so in its consequence. A rename is a remove and an add, never an in-place move.
 - Refusals are the server's sentences, shown as sent. Vendor text is logged, never shown.
 - Result and status lines are announced to assistive technology.
-- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class).
+- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class, Class, Caption, Description, Disabled).
 
 ## Cross-Story Dependencies
 
