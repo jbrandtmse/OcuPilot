@@ -13951,3 +13951,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-18-global-find-and-replace.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Seven ports' Snippet (Analytics, Atelier, DocDb, DevTool, Global, Interop, Sql) render ' Set $NAMESPACE = <literal>' as line 1; a terminal goes on to the next pasted line after a <NAMESPACE> or <PROTECT> error there, so e.g. the global replace walks a same-named global elsewhere.
 - 2026-11-18T22:33:55Z status=routed owner=burndown by=cr note=guard the write lines on the namespace (same line or a check), across every port's script
+
+### DW-2754: AD-53 named gap: a person's Load table (Story 21.16) records no vendor audit event, and AD-53 does not name it
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Task 0 (d) on ocupilot-ci with auditing on: Create, Modify, Delete record %System/ConfigurationChange; Config.NLS.Tables.Load records none; spine AD-53 has no 21.16 entry
+- 2026-11-19T04:32:43Z status=decision-pending owner=burndown by=cr note=owner's attended architecture update, as DW-2613: record the named gap in AD-53 or add an OcuPilot ConfigChange row
+
+### DW-2755: postLocaleCreate (locale-create.ts) is a near-copy of postInteropCreate (interop-create.ts) with no stated reason
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ui/src/app/areas/os-management/locale-create.ts:41 repeats ui/src/app/areas/interoperability/interop-create.ts:35 (POST, read-back, created event) but for scope and the refusal sentence
+- 2026-11-19T04:32:47Z status=routed owner=burndown by=cr note=Rule 2: extend the interop helper into core with a scope parameter, used by both
+
+### DW-2756: Load table's consequence still says a load on the current locale can change the instance's defaults, which Task 0 (c) did not observe
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (c): loads of enuw's XLT CP1250 and Pattern Unicode moved no System/Config %SYS.NLS.Table property; the vendor's Load doc says it changes defaults if necessary
+- 2026-11-19T04:32:50Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=a ruled string; reopen_if=a load of any table type on the current locale is measured to never change a System default
+
+### DW-2757: Locale properties sorts by the Group code, not the classic editor's group order, and the filter matches codes, not the drawn words
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LocalePropertyList sort default Group asc over codes basic, formats, iodefaults, iotables, strings, tabledefaults, tables; PropertyRows emits the classic order
+- 2026-11-19T04:32:53Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=reopen_if=a person reports the group order or a group word that filters to no rows
+
+### DW-2758: Removing the last table of a list the vendor requires is refused by Modify and answered 500 INTERNAL, not a 409
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: measured on ocupilot-ci (test locale ytsw): Modify without XYTables answers #5661 'is required so must have at least one member'; reachable only when the list's default names another table
+- 2026-11-19T04:32:57Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=reopen_if=a person meets the 500 on Remove table; the default check refuses the usual case first
+
+### DW-2759: No test observes that a confirmed Load table reached Config.NLS.Tables.Load; a SendLoad that answered OK without calling it stays green
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LocaleEditWrite asserts 200|nothingSent only; Task 0 (c)/(d): a load moves no ^SYS(NLS) checksum, no %SYS.NLS.Table property and records no audit row
+- 2026-11-19T04:33:01Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=nothing observable was found; reopen_if=an instance-side mark of a loaded table is found
+
+### DW-2760: A Copy or Add table dialog shows no sentence when its request fails without a server reason (network failure)
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: locale-create.ts postLocaleCreate answers reason '' when the result is not ok and carries no reason; the dialog re-enables with nothing shown
+- 2026-11-19T04:33:05Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=a new sentence would be an escalation; reopen_if=DW-2755's shared helper lands, or a person reports a silent failure

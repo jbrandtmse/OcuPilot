@@ -662,3 +662,7 @@
 2026-11-19T04:02:31Z	Story 21.16	spine_amended	ad=AD-36 kind=add-only sha=edbedfe11 lint=only_preexisting
 2026-11-19T04:02:31Z	Epic 21	protocol_violation	detail=runner_wrote_a_test_log_to_main_checkout_path_/Users/jbrandt/git/OcuPilot/.x_by_a_relative_redirect;removed_within_a_minute;nothing_else_touched
 2026-11-19T04:02:31Z	Story 21.16	stage_spawned	stage=code-review spawn_at=2026-11-19T04:02:31Z model=opus agent_name=21-16-code-review-1 cycle_iteration=1 baseline=766c6ed95
+2026-11-19T04:42:24Z	Story 21.16	cr_complete	spawn_at=2026-11-19T03:52Z model=opus high=2(patched:lock_in_protected_db_500_for_non-admin;AD-59_scripts_diverged) med=6 low=10 rows=38 unresolved_high_med=2(DW-2754_decision-pending_AD-53_wording,DW-2755_routed_burndown) new=DW-2754..2760 final=done commit=55d7deb8b closing_sections_present=true note=edited_ci-throwaway.sh_add-only_roster_line
+2026-11-19T04:42:24Z	Story 21.16	ci_red_classified	run=44455430594 workflow=.github/workflows/ci.yml class=defect head=23f0474c5 cause=fresh_compile_fails:TAKENREASON_COSEXPRESSION_on_uncompiled_OcuPilot.Api.LocaleError(LocaleCopySave,LocaleTableSave);every_leg
+2026-11-19T04:42:24Z	Story 21.16	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=compile_order_TAKENREASON scope_baseline=55d7deb8b
+2026-11-19T04:42:24Z	Story 21.16	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T04:42:24Z model=sonnet agent_name=21-16-implement-rework-1 cycle_iteration=2
