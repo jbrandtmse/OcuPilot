@@ -1181,6 +1181,15 @@ test('Story 21.10: a mobile phone provider delete states its consequence on the 
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_PHONEPROVIDERDELETE, 'PhoneProviderDelete.cls declares the code the card reads');
 });
 
+// Story 21.10: the provider's in-use refusal and delete consequence are one sentence on the server and in the strings table.
+// Mutation (Rule 19): change one word of REASONINUSE in PhoneProviderError.cls -> this goes red.
+test('Story 21.10: the phone provider sentences the server sends equal their strings', () => {
+  const error = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'PhoneProviderError.cls'), 'utf8');
+  const server = (parameter) => new RegExp(`^Parameter ${parameter} = "([^"]*)";`, 'm').exec(error)?.[1];
+  assert.equal(server('REASONINUSE'), STRINGS.phoneProviderInUse);
+  assert.equal(server('REASONDELETE'), STRINGS.phoneProviderDeleteConsequence);
+});
+
 // Story 20.16: the two consequences whose confirmed card reports the compile are the explorer save's and the editor save's, and no other.
 // Mutation (Rule 19): add a third code to the set -> this goes red.
 test('the code-save consequences are the explorer save\'s and the editor save\'s alone', () => {

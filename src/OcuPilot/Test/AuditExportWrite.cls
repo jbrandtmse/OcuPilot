@@ -273,6 +273,7 @@ Method TestEachCallerStartsTheExportAndTheFileHoldsIt()
 Method TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts()
 {
     Set tRoot = ..Root()
+    Do $$$AssertTrue(tRoot '= "", "the instance lists an allowed directory to export under")
     If tRoot = "" Quit
     Do ..MakeDirectory()
     Set tHeld = ..Absolute() _ "held.xml"
@@ -295,6 +296,9 @@ Method TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts()
     Set tStatus = ..Act(tRoot, ..Name("held.xml"), ..#BOUNDDAY, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "400|PATH.EXISTS", "the screen's export of the held name is refused 400: " _ tAnswer.%ToJSON())
     Do $$$AssertEquals(tAnswer.%Get("detail").%Get("violations").%Get(0).%Get("field"), "ExportPath", "on its path field")
+    ; Mutation (Rule 19): drop SCREENEMPTY from OcuPilot.Screen.Tool.AuditExport -> the empty day is refused TOOL.ARGUMENTS and this goes red.
+    Set tStatus = ..Act(tRoot, ..Name("held.xml"), "", .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "400|PATH.EXISTS", "an empty day, every record, is a value the screen may send; the held name is still refused: " _ tAnswer.%ToJSON())
     Set tStatus = ..Act(tRoot, "OcuP2110Missing" _ $Job _ "/x.xml", ..#BOUNDDAY, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tAnswer), "400|AUDIT.EXPORT.DIRECTORY", "and a missing directory")
     Set tStatus = ..Act(tRoot, ..Name("day.xml"), "2999-01-01", .tAnswer)
@@ -343,6 +347,7 @@ ClassMethod Called(pRoot As %String, pPath As %String, pBefore As %String, Outpu
 Method TestTheGateNamesEachPairTheCallerLacks()
 {
     Set tRoot = ..Root()
+    Do $$$AssertTrue(tRoot '= "", "the instance lists an allowed directory to export under")
     If tRoot = "" Quit
     Set tPairs = $ListFromString($Parameter(..#PORT, "EXPORTPAIRS"))
     Do $$$AssertEquals($ListToString(tPairs), "%Admin_Secure:USE,%DB_IRISSYS:READ,%DB_IRISAUDIT:READ,%Admin_FileSystemAccess:USE", "the export declares the screen's pairs, the audit database and the file system")
@@ -377,6 +382,7 @@ Method TestTheGateNamesEachPairTheCallerLacks()
 Method TestTheAgentsConfirmStartsTheExportOnceWithOneAuditMarker()
 {
     Set tRoot = ..Root()
+    Do $$$AssertTrue(tRoot '= "", "the instance lists an allowed directory to export under")
     If tRoot = "" Quit
     Do ..MakeDirectory()
     Set tClass = ..#TOOLCLASS

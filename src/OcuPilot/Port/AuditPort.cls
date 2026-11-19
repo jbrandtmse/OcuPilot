@@ -617,15 +617,18 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 
 /// <p><method>Invoke</method>'s branches as a script (AD-59): <parameter>EXPORTTYPE</parameter> is the vendor's
 /// task started in <parameter>EXPORTNAMESPACE</parameter> for the file <code>ExportRoot</code> and
-/// <code>ExportPath</code> name; any other <parameter>COMPOSEDTYPES</parameter> pair is the vendor call with
+/// <code>ExportPath</code> name, resolved as <class>OcuPilot.Port.PathPort</class> joins them and started only while no
+/// file stands there, since the vendor replaces one; any other <parameter>COMPOSEDTYPES</parameter> pair is the vendor call with
 /// <method>Body</method>'s body and an empty query, and a query <method>Body</method> cannot compose from answers no
 /// step; every other call is the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If (pEndpoint = ..#RECORDENDPOINT) && (pType = ..#EXPORTTYPE) {
         Set tBefore = $Get(pQuery(..#EXPORTBEFOREQUERY))
-        Set tLines = $ListBuild("Kill tParms, tItems", "Set tParms(""FileName"") = " _ ..Literal($Get(pQuery(..#EXPORTROOTQUERY)) _ $Get(pQuery(..#EXPORTPATHQUERY))), "Set tParms(""AuditFlag"") = 0", "Set tParms(""BeginDateTime"") = """"", "Set tParms(""EndDateTime"") = " _ ..Literal($Select(tBefore = "": "", 1: tBefore _ " 00:00:00")))
-        Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ ..#EXPORTTASKCLASS _ ").RunTask(" _ ..Literal(..#EXPORTTASK) _ ", " _ ..Literal(..#EXPORTNAMESPACE) _ ", .tParms, .tItems, .tJob)", "Do $System.Status.DisplayError(tSC)")
+        Set tFile = ##class(%File).NormalizeFilename(##class(%File).NormalizeDirectory($Get(pQuery(..#EXPORTROOTQUERY))) _ $Get(pQuery(..#EXPORTPATHQUERY)))
+        Set tLines = $ListBuild("Kill tParms, tItems", "Set tParms(""FileName"") = " _ ..Literal(tFile), "Set tParms(""AuditFlag"") = 0", "Set tParms(""BeginDateTime"") = """"", "Set tParms(""EndDateTime"") = " _ ..Literal($Select(tBefore = "": "", 1: tBefore _ " 00:00:00")))
+        Set tLines = tLines _ $ListBuild("Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.Error).#REASONPATHEXISTS) _ ")")
+        Set tLines = tLines _ $ListBuild("If '##class(%File).Exists(tParms(""FileName"")) Set tSC = ##class(" _ ..#EXPORTTASKCLASS _ ").RunTask(" _ ..Literal(..#EXPORTTASK) _ ", " _ ..Literal(..#EXPORTNAMESPACE) _ ", .tParms, .tItems, .tJob)", "Do $System.Status.DisplayError(tSC)")
         Quit [(..ObjectScriptStep(tLines))]
     }
     If (pEndpoint '= ..#RECORDENDPOINT) || '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)

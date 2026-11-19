@@ -11,9 +11,16 @@ export interface AuditExportRequest extends ServerPath {
   readonly before: string;
 }
 
-/** Whether `text` is a day written `YYYY-MM-DD`; whether it is a real day is the instance's to say. */
-export function isExportDay(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text);
+/**
+ * Whether `text` is a real day written `YYYY-MM-DD` and no later than `today`, the browser's own calendar day. The instance
+ * judges the day again on its own calendar; this check keeps a day it would refuse from reaching it as an Export.
+ */
+export function isExportDay(text: string, today: Date = new Date()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const [year, month, day] = text.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  return date.getTime() <= new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 }
 
 /** How many export dialogs have been constructed, which makes each one's field ids its own. */
@@ -23,7 +30,7 @@ let dialogCount = 0;
  * Export the audit records to a new server file (Story 21.10, AD-21, EXPERIENCE.md `confirm-dialog`): the shared
  * server-path picker for a file over the page's allowed directories, an optional day field with the line that says
  * an empty field exports every record, and a primary Export beside Cancel. Export is `aria-disabled` until a root and a
- * name are chosen, while a day is typed that is not written `YYYY-MM-DD`, and while a send is in flight, so one Export
+ * name are chosen, while a day is typed that `isExportDay` refuses, and while a send is in flight, so one Export
  * is one request.
  *
  * **It checks no file itself.** The instance resolves the root and the name at the write and never replaces a file; its
@@ -118,14 +125,14 @@ export class AuditExportDialog {
 
   protected readonly before = signal('');
 
-  /** The day field names no day the form can send: something typed that is not `YYYY-MM-DD`. */
+  /** The day field names no day the form can send: something typed that `isExportDay` refuses. */
   private readonly dayRefused = computed(() => this.before() !== '' && !isExportDay(this.before()));
 
   protected get beforeInvalid(): 'true' | null {
     return this.dayRefused() || this.hasBeforeReason ? 'true' : null;
   }
 
-  /** Export is drawn unavailable until a root and a name are chosen, while the day is malformed, and while a send is in flight. */
+  /** Export is drawn unavailable until a root and a name are chosen, while the day is refused, and while a send is in flight. */
   protected get confirmDisabled(): 'true' | null {
     return this.root() === '' || this.path() === '' || this.dayRefused() || this.sending() ? 'true' : null;
   }

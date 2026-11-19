@@ -46,6 +46,11 @@ Parameter SCREENACTIONS = "export";
 
 Parameter SCREENVALUES = "export=ExportRoot:ExportPath:ExportBefore";
 
+/// <p>The cut-off day may be left out or sent empty: either exports every record.</p>
+Parameter SCREENOPTIONAL = "export=ExportBefore";
+
+Parameter SCREENEMPTY = "export=ExportBefore";
+
 Parameter READANSWERS = "Enabled,CopyNamespace,PurgeBefore,ExportRoot,ExportPath,ExportBefore";
 
 /// <p>A file names the export, so a read that did not answer <code>ExportPath</code> is not one to export from.</p>

@@ -23,7 +23,7 @@ Parameter KEY = "security.systemsecurity.set";
 Parameter NAMES = "AuditEnabled,AuditFlags,ConfigurationSecurityEnabled,DefaultSecurityDomain,DefaultSignatureHash,EscalateAuthTimeout,EscalateLoginTimeout,InactiveLimit,InvalidLoginAction,InvalidLoginLimit,PasswordExpirationDays,PasswordPattern,PasswordValidationRoutine,PercentGlobalWrite,RequiredRole,SQLSecurity,SSLTelnetServer,SecurityDomains,WebAppPctAccess";
 
 /// <p>The names shown and never changed.</p>
-Parameter READONLY = "AuditEnabled,ConfigurationSecurityEnabled,DefaultSecurityDomain,PasswordValidationRoutine,RequiredRole,SSLTelnetServer,SecurityDomains";
+Parameter READONLY = "AuditEnabled,ConfigurationSecurityEnabled,DefaultSecurityDomain,PasswordExpirationDays,PasswordValidationRoutine,RequiredRole,SSLTelnetServer,SecurityDomains";
 
 /// <p>Properties of <code>Security.System</code> that no row may carry.</p>
 Parameter SECRETS = "PrivateJWKS,PublicJWKS,SMTPPassword,SMTPUsername,SMTPServer,DBEncStartPassphrase,DBEncStartUsername,TwoFactorPWIssuer,Description,AutheEnabled";
@@ -175,8 +175,8 @@ Method TestTheKindsLimitsAndReadOnlyFlagsAreTheRosters()
         Do $$$AssertEquals(tRows(tName).ReadOnly = 1, ''$ListFind($ListFromString(..#READONLY), tName), tName _ ": read-only exactly when the roster says so")
         Do $$$AssertEquals(tRows(tName).Restart, 0, tName _ ": states no restart")
     }
-    Do $$$AssertEquals(tReadOnly, $Select(..IsWindows(): ..#READONLY, 1: "AuditEnabled,ConfigurationSecurityEnabled,DefaultSecurityDomain,PasswordValidationRoutine,RequiredRole,SecurityDomains"), "the shown-and-never-changed names")
-    For tCase = $ListBuild("InactiveLimit", "integer", "A whole number from 0 to 365."), $ListBuild("InvalidLoginLimit", "integer", "A whole number from 0 to 64."), $ListBuild("PasswordExpirationDays", "integer", "A whole number from 0 to 99999."), $ListBuild("EscalateLoginTimeout", "integer", "A whole number of at least 0."), $ListBuild("EscalateAuthTimeout", "integer", "A whole number of at least 0."), $ListBuild("AuditFlags", "boolean", "0 (off) or 1 (on)."), $ListBuild("InvalidLoginAction", "boolean", "0 (off) or 1 (on)."), $ListBuild("PercentGlobalWrite", "boolean", "0 (off) or 1 (on)."), $ListBuild("SQLSecurity", "boolean", "0 (off) or 1 (on)."), $ListBuild("WebAppPctAccess", "boolean", "0 (off) or 1 (on)."), $ListBuild("DefaultSignatureHash", "choice", "One of SHA1, SHA256, SHA384, SHA512."), $ListBuild("PasswordPattern", "text", "Text of up to 64 characters.") {
+    Do $$$AssertEquals(tReadOnly, $Select(..IsWindows(): ..#READONLY, 1: "AuditEnabled,ConfigurationSecurityEnabled,DefaultSecurityDomain,PasswordExpirationDays,PasswordValidationRoutine,RequiredRole,SecurityDomains"), "the shown-and-never-changed names")
+    For tCase = $ListBuild("InactiveLimit", "integer", "A whole number from 0 to 365."), $ListBuild("InvalidLoginLimit", "integer", "A whole number from 0 to 64."),$ListBuild("EscalateLoginTimeout", "integer", "A whole number of at least 0."), $ListBuild("EscalateAuthTimeout", "integer", "A whole number of at least 0."), $ListBuild("AuditFlags", "boolean", "0 (off) or 1 (on)."), $ListBuild("InvalidLoginAction", "boolean", "0 (off) or 1 (on)."), $ListBuild("PercentGlobalWrite", "boolean", "0 (off) or 1 (on)."), $ListBuild("SQLSecurity", "boolean", "0 (off) or 1 (on)."), $ListBuild("WebAppPctAccess", "boolean", "0 (off) or 1 (on)."), $ListBuild("DefaultSignatureHash", "choice", "One of SHA1, SHA256, SHA384, SHA512."), $ListBuild("PasswordPattern", "text", "Text of up to 64 characters.") {
         Set tRow = tRows($List(tCase, 1))
         Do $$$AssertEquals(tRow.Kind _ "|" _ tRow.Accepts, $List(tCase, 2) _ "|" _ $List(tCase, 3), $List(tCase, 1) _ ": its kind and what it accepts")
     }
@@ -247,13 +247,13 @@ Method TestAWriteSendsTheSettableNamesAndNothingElse()
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Security", "SET", .tQuery, {"Value": "89"}, .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tOut): tOut.%Get("Value"), 1: ""), "200|89", "a set of a settable parameter is accepted")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Entries"), "MODIFY|Security.System|SYSTEM|", "through one vendor Modify of the one record")
-    Do $$$AssertEquals($ClassMethod(..#SEAM, "SentEntryKeys"), "AuditFlags,DefaultSignatureHash,EscalateAuthTimeout,EscalateLoginTimeout,InactiveLimit,InvalidLoginAction,InvalidLoginLimit,PasswordExpirationDays,PasswordPattern,PercentGlobalWrite,SQLSecurity,WebAppPctAccess", "which carries the twelve settable names and no other property")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "SentEntryKeys"), "AuditFlags,DefaultSignatureHash,EscalateAuthTimeout,EscalateLoginTimeout,InactiveLimit,InvalidLoginAction,InvalidLoginLimit,PasswordPattern,PercentGlobalWrite,SQLSecurity,WebAppPctAccess", "which carries the eleven settable names and no other property")
     Do $ClassMethod(..#SEAM, "Reset")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "WRITE")
-    For tCase = $ListBuild("RequiredRole", "CSPSystem", 409), $ListBuild("PasswordValidationRoutine", "x", 409), $ListBuild("AuditEnabled", "0", 409), $ListBuild("InactiveLimit", "366", 400), $ListBuild("InvalidLoginLimit", "65", 400), $ListBuild("PasswordExpirationDays", "100000", 400), $ListBuild("AuditFlags", "2", 400), $ListBuild("DefaultSignatureHash", "MD5", 400), $ListBuild("PasswordPattern", $Justify("", 65), 400), $ListBuild("InactiveLimit", "-1", 400), $ListBuild("InactiveLimit", "x", 400), $ListBuild("PrivateJWKS", "x", 404) {
+    For tCase = $ListBuild("RequiredRole", "CSPSystem", 409), $ListBuild("PasswordValidationRoutine", "x", 409), $ListBuild("AuditEnabled", "0", 409), $ListBuild("InactiveLimit", "366", 400), $ListBuild("InvalidLoginLimit", "65", 400), $ListBuild("PasswordExpirationDays", "1", 409), $ListBuild("AuditFlags", "2", 400), $ListBuild("DefaultSignatureHash", "MD5", 400), $ListBuild("PasswordPattern", $Justify("", 65), 400), $ListBuild("InactiveLimit", "-1", 400), $ListBuild("InactiveLimit", "x", 400), $ListBuild("PrivateJWKS", "x", 404) {
         Kill tQuery
         Set tQuery("name") = $List(tCase, 1)
         Set tSC = $ClassMethod(..#SEAM, "Invoke", "Security", "SET", .tQuery, {"Value": ($List(tCase, 2))}, .tOut, .tHttp, .tFault)

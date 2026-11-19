@@ -81,12 +81,18 @@ describe('the audit database Export dialog', () => {
     for (const element of planted.splice(0)) element.remove();
   });
 
-  it('isExportDay admits a day written YYYY-MM-DD and nothing else', () => {
-    expect(isExportDay('2026-11-19')).toBe(true);
-    expect(isExportDay('')).toBe(false);
-    expect(isExportDay('19/11/2026')).toBe(false);
-    expect(isExportDay('2026-1-9')).toBe(false);
-    expect(isExportDay(' 2026-11-19')).toBe(false);
+  it('isExportDay admits a real day written YYYY-MM-DD up to today and nothing else', () => {
+    const today = new Date(2026, 10, 19, 15, 30);
+    expect(isExportDay('2026-11-19', today)).toBe(true);
+    expect(isExportDay('2024-02-29', today)).toBe(true);
+    expect(isExportDay('', today)).toBe(false);
+    expect(isExportDay('19/11/2026', today)).toBe(false);
+    expect(isExportDay('2026-1-9', today)).toBe(false);
+    expect(isExportDay(' 2026-11-19', today)).toBe(false);
+    // Mutation (Rule 19): drop the real-day check from isExportDay -> this goes red.
+    expect(isExportDay('2026-02-30', today)).toBe(false);
+    // Mutation (Rule 19): drop the up-to-today check from isExportDay -> this goes red.
+    expect(isExportDay('2026-11-20', today)).toBe(false);
   });
 
   it('is titled Export, offers a file picker over the allowed directories and the day field with the line about every record', async () => {

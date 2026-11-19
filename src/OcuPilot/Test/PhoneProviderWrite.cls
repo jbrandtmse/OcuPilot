@@ -77,6 +77,7 @@ Method OnAfterOneTest() As %Status
     If '..PreparedPolicyTaken Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Do $ClassMethod(..#SEAM, "Reset")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do ..RemoveMarked()
     Do $$$AssertEquals(..Providers().%ToJSON(), ..PreparedProviders, "every provider and user the test made is removed, and the list reads as before the test")
     Kill tRows

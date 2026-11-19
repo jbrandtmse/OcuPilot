@@ -367,6 +367,7 @@ ClassMethod JudgeWrite(pName As %String, pBody As %DynamicAbstractObject, pCreat
     If (tProblem = "") && 'pCreate && '##class(OcuPilot.Area.Security.PhoneProviderRules).IsName(pName) {
         Set tProblem = "'Name': " _ ##class(OcuPilot.Api.PhoneProviderError).#REASONNAME
     }
+    If (tProblem = "") && (pBody.%Get(..#GATEWAYFIELD) = "") Set tProblem = "'" _ ..#GATEWAYFIELD _ "': " _ ##class(OcuPilot.Api.PhoneProviderError).#REASONGATEWAY
     If tProblem '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, tProblem, .pHttpStatus, .pFault)
     Set pGateway = pBody.%Get(..#GATEWAYFIELD)
     Quit $$$OK
@@ -449,19 +450,25 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 }
 
 /// <p>The write as a script (AD-59), in <code>%SYS</code>: <code>%SYS.PhoneProviders</code>' <code>Create</code> or
-/// <code>Modify</code> with the SMS gateway as the one property, or its <code>Delete</code>, which refuses a provider that
-/// users name, as the port's own count does. A value is a string literal, so nothing the query or the body carries runs as
+/// <code>Modify</code> with the SMS gateway as the one property, a create gated on one line by a free-name check, or its
+/// <code>Delete</code>, which refuses a provider that users name, as the port's own count does; each step shows its status. A value is a string literal, so nothing the query or the body carries runs as
 /// code.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tAdmin = "OcuPilot.Port.AdminPort"
     Set tName = $ClassMethod(tAdmin, "Literal", $Get(pQuery(..#NAMEKEY)))
-    If pType = ..#TYPEDELETE Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tSC = ##class(" _ ..#VENDORCLASS _ ").Delete(" _ tName _ ")")))]
+    Set tShow = "Do $System.Status.DisplayError(tSC)"
+    If pType = ..#TYPEDELETE Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tSC = ##class(" _ ..#VENDORCLASS _ ").Delete(" _ tName _ ")", tShow)))]
     Set tGateway = $Select($IsObject(pBody) && (pBody.%GetTypeOf(..#GATEWAYFIELD) = "string"): pBody.%Get(..#GATEWAYFIELD), 1: "")
     Set tLines = $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", ..#GATEWAYFIELD) _ ") = " _ $ClassMethod(tAdmin, "Literal", tGateway))
-    Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ ..#VENDORCLASS _ ")." _ $Select(pType = ..#TYPECREATE: "Create", 1: "Modify") _ "(" _ tName _ ", .tProps)")
-    Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+    If pType = ..#TYPECREATE {
+        Set tLines = tLines _ $ListBuild("Set tSC = $System.Status.Error(5001, " _ $ClassMethod(tAdmin, "Literal", ##class(OcuPilot.Api.PhoneProviderError).#REASONTAKEN) _ ")")
+        Set tLines = tLines _ $ListBuild("If '##class(" _ ..#VENDORCLASS _ ").Exists(" _ tName _ ") Set tSC = ##class(" _ ..#VENDORCLASS _ ").Create(" _ tName _ ", .tProps)")
+    } Else {
+        Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ ..#VENDORCLASS _ ").Modify(" _ tName _ ", .tProps)")
+    }
+    Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines _ $ListBuild(tShow)))]
 }
 
 }

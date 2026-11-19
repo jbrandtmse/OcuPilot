@@ -93,26 +93,6 @@ ClassMethod WithScreens(pJson As %String) As %String
     Quit $Extract(tWith, 1, *-1) _ tList _ "]"
 }
 
-/// <p>The Security area's screen verdicts <var>pJson</var> without the two Mobile phone providers screens, for a test whose subject is another
-/// screen set and whose expectation lists none of them.</p>
-ClassMethod WithoutScreens(pJson As %String) As %String
-{
-    For tRoute = "security/phone-providers/edit", "security/phone-providers" {
-        Set tMark = "{""route"":""" _ tRoute _ """,""labelKey"""
-        Set tAfterMark = $Find(pJson, tMark)
-        If 'tAfterMark Continue
-        Set tStart = tAfterMark - $Length(tMark)
-        Set tEnd = $Find(pJson, "}", tAfterMark)
-        If $Extract(pJson, tEnd) = "," {
-            Set tEnd = tEnd + 1
-        } ElseIf (tStart > 1) && ($Extract(pJson, tStart - 1) = ",") {
-            Set tStart = tStart - 1
-        }
-        Set pJson = $Extract(pJson, 1, tStart - 1) _ $Extract(pJson, tEnd, *)
-    }
-    Quit pJson
-}
-
 /// <p>The screen's read through the shipped executor, answering its result object.</p>
 ClassMethod Read(Output pHttp As %Integer, Output pFault As %DynamicObject) As %DynamicObject
 {
@@ -201,13 +181,15 @@ Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
     Do $$$AssertEquals(tHttp _ "|" _ tDetail, "403|%DB_IRISSYS:READ", "a caller holding %Admin_Secure:USE alone is refused %DB_IRISSYS:READ, on the screens' own list call too")
     Kill tQuery
     Set tQuery("name") = "OcuPhoneProbe"
+    Do $ClassMethod(..#SEAM, "Reset")
     For tType = "CREATE", "SET", "DELETE" {
         Set tBody = $Select(tType = "DELETE": "", 1: {"SMSGateway": "probe.example.com"})
         Set tSC = $ClassMethod(..#SEAM, "Invoke", "PhoneProviders", tType, .tQuery, tBody, .tOut, .tHttp, .tFault)
         Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
         Do $$$AssertEquals(tHttp _ "|" _ tDetail, "403|%DB_IRISSYS:READ", tType _ " by a caller short of a pair is refused naming it")
     }
-    Do $$$AssertEquals(..VendorProviders(.tAfter), tCount, "and nothing reached the vendor")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), "", "and nothing reached the vendor")
+    Do $$$AssertEquals(..VendorProviders(.tAfter), tCount, "and the instance holds the providers it held")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Kill tQuery
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "PhoneProviders", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)

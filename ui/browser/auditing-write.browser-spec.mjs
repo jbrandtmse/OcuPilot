@@ -382,8 +382,9 @@ const EXPORT_BOUND = '2000-01-01';
 /** The screen this page opens on. */
 const AUDITING_URL = '/ocupilot/security/auditing?ns=HSCUSTOM';
 
-/** Create the export directory under the first allowed directory and answer that directory as the instance lists it. */
+/** Create the export directory, empty, under the first allowed directory and answer that directory as the instance lists it. */
 function makeExportDirectory() {
+  removeExportDirectory();
   const output = runIris([
     `Set root=##class(OcuPilot.Test.TaskTransferFixture).FirstRoot()`,
     `Do ##class(%File).CreateDirectoryChain(##class(%File).NormalizeDirectory(root_"${EXPORT_DIRECTORY}"))`,
