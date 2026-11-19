@@ -722,3 +722,7 @@
 2026-11-19T19:47:01Z	Story 21.10	code_head_pushed	sha=11cb922ab run=44601785786 missing=none note=rosters_green_before_push(orchestrator)
 2026-11-19T19:47:01Z	Story 21.10	ledger_adjudicated	resolved=DW-2431,2457 decision-pending=DW-2781 escalated=DW-2782 terminal=DW-2783..2785 open_owned=0
 2026-11-19T19:47:21Z	Story 21.10	gate_step	step=fresh_check+full_sweep+smoke head=11cb922ab started=2026-11-19T19:47:21Z dir=e21u/21-10/gate
+2026-11-19T20:03:42Z	Story 21.10	ruling	question=Task0_attribution_correction via=orchestrator choice=Task0_subagent_aa0a16409d4529c24_belonged_to_the_RE-SPAWNED_stage_ae7dd6a2d3a24d7a1(build_a28b871628708aae4),not_the_stopped_one;line_ended_18:42-18:43Z;only_repo_write_the_spec_edit_18:42:18;new_protocol:confirm_previous_stage_line_ended_before_next_stage
+2026-11-19T20:03:42Z	Story 21.10	fresh_check	env=recipe(ci-throwaway_rebuild) result=fail test=Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode(ConfigPort_doc_comment_spells_PROHIBITED.SERVICEACCOUNTSIGNIN) head=11cb922ab action=gate_aborted(runner_stopped_its_own_sweep_at_shard_2),rework
+2026-11-19T20:03:42Z	Story 21.10	rework_opened	cycle_iteration=2 iteration=1 trigger=high(fresh_check_red) items=ConfigPort_comment_PROHIBITED_literal scope_baseline=11cb922ab
+2026-11-19T20:03:42Z	Story 21.10	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T20:03:42Z model=sonnet agent_name=21-10-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(lineended.py)

@@ -2,7 +2,7 @@
 title: 'Story 21.10: The remaining leaves across the six areas'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '251088f4bd525683fbfa89365c663ac4df586cbd'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -226,6 +226,8 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 - AC6. Given the default baseline, when the agent proposes each new write, then create, update and export mint, and the security set and the provider delete are refused by governance until enabled.
 
 ### Review Findings
+
+- [ ] [Review][HIGH] Fresh-environment check (rebuilt `ocupilot-ci`, code head `11cb922ab`): `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` fails "no class outside the set and the tests spells a PROHIBITED. code: OcuPilot.Port.ConfigPort". The review's doc comment at `Port/ConfigPort.cls:173` names `PROHIBITED.SERVICEACCOUNTSIGNIN`; only the set (`Kernel/Proposal/Prohibited.cls`) may spell a `PROHIBITED.` code. Reword the comment to name the rule without the code literal (or point at the set's parameter), sweep this story's other new or changed classes for the same spelling, and run `OcuPilot.Test.Prohibited` as a full class. [src/OcuPilot/Port/ConfigPort.cls:173]
 
 Code review 2026-11-19 (four layers plus a measurement pass on `ocupilot-ci`).
 
