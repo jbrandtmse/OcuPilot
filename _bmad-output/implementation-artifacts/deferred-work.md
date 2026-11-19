@@ -13835,6 +13835,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Both child screens are children of the Quality measures list; only Groups and elements opens from a row; the browser test opens Documentation by URL
 - 2026-11-18T13:28:30Z status=open owner=24-12-quality-measures by=harvest note=fix in Batch 3, which writes the documentation; a link or tab may need a strings row (veto)
+- 2026-11-19T01:49:11Z status=resolved-by:24-12-quality-measures by=adjudication note=Batch 3 tab group (f6146233f), browser AC4
 
 ### DW-2735: Quality measures: AC4's first-call clause holds only when the journal-scan class runs before the other 24.12 classes on its throwaway
 - source: spec-24-12-quality-measures.md | severity: low | fix-risk: med | footprint: in-story
@@ -13912,3 +13913,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job log: hookFailed at a11y-structural-invariants.browser-spec.mjs:68; all four tests not ok; rerun green
 - 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=settle_deadline_family;21-22_closed
 - 2026-11-18T18:00:33Z status=dropped owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=duplicate_of_DW-1822(reopened_there)
+
+### DW-2751: Quality measures: an element add naming a group that differs only in letter case from an existing group creates a second group
+- source: spec-24-12-quality-measures-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ApplyQualityMeasurePart matches the group exactly; the vendor %Validate refuses an enabled case twin (422 COMPILE, a misleading reason) and keeps a disabled one. A refusal needs a ruled sentence.
+- 2026-11-19T01:49:10Z status=decision-pending owner=24-12-quality-measures by=harvest note=needs_ruled_refusal_sentence(decision_sheet)
+
+### DW-2752: Quality measures: the EXPRESSION refusal sentence names a missing group or brackets, not a group left with no enabled element
+- source: spec-24-12-quality-measures-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Removing or disabling the only enabled element, or disabling a group, answers REASONQUALITYMEASUREEXPRESSION, whose words describe neither case; a truer sentence needs ruling (EXPERIENCE.md).
+- 2026-11-19T01:49:10Z status=decision-pending owner=24-12-quality-measures by=harvest note=needs_ruled_sentence(decision_sheet)
+
+### DW-2753: Quality measures: the group, element and item field captures repeat Collect's field lists (Rule 2)
+- source: spec-24-12-quality-measures-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ReadQualityMeasureData's g and m nodes and QualityMeasureElementRow/MetaRow repeat Collect's part-row $ListBuild fields; a field added to one and not the other splits the list from the single read.
+- 2026-11-19T01:49:10Z status=routed owner=burndown by=harvest note=one_shared_field_list
