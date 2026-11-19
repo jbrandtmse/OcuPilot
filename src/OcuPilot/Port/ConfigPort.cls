@@ -170,7 +170,7 @@ Parameter SECURITYNAME = "SYSTEM";
 /// <code>InvalidLoginLimit</code> 0 to 64 and <code>PasswordExpirationDays</code> 0 to 99999. The last field is whether the name is
 /// settable (1) or shown and never changed (0): <code>RequiredRole</code> and <code>PasswordValidationRoutine</code> could lock the
 /// instance's own requests out or run code, a positive <code>PasswordExpirationDays</code> expires the password of every account
-/// that does not exempt it, a service account's included (AD-10, <code>PROHIBITED.SERVICEACCOUNTSIGNIN</code>), <code>ConfigurationSecurityEnabled</code>, <code>SecurityDomains</code> and
+/// that does not exempt it, a service account's included (AD-10's service-account sign-in rule), <code>ConfigurationSecurityEnabled</code>, <code>SecurityDomains</code> and
 /// <code>DefaultSecurityDomain</code> change how a login is named, <code>AuditEnabled</code> belongs to Auditing, and
 /// <code>SSLTelnetServer</code> is listed on Windows only (<parameter>SECURITYWINDOWSONLY</parameter>).</p>
 Parameter SECURITYROSTER = "AuditEnabled|boolean|||0;AuditFlags|boolean|||1;ConfigurationSecurityEnabled|boolean|||0;DefaultSecurityDomain|text|128||0;DefaultSignatureHash|choice|SHA1,SHA256,SHA384,SHA512||1;EscalateAuthTimeout|integer|0:||1;EscalateLoginTimeout|integer|0:||1;InactiveLimit|integer|0:365||1;InvalidLoginAction|boolean|||1;InvalidLoginLimit|integer|0:64||1;PasswordExpirationDays|integer|0:99999||0;PasswordPattern|text|64||1;PasswordValidationRoutine|text|128||0;PercentGlobalWrite|boolean|||1;RequiredRole|text|64||0;SQLSecurity|boolean|||1;SSLTelnetServer|integer|0:2||0;SecurityDomains|boolean|||0;WebAppPctAccess|boolean|||1";

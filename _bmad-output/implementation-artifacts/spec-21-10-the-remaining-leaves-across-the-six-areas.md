@@ -2,10 +2,10 @@
 title: 'Story 21.10: The remaining leaves across the six areas'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '251088f4bd525683fbfa89365c663ac4df586cbd'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
 warnings: ['multiple-goals', 'oversized']
@@ -227,7 +227,7 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 ### Review Findings
 
-- [ ] [Review][HIGH] Fresh-environment check (rebuilt `ocupilot-ci`, code head `11cb922ab`): `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` fails "no class outside the set and the tests spells a PROHIBITED. code: OcuPilot.Port.ConfigPort". The review's doc comment at `Port/ConfigPort.cls:173` names `PROHIBITED.SERVICEACCOUNTSIGNIN`; only the set (`Kernel/Proposal/Prohibited.cls`) may spell a `PROHIBITED.` code. Reword the comment to name the rule without the code literal (or point at the set's parameter), sweep this story's other new or changed classes for the same spelling, and run `OcuPilot.Test.Prohibited` as a full class. [src/OcuPilot/Port/ConfigPort.cls:173]
+- [x] [Review][HIGH] Fresh-environment check (rebuilt `ocupilot-ci`, code head `11cb922ab`): `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` fails "no class outside the set and the tests spells a PROHIBITED. code: OcuPilot.Port.ConfigPort". The review's doc comment at `Port/ConfigPort.cls:173` names `PROHIBITED.SERVICEACCOUNTSIGNIN`; only the set (`Kernel/Proposal/Prohibited.cls`) may spell a `PROHIBITED.` code. Reword the comment to name the rule without the code literal (or point at the set's parameter), sweep this story's other new or changed classes for the same spelling, and run `OcuPilot.Test.Prohibited` as a full class. [src/OcuPilot/Port/ConfigPort.cls:173]
 
 Code review 2026-11-19 (four layers plus a measurement pass on `ocupilot-ci`).
 
@@ -279,6 +279,11 @@ Rejected: `InactiveLimit`, `InvalidLoginLimit`/`Action` and `AuditFlags` lockout
   - `[false]` `[reject]` The screen's pair is `%Admin_Manage:USE` while the vendor needs fewer — the descriptor's pairs are the spec's.
   - `[medium]` `[defer]` About twenty user-facing strings are not in the spec's proposed list — in the frontmatter `deferred:` list and under Auto Run Result, Strings awaiting a ruling.
   - `[false]` `[reject]` The gate tests use seams (`PhoneGateSeam`, `AuditExportSeam`) — they pin the 403 for a caller missing a pair, which needs a substituted principal; the write classes run the real instance.
+
+### 2026-11-19 — Review pass (rework 1, follow-up)
+
+- verdicts: 0 findings — high 0, medium 0, low 0, false 0, maybe-false 0
+- findings: none; both layers read the one-comment diff and reported nothing.
 
 ## Design Notes
 
@@ -445,6 +450,8 @@ Rejected: `InactiveLimit`, `InvalidLoginLimit`/`Action` and `AuditFlags` lockout
 
 Status: done
 Blocking condition: none
+
+**Rework 1.** The doc comment of `SECURITYROSTER` in `src/OcuPilot/Port/ConfigPort.cls` named the AD-10 service-account refusal by its code literal; it now names the rule in words, so only the set spells a `PROHIBITED.` code. The sweep of the story's changed classes found no other letter-suffixed spelling (three `PROHIBITED.*` wildcards remain, which the test does not count). Verified: reload `LOADERRORS=0`; `OcuPilot.Test.Prohibited` green as a full class on `ocupilot-ci` (16 tests, 0 failed); `check-objectscript.py` clean. Review of the pass diff: no findings; follow-up review recommended `false`. No test changed, so no mutation line.
 
 **Change.** All four batches and Task 0 (measured pairs under Design Notes; no pair beyond the admitted ones).
 
