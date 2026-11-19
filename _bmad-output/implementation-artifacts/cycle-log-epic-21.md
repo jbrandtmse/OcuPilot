@@ -640,3 +640,5 @@
 2026-11-19T00:52:13Z	Story 21.18	gate_step	step=sweep result=green shards=20/20 head=abd91cccb
 2026-11-19T00:52:13Z	Story 21.18	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
 2026-11-19T00:52:13Z	Story 21.18	story_green	code_head=abd91cccb ci=44413746537(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=8793dec9d
+2026-11-19T00:52:29Z	Story 21.15	spec_validated	owned_ledger=DW-2606 addressed=1(Export_task,matrix,AC6) owner_answer=U-58
+2026-11-19T00:52:29Z	Story 21.15	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-19T00:52:29Z model=sonnet agent_name=21-15-implement-1 cycle_iteration=1 story_base=a44ce8fff
