@@ -499,3 +499,4 @@
 2026-11-19T17:06:13Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=a365495ce
 2026-11-19T17:23:16Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=a365495ce forward=5/5_classes_40_tests_first_run reverse+rosters=17/17_classes_176_tests(Prohibited,ToolWrite,DraftRegistry_per_ruling) browser=analytics+links+a11y34/34,config-settings+interop-item-settings10/10 smoke=50/50 bundle=2.15MB scope=batch2
 2026-11-19T17:23:41Z	Story 24.13	code_head_pushed	sha=a365495ce run=44576645624 missing=none scope=batch2
+2026-11-19T17:23:55Z	Story 24.13	stage_spawned	stage=pre-warm spawn_at=2026-11-19T17:23:55Z model=opus agent_name=epic-24-context-prewarm-10 cycle_iteration=3 reason=planning_artifact_newer(EXPERIENCE.md_rows)
