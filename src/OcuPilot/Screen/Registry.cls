@@ -1910,7 +1910,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
             Set tSearches = ''$ListFind($ListFromString($Parameter("OcuPilot.Port.InteropPort", "SEARCHENDPOINTS")), tRead.%Get("source").%Get("endpoint"))
         }
         ; AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
-        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS)
+        ; Story 21.16: a locale read takes criteria only as its parent's route id (one locale's properties), on a parent-scoped list.
+        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOCALE)
         If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL) && ('tParentOnly || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
@@ -3208,7 +3209,7 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <p><code>allowed-directory-fallback</code> is the allow-list's unrestricted fallback row (Story 18.46): a row whose
 /// <code>Restricted</code> reads false, explained by <class>OcuPilot.Api.AllowListError</class>'s <code>REASONFALLBACK</code>
 /// and refused for a change or a remove by the allow-list port.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback,protected-global";
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback,protected-global,locale-table,locale-loadable";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

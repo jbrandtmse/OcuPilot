@@ -1629,6 +1629,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
+      'OcuPilot.Screen.Descriptor.LocalePropertyList',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',

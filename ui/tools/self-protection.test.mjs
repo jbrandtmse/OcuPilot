@@ -1112,3 +1112,22 @@ test("Story 21.5: protected-global answers the sentence for a name beginning wit
   const registry = readFileSync(REGISTRY, 'utf8');
   assert.ok(parseSelfProtectionRules(registry)?.includes('protected-global'), 'the instance declares the rule in SELFPROTECTIONRULES');
 });
+
+test('Story 21.16: locale-table answers a row that is no table, else the refusal the row carries, and locale-loadable a row that is not loadable', async () => {
+  // Mutation (Rule 19): answer the refusal before the row's Kind in `selfProtectionReason` -> the first leg goes red.
+  const { selfProtectionReason, LOCALE_TABLE_RULE, LOCALE_LOADABLE_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(LOCALE_TABLE_RULE, 'locale-table');
+  assert.equal(LOCALE_LOADABLE_RULE, 'locale-loadable');
+  const key = 'yzzw\u0001DateFormat';
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'integer', Refusal: 'LOCALE.EDIT.CURRENT' }), STRINGS.localeRefusalTableRow);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: 'LOCALE.EDIT.CURRENT' }), STRINGS.localeRefusalEditCurrent);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: 'LOCALE.EDIT.SYSTEM' }), STRINGS.localeRefusalEditSystem);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: '' }), '');
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', null), '');
+  assert.equal(selfProtectionReason(LOCALE_LOADABLE_RULE, key, '', { Loadable: false }), STRINGS.localeRefusalTableNotLoadable);
+  assert.equal(selfProtectionReason(LOCALE_LOADABLE_RULE, key, '', { Loadable: true }), '');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('locale-table'), 'the instance declares locale-table');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('locale-loadable'), 'the instance declares locale-loadable');
+});

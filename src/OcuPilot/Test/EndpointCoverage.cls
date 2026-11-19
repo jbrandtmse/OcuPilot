@@ -303,6 +303,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/locales/:name/validation" path="/api/ocupilot/locales/ocupilot-coverage-probe/validation" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/locales" path="/api/ocupilot/locales" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/locale-properties" path="/api/ocupilot/locale-properties" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

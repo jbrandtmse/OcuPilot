@@ -66,7 +66,7 @@ Parameter DDLMAPPINGDISABLED = "osmgmt.systemddlmappings.delete,osmgmt.userddlma
 
 /// <p>Story 21.14's locale install and locale delete, which ship disabled (AD-22): an install purges every cached query and can change IRISTEMP's
 /// default collation, and a delete removes a locale OcuPilot cannot restore. The locale-format set ships enabled.</p>
-Parameter LOCALEDISABLED = "osmgmt.locales.install,osmgmt.locales.delete";
+Parameter LOCALEDISABLED = "osmgmt.locales.install,osmgmt.locales.delete,osmgmt.localeproperties.load";
 
 /// <p>Story 21.5's globals delete, node save and node delete, and Story 21.17's import, each listed false in the baseline.</p>
 Parameter GLOBALDISABLED = "explorer.globals.delete,explorer.globalnodes.save,explorer.globalnodes.delete,explorer.globals.import,explorer.globals.replace";

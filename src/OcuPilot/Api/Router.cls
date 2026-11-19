@@ -289,6 +289,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
   <Route Url="/locales/:name/validation" Method="GET" Call="LocaleValidation"/>
+  <Route Url="/locales" Method="POST" Call="LocaleCreate"/>
+  <Route Url="/locale-properties" Method="POST" Call="LocalePropertyCreate"/>
 </Routes>
 }
 
@@ -2046,6 +2048,20 @@ ClassMethod DdlMappingCreate() As %Status
 ClassMethod LocaleValidation(pName As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.LocaleRules).HandleValidate(pName)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /locales</code> (Story 21.16): Locale definitions' Copy, resolved through the one tool the
+/// agent's confirm uses (AD-55).</p>
+ClassMethod LocaleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleCopySave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /locale-properties</code> (Story 21.16): Locale properties' Add table, resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LocalePropertyCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleTableSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

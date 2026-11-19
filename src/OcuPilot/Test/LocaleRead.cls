@@ -260,13 +260,14 @@ Method TestTheToolHoldsNoVendorLine()
     Do $$$AssertTrue(tResult.%ToJSON() '[ tWarning, "no warning line is in the result: " _ tResult.%ToJSON())
 }
 
-/// <p><b>AC2.</b> Every read is refused to a caller holding none of its pairs, naming the first, before any vendor call; a caller holding the read pairs reads
-/// and is refused an install or a delete naming <code>%DB_IRISSYS:WRITE</code>, with nothing recorded.</p>
+/// <p><b>AC2.</b> Every read, of the locale list and of a locale's properties, is refused to a caller holding none of its pairs, naming the first, before any vendor call;
+/// a caller holding the read pairs reads and is refused an install, a delete, a copy and a set, add, remove or load of a property naming <code>%DB_IRISSYS:WRITE</code>,
+/// with nothing recorded.</p>
 /// <p>Mutation (Rule 19): <code>WRITEPAIRS</code> without <code>%DB_IRISSYS:WRITE</code> -> the write rows go red; <code>Invoke</code> asks <code>ReadInstallable</code>
-/// before the gate for an install -> the install row goes red.</p>
+/// before the gate for an install -> the install row goes red; <code>WRITETYPES</code> without <code>COPY</code> and <code>LOAD</code> -> the copy and load rows go red.</p>
 Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
 {
-    For tCase = $ListBuild("Locales", "LIST"), $ListBuild("Locales", "GET"), $ListBuild("Validation", "GET") {
+    For tCase = $ListBuild("Locales", "LIST"), $ListBuild("Locales", "GET"), $ListBuild("Validation", "GET"), $ListBuild("Properties", "LIST"), $ListBuild("Properties", "GET") {
         Kill tQuery
         Set tQuery("name") = "enuw"
         Set tSC = $ClassMethod(..#SEAM, "Invoke", $List(tCase, 1), $List(tCase, 2), .tQuery, "", .tRows, .tHttp, .tFault)
@@ -286,15 +287,25 @@ Method TestEveryReadAndWriteIsRefusedToACallerShortOfItsPairs()
         Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
         Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $ClassMethod(..#SEAM, "Calls") _ $ClassMethod(..#SEAM, "Checks"), "403|%DB_IRISSYS:WRITE|", tType _ " is refused naming the write pair, with nothing sent and the vendor's install check not asked")
     }
+    For tCase = $ListBuild("Locales", "COPY"), $ListBuild("Properties", "SET"), $ListBuild("Properties", "ADD"), $ListBuild("Properties", "REMOVE"), $ListBuild("Properties", "LOAD") {
+        Kill tQuery
+        Set tQuery("locale") = "yzzw"
+        Set tQuery("name") = $Select($List(tCase, 1) = "Locales": "yzzw", 1: "DateFormat")
+        Set tSC = $ClassMethod(..#SEAM, "Invoke", $List(tCase, 1), $List(tCase, 2), .tQuery, "", .tOut, .tHttp, .tFault)
+        Set tDetail = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
+        Do $$$AssertEquals(tHttp _ "|" _ tDetail _ "|" _ $ClassMethod(..#SEAM, "Calls") _ $ClassMethod(..#SEAM, "Checks"), "403|%DB_IRISSYS:WRITE|", $List(tCase, 1) _ " " _ $List(tCase, 2) _ " is refused naming the write pair, with nothing sent")
+    }
 }
 
 /// <p><b>AC2, AC3.</b> A call that is not a read, a write the endpoint does not serve and a body are each refused: 501 <code>PORT.NOTIMPLEMENTED</code> for
 /// another endpoint or type, and a body is 500 <code>INTERNAL</code>, logged; a <code>maxRows</code> that is not a whole number above zero is 400
 /// <code>PORT.VALIDATION</code>.</p>
-/// <p>Mutation (Rule 19): <code>Serves</code> answers 1 for <code>INSTALL</code> on <code>Validation</code> -> the 501 row goes red.</p>
+/// <p>Mutation (Rule 19): <code>Serves</code> answers 1 for <code>INSTALL</code> on <code>Validation</code> -> the 501 row goes red; <code>Serves</code> answers 1 for <code>SET</code>
+/// on <code>Locales</code> or for <code>INSTALL</code> on <code>Properties</code> -> the served-type row goes red.</p>
 Method TestTheServedTypesAndTheBoundsAreEnforced()
 {
     Do ..HoldAll()
+    Do $$$AssertEquals(##class(OcuPilot.Port.LocalePort).Serves("Locales", "COPY") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "LIST") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "GET") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "SET") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "ADD") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "REMOVE") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "LOAD") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "INSTALL") _ ##class(OcuPilot.Port.LocalePort).Serves("Properties", "DELETE") _ ##class(OcuPilot.Port.LocalePort).Serves("Locales", "SET"), "1111111000", "Locales serves COPY and not SET; Properties serves LIST, GET, SET, ADD, REMOVE and LOAD and not INSTALL or DELETE")
     Do $$$AssertEquals(##class(OcuPilot.Port.LocalePort).Serves("Locales", "LIST") _ ##class(OcuPilot.Port.LocalePort).Serves("Locales", "GET") _ ##class(OcuPilot.Port.LocalePort).Serves("Locales", "INSTALL") _ ##class(OcuPilot.Port.LocalePort).Serves("Locales", "DELETE") _ ##class(OcuPilot.Port.LocalePort).Serves("Validation", "GET") _ ##class(OcuPilot.Port.LocalePort).Serves("Validation", "LIST") _ ##class(OcuPilot.Port.LocalePort).Serves("Validation", "INSTALL") _ ##class(OcuPilot.Port.LocalePort).Serves("Nothing", "GET"), "11111000", "Locales serves LIST, GET, INSTALL and DELETE, Validation GET, and nothing else")
     Kill tQuery
     Set tQuery("name") = "yzzw"
@@ -321,7 +332,7 @@ XData Cases
 {
   "cases": [
     {"name": "a locale LIST of Locales is sound", "source": {"port": "locale", "endpoint": "Locales", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not list", "source": {"port": "locale", "endpoint": "Validation", "type": "LIST"}, "expected": "read.source.endpoint 'Validation' is not one of the locale port's endpoints ('Locales') (AD-29)"},
+    {"name": "an endpoint the port does not list", "source": {"port": "locale", "endpoint": "Validation", "type": "LIST"}, "expected": "read.source.endpoint 'Validation' is not one of the locale port's endpoints ('Locales', 'Properties') (AD-29)"},
     {"name": "a type other than LIST", "source": {"port": "locale", "endpoint": "Locales", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a locale source, which lists the instance's locale definitions (AD-36)"},
     {"name": "rowGet", "source": {"port": "locale", "endpoint": "Locales", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}}, "expected": "read.source.rowGet is declared on a locale source, which answers its list whole (AD-36)"},
     {"name": "forEach", "source": {"port": "locale", "endpoint": "Locales", "type": "LIST", "forEach": ["Description"]}, "expected": "read.source.forEach is declared on a locale source, which answers its list whole (AD-36)"},
@@ -364,7 +375,7 @@ Method TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences()
     Do $$$AssertStatusOK($ClassMethod(tClass, "DeclarationJson", .tDeclaration), "the declaration parses")
     Do $$$AssertEquals($ClassMethod(tClass, "Route") _ "|" _ $ClassMethod(tClass, "AreaKey") _ "|" _ $ClassMethod(tClass, "SideBarPosition") _ "|" _ $ClassMethod(tClass, "ClassicPage"), "os-management/locales|os-management|37|%CSP.UI.Portal.NLS", "its route, area, position and classic page")
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("%CSP.UI.Portal.NLS", "O", "URL")), "%CSP.UI.Portal.NLS", "which the portal's own resolver recognises (AD-44)")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "locale|validate,install,delete", "its entity type and its row actions")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "locale|validate,install,delete,copy", "its entity type and its row actions")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "locale|Locales|LIST", "it reads through the locale port")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read is the declared grammar")
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(tClass, .tResolved)

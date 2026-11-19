@@ -5,13 +5,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
+import { joinCompositeId } from '../../core/entity-id';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
-import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { LOCALE_ADD_TABLE, LOCALE_LOAD_TABLE, LOCALE_PROPERTY_LIST, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import {
   COMPATIBILITY_SETTING_LIST,
@@ -85,7 +86,7 @@ interface Call {
 }
 
 /** Mount the page at `descriptor`'s route over `ROWS`; each request resolves to the next of `answers`. */
-function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], descriptor = STARTUP_SETTING_LIST) {
+function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], descriptor = STARTUP_SETTING_LIST, rows: readonly Record<string, unknown>[] = ROWS) {
   TestBed.resetTestingModule();
   const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
   const calls: Call[] = [];
@@ -111,7 +112,7 @@ function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], 
   });
   TestBed.overrideComponent(ConfigSettingsPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
   const store = stores.for(screen.descriptor, screen.refreshRates);
-  store.applyTick(ROWS, false, '', new Date());
+  store.applyTick(rows, false, '', new Date());
   const fixture = TestBed.createComponent(ConfigSettingsPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -384,5 +385,118 @@ describe('the settings page', () => {
     expect(host.querySelector('[data-config-setting-reload]')?.textContent?.trim()).toBe(STRINGS.nlsDefaultReloadConsequence);
     expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
     expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
+  });
+
+  describe('locale properties', () => {
+    const property = (name: string, refusal = ''): Record<string, unknown> => ({
+      Locale: 'yzzw',
+      Group: 'tables',
+      Name: name,
+      Value: 'Unicode',
+      Kind: 'table',
+      Accepts: STRINGS.configAcceptsReadOnly,
+      ReadOnly: true,
+      Refusal: refusal,
+      Loadable: false,
+    });
+    const rows = [property('PatternTables:Unicode')];
+    const CREATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 201,
+      body: { id: 'x', target: { type: 'locale-property', scope: 'instance', id: 'yzzw\u0001PatternTables:Latin2' }, readBack: { verdict: 'matches' } },
+    };
+
+    const fill = (host: HTMLElement, field: string, value: string): void => {
+      const control = host.querySelector(`[data-locale-table-field="${field}"]`) as HTMLInputElement | HTMLSelectElement;
+      control.value = value;
+      control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input'));
+    };
+
+    it('registers Add table on the properties screen alone and gives the refusal its locale carries as its reason', () => {
+      const current = mount([], LOCALE_PROPERTY_LIST, [property('PatternTables:Unicode', 'LOCALE.EDIT.CURRENT')]);
+      expect(current.actions.has(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe(true);
+      expect(current.actions.reason(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe(STRINGS.localeRefusalEditCurrent);
+      const custom = mount([], LOCALE_PROPERTY_LIST, rows);
+      expect(custom.actions.reason(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe('');
+      expect(mount([], STARTUP_SETTING_LIST).actions.has(STARTUP_SETTING_LIST, LOCALE_ADD_TABLE)).toBe(false);
+    });
+
+    // Mutation (Rule 19): drop the `localeEditRefusal` branch from Set value's reason -> the shipped locale's sentence goes red.
+    it('gives Set value the refusal its locale carries as its reason, and the read-only sentence only on a row that carries none', () => {
+      const settable = (refusal: string): Record<string, unknown> => ({ ...property('DateFormat', refusal), Group: 'formats', Kind: 'integer', ReadOnly: false });
+      const shipped = mount([], LOCALE_PROPERTY_LIST, [settable('LOCALE.EDIT.SYSTEM')]);
+      shipped.store.setSelection([joinCompositeId(['yzzw', 'DateFormat'])]);
+      expect(shipped.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.localeRefusalEditSystem);
+      expect(shipped.actions.run(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(false);
+      const custom = mount([], LOCALE_PROPERTY_LIST, [settable('')]);
+      custom.store.setSelection([joinCompositeId(['yzzw', 'DateFormat'])]);
+      expect(custom.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe('');
+      const shown = mount([], LOCALE_PROPERTY_LIST, rows);
+      shown.store.setSelection([joinCompositeId(['yzzw', 'PatternTables:Unicode'])]);
+      expect(shown.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    });
+
+    // Mutation (Rule 19): drop `LOCALE_PROPERTY_LIST` from `DESTRUCTIVE_ON` -> Load table is sent at once, no confirmation opens and this goes red.
+    it('confirms Load table before it sends anything and states the published consequence', async () => {
+      const id = joinCompositeId(['yzzw', 'PatternTables:Unicode']);
+      const { fixture, store, actions, handler, calls } = mount([], LOCALE_PROPERTY_LIST, [{ ...property('PatternTables:Unicode'), Loadable: true }]);
+      store.setSelection([id]);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_LOAD_TABLE);
+      await settle(fixture);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.consequence).toBe(STRINGS.localeLoadConsequence);
+      expect(handler.pending()?.target).toBe(id);
+      expect(handler.pending()?.name).toBe('PatternTables:Unicode');
+      expect(calls).toEqual([]);
+      handler.confirmPending();
+      await settle(fixture);
+      expect(calls).toEqual([{ path: '/api/ocupilot/screens/osmgmt.localeproperties/action', method: 'POST', body: JSON.stringify({ action: LOCALE_LOAD_TABLE, id }) }]);
+    });
+
+    // Mutation (Rule 19): post to the screen's action route instead of `/api/ocupilot/locale-properties` -> the path and body assertions go red.
+    it('posts an internal table of the locale on screen to the Save route and announces the row the server created', async () => {
+      const { fixture, host, actions, calls, events } = mount([CREATED], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      expect(host.querySelector('app-locale-table-dialog')).not.toBeNull();
+      expect(host.querySelector('[data-locale-table-field="InputFrom"]')).toBeNull();
+      fill(host, 'Table', 'Latin2');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(calls).toEqual([{ path: '/api/ocupilot/locale-properties', method: 'POST', body: JSON.stringify({ Locale: 'yzzw', Name: 'PatternTables:Latin2' }) }]);
+      expect(host.querySelector('app-locale-table-dialog')).toBeNull();
+      expect(events.map((event) => `${event.type}|${event.scope}|${event.id}|${event.action}|${event.tool}`)).toEqual([
+        'locale-property|instance|yzzw\u0001PatternTables:Latin2|created|osmgmt.localeproperties.add',
+      ]);
+    });
+
+    it('sends the two sides of an input/output table and no others', async () => {
+      const { fixture, host, actions, calls } = mount([CREATED], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      fill(host, 'Type', 'XLTTables');
+      await settle(fixture);
+      fill(host, 'Table', 'myio');
+      fill(host, 'InputFrom', 'Latin2');
+      fill(host, 'OutputTo', 'Latin2');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ Locale: 'yzzw', Name: 'XLTTables:myio', InputFrom: 'Latin2', OutputTo: 'Latin2' });
+    });
+
+    it('keeps the dialog open with the sentence the server gave when the add is refused, and publishes nothing', async () => {
+      const refused: JsonResult<unknown> = { kind: 'error', status: 409, code: 'LOCALE.TABLE.TAKEN', reason: STRINGS.localeRefusalTableTaken, detail: null };
+      const { fixture, host, actions, events } = mount([refused], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      fill(host, 'Table', 'Unicode');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('[data-locale-table-reason]')?.textContent?.trim()).toBe(STRINGS.localeRefusalTableTaken);
+      expect(events).toEqual([]);
+    });
   });
 });

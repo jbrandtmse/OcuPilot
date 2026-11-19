@@ -753,7 +753,24 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         } ElseIf tSource.%Get("port") = ..#SOURCELOCALE {
             ; The instance's locale definitions (Story 21.14): no namespace and no criteria, so the cap is the whole ask; the port's gate
             ; runs before any vendor call (AD-36).
-            Set tPortSC = $ClassMethod(..LocalePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            ; One locale's properties (Story 21.16) are the exception: the route's own criterion names the locale, as an analytics read's does.
+            If tSource.%Get("endpoint") = $Parameter(..LocalePortClass(), "PROPERTIESENDPOINT") {
+                Kill tQuery
+                Set tQuery("maxRows") = tMax + 1
+                Set tRouteParam = ..ObjectCriterionParam(tRead)
+                If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
+                    Quit
+                }
+                Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+                If tCriterionProblem '= "" {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                    Quit
+                }
+                Set tPortSC = $ClassMethod(..LocalePortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            } Else {
+                Set tPortSC = $ClassMethod(..LocalePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            }
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

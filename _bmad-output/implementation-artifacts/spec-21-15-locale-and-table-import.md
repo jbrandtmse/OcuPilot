@@ -3,6 +3,7 @@ title: 'Story 21.15: Locale and table import'
 type: 'feature'
 created: '2026-11-15'
 status: 'ready-for-dev'
+baseline_revision: 'e0625697cc0368fe272673c7beda3ad6f0868a41'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -90,6 +91,8 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 
 ## Spec Change Log
 
+- 2026-11-19 (Task 0 stop, orchestrator ruling, veto U-114; AD-51 sentence `29879ab32`): option 1. The import's review and write keep only the file's custom records; the vendor gets a temporary file holding just those; shipped tables and subtables are dropped, never written, and the review states how many (reuse an existing string; at most one new sentence, listed in U-114). `LOCALE.IMPORT.SYSTEM` is not added. A malformed file is refused before the write with an existing refusal code (the vendor answers OK and imports nothing), pinned by a test; OcuPilot's own Export file round-trips through Import, pinned by a test. The temporary file lives under a directory OcuPilot owns and is deleted on every path, errors included, pinned by a test. Build after Story 21.16 lands.
+
 - 2026-11-15 (re-plan, owner answer U-58): Export joined the intent (Problem, Approach, Always, Never, two matrix rows, AC6); the import's size refusal is one code, `LOCALE.TOOLARGE`, shared with the browser export; the import's descriptor actions follow `InteropLookupTableList`'s row-action form; the armed test is `LocaleTransferWrite`.
 
 ## Review Triage Log
@@ -127,6 +130,16 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 
 **Runner ruling at the spec gate (2026-11-15):** the AD-51 entry and the AD-21 record are written into the spine (owner answer U-58); the AD-53 gap waits on Task 0 (e); dropping the Locales/Tables/Both choice, the strings and export's governance are kept (veto U-61). Implement after Story 21.14.
 
+**Task 0 results (implement stage, `ocupilot-ci`, 2026-11-18; every probe restored, `^SYS("NLS")` checksum back to its starting value):**
+
+- (a) A `y` locale made from `enuw`'s `Get` (name must end `w`: `yprb` is refused by `ImportAll` with "Invalid locale name", `yzzw` is accepted) exports with `ExportList(file, .n, .loc)`, `loc("yzzw")`, to `<?xml version="1.0" encoding="UTF-8"?>`, root `LocalesDeepExport` holding `LocalesExport/Locales` (1), `TablesDeepExport/TablesExport/Tables` (50) and `SubTablesExport/SubTables` (40): **the file carries `enuw`'s 50 shipped tables and 40 shipped subtables, not only the `y` record.** 704,162 characters, 0.05 s, `NumExported` `Locales` 1, `Tables` 50, `SubTables` 40; it fills the empty temporary file; `^SYS("NLS")` checksum unchanged and no `^%nls`.
+- (b) `ImportAll(file, .n, 7)` of an `enuw` export whose `Description` was edited in the text **wrote the shipped locale record** (read back `EDITED ...`), and of a `y` export whose first shipped table's `Description` was edited **wrote the shipped table** (read back `EDITED ...`); each restored from the first export (read back equal, checksum equal). So the vendor imports shipped records, not custom ones only.
+- (c) `ImportAll` of the `y` export after `Delete`: OK, `NumImported` `Locales` 1, `Tables` 50, `SubTables` 40, the locale listed again; over the existing `y` locale: OK, same counts. A truncated, malformed file: **status OK, nothing imported**, no error.
+- (d) `%File.TempFilename("xml")` creates an empty file in `/tmp/` (the container's, not `^%SYS` or the manager directory). A non-ASCII `Description` (`e`-acute, euro sign, lambda) round-trips through export and import (9 characters before and after; the exported text holds it).
+- (h) `ExportList` of `jpnw`: 21 tables, 17 subtables, 7,491,264 bytes, 0.49 s; of `zdsw`: 10,182,622 bytes. A caller-held `PAIRS` plus `%Admin_FileSystemAccess:USE` was not run. (e), (f), (g) not run: the stage stopped on (a) and (b).
+
+**Stopped on the spec's Task 0 condition (a) and (b): `## Clarification Needed`.** The `SYSTEM` refusal (a file holding a shipped record) would refuse every file OcuPilot's own export makes, and with no refusal the vendor overwrites shipped tables and locales from the file. Options for the owner: (1) recommended: the review keeps only the file's custom records (name starting `y`; tables with a `y` `NameFrom`/`NameTo`; subtables a kept table names) and the write passes the vendor a temporary file holding those records alone, so OcuPilot's own export imports, shipped records are never written, and the card's counts, digest and `Replaces` are over the kept records; this edits the AD-51 entry's "written from the reviewed text" to "the reviewed text's custom records" and `ImportReview`'s "reviewed text" digest stays the whole text; (2) refuse any non-custom record `LOCALE.IMPORT.SYSTEM`, which refuses the product's own export; (3) import the file as the classic page does, shipped records included (not looser than the classic portal; it needs the current-locale refusal over every record, not the kept ones).
+
 ## Verification
 
 **Shared surfaces:** OS management roster, positions and pair-order counts (`Navigation`, `WireSecurityRead`, `WireAreaAnyScreen`, `LanguageServerWire` and `ui/browser/language-servers.browser-spec.mjs`, `ui/tools/navigation.test.mjs`; no new screen, so expected unchanged); `Descriptor` (LocaleList's four new row actions); the tool registry (`ReadTool` size unchanged, `ToolWrite`'s other-port count +2, `ToolRoundTrip`, `ToolDispatch`, `ToolEmit`, `SurfaceCoverage`'s two rows); `PortGate` (LocalePort's pairs, now with PathPort's on a server file; roster `PAIRS;WRITEPAIRS` unchanged); `EndpointCoverage` (no new route; confirm); `Prohibited`'s covered types (entity `locale` already covered; confirm); `TeardownGuard`; `ClassicPageGate` and `MappingDescriptor` (`%CSP.UI.Portal.NLSImport`; Export's `%CSP.UI.Portal.NLS` is 21.14's); the read-source count (unchanged, source `locale`); `GovernanceBaseline` (two keys); `ui/tools/ci.test.mjs` (arming roster); `ui/tools/strings.test.mjs` with the EXPERIENCE.md literal cap (4200; if crossed, raise it by 400 under the file's protocol and report it); `proposal-view.test.mjs`; `ui/tools/screen-mirror.test.mjs`. The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each; every test it changes joins `(loop)`.
@@ -146,7 +159,7 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: Task 0 (a) and (b): a `y` locale's export carries 50 shipped tables and 40 shipped subtables, and `ImportAll` writes shipped locale and table records; the spec says stop. Options are in Design Notes, "Task 0 results". No product code was written.
 
 Re-plan after owner answer U-58, from read-only probes on slot A (`ocupilot`); nothing ran against `ocupilot-ci`. Import kept as planned; locale Export (DW-2606) added on `LocalePort` beside it, in the same two batches. Escalated for the spec gate: one AD-51 named entry covering import and export, an AD-21 record, an AD-53 gap conditional on Task 0 (e), dropping the Locales/Tables/Both choice, and the new strings.

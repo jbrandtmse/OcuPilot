@@ -148,6 +148,7 @@ XData Elsewhere
 <screen name="DdlUserMappingList"/>
 <screen name="NlsDefaultList"/>
 <screen name="LocaleList"/>
+<screen name="LocalePropertyList"/>
 <screen name="MemorySettingList"/>
 <screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>

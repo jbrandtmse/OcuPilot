@@ -11206,6 +11206,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red in browser shard 2/3 on 9a8f2b2e; no change to _components.scss or tool-call-card.ts since 20.3's baseline; passed in attempt 2's rerun of the shard
 - 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
 - 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=spinner_wait+settled_panel(782b093d,5574fede);no_red_under_throttle_recorded;CI_38755393824
+- 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44434412247(6bc7a0d66)browser_3/5_agent-code-save_QA4:structural_gate_read_app-tool-call-card>span.ocu-tool-call-spinner_2px(1280)/3px(720)_past_its_block;rerun_pending
 
 ### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12307,6 +12308,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T17:56:53Z status=routed owner=burndown by=cr note=rule scope: resolve ..#NAME args via own/inherited params (e.g. ..#FIXTURE); Extends covers the chain
 - 2026-11-14T00:50:20Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
+- 2026-11-19T05:08:55Z occurrence=21-16-custom-locales
 
 ### DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for #ocu-encryption-startup-DBEncStartMode-None in CI browser shard 1/5 (run 38782509360), green on the same tree locally
 - source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13802,6 +13804,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
+- 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -13970,3 +13973,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: AnalyticsSettingsEdge sorts first and a CI shard leg may run it first; a later run then sees no first-call writes, so the check weakens rather than reddens. The doc comment states the condition.
 - 2026-11-19T10:43:53Z status=wontfix-accepted owner=24-13-analytics-settings by=harvest note=reopen_if=a first-call settings read is found to write
+### DW-2754: AD-53 named gap: a person's Load table (Story 21.16) records no vendor audit event, and AD-53 does not name it
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Task 0 (d) on ocupilot-ci with auditing on: Create, Modify, Delete record %System/ConfigurationChange; Config.NLS.Tables.Load records none; spine AD-53 has no 21.16 entry
+- 2026-11-19T04:32:43Z status=decision-pending owner=burndown by=cr note=owner's attended architecture update, as DW-2613: record the named gap in AD-53 or add an OcuPilot ConfigChange row
+
+### DW-2755: postLocaleCreate (locale-create.ts) is a near-copy of postInteropCreate (interop-create.ts) with no stated reason
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ui/src/app/areas/os-management/locale-create.ts:41 repeats ui/src/app/areas/interoperability/interop-create.ts:35 (POST, read-back, created event) but for scope and the refusal sentence
+- 2026-11-19T04:32:47Z status=routed owner=burndown by=cr note=Rule 2: extend the interop helper into core with a scope parameter, used by both
+
+### DW-2756: Load table's consequence still says a load on the current locale can change the instance's defaults, which Task 0 (c) did not observe
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (c): loads of enuw's XLT CP1250 and Pattern Unicode moved no System/Config %SYS.NLS.Table property; the vendor's Load doc says it changes defaults if necessary
+- 2026-11-19T04:32:50Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=a ruled string; reopen_if=a load of any table type on the current locale is measured to never change a System default
+
+### DW-2757: Locale properties sorts by the Group code, not the classic editor's group order, and the filter matches codes, not the drawn words
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LocalePropertyList sort default Group asc over codes basic, formats, iodefaults, iotables, strings, tabledefaults, tables; PropertyRows emits the classic order
+- 2026-11-19T04:32:53Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=reopen_if=a person reports the group order or a group word that filters to no rows
+
+### DW-2758: Removing the last table of a list the vendor requires is refused by Modify and answered 500 INTERNAL, not a 409
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: measured on ocupilot-ci (test locale ytsw): Modify without XYTables answers #5661 'is required so must have at least one member'; reachable only when the list's default names another table
+- 2026-11-19T04:32:57Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=reopen_if=a person meets the 500 on Remove table; the default check refuses the usual case first
+
+### DW-2759: No test observes that a confirmed Load table reached Config.NLS.Tables.Load; a SendLoad that answered OK without calling it stays green
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LocaleEditWrite asserts 200|nothingSent only; Task 0 (c)/(d): a load moves no ^SYS(NLS) checksum, no %SYS.NLS.Table property and records no audit row
+- 2026-11-19T04:33:01Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=nothing observable was found; reopen_if=an instance-side mark of a loaded table is found
+
+### DW-2760: A Copy or Add table dialog shows no sentence when its request fails without a server reason (network failure)
+- source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: locale-create.ts postLocaleCreate answers reason '' when the result is not ok and carries no reason; the dialog re-enables with nothing shown
+- 2026-11-19T04:33:05Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=a new sentence would be an escalation; reopen_if=DW-2755's shared helper lands, or a person reports a silent failure
+
+### DW-2761: A throwaway whose first start fails to compile is restarted by on-failure and comes up installed on the warm volume, so instance and browser legs do not catch a fresh-compile failure
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
+- 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED

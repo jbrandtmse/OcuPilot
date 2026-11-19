@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-11-18'
+updated: '2026-11-19'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -899,7 +899,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A `monitor` read names one of `MonitorPort`'s `ENDPOINTS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] (the metrics table, and the three interoperability usage tables of Story 18.37); it takes no criteria.
 
-  **Story 20.11's analytics reads** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: a declared read may name the analytics port (source kind `analytics`): `LIST` on `Cubes`, `TermLists` and `FolderItems`, and on `Measures`, `Dimensions` and `Relationships` (criterion `cube`) and `TermListEntries` (criterion `termlist`), each parent-scoped read taking its parent's route id.
+  **Story 20.11's analytics reads** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: a declared read may name the analytics port (source kind `analytics`): `LIST` on `Cubes`, `TermLists` and `FolderItems`, and on `Measures`, `Dimensions` and `Relationships` (criterion `cube`) and `TermListEntries` (criterion `termlist`), each parent-scoped read taking its parent's route id. A `locale` source also takes `read.criteria` as its parent's route id (Story 21.16's per-locale Properties list), as the analytics and interoperability sources do. [AMENDED 2026-11-19, Story 21.16 implement, orchestrator ruling]
 
   **A metrics sample neither backslash reading parses** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2329, owner 2026-10-11): `MonitorPort.Samples` reads a label value with a single or a doubled backslash; a line neither parses is skipped and counted in one log line, and the read answers the remaining rows.
 
@@ -1238,7 +1238,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`AnalyticsPort` answers the cube tools' fresh read through a port-composed `STATE` type (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20].
 
-  Story 21.15's case: `LocalePort`, which hands `Config.NLS.Locales.ImportAll` and `ExportList` only a temporary file OcuPilot names and deletes. The import's file is written from the reviewed text, read from the import tool's declared `root` and `path` resolved through `PathPort` as a `source` or from the screen's local text; its flags are a constant; it answers the fresh read through a port-composed `IMPORTFILE` type and refuses an import whose text no longer yields the reviewed digest. The export's locale is its target alone; the file's text is copied to the export tool's declared `root` and `path`, resolved through `PathPort` as an overwriting `file` whose overwrite is a constant, or answered to the screen as lines; it answers its fresh read through a port-composed `EXPORTLOCALE` type. [AMENDED 2026-11-15, Story 21.15, owner answer U-58]
+  Story 21.15's case: `LocalePort`, which hands `Config.NLS.Locales.ImportAll` and `ExportList` only a temporary file OcuPilot names and deletes. The import's file is written from the reviewed text, read from the import tool's declared `root` and `path` resolved through `PathPort` as a `source` or from the screen's local text; its flags are a constant; it answers the fresh read through a port-composed `IMPORTFILE` type and refuses an import whose text no longer yields the reviewed digest. The export's locale is its target alone; the file's text is copied to the export tool's declared `root` and `path`, resolved through `PathPort` as an overwriting `file` whose overwrite is a constant, or answered to the screen as lines; it answers its fresh read through a port-composed `EXPORTLOCALE` type. [AMENDED 2026-11-15, Story 21.15, owner answer U-58] The import's review and write keep only the file's custom records: the vendor is handed a temporary file holding just those, and the shipped tables and subtables the file carries are dropped and never written, the review stating how many. [AMENDED 2026-11-19, Story 21.15 Task 0, orchestrator ruling, veto U-114]
 
   Story 21.16's case: `LocalePort`, which builds `Config.NLS.Tables.Load`'s locale, type and table from the load tool's declared id parts `Locale` and `Name` (`<list>:<table>`), the type fixed by the list, and loads only a table that locale's own `Tables` query lists under that type, compared exactly; it answers the fresh read through the property row, whose `Loadable` is that check. [AMENDED 2026-11-15, Story 21.16, owner answer U-58]
 

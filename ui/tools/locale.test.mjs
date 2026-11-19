@@ -20,6 +20,10 @@ const CONFIG_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'ConfigError.cls'
 
 const TOOLS = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool');
 
+const LOCALE_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'LocalePort.cls');
+
+const TABLE_DIALOG = join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'os-management', 'locale-table-dialog.ts');
+
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
 
 const PROPOSAL_VIEW = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts');
@@ -34,12 +38,24 @@ const SENTENCES = [
   ['REASONCURRENT', 'localeRefusalCurrent'],
   ['REASONINSTALL', 'localeInstallConsequence'],
   ['REASONDELETE', 'localeDeleteConsequence'],
+  // Story 21.16: the copy and edit refusals, the table refusals and the load consequence.
+  ['REASONCOPYNAME', 'localeRefusalCopyName'],
+  ['REASONCOPYTAKEN', 'localeRefusalCopyTaken'],
+  ['REASONEDITSYSTEM', 'localeRefusalEditSystem'],
+  ['REASONEDITCURRENT', 'localeRefusalEditCurrent'],
+  ['REASONTABLEUNAVAILABLE', 'localeRefusalTableUnavailable'],
+  ['REASONTABLETAKEN', 'localeRefusalTableTaken'],
+  ['REASONTABLEDEFAULT', 'localeRefusalTableDefault'],
+  ['REASONTABLEROW', 'localeRefusalTableRow'],
+  ['REASONTABLENOTLOADABLE', 'localeRefusalTableNotLoadable'],
+  ['REASONLOAD', 'localeLoadConsequence'],
 ];
 
 /** The consequences a card states: the class that declares the sentence, its code parameter, the code, the `proposal-view.ts` constant and the string. */
 const CONSEQUENCES = [
   [LOCALE_ERROR, 'INSTALL', 'REASONINSTALL', 'LOCALE.INSTALL', 'CONSEQUENCE_LOCALEINSTALL', 'localeInstallConsequence'],
   [LOCALE_ERROR, 'DELETE', 'REASONDELETE', 'LOCALE.DELETE', 'CONSEQUENCE_LOCALEDELETE', 'localeDeleteConsequence'],
+  [LOCALE_ERROR, 'LOAD', 'REASONLOAD', 'LOCALE.LOAD', 'CONSEQUENCE_LOCALELOAD', 'localeLoadConsequence'],
   [CONFIG_ERROR, 'NLSRELOAD', 'REASONNLSRELOAD', 'CONFIG.NLS.RELOAD', 'CONSEQUENCE_CONFIGNLSRELOAD', 'nlsDefaultReloadConsequence'],
 ];
 
@@ -89,6 +105,20 @@ test('Story 21.14: the install, delete and locale-format cards state the sentenc
   }
   assert.equal(classParameter(join(TOOLS, 'LocaleInstall.cls'), 'CONSEQUENCECODE'), 'LOCALE.INSTALL');
   assert.equal(classParameter(join(TOOLS, 'LocaleDelete.cls'), 'CONSEQUENCECODE'), 'LOCALE.DELETE');
+  assert.equal(classParameter(join(TOOLS, 'LocaleTableLoad.cls'), 'CONSEQUENCECODE'), 'LOCALE.LOAD');
+});
+
+// Mutation (Rule 19): drop or reorder a name in `LOCALE_TABLE_LISTS` of locale-table-dialog.ts, or a list of `TABLELISTS` in LocalePort.cls -> this goes red.
+test('Story 21.16: the Add table dialog offers the eight table lists of the port in its order, then the input/output list', () => {
+  const server = classParameter(LOCALE_PORT, 'TABLELISTS')
+    .split(',')
+    .map((entry) => entry.split(':')[0]);
+  server.push(classParameter(LOCALE_PORT, 'IOLIST'));
+  assert.equal(server.length, 9, 'the port names nine lists');
+  const match = /export const LOCALE_TABLE_LISTS: readonly string\[\] = \[([^\]]*)\];/.exec(readFileSync(TABLE_DIALOG, 'utf8'));
+  assert.notEqual(match, null, 'the dialog declares LOCALE_TABLE_LISTS');
+  const client = [...match[1].matchAll(/'([^']+)'/g)].map((entry) => entry[1]);
+  assert.deepEqual(client, server, 'the dialog offers the lists the port names, in the same order');
 });
 
 test('Story 21.14: the Validate dialog states the two published sentences', () => {

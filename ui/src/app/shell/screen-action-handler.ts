@@ -180,6 +180,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.14: NLS configured defaults, whose Set value its settings page's dialog sends, and Locale definitions, whose Install and Delete type the locale's name and whose Validate its own page's dialog runs.
   'OcuPilot.Screen.Descriptor.NlsDefaultList',
   'OcuPilot.Screen.Descriptor.LocaleList',
+  'OcuPilot.Screen.Descriptor.LocalePropertyList',
   // Story 21.5: Globals, whose Delete types the global's name.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
@@ -286,6 +287,12 @@ export const BACKUP_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.BackupDatabaseLi
 /** Locale definitions (Story 21.14): its Validate is a read its own page's dialog runs, and its Install and Delete type the locale's name. */
 export const LOCALE_LIST = 'OcuPilot.Screen.Descriptor.LocaleList';
 export const LOCALE_VALIDATE = 'validate';
+/** The Locale definitions row action Copy, which that list's page registers (Story 21.16). */
+export const LOCALE_COPY = 'copy';
+/** The Locale properties list and its actions: Add table is its primary action, Set value its row action, each registered by the config settings page (Story 21.16). */
+export const LOCALE_PROPERTY_LIST = 'OcuPilot.Screen.Descriptor.LocalePropertyList';
+export const LOCALE_ADD_TABLE = 'add-table';
+export const LOCALE_LOAD_TABLE = 'load-table';
 export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';
 export const BACKUP_ADD_DATABASE = 'add';
@@ -528,7 +535,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
   // NLS configured defaults' page registers Set value itself, whose dialog sends the value, and Locale definitions' page registers Validate itself, whose dialog reads the locale's checks (Story 21.14).
   'OcuPilot.Screen.Descriptor.NlsDefaultList': ['set'],
-  [LOCALE_LIST]: [LOCALE_VALIDATE],
+  [LOCALE_LIST]: [LOCALE_VALIDATE, LOCALE_COPY],
+  // Locale properties' set and Add table are the config settings page's own (Story 21.16).
+  [LOCALE_PROPERTY_LIST]: ['set', LOCALE_ADD_TABLE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -650,6 +659,8 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-t
  */
 const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
   [LOCALE_LIST]: ['install'],
+  // Story 21.16: a table load changes what every process can use, and on the current locale can change the instance's defaults.
+  [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
   // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['remove-group'],
 };
@@ -766,6 +777,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
   // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
   [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence },
+  [LOCALE_PROPERTY_LIST]: { [LOCALE_LOAD_TABLE]: STRINGS.localeLoadConsequence },
   // Story 21.5: a deleted global takes all of its data.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence, replace: STRINGS.globalReplaceConsequence },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
@@ -849,6 +861,9 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, whose separator no one can type, so its Delete
   // types the record's name and sends the row key.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 21.16: a locale property is keyed by `[Locale, Name]`, whose separator no one can type, so its Load table types
+  // the row's name and sends the row key.
+  [LOCALE_PROPERTY_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 18.31: a privileged routine application is keyed by its name, which its Delete types.
   'OcuPilot.Screen.Descriptor.RoutineAppList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types

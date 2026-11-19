@@ -179,6 +179,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 21.14: NLS configured defaults, on the same page, and Locale definitions, whose page adds Validate.
   'OcuPilot.Screen.Descriptor.NlsDefaultList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.LocaleList': () => import('../areas/os-management/locale-list.page').then((m) => m.LocaleListPage),
+  // Story 21.16: one locale's properties are served by the configuration settings page, whose Set value dialog they reuse.
+  'OcuPilot.Screen.Descriptor.LocalePropertyList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),

@@ -197,6 +197,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.3: the unlisted local database form -- the create wizard and, at its id route, the
       // properties editor -- reached from Local databases.
       'os-management/local-databases/edit',
+      // Story 21.16: the unlisted Locale properties list, reached from Locale definitions.
+      'os-management/locales/properties',
       // Story 18.2: the unlisted namespace editor, reached from the Namespaces list.
       'os-management/namespaces/edit',
       'os-management/namespaces/package-mappings/edit',
