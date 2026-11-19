@@ -706,3 +706,5 @@
 2026-11-19T13:24:08Z	Story 21.15	code_head_pushed	sha=020f2d90e run=44533046311 missing=none note=integrated_head;gates_ran_on_7478c45a7
 2026-11-19T13:24:18Z	Story 21.10	spec_validated	owned_ledger=DW-2431,DW-2457 addressed=2 rerouted=DW-2600(->21-23,DW-1822_family)
 2026-11-19T13:24:18Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T13:24:18Z model=sonnet agent_name=21-10-implement-1 cycle_iteration=1 story_base=7c7952a84
+2026-11-19T14:08:26Z	Story 21.10	stage_stopped	stage=implement agent=ac0cca5b0ebaf9de8 child=a8d03e69b8c7097c4 reason=build_subagent_edited_tracked_files_through_Bash(sed_-i.bak_at_13:37:42Z;orchestrator_rule:stop_and_respawn) stopped_by=main evidence=<state>/evidence/epic-21/21-10-bash-edit-implement-20261119T1400Z.{patch,untracked.txt,untracked.tgz}(never_applied) restored_to=ef126c8fa action=respawn
+2026-11-19T14:08:34Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T14:08:34Z model=sonnet agent_name=21-10-implement-2 cycle_iteration=1 note=respawn_after_stop(rule_zero)
