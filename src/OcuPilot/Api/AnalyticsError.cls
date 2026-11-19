@@ -317,6 +317,31 @@ Parameter QUALITYMEASUREREMOVE = "ANALYTICS.QUALITYMEASURE.REMOVE";
 
 Parameter QUALITYMEASURESAVE = "ANALYTICS.QUALITYMEASURE.SAVE";
 
+/// <p>409: the database that holds the namespace's analytics settings is read-only (Story 24.13).</p>
+Parameter SETTINGREADONLY = "ANALYTICS.SETTING.READONLY";
+
+Parameter REASONSETTINGREADONLY = "The database that holds this namespace's analytics settings is read-only.";
+
+/// <p>409: the setting is a secret, which only its own action sets.</p>
+Parameter SETTINGSECRET = "ANALYTICS.SETTING.SECRET";
+
+Parameter REASONSETTINGSECRET = "This setting is a secret. It is set with its own action, which asks for the value when it is confirmed.";
+
+/// <p>The consequence code of a general setting write that stores every general setting, as the classic page's Save does.</p>
+Parameter SETTINGSAVE = "ANALYTICS.SETTING.SAVE";
+
+Parameter REASONSETTINGSAVE = "Saving stores every general setting with the value shown here, as the classic page's Save does.";
+
+/// <p>409: the worklists are not customized in this namespace, so a show or hide changes nothing the portal reads.</p>
+Parameter WORKLISTNOTCUSTOMIZED = "ANALYTICS.WORKLIST.NOTCUSTOMIZED";
+
+Parameter REASONWORKLISTNOTCUSTOMIZED = "Worklists are not customized in this namespace, so the portal shows its default worklists. Set Worklist to 1 on the General tab first.";
+
+/// <p>404: no worklist option has that page, panel and class.</p>
+Parameter WORKLISTABSENT = "ANALYTICS.WORKLIST.ABSENT";
+
+Parameter REASONWORKLISTABSENT = "There is no worklist with that page, panel and class.";
+
 /// <p>The consequence code of the folder item delete.</p>
 Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
 
@@ -385,7 +410,23 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#QUALITYMEASUREMETATAKEN Quit ..#REASONQUALITYMEASUREMETATAKEN
     If pCode = ..#QUALITYMEASUREPARTABSENT Quit ..#REASONQUALITYMEASUREPARTABSENT
     If pCode = ..#QUALITYMEASURELINKEDPARTS Quit ..#REASONQUALITYMEASURELINKEDPARTS
+    If pCode = ..#SETTINGREADONLY Quit ..#REASONSETTINGREADONLY
+    If pCode = ..#SETTINGSECRET Quit ..#REASONSETTINGSECRET
+    If pCode = ..#WORKLISTNOTCUSTOMIZED Quit ..#REASONWORKLISTNOTCUSTOMIZED
+    If pCode = ..#WORKLISTABSENT Quit ..#REASONWORKLISTABSENT
     Quit ""
+}
+
+/// <p>The analytics settings writes' four refusal codes (Story 24.13), as a <class>%List</class>.</p>
+ClassMethod SettingCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGREADONLY, ..#SETTINGSECRET, ..#WORKLISTNOTCUSTOMIZED, ..#WORKLISTABSENT)
+}
+
+/// <p>The consequence code of the analytics settings writes (Story 24.13), as a <class>%List</class>.</p>
+ClassMethod SettingConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGSAVE)
 }
 
 /// <p>The cube manager's codes (Story 20.34), as a <class>%List</class>: the five refusals of a build or synchronize.</p>

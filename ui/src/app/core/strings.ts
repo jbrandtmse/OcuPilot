@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:659 */
+  /** EXPERIENCE.md:660 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8360,6 +8360,20 @@ export const STRINGS = {
   analyticsUserIconsPrompt2: 'Which icons point outside this instance?',
   /** EXPERIENCE.md:617 */
   analyticsUserIconsPrompt3: 'List each icon\'s name and path.',
+  /** EXPERIENCE.md:618 */
+  analyticsSettingsEmptyAgent: 'change an analytics setting',
+  /** EXPERIENCE.md:618 */
+  analyticsWorklistsEmptyAgent: 'show a worklist',
+  /** EXPERIENCE.md:618 */
+  analyticsSettingSaveConsequence: 'Saving stores every general setting with the value shown here, as the classic page\'s Save does.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalSettingReadOnly: 'The database that holds this namespace\'s analytics settings is read-only.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalSettingSecret: 'This setting is a secret. It is set with its own action, which asks for the value when it is confirmed.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalWorklistNotCustomized: 'Worklists are not customized in this namespace, so the portal shows its default worklists. Set Worklist to 1 on the General tab first.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalWorklistAbsent: 'There is no worklist with that page, panel and class.',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

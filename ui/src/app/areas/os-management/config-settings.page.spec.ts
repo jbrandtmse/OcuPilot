@@ -11,10 +11,12 @@ import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { DetailPage } from '../../shell/detail-page';
 import { ListPage } from '../../shell/list-page';
 import { LOCALE_ADD_TABLE, LOCALE_LOAD_TABLE, LOCALE_PROPERTY_LIST, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import {
+  ANALYTICS_SETTING_LIST,
   COMPATIBILITY_SETTING_LIST,
   CONFIG_SET_ACTION,
   ConfigSettingsPage,
@@ -40,6 +42,9 @@ import {
 
 @Component({ selector: 'app-list-page', template: '' })
 class StubListPage {}
+
+@Component({ selector: 'app-detail-page', template: '' })
+class StubDetailPage {}
 
 const row = (name: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
   Name: name,
@@ -111,7 +116,7 @@ function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], 
       { provide: Router, useValue: { url: `/${screen.route}`, events: { subscribe: () => ({ unsubscribe: () => undefined }) } } },
     ],
   });
-  TestBed.overrideComponent(ConfigSettingsPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
+  TestBed.overrideComponent(ConfigSettingsPage, { remove: { imports: [ListPage, DetailPage] }, add: { imports: [StubListPage, StubDetailPage] } });
   const store = stores.for(screen.descriptor, screen.refreshRates);
   store.applyTick(rows, false, '', new Date());
   const fixture = TestBed.createComponent(ConfigSettingsPage);
@@ -517,5 +522,85 @@ describe('the settings page', () => {
       expect(host.querySelector('[data-locale-table-reason]')?.textContent?.trim()).toBe(STRINGS.localeRefusalTableTaken);
       expect(events).toEqual([]);
     });
+  });
+});
+
+describe('the settings page over the analytics General tab (Story 24.13)', () => {
+  const general = (name: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    Name: name,
+    Value: '',
+    Stored: true,
+    Kind: 'text',
+    Accepts: 'Text of up to 2000 characters.',
+    ...extra,
+  });
+  const GENERAL_ROWS = [
+    general('PageTitle', { Value: 'Title' }),
+    general('GoogleMapsKey', { Value: '[redacted]', Kind: 'secret' }),
+    general('DashboardNoTitle', { Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+    general('Worklist', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+  ];
+  const UPDATED_SETTING: JsonResult<unknown> = {
+    kind: 'ok',
+    status: 200,
+    body: { action: 'updated', target: { type: 'analytics-setting', scope: 'USER', id: 'PageTitle' }, readBack: { verdict: 'matches' } },
+  };
+
+  // Mutation (Rule 19): drop `ANALYTICS_SETTING_LIST` from `SERVED_LISTS` -> this goes red.
+  it('registers Set value on the General tab', () => {
+    const { actions } = mount([], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    expect(actions.has(ANALYTICS_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+  });
+
+  // Mutation (Rule 19): send `set` for a secret row -> the action leg goes red; prefill the field with the row's value -> the empty-field leg goes red.
+  it('opens a secret row as an empty masked field with a reveal toggle and sends its text by the key\'s own action', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(fixture, store, actions, ANALYTICS_SETTING_LIST, 'GoogleMapsKey');
+    const field = host.querySelector('[data-interop-setting-secret]') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(field.type).toBe('password');
+    expect(field.value).toBe('');
+    (host.querySelector('[data-interop-setting-reveal]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((host.querySelector('[data-interop-setting-secret]') as HTMLInputElement).type).toBe('text');
+    type(fixture, host, 'a-key-text');
+    confirm(host);
+    await settle(fixture);
+    expect(calls[0]).toEqual({
+      path: '/api/ocupilot/screens/analytics.settings/action',
+      method: 'POST',
+      body: JSON.stringify({ action: 'setkey', id: 'GoogleMapsKey', values: { GoogleMapsKey: 'a-key-text' } }),
+    });
+    expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+  });
+
+  // Mutation (Rule 19): make a text row secret in `onOpen` -> the plain-field leg goes red.
+  it('opens a text row as the shared dialog does and sends Set value with its one value', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(fixture, store, actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(host.querySelector('[data-interop-setting-secret]')).toBeNull();
+    expect((host.querySelector('[data-interop-setting-value]') as HTMLInputElement).value).toBe('Title');
+    type(fixture, host, 'New title');
+    confirm(host);
+    await settle(fixture);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ action: 'set', id: 'PageTitle', values: { Value: 'New title' } });
+  });
+
+  // Mutation (Rule 19): drop the `saves` test from `onOpen`'s statement -> the dialog states the Accepts line alone and the first assertion goes red.
+  it('states the save sentence in the dialog and after the change while a General row is not stored, and not once every row is', async () => {
+    const unstored = GENERAL_ROWS.map((entry) => (entry['Name'] === 'DashboardNoTitle' ? { ...entry, Stored: false } : entry));
+    const first = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
+    await open(first.fixture, first.store, first.actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(first.host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`Text of up to 2000 characters. ${STRINGS.analyticsSettingSaveConsequence}`);
+    type(first.fixture, first.host, 'x');
+    confirm(first.host);
+    await settle(first.fixture);
+    expect(first.host.querySelector('[data-config-setting-save]')?.textContent?.trim()).toBe(STRINGS.analyticsSettingSaveConsequence);
+    const second = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(second.fixture, second.store, second.actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(second.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
+    const flag = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
+    await open(flag.fixture, flag.store, flag.actions, ANALYTICS_SETTING_LIST, 'Worklist');
+    expect(flag.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
   });
 });

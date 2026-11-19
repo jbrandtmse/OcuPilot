@@ -167,6 +167,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.12 Batch 3: the Groups and elements and the Documentation lists, whose removals type the name and whose Add and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+  // Story 24.13 Batch 2: Analytics' General settings, whose Set value the settings page's dialog sends, and Worklists, whose Show and Hide are sent at once.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
+  'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -526,6 +529,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
   [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
+  // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList': ['set', 'setkey'],
   'OcuPilot.Screen.Descriptor.StartupSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.MemorySettingList': ['set'],
   'OcuPilot.Screen.Descriptor.CompatibilitySettingList': ['set'],

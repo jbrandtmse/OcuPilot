@@ -111,6 +111,11 @@
 /// classic Settings page's four tabs, gated by <parameter>SETTINGSPAIRS</parameter>. <code>Settings</code> reads the page's own nodes of <code>^DeepSee.UserPortalSettings</code> by name,
 /// a stored Google Maps key as the credential mask and never as the key; <code>Worklists</code> reads which of the four worklist classes each panel shows; <code>RuntimeVariables</code> and
 /// <code>UserIcons</code> read the vendor's lists, a variable's expression as text that is never evaluated.</p>
+/// <p><b>The General and Worklists writes (Story 24.13).</b> The <code>Settings</code> endpoint also serves the single-row read <code>SETTING</code> and the writes <code>SETTINGSET</code> and <code>SETTINGKEY</code>
+/// (the Google Maps key, a secret), the <code>Worklists</code> endpoint <code>WORKLIST</code>, <code>WORKLISTSHOW</code> and <code>WORKLISTHIDE</code> (<method>InvokeSetting</method>). A write is gated by
+/// <parameter>SETTINGSPAIRS</parameter> and, beyond the read gate, WRITE on the database <parameter>SETTINGSGLOBAL</parameter> maps to, mounted read-write. It reaches the instance only through the classic page's own
+/// setters (<code>SaveToServer</code>, <code>SetCustom</code>, <code>SetOption</code>), under one lock per namespace, the whole General form composed in the namespace from the nodes as they stand
+/// (<method>SettingsSaveHere</method>). The vendor audits none of them, so each records OcuPilot's own <code>ConfigChange</code> row.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
@@ -555,6 +560,46 @@ Parameter QUALITYMEASUREGLOBAL = "^DeepSee.QMsrs";
 /// <p>The longest caption, description, subject area, link or URL a quality measure write accepts: the model's limit for a description, subject area and link.</p>
 Parameter QUALITYMEASURETEXTMAX As INTEGER = 2000;
 
+/// <p>The analytics settings writes (Story 24.13): the two single-row reads, composed for a write when the query carries <parameter>ACTIONKEY</parameter>, and the four writes.
+/// <code>SETTINGSET</code> and <code>SETTINGKEY</code> are served by the <code>Settings</code> endpoint, the worklist three by <code>Worklists</code>.</p>
+Parameter TYPESETTING = "SETTING";
+
+Parameter TYPEWORKLIST = "WORKLIST";
+
+Parameter TYPESETTINGSET = "SETTINGSET";
+
+Parameter TYPESETTINGKEY = "SETTINGKEY";
+
+Parameter TYPEWORKLISTSHOW = "WORKLISTSHOW";
+
+Parameter TYPEWORKLISTHIDE = "WORKLISTHIDE";
+
+Parameter ENTITYSETTING = "analytics-setting";
+
+Parameter ENTITYWORKLIST = "analytics-worklist";
+
+Parameter VERBSETTINGSET = "analytics.settings.set";
+
+Parameter VERBSETTINGKEY = "analytics.settings.setkey";
+
+Parameter VERBWORKLISTSHOW = "analytics.worklists.show";
+
+Parameter VERBWORKLISTHIDE = "analytics.worklists.hide";
+
+/// <p>The global the classic Settings page keeps every General and Worklists setting in, which the writes need WRITE on the database of.</p>
+Parameter SETTINGSGLOBAL = "^DeepSee.UserPortalSettings";
+
+/// <p>The one setting that is a secret, and the one that turns the Worklists options on.</p>
+Parameter SETTINGSECRETNAME = "GoogleMapsKey";
+
+Parameter SETTINGCUSTOMNAME = "Worklist";
+
+/// <p>The longest text a General setting accepts. The classic page has no limit; this one is stricter.</p>
+Parameter SETTINGTEXTMAX As INTEGER = 2000;
+
+/// <p>How long a settings write waits for the namespace's settings lock before it answers 409 <code>WRITE.TARGETBUSY</code>.</p>
+Parameter SETTINGLOCKSECONDS As INTEGER = 5;
+
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
 /// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -615,7 +660,29 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET) || ..IsQualityMeasureWrite(pType)
     If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS Quit (pType = ..#TYPEQUALITYMEASUREELEMENT) || ..IsQualityMeasurePartWrite(pType)
     If pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS Quit (pType = ..#TYPEQUALITYMEASUREMETA) || ..IsQualityMeasurePartWrite(pType)
+    If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY)
+    If pEndpoint = ..#ENDPOINTWORKLISTS Quit (pType = ..#TYPEWORKLIST) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
+}
+
+/// <p>Whether <var>pEndpoint</var> is the General or the Worklists tab's (Story 24.13), the two the settings writes are served on.</p>
+ClassMethod IsSettingsEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTWORKLISTS)
+}
+
+/// <p>Whether <var>pType</var> is one of the four settings writes (Story 24.13).</p>
+ClassMethod IsSettingsWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a setting and so needs the destination's gate
+/// (<method>AdmitDestination</method>): a settings write, and a single-row read composed for one. Pure.</p>
+ClassMethod ChangesSettings(pType As %String, pAction As %String = "") As %Boolean
+{
+    If ..IsSettingsWrite(pType) Quit 1
+    Quit ((pType = ..#TYPESETTING) || (pType = ..#TYPEWORKLIST)) && (pAction '= "")
 }
 
 /// <p>Whether <var>pType</var> is one of the term list editor's six writes (Story 24.2) or its three transfers' (Story 24.10).</p>
@@ -715,7 +782,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tChanges = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY))), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
         Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
@@ -729,6 +796,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If ..IsQualityMeasureEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokeQualityMeasure(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsSettingsEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeSetting(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If ..IsTermListType(pType) {
@@ -812,6 +883,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..AdmitFolderItem(pNamespace, .pHttpStatus, .pFault)
     If ..IsListingGroupEndpoint(pEndpoint) Quit ..AdmitListingGroup(pNamespace, .pHttpStatus, .pFault)
+    If ..IsSettingsEndpoint(pEndpoint) Quit ..AdmitDestination(pNamespace, ..#SETTINGSGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#SETTINGREADONLY, .pHttpStatus, .pFault)
     If ..IsQualityMeasureEndpoint(pEndpoint) Quit ..AdmitClassWrite(pNamespace, "", ..#QUALITYMEASUREGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREREADONLY, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
@@ -1086,7 +1158,10 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
             ; globals, and the worklist classes' names. A run-time variable's expression is data here and is never evaluated.
             If pEndpoint = ..#ENDPOINTSETTINGS {
                 ; Each setting: its name, its node (a second subscript when it is nested), what the page shows when it is unset, whether it reads as a number and whether it is a secret.
-                Set tSettings = $ListBuild($ListBuild("Scheme", "Scheme", "", "simple", 0, 0), $ListBuild("ChartSeriesScheme", "ChartSeriesScheme", "", "", 0, 0), $ListBuild("PageTitle", "PageTitle", "", "", 0, 0), $ListBuild("CompanyName", "CompanyName", "", "", 0, 0), $ListBuild("CompanyImage", "CompanyImage", "", "", 0, 0), $ListBuild("CompanyLink", "CompanyLink", "", "", 0, 0), $ListBuild("GoogleMapsKey", "GoogleMapsKey", "", "", 0, 1), $ListBuild("MailEnabled", "MailEnabled", "", 0, 1, 0), $ListBuild("DefaultResource", "DefaultResource", "", "", 0, 0), $ListBuild("DashboardNoTitle", "DashboardNoTitle", "", "", 0, 0), $ListBuild("DashboardNoBorder", "DashboardNoBorder", "", "", 0, 0), $ListBuild("Controls.showCalculated", "Controls", "showCalculated", "", 0, 0), $ListBuild("autosaveAnalyzer", "autosaveAnalyzer", "", "", 0, 0), $ListBuild("autosaveUserPortal", "autosaveUserPortal", "", "", 0, 0), $ListBuild("Worklist", "Worklist", "", 0, 1, 0))
+                Set tSettings = ..SettingRoster()
+                ; The names a scheme setting accepts, for the rows' Accepts and for the write's judgement.
+                Set pData("schemes") = ..SchemeNamesHere(0)
+                Set pData("series") = ..SchemeNamesHere(1)
                 For tAt = 1:1:$ListLength(tSettings) {
                     If (pMax > 0) && (pData >= pMax) Quit
                     Set tSetting = $List(tSettings, tAt)
@@ -1119,7 +1194,7 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                             If tStop Quit
                             Set tClass = $List(tClasses, tAt)
                             Set pData = pData + 1
-                            Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, "%GetName"), tClass, ''$Data(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tAt)))
+                            Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, "%GetName"), tClass, ''$Data(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tAt)), ''(+$Get(^DeepSee.UserPortalSettings("Worklist"))))
                         }
                         If tStop Quit
                     }
@@ -1281,12 +1356,16 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As
             ; A stored secret reads as the mask, so a person sees that one is stored and never what it is (Conventions, Secrets).
             Do tRow.%Set("Value", $Select($List(tValues, 4): ##class(OcuPilot.Port.SqlPort).#CREDENTIALMASK, 1: $List(tValues, 2)), "string")
             Do tRow.%Set("Stored", $List(tValues, 3), "boolean")
+            Set tLimits = ..LimitsFrom($List(tValues, 1), $Get(pData("schemes")), $Get(pData("series")))
+            Do tRow.%Set("Kind", $Select($List(tValues, 1) = ..#SETTINGSECRETNAME: "secret", 1: $ListGet(tLimits, 1)), "string")
+            Do tRow.%Set("Accepts", ..AcceptsFor(tLimits), "string")
         } ElseIf pEndpoint = ..#ENDPOINTWORKLISTS {
             Do tRow.%Set("Page", $List(tValues, 1), "string")
             Do tRow.%Set("Panel", $List(tValues, 2), "number")
             Do tRow.%Set("Worklist", $List(tValues, 3), "string")
             Do tRow.%Set("Class", $List(tValues, 4), "string")
             Do tRow.%Set("Shown", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Customized", $List(tValues, 6), "boolean")
         } ElseIf pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Value", $List(tValues, 2), "string")
@@ -2674,6 +2753,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
     If ..IsListingGroupEndpoint(pEndpoint) && ..IsListingGroupWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If ..IsQualityMeasureEndpoint(pEndpoint) && (..IsQualityMeasureWrite(pType) || ..IsQualityMeasurePartWrite(pType)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If ..IsSettingsEndpoint(pEndpoint) && ..IsSettingsWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
 
@@ -2687,7 +2767,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
+        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsSettingsEndpoint(pEndpoint): ..SettingSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
@@ -6439,6 +6519,434 @@ ClassMethod QualityMeasureSnippet(pEndpoint As %String, pType As %String, pId As
     Set tPrelude = $Char(10) _ " Kill tList Set tListed = 0, tAt = """" Do ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList) For { Set tAt = $Order(tList(tAt)) Quit:tAt=""""  Set:($ZConvert($List(tList(tAt), 1), ""U"") = " _ tNameU _ ") tListed = 1 }"
     Set tFree = "'tListed, '$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
     Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
+}
+
+/// <p>The fifteen settings of the classic Settings page's General tab, in the page's order, as a <class>%List</class> of <class>%List</class>s:
+/// <code>name, node, second node, default, numeric, secret, the property the page's form sends it under, kind</code>. The <code>kind</code> is
+/// <code>scheme</code>, <code>series</code>, <code>mail</code>, <code>bool</code>, <code>text</code>, <code>secret</code>, or <code>custom</code> (the flag that turns the Worklists options on, which the
+/// page saves by its own call, <code>SetCustom</code>). Pure; <method>Collect</method> and the writes both read it, so the page's own nodes are named once.</p>
+ClassMethod SettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Scheme", "Scheme", "", "simple", 0, 0, "Scheme", "scheme"), $ListBuild("ChartSeriesScheme", "ChartSeriesScheme", "", "", 0, 0, "ChartSeriesScheme", "series"), $ListBuild("PageTitle", "PageTitle", "", "", 0, 0, "PageTitle", "text"), $ListBuild("CompanyName", "CompanyName", "", "", 0, 0, "CompanyName", "text"), $ListBuild("CompanyImage", "CompanyImage", "", "", 0, 0, "CompanyLogo", "text"), $ListBuild("CompanyLink", "CompanyLink", "", "", 0, 0, "CompanyLink", "text"), $ListBuild("GoogleMapsKey", "GoogleMapsKey", "", "", 0, 1, "GoogleMapsKey", "secret"), $ListBuild("MailEnabled", "MailEnabled", "", 0, 1, 0, "MailEnabled", "mail"), $ListBuild("DefaultResource", "DefaultResource", "", "", 0, 0, "DefaultResource", "text"), $ListBuild("DashboardNoTitle", "DashboardNoTitle", "", "", 0, 0, "DbNoTitle", "bool"), $ListBuild("DashboardNoBorder", "DashboardNoBorder", "", "", 0, 0, "DbNoBorder", "bool"), $ListBuild("Controls.showCalculated", "Controls", "showCalculated", "", 0, 0, "ctrlShowCalc", "bool"), $ListBuild("autosaveAnalyzer", "autosaveAnalyzer", "", "", 0, 0, "autosaveAnalyzer", "bool"), $ListBuild("autosaveUserPortal", "autosaveUserPortal", "", "", 0, 0, "autosaveUserPortal", "bool"), $ListBuild("Worklist", "Worklist", "", 0, 1, 0, "", "custom"))
+}
+
+/// <p>The four worklist classes the classic Worklists tab lists, in the page's fixed order: a class's place in it is the option number <code>SetOption</code> takes.</p>
+ClassMethod WorklistClasses() As %List
+{
+    Quit $ListBuild("%DeepSee.UserPortal.FavoritesList", "%DeepSee.UserPortal.RecentList", "%DeepSee.UserPortal.AlertList", "%DeepSee.UserPortal.DetailsList")
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape, from the names of the scheme lists the instance offers
+/// (<var>pSchemes</var> and <var>pSeries</var>, <class>%List</class>s); <code>""</code> for a name the page has no setting for. A choice setting holds the names
+/// it offers; <code>MailEnabled</code> is 1, 2 or 0; a boolean is 0 or 1; text, and the Google Maps key, are up to <parameter>SETTINGTEXTMAX</parameter> characters. Pure.</p>
+ClassMethod LimitsFrom(pName As %String, pSchemes As %List, pSeries As %List) As %List
+{
+    Set tKind = ""
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tAt), 1) = pName Set tKind = $List($List(tRoster, tAt), 8)
+    }
+    If tKind = "scheme" Quit $ListBuild("choice", "", "", pSchemes, "", "")
+    If tKind = "series" Quit $ListBuild("choice", "", "", pSeries, "", "")
+    If tKind = "mail" Quit $ListBuild("choice", "", "", $ListBuild("1", "2", "0"), "", "")
+    If (tKind = "bool") || (tKind = "custom") Quit $ListBuild("boolean", "", "", "", "", "")
+    If (tKind = "text") || (tKind = "secret") Quit $ListBuild("text", "", "", "", ..#SETTINGTEXTMAX, "")
+    Quit ""
+}
+
+/// <p>The limits of the setting <var>pName</var> of the namespace <var>pNamespace</var> (the request's scope when empty), as <method>LimitsFrom</method>; <code>""</code> for a name the page
+/// has no setting for or a namespace whose scheme lists cannot be read. The rules class asks it.</p>
+ClassMethod SettingLimits(pName As %String, pNamespace As %String = "") As %List
+{
+    Set tNamespace = $Select(pNamespace '= "": pNamespace, 1: ##class(OcuPilot.Kernel.Scope).Current())
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit ""
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(tNamespace, ..#ENDPOINTSETTINGS, "", 1, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) || $$$ISERR(tVendorSC) Quit ""
+    Quit ..LimitsFrom(pName, $Get(tData("schemes")), $Get(tData("series")))
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> (the request's scope when empty) holds a General setting that is not stored, other than the Worklists flag: the settings a save of the General form
+/// would store. A namespace or read that fails answers 0.</p>
+ClassMethod UnstoredGeneral(pNamespace As %String = "") As %Boolean
+{
+    Set tNamespace = $Select(pNamespace '= "": pNamespace, 1: ##class(OcuPilot.Kernel.Scope).Current())
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit 0
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(tNamespace, ..#ENDPOINTSETTINGS, "", 0, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) || $$$ISERR(tVendorSC) Quit 0
+    Set tUnstored = 0
+    For tAt = 1:1:tData {
+        If ($List(tData(tAt), 1) '= ..#SETTINGCUSTOMNAME) && '$List(tData(tAt), 3) Set tUnstored = 1
+    }
+    Quit tUnstored
+}
+
+/// <p>What a row's <code>Accepts</code> reads for the limits <var>pLimits</var>:<code>ConfigPort.AcceptsOf</code>'s sentence, a choice listed without its empty name (the chart series scheme's
+/// default), which the field accepts and the sentence has no word for. Pure.</p>
+ClassMethod AcceptsFor(pLimits As %List) As %String
+{
+    If $ListGet(pLimits, 1) = "choice" {
+        Set tChoices = ""
+        Set tList = $ListGet(pLimits, 4)
+        For tAt = 1:1:$ListLength(tList) {
+            If $List(tList, tAt) '= "" Set tChoices = tChoices _ $ListBuild($List(tList, tAt))
+        }
+        Set pLimits = $ListBuild("choice", "", "", tChoices, "", "")
+    }
+    Quit ##class(OcuPilot.Port.ConfigPort).AcceptsOf(pLimits)
+}
+
+/// <p>The names of the color schemes (<var>pSeries</var> 0) or the chart series schemes (1) the namespace offers, as the classic page lists them. Runs in the target namespace, and names only
+/// vendor classes.</p>
+ClassMethod SchemeNamesHere(pSeries As %Boolean) As %List [ Private ]
+{
+    Set tNames = ""
+    If pSeries {
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%GetChartSeriesSchemes(.tSchemes)
+    } Else {
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%GetColorSchemes(.tSchemes)
+    }
+    Set tAt = ""
+    For {
+        Set tAt = $Order(tSchemes(tAt))
+        If tAt = "" Quit
+        Set tNames = tNames _ $ListBuild($List(tSchemes(tAt), 1))
+    }
+    Quit tNames
+}
+
+/// <p>The rows of the Settings or Worklists endpoint of <var>pNamespace</var>, uncapped, as <method>Invoke</method>'s read answers them, and the collected values in <var>pData</var>. An error is
+/// <var>pHttpStatus</var> and <var>pFault</var>.</p>
+ClassMethod ReadSettingRows(pNamespace As %String, pEndpoint As %String, Output pRows As %DynamicArray, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pRows = ""
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(pNamespace, pEndpoint, "", 0, .pData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    Set pRows = ..Rows(pEndpoint, .pData)
+    Quit $$$OK
+}
+
+/// <p>The refusal <var>pCode</var> of <class>OcuPilot.Api.ConfigError</class>, on that class's status and slug, with its sentence.</p>
+ClassMethod ConfigRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(##class(OcuPilot.Api.ConfigError).HttpStatusFor(pCode), ##class(OcuPilot.Api.ConfigError).SlugFor(pCode), pCode, ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>The query a settings tool's fresh read sends (AD-52): <parameter>ACTIONKEY</parameter> <var>pAction</var> when <var>pPayload</var> carries no <var>pMarker</var> field, which a stored payload
+/// does and a call's arguments do not, and <parameter>NAMESPACEKEY</parameter> from the payload's <code>Namespace</code>.</p>
+ClassMethod ActionQuery(pPayload As %DynamicObject, pMarker As %String, pAction As %String, ByRef pQuery)
+{
+    If '$IsObject(pPayload) Quit
+    If pPayload.%GetTypeOf(pMarker) = "unassigned" Set pQuery(..#ACTIONKEY) = pAction
+    If (pPayload.%GetTypeOf("Namespace") = "string") && (pPayload.%Get("Namespace") '= "") Set pQuery(..#NAMESPACEKEY) = pPayload.%Get("Namespace")
+}
+
+/// <p>What a settings write's caller must hold, as a <class>%List</class> of pairs: the screen <var>pDescriptorClass</var>'s own, WRITE on the resource guarding the database
+/// <var>pGlobal</var> maps to in the request's namespace, READ on the one guarding its routines database, then the custom resource of each page of <var>pClassicPages</var> (AD-8, AD-44, AD-65).
+/// <var>pResolved</var> is 0 when a database names no resource.</p>
+ClassMethod WritePairs(pDescriptorClass As %String, pGlobal As %String, pClassicPages As %String, Output pResolved As %Boolean) As %List
+{
+    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(pDescriptorClass, .pResolved)
+    If 'pResolved Quit ""
+    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tGlobals = ""
+    Set tReadOnly = 0
+    Set tMounted = 0
+    Set tRoutines = ""
+    If '..DestinationDatabase(tNamespace, pGlobal, .tGlobals, .tReadOnly, .tMounted) || (tGlobals = "") {
+        Set pResolved = 0
+        Quit ""
+    }
+    If '##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase(tNamespace, .tRoutines, .tReadOnly) || (tRoutines = "") {
+        Set pResolved = 0
+        Quit ""
+    }
+    Set tWrite = $ListBuild(tGlobals, ..#WRITEPERMISSION)
+    If '$ListFind(tPairs, tWrite) Set tPairs = tPairs _ $ListBuild(tWrite)
+    Set tRead = $ListBuild(tRoutines, ..#READPERMISSION)
+    If '$ListFind(tPairs, tRead) Set tPairs = tPairs _ $ListBuild(tRead)
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, pClassicPages)
+}
+
+/// <p>Serve the settings reads and writes after <method>Invoke</method>'s gate (Story 24.13). <code>SETTING</code> reads one General row by its name under <parameter>IDKEY</parameter> and <code>WORKLIST</code> one
+/// Worklists row by the composite <code>[Page, Panel, Class]</code>, each answering the row and <code>Namespace</code>; carrying <parameter>ACTIONKEY</parameter> the read is composed for that write,
+/// and refuses as the write would: a name the page has no setting for 404 <code>CONFIG.SETTING.NOTFOUND</code>, the Google Maps key for the plain set 409 <code>ANALYTICS.SETTING.SECRET</code>,
+/// any other name for the key's write 404, a worklist the page does not list 404 <code>ANALYTICS.WORKLIST.ABSENT</code>, and a show or hide while the worklists are not customized 409
+/// <code>ANALYTICS.WORKLIST.NOTCUSTOMIZED</code>. A write is judged and sent under one lock per namespace (<method>SendSetting</method>); a lock held past
+/// <parameter>SETTINGLOCKSECONDS</parameter> is 409 <code>WRITE.TARGETBUSY</code>.</p>
+ClassMethod InvokeSetting(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery(..#IDKEY))
+    Set tWrite = ..IsSettingsWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsSettingsWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If 'tWrite Quit ..JudgeSetting(pNamespace, pEndpoint, tId, tAction, .tData, .pResult, .pHttpStatus, .pFault)
+    Lock +^CacheTemp.OcuPilotAnalyticsSettings(pNamespace):..#SETTINGLOCKSECONDS
+    If '$Test Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
+    Try {
+        Set tSC = ..SendSetting(pNamespace, pEndpoint, pType, tId, pBody, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("a settings write failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Lock -^CacheTemp.OcuPilotAnalyticsSettings(pNamespace)
+    Quit tSC
+}
+
+/// <p>The row <var>pId</var> names on <var>pEndpoint</var>, read fresh and judged for the write <var>pAction</var> (<code>""</code> for a plain read), with <code>Namespace</code> added: <var>pRow</var>, or the refusal
+/// <method>InvokeSetting</method> describes. <var>pData</var> is what <method>Collect</method> gathered.</p>
+ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %String, pAction As %String, Output pData, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSettings = (pEndpoint = ..#ENDPOINTSETTINGS)
+    Set tParts = $Select(tSettings: $ListBuild(pId), 1: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId))
+    Set tSC = ..ReadSettingRows(pNamespace, pEndpoint, .tRows, .pData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tFound = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tSettings {
+            If tRow.%Get("Name") = pId Set tFound = tRow
+        } ElseIf ($ListLength(tParts) = 3) && (tRow.%Get("Page") = $List(tParts, 1)) && (tRow.%Get("Panel") = +$List(tParts, 2)) && (tRow.%Get("Class") = $List(tParts, 3)) && ($List(tParts, 2) = +$List(tParts, 2)) {
+            Set tFound = tRow
+        }
+        If $IsObject(tFound) Quit
+    }
+    If tSettings {
+        If '$IsObject(tFound) || ((pAction = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit ..ConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+        If (pAction = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#SETTINGSECRET, .pHttpStatus, .pFault)
+    } Else {
+        If '$IsObject(tFound) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#WORKLISTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT, .pHttpStatus, .pFault)
+        If (pAction '= "") && 'tFound.%Get("Customized") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#WORKLISTNOTCUSTOMIZED, .pHttpStatus, .pFault)
+    }
+    Do tFound.%Set("Namespace", pNamespace, "string")
+    Set pRow = tFound
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Judge and send the settings write <var>pType</var> for the target <var>pId</var>, inside the namespace's settings lock: the row is read and judged as the write's own read is
+/// (<method>JudgeSetting</method>); the value is judged by the limits <method>LimitsFrom</method> gives it, 400 <code>CONFIG.SETTING.VALUE</code>; then the classic page's own setters are called through the
+/// seams, the whole General form composed in the namespace from the nodes as they stand (<method>SettingsSaveHere</method>), and OcuPilot's own <code>ConfigChange</code> row is recorded, names only.
+/// The answer is the target's row, read again.</p>
+ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, pType, .tData, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tCaught = ""
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    If pEndpoint = ..#ENDPOINTSETTINGS {
+        Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
+        If pBody.%GetTypeOf(tField) '= "string" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+        Set tValue = pBody.%Get(tField)
+        If '##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).ValueHolds(..LimitsFrom(pId, $Get(tData("schemes")), $Get(tData("series"))), tValue) Quit ..ConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+        If pId = ..#SETTINGCUSTOMNAME {
+            Set tVendorSC = ..VendorSettingCustom(pNamespace, tValue, .tCaught)
+        } Else {
+            Set tOverrides(pId) = tValue
+            Set tVendorSC = ..VendorSettingsSave(pNamespace, .tOverrides, .tCaught)
+        }
+        Do tEffects.%Set("setting", pId, "string")
+        Set tVerb = $Select(pType = ..#TYPESETTINGKEY: ..#VERBSETTINGKEY, 1: ..#VERBSETTINGSET)
+        Set tEntity = ..#ENTITYSETTING
+        Set tAuditId = pId
+    } Else {
+        Set tShow = (pType = ..#TYPEWORKLISTSHOW)
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+        Set tNumber = $ListFind(..WorklistClasses(), $List(tParts, 3))
+        If 'tNumber Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#WORKLISTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT, .pHttpStatus, .pFault)
+        Set tVendorSC = ..VendorWorklistOption(pNamespace, $List(tParts, 1), +$List(tParts, 2), $List(tParts, 3), tNumber, tShow, .tCaught)
+        Do tEffects.%Set("page", $List(tParts, 1), "string")
+        Do tEffects.%Set("panel", +$List(tParts, 2), "number")
+        Do tEffects.%Set("class", $List(tParts, 3), "string")
+        Set tVerb = $Select(tShow: ..#VERBWORKLISTSHOW, 1: ..#VERBWORKLISTHIDE)
+        Set tEntity = ..#ENTITYWORKLIST
+        Set tAuditId = pId
+    }
+    If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the settings write failed", .pHttpStatus, .pFault)
+    Do ..AuditWrite(tVerb, tAuditId, tEffects, tEntity)
+    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, "", .tAfter, .pResult, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        Set pResult = {}
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+    }
+    Quit $$$OK
+}
+
+/// <p>Save the General form with the setting overrides <var>pOverrides</var> (name to value) in <var>pNamespace</var>, through <code>%DeepSee.UI.Settings.SaveToServer</code>: every other setting at the value its
+/// node holds now, or the page's default (<method>SettingsSaveHere</method>). A status that names what the vendor refused. A raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorSettingsSave(pNamespace As %String, ByRef pOverrides, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tMessage = ..SettingsSaveHere(.pOverrides)
+        Set $NAMESPACE = tOrigNS
+        If tMessage '= "" Set tSC = $$$ERROR($$$GeneralError, "the Settings page refused its save: " _ tMessage)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The form <code>SaveToServer</code> takes, composed in the target namespace from every node as it stands (the page's default for a node that is not stored), the overrides in <var>pOverrides</var>
+/// laid over it, and saved. The stored Google Maps key is read and passed here and nowhere else. Runs in the target namespace, and names only vendor classes.</p>
+ClassMethod SettingsSaveHere(ByRef pOverrides) As %String [ Private ]
+{
+    Set tData = ##class(%ZEN.proxyObject).%New()
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tAt)
+        If $List(tEntry, 8) = "custom" Continue
+        Set tName = $List(tEntry, 1)
+        If $Data(pOverrides(tName)) {
+            Set tValue = pOverrides(tName)
+        } ElseIf $List(tEntry, 3) = "" {
+            Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2)), $List(tEntry, 4))
+        } Else {
+            Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2), $List(tEntry, 3)), $List(tEntry, 4))
+        }
+        If $List(tEntry, 5) Set tValue = +tValue
+        Do tData.%DispatchSetProperty($List(tEntry, 7), tValue)
+    }
+    Quit ##class(%DeepSee.UI.Settings).SaveToServer(tData)
+}
+
+/// <p>Turn the Worklists options on (<var>pValue</var> 1) or off (0) in <var>pNamespace</var> through <code>SetCustom</code>. Turning them off keeps the options already chosen: the vendor's call removes every
+/// stored option with the flag, so they are read first and set again with <code>SetOption</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorSettingCustom(pNamespace As %String, pValue As %Boolean, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..SettingCustomHere(''pValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The body of <method>VendorSettingCustom</method>. Runs in the target namespace, and names only vendor classes.</p>
+ClassMethod SettingCustomHere(pValue As %Boolean) [ Private ]
+{
+    Set tCount = 0
+    If 'pValue {
+        Set tPage = ""
+        For {
+            Set tPage = $Order(^DeepSee.UserPortalSettings("Worklist", tPage))
+            If tPage = "" Quit
+            Set tPanel = ""
+            For {
+                Set tPanel = $Order(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel))
+                If tPanel = "" Quit
+                Set tNumber = ""
+                For {
+                    Set tNumber = $Order(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tNumber), 1, tClass)
+                    If tNumber = "" Quit
+                    Set tCount = tCount + 1
+                    Set tOptions(tCount) = $ListBuild(tPage, tPanel, tClass, tNumber)
+                }
+            }
+        }
+    }
+    Do ##class(%DeepSee.UI.Settings).SetCustom(pValue)
+    For tAt = 1:1:tCount {
+        Set tOption = tOptions(tAt)
+        Do ##class(%DeepSee.UI.Settings).SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1)
+    }
+}
+
+/// <p>Show (<var>pValue</var> 1) or hide (0) the worklist class <var>pClass</var>, the <var>pNumber</var>th of the page's list, in panel <var>pPanel</var> of page <var>pPage</var>, in <var>pNamespace</var>,
+/// through <code>SetOption</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorWorklistOption(pNamespace As %String, pPage As %String, pPanel As %Integer, pClass As %String, pNumber As %Integer, pValue As %Boolean, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(%DeepSee.UI.Settings).SetOption(pPage, pPanel, pClass, pNumber, ''pValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for a settings write <var>pType</var> of the target <var>pId</var> (Story 24.13, AD-59): the classic page's own calls, the General form re-read from the
+/// nodes when the script runs, so no stored value, the Google Maps key least of all, is in its text, and the key's own write sets it to the text the body carries (the kernel's placeholder). A target the
+/// write would refuse is a script that only sets the refusal's sentence.</p>
+ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tSettings = "##class(%DeepSee.UI.Settings)"
+    Set tRefuse = tNL _ " Set tSC = $System.Status.Error(5001, "
+    If pEndpoint = ..#ENDPOINTWORKLISTS {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+        Set tNumber = $Select($ListLength(tParts) = 3: $ListFind(..WorklistClasses(), $List(tParts, 3)), 1: 0)
+        If 'tNumber Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT) _ ")"
+        Set tCustom = " Set tSC = $Select(+$Get(^DeepSee.UserPortalSettings(""Worklist"")): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTNOTCUSTOMIZED) _ "))"
+        Quit tNL _ tCustom _ tNL _ " If $System.Status.IsOK(tSC) Do " _ tSettings _ ".SetOption(" _ ..Literal($List(tParts, 1)) _ ", " _ +$List(tParts, 2) _ ", " _ ..Literal($List(tParts, 3)) _ ", " _ tNumber _ ", " _ (pType = ..#TYPEWORKLISTSHOW) _ ")"
+    }
+    Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
+    Set tValue = $Select(pBody.%GetTypeOf(tField) = "string": pBody.%Get(tField), 1: "")
+    ; Every General script says where the key stands: the key's own write takes it from the confirm, any other write keeps the stored one.
+    Set tNote = tNL _ " ; <" _ ..#SETTINGSECRETNAME _ "> is never rendered here: the key's own write takes it at the confirm, and every other write keeps the stored one."
+    Set tRefuse = tNote _ tRefuse
+    Set tKnown = 0
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tAt), 1) = pId Set tKnown = 1
+    }
+    If 'tKnown || ((pType = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.ConfigError).#REASONSETTINGNOTFOUND) _ ")"
+    If (pType = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONSETTINGSECRET) _ ")"
+    If pId = ..#SETTINGCUSTOMNAME {
+        If tValue = 1 Quit tNote _ tNL _ " Do " _ tSettings _ ".SetCustom(1)" _ tNL _ " Set tSC = 1"
+        Set tText = tNote _ tNL _ " Kill tOptions  Set tPage = """""
+        Set tText = tText _ tNL _ " For { Set tPage = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage)) Quit:tPage=""""  Set tPanel = """" For { Set tPanel = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel)) Quit:tPanel=""""  Set tNumber = """" For { Set tNumber = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel, tNumber), 1, tClass) Quit:tNumber=""""  Set tOptions($Increment(tOptions)) = $ListBuild(tPage, tPanel, tClass, tNumber) } } }"
+        Set tText = tText _ tNL _ " Do " _ tSettings _ ".SetCustom(0)"
+        Set tText = tText _ tNL _ " For tAt = 1:1:$Get(tOptions) { Set tOption = tOptions(tAt) Do " _ tSettings _ ".SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1) }"
+        Quit tText _ tNL _ " Set tSC = 1"
+    }
+    Set tText = tNote _ tNL _ " Set tData = ##class(%ZEN.proxyObject).%New()"
+    For tAt = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tAt)
+        If $List(tEntry, 8) = "custom" Continue
+        If $List(tEntry, 1) = pId {
+            Set tExpression = $Select($List(tEntry, 5): "+", 1: "") _ ..Literal(tValue)
+        } Else {
+            Set tNode = ""
+            Set tNode = "^DeepSee.UserPortalSettings(" _ ..Literal($List(tEntry, 2)) _ $Select($List(tEntry, 3) = "": "", 1: ", " _ ..Literal($List(tEntry, 3))) _ ")"
+            Set tExpression = $Select($List(tEntry, 5): "+", 1: "") _ "$Get(" _ tNode _ ", " _ ..Literal($List(tEntry, 4)) _ ")"
+        }
+        Set tText = tText _ tNL _ " Set tData." _ $List(tEntry, 7) _ " = " _ tExpression
+    }
+    Set tText = tText _ tNL _ " Set tMessage = " _ tSettings _ ".SaveToServer(tData)"
+    Quit tText _ tNL _ " Set tSC = $Select(tMessage = """": 1, 1: $System.Status.Error(5001, tMessage))"
 }
 
 }

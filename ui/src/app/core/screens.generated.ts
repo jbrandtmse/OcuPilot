@@ -4053,15 +4053,29 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "setkey",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
         "Value",
-        "Stored"
+        "Stored",
+        "Kind",
+        "Accepts"
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "GoogleMapsKey"
+    ],
     "emptyStateKey": "analyticsSettingsEmpty",
     "commandAliases": [
       "analytics settings"
@@ -4097,7 +4111,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "fields": [
         "Name",
         "Value",
-        "Stored"
+        "Stored",
+        "Kind",
+        "Accepts"
       ],
       "filter": [
         "Name",
@@ -4132,8 +4148,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsSettingsEmptyAgent"
     },
     "tab": {
       "group": "analytics/settings",
@@ -4145,7 +4161,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "multiSelect": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -4707,14 +4722,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "show",
+        "selfProtection": ""
+      },
+      {
+        "id": "hide",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Page",
         "Panel",
         "Worklist",
         "Class",
-        "Shown"
+        "Shown",
+        "Customized"
       ],
       "secretFields": []
     },
@@ -4755,7 +4780,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Panel",
         "Worklist",
         "Class",
-        "Shown"
+        "Shown",
+        "Customized"
       ],
       "filter": [
         "Page",
@@ -4797,8 +4823,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsWorklistsEmptyAgent"
     },
     "tab": {
       "group": "analytics/settings",

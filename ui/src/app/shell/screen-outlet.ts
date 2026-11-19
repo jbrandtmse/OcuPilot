@@ -164,6 +164,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
   'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 24.13 Batch 2: Analytics' General settings, a detail tab, on the same page: its Set value, and its key's masked dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.StartupSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.MemorySettingList': CONFIG_SETTINGS_PAGE,

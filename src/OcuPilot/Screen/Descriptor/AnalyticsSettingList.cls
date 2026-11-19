@@ -5,7 +5,7 @@
 /// under it, each a descriptor of its own.</p>
 /// <p><b>The Google Maps key is never shown.</b> Its row's <code>Value</code> is the credential mask when a key is stored and empty when not (AD-35); the key reaches no screen and no tool.</p>
 /// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>, because a run-time variable is code; the port also checks READ on the namespace's databases
-/// before any vendor call (AD-8, AD-65). <b>Its id is the setting's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>. It offers no action and does not refresh (AD-43).</p>
+/// before any vendor call (AD-8, AD-65). <b>Its id is the setting's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>. Its row action Set value changes one setting, and the key's own action sets the Google Maps key (Story 24.13). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsSettingList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -28,8 +28,9 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Name", "Value", "Stored"], "secretFields": []},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "setkey", "selfProtection": ""}],
+  "context": {"fields": ["Name", "Value", "Stored", "Kind", "Accepts"], "secretFields": []},
+  "secretArguments": ["GoogleMapsKey"],
   "emptyStateKey": "analyticsSettingsEmpty",
   "commandAliases": ["analytics settings"],
   "suggestedPrompts": [
@@ -42,7 +43,7 @@ XData Declaration
   "read": {
     "row": "analytics setting",
     "source": {"port": "analytics", "endpoint": "Settings", "type": "LIST"},
-    "fields": ["Name", "Value", "Stored"],
+    "fields": ["Name", "Value", "Stored", "Kind", "Accepts"],
     "filter": ["Name", "Value"],
     "sort": {"fields": ["Name", "Value", "Stored"], "default": "Name", "direction": "asc"},
     "paging": "cap"
@@ -53,8 +54,8 @@ XData Declaration
       {"field": "Value", "labelKey": "errorLogColumnValue", "kind": "text"},
       {"field": "Stored", "labelKey": "analyticsColumnStored", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsSettingsEmptyAgent"
   },
   "tab": {"group": "analytics/settings", "position": 1, "labelKey": "processDetailsGroupGeneral"},
   "toolIdentifier": "analytics.settings"

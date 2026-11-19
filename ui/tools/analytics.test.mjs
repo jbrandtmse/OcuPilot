@@ -303,7 +303,7 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
       'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne), $List(tSetting, 4))',
       'Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo)) # 2',
       'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo), $List(tSetting, 4))',
-      `Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, ""), tClass, ''$Data(^DeepSee.UserPortalSettings("", tPage, tPanel, tAt)))`,
+      `Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, ""), tClass, ''$Data(^DeepSee.UserPortalSettings("", tPage, tPanel, tAt)), ''(+$Get(^DeepSee.UserPortalSettings(""))))`,
       'Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1',
       'Lock -^DeepSee.Build(tIndex, "")',
       // Story 24.2 (AD-65), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
@@ -320,6 +320,13 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
       'If $Data(tSaved($ZConvert(tModel.name, ""))) || $Data(^DeepSee.ListingGroups("", $ZConvert(tModel.name, ""))) || ##class(%Dictionary.ClassDefinition).%ExistsId($Select(pOp = "": pBody.%Get(""), 1: pNewClass)) Set pCode = ""',
       `If '##class(%DeepSee.Utils).%CubeExists(tCube) || $Get(^DeepSee.Cubes("", $ZConvert(tCube, ""), ""), 0) {`,
       `If $Data(^DeepSee.Cubes("", tCubeU, "", tName)) || ($Data(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) && ($Get(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) '= $ZConvert(tModel.name, ""))) {`,
+      // Story 24.13 Batch 2 (AD-65), strings blanked: the General form composed in the target namespace from each node as it stands (the one method that calls the page's save), and the
+      // Worklists options read before the page's own call that turns them off removes them, which the same method sets again through the page's own call.
+      'Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2)), $List(tEntry, 4))',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2), $List(tEntry, 3)), $List(tEntry, 4))',
+      'Set tPage = $Order(^DeepSee.UserPortalSettings("", tPage))',
+      'Set tPanel = $Order(^DeepSee.UserPortalSettings("", tPage, tPanel))',
+      'Set tNumber = $Order(^DeepSee.UserPortalSettings("", tPage, tPanel, tNumber), 1, tClass)',
     ],
     'the port names a vendor global only in the lock probe, in the term list editor\'s named nodes, in the listing group write\'s pre-checks and in the analytics settings\' reads by name'
   );
@@ -536,13 +543,50 @@ const QUALITY_MEASURE_TOOLS = ['AnalyticsQualityMeasureAdd', 'AnalyticsQualityMe
   join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`)
 );
 
-test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes no setting', () => {
+const SETTING_SENTENCES = [
+  ['REASONSETTINGREADONLY', 'analyticsRefusalSettingReadOnly'],
+  ['REASONSETTINGSECRET', 'analyticsRefusalSettingSecret'],
+  ['REASONSETTINGSAVE', 'analyticsSettingSaveConsequence'],
+  ['REASONWORKLISTNOTCUSTOMIZED', 'analyticsRefusalWorklistNotCustomized'],
+  ['REASONWORKLISTABSENT', 'analyticsRefusalWorklistAbsent'],
+];
+
+test('Story 24.13 Batch 2: each settings refusal and the save consequence is published once and mapped for the card', () => {
+  // Mutation (Rule 19): change one word of REASONWORKLISTNOTCUSTOMIZED in AnalyticsError.cls (or of analyticsRefusalWorklistNotCustomized in strings.ts) -> this goes red naming the pair;
+  // drop the `ANALYTICS.SETTING.SAVE` branch from proposal-view.ts's `consequenceSentence` -> the second half goes red naming the constant.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of SETTING_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE'"), 'proposal-view.ts holds ANALYTICS.SETTING.SAVE');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;'), 'and maps it to the sentence');
+  for (const name of ['AnalyticsSettingSet', 'AnalyticsSettingKey']) {
+    assert.equal(classParameter(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'CONSEQUENCECODE'), 'ANALYTICS.SETTING.SAVE', `${name} names its consequence code`);
+  }
+});
+
+test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes a setting only through the page\'s own setters', () => {
   // Mutation (Rule 19): call ##class(%DeepSee.UserPortal.Utils).%GetUserSetting from AnalyticsPort.cls, or set a node of ^DeepSee.UserPortalSettings -> this goes red naming the call.
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
   const portalCalls = [...code.matchAll(/##class\(%DeepSee\.UserPortal\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
-  assert.deepEqual([...new Set(portalCalls)].sort(), ['%GetUserIconList', '%GetUserSettingsList'], 'the port calls only the two measured list reads of the user portal');
+  assert.deepEqual([...new Set(portalCalls)].sort(), ['%GetChartSeriesSchemes', '%GetColorSchemes', '%GetUserIconList', '%GetUserSettingsList'], 'the port calls only the two measured list reads of the user portal and the two scheme lists the General tab offers');
+  // Story 24.13 Batch 2 (AD-65): the classic page's three setters are named in their seams only, each seam a method of its own that runs in the target namespace.
+  const seamBody = (name) => code.match(new RegExp(`ClassMethod ${name}\\([^\\n]*\\n\\{\\n[\\s\\S]*?\\n\\}\\n`))?.[0] ?? '';
+  const seams = { SettingsSaveHere: /SaveToServer\(/, SettingCustomHere: /SetCustom\(|SetOption\(/, VendorWorklistOption: /SetOption\(/ };
+  let outside = code;
+  for (const [name, setter] of Object.entries(seams)) {
+    const body = seamBody(name);
+    assert.ok(setter.test(body), `${name} calls the page's own setter`);
+    outside = outside.replace(body, '');
+  }
   for (const never of [/%GetUserSetting\(/, /%SetUserSetting/, /%SetUserIcon/, /%RemoveUser/, /%ClearUser/, /SaveToServer/, /SetOption\(/, /SetCustom\(/, /%DeepSee\.UI\.Settings/]) {
-    assert.ok(!never.test(code), `the port never names ${never}`);
+    assert.ok(!never.test(outside), `the port names ${never} in no method but its seam`);
   }
   assert.ok(!/\b(Set|Kill|Merge|Lock)\s+[+-]?\^DeepSee\.(UserPortalSettings|User\.)|\$(Increment|Order)\(\^DeepSee\.User[^\n]*\)\s*=/i.test(code), 'and no line of the port sets, kills, merges into or locks one of the three settings globals');
   assert.ok(!/\bXECUTE\b|\bX\s+"|\$XECUTE/i.test(code), 'and the port executes no stored expression');
