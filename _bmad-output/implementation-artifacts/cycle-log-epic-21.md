@@ -642,3 +642,6 @@
 2026-11-19T00:52:13Z	Story 21.18	story_green	code_head=abd91cccb ci=44413746537(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=8793dec9d
 2026-11-19T00:52:29Z	Story 21.15	spec_validated	owned_ledger=DW-2606 addressed=1(Export_task,matrix,AC6) owner_answer=U-58
 2026-11-19T00:52:29Z	Story 21.15	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-19T00:52:29Z model=sonnet agent_name=21-15-implement-1 cycle_iteration=1 story_base=a44ce8fff
+2026-11-19T01:03:49Z	Epic 21	ruling	question=21.18_merged;timings_refresh_44413746537_trips_AC9 via=orchestrator choice=21.18_merged(feature_ff_a44ce8fff+9fd1500d1);routed_to_next_code_head:copy_ci-timings-pending-run44413746537.json,browser-shard_timeout-minutes_55->62,run_ci.test+test:tools(Rule29)
+2026-11-19T01:03:49Z	Story 21.15	stage_returned	stage=implement status=blocked spawn_at=2026-11-19T00:52Z model=sonnet reason=Task0:a_y_locale_export_carries_shipped_tables(50+40);ImportAll_writes_shipped_records;planned_LOCALE.IMPORT.SYSTEM_refuses_our_own_export options=1(keep_custom_records_only;amends_AD-51)|2(refuse_shipped)|3(import_all_as_classic) recommended=1 class=U7(AD_amendment)->orchestrator
+2026-11-19T01:03:49Z	Story 21.15	parked_pending	awaiting=orchestrator_ruling(AD-51) next=21.16_meanwhile
