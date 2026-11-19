@@ -656,6 +656,9 @@ services:
       # The settings write classes (Story 24.13 Batch 2) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent, and the edge class takes the namespace's
       # settings lock from this process to see a second writer refused.
       # classes: AnalyticsSettingsWrite, AnalyticsSettingsWriteEdge
+      # The run-time variable and icon write classes (Story 24.13 Batch 3) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent; they start a
+      # second process that holds the namespace's settings lock, and the edge class takes it from this process.
+      # classes: AnalyticsSettingsEntryWrite, AnalyticsSettingsEntryWriteEdge
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

@@ -2,8 +2,8 @@
 title: 'Story 24.13: Analytics settings (Batch 3: the run-time variable and user-defined icon writes)'
 type: 'feature'
 created: '2026-11-19'
-status: 'ready-for-dev'
-baseline_revision: '3d620f2a34ab915bf497eb17d1fd24a070828ccc'
+status: 'done'
+baseline_revision: 'fe4f45059d4f8d5d7a8b0b73aa25603ea1f74bb1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -117,10 +117,19 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci`, USER, settings restored after): confirm a 255-character name stores through `%SetUserSetting` and `%SetUserIcon` and that the name probe agrees, then record the result under Design Notes › Measured.
-- [ ] `AnalyticsPort.cls`, `AnalyticsError.cls`: types, routing, gate, judging, seams, audit, the ten script forms.
-- [ ] The eight tools, two saves and routes, both descriptors, `Baseline.cls`, `Prohibited.cls`, the client, strings (once ruled), the regenerated mirror and titles, and the EXPERIENCE.md row.
-- [ ] Tests: the matrix in the two new classes, the Batch 2 script leg, component and browser tests, and every roster.
+- [x] **Task 0** (`ocupilot-b-ci`, USER, settings restored after): confirm a 255-character name stores through `%SetUserSetting` and `%SetUserIcon` and that the name probe agrees, then record the result under Design Notes › Measured.
+- [x] `AnalyticsPort.cls`, `AnalyticsError.cls`: types, routing, gate, judging, seams, audit, the ten script forms.
+- [x] The eight tools, two saves and routes, both descriptors, `Baseline.cls`, `Prohibited.cls`, the client, strings (once ruled), the regenerated mirror and titles, and the EXPERIENCE.md row.
+- [x] Tests: the matrix in the two new classes, the Batch 2 script leg, component and browser tests, and every roster.
+- [x] **Review fixes (tests only, smallest change that does each):**
+  - **R1** (`AnalyticsSettingsEntryWrite`): count `ConfigChange` rows before and after (`InteropQueueActions` `Rows`/`Count`/`Added`) for every one of the six writes by both callers wherever the class already runs that leg, including the icon change by both callers, the agent's icon add and remove, and the person's variable remove.
+  - **R2** (`AnalyticsSettingsDatabaseSeam`, `AnalyticsSettingsEntryWriteEdge`): let the seam mark one of the three settings globals read-only at a time; the gate test asserts a read-only `^DeepSee.User.Settings` refuses the variable writes (409 `ANALYTICS.SETTING.READONLY`) and not the icon writes, and the reverse for `^DeepSee.User.Icons`. Replace the false mutation sentence in the test's doc comment. Mutation: `SettingsGlobal` answering `SETTINGSGLOBAL` for both endpoints -> the new test red alone; record it under Verification.
+  - **R3** (both `RunScript` helpers, in `AnalyticsSettingsEntryWrite` and `AnalyticsSettingsWrite`): on every held-lock leg assert the error text of `tSC` contains `OcuPilot.Api.Error`'s `REASONWRITETARGETBUSY`.
+  - **R4** (`AnalyticsSettingsWrite`, `AnalyticsSettingsEntryWrite`/`Edge`): add a held-lock `Worklist 1` script leg (customization off first, lock held: refused, flag stays off); extend the HTTP `409 WRITE.TARGETBUSY` leg to the variable remove and the icon change.
+  - **R5**: kill `^OcuProbe2413Ran` in USER and in the test namespace in `AnalyticsSettingsEntryWrite`'s `OnBeforeOneTest` and in the browser test's setup; release the test process's own `^CacheTemp.OcuPilotAnalyticsSettings("USER")` lock (and HSCUSTOM's if a leg takes it) in `OnAfterOneTest`.
+  - **R6** (`analytics-setting-entry-list.page.spec.ts`, `ui/browser/analytics.browser-spec.mjs`): assert no `img`, `a` or `iframe` after a path is typed into the Add and the Change dialog (component) and, in the browser, in the dialog as well as the grid.
+  - **R7** (`TestAnExpressionIsNeverRun`): scan the journal with `AnalyticsProbe.JournalMark` before and `JournalWrites` after every write, read and script that carries the probe expression, in the namespaces it can reach, and assert no entry names `^OcuProbe2413Ran`; state in the test comment whether the database is journaled. Then remove the `deferred:` entry for AC3 from the frontmatter. Mutation: `VariableExpressionHolds` sets then kills `^OcuProbe2413Ran` before the check -> only the journal assertion red; record it (replace the AC3 mutation line's claim if it changes).
+  - After the fixes: record each new or changed pinning test's `mutation:` line (apply, observe red, revert byte-identical, sync and compile into `ocupilot-b-ci` first); run the touched classes one at a time and the two client tiers; rebuild and redeploy the bundle and re-run `browser/analytics.browser-spec.mjs`.
 
 **Acceptance Criteria:**
 
@@ -141,6 +150,35 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
 - 2026-11-19, spec gate (runner): the syntax-only expression check, variable and icon add and set shipping true with removes false and typed-name, the shared settings lock for all ten writes (DW-2775), the proposed strings and the proposed AD-65 line kept (veto item U-117).
 
 ## Review Triage Log
+
+### 2026-11-19 — Review pass
+
+- verdicts: 24 findings — high 0, medium 6, low 18, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AC5 audit count unpinned for the icon change (both callers) and several other write and caller pairs — pinned by before/after counts on every pair the tests already run (fix task R1).
+  - `[medium]` `[patch]` the gate test cannot tell which global's database is checked, and its doc comment claims a mutation that cannot redden — the seam arms one global at a time (R2).
+  - `[medium]` `[patch]` the held-lock script legs assert refused, not the busy sentence (AC6), in both `RunScript` helpers (R3).
+  - `[medium]` `[patch]` the same unpinned busy sentence, reported by the intent audit as reading R5 — shared with the row above.
+  - `[medium]` `[patch]` AC3 names a journal scan of the process that no test performs, and the `deferred:` entry dropped it — dropping or deferring scope is owner-only, so the scan is added with the probe's `JournalMark` and `JournalWrites` and the entry removed (R7).
+  - `[medium]` `[patch]` the same audit-count gap, reported by the intent audit as reading R8 — shared with the first row.
+  - `[low]` `[patch]` the held-lock leg never runs the `Worklist 1` script (R4).
+  - `[low]` `[patch]` the probe global is not killed in USER by the test hooks and the browser test, though its absence there is asserted (R5).
+  - `[low]` `[patch]` a script that throws leaves the lock held for later tests in `AnalyticsSettingsEntryWrite` (R5).
+  - `[low]` `[patch]` the component spec's no-image, no-link check runs on an empty Add dialog (R6).
+  - `[low]` `[patch]` the intent audit's AC4 divergence: path-as-text is checked on the grid only (R6).
+  - `[low]` `[patch]` the HTTP busy refusal is tested for four of the six new writes (R4).
+  - `[low]` `[reject]` the name rule runs on add only (reading R1) — a stored name the classic page allowed may exceed it, and a malformed name on set or remove reads 404; a guard there adds complexity for no reachable harm.
+  - `[low]` `[reject]` a `Value` equal to the stored one is not re-checked (reading R2) — recorded in-stage; the check guards what is newly stored, and refusing a comment-only change would be the harm.
+  - `[low]` `[reject]` the mint refuses with 400 `TOOL.ARGUMENTS` where the port answers the named codes (reading R3) — Batch 2's mint does the same for an absent setting (`AnalyticsSettingsWriteEdge` :112, :337).
+  - `[low]` `[reject]` the General and custom-worklist scripts guard several lines (reading R4) — a script is pasted a line at a time, and each line is single.
+  - `[low]` `[reject]` the gate order is tested through the port only — the mint and the screen action reach the gate through `Invoke`.
+  - `[low]` `[reject]` the shipped 5-second lock line is never run held — the test seam renders the same line with a 0-second wait.
+  - `[low]` `[reject]` unheld scripts are compared with expected values, not with a port run — the values are the port's own measured results.
+  - `[low]` `[reject]` the tools' `write` declaration is pinned through the rosters, each shown load-bearing by a mutation (AC5).
+  - `[low]` `[reject]` AC7's either-order, fresh-instance clause is not run by the tests themselves — the lead's fresh check runs it before the finalize commit.
+  - `[low]` `[reject]` two consequence codes for the removals, `Was` in the change payload and a 200 where the save answers 201 — the removal consequences are among the proposed strings, and the others are recorded in-stage.
+  - `[low]` `[reject]` the Fixed strings drift bound moved from 4200 to 4600 — the table's earlier moves followed the same protocol; the move is recorded here and in the commit message for the lead's ruling.
+  - `[low]` `[reject]` the `IsDefault` precondition of the baseline test — the pattern of six sibling classes.
 
 ## Design Notes
 
@@ -173,6 +211,19 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
 - **No vendor audit.** With auditing on, the process wrote no `%SYS.Audit` row.
 - **Name limit.** A 600-character name answered `<SUBSCRIPT>` as an error status and stored nothing.
 - **`CheckSyntax`.** It passed `$Increment(^OcuProbe2413Syn)`, `$H`, a `##class` call and `$$X^Y(1)`. It failed `1+`, and failed `1 Kill ^X` only in the parenthesized form. It ran nothing (the global stayed undefined) and made no journaled write.
+
+**Measured (Task 0, implement, 2026-11-19, `ocupilot-b-ci`, USER, both globals undefined before and after).** Names of 255, 256, 300 and 400 characters stored through `%SetUserSetting` and `%SetUserIcon` and the name probe (a process-private global of the vendor's shape) agreed on each; one of 600 characters raised `<SUBSCRIPT>` in the probe and in both setters. The instance stores past 255, so the 255 limit is the editor's own, as the spec has it.
+
+**Decided in-stage (implement).**
+
+1. A shared abstract `Screen/Tool/AnalyticsSettingEntryAction` sits between `AnalyticsAction` and the two named bases, and an abstract `Area/Analytics/SettingEntrySave` above the two saves, instead of repeating the rules, merge and schema code in both (Rule 2).
+2. The new helper is `VariableExpressionHolds`, because `ExpressionHolds` is the quality measures' already. An expression a variable already holds is not checked again on a change (`SettingEntryViolation`'s stored value), so a comment can change on a variable the classic page stored with any text.
+3. A violation is 400 from the port, the person's save (`SettingEntrySave.RenderViolations`, the family's save answers 422) and the person's action; the agent's mint refuses with the kernel's 400 `TOOL.ARGUMENTS`, the sentence in `detail.problem`, as for every tool. A change of a name that is not held reads 404 from the port and is 400 `TOOL.ARGUMENTS` at the agent's mint.
+4. The change tools add `Was`, the members the target held, to the merged payload, as Batch 2's `AnalyticsSettingSet` does, so a target changed to the value the proposal sets still closes the proposal as moved.
+5. The scripts take the lock with `Lock +...:5 Set tLocked = $Test` and gate every write on `tLocked`, with single-line blocks only, because a script is pasted a line at a time. `Test/AnalyticsSettingsLockSeam` renders them with a lock line that waits 0 seconds and holds the lock from a second process.
+6. `Prohibited.cls` took the one added condition term the spec allows: `|| ..IsAnalyticsSettingType(tType)` on the entry-add branch, which strips the payload's `Namespace`. Its body, `TYPE` parameters, `COVEREDTYPES`, change and create lists are the other add-only edits.
+7. `Test/AnalyticsSettingsDatabaseSeam` answers read-only for the two new globals; `ui/tools/strings.test.mjs`'s drift bound for the Fixed strings literals moves from 4200 to 4600 (4205 with this row), for the lead's ruling.
+8. The EXPERIENCE.md row is line 619, so `strings.ts`'s one reference past it (`taskCreate`, 660) is 661.
 
 **Decided in-stage (plan).**
 
@@ -221,9 +272,28 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
 
 **Mutations:** the implement stage records one per AC here, as `mutation: <change> -> <test red>`.
 
+- mutation: AC1 `AnalyticsPort.SendSetting` sets a variable's comment from the stored row in place of the body -> `AnalyticsSettingsEntryWrite.TestAVariableIsAddedChangedAndRemovedByBothCallers` and `TestAnExpressionIsNeverRun` red (run 59).
+- mutation: AC2 `AnalyticsRuntimeVariableAdd.READBACKTOOL` names the add tool itself, whose read is composed for an add -> `TestAVariableIsAddedChangedAndRemovedByBothCallers` red alone, on both read-back legs (run 63).
+- mutation: AC3 `AnalyticsPort.VariableExpressionHolds` runs the line with `XECUTE` -> `TestAnExpressionIsNeverRun` red alone, the two `^OcuProbe2413Ran` legs (run 60); `ui/tools/analytics.test.mjs`'s guard also goes red on the `XECUTE`.
+- mutation: AC4 `analytics-setting-entry.store.ts` posts the variable add to the icons' route (bundle rebuilt and redeployed) -> the Batch 3 browser test red, the first row never appearing; reverted byte-identical, rebuilt, redeployed and green again.
+- mutation: AC5 `analytics.runtimevariables.add` `false` in `Baseline` -> `AnalyticsSettingsEntryWriteEdge.TestTheBaselineShipsFourKeysOnAndTwoOff` red alone (run 64); the `analytics.usericons.set` row removed from `SurfaceCoverage` -> `TestEveryWriteToolHasACoverageRowAndBack` red alone (run 65).
+- mutation: AC6 `SettingSnippet`'s lock line sets `tLocked = 1` in place of `$Test` -> `AnalyticsSettingsEntryWrite.TestEachWritesScriptFormMakesTheSameChange` red alone (run 61) and `AnalyticsSettingsWrite.TestEachWritesScriptFormMakesTheSameChange` red alone (run 62), the held-lock legs of the six and of Batch 2's four.
+- mutation: AC7 `AnalyticsProbe.RestoreSettings` no longer kills the icons and `AnalyticsSettingsEntryWrite.OnAfterOneTest` no longer clears the settings -> the class's `OnAfterAllTests` red, "left probe state in USER: marker ^DeepSee.User.Icons(...)" (run 66).
+- Each reverted byte-identical (`cmp` against the saved copy), synced and reloaded with the port's subclasses recompiled; the sixteen tests of `analytics.browser-spec.mjs` green on the rebuilt, redeployed bundle.
+- mutation: AC3 journal scan `AnalyticsPort.VariableExpressionHolds` sets and then kills `^OcuProbe2413Ran` before the check -> `AnalyticsSettingsEntryWrite.TestAnExpressionIsNeverRun` red alone, its journal leg only (the global-undefined legs stay green); the scan covers every process, since the person's and the agent's writes are served by other processes.
+- mutation: AC5 audit counts `AnalyticsPort.SendSetting` skips `AuditWrite` for the icon change -> `TestAnIconIsAddedChangedAndRemovedByBothCallers` red alone, on the person's and the agent's change legs.
+- mutation: gate `AnalyticsPort.SettingsGlobal` answers `SETTINGSGLOBAL` for every endpoint -> `AnalyticsSettingsEntryWriteEdge.TestTheGateRefusesBeforeAnyVendorCall` red alone, the six one-global-at-a-time legs only.
+- mutation: AC6 busy sentence `SettingSnippet`'s busy status carries another sentence -> `AnalyticsSettingsEntryWrite.TestEachWritesScriptFormMakesTheSameChange` red on its six held-lock legs and `AnalyticsSettingsWrite.TestEachWritesScriptFormMakesTheSameChange` on its six; the customize script takes no lock for `Worklist` 1 -> that held leg red alone.
+- mutation: HTTP busy `InvokeSetting` takes no lock for the variable removal and the icon change -> `AnalyticsSettingsEntryWriteEdge.TestASecondWriterIsRefusedWhileTheLockIsHeld` red on those two legs and the nothing-written leg.
+- mutation: AC3 hygiene `AnalyticsSettingsEntryWrite.KillRan` kills nothing, with `^OcuProbe2413Ran` planted in `HSCUSTOM` -> `TestAnExpressionIsNeverRun` and `TestEachWritesScriptFormMakesTheSameChange` red. The `USER` kill is also done by `AnalyticsProbe.ClearSettings`, so a stale node there is cleared either way; with the hooks as written a planted node in either namespace leaves the class green.
+- mutation: AC4 path as text `analytics-setting-entry-dialog.ts` draws a link for the typed path (bundle rebuilt and redeployed) -> the component specs for the Add and the Change icon dialog red, and the browser test red on the Add icon dialog's no-media check; reverted, rebuilt, redeployed, sixteen tests green. The browser setup's `HSCUSTOM` kill dropped, with the node planted there -> the same browser test red at its setup assertion.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 - **Plan pass:** used the epic-story path on the committed `epic-24-context.md` (valid, not recompiled), planned the spec, checked it against READY-FOR-DEVELOPMENT, and halted after planning as directed. The four setters and `CheckSyntax` were measured on `ocupilot-b-ci` (Design Notes › Measured), and USER was left as found. Contention is clear at `251088f4b`. The veto items are Design Notes › Questions 1 to 3 and the proposed AD-65 line. Batch 3 fits one pass.
+- **Implement pass (2026-11-19):** the six writes over `AnalyticsPort` with their eight tool classes, two saves and routes, both descriptors, the baseline keys, the prohibited set, the page, dialog and store, the strings and the EXPERIENCE.md row, DW-2775's lock on all ten script forms, and the two new test classes. Choices are in Design Notes; one mutation per AC is in Verification. Verified on `ocupilot-b-ci`: `AnalyticsSettingsEntryWrite` (6) and `AnalyticsSettingsEntryWriteEdge` (5) green, `AnalyticsSettingsWrite`, `AnalyticsSettingsWriteEdge`, `AnalyticsSettingsRead`, `PortGate` and every roster class named above green; `test:tools` 2336, `test:components` 3645, `analytics.browser-spec.mjs` 16 green; `check-objectscript` 0 problems, `lint-docs` clean, build 2.16 MB initial. Not run: the `(once)` sweep and the full browser suite, which the caller runs. Contention: none.
+- **Review-fix pass (tests only; R1 to R7):** per-write `ConfigChange` counts on every pair the two classes run, both script helpers assert the busy sentence, a held-lock `Worklist` 1 leg, the HTTP busy leg for the variable removal and the icon change, the gate seam arms one settings global at a time (`sglobal`), `KillRan` in the hooks and the no-media checks in the component and browser specs, and a journal scan over every process (`AnalyticsProbe.JournalWrites` gained an optional all-processes flag), whose control writes show the `USER` and `HSCUSTOM` databases are journaled here. The AC3 `deferred:` entry is removed. Verified on `ocupilot-b-ci`: the three touched classes, `AnalyticsSettingsWriteEdge` and `AnalyticsSettingsRead` green; `test:components` 3645, `test:tools` 2336, `analytics.browser-spec.mjs` 16 green on the rebuilt bundle; `check-objectscript` 0 problems; mutations in Verification.
+- **Finalize (2026-11-19):** review pass 24 findings (high 0, medium 6, low 18): 12 patched in the review-fix pass, 12 rejected with reasons in the Review Triage Log, none deferred. Follow-up review not recommended: no high and fewer than two medium entries beyond one grouped test-pinning root cause. Fresh check on a rebuilt `ocupilot-b-ci`: the new and changed ObjectScript classes (16) passed on their first run, forward then reverse. The `(once)` sweep, 17 shards of `ci-runner`, passed (6,228 tests, 0 failed) after the last patch. `test:tools` 2336, `test:components` 3645, `analytics.browser-spec.mjs` 16 on the rebuilt, redeployed bundle, `check-objectscript` 0 problems, `lint-docs` clean. Residual: the `strings.test.mjs` drift bound moved from 4200 to 4600 (4205 literals), for the lead's ruling; the mint refuses a bad shape or a missing target with the kernel's 400 `TOOL.ARGUMENTS` (Batch 2's does the same); the proposed AD-65 line is not written into the spine (U-117).

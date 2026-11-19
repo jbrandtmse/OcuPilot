@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,analytics-setting,analytics-worklist";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -812,6 +812,12 @@ Parameter TYPEANALYTICSSETTING = "analytics-setting";
 
 Parameter TYPEANALYTICSWORKLIST = "analytics-worklist";
 
+/// <p>An analytics run-time variable and a user-defined icon (Story 24.13, Batch 3). AD-10 names no effect on either: OcuPilot stores nothing in <code>^DeepSee.User.Settings</code> or
+/// <code>^DeepSee.User.Icons</code>, so a write passes the reviewed-few sweep -- a variable moves its expression, comment and context, an icon its path -- and nothing else.</p>
+Parameter TYPEANALYTICSRUNTIMEVARIABLE = "analytics-runtime-variable";
+
+Parameter TYPEANALYTICSUSERICON = "analytics-user-icon";
+
 /// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
 /// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
 /// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
@@ -1263,10 +1269,10 @@ ClassMethod IsQualityMeasureType(pType As %String) As %Boolean
     Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPEQUALITYMEASUREELEMENT) || (pType = ..#TYPEQUALITYMEASUREMETA)
 }
 
-/// <p>Whether <var>pType</var> is an analytics General setting or a Worklists option (Story 24.13). Pure.</p>
+/// <p>Whether <var>pType</var> is an analytics General setting, a Worklists option, a run-time variable or a user-defined icon (Story 24.13). Pure.</p>
 ClassMethod IsAnalyticsSettingType(pType As %String) As %Boolean
 {
-    Quit (pType = ..#TYPEANALYTICSSETTING) || (pType = ..#TYPEANALYTICSWORKLIST)
+    Quit (pType = ..#TYPEANALYTICSSETTING) || (pType = ..#TYPEANALYTICSWORKLIST) || (pType = ..#TYPEANALYTICSRUNTIMEVARIABLE) || (pType = ..#TYPEANALYTICSUSERICON)
 }
 
 /// <p><parameter>COVEREDTYPES</parameter> as a <class>%List</class>.</p>
@@ -1377,6 +1383,9 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     ; Story 24.13: a General setting moves its value (its key is a declared secret the card names); a worklist option whether it is shown.
     If pType = ..#TYPEANALYTICSSETTING Quit $ListBuild("Value")
     If pType = ..#TYPEANALYTICSWORKLIST Quit $ListBuild("Shown")
+    ; Story 24.13 Batch 3: a run-time variable change moves its expression, comment and context; an icon change its path.
+    If pType = ..#TYPEANALYTICSRUNTIMEVARIABLE Quit $ListBuild("Value", "Comment", "Context")
+    If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Path")
     If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1556,6 +1565,9 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Name,Class,Caption,Description,SubjectArea")
     If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Name,Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
     If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Name,Caption,Content,Disabled")
+    ; Story 24.13 Batch 3: a run-time variable add sets its name, expression, comment and context; an icon add its name and path.
+    If pType = ..#TYPEANALYTICSRUNTIMEVARIABLE Quit $ListBuild("Name", "Value", "Comment", "Context")
+    If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Name", "Path")
     ; Story 20.26: a partner add sets its name and thirteen fields; its namespace is the payload's.
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     Quit ""
@@ -1839,7 +1851,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Quit
             }
             ; Story 20.5: an entry add carries the namespace it was composed in beside its fields, as an item add does.
-            If (tType = ..#TYPELOOKUPENTRY) || (tType = ..#TYPEBUSINESSPARTNER) || (tType = ..#TYPETERMLIST) || (tType = ..#TYPETERMLISTENTRY) {
+            If (tType = ..#TYPELOOKUPENTRY) || (tType = ..#TYPEBUSINESSPARTNER) || (tType = ..#TYPETERMLIST) || (tType = ..#TYPETERMLISTENTRY) || ..IsAnalyticsSettingType(tType) {
                 Set tEntryPayload = ..ParsedObject(pPayload)
                 If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)

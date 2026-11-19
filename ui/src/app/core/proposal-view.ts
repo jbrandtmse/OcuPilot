@@ -425,6 +425,10 @@ export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASU
 export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
 /** Story 24.13 Batch 2: a General setting's write stores every general setting, as the classic page's Save does; one published sentence. */
 export const CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE';
+/** Story 24.13 Batch 3: a run-time variable's expression is code, and the removal of a variable and of an icon; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSVARIABLECODE = 'ANALYTICS.VARIABLE.CODE';
+export const CONSEQUENCE_ANALYTICSVARIABLEREMOVE = 'ANALYTICS.VARIABLE.REMOVE';
+export const CONSEQUENCE_ANALYTICSICONREMOVE = 'ANALYTICS.ICON.REMOVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
@@ -653,6 +657,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
   // Story 24.13 Batch 2: the General settings' save, published once.
   if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;
+  // Story 24.13 Batch 3: a variable's expression is code, and the two removals, each published once.
+  if (code === CONSEQUENCE_ANALYTICSVARIABLECODE) return STRINGS.analyticsVariableCodeConsequence;
+  if (code === CONSEQUENCE_ANALYTICSVARIABLEREMOVE) return STRINGS.analyticsVariableRemoveConsequence;
+  if (code === CONSEQUENCE_ANALYTICSICONREMOVE) return STRINGS.analyticsIconRemoveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

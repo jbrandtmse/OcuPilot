@@ -116,6 +116,10 @@
 /// <parameter>SETTINGSPAIRS</parameter> and, beyond the read gate, WRITE on the database <parameter>SETTINGSGLOBAL</parameter> maps to, mounted read-write. It reaches the instance only through the classic page's own
 /// setters (<code>SaveToServer</code>, <code>SetCustom</code>, <code>SetOption</code>), under one lock per namespace, the whole General form composed in the namespace from the nodes as they stand
 /// (<method>SettingsSaveHere</method>). The vendor audits none of them, so each records OcuPilot's own <code>ConfigChange</code> row.</p>
+/// <p><b>The run-time variable and icon writes (Story 24.13, Batch 3).</b> The <code>RuntimeVariables</code> and <code>UserIcons</code> endpoints also serve the single-row reads <code>RUNTIMEVARIABLE</code> and
+/// <code>USERICON</code>, by the exact name under <parameter>IDKEY</parameter>, and the writes <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code> (<method>InvokeSetting</method>), through
+/// <code>%DeepSee.UserPortal.Utils</code>' own setters only, under the same lock, each gated on WRITE to the database of its own global (<method>SettingsGlobal</method>). A variable's expression is
+/// checked for syntax (<method>VariableExpressionHolds</method>) and never run.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
@@ -600,6 +604,33 @@ Parameter SETTINGTEXTMAX As INTEGER = 2000;
 /// <p>How long a settings write waits for the namespace's settings lock before it answers 409 <code>WRITE.TARGETBUSY</code>.</p>
 Parameter SETTINGLOCKSECONDS As INTEGER = 5;
 
+/// <p>The run-time variable and user-defined icon writes (Story 24.13): the two single-row reads, composed for a write when the query carries <parameter>ACTIONKEY</parameter>. Each
+/// endpoint serves <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> and <parameter>TYPEENTRYREMOVE</parameter> as its three writes.</p>
+Parameter TYPERUNTIMEVARIABLE = "RUNTIMEVARIABLE";
+
+Parameter TYPEUSERICON = "USERICON";
+
+Parameter ENTITYRUNTIMEVARIABLE = "analytics-runtime-variable";
+
+Parameter ENTITYUSERICON = "analytics-user-icon";
+
+Parameter VERBRUNTIMEVARIABLEADD = "analytics.runtimevariables.add";
+
+Parameter VERBRUNTIMEVARIABLESET = "analytics.runtimevariables.set";
+
+Parameter VERBRUNTIMEVARIABLEREMOVE = "analytics.runtimevariables.remove";
+
+Parameter VERBUSERICONADD = "analytics.usericons.add";
+
+Parameter VERBUSERICONSET = "analytics.usericons.set";
+
+Parameter VERBUSERICONREMOVE = "analytics.usericons.remove";
+
+/// <p>The globals the run-time variables and the user-defined icons are kept in, which their writes need WRITE on the database of (<method>SettingsGlobal</method>).</p>
+Parameter VARIABLEGLOBAL = "^DeepSee.User.Settings";
+
+Parameter ICONGLOBAL = "^DeepSee.User.Icons";
+
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
 /// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -662,27 +693,55 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS Quit (pType = ..#TYPEQUALITYMEASUREMETA) || ..IsQualityMeasurePartWrite(pType)
     If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY)
     If pEndpoint = ..#ENDPOINTWORKLISTS Quit (pType = ..#TYPEWORKLIST) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
+    If pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES Quit (pType = ..#TYPERUNTIMEVARIABLE) || ..IsEntryWrite(pType)
+    If pEndpoint = ..#ENDPOINTUSERICONS Quit (pType = ..#TYPEUSERICON) || ..IsEntryWrite(pType)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
 }
 
-/// <p>Whether <var>pEndpoint</var> is the General or the Worklists tab's (Story 24.13), the two the settings writes are served on.</p>
+/// <p>Whether <var>pEndpoint</var> is one of the four settings tabs' (Story 24.13), the ones the settings reads and writes are served on.</p>
 ClassMethod IsSettingsEndpoint(pEndpoint As %String) As %Boolean
 {
-    Quit (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTWORKLISTS)
+    Quit (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTWORKLISTS) || ..IsEntryEndpoint(pEndpoint)
 }
 
-/// <p>Whether <var>pType</var> is one of the four settings writes (Story 24.13).</p>
-ClassMethod IsSettingsWrite(pType As %String) As %Boolean
+/// <p>Whether <var>pEndpoint</var> is the Run-time variables or the User-defined icons tab's, the two whose rows are added, changed and removed by name. Pure.</p>
+ClassMethod IsEntryEndpoint(pEndpoint As %String) As %Boolean
 {
+    Quit (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) || (pEndpoint = ..#ENDPOINTUSERICONS)
+}
+
+/// <p>Whether <var>pType</var> is one of the three writes of a run-time variable or an icon. Pure.</p>
+ClassMethod IsEntryWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+}
+
+/// <p>Whether <var>pType</var> is one of the settings writes of <var>pEndpoint</var> (Story 24.13): the four of the General and Worklists tabs, and the three entry writes of the Run-time variables
+/// and User-defined icons tabs, which <var>pEndpoint</var> must name. Pure.</p>
+ClassMethod IsSettingsWrite(pType As %String, pEndpoint As %String = "") As %Boolean
+{
+    If ..IsEntryEndpoint(pEndpoint) Quit ..IsEntryWrite(pType)
     Quit (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
 }
 
-/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a setting and so needs the destination's gate
-/// (<method>AdmitDestination</method>): a settings write, and a single-row read composed for one. Pure.</p>
-ClassMethod ChangesSettings(pType As %String, pAction As %String = "") As %Boolean
+/// <p>The single-row read type of the Run-time variables or User-defined icons tab, <code>""</code> for any other endpoint. Pure.</p>
+ClassMethod EntryReadType(pEndpoint As %String) As %String
 {
-    If ..IsSettingsWrite(pType) Quit 1
-    Quit ((pType = ..#TYPESETTING) || (pType = ..#TYPEWORKLIST)) && (pAction '= "")
+    Quit $Case(pEndpoint, ..#ENDPOINTRUNTIMEVARIABLES: ..#TYPERUNTIMEVARIABLE, ..#ENDPOINTUSERICONS: ..#TYPEUSERICON, : "")
+}
+
+/// <p>The global the writes of <var>pEndpoint</var> need WRITE on the database of: the run-time variables' and the icons' own, else the page's settings global. Pure.</p>
+ClassMethod SettingsGlobal(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTRUNTIMEVARIABLES: ..#VARIABLEGLOBAL, ..#ENDPOINTUSERICONS: ..#ICONGLOBAL, : ..#SETTINGSGLOBAL)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a setting and so needs the destination's gate
+/// (<method>AdmitDestination</method>): a settings write of <var>pEndpoint</var>, and a single-row read composed for one. Pure.</p>
+ClassMethod ChangesSettings(pType As %String, pAction As %String = "", pEndpoint As %String = "") As %Boolean
+{
+    If ..IsSettingsWrite(pType, pEndpoint) Quit 1
+    Quit ((pType = ..#TYPESETTING) || (pType = ..#TYPEWORKLIST) || (pType = ..#TYPERUNTIMEVARIABLE) || (pType = ..#TYPEUSERICON)) && (pAction '= "")
 }
 
 /// <p>Whether <var>pType</var> is one of the term list editor's six writes (Story 24.2) or its three transfers' (Story 24.10).</p>
@@ -782,7 +841,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY))), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY)), pEndpoint), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
         Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
@@ -883,7 +942,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..AdmitFolderItem(pNamespace, .pHttpStatus, .pFault)
     If ..IsListingGroupEndpoint(pEndpoint) Quit ..AdmitListingGroup(pNamespace, .pHttpStatus, .pFault)
-    If ..IsSettingsEndpoint(pEndpoint) Quit ..AdmitDestination(pNamespace, ..#SETTINGSGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#SETTINGREADONLY, .pHttpStatus, .pFault)
+    If ..IsSettingsEndpoint(pEndpoint) Quit ..AdmitDestination(pNamespace, ..SettingsGlobal(pEndpoint), ##class(OcuPilot.Api.AnalyticsError).#SETTINGREADONLY, .pHttpStatus, .pFault)
     If ..IsQualityMeasureEndpoint(pEndpoint) Quit ..AdmitClassWrite(pNamespace, "", ..#QUALITYMEASUREGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREREADONLY, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
@@ -2753,7 +2812,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
     If ..IsListingGroupEndpoint(pEndpoint) && ..IsListingGroupWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If ..IsQualityMeasureEndpoint(pEndpoint) && (..IsQualityMeasureWrite(pType) || ..IsQualityMeasurePartWrite(pType)) && ..Serves(pEndpoint, pType) Quit "objectscript"
-    If ..IsSettingsEndpoint(pEndpoint) && ..IsSettingsWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If ..IsSettingsEndpoint(pEndpoint) && ..IsSettingsWrite(pType, pEndpoint) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
 
@@ -6687,9 +6746,9 @@ ClassMethod InvokeSetting(pNamespace As %String, pEndpoint As %String, pType As 
 {
     Set pResult = ""
     Set tId = $Get(pQuery(..#IDKEY))
-    Set tWrite = ..IsSettingsWrite(pType)
+    Set tWrite = ..IsSettingsWrite(pType, pEndpoint)
     Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
-    If (tAction '= "") && '..IsSettingsWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If (tAction '= "") && '..IsSettingsWrite(tAction, pEndpoint) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
     If 'tWrite Quit ..JudgeSetting(pNamespace, pEndpoint, tId, tAction, .tData, .pResult, .pHttpStatus, .pFault)
     Lock +^CacheTemp.OcuPilotAnalyticsSettings(pNamespace):..#SETTINGLOCKSECONDS
     If '$Test Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
@@ -6705,11 +6764,13 @@ ClassMethod InvokeSetting(pNamespace As %String, pEndpoint As %String, pType As 
 
 /// <p>The row <var>pId</var> names on <var>pEndpoint</var>, read fresh and judged for the write <var>pAction</var> (<code>""</code> for a plain read), with <code>Namespace</code> added: <var>pRow</var>, or the refusal
 /// <method>InvokeSetting</method> describes. <var>pData</var> is what <method>Collect</method> gathered.</p>
-ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %String, pAction As %String, Output pData, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %String, pAction As %String, Output pData, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pForWrite As %Boolean = 0) As %Status [ Private ]
 {
     Set pRow = ""
-    Set tSettings = (pEndpoint = ..#ENDPOINTSETTINGS)
+    Set tEntry = ..IsEntryEndpoint(pEndpoint)
+    Set tSettings = (pEndpoint = ..#ENDPOINTSETTINGS) || tEntry
     Set tParts = $Select(tSettings: $ListBuild(pId), 1: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId))
+    If tEntry && (pAction = ..#TYPEENTRYADD) && ('..NameShaped(pId) || '..SettingNameFits(pEndpoint, pId)) Quit ..SettingRefused(##class(OcuPilot.Api.AnalyticsError).#SETTINGNAME, .pHttpStatus, .pFault)
     Set tSC = ..ReadSettingRows(pNamespace, pEndpoint, .tRows, .pData, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tFound = ""
@@ -6722,7 +6783,18 @@ ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %St
         }
         If $IsObject(tFound) Quit
     }
-    If tSettings {
+    If tEntry {
+        If pAction = ..#TYPEENTRYADD {
+            If $IsObject(tFound) Quit ..Conflict($Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: ##class(OcuPilot.Api.AnalyticsError).#VARIABLETAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#ICONTAKEN), .pHttpStatus, .pFault)
+            If 'pForWrite Quit ..Absent(.pHttpStatus, .pFault)
+            Set pHttpStatus = 200
+            Quit $$$OK
+        }
+        If '$IsObject(tFound) {
+            Set tAbsent = $Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: ##class(OcuPilot.Api.AnalyticsError).#VARIABLEABSENT, 1: ##class(OcuPilot.Api.AnalyticsError).#ICONABSENT)
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, tAbsent, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(tAbsent), .pHttpStatus, .pFault)
+        }
+    } ElseIf tSettings {
         If '$IsObject(tFound) || ((pAction = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit ..ConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
         If (pAction = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#SETTINGSECRET, .pHttpStatus, .pFault)
     } Else {
@@ -6742,13 +6814,29 @@ ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %St
 ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
-    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, pType, .tData, .tRow, .pHttpStatus, .pFault)
+    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, pType, .tData, .tRow, .pHttpStatus, .pFault, 1)
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
     Set tCaught = ""
     Set tEffects = {}
     Do tEffects.%Set("namespace", pNamespace, "string")
-    If pEndpoint = ..#ENDPOINTSETTINGS {
+    If ..IsEntryEndpoint(pEndpoint) {
+        Set tVariable = (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES)
+        Set tStored = $Select($IsObject(tRow): tRow, 1: {})
+        Set tCode = ..SettingEntryViolation(pEndpoint, pType, pId, pBody, tStored.%Get("Value"))
+        If tCode '= "" Quit ..SettingRefused(tCode, .pHttpStatus, .pFault)
+        If pType = ..#TYPEENTRYREMOVE {
+            Set tVendorSC = $Select(tVariable: ..VendorRuntimeVariableRemove(pNamespace, pId, .tCaught), 1: ..VendorUserIconRemove(pNamespace, pId, .tCaught))
+        } ElseIf tVariable {
+            Set tVendorSC = ..VendorRuntimeVariableSet(pNamespace, pId, ..TextOr(pBody, "Value", tStored.%Get("Value")), ..TextOr(pBody, "Comment", tStored.%Get("Comment")), ..TextOr(pBody, "Context", tStored.%Get("Context")), .tCaught)
+        } Else {
+            Set tVendorSC = ..VendorUserIconSet(pNamespace, pId, ..TextOr(pBody, "Path", tStored.%Get("Path")), .tCaught)
+        }
+        Do tEffects.%Set($Select(tVariable: "variable", 1: "icon"), pId, "string")
+        Set tVerb = $Case(pType, ..#TYPEENTRYADD: $Select(tVariable: ..#VERBRUNTIMEVARIABLEADD, 1: ..#VERBUSERICONADD), ..#TYPEENTRYSET: $Select(tVariable: ..#VERBRUNTIMEVARIABLESET, 1: ..#VERBUSERICONSET), : $Select(tVariable: ..#VERBRUNTIMEVARIABLEREMOVE, 1: ..#VERBUSERICONREMOVE))
+        Set tEntity = $Select(tVariable: ..#ENTITYRUNTIMEVARIABLE, 1: ..#ENTITYUSERICON)
+        Set tAuditId = pId
+    } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
         If pBody.%GetTypeOf(tField) '= "string" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
         Set tValue = pBody.%Get(tField)
@@ -6782,10 +6870,63 @@ ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %S
     Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, "", .tAfter, .pResult, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) {
         Set pResult = {}
+        If ..IsEntryEndpoint(pEndpoint) Do pResult.%Set("Name", pId, "string")
         Do pResult.%Set("Namespace", pNamespace, "string")
         Set pHttpStatus = 200
     }
     Quit $$$OK
+}
+
+/// <p>The code of the first rule the write <var>pType</var> of the run-time variable or icon <var>pName</var> of <var>pEndpoint</var> breaks, <code>""</code> for none (Story 24.13): a name to add is
+/// <method>NameShaped</method> and <method>SettingNameFits</method> (<code>ANALYTICS.SETTING.NAME</code>); a member the body names is a string of at most <parameter>SETTINGTEXTMAX</parameter> characters
+/// with no control character (<code>ANALYTICS.SETTING.TEXT</code>); a variable's expression that is not empty, and is new, passes <method>VariableExpressionHolds</method>
+/// (<code>ANALYTICS.VARIABLE.EXPRESSION</code>). An expression the variable already holds is not judged again, so a comment can be changed on a variable the classic page stored with any text.
+/// <var>pStoredValue</var> is the expression the variable holds now. <var>pField</var> is the member the rule is about. A removal breaks no rule. Pure.</p>
+ClassMethod SettingEntryViolation(pEndpoint As %String, pType As %String, pName As %String, pBody As %DynamicObject, pStoredValue As %String = "", Output pField As %String) As %String
+{
+    Set pField = ""
+    If pType = ..#TYPEENTRYREMOVE Quit ""
+    If (pType = ..#TYPEENTRYADD) && ('..NameShaped(pName) || '..SettingNameFits(pEndpoint, pName)) {
+        Set pField = "Name"
+        Quit ##class(OcuPilot.Api.AnalyticsError).#SETTINGNAME
+    }
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tFields = $Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: $ListBuild("Value", "Comment", "Context"), 1: $ListBuild("Path"))
+    For tAt = 1:1:$ListLength(tFields) {
+        Set tMember = $List(tFields, tAt)
+        Set tType = pBody.%GetTypeOf(tMember)
+        If tType = "unassigned" Continue
+        If ((tType '= "string") || '..SettingTextShaped(pBody.%Get(tMember))) && (pField = "") Set pField = tMember
+    }
+    If pField '= "" Quit ##class(OcuPilot.Api.AnalyticsError).#SETTINGTEXT
+    If (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) && (pBody.%GetTypeOf("Value") = "string") {
+        Set tValue = pBody.%Get("Value")
+        If (tValue '= "") && ((pType = ..#TYPEENTRYADD) || (tValue '= pStoredValue)) && '..VariableExpressionHolds(tValue) {
+            Set pField = "Value"
+            Quit ##class(OcuPilot.Api.AnalyticsError).#VARIABLEEXPRESSION
+        }
+    }
+    Quit ""
+}
+
+/// <p>The sentence of the first rule the write <var>pType</var> of the name <var>pName</var> on <var>pEndpoint</var> breaks (<method>SettingEntryViolation</method>), naming the member, <code>""</code> when it
+/// breaks none. A change reads the expression the variable holds now, so an expression it keeps is not judged again. The mint and a screen action ask it so that the agent and the person are refused what the write would
+/// refuse; the caller has passed this port's gate. Reads through <var>pNamespace</var> and writes nothing.</p>
+ClassMethod SettingEntryProblem(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tStored = ""
+        If (pType = ..#TYPEENTRYSET) && (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) {
+            Set tRow = ..SettingEntryRow(pNamespace, pEndpoint, pName)
+            If $IsObject(tRow) Set tStored = tRow.%Get("Value")
+        }
+        Set tCode = ..SettingEntryViolation(pEndpoint, pType, pName, pBody, tStored, .tField)
+        If tCode '= "" Set tProblem = "'" _ tField _ "': " _ ##class(OcuPilot.Api.AnalyticsError).ReasonFor(tCode)
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
 }
 
 /// <p>Save the General form with the setting overrides <var>pOverrides</var> (name to value) in <var>pNamespace</var>, through <code>%DeepSee.UI.Settings.SaveToServer</code>: every other setting at the value its
@@ -6896,21 +7037,144 @@ ClassMethod VendorWorklistOption(pNamespace As %String, pPage As %String, pPanel
     Quit tSC
 }
 
+/// <p>Whether the instance can address the run-time variable or icon <var>pName</var> of <var>pEndpoint</var>: a reference past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code>, and
+/// the limit counts the global's name and every subscript together. The test reads a process-private global shaped as the vendor's longest node of that endpoint (the comment of a variable), which
+/// nothing writes. Pure.</p>
+ClassMethod SettingNameFits(pEndpoint As %String, pName As %String) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        If pEndpoint = ..#ENDPOINTUSERICONS {
+            Set tProbe = $Data(^||DeepSee.User.Icons(pName))
+        } Else {
+            Set tProbe = $Data(^||DeepSee.User.Settings(pName, "comment"))
+        }
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>Whether <var>pText</var> is an expression, comment, context or path the settings accept: at most <parameter>SETTINGTEXTMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod SettingTextShaped(pText As %String) As %Boolean
+{
+    Quit ($Length(pText) '> ..#SETTINGTEXTMAX) && ($ZStrip(pText, "*C") = pText)
+}
+
+/// <p>Whether <var>pExpression</var>, a run-time variable's stored text, is valid ObjectScript for the line the vendor's <code>%GetUserSetting</code> executes (<code>Set %out=</code> and the expression),
+/// checked with <code>%Library.Routine.CheckSyntax</code>, which was measured to run nothing and write nothing. An empty expression holds. This is a syntax check, not a safety check, and the expression is
+/// never run, evaluated or executed here. Pure.</p>
+ClassMethod VariableExpressionHolds(pExpression As %String) As %Boolean
+{
+    If pExpression = "" Quit 1
+    Set tHolds = 0
+    Try {
+        Set tLine = " Set %out=" _ pExpression
+        Set tHolds = $$$ISOK(##class(%Library.Routine).CheckSyntax(.tLine, .tErrors))
+    } Catch {
+        Set tHolds = 0
+    }
+    Quit tHolds
+}
+
+/// <p>The 400 refusal <var>pCode</var> of a run-time variable or icon write that breaks a rule of its own shape, with its published sentence.</p>
+ClassMethod SettingRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, pCode, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>Set the run-time variable <var>pName</var> to the expression <var>pValue</var> (stored as text, never run), the comment <var>pComment</var> and the context <var>pContext</var>, in <var>pNamespace</var>,
+/// through <code>%DeepSee.UserPortal.Utils.%SetUserSetting</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorRuntimeVariableSet(pNamespace As %String, pName As %String, pValue As %String, pComment As %String, pContext As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(pName, pValue, pComment, pContext)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Remove the run-time variable <var>pName</var> in <var>pNamespace</var> through <code>%RemoveUserSetting</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorRuntimeVariableRemove(pNamespace As %String, pName As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%RemoveUserSetting(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Set the user-defined icon <var>pName</var> to the path <var>pPath</var> (text, never loaded) in <var>pNamespace</var> through <code>%SetUserIcon</code>. A status; a raised exception is
+/// <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorUserIconSet(pNamespace As %String, pName As %String, pPath As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%SetUserIcon(pName, pPath)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Remove the user-defined icon <var>pName</var> in <var>pNamespace</var> through <code>%RemoveUserIcon</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorUserIconRemove(pNamespace As %String, pName As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%RemoveUserIcon(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
 /// <p>The lines <method>Snippet</method> adds for a settings write <var>pType</var> of the target <var>pId</var> (Story 24.13, AD-59): the classic page's own calls, the General form re-read from the
 /// nodes when the script runs, so no stored value, the Google Maps key least of all, is in its text, and the key's own write sets it to the text the body carries (the kernel's placeholder). A target the
-/// write would refuse is a script that only sets the refusal's sentence.</p>
+/// write would refuse is a script that only sets the refusal's sentence. Every script that writes takes the namespace's settings lock in one line, as the write does, releases it in its last, and sets the
+/// busy sentence, writing nothing, when the lock is held past <parameter>SETTINGLOCKSECONDS</parameter>. A run-time variable's or icon's script gates on one line with the port's taken or absent rule and then
+/// calls the vendor's setter; an expression is text in a string literal, never run.</p>
 ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
 {
     Set tNL = $Char(10)
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
     Set tSettings = "##class(%DeepSee.UI.Settings)"
     Set tRefuse = tNL _ " Set tSC = $System.Status.Error(5001, "
+    Set tLock = "^CacheTemp.OcuPilotAnalyticsSettings(" _ ..Literal($Get(pQuery(..#NAMESPACEKEY))) _ ")"
+    Set tOpen = tNL _ " Lock +" _ tLock _ ":" _ ..#SETTINGLOCKSECONDS _ " Set tLocked = $Test"
+    Set tClose = tNL _ " If tLocked Lock -" _ tLock
+    Set tBusy = "$System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY) _ ")"
+    If ..IsEntryEndpoint(pEndpoint) Quit ..EntrySnippet(pEndpoint, pType, pId, pBody, .pQuery, tOpen, tClose, tBusy)
     If pEndpoint = ..#ENDPOINTWORKLISTS {
         Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
         Set tNumber = $Select($ListLength(tParts) = 3: $ListFind(..WorklistClasses(), $List(tParts, 3)), 1: 0)
         If 'tNumber Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT) _ ")"
-        Set tCustom = " Set tSC = $Select(+$Get(^DeepSee.UserPortalSettings(""Worklist"")): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTNOTCUSTOMIZED) _ "))"
-        Quit tNL _ tCustom _ tNL _ " If $System.Status.IsOK(tSC) Do " _ tSettings _ ".SetOption(" _ ..Literal($List(tParts, 1)) _ ", " _ +$List(tParts, 2) _ ", " _ ..Literal($List(tParts, 3)) _ ", " _ tNumber _ ", " _ (pType = ..#TYPEWORKLISTSHOW) _ ")"
+        Set tCustom = " Set tSC = $Select('tLocked: " _ tBusy _ ", +$Get(^DeepSee.UserPortalSettings(""Worklist"")): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTNOTCUSTOMIZED) _ "))"
+        Quit tOpen _ tNL _ tCustom _ tNL _ " If $System.Status.IsOK(tSC) Do " _ tSettings _ ".SetOption(" _ ..Literal($List(tParts, 1)) _ ", " _ +$List(tParts, 2) _ ", " _ ..Literal($List(tParts, 3)) _ ", " _ tNumber _ ", " _ (pType = ..#TYPEWORKLISTSHOW) _ ")" _ tClose
     }
     Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
     Set tValue = $Select(pBody.%GetTypeOf(tField) = "string": pBody.%Get(tField), 1: "")
@@ -6925,14 +7189,14 @@ ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %Strin
     If 'tKnown || ((pType = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.ConfigError).#REASONSETTINGNOTFOUND) _ ")"
     If (pType = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONSETTINGSECRET) _ ")"
     If pId = ..#SETTINGCUSTOMNAME {
-        If tValue = 1 Quit tNote _ tNL _ " Do " _ tSettings _ ".SetCustom(1)" _ tNL _ " Set tSC = 1"
-        Set tText = tNote _ tNL _ " Kill tOptions  Set tPage = """""
+        If tValue = 1 Quit tNote _ tOpen _ tNL _ " If tLocked Do " _ tSettings _ ".SetCustom(1)" _ tNL _ " Set tSC = $Select(tLocked: 1, 1: " _ tBusy _ ")" _ tClose
+        Set tText = tNote _ tOpen _ tNL _ " Kill tOptions  Set tPage = """""
         Set tText = tText _ tNL _ " For { Set tPage = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage)) Quit:tPage=""""  Set tPanel = """" For { Set tPanel = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel)) Quit:tPanel=""""  Set tNumber = """" For { Set tNumber = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel, tNumber), 1, tClass) Quit:tNumber=""""  Set tOptions($Increment(tOptions)) = $ListBuild(tPage, tPanel, tClass, tNumber) } } }"
-        Set tText = tText _ tNL _ " Do " _ tSettings _ ".SetCustom(0)"
-        Set tText = tText _ tNL _ " For tAt = 1:1:$Get(tOptions) { Set tOption = tOptions(tAt) Do " _ tSettings _ ".SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1) }"
-        Quit tText _ tNL _ " Set tSC = 1"
+        Set tText = tText _ tNL _ " If tLocked Do " _ tSettings _ ".SetCustom(0)"
+        Set tText = tText _ tNL _ " If tLocked { For tAt = 1:1:$Get(tOptions) { Set tOption = tOptions(tAt) Do " _ tSettings _ ".SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1) } }"
+        Quit tText _ tNL _ " Set tSC = $Select(tLocked: 1, 1: " _ tBusy _ ")" _ tClose
     }
-    Set tText = tNote _ tNL _ " Set tData = ##class(%ZEN.proxyObject).%New()"
+    Set tText = tNote _ tOpen _ tNL _ " Set tData = ##class(%ZEN.proxyObject).%New()"
     For tAt = 1:1:$ListLength(tRoster) {
         Set tEntry = $List(tRoster, tAt)
         If $List(tEntry, 8) = "custom" Continue
@@ -6945,8 +7209,61 @@ ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %Strin
         }
         Set tText = tText _ tNL _ " Set tData." _ $List(tEntry, 7) _ " = " _ tExpression
     }
-    Set tText = tText _ tNL _ " Set tMessage = " _ tSettings _ ".SaveToServer(tData)"
-    Quit tText _ tNL _ " Set tSC = $Select(tMessage = """": 1, 1: $System.Status.Error(5001, tMessage))"
+    Set tText = tText _ tNL _ " Set tMessage = $Select(tLocked: " _ tSettings _ ".SaveToServer(tData), 1: """")"
+    Quit tText _ tNL _ " Set tSC = $Select('tLocked: " _ tBusy _ ", tMessage = """": 1, 1: $System.Status.Error(5001, tMessage))" _ tClose
+}
+
+/// <p>The lines <method>SettingSnippet</method> adds for the run-time variable or icon write <var>pType</var> of the name <var>pId</var> on <var>pEndpoint</var> (Story 24.13, Batch 3, AD-59), between the lock
+/// lines <var>pOpen</var> and <var>pClose</var>: the line that gates as the port does (the name held, 409, for an add; not held, 404, for a change or a removal; the lock held, the busy sentence
+/// <var>pBusy</var>) and the line that calls the vendor's setter. A write the port would refuse for its shape is a script that only sets the refusal's sentence. A member the body leaves out is read
+/// from the global when the script runs, so a change keeps it. Names and values are string literals.</p>
+ClassMethod EntrySnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicObject, ByRef pQuery, pOpen As %String, pClose As %String, pBusy As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tVariable = (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES)
+    Set tStoredValue = ""
+    If (pType = ..#TYPEENTRYSET) && tVariable {
+        Set tRow = ..SettingEntryRow($Get(pQuery(..#NAMESPACEKEY)), pEndpoint, pId)
+        If $IsObject(tRow) Set tStoredValue = tRow.%Get("Value")
+    }
+    Set tCode = ..SettingEntryViolation(pEndpoint, pType, pId, pBody, tStoredValue)
+    If tCode '= "" Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).ReasonFor(tCode)) _ ")"
+    Set tGlobal = $Select(tVariable: "^DeepSee.User.Settings", 1: "^DeepSee.User.Icons")
+    Set tName = ..Literal(pId)
+    Set tTaken = $Select(tVariable: ##class(OcuPilot.Api.AnalyticsError).#REASONVARIABLETAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#REASONICONTAKEN)
+    Set tAbsent = $Select(tVariable: ##class(OcuPilot.Api.AnalyticsError).#REASONVARIABLEABSENT, 1: ##class(OcuPilot.Api.AnalyticsError).#REASONICONABSENT)
+    Set tGate = $Select(pType = ..#TYPEENTRYADD: "$Data(" _ tGlobal _ "(" _ tName _ ")): $System.Status.Error(5001, " _ ..Literal(tTaken) _ ")", 1: "'$Data(" _ tGlobal _ "(" _ tName _ ")): $System.Status.Error(5001, " _ ..Literal(tAbsent) _ ")")
+    Set tText = pOpen _ tNL _ " Set tSC = $Select('tLocked: " _ pBusy _ ", " _ tGate _ ", 1: 1)"
+    Set tUtils = "##class(%DeepSee.UserPortal.Utils)"
+    If pType = ..#TYPEENTRYREMOVE {
+        Set tCall = tUtils _ $Select(tVariable: ".%RemoveUserSetting(", 1: ".%RemoveUserIcon(") _ tName _ ")"
+    } ElseIf tVariable {
+        Set tCall = tUtils _ ".%SetUserSetting(" _ tName
+        For tNode = "Value", "Comment", "Context" {
+            Set tCall = tCall _ ", " _ $Select(pBody.%GetTypeOf(tNode) = "string": ..Literal(pBody.%Get(tNode)), 1: "$Get(" _ tGlobal _ "(" _ tName _ ", " _ ..Literal($ZConvert(tNode, "L")) _ "))")
+        }
+        Set tCall = tCall _ ")"
+    } Else {
+        Set tCall = tUtils _ ".%SetUserIcon(" _ tName _ ", " _ $Select(pBody.%GetTypeOf("Path") = "string": ..Literal(pBody.%Get("Path")), 1: "$Get(" _ tGlobal _ "(" _ tName _ "))") _ ")"
+    }
+    Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tCall _ pClose
+}
+
+/// <p>The row of the run-time variable or icon <var>pName</var> of <var>pEndpoint</var> in <var>pNamespace</var>, as <method>ReadSettingRows</method> answers it, or <code>""</code> when there is none or
+/// the read failed. The caller has passed this port's gate.</p>
+ClassMethod SettingEntryRow(pNamespace As %String, pEndpoint As %String, pName As %String) As %DynamicObject [ Private ]
+{
+    Set tFound = ""
+    Set tSC = ..ReadSettingRows(pNamespace, pEndpoint, .tRows, .tData, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("Name") = pName {
+            Set tFound = tRow
+            Quit
+        }
+    }
+    Quit tFound
 }
 
 }

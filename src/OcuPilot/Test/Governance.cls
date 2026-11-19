@@ -84,6 +84,9 @@ Parameter LISTINGGROUPDISABLED = "analytics.listinggroups.delete,analytics.listi
 /// <p>Story 24.12: the quality measure delete and the removal of an element or group and of a documentation item, the three quality measure lines the baseline ships off.</p>
 Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete,analytics.qualitymeasureelements.remove,analytics.qualitymeasuremetas.remove";
 
+/// <p>Story 24.13 Batch 3: the removal of a run-time variable and of a user-defined icon, the two settings lines the baseline ships off.</p>
+Parameter ANALYTICSSETTINGDISABLED = "analytics.runtimevariables.remove,analytics.usericons.remove";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -215,6 +218,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = ..#FOLDERITEMDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LISTINGGROUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#QUALITYMEASUREDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#ANALYTICSSETTINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"

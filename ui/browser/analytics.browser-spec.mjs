@@ -903,16 +903,94 @@ test('Story 24.13 Batch 2: a person sets a setting, sets the key from a masked f
   }
 });
 
+const ENTRY_DIALOG = 'app-analytics-setting-entry-dialog';
+
+/** Click the command bar's primary action and wait for the variable or icon dialog titled `label`. */
+async function entryDialog(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-confirm]`, { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** The one open dialog draws no image, no link and no frame: a path typed into it is text. */
+async function dialogDrawsNoMedia(page, label) {
+  assert.equal(await page.$$eval('[role="dialog"]', (nodes) => nodes.length), 1, `${label}: the dialog is open`);
+  assert.equal(await page.$$eval('[role="dialog"] img, [role="dialog"] a, [role="dialog"] iframe', (nodes) => nodes.length), 0, `${label}: the typed path is text, drawn as no image, no link and no frame`);
+}
+
+// Story 24.13 Batch 3, AC4. A person adds, changes and removes a run-time variable (typing its name for the removal) and a user-defined icon; each tab shows the change, the instance's own globals hold it,
+// the expression the probe variable carries is never run and the icon's path is drawn as text. Mutation (Rule 19): post the Add run-time variable dialog to the icons' route in `analytics-setting-entry.store.ts`
+// (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red; make the Change dialog send the path in place of the comment -> the second leg goes red.
+test('Story 24.13 Batch 3: a person adds, changes and removes a run-time variable and a user-defined icon, the expression is never run and the path is text', async () => {
+  const cleared = probe('SEBCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).SetMarkerSettings())`);
+  const variable = 'OcuProbe2413BrowserVar';
+  const icon = 'OcuProbe2413BrowserIcon';
+  try {
+    assert.equal(cleared.value, '11', `the markers are stored: ${cleared.output}`);
+    assert.equal(inUser('SEBRAN', ['Kill ^OcuProbe2413Ran', 'Kill ^|"HSCUSTOM"|OcuProbe2413Ran', 'Set out=$Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran)']).value, '0', 'the global the expression would set is undefined in USER and in HSCUSTOM before the run');
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS_VARIABLES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await entryDialog(page, STRINGS.analyticsRuntimeVariableAddAction);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Name: variable, Value: '$Increment(^OcuProbe2413Ran)', Comment: 'browser comment', Context: 'OcuProbe2413Ctx' });
+      await rowReads(page, variable, [variable, '$Increment(^OcuProbe2413Ran)', 'browser comment', 'OcuProbe2413Ctx']);
+      assert.equal(inUser('SEBADD', [`Set out=$Get(^DeepSee.User.Settings("${variable}","value"))_"|"_$Get(^DeepSee.User.Settings("${variable}","comment"))_"|"_($Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran))`]).value, '$Increment(^OcuProbe2413Ran)|browser comment|0', 'the instance holds the expression as text, and nothing ran it');
+
+      await rowAction(page, variable, STRINGS.analyticsRuntimeVariableChangeAction);
+      await page.waitForFunction((name) => document.querySelector('[data-setting-entry-field="Name"]')?.value === name, { timeout: config.navigationTimeoutMs }, variable);
+      assert.equal(await page.$eval('[data-setting-entry-field="Name"]', (node) => node.readOnly), true, 'the name is fixed on a change');
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Comment: ' edited' });
+      await rowReads(page, variable, [variable, '$Increment(^OcuProbe2413Ran)', 'browser comment edited', 'OcuProbe2413Ctx']);
+
+      await entryDialog(page, STRINGS.analyticsRuntimeVariableAddAction);
+      await page.type(`${ENTRY_DIALOG} [data-setting-entry-field="Name"]`, variable);
+      await page.click(`${ENTRY_DIALOG} [data-setting-entry-confirm]`);
+      await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-reason]`, { timeout: config.navigationTimeoutMs });
+      assert.ok((await page.$eval(ENTRY_DIALOG, (node) => node.textContent)).includes(STRINGS.analyticsRefusalVariableTaken), 'a name the namespace holds is refused with the server\'s sentence, and the dialog stays open');
+      await page.type(`${ENTRY_DIALOG} [data-setting-entry-field="Value"]`, '1+');
+      await page.click(`${ENTRY_DIALOG} [data-setting-entry-confirm]`);
+      await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-violation="Value"]`, { timeout: config.navigationTimeoutMs });
+      assert.ok((await page.$eval(`${ENTRY_DIALOG} [data-setting-entry-violation="Value"]`, (node) => node.textContent)).includes(STRINGS.analyticsRefusalVariableExpression), 'an expression that is not valid is refused under its field, checked and not run');
+      await page.keyboard.press('Escape');
+      await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, ENTRY_DIALOG);
+
+      await typedRemoval(page, variable, STRINGS.analyticsRuntimeVariableRemoveAction, variable, STRINGS.analyticsVariableRemoveConsequence);
+      await rowGone(page, variable);
+      assert.equal(inUser('SEBGONE', [`Set out=$Data(^DeepSee.User.Settings("${variable}"))_"|"_($Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran))`]).value, '0|0', 'the variable is gone from the instance, and the expression never ran');
+
+      await openGroupTab(page, SETTINGS_ICONS);
+      await entryDialog(page, STRINGS.analyticsUserIconAddAction);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Name: icon, Path: 'http://OcuProbe2413.invalid/icon.png' }, () => dialogDrawsNoMedia(page, 'the Add icon dialog'));
+      await rowReads(page, icon, [icon, 'http://OcuProbe2413.invalid/icon.png']);
+      assert.equal(await page.$$eval('[role="grid"] img, [role="grid"] a, [role="grid"] iframe', (nodes) => nodes.length), 0, 'the path is text, drawn as no image and no link');
+      assert.equal(inUser('SEBICON', [`Set out=$Get(^DeepSee.User.Icons("${icon}"))`]).value, 'http://OcuProbe2413.invalid/icon.png', 'the instance holds the path as sent');
+      await rowAction(page, icon, STRINGS.analyticsUserIconChangeAction);
+      await page.waitForFunction((name) => document.querySelector('[data-setting-entry-field="Name"]')?.value === name, { timeout: config.navigationTimeoutMs }, icon);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Path: '2' }, () => dialogDrawsNoMedia(page, 'the Change icon dialog'));
+      await rowReads(page, icon, [icon, 'http://OcuProbe2413.invalid/icon.png2']);
+      await typedRemoval(page, icon, STRINGS.analyticsUserIconRemoveAction, icon, STRINGS.analyticsIconRemoveConsequence);
+      await rowGone(page, icon);
+      assert.equal(inUser('SEBICONGONE', [`Set out=$Data(^DeepSee.User.Icons("${icon}"))`]).value, '0', 'the icon is gone from the instance');
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('SEBGONE2', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
+  }
+});
+
 const MEASURE_NAME = 'OcuProbeQMW/Browse/One';
 const MEASURE_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseOne';
 const COPY_NAME = 'OcuProbeQMW/Browse/Two';
 const COPY_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseTwo';
 
-/** Type `fields` into the open dialog's inputs, each found by `attribute` and its member, then confirm with `confirm`, which closes the dialog once the write was applied. */
-async function fillDialog(page, dialog, attribute, confirm, fields) {
+/** Type `fields` into the open dialog's inputs, each found by `attribute` and its member, run `beforeConfirm` when given, then confirm with `confirm`, which closes the dialog once the write was applied. */
+async function fillDialog(page, dialog, attribute, confirm, fields, beforeConfirm = null) {
   for (const [member, text] of Object.entries(fields)) {
     await page.type(`${dialog} [${attribute}="${member}"]`, text);
   }
+  if (beforeConfirm !== null) await beforeConfirm();
   await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs }, confirm);
   await page.click(confirm);
   await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, dialog);

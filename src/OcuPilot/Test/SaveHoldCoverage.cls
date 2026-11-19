@@ -117,6 +117,9 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Do ..HeldLeg("/analytics/quality-measure-elements?ns=USER", "OcuPilot.Screen.Tool.AnalyticsQualityMeasureElementAdd", tPartId, {"QualityMeasure": "OcuProbeHold2412/Hold/Id", "Group": "Group", "Name": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
     Set tPartId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold2412/Hold/Id", "hold"))
     Do ..HeldLeg("/analytics/quality-measure-metas?ns=USER", "OcuPilot.Screen.Tool.AnalyticsQualityMeasureMetaAdd", tPartId, {"QualityMeasure": "OcuProbeHold2412/Hold/Id", "Name": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A run-time variable and a user-defined icon are namespace-scoped and their ids are their names alone.
+    Do ..HeldLeg("/analytics/runtime-variables?ns=USER", "OcuPilot.Screen.Tool.AnalyticsRuntimeVariableAdd", "OcuProbeHold2413", {"Name": "OcuProbeHold2413", "OcuProbeUnexpected": 1}.%ToJSON())
+    Do ..HeldLeg("/analytics/user-icons?ns=USER", "OcuPilot.Screen.Tool.AnalyticsUserIconAdd", "OcuProbeHold2413Icon", {"Name": "OcuProbeHold2413Icon", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A business partner is namespace-scoped and its id is its name alone.
     Do ..HeldLeg("/interop/business-partners?ns=USER", "OcuPilot.Screen.Tool.InteropPartnerAdd", "OcuProbeHold226", {"Name": "OcuProbeHold226", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.

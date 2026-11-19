@@ -2,7 +2,8 @@
 /// <class>OcuPilot.Port.AnalyticsPort</class> (source kind <code>analytics</code>, endpoint <code>UserIcons</code>) and rendered by the <code>detail</code> page over the declared
 /// <code>table</code> (AD-5, AD-29, AD-36, AD-44, AD-65, Story 24.13). A path is shown as text and never loaded (AD-11).</p>
 /// <p><b>It is the fourth tab of the group <code>analytics/settings</code> and never listed</b> (<code>sideBarPosition</code> 0). Its pairs are the first tab's. <b>Its id is the icon's name</b>, kept
-/// exactly (AD-13), and its scope is <code>namespace</code>. It offers no action and does not refresh (AD-43).</p>
+/// exactly (AD-13), and its scope is <code>namespace</code>. It writes (Story 24.13, Batch 3): its primary action Add icon and its row actions Change icon and Remove icon are the tools
+/// <code>analytics.usericons.add</code>, <code>.set</code> and <code>.remove</code>. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsUserIconList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -24,8 +25,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["Name", "Path"], "secretFields": []},
   "emptyStateKey": "analyticsUserIconsEmpty",
   "commandAliases": ["user-defined icons", "user icons"],
@@ -49,8 +50,8 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "Path", "labelKey": "openApiColumnPath", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsUserIconsEmptyAgent"
   },
   "tab": {"group": "analytics/settings", "position": 4, "labelKey": "analyticsUserIconsLabel"},
   "toolIdentifier": "analytics.usericons"

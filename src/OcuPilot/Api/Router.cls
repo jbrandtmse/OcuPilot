@@ -283,6 +283,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
   <Route Url="/analytics/quality-measure-elements" Method="POST" Call="AnalyticsQualityMeasureElementCreate"/>
   <Route Url="/analytics/quality-measure-metas" Method="POST" Call="AnalyticsQualityMeasureMetaCreate"/>
+  <Route Url="/analytics/runtime-variables" Method="POST" Call="AnalyticsRuntimeVariableCreate"/>
+  <Route Url="/analytics/user-icons" Method="POST" Call="AnalyticsUserIconCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
@@ -2027,6 +2029,20 @@ ClassMethod AnalyticsQualityMeasureElementCreate() As %Status
 ClassMethod AnalyticsQualityMeasureMetaCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.QualityMeasureMetaSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/runtime-variables</code> (Story 24.13, Batch 3): the Run-time variables screen's Add run-time variable, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsRuntimeVariableCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.RuntimeVariableSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/user-icons</code> (Story 24.13, Batch 3): the User-defined icons screen's Add icon, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsUserIconCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.UserIconSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business
