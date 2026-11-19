@@ -635,3 +635,8 @@
 2026-11-18T22:40:33Z	Story 21.18	code_head_pushed	sha=abd91cccb run=44413746537 missing=none note=supersedes_d988aff11_run_44410221034
 2026-11-18T22:40:33Z	Story 21.18	ledger_adjudicated	resolved=DW-2731,DW-2732 review_terminal=DW-2747(wontfix-theoretical),2748,2749(wontfix-accepted) routed=DW-2750(burndown) open_owned=0
 2026-11-18T22:40:43Z	Story 21.18	gate_step	step=fresh_check+full_sweep+smoke head=abd91cccb started=2026-11-18T22:40:43Z dir=e21u/21-18/gate
+2026-11-18T23:28:41Z	Story 21.18	ci_resolved	story=21.18 sha=abd91cccb runs=44413746537 result=success failed=none via=none
+2026-11-19T00:52:13Z	Story 21.18	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+1_spec(7_tests) result=pass order=forward,reverse(specs) head=abd91cccb note=GlobalProhibited_listed_by_mistake(a_seam,0_methods,not_a_failure)
+2026-11-19T00:52:13Z	Story 21.18	gate_step	step=sweep result=green shards=20/20 head=abd91cccb
+2026-11-19T00:52:13Z	Story 21.18	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T00:52:13Z	Story 21.18	story_green	code_head=abd91cccb ci=44413746537(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=8793dec9d
