@@ -6873,6 +6873,7 @@ ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %S
         If ..IsEntryEndpoint(pEndpoint) Do pResult.%Set("Name", pId, "string")
         Do pResult.%Set("Namespace", pNamespace, "string")
         Set pHttpStatus = 200
+        Set pFault = ""
     }
     Quit $$$OK
 }
@@ -6880,7 +6881,7 @@ ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %S
 /// <p>The code of the first rule the write <var>pType</var> of the run-time variable or icon <var>pName</var> of <var>pEndpoint</var> breaks, <code>""</code> for none (Story 24.13): a name to add is
 /// <method>NameShaped</method> and <method>SettingNameFits</method> (<code>ANALYTICS.SETTING.NAME</code>); a member the body names is a string of at most <parameter>SETTINGTEXTMAX</parameter> characters
 /// with no control character (<code>ANALYTICS.SETTING.TEXT</code>); a variable's expression that is not empty, and is new, passes <method>VariableExpressionHolds</method>
-/// (<code>ANALYTICS.VARIABLE.EXPRESSION</code>). An expression the variable already holds is not judged again, so a comment can be changed on a variable the classic page stored with any text.
+/// (<code>ANALYTICS.VARIABLE.EXPRESSION</code>). An expression the variable already holds is not judged again, so a comment can be changed on a variable whose stored expression does not pass the syntax check.
 /// <var>pStoredValue</var> is the expression the variable holds now. <var>pField</var> is the member the rule is about. A removal breaks no rule. Pure.</p>
 ClassMethod SettingEntryViolation(pEndpoint As %String, pType As %String, pName As %String, pBody As %DynamicObject, pStoredValue As %String = "", Output pField As %String) As %String
 {

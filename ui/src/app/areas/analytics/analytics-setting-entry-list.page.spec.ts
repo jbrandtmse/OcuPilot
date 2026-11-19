@@ -200,6 +200,22 @@ describe('the Run-time variables and User-defined icons page', () => {
     expect(host.querySelector('app-dialog')?.textContent).toContain(STRINGS.analyticsRuntimeVariableChangeAction);
   });
 
+  it('keeps Change open on a refusal and draws the server\'s sentence under the field it names', async () => {
+    // Mutation (Rule 19): drop the violation list from the Change branch of the dialog's refusal handling -> the field sentence goes red.
+    const field400 = { kind: 'error', status: 400, code: 'ANALYTICS.VARIABLE.EXPRESSION', reason: STRINGS.analyticsRefusalVariableExpression, detail: { violations: [{ field: 'Value', code: 'ANALYTICS.VARIABLE.EXPRESSION', reason: STRINGS.analyticsRefusalVariableExpression }] } } as const;
+    const { fixture, host, store, actions, requests } = mount(VARIABLE_URL, RUNTIME_VARIABLE_LIST, VARIABLE_ROWS, field400);
+    store.setSelection(['OcuProbeVar']);
+    actions.run(RUNTIME_VARIABLE_LIST, SETTING_ENTRY_SET_ACTION);
+    await settle(fixture);
+    type(host, 'Value', '1+');
+    await settle(fixture);
+    (host.querySelector('[data-setting-entry-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(requests.some((request) => request.init.method === 'POST')).toBe(true);
+    expect(host.querySelector('[data-setting-entry-violation="Value"]')?.textContent).toContain(STRINGS.analyticsRefusalVariableExpression);
+    expect(host.querySelector('app-dialog')).not.toBeNull();
+  });
+
   it('opens Change icon on the icon\'s path', async () => {
     const { fixture, host, store, actions } = mount(ICON_URL, USER_ICON_LIST, ICON_ROWS);
     store.setSelection(['OcuProbeIcon']);

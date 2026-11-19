@@ -208,8 +208,8 @@ ClassMethod Rows(pSince As %String, pEntity As %String, pName As %String, pVerb 
 }
 
 /// <p>AC1, AC2, AC5: a run-time variable is added, changed and removed by the person and by the agent. The vendor holds what was sent and keeps the other variables, the answers' read-backs match (a removal
-/// finds it gone), the screen's read and the agent's read tool answer the new state, and one <code>ConfigChange</code> row per write names the namespace and the variable, never the expression. The agent's remove is
-/// refused while its key ships off and applies once the test turns it on.</p>
+/// finds it gone), the screen's read and the agent's read tool answer the new state, and one <code>ConfigChange</code> row per write names the namespace and the variable, never the expression. The agent's remove
+/// applies once the test turns its key on.</p>
 /// <p>Mutation (Rule 19): drop <code>AuditWrite</code> from <method>OcuPilot.Port.AnalyticsPort.SendSetting</method> for the run-time variables -- the audit legs go red; set the comment from the stored row in
 /// place of the body in the same method -- the change legs go red.</p>
 Method TestAVariableIsAddedChangedAndRemovedByBothCallers()
@@ -253,6 +253,7 @@ Method TestAVariableIsAddedChangedAndRemovedByBothCallers()
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBase = ..Rows(tSince, "analytics-runtime-variable", tAgent, "analytics.runtimevariables.set", 0)
     Do ..Through($Piece(..#VARIABLETOOLS, ",", 2), {"Name": (tAgent), "Context": "agentctx"}, .tConfirmed, .tProposal, .tTurn)
+    If $IsObject($Get(tConfirmed)) Do $$$AssertEquals(tConfirmed.action _ "|" _ tConfirmed.readBack.verdict, "updated|matches", "the agent's change is updated, the read-back matching")
     Do $$$AssertEquals(..Variable(tAgent), "1|" _ ..#EXPRESSION _ "|agent|agentctx", "the agent's change keeps what it left out")
     Do $$$AssertEquals(..Rows(tSince, "analytics-runtime-variable", tAgent, "analytics.runtimevariables.set", tBase), 1, "and one ConfigChange row names the agent's change")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
@@ -313,6 +314,7 @@ Method TestAnIconIsAddedChangedAndRemovedByBothCallers()
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBase = ..Rows(tSince, "analytics-user-icon", tAgent, "analytics.usericons.set", 0)
     Do ..Through($Piece(..#ICONTOOLS, ",", 2), {"Name": (tAgent), "Path": "/agent2.png"}, .tConfirmed, .tProposal, .tTurn)
+    If $IsObject($Get(tConfirmed)) Do $$$AssertEquals(tConfirmed.action _ "|" _ tConfirmed.readBack.verdict, "updated|matches", "the agent's change is updated, the read-back matching")
     Do $$$AssertEquals(..Icon(tAgent), "1|/agent2.png", "the agent's change stores the new path")
     Do $$$AssertEquals(..Rows(tSince, "analytics-user-icon", tAgent, "analytics.usericons.set", tBase), 1, "one ConfigChange row names the agent's change")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
@@ -332,12 +334,13 @@ Method TestAnIconIsAddedChangedAndRemovedByBothCallers()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 
-/// <p>AC3: the probe expression, which would set <code>^OcuProbe2413Ran</code> if anything ran it, is stored and read back as text by the person's add and change, by the agent's add and change, by the six script
-/// forms and by every read (the screen's, the agent's tool and the port's single-row read), and the global stays undefined throughout. A variable that holds an expression that is not valid is still changed in
+/// <p>AC3: the probe expression, which would set <code>^OcuProbe2413Ran</code> if anything ran it, is stored and read back as text by the person's add and change, by the agent's add and change, by the add and
+/// change script forms and by every read (the screen's, the agent's tool and the port's single-row read), and the global stays undefined throughout. A variable that holds an expression that is not valid is still changed in
 /// another member, and the check never runs the text it refuses.</p>
 /// <p>The journal is scanned for the whole window, every process included because the person's and the agent's writes are served by other processes: no set or kill record names
 /// <code>^OcuProbe2413Ran</code>, so a write followed by a kill of it is caught as well as a run that leaves it defined. The scan is shown able to see: a control write in the namespace this test runs in and one in
-/// <code>USER</code> are both found, which they are only while the database that holds each is journaled, as both are on the throwaway.</p>
+/// <code>USER</code> are both found, which they are only while the database that holds each is journaled, as both are on the throwaway; and the person's add, which another process served, is found by
+/// the every-process scan and not by this process's own.</p>
 /// <p>Mutation (Rule 19): run the expression in <method>OcuPilot.Port.AnalyticsPort.VariableExpressionHolds</method> (an <code>Xecute</code> of the line) -- the global leg goes red; set and then kill
 /// <code>^OcuProbe2413Ran</code> there before the check -- only the journal leg goes red.</p>
 Method TestAnExpressionIsNeverRun()
@@ -364,7 +367,20 @@ Method TestAnExpressionIsNeverRun()
     Do $$$AssertEquals($ClassMethod(..#WRITE, "Act", "analytics.runtimevariables", "set", tName, {"Value": "1+"}, .tBad), 400, "an expression that is not valid is refused")
     Do $$$AssertEquals(..Variable(tName), "1|" _ ..#EXPRESSION _ "|after|", "and nothing was written")
     Do $$$AssertEquals(..Ran(), 0, "and the check ran nothing")
+    Do ..Seed(0, tName _ "Held", "1+", "", "")
+    Do $$$AssertEquals($ClassMethod(..#WRITE, "Act", "analytics.runtimevariables", "set", tName _ "Held", {"Value": "1+", "Comment": "kept"}, .tHeld), 200, "a variable that holds an expression that is not valid is still changed in another member")
+    Do $$$AssertEquals(..Variable(tName _ "Held"), "1|1+|kept|", "its expression kept as it was")
     Set tTotal = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tWrites, 1)
+    Set tOwn = $ClassMethod(..#PROBE, "JournalWrites", tMark, .tMine, 0)
+    Set tServed = 0
+    For tI = 1:1:tTotal {
+        If tWrites(tI) [ ("(""" _ tName _ """") Set tServed = tServed + 1
+    }
+    Set tHere = 0
+    For tI = 1:1:tOwn {
+        If tMine(tI) [ ("(""" _ tName _ """") Set tHere = tHere + 1
+    }
+    Do $$$AssertTrue((tServed > 0) && (tHere = 0), "the every-process scan finds the person's add, which another process served (" _ tServed _ " records), and this process's own scan does not (" _ tHere _ ")")
     Set tNamed = 0
     Set tFirst = ""
     For tI = 1:1:tTotal {
@@ -413,7 +429,7 @@ Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, 
 /// <p>AC6: each of the six script forms, run in <code>USER</code>, makes the change the write makes (an add, a change that keeps what the body leaves out, a removal) and takes the same refusals (a name held, a name not
 /// held, an expression that is not valid, a name that is too long). While another process holds the namespace's settings lock each writes nothing and ends with the busy sentence; once it is released the same
 /// script applies.</p>
-/// <p>Mutation (Rule 19): drop the lock line from <method>OcuPilot.Port.AnalyticsPort.EntrySnippet</method>'s opening -- the held-lock leg goes red.</p>
+/// <p>Mutation (Rule 19): drop the lock line from the opening <method>OcuPilot.Port.AnalyticsPort.SettingSnippet</method> builds -- the held-lock leg goes red.</p>
 Method TestEachWritesScriptFormMakesTheSameChange()
 {
     Set tVar = ..#VARIABLE

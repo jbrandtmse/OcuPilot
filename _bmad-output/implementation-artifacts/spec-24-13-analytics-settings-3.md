@@ -10,7 +10,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-13-analytics-settings-2.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-12-quality-measures-3.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A confirm refused 409 WRITE.TARGETBUSY closes the proposal, so the agent must mint again once the settings lock is free.
+    evidence: |-
+      Observed by QA on ocupilot-b-ci (TestAnAgentsConfirmIsRefusedWhileTheLockIsHeld): the proposal does not stay live after the busy refusal. The claim is taken before the port answers busy (inference). The behavior is shared by every write whose port answers WRITE.TARGETBUSY, so it is outside this story.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Confirm.cls (the claim before the port's write); src/OcuPilot/Port/AnalyticsPort.cls InvokeSetting
+    severity: low
 ---
 
 <intent-contract>
@@ -180,6 +187,42 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
   - `[low]` `[reject]` the Fixed strings drift bound moved from 4200 to 4600 — the table's earlier moves followed the same protocol; the move is recorded here and in the commit message for the lead's ruling.
   - `[low]` `[reject]` the `IsDefault` precondition of the baseline test — the pattern of six sibling classes.
 
+### 2026-11-19 — Code review (baseline `fe4f45059`, four layers on Opus)
+
+- verdicts: 27 findings — high 0, medium 3, low 23, false 1, maybe-false 0; patch 8, defer 1, reject 18, intent_gap 0
+- required:
+  - item 1: the instance's registry on `ocupilot-b-ci` lists 54 creating write tools and none of type `analytics-setting` or `analytics-worklist` (`analytics.settings.set`, `.setkey`, `analytics.worklists.show`, `.hide` all answer `Creates` 0), so the shared predicate on the entry-add branch stays; no narrower one is needed.
+  - item 2: the routed-branch comment in `Prohibited.cls` names all four types.
+  - item 3: `Test/Prohibited.TestAnAnalyticsVariableOrIconAddDropsItsNamespaceAndRefusesAnUnreviewedField` (add-only); mutation under Verification.
+  - item 4: the `ui/tools/strings.test.mjs` literal drift bound 4200 → 4600 (4205 literals) is accepted by the runner and the orchestrator under the 2026-11-15 precedent.
+- findings:
+  - `[medium]` `[patch]` an expression already stored is not judged again on a change, untested, while `TestAnExpressionIsNeverRun`'s comment claimed a leg — the leg is added.
+  - `[medium]` `[patch]` the every-process journal scan was never shown to see another process's write — the person's add, served by another process, is found by it and not by this process's own scan.
+  - `[medium]` `[patch]` the agent's change read-back verdict was not asserted for the variable or the icon — both asserted.
+  - `[low]` `[patch]` QA's empty-name 500 is the kernel mint called directly, which no product caller does: the agent reaches a write only through `Write.View` (Final), which refuses an empty id 400 `TOOL.ARGUMENTS` before the mint (measured for the six tools, `AnalyticsSettingSet`, `AnalyticsListingGroupAdd` and `AnalyticsTermListEntryAdd`). No product change; the six tools' empty-name call is pinned. No new sentence.
+  - `[low]` `[patch]` a removal answered 200 with the re-read's 404 fault left in `pFault` (`SendSetting`) — cleared; three Edge legs now expect no fault.
+  - `[low]` `[patch]` a refused Change in the dialog was untested at the component tier — one spec added.
+  - `[low]` `[patch]` `AnalyticsSettingsEntryWriteEdge.OnBeforeOneTest` did not kill the probe global — `KillRan` added.
+  - `[low]` `[patch]` four comments overstated: the six script forms, `EntrySnippet` for the lock line, the agent's remove "refused while its key ships off", and `SettingEntryViolation`'s "any text" — each replaced.
+  - `[low]` `[defer]` a busy confirm closes the proposal (QA) — frontmatter `deferred:`.
+  - `[low]` `[reject]` the text rule judges an unchanged stored member on a change — the Shape rule applies to every write; the refusal names the field and the person can correct it.
+  - `[low]` `[reject]` Enter in the expression text area adds a line break that is refused — the refusal names the field and the rule.
+  - `[low]` `[reject]` `SettingNameFits` has no reachable trigger — kept as the instance's own limit (Design Notes › Measured).
+  - `[low]` `[reject]` the Add confirm reads "Add entry" — the term-list-entry dialog uses the same key.
+  - `[low]` `[reject]` the `strings.test.mjs` comment still says the bound waits on a ruling — the file is contended with Epic 21 (add-only); the ruling is required item 4 above.
+  - `[low]` `[reject]` the spec read `done` before QA and review were recorded — bookkeeping, not code.
+  - `[low]` `[reject]` split `AnalyticsSettingsEntryWriteEdge` (548 lines) — a new class needs an `OCUPILOT_ALLOW_PRINCIPALS` arming roster line in `scripts/ci-throwaway.sh` and `ci.test.mjs`.
+  - `[low]` `[reject]` Change sends every member — the classic page saves every field the same way.
+  - `[low]` `[reject]` Change sends no scope argument — the term-list-entry dialog does the same, and the dialog is modal over the namespace picker (inference).
+  - `[low]` `[reject]` a whitespace-only name cannot be changed in the dialog — no realistic reach.
+  - `[low]` `[reject]` the dialog stays busy if a send throws, and is silent on a non-error refusal — the API service answers a result rather than throwing, and the handler shows its own refusal (inference).
+  - `[low]` `[reject]` a script error between the lock lines keeps the lock — a pasted script runs to its last line, and the lock ends with the session (inference).
+  - `[low]` `[reject]` a script with no namespace raises at the lock line — its first line sets `$NAMESPACE` from the same key, as every sibling's does.
+  - `[low]` `[reject]` a failed stored-row read lets the mint through — the write judges again under the lock.
+  - `[low]` `[reject]` the name probe's collation could differ from the global's — theoretical.
+  - `[low]` `[reject]` the lock seam's coordination global could race an older holder — no flake in the fresh check or this pass.
+  - `[false]` `[reject]` `Prohibited.cls` took more than one term — Design Notes item 6 lists every add-only edit.
+
 ## Design Notes
 
 **Questions for the runner (veto items).**
@@ -287,6 +330,21 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3d620f2a
 - mutation: HTTP busy `InvokeSetting` takes no lock for the variable removal and the icon change -> `AnalyticsSettingsEntryWriteEdge.TestASecondWriterIsRefusedWhileTheLockIsHeld` red on those two legs and the nothing-written leg.
 - mutation: AC3 hygiene `AnalyticsSettingsEntryWrite.KillRan` kills nothing, with `^OcuProbe2413Ran` planted in `HSCUSTOM` -> `TestAnExpressionIsNeverRun` and `TestEachWritesScriptFormMakesTheSameChange` red. The `USER` kill is also done by `AnalyticsProbe.ClearSettings`, so a stale node there is cleared either way; with the hooks as written a planted node in either namespace leaves the class green.
 - mutation: AC4 path as text `analytics-setting-entry-dialog.ts` draws a link for the typed path (bundle rebuilt and redeployed) -> the component specs for the Add and the Change icon dialog red, and the browser test red on the Add icon dialog's no-media check; reverted, rebuilt, redeployed, sixteen tests green. The browser setup's `HSCUSTOM` kill dropped, with the node planted there -> the same browser test red at its setup assertion.
+- mutation: QA expression `AnalyticsPort.VariableExpressionHolds` runs the line with `XECUTE` before the check -> `AnalyticsSettingsEntryWriteEdge.TestAnExpressionThatWouldActIsRefusedOrStoredAndNeverRun` red alone, its journal leg only (run 857).
+- mutation: QA names `AnalyticsPort.SettingNameFits` answers 1 and `NameShaped` drops its length test, together -> `TestNamesAtTheEdgesOfTheShapeRuleAreStoredOrRefusedWhole` red on its 600-character and 256-character legs, and `TestARefusedWriteSaysWhyAndWritesNothing` on its 256-character legs (run 859); the probe alone changes nothing, because the length test refuses first.
+- mutation: QA case `AnalyticsPort.JudgeSetting` compares the name without regard to case -> `TestNamesThatDifferOnlyInCaseAreSeparateTargetsForEveryWrite` and `TestARefusedWriteSaysWhyAndWritesNothing` red (run 860).
+- mutation: QA path text `AnalyticsPort.TextOr` keeps only the first word of a string -> `TestAnIconPathThatLooksLikeAReferenceIsStoredAndShownAsText` red on the `data:` path, and `TestAnExpressionThatWouldActIsRefusedOrStoredAndNeverRun` red on its multi-command expression (run 861).
+- mutation: QA text rules `AnalyticsPort.SettingTextShaped` drops its control-character test -> `TestTheAgentsMintRefusesTheTextTheScreenRefuses` red from its control-character legs on (run 862), beside `TestARefusedWriteSaysWhyAndWritesNothing`.
+- mutation: QA held-lock confirm `AnalyticsPort.InvokeSetting` never takes the busy branch -> `TestAnAgentsConfirmIsRefusedWhileTheLockIsHeld` red on all five legs (run 863), beside the existing HTTP busy test.
+- Each QA mutation reverted byte-identical (`cmp` against the saved copy), synced and reloaded with the port's subclasses recompiled; `AnalyticsSettingsEntryWriteEdge` green again (11 tests, run 864) and `USER`'s three settings globals empty after each red run.
+- mutation: CR entry add `Prohibited.Prohibits` without `|| ..IsAnalyticsSettingType(tType)` on the entry-add branch -> `Test.Prohibited.TestAnAnalyticsVariableOrIconAddDropsItsNamespaceAndRefusesAnUnreviewedField` red alone, its two namespace legs (run 869).
+- mutation: CR empty name `Write.View` without its empty-id refusal (the six tools recompiled) -> `AnalyticsSettingsEntryWriteEdge.TestTheAgentsMintRefusesTheTextTheScreenRefuses` red on its six empty-name legs (run 872).
+- mutation: CR removal fault `SendSetting` without `Set pFault = ""` -> `TestNamesAtTheEdgesOfTheShapeRuleAreStoredOrRefusedWhole` and `TestNamesThatDifferOnlyInCaseAreSeparateTargetsForEveryWrite` red on their removal legs (run 872).
+- mutation: CR held expression `SettingEntryViolation` judges every expression -> `AnalyticsSettingsEntryWrite.TestAnExpressionIsNeverRun` red on its held-expression legs (run 873).
+- mutation: CR other process `AnalyticsProbe.JournalWrites` ignores `pAnyProcess` -> `TestAnExpressionIsNeverRun` red on its other-process leg (run 873).
+- mutation: CR agent change read-back `READBACKFIELDS` gains `Was` on both change tools -> `TestAVariableIsAddedChangedAndRemovedByBothCallers` and `TestAnIconIsAddedChangedAndRemovedByBothCallers` red on the agent's change legs alone (run 873).
+- mutation: CR Change refusal `analytics-setting-entry-dialog.ts` drops the violation list from the Change branch -> the component spec "keeps Change open on a refusal" red alone.
+- Each CR mutation applied to the throwaway's copy (the worktree untouched; the client one in the tree, `cmp` byte-identical after), then the throwaway's `src` resynced from the worktree (`diff -rq` identical) and recompiled; green after: `Prohibited` 17 (run 878), `AnalyticsSettingsEntryWrite` 6 (run 874), `AnalyticsSettingsEntryWriteEdge` 11 (run 875), `AnalyticsSettingsWrite` 8 (run 876), `AnalyticsSettingsWriteEdge` 11 (run 877).
 
 ## Auto Run Result
 

@@ -2098,7 +2098,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        ; An analytics General setting or a Worklists option (Story 24.13): AD-10 names no effect on either, so a write passes the reviewed-few sweep and nothing else.
+        ; An analytics General setting, a Worklists option, a run-time variable or a user-defined icon (Story 24.13): AD-10 names no effect on any of them, so a write passes the reviewed-few sweep and nothing else.
         If ..IsAnalyticsSettingType(tType) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit

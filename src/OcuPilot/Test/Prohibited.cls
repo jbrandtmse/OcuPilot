@@ -644,6 +644,41 @@ Method AskCreate(pPayload As %String, pPath As %String, Output pProhibits As %Bo
     Quit $ClassMethod(..#SET, "Prohibits", "webapp.list.create", ##class(OcuPilot.Test.ProhibitedFixture).Reference(pPath), pPayload, tDiff.%ToJSON(), .pProhibits, .pCode)
 }
 
+/// <p>Story 24.13: a run-time variable add and a user-defined icon add carry the namespace they were composed in beside their
+/// fields, as an entry add does. The create path drops that <code>Namespace</code> before the reviewed-few sweep, so the add
+/// passes the set, and a field the create list does not name is still refused <code>PROHIBITED.UNCOVEREDFIELD</code>.</p>
+/// <p>Mutation: drop <code>|| ..IsAnalyticsSettingType(tType)</code> from the entry-add branch of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the two namespace legs go red.</p>
+Method TestAnAnalyticsVariableOrIconAddDropsItsNamespaceAndRefusesAnUnreviewedField()
+{
+    Set tExpectedField = $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD")
+    For tCase = "analytics.runtimevariables.add|analytics-runtime-variable|Value", "analytics.usericons.add|analytics-user-icon|Path" {
+        Set tTool = $Piece(tCase, "|", 1)
+        Set tType = $Piece(tCase, "|", 2)
+        Set tPayload = {"Name": "OcuProbeProhibited2413"}
+        Do tPayload.%Set($Piece(tCase, "|", 3), "probe", "string")
+        Do tPayload.%Set("Namespace", "USER", "string")
+        Set tSC = ..AskEntryCreate(tTool, tType, tPayload, .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "the set answers " _ tTool _ " carrying its namespace")
+        Do $$$AssertEquals(tProhibits, 0, tTool _ " is not prohibited: its namespace is where it is added, not a field it sets")
+        Do $$$AssertEquals(tCode, "", "and carries no code")
+
+        Do tPayload.%Set("Global", "probe", "string")
+        Set tSC = ..AskEntryCreate(tTool, tType, tPayload, .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "the set answers " _ tTool _ " carrying a field its create list does not name")
+        Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+        Do $$$AssertEquals(tCode, tExpectedField, "as a field this release has not reviewed for " _ tTool)
+    }
+}
+
+/// <p>Ask the set about the entry add <var>pTool</var> of type <var>pType</var> carrying <var>pPayload</var>, with the port
+/// answering 404 for its name, which is a create's own precondition.</p>
+Method AskEntryCreate(pTool As %String, pType As %String, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmReadFault(404)
+    Quit $ClassMethod(..#SET, "Prohibits", pTool, ##class(OcuPilot.Test.ProhibitedFixture).Reference(pPayload.%Get("Name"), pType), pPayload.%ToJSON(), ..Diff("Name"), .pProhibits, .pCode)
+}
+
 /// <p>AC3: every registered write tool's entity type has predicates here, so the next story's tool
 /// cannot ship without adding them.</p>
 /// <p>Mutations: register a write tool over an entity type the set does not evaluate, and make the
