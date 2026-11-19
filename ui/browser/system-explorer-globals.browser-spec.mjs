@@ -3,7 +3,7 @@
  *
  * What it pins: the Globals list shows the spec's own global; its node page pages through it (a hundred nodes, then More for the rest, each once); an
  * edit round-trips through the Edit dialog to the instance; a node delete asks for the global's name, removes the node and everything below it and
- * leaves the global; the list's Delete asks for the global's name, states the published consequence and deletes the whole global; and a global whose name begins with OcuPilot draws Delete unavailable with the published sentence on the list.
+ * leaves the global; the list's Delete asks for the global's name, states the published consequence and deletes the whole global; a global whose name begins with OcuPilot draws Delete unavailable with the published sentence on the list; and (Story 21.18) the node page's Find filters the rows, Review counts a replace, the typed-name confirm replaces and the page shows the new values.
  *
  * **It writes only its own global**, `^ZZOcuGlbB<pid>` in `HSCUSTOM`, which it kills first and again after, so it runs on a throwaway only.
  *
@@ -181,6 +181,43 @@ test('the list\'s Delete asks for the global\'s name, states the published conse
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
     await page.waitForFunction((rowSelector, wanted) => ![...document.querySelectorAll(rowSelector)].some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, GLOBAL);
     assert.equal(probe('GLBGONE', [`Set result=$Data(${ROOT})`]).value, '0', 'the whole global is gone');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Find filters the node page, Review counts a replace, and the typed-name confirm replaces and the page shows the new values (Story 21.18)', async () => {
+  const made = probe('GLBREP', [`Kill ${ROOT}`, `Set ${ROOT}(1)="alpha abc"`, `Set ${ROOT}(2)="abc abc"`, `Set ${ROOT}(3)="none"`, 'Set result=1']);
+  assert.equal(made.value, '1', 'the spec\'s own global is made afresh');
+  const { context, page } = await signedInAt(browser, config, nodesRoute, VIEWPORTS.wide);
+  try {
+    assert.equal((await nodeRows(page, 3)).length, 3, 'the global shows its three nodes');
+    await page.type('[data-global-find]', 'abc');
+    await page.click('[data-global-go]');
+    await page.waitForFunction(() => document.querySelectorAll('[data-global-node-row]').length === 2, { timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await nodeRows(page, 2), [`${ROOT}(1)`, `${ROOT}(2)`], 'Find keeps only the nodes whose value holds the text');
+    await page.type('[data-global-replace]', 'xyz');
+    await page.click('[data-global-review]');
+    await page.waitForSelector('.ocu-typed-name-field', { visible: true, timeout: config.navigationTimeoutMs });
+    const review = await page.$$eval('[data-ocu-review] li', (items) => items.map((item) => item.textContent.trim()));
+    assert.deepEqual(review, ['Find: abc', 'Replace: xyz', 'MatchCase: true', 'Nodes: 2', 'Occurrences: 3'], 'the review states the counts');
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.globalReplaceConsequence, 'and the published consequence');
+    assert.equal(await page.$eval('.ocu-dialog-actions .ocu-button-destructive', (node) => node.getAttribute('aria-disabled')), 'true', 'Replace waits for the name');
+    assert.equal(nodeValue('1'), 'alpha abc', 'nothing is replaced before the name is typed');
+    await page.type('.ocu-typed-name-field', GLOBAL);
+    await page.waitForFunction(() => document.querySelector('.ocu-dialog-actions .ocu-button-destructive')?.getAttribute('aria-disabled') !== 'true', { timeout: config.navigationTimeoutMs });
+    await page.click('.ocu-dialog-actions .ocu-button-destructive');
+    await page.waitForFunction(() => document.querySelector('[data-global-empty]') !== null, { timeout: config.navigationTimeoutMs });
+    assert.equal(nodeValue('1') + '|' + nodeValue('2') + '|' + nodeValue('3'), 'alpha xyz|xyz xyz|none', 'the instance holds the replaced values and the other node is as it was');
+    assert.equal(await page.$eval('[data-global-empty]', (node) => node.textContent.trim()), STRINGS.explorerGlobalFindEmpty, 'the page reads again and no node holds the text');
+    await page.$eval('[data-global-find]', (input) => {
+      input.value = 'xyz';
+      input.dispatchEvent(new Event('input'));
+    });
+    await page.click('[data-global-go]');
+    await nodeRows(page, 2);
+    const shown = await page.$$eval('[data-global-node-row]', (rows) => rows.map((row) => row.querySelector('.ocu-global-value')?.textContent.trim().replace(/\s+/g, ' ')));
+    assert.deepEqual(shown, ['alpha xyz', 'xyz xyz'], 'the node page shows the new values');
   } finally {
     await context.close();
   }

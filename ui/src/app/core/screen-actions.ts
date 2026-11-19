@@ -333,7 +333,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
   // Story 21.17: the Globals list's Export acts on the selected global.
-  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { export: STRINGS.taskExportAction },
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { export: STRINGS.taskExportAction, replace: STRINGS.explorerGlobalFindAndReplace },
   // Story 24.9: Compare namespaces' Promote, over the checked rows.
   'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': { promote: STRINGS.explorerPromoteAction },
   // Story 18.5: Journals' two switches, each also titling its warning dialog, and its Check integrity.

@@ -8697,6 +8697,28 @@ export const STRINGS = {
   globalRefusalTooLarge: 'This global is too large for OcuPilot to export or replace: the most is 3,000,000 characters.',
   /** EXPERIENCE.md:613 */
   globalRefusalOwnData: 'OcuPilot\'s own data cannot be exported.',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFind: 'Find',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceWith: 'Replace with',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFindAndReplace: 'Find and replace',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceNodes: 'Nodes',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceOccurrences: 'Occurrences',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFindEmpty: 'No node in this global holds that text.',
+  /** EXPERIENCE.md:613 */
+  globalReplaceConsequence: 'Replacing changes every value the review counts. This cannot be undone.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalNoChange: 'No plain-text value in this global holds that text, so nothing would change.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReplaceTooLarge: 'This global is too large to replace in here: it holds more than 20,000 nodes, or a replaced value would be longer than 32,767 characters.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReviewChanged: 'This global changed after the replace was reviewed, so nothing was replaced. Review the replace again.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReplaceSystem: 'Find and replace is not available in the %SYS namespace.',
 } as const;
 
 /**

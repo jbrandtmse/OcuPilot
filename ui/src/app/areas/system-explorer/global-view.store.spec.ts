@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ApiRequestInit, JsonResult } from '../../core/api';
 import { STRINGS } from '../../core/strings';
-import { GLOBAL_VIEW_DESCRIPTOR, GlobalViewStore, NODES_PATH, type GlobalViewDeps } from './global-view.store';
+import { GLOBAL_LIST_DESCRIPTOR, GLOBAL_VIEW_DESCRIPTOR, GlobalViewStore, NODES_PATH, type GlobalViewDeps } from './global-view.store';
 
 /**
  * Global nodes' store (Story 21.5) over a stub of the page route and the action handler: the request it posts and the namespace it scopes it to, the
@@ -23,9 +23,10 @@ function page(rows: readonly ReturnType<typeof row>[], next = '') {
   return { kind: 'ok', status: 200, body: { rows, next, cut: false } } as JsonResult<unknown>;
 }
 
-function mount(answers: JsonResult<unknown>[], applied = true, refusal = '') {
+function mount(answers: JsonResult<unknown>[], applied = true, refusal = '', reviewRefusal = '') {
   const sent: Sent[] = [];
   const actions: unknown[][] = [];
+  const reviews: unknown[][] = [];
   const queue = [...answers];
   const deps: GlobalViewDeps = {
     api: {
@@ -42,9 +43,14 @@ function mount(answers: JsonResult<unknown>[], applied = true, refusal = '') {
         return applied;
       },
       lastRefusal: () => null,
+      startDryRun: async (descriptor, actionId, id, values, sink, name) => {
+        reviews.push([descriptor, actionId, id, values, name]);
+        sink.setRefusal(reviewRefusal);
+        return reviewRefusal === '';
+      },
     },
   };
-  return { store: new GlobalViewStore(), deps, sent, actions };
+  return { store: new GlobalViewStore(), deps, sent, actions, reviews };
 }
 
 describe('GlobalViewStore', () => {
@@ -110,6 +116,45 @@ describe('GlobalViewStore', () => {
       [GLOBAL_VIEW_DESCRIPTOR, 'save', '^G(1)', { Value: 'new', Was: 'old' }],
       [GLOBAL_VIEW_DESCRIPTOR, 'delete', '^G(2)', undefined],
     ]);
+  });
+
+  it('AC1: sends the Find text and whether case matters with every page request once Find is applied, and neither while it is blank', async () => {
+    // Mutation (Rule 19): drop `...filter` from the body in `post` -> the find assertions go red.
+    const { store, deps, sent } = mount([page([row('^G(1)')], '^G(1)'), page([row('^G(2)')]), page([row('^G(1)')], '^G(1)'), page([row('^G(2)')]), page([row('^G(1)')])]);
+    store.open('G');
+    store.setFindDraft('abc');
+    store.setMatchCaseDraft(false);
+    await store.go(deps);
+    await store.more(deps);
+    expect(sent.map((entry) => entry.body)).toEqual([
+      { global: 'G', pageSize: 100, find: 'abc', matchCase: false },
+      { global: 'G', pageSize: 100, find: 'abc', matchCase: false, after: '^G(1)' },
+    ]);
+    store.setFindDraft('xyz');
+    expect(store.find()).toBe('abc');
+    await store.reload(deps);
+    expect(sent[2].body).toEqual({ global: 'G', pageSize: 100, find: 'abc', matchCase: false });
+    store.setFindDraft('');
+    await store.go(deps);
+    expect(sent[3].body).toEqual({ global: 'G', pageSize: 100 });
+    expect(store.find()).toBe('');
+  });
+
+  it('AC1: Review asks the handler to review the replace of the global on the Globals list with the three fields, typed by its name, and keeps a refusal', async () => {
+    // Mutation (Rule 19): send `MatchCase` as the Match case draft negated in `review` -> the values assertion goes red.
+    const { store, deps, reviews } = mount([], true, '', 'No plain-text value in this global holds that text, so nothing would change.');
+    store.open('G');
+    await store.review(deps);
+    expect(reviews).toEqual([]);
+    store.setFindDraft('abc');
+    store.setReplaceDraft('');
+    await store.review(deps);
+    expect(reviews).toEqual([[GLOBAL_LIST_DESCRIPTOR, 'replace', 'G', { Find: 'abc', Replace: '', MatchCase: 'true' }, 'G']]);
+    expect(store.refusal()).toBe(STRINGS.globalRefusalNoChange);
+    store.setMatchCaseDraft(false);
+    store.setReplaceDraft('xyz');
+    await store.review(deps);
+    expect(reviews[1][3]).toEqual({ Find: 'abc', Replace: 'xyz', MatchCase: 'false' });
   });
 
   it('answers the refusal sentence of a write the instance refused, and the generic one when it gave none', async () => {

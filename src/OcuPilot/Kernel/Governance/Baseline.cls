@@ -226,6 +226,7 @@ XData Keys [ MimeType = application/json ]
   "explorer.globalnodes.delete": false,
   "explorer.globals.export": true,
   "explorer.globals.import": false,
+  "explorer.globals.replace": false,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,

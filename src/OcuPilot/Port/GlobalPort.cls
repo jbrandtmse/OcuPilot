@@ -22,8 +22,19 @@
 /// <parameter>MAXDISPLAY</parameter> characters.</p>
 /// <p><b><method>Page</method> is screen-only</b> (AD-36): a bounded walk of one global's nodes in <code>$Query</code> order from an
 /// explicit cursor. Node values and subscripts are never logged, and a failure in it logs the exception's name alone.</p>
+/// <p><b>Find and replace</b> (Story 21.18, AD-51): <code>Globals</code> <code>REPLACE</code> reads what a replace would change and
+/// <code>REPLACEALL</code> makes it, both composed by the port from the query's <parameter>FINDKEY</parameter>,
+/// <parameter>REPLACEKEY</parameter> and <parameter>MATCHCASEKEY</parameter>, never as code. Only a plain-text node value
+/// (<method>Candidate</method>) is searched, and a walk visits at most <parameter>REPLACESCAN</parameter> nodes. The read answers
+/// <code>{Name, Find, Replace, MatchCase, Nodes, Occurrences, Locations, Digest, Reviewed, Namespace}</code>, holding no value and no
+/// subscript, where <code>Nodes</code> and <code>Occurrences</code> count what changes, <code>Locations</code> is the directories of the
+/// nodes that change and <code>Digest</code> a SHA-256 of their references and values. The write walks again, refuses a digest other than
+/// the query's <parameter>DIGESTKEY</parameter>, then sets every recorded node in one transaction while it still holds the value the
+/// walk read, and answers <code>{Name, Namespace, Nodes, Occurrences}</code>. <method>Page</method> filters its rows with the same
+/// <method>Matches</method>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>, <method>VendorList</method>,
-/// <method>VendorLocations</method>, <method>VendorTotals</method>, <method>VendorNode</method>, <method>VendorWalk</method>, <method>VendorSet</method>,
+/// <method>VendorLocations</method>, <method>VendorTotals</method>, <method>VendorNode</method>, <method>VendorWalk</method>,
+/// <method>VendorFindWalk</method>, <method>VendorReplaceScan</method>, <method>VendorReplaceApply</method>, <method>VendorSet</method>,
 /// <method>VendorKillNode</method> and <method>VendorKillGlobal</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on return.</p>
 Class OcuPilot.Port.GlobalPort Extends %RegisteredObject
@@ -39,7 +50,7 @@ Parameter ENDPOINTS = "Globals";
 
 /// <p>The request types whose vendor call the port composes from its query, as <code>endpoint/type</code>: a node's value is set from the query's
 /// <parameter>VALUEKEY</parameter>, sent in no body (AD-51, AD-52).</p>
-Parameter COMPOSEDTYPES = "Node/PUT";
+Parameter COMPOSEDTYPES = "Node/PUT,Globals/REPLACE,Globals/REPLACEALL";
 
 Parameter ENDPOINTGLOBALS = "Globals";
 
@@ -57,6 +68,20 @@ Parameter TYPEDELETE = "DELETE";
 Parameter TYPESIZE = "SIZE";
 
 Parameter TYPEDIGEST = "DIGEST";
+
+/// <p>The read and the write of a find and replace on <parameter>ENDPOINTGLOBALS</parameter> (Story 21.18).</p>
+Parameter TYPEREPLACE = "REPLACE";
+
+Parameter TYPEREPLACEALL = "REPLACEALL";
+
+/// <p>The most nodes one replace walk, or one filtered page, visits.</p>
+Parameter REPLACESCAN As INTEGER = 20000;
+
+/// <p>The longest value a replace writes.</p>
+Parameter REPLACEVALUEMAX As INTEGER = 32767;
+
+/// <p>The longest text a replace looks for or writes.</p>
+Parameter MAXTEXT As INTEGER = 1000;
 
 /// <p>About how many characters of a <code>DIGEST</code> walk are written to the hash stream at once.</p>
 Parameter DIGESTBATCH As INTEGER = 32000;
@@ -77,8 +102,22 @@ Parameter PATTERNKEY = "pattern";
 
 Parameter SYSTEMKEY = "system";
 
+/// <p>The keys of a replace: the text to find, its replacement, whether case matters (<code>1</code> or <code>0</code>, default
+/// <code>1</code>) and the digest the replace was reviewed at.</p>
+Parameter FINDKEY = "find";
+
+Parameter REPLACEKEY = "replace";
+
+Parameter MATCHCASEKEY = "matchCase";
+
+Parameter DIGESTKEY = "digest";
+
 /// <p>The keys of a page request and the answer's.</p>
 Parameter PAGEGLOBALKEY = "global";
+
+Parameter PAGEFINDKEY = "find";
+
+Parameter PAGEMATCHCASEKEY = "matchCase";
 
 Parameter PAGESTARTKEY = "start";
 
@@ -133,6 +172,8 @@ Parameter REASONSYSTEM = "system must be yes or no.";
 Parameter REASONREFERENCE = "The node reference must be a canonical global reference with no environment.";
 
 Parameter REASONPAGE = "The page request names a global, optionally a start node or a node to continue after, and a page size of 50 to 500.";
+
+Parameter REASONMATCHCASE = "matchCase must be 1 or 0.";
 
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in process; production never overrides
 /// it.</p>
@@ -219,8 +260,9 @@ ClassMethod SubscriptText(pReference As %String) As %String
 /// <p>Serve <var>pEndpoint</var> for request type <var>pType</var>, after the gate.</p>
 /// <p><var>pQuery</var> carries <parameter>NAMESPACEKEY</parameter> (optional: the request's scope when absent), the keys the call needs
 /// (<parameter>NAMEKEY</parameter>, <parameter>REFERENCEKEY</parameter>, <parameter>VALUEKEY</parameter>,
-/// <parameter>MAXROWSKEY</parameter>, <parameter>PATTERNKEY</parameter>, <parameter>SYSTEMKEY</parameter>). <var>pBody</var> must be
-/// empty.</p>
+/// <parameter>MAXROWSKEY</parameter>, <parameter>PATTERNKEY</parameter>, <parameter>SYSTEMKEY</parameter>, and a replace's
+/// <parameter>FINDKEY</parameter>, <parameter>REPLACEKEY</parameter>, <parameter>MATCHCASEKEY</parameter> and
+/// <parameter>DIGESTKEY</parameter>). <var>pBody</var> must be empty.</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, name, reference,
 /// pattern or cap of the wrong shape; 501 <code>PORT.NOTIMPLEMENTED</code> for another endpoint or type; each <code>GLOBAL.*</code>
@@ -250,6 +292,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..GlobalState(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             } ElseIf (pType = ..#TYPESIZE) || (pType = ..#TYPEDIGEST) {
                 Set tSC = ..GlobalTotals(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } ElseIf (pType = ..#TYPEREPLACE) || (pType = ..#TYPEREPLACEALL) {
+                Set tSC = ..Replacing(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tSC = ..GlobalRemove(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             }
@@ -271,7 +315,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 /// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
-    If pEndpoint = ..#ENDPOINTGLOBALS Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPEDELETE) || (pType = ..#TYPESIZE) || (pType = ..#TYPEDIGEST)
+    If pEndpoint = ..#ENDPOINTGLOBALS Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPEDELETE) || (pType = ..#TYPESIZE) || (pType = ..#TYPEDIGEST) || (pType = ..#TYPEREPLACE) || (pType = ..#TYPEREPLACEALL)
     If pEndpoint = ..#ENDPOINTNODE Quit (pType = ..#TYPEGET) || (pType = ..#TYPEPUT) || (pType = ..#TYPEDELETE)
     Quit 0
 }
@@ -443,11 +487,8 @@ ClassMethod GlobalTotals(pNamespace As %String, pType As %String, ByRef pQuery, 
     } Else {
         Set tDigest = ""
         If tDefined {
-            Set tStatus = $$$OK
-            Do tStream.Rewind()
-            Set tHash = $System.Encryption.SHAHashStream(256, tStream, .tStatus)
+            Set tDigest = ..StreamDigest(tStream, .tStatus)
             If $$$ISERR(tStatus) Quit ..Fail("the global's digest could not be computed", tStatus, .pHttpStatus, .pFault)
-            Set tDigest = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
         }
         Do pResult.%Set("Digest", tDigest, "string")
     }
@@ -506,6 +547,244 @@ ClassMethod WriteDigestBatch(pStream As %Stream.TmpBinary, ByRef pBatch As %Stri
         Do pStream.Write($ZConvert($Extract(pBatch, tAt, tAt + ..#DIGESTBATCH - 1), "O", "UTF8"))
     }
     Set pBatch = ""
+}
+
+/// <p>The SHA-256 of <var>pStream</var>, in lower-case hexadecimal; <var>pStatus</var> is the hash's own status.</p>
+ClassMethod StreamDigest(pStream As %Stream.TmpBinary, Output pStatus As %Status) As %String
+{
+    Set pStatus = $$$OK
+    Do pStream.Rewind()
+    Set tHash = $System.Encryption.SHAHashStream(256, pStream, .pStatus)
+    If $$$ISERR(pStatus) Quit ""
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
+}
+
+/// <p>Whether <var>pText</var> is a text a replace looks for or writes: at least <var>pMinimum</var> and at most
+/// <parameter>MAXTEXT</parameter> characters, no control character.</p>
+ClassMethod TextValid(pText As %String, pMinimum As %Integer = 0) As %Boolean
+{
+    Quit ($Length(pText) '< pMinimum) && ($Length(pText) '> ..#MAXTEXT) && ($ZStrip(pText, "*C") = pText)
+}
+
+/// <p>Whether <var>pValue</var>, a node's value, is one a find or a replace reads: plain text (<code>%Studio.Global.format</code> answers
+/// 1) with no control character. A <code>$List</code> and a value holding a tab or any other control character are not.</p>
+ClassMethod Candidate(pValue As %String) As %Boolean
+{
+    If $ZStrip(pValue, "*C") '= pValue Quit 0
+    Quit (##class(%Studio.Global).format(pValue, .tOut, 1) = 1)
+}
+
+/// <p><var>pValue</var> with every occurrence of <var>pFind</var> replaced by <var>pReplace</var>, left to right and without overlap, and
+/// <var>pOccurrences</var> how many there were. Without <var>pMatchCase</var> the occurrences are found by comparing the lower-case
+/// forms, which keep every character's position, and the original characters are replaced. A text whose lower-case form changes its length
+/// is never matched. It does not judge <var>pValue</var> (<method>Candidate</method>).</p>
+ClassMethod Replaced(pValue As %String, pFind As %String, pReplace As %String, pMatchCase As %Boolean, Output pOccurrences As %Integer) As %String
+{
+    Set pOccurrences = 0
+    If pFind = "" Quit pValue
+    Set tHay = $Select(pMatchCase: pValue, 1: $ZConvert(pValue, "L"))
+    Set tNeedle = $Select(pMatchCase: pFind, 1: $ZConvert(pFind, "L"))
+    If ($Length(tHay) '= $Length(pValue)) || ($Length(tNeedle) '= $Length(pFind)) Quit pValue
+    Set tLength = $Length(tNeedle)
+    Set tOut = ""
+    Set tFrom = 1
+    For {
+        Set tAt = $Find(tHay, tNeedle, tFrom)
+        If tAt = 0 Quit
+        Set tOut = tOut _ $Extract(pValue, tFrom, tAt - tLength - 1) _ pReplace
+        Set pOccurrences = pOccurrences + 1
+        Set tFrom = tAt
+    }
+    If pOccurrences = 0 Quit pValue
+    Quit tOut _ $Extract(pValue, tFrom, *)
+}
+
+/// <p>Whether the node value <var>pValue</var> is a candidate (<method>Candidate</method>) that holds <var>pFind</var>
+/// (<method>Replaced</method>'s comparison).</p>
+ClassMethod Matches(pValue As %String, pFind As %String, pMatchCase As %Boolean) As %Boolean
+{
+    If '..Candidate(pValue) Quit 0
+    Set tUnused = ..Replaced(pValue, pFind, "", pMatchCase, .tCount)
+    Quit (tCount > 0)
+}
+
+/// <p>The find and replace the query names, after the gate: <var>pType</var> <code>REPLACE</code> reads what it would change and
+/// <code>REPLACEALL</code> makes the change (Story 21.18). Refused 400 <code>GLOBAL.VALUE.SHAPE</code> for a find or a replacement that is
+/// no text of <method>TextValid</method>, 400 <code>PORT.VALIDATION</code> for a name or a <parameter>MATCHCASEKEY</parameter> of the wrong
+/// shape, 409 <code>GLOBAL.REPLACE.SYSNAMESPACE</code> in <code>%SYS</code>, 404 <code>GLOBAL.NOTFOUND</code> for a global that holds no
+/// data, 409 <code>GLOBAL.REPLACE.TOOLARGE</code> when the walk passes <parameter>REPLACESCAN</parameter> nodes or a replaced value passes
+/// <parameter>REPLACEVALUEMAX</parameter> characters, and 409 <code>GLOBAL.REPLACE.NOCHANGE</code> when no value changes. The write is
+/// 409 <code>GLOBAL.REPLACE.REVIEWCHANGED</code>, with nothing written, when the walk's digest is not the query's
+/// <parameter>DIGESTKEY</parameter> or a recorded node no longer holds the value the walk read. A vendor <code>&lt;PROTECT&gt;</code> is
+/// 403 <code>PORT.ACCESSDENIED</code> with every node as it was. Nothing a node holds is logged.</p>
+ClassMethod Replacing(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..ReplacingRun(pNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("a global's replace failed inside the port", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Kill ^||OcuPilotGlobalReplace
+    Quit tSC
+}
+
+/// <p><method>Replacing</method>'s work. The change is recorded in <code>^||OcuPilotGlobalReplace</code>, which the caller kills.</p>
+ClassMethod ReplacingRun(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    If '..NameValid(tName) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAME, .pHttpStatus, .pFault)
+    }
+    Set tFind = $Get(pQuery(..#FINDKEY))
+    Set tReplace = $Get(pQuery(..#REPLACEKEY))
+    If '($Data(pQuery(..#FINDKEY)) # 2) || '($Data(pQuery(..#REPLACEKEY)) # 2) || '..TextValid(tFind, 1) || '..TextValid(tReplace, 0) {
+        Quit ..Violation(##class(OcuPilot.Api.GlobalError).#VALUESHAPE, .pHttpStatus, .pFault)
+    }
+    Set tCaseText = $Get(pQuery(..#MATCHCASEKEY))
+    If (tCaseText '= "") && '$Match(tCaseText, "^[01]$") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMATCHCASE, .pHttpStatus, .pFault)
+    }
+    Set tMatchCase = (tCaseText '= "0")
+    If $ZConvert(pNamespace, "U") = "%SYS" Quit ..Violation(##class(OcuPilot.Api.GlobalError).#SYSNAMESPACE, .pHttpStatus, .pFault)
+    Set tWrite = (pType = ..#TYPEREPLACEALL)
+    Do ..VendorLocations(pNamespace, tName, .tLocations, .tDefined, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the global could not be read", .pHttpStatus, .pFault, 1)
+    If 'tDefined Quit ..Violation(##class(OcuPilot.Api.GlobalError).#NOTFOUND, .pHttpStatus, .pFault)
+    Set tFixed = $Select($ListLength(tLocations) = 1: $List(tLocations, 1), 1: "")
+    Do ..VendorReplaceScan(pNamespace, tName, tFind, tReplace, tMatchCase, tWrite, ..#REPLACESCAN, ..#REPLACEVALUEMAX, tFixed, .tNodes, .tOccurrences, .tOver, .tNodeLocations, .tStream, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the global could not be walked", .pHttpStatus, .pFault, 1)
+    If tOver Quit ..Violation(##class(OcuPilot.Api.GlobalError).#REPLACETOOLARGE, .pHttpStatus, .pFault)
+    If tNodes = 0 Quit ..Violation(##class(OcuPilot.Api.GlobalError).#NOCHANGE, .pHttpStatus, .pFault)
+    Set tDigest = ..StreamDigest(tStream, .tStatus)
+    If $$$ISERR(tStatus) Quit ..Fail("the replace's digest could not be computed", tStatus, .pHttpStatus, .pFault)
+    Set pResult = {}
+    If tWrite {
+        Set tReviewed = $Get(pQuery(..#DIGESTKEY))
+        If (tReviewed = "") || (tReviewed '= tDigest) Quit ..Violation(##class(OcuPilot.Api.GlobalError).#REVIEWCHANGED, .pHttpStatus, .pFault)
+        Do ..VendorReplaceApply(pNamespace, .tStale, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the global could not be replaced", .pHttpStatus, .pFault, 1)
+        If tStale Quit ..Violation(##class(OcuPilot.Api.GlobalError).#REVIEWCHANGED, .pHttpStatus, .pFault)
+    } Else {
+        Do pResult.%Set("Find", tFind, "string")
+        Do pResult.%Set("Replace", tReplace, "string")
+        Do pResult.%Set("MatchCase", ''tMatchCase, "boolean")
+    }
+    Do pResult.%Set("Name", tName, "string")
+    Do pResult.%Set("Nodes", tNodes, "number")
+    Do pResult.%Set("Occurrences", tOccurrences, "number")
+    If 'tWrite {
+        Set tArray = []
+        For tI = 1:1:$ListLength(tNodeLocations) {
+            Do tArray.%Push($List(tNodeLocations, tI), "string")
+        }
+        Do pResult.%Set("Locations", tArray)
+        Do pResult.%Set("Digest", tDigest, "string")
+        Do pResult.%Set("Reviewed", "", "string")
+    }
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One walk of global <var>pName</var> in <var>pNamespace</var> for a replace of <var>pFind</var> by <var>pReplace</var>, every node that
+/// holds a value in <code>$Query</code> order from the root, the root included. <var>pNodes</var> and <var>pOccurrences</var> count the nodes
+/// that change (a candidate whose replaced value differs from its value) and the occurrences in them; <var>pLocations</var> (a
+/// <code>%List</code>) is the directories those nodes resolve to, <var>pFixed</var> when it is not empty (the one directory every node of the
+/// global resolves to) and each node's own otherwise; <var>pStream</var> holds each changing node's reference and value for the digest. A walk
+/// that visits more than <var>pBound</var> nodes, or meets a replaced value longer than <var>pValueMax</var> characters, stops with
+/// <var>pOver</var>. With <var>pRecord</var>, each changing node is recorded as <code>$ListBuild(reference, value, replaced value)</code> in
+/// <code>^||OcuPilotGlobalReplace</code>. The namespace is switched for the call alone.</p>
+ClassMethod VendorReplaceScan(pNamespace As %String, pName As %String, pFind As %String, pReplace As %String, pMatchCase As %Boolean, pRecord As %Boolean, pBound As %Integer, pValueMax As %Integer, pFixed As %String, Output pNodes As %Integer, Output pOccurrences As %Integer, Output pOver As %Boolean, Output pLocations As %List, Output pStream As %Stream.TmpBinary, Output pCaught)
+{
+    Set pNodes = 0
+    Set pOccurrences = 0
+    Set pOver = 0
+    Set pLocations = ""
+    Set pStream = ""
+    Set pCaught = ""
+    Kill ^||OcuPilotGlobalReplace
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRoot = "^" _ pName
+        Set pStream = ##class(%Stream.TmpBinary).%New()
+        Set tBatch = ""
+        Set tVisited = 0
+        Set tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot))
+        While (tNext '= "") && 'pOver {
+            Set tVisited = tVisited + 1
+            If tVisited > pBound {
+                Set pOver = 1
+                Quit
+            }
+            Set tValue = $Get(@tNext)
+            If ..Candidate(tValue) {
+                Set tNew = ..Replaced(tValue, pFind, pReplace, pMatchCase, .tCount)
+                If tNew '= tValue {
+                    If $Length(tNew) > pValueMax {
+                        Set pOver = 1
+                        Quit
+                    }
+                    Set pNodes = pNodes + 1
+                    Set pOccurrences = pOccurrences + tCount
+                    Set tBatch = tBatch _ $Length(tNext) _ ":" _ tNext _ $Length(tValue) _ ":" _ tValue
+                    If $Length(tBatch) '< ..#DIGESTBATCH Do ..WriteDigestBatch(pStream, .tBatch)
+                    If pRecord Set ^||OcuPilotGlobalReplace(pNodes) = $ListBuild(tNext, tValue, tNew)
+                    If pFixed = "" {
+                        Set tDirectory = $Piece(##class(%SYS.Namespace).GetGlobalDest(pNamespace, tRoot, ..SubscriptText(tNext)), "^", 2)
+                        If (tDirectory '= "") && '$ListFind(pLocations, tDirectory) Set pLocations = pLocations _ $ListBuild(tDirectory)
+                    }
+                }
+            }
+            Set tNext = $Query(@tNext)
+        }
+        If 'pOver Do ..WriteDigestBatch(pStream, .tBatch)
+        If (pFixed '= "") && (pNodes > 0) Set pLocations = $ListBuild(pFixed)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>Set every node <method>VendorReplaceScan</method> recorded to its replaced value, in <var>pNamespace</var>, in one transaction: a node
+/// that no longer holds the value that was recorded for it (<var>pStale</var>) rolls everything back and nothing is written. No event, job
+/// or other effect runs inside the transaction. The namespace is switched for the call alone.</p>
+ClassMethod VendorReplaceApply(pNamespace As %String, Output pStale As %Boolean, Output pCaught)
+{
+    Set pStale = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Set tLevel = $TLevel
+    Try {
+        Set $NAMESPACE = pNamespace
+        TSTART
+        Set tIndex = ""
+        For {
+            Set tIndex = $Order(^||OcuPilotGlobalReplace(tIndex), 1, tRecord)
+            If tIndex = "" Quit
+            Set tNode = $List(tRecord, 1)
+            If '($Data(@tNode) # 2) || ($Get(@tNode) '= $List(tRecord, 2)) {
+                Set pStale = 1
+                Quit
+            }
+            Set @tNode = $List(tRecord, 3)
+        }
+        If pStale {
+            TROLLBACK 1
+        } Else {
+            TCOMMIT
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        While $TLevel > tLevel {
+            TROLLBACK 1
+        }
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
 }
 
 /// <p>Kill the global the query names and every node in it: 404 <code>GLOBAL.NOTFOUND</code> when it holds no data.</p>
@@ -694,13 +973,15 @@ ClassMethod VendorKillNode(pNamespace As %String, pReference As %String, Output 
 /// <p>Whether <var>pBody</var>, a request body, is a node page request, and the request: <code>{global, start, after, pageSize}</code>,
 /// <code>global</code> a global name with an optional <code>^</code>, <code>start</code> and <code>after</code> (at most one) canonical
 /// references of that global, <code>pageSize</code> a whole number from <parameter>MINPAGE</parameter> to <parameter>MAXPAGE</parameter>
-/// (default <parameter>DEFAULTPAGE</parameter>). <var>pRequest</var> is <code>{global, start, after, pageSize}</code> with the global's
-/// name bare and each reference canonical, or <code>""</code>. Pure: it reads nothing.</p>
+/// (default <parameter>DEFAULTPAGE</parameter>), and optionally <code>find</code> (a text of <method>TextValid</method>; empty is none)
+/// and <code>matchCase</code> (a boolean, default true). <var>pRequest</var> is <code>{global, start, after, pageSize}</code> with the
+/// global's name bare and each reference canonical, and <code>find</code> and <code>matchCase</code> when a text is given, or
+/// <code>""</code>. Pure: it reads nothing.</p>
 ClassMethod PageRequest(pBody, Output pRequest As %DynamicObject) As %Boolean
 {
     Set pRequest = ""
     If '$IsObject($Get(pBody)) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
-    Set tKeys = $ListBuild(..#PAGEGLOBALKEY, ..#PAGESTARTKEY, ..#PAGEAFTERKEY, ..#PAGESIZEKEY)
+    Set tKeys = $ListBuild(..#PAGEGLOBALKEY, ..#PAGESTARTKEY, ..#PAGEAFTERKEY, ..#PAGESIZEKEY, ..#PAGEFINDKEY, ..#PAGEMATCHCASEKEY)
     Set tStray = 0
     Set tIterator = pBody.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
@@ -736,11 +1017,30 @@ ClassMethod PageRequest(pBody, Output pRequest As %DynamicObject) As %Boolean
     } ElseIf (tType '= "unassigned") && (tType '= "null") {
         Quit 0
     }
+    Set tFind = ""
+    Set tType = pBody.%GetTypeOf(..#PAGEFINDKEY)
+    If tType = "string" {
+        Set tFind = pBody.%Get(..#PAGEFINDKEY)
+        If '..TextValid(tFind) Quit 0
+    } ElseIf (tType '= "unassigned") && (tType '= "null") {
+        Quit 0
+    }
+    Set tMatchCase = 1
+    Set tType = pBody.%GetTypeOf(..#PAGEMATCHCASEKEY)
+    If tType = "boolean" {
+        Set tMatchCase = pBody.%Get(..#PAGEMATCHCASEKEY)
+    } ElseIf (tType '= "unassigned") && (tType '= "null") {
+        Quit 0
+    }
     Set pRequest = {}
     Do pRequest.%Set(..#PAGEGLOBALKEY, tName, "string")
     Do pRequest.%Set(..#PAGESTARTKEY, tRefs(..#PAGESTARTKEY), "string")
     Do pRequest.%Set(..#PAGEAFTERKEY, tRefs(..#PAGEAFTERKEY), "string")
     Do pRequest.%Set(..#PAGESIZEKEY, +tSize, "number")
+    If tFind '= "" {
+        Do pRequest.%Set(..#PAGEFINDKEY, tFind, "string")
+        Do pRequest.%Set(..#PAGEMATCHCASEKEY, ''tMatchCase, "boolean")
+    }
     Quit 1
 }
 
@@ -749,8 +1049,10 @@ ClassMethod PageRequest(pBody, Output pRequest As %DynamicObject) As %Boolean
 /// <code>$Query</code> order from the start node (included when it holds a value), the node after the cursor, or the global's first
 /// node; each value and reference is cut at <parameter>MAXDISPLAY</parameter> characters, a row holding a cut value or reference is not
 /// editable and <code>cut</code> is true on the row and on the page; the page holds at most <parameter>MAXCHARS</parameter> characters.
-/// <code>next</code> is the last row's reference when a node follows it and <code>""</code> otherwise. Otherwise the gate's refusals
-/// (<method>Invoke</method>) and 500. Nothing the request or a node holds is logged.</p>
+/// <code>next</code> is the last row's reference when a node follows it and <code>""</code> otherwise. With the request's <code>find</code>
+/// only the nodes whose value <method>Matches</method> it are rows, a walk visits at most <parameter>REPLACESCAN</parameter> nodes, and a
+/// page that scanned that many without filling answers what it found and the last node it visited as <code>next</code>. Otherwise the
+/// gate's refusals (<method>Invoke</method>) and 500. Nothing the request or a node holds is logged.</p>
 ClassMethod Page(pNamespace As %String, pRequest As %DynamicObject, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
@@ -766,7 +1068,14 @@ ClassMethod Page(pNamespace As %String, pRequest As %DynamicObject, Output pAnsw
         Set tSize = +pRequest.%Get(..#PAGESIZEKEY)
         Set tFrom = pRequest.%Get(..#PAGESTARTKEY)
         Set tAfter = pRequest.%Get(..#PAGEAFTERKEY)
-        Do ..VendorWalk(tNamespace, tName, tFrom, tAfter, tSize, .tRaw, .tMore, .tCaught)
+        Set tFind = pRequest.%Get(..#PAGEFINDKEY)
+        Set tCursor = ""
+        If tFind '= "" {
+            Set tMatchCase = $Select(pRequest.%GetTypeOf(..#PAGEMATCHCASEKEY) = "boolean": pRequest.%Get(..#PAGEMATCHCASEKEY), 1: 1)
+            Do ..VendorFindWalk(tNamespace, tName, tFrom, tAfter, tSize, tFind, tMatchCase, .tRaw, .tMore, .tCursor, .tCaught)
+        } Else {
+            Do ..VendorWalk(tNamespace, tName, tFrom, tAfter, tSize, .tRaw, .tMore, .tCaught)
+        }
         If $IsObject(tCaught) {
             Set tSC = ..Mapped(tCaught, "a global's nodes could not be read", .pHttpStatus, .pFault, 1)
             Quit
@@ -799,7 +1108,10 @@ ClassMethod Page(pNamespace As %String, pRequest As %DynamicObject, Output pAnsw
         }
         Set pAnswer = {}
         Do pAnswer.%Set("rows", tRows)
-        Do pAnswer.%Set("next", $Select(tLast '= "" && (tMore || tStopped): tLast, 1: ""), "string")
+        Set tNextRef = $Select(tLast '= "" && (tMore || tStopped): tLast, 1: "")
+        ; A filtered walk that scanned past rows it dropped continues after the last node it visited, not the last row it kept.
+        If (tFind '= "") && 'tStopped && tMore Set tNextRef = tCursor
+        Do pAnswer.%Set("next", tNextRef, "string")
         Do pAnswer.%Set("cut", ''tCut, "boolean")
         Set pHttpStatus = 200
     } Catch ex {
@@ -833,11 +1145,56 @@ ClassMethod VendorWalk(pNamespace As %String, pName As %String, pFrom As %String
             Set tNext = $Query(@tRef)
         }
         While (tNext '= "") && (pRaw < pSize) {
-            Set tValue = $Get(@tNext)
-            Set tData = $Data(@tNext)
-            Set tFormat = ##class(%Studio.Global).format(tValue, .tOut, 1)
             Set pRaw = pRaw + 1
-            Set pRaw(pRaw) = $ListBuild(tNext, $Extract(tOut, 1, 1001), $Length(tValue), tFormat, ($ZStrip(tValue, "*C") '= tValue), tData)
+            Set pRaw(pRaw) = ..RawRow(tNext)
+            Set tNext = $Query(@tNext)
+        }
+        Set pMore = (tNext '= "")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The raw row of node <var>pReference</var>, a canonical reference in the current namespace, as <method>VendorWalk</method> lists it:
+/// <code>$ListBuild(reference, display, length, format, control, data)</code>.</p>
+ClassMethod RawRow(pReference As %String) As %List [ Private ]
+{
+    Set tValue = $Get(@pReference)
+    Set tFormat = ##class(%Studio.Global).format(tValue, .tOut, 1)
+    Quit $ListBuild(pReference, $Extract(tOut, 1, 1001), $Length(tValue), tFormat, ($ZStrip(tValue, "*C") '= tValue), $Data(@pReference))
+}
+
+/// <p><method>VendorWalk</method> that keeps only the nodes whose value <method>Matches</method> <var>pFind</var> (<var>pMatchCase</var>),
+/// and stops after visiting <parameter>REPLACESCAN</parameter> nodes. <var>pLast</var> is the last node it visited, <var>pMore</var> is
+/// whether a node follows it, so a page that scanned without filling continues after <var>pLast</var>. The namespace is switched for the
+/// call alone.</p>
+ClassMethod VendorFindWalk(pNamespace As %String, pName As %String, pFrom As %String, pAfter As %String, pSize As %Integer, pFind As %String, pMatchCase As %Boolean, Output pRaw, Output pMore As %Boolean, Output pLast As %String, Output pCaught)
+{
+    Kill pRaw
+    Set pRaw = 0
+    Set pMore = 0
+    Set pLast = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRoot = "^" _ pName
+        Set tRef = $Select(pAfter '= "": pAfter, pFrom '= "": pFrom, 1: tRoot)
+        If (pAfter = "") && ($Data(@tRef) # 2) {
+            Set tNext = tRef
+        } Else {
+            Set tNext = $Query(@tRef)
+        }
+        Set tVisited = 0
+        While (tNext '= "") && (pRaw < pSize) && (tVisited < ..#REPLACESCAN) {
+            Set tVisited = tVisited + 1
+            Set pLast = tNext
+            If ..Matches($Get(@tNext), pFind, pMatchCase) {
+                Set pRaw = pRaw + 1
+                Set pRaw(pRaw) = ..RawRow(tNext)
+            }
             Set tNext = $Query(@tNext)
         }
         Set pMore = (tNext '= "")
@@ -899,11 +1256,12 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>objectscript</code> for the three writes this port carries (<code>Globals</code> <code>DELETE</code>, <code>Node</code>
-/// <code>PUT</code> and <code>DELETE</code>); <code>""</code> for a read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for the four writes this port carries (<code>Globals</code> <code>DELETE</code> and
+/// <code>REPLACEALL</code>, <code>Node</code> <code>PUT</code> and <code>DELETE</code>); <code>""</code> for a read, which has no script
+/// form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#ENDPOINTGLOBALS) && (pType = ..#TYPEDELETE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTGLOBALS) && ((pType = ..#TYPEDELETE) || (pType = ..#TYPEREPLACEALL)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTNODE) && ((pType = ..#TYPEPUT) || (pType = ..#TYPEDELETE)) Quit "objectscript"
     Quit ""
 }
@@ -911,12 +1269,15 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <p><method>Invoke</method>'s write branches as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names: a global's
 /// delete is <code>Kill</code> of its name, a node's the <code>Set</code> or <code>Kill</code> of the reference. Every value, a reference
 /// and a node's value included, is rendered as a string literal and reached by name indirection, so nothing the query carries runs as code.
-/// A read writes nothing and answers no step.</p>
+/// A global's find and replace (<code>REPLACEALL</code>) is <method>ReplaceScript</method>. Every line of a script opens no block it does
+/// not close on that line. A read writes nothing and answers no step.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    If pEndpoint = ..#ENDPOINTGLOBALS {
+    If (pEndpoint = ..#ENDPOINTGLOBALS) && (pType = ..#TYPEREPLACEALL) {
+        Set tText = tText _ ..ReplaceScript(.pQuery)
+    } ElseIf pEndpoint = ..#ENDPOINTGLOBALS {
         Set tText = tText _ $Char(10) _ " Set tGlobal = " _ ..Literal("^" _ $Get(pQuery(..#NAMEKEY))) _ $Char(10) _ " Kill @tGlobal"
     } Else {
         Set tText = tText _ $Char(10) _ " Set tNode = " _ ..Literal($Get(pQuery(..#REFERENCEKEY))) _ $Char(10)
@@ -926,6 +1287,31 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
     Quit [(tStep)]
+}
+
+/// <p>The lines, each led by a line feed, that make <method>ReplacingRun</method>'s write: walk the named global in <code>$Query</code>
+/// order, the root included, and in each plain-text value (<method>Candidate</method>'s test) replace every occurrence of the find text
+/// left to right without overlap, matching case unless <parameter>MATCHCASEKEY</parameter> is <code>0</code> and leaving a value alone
+/// when its lower-case form, or the find's, changes length (<method>Replaced</method>), setting only a value that changes, all in one
+/// transaction rolled back on error. The namespace, name, find, replace and match-case flag are string literals, never code; only the name
+/// is reached by indirection. It carries none of the write's refusals (the bounds, the digest, the <code>%SYS</code> namespace): the
+/// proposal it is drawn from passed them at its read, and whoever runs it is checked by the instance (AD-59).</p>
+ClassMethod ReplaceScript(ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Set tRoot = " _ ..Literal("^" _ $Get(pQuery(..#NAMEKEY)))
+    Set tText = tText _ tNL _ " Set tFind = " _ ..Literal($Get(pQuery(..#FINDKEY)))
+    Set tText = tText _ tNL _ " Set tReplace = " _ ..Literal($Get(pQuery(..#REPLACEKEY)))
+    Set tText = tText _ tNL _ " Set tMatchCase = (" _ ..Literal($Get(pQuery(..#MATCHCASEKEY))) _ " '= ""0"")"
+    Set tText = tText _ tNL _ " Set tNeedle = $Select(tMatchCase: tFind, 1: $ZConvert(tFind, ""L""))"
+    Set tText = tText _ tNL _ " Set tLevel = $TLevel, tNext = $Select($Data(@tRoot) # 2: tRoot, 1: $Query(@tRoot))"
+    Set tText = tText _ tNL _ " TSTART"
+    Set tText = tText _ tNL _ " Try { While tNext '= """" { Set tValue = $Get(@tNext) If ($ZStrip(tValue, ""*C"") = tValue) && (##class(%Studio.Global).format(tValue, .tOut, 1) = 1) && (tFind '= """") && ($Length(tNeedle) = $Length(tFind)) {"
+    Set tText = tText _ " Set tHay = $Select(tMatchCase: tValue, 1: $ZConvert(tValue, ""L"")) If $Length(tHay) = $Length(tValue) { Set tNew = """", tFrom = 1"
+    Set tText = tText _ " For { Set tAt = $Find(tHay, tNeedle, tFrom) Quit:tAt=0  Set tNew = tNew _ $Extract(tValue, tFrom, tAt - $Length(tNeedle) - 1) _ tReplace, tFrom = tAt }"
+    Set tText = tText _ " Set tNew = tNew _ $Extract(tValue, tFrom, *) If tNew '= tValue Set @tNext = tNew } } Set tNext = $Query(@tNext) } TCOMMIT }"
+    Set tText = tText _ " Catch tEx { While $TLevel > tLevel { TROLLBACK 1 } Throw tEx }"
+    Quit tText
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a <code>$Char</code>.</p>

@@ -2,7 +2,8 @@
 title: 'Story 21.18: Global find and replace'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a4f2d3d7cf1b178986c277d3bd610ff3e49e31ae'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['{project-root}/_bmad-output/implementation-artifacts/spec-21-5-globals-and-the-data-tools.md']
@@ -165,11 +166,94 @@ deferred: []
 - AC4. Given a global over 20,000 nodes, a replace that changes nothing, or the `%SYS` namespace, when either caller replaces, then it is refused with `TOOLARGE`, `NOCHANGE` or `SYSNAMESPACE` and nothing is written.
 - AC5. Given any global the `Global` arm protects, when either caller replaces in it, then it is refused before any write with that refusal's sentence, which the client mirror pins equal.
 
+### Review Findings
+
+- [x] [Review][HIGH] Closed: `GlobalPort.SnippetForm`/`ReplaceScript`, `GlobalReplace` script tests, `DraftRegistry` green. CI run 44397952934 (code head 786f463f5), instance shard 5/8: `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript` fail on `explorer.globals.replace` ("Globals/REPLACEALL has no script form in OcuPilot.Port.GlobalPort"). AD-59 binds every write tool: the port that defines `Invoke` defines a `Snippet` that mirrors every branch `Invoke` takes, so "the write has no script form" (Design Notes, Verification) contradicts the spine. Add the `REPLACEALL` branch to `GlobalPort.SnippetForm` and `Snippet`, rendering the same replace `Invoke` performs (namespace, global, find, replace, match case; plain-text values only; one transaction) with every value a string literal reached by indirection, as the existing branches do; replace the two wrong sentences; `DraftRegistry` green; a `mutation:` line. [src/OcuPilot/Port/GlobalPort.cls]
+
+Re-review of rework 1 (`d988aff11`), 2026-11-18 (4 layers, full-opus): 31 rows, 16 entries (high 0, medium 3, low 8, false 5). `DraftRegistry` 9/9 and `GlobalReplace` 15/15 on `ocupilot-ci`; `explorer.globals.replace` is the one write tool this story added.
+
+- [x] [Review][Patch] The script set every value the find occurred in, unchanged ones included (`ABC` to `abc` without matching case re-sets `abc`); the write sets only a value that changes. `TestTheScriptSetsOnlyTheValuesThatChange` pins it by the process's global update count [src/OcuPilot/Port/GlobalPort.cls ReplaceScript]
+- [x] [Review][Patch] The script's control-character clause decided no fixture (`format` rejects 0-31; `$Char(127)`-`159` pass it, measured). `AfterReplace` adds a `$Char(127)` node [src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Patch] `TestTheScriptRollsBackWhenItFails` passed on any error; it now asserts `<MAXSTRING>`. `RunScript` rolls back a transaction a script leaves open, so one test's leak cannot reach the rest [src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Patch] `tLevel` is set before the line's `$Data`, so a failed walk line pasted in a terminal still rolls back; doc comments say the script carries none of the write's refusals and only the name is reached by indirection [src/OcuPilot/Port/GlobalPort.cls, src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Defer] DW-2750 (`routed` burndown): every port's script switches namespace on a line of its own, so after a failed switch a pasted terminal runs the write lines in the current namespace
+
+**Rejected (re-review):** the script omits the live write's refusals (node and value bounds, digest, `%SYS`, name, text and case shape) -- by design: a draft is rendered from a stored proposal whose read passed them, AD-59 leaves drift after the review to the instance ("the fingerprint does not protect it"), and this port's delete and node scripts omit theirs too; the free-name gate (Story 20.20) stops a create becoming an overwrite, a different change, whereas a drifted replace makes the same kind of change. `Literal` spells only 0-31 (false: `TextValid` refuses 127-159, which `*C` strips). The length guards have no script leg (false: unreachable, measured). Stale terminal locals (false: a finished run leaves `tNext` empty). `Snippet` trusts upstream validation (false: the sibling branches do too). Governing ADs, the `(loop)` list and the class's 697 lines (low: spec edits on an oversized spec, or a split that touches the CI shard roster).
+
+Code review, 2026-11-18 (4 layers, full-opus): 38 rows, 29 entries (high 0, medium 6, low 20, false 3). Every medium was patched in this pass, and no high or medium remains open.
+
+- [x] [Review][Patch] The name-stem test wrote `^OcuPilotZZRep<pid>`, which the install namespace maps into OcuPilot's own database. It now uses a lower-case stem, stored in `HSCUSTOM` [src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Patch] The location refusal was pinned only at the arm with a test payload. `TestAGlobalStoredInASystemDatabaseIsNotReplacedOnEitherCaller` drives the person's and the agent's write on the test's own `%`-global, which is stored in the system database, and asserts 403 with nothing changed [src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Patch] No `%Development` principal replaced anything. `TestADeveloperReplacesInItsOwnGlobalAndIsRefusedAProtectedOne` covers the developer's own global (200) and its `%` copy (403) [src/OcuPilot/Test/GlobalWriteDeveloper.cls]
+- [x] [Review][Patch] Two paths were unpinned: the port's stale answer through `Invoke`, and the `Catch` rollback. They are now pinned through the new `GlobalReplaceMoveSeam` and a forced error leg [src/OcuPilot/Test/GlobalReplace.cls, src/OcuPilot/Test/GlobalReplaceMoveSeam.cls]
+- [x] [Review][Patch] The agent's mint was never driven over a global that changes nothing or one that is too large. Both legs are added [src/OcuPilot/Test/GlobalReplace.cls]
+- [x] [Review][Patch] `ExplorerGlobalReplaceMint` copied `InteropTransformMint`'s body byte for byte (Rule 31). It now extends it [src/OcuPilot/Screen/Tool/ExplorerGlobalReplaceMint.cls]
+- [x] [Review][Patch] A filtered page that scanned out with more nodes to read said that no node holds the text. The empty state now waits until no page is left [ui/src/app/areas/system-explorer/global-view.page.ts]
+- [x] [Review][Patch] The 32,767-character boundary leg is added, and the stale roster messages are reworded [src/OcuPilot/Test/GlobalReplace.cls, DeveloperFloor.cls, ExplorerDescriptor.cls]
+- [x] [Review][Defer] DW-2747 (`wontfix-theoretical`): when the arm's own read is refused with a 4xx, the arm leaves that refusal to the write
+- [x] [Review][Defer] DW-2748 (`wontfix-accepted`): the replace takes no lock against a concurrent writer
+- [x] [Review][Defer] DW-2749 (`wontfix-accepted`): the No privilege row has no test
+
+**Rejected:**
+
+- **false:**
+  - Rollback is partial in a database that is not journaled. IRIS journals every update inside a transaction whatever the database's journal setting; `IRISTEMP` is the exception, and it is not rolled back (measured), but it is a protected database that the arm refuses.
+  - `Replacing`'s `Catch` leaves a transaction open. `VendorReplaceApply` rolls back to its entry level inside its own `Try`.
+  - `ReplaceLocations` hard-codes the namespace key. The sibling `GlobalLocations` uses the same literal.
+- **low, by design or bound by the spec:**
+  - `Reviewed` is optional, as in `InteropItemChangeClass` and `ExplorerNamespacePromote`.
+  - The digest excludes the texts; the spec defines it over the references and values.
+  - The counts act as a substring oracle (veto U-63, count-only card).
+  - Three walks per replace (Decided in-stage).
+  - Raw `MatchCase` row labels (the spec names the card rows).
+- **low, not worth fixing:**
+  - No "whole global" wording (it would need a new string).
+  - A value shrunk from near the 3.6-million-character string limit raises `<MAXSTRING>` (theoretical).
+  - Edits that move code into `StreamDigest`/`RawRow`/an `Else` branch are not add-only (no behavior change).
+  - An empty Find answers `TOOL.ARGUMENTS`, which the UI cannot send.
+  - The AD-51 entry names only `REPLACE` (a spine wording point for the runner).
+  - One page-spec leg repeats a check the store already makes (the guard is pinned elsewhere).
+  - The agent's port digest check is not pinned apart from the kernel's `PROPOSAL.TARGETCHANGED`. `Digest` is in `FINGERPRINTSUBJECT`, which the existing mutation pins; the port's comparison is one line shared with the person's pinned leg; and the agent's 200 requires the minted digest to reach the write.
+  - Leaks beyond the four answers. Measured on `ocupilot-ci`: no node value or subscript in any `^OcuPilot*` global, `%SYS.Audit` or `messages.log` after replaces by both callers.
+
 ## Spec Change Log
 
 - 2026-11-18, runner (ledger inbox): DW-2732 -- the Protected row answers 403, as every protected-global and OcuPilot-code refusal does since Story 21.5. DW-2731 -- a Batch 1 task fixes `Prohibited.ImportedGlobals`'s status-less `Catch`. Stories 21.5 and 21.17 are built: extend `GlobalPort`, the `Global` arm and the transfer tests rather than copying them.
 
 ## Review Triage Log
+
+- Review miss (orchestrator, 2026-11-18): the build's "no script form" for `REPLACEALL` contradicted AD-59 and the code review graded it by design; CI's `DraftRegistry` caught it, closed by rework 1 (`d988aff11`).
+
+### 2026-11-18 -- Review pass
+
+- verdicts: 13 findings -- high 0, medium 3, low 6, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Agent's moved-global leg asserted only "not 200", so any refusal passed -- now asserts `409 PROPOSAL.TARGETCHANGED` and adds a second leg that moves a value without changing either count (`GlobalReplace`).
+  - `[medium]` `[patch]` The port's `Locations` answer was never asserted -- `GlobalReplace` now asserts the port's fresh read and the per-node scan both name the global's directory.
+  - `[medium]` `[patch]` Protected replace was pinned only at the arm -- `TestAnOcuPilotNamedGlobalIsNotReplacedOnEitherCaller` drives the person's replace and the agent's mint or confirm for an OcuPilot-named global (403, nothing changed). The person's review answers 200 by design: it writes nothing and the refusal is at the write.
+  - `[low]` `[patch]` Wide characters untested -- `TestWideCharactersAreKeptInPlace` added.
+  - `[low]` `[patch]` Handler spec waited a fixed 12 ms -- now `vi.waitFor`.
+  - `[low]` `[patch]` `ClassicPageGate.EXPLORERIMPORTKEYS` comment did not name the replace key -- reworded.
+  - `[low]` `[patch]` `Locations`/`Digest` reaching the model was unverified -- the agent test now asserts the mint result holds neither (verified; the harm did not occur).
+  - `[low]` `[reject]` AC2 governance assertion reads `allowed` 0 for any refusal -- `ToolDispatch`'s derived loop pins the default-disabled key; a corrective line would add a branch for no user-reachable harm.
+  - `[low]` `[reject]` Two string keys have no consumer beyond the dialog rows -- harmless, and the strings are the spec's ruled ones.
+  - `[false]` `[reject]` NOCHANGE/TOOLARGE before REVIEWCHANGED on a moved global -- nothing is written either way and the global genuinely no longer matches the review.
+  - `[false]` `[reject]` Find filter "server-side, not screen-only" -- the Tasks list names `GlobalNodes` accepting `find` and `matchCase`; no new route exists.
+  - `[false]` `[reject]` Agent card UI evidence thin -- the card is the generic proposal view of the five rows, pinned by `StateDiff` and the server test.
+  - `[false]` `[reject]` Person's replace has no screen of its own -- by design (Decided in-stage): the page starts the list descriptor's `replace`.
+
+### 2026-11-18 -- Review pass (rework 1, AD-59 script form)
+
+- verdicts: 8 findings -- high 0, medium 1, low 6, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The script's rollback had no failing input -- `TestTheScriptRollsBackWhenItFails` forces a `<MAXSTRING>` after an earlier node was set and asserts nothing changed and no transaction is open; its mutation is observed red.
+  - `[low]` `[patch]` Overlapping finds were unpinned -- an `aa`-in-`aaaaa` leg, compared with the write and asserted `ZZa`; its mutation is observed red.
+  - `[low]` `[patch]` Mutation lines covered only `SnippetForm` and `Literal` -- two lines added.
+  - `[low]` `[patch]` `$Length(tWrite, $Char(10)) > 1` could not fail -- now asserts the write did not answer `invoke failed`.
+  - `[low]` `[patch]` `RunScript` left the script's variables defined -- they are killed after the run.
+  - `[low]` `[reject]` The lower-case length guard has no leg -- measured on `ocupilot-ci`: no character from 1 to 65,535 lower-cases to a different length, so no data can reach the guard.
+  - `[low]` `[reject]` The script lacks the port's guards (name, `%SYS`, bounds, no-change, digest) -- they guard the live write; AD-59 renders the change, and a draft's script is not protected by the fingerprint. A text over the string limit raises inside the script's transaction and rolls back (pinned).
+  - `[false]` `[reject]` The replace text's own rendering is checked only through the shared `Literal` -- the find, replace and every other value go through the one function.
 
 ## Design Notes
 
@@ -202,6 +286,26 @@ deferred: []
 - `%SYS` refused: never looser than the classic page.
 - No harvested body: the MCP suite has no global replace handler (21.5 checked `ExecuteMCPv2.REST.Global`).
 - Tests are not armed. Each writes only its own `^ZZOcuRep<pid>`.
+
+**Task 0, measured on `ocupilot-ci` (2026-11-18, implement):**
+
+- (a) `TROLLBACK` restores every node: after `Set` of nodes 1 and 2 inside `TSTART` and a forced divide error, the three nodes read `a`, `b`, `c` and `$TLevel` was 0.
+- (b) A raw loop over 20,000 nodes with `format` and a lower-case `$Find` took 0.022 s, and one transaction of 20,000 `Set`s 0.008 s, with short values in `USER`. The port's own read and write were not timed separately; the 20,000-node review in `GlobalReplace` runs inside one test. The per-node `GetGlobalDest` cost (4.4 s over 20,000 nodes at 0.22 ms) stays an (inference) from the 2026-11-15 measurement.
+- (c) With auditing enabled (it already was), two `Set`s and a `Kill` of a `USER` global from a session recorded no `%SYS.Audit` row (229,349 before and after). No vendor event is written, the AD-53 named gap as for Story 21.5's node writes. Auditing was left as found.
+
+**Decided in-stage (implement):**
+
+- The read and the write are two request types on the existing `Globals` endpoint, `REPLACE` and `REPLACEALL`, not one type on a new `Replace` endpoint: the kernel reads with `READTYPE` and writes with `WRITETYPE` through one port, so one type could not tell the two apart.
+- A global that holds no data is 404 `GLOBAL.NOTFOUND` (the delete's sentence), before `NOCHANGE` is judged. The read answers `Namespace` and the fingerprint subject names it, so a confirm writes where the proposal read, as the other globals tools do.
+- The write refuses when no digest reaches it, `REVIEWCHANGED`: both callers always send one (the person's `Reviewed`, else the stored `Digest`).
+- `Locations` is read per node only when the global's name and mapping rows answer more than one directory; with one, that directory is the answer.
+- The arm reads the `REPLACE` read through the tool's own `PortQuery`; a read the port refuses with a 4xx (`NOCHANGE`, `TOOLARGE`, `SYSNAMESPACE`, a shape refusal) is not judged by the arm, because the write is refused the same way before it changes anything. A read that fails any other way refuses.
+- An unsound find or replacement from the agent is refused `TOOL.ARGUMENTS` before the instance is read, by `ExplorerGlobalReplaceMint` (a new class, modeled on `InteropItemChangeClassMint`), with `GLOBAL.VALUE.SHAPE`'s existing sentence as the problem text.
+- The review's five rows carry no before-text, so the handler draws a row that is not removed and has no before-text as `field: value` (`fieldReviewLines`); the review dialog's verb is the ruled "Find and replace".
+- The `%SYS` sentence's key is `globalRefusalReplaceSystem`: `strings.test.mjs` pins every key containing `namespace`.
+- `GlobalPort.SnippetForm` answers `objectscript` for `REPLACEALL` (AD-59) and none for the `REPLACE` read; the script mirrors the write.
+- DW-2731: no clause was rewritten. `Prohibited.ImportedGlobals`'s `Catch` already reads `Set tSC = ex.AsStatus()` (Story 21.5's original commit), so an error raised in it is an error status the caller refuses on. `GlobalWrite.TestAnErrorRaisedWhileJudgingAnImportRefusesIt` pins it (`GlobalProhibited.BreakPort` makes the arm's port a class with no methods); the evidence's "keeps tSC OK" read the file before that line.
+- DW-2732: the Protected row answers 403, pinned at the arm in `GlobalReplace` and `GlobalWrite`. No instance global stored in a protected database with at most 20,000 nodes was found to drive end to end (`^oddDEF` in `USER` holds more than 25,000), so both callers' refusal is pinned at the shared arm, not by a real write.
 
 **Strings, escalated for the spec gate's ruling** (reusing "Review", "Match case", `GLOBAL.VALUE.SHAPE`, `PROHIBITED.PROTECTEDGLOBAL`):
 
@@ -282,9 +386,46 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - AC4: raise `REPLACESCAN` past the test's node count.
 - AC5: drop the `Locations` check from the arm's replace branch.
 
+Each applied on `ocupilot-ci`, observed red, reverted byte-identical (md5) and reloaded or rebuilt:
+
+- mutation: AC1 skip the plain-text check in `GlobalPort.Candidate` (a `$List` and a tab node change) -> `GlobalReplace.TestAPersonReviewsAndReplaces` and four more red (observed).
+- mutation: AC1 (case rule) compare the texts as they are in `GlobalPort.Replaced` -> `GlobalReplace.TestMatchCaseFalseReplacesTheOriginalCharacters` red (observed).
+- mutation: AC1 (the filter) keep every node in `GlobalPort.VendorFindWalk`, and continue after the last row kept instead of the last node visited -> `GlobalRead.TestAFindFiltersTheRowsAndTheCursorContinuesAcrossAPageThatScannedOut` red each (observed).
+- mutation: AC1 (Find reaches the page request) drop `...filter` from the body in `GlobalViewStore.post` -> `global-view.store.spec.ts` "sends the Find text" and `global-view.page.spec.ts` "Find and Match case filter" red (observed).
+- mutation: AC1 (Review) make `GlobalViewPage.onReview` send nothing, rebuild and redeploy -> `system-explorer-globals.browser-spec.mjs` Find-and-replace test red (observed); draw a row with no before-text as `- field:` in `fieldReviewLines` -> `screen-action-handler-globalreplace.spec.ts` review lines red (observed); drop `replace` from `DRY_RUN_ACTIONS` -> four handler specs red (observed).
+- mutation: AC2 add a `Digest` row to `ExplorerGlobalReplace.StateDiff` -> `GlobalReplace.TestTheAgentProposesAndAPersonConfirms` red on the rows (observed).
+- mutation: AC3 drop the per-node old-value check in `GlobalPort.VendorReplaceApply` -> `GlobalReplace.TestAMovedGlobalIsNotWrittenOnEitherCaller` red on the rollback leg (observed); drop the digest comparison in `GlobalPort.ReplacingRun` -> the same test red on the person's leg (observed); shorten `ExplorerGlobalReplace.FINGERPRINTSUBJECT` to `Name,Find,Replace,MatchCase,Namespace` -> the same test red on the agent's legs, which read `PROPOSAL.TARGETCHANGED` (observed).
+- mutation: AC4 raise `GlobalPort.REPLACESCAN` to 25,000 -> `GlobalReplace.TestARefusedReplaceWritesNothing` red on the 20,001-node leg (observed).
+- mutation: AC4 (the `%SYS` namespace, client) make `GlobalViewPage.replaceReason` answer `''` -> `global-view.page.spec.ts` "Review is drawn disabled" red (observed).
+- mutation: AC4 (text shape) drop the control-character test in `GlobalPort.TextValid` -> `GlobalReplace.TestTextOfTheWrongShapeIsRefusedBeforeAnythingIsRead` red (observed).
+- mutation: AC5 set the locations the replace branch of `Prohibited.Global` judges to a directory no database has -> `GlobalReplace.TestTheArmRefusesAProtectedReplaceBeforeAnyWrite` red (observed).
+- mutation: AC5 (both callers, name stem) skip the globals arm in `Prohibited.Prohibits` -> `GlobalReplace.TestAnOcuPilotNamedGlobalIsNotReplacedOnEitherCaller` red, as six more tests do (observed, reverted, reloaded).
+- mutation: AC1 (wide characters) lower-case only the find text in `GlobalPort.Replaced` -> `GlobalReplace.TestWideCharactersAreKeptInPlace` red, as is the case test (observed, reverted, reloaded).
+- mutation: DW-2731 drop `Set tSC = ex.AsStatus()` from the `Catch` of `Prohibited.ImportedGlobals` -> `GlobalWrite.TestAnErrorRaisedWhileJudgingAnImportRefusesIt` red (observed).
+- mutation: AC5 (both callers, location) make `Prohibited.ReplaceLocations` answer every read as one the port refused -> `GlobalReplace.TestAGlobalStoredInASystemDatabaseIsNotReplacedOnEitherCaller` red on the person's and the agent's legs (observed, code review).
+- mutation: AC5 (developer) `Prohibited.ReplaceLocations` also requires `%Admin_Manage:USE` -> `GlobalWriteDeveloper.TestADeveloperReplacesInItsOwnGlobalAndIsRefusedAProtectedOne` red (observed, code review).
+- mutation: AC3 (port) drop `If tStale Quit` from `GlobalPort.ReplacingRun` -> the seam leg of `GlobalReplace.TestAMovedGlobalIsNotWrittenOnEitherCaller` red; drop the rollback loop from `VendorReplaceApply`'s `Catch` -> its error leg red (observed, code review).
+- mutation: AC4 (value bound) compare with `'<` in `GlobalPort.VendorReplaceScan` -> the 32,767 leg of `GlobalReplace.TestARefusedReplaceWritesNothing` red (observed, code review).
+- mutation: AC1 (filter) drop `!hasMore` from the page's empty state -> `global-view.page.spec.ts` "a filtered page that scanned out" red (observed, code review).
+- mutation: AD-59 make `GlobalPort.SnippetForm` answer `""` for `REPLACEALL` again -> `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript`, and `GlobalReplace` script tests and declaration assertion, red; unquoted `Literal` -> `TestTheScriptRunsNothingTheQueryCarries` red; drop the rollback loop from `ReplaceScript`'s `Catch` -> `TestTheScriptRollsBackWhenItFails` red; step the script's search to `tAt - $Length(tNeedle) + 1` -> the overlap leg of `TestTheScriptFormMakesTheSameChangeAsTheWrite` red (all observed; reverted, the port equal to the reviewed diff, reloaded).
+- mutation: AD-59 (re-review) set every value the find occurs in, changed or not, in `ReplaceScript` -> `TestTheScriptSetsOnlyTheValuesThatChange` red; drop the script's `$ZStrip` clause -> `TestTheScriptFormMakesTheSameChangeAsTheWrite` red on the `$Char(127)` node; drop the script's rollback loop -> `TestTheScriptRollsBackWhenItFails` red alone (all observed; reverted, md5 equal, reloaded, `GlobalReplace` 15/15).
+- Each code-review mutation was reverted to byte-identical source (md5) and reloaded. The patched classes are green on `ocupilot-ci`: `GlobalReplace` 11/11 and `GlobalWriteDeveloper` 4/4. The 17 shared-surface and globals classes are also green: `CriterionHints`, `DeveloperFloorRoutes`, `SaveHoldCoverage`, `EndpointCoverage`, `SurfaceCoverage`, `ToolEmit`, `ReadDescriptions`, `Descriptor`, `Navigation`, `ReadTool`, `ToolWrite`, `ClassicPageGate`, `DeveloperFloor`, `ExplorerDescriptor`, `GlobalWrite`, `GlobalRead` and `Prohibited`. `test:tools` passes 2,330/2,330. The globals browser spec passes 7/7 on the rebuilt and redeployed bundle.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned on Story 21.5's declared design. The agent caller proposes with a count-only card, which needs only the owner-allowed AD-51 entry, written final in Design Notes. Two items are for the spec gate: the count posture and the new strings. Probes were read-only on slot A `ocupilot`; nothing ran against `ocupilot-ci`.
+**Rework 1 (AD-59).** `GlobalPort.SnippetForm` answers `objectscript` for `Globals`/`REPLACEALL` and `Snippet` renders it through the new private `ReplaceScript`: the namespace, the walk in `$Query` order root included, `Candidate`'s plain-text test, `Replaced`'s matcher and one transaction rolled back on error, every query value a `Literal` read by name indirection, every line closing the blocks it opens. `GlobalReplace` gains the script-form assertion, `TestTheScriptFormMakesTheSameChangeAsTheWrite` (the script run line by line against the port's own replace, six legs), `TestTheScriptRunsNothingTheQueryCarries` and `TestTheScriptRollsBackWhenItFails`. Review of this pass: 8 findings, 1 medium and 4 low patched (tests only), none high, none deferred; the earlier pass's follow-up flag is superseded by `followup_review_recommended: false`. Verified on `ocupilot-ci`: `LOADERRORS=0`, `DraftRegistry` 9/9, `GlobalReplace` 14/14, `GlobalWrite` 11/11 and `GlobalTransfer` 11/11 (handoff pass), `check-objectscript` 0 problems; four mutations observed red and reverted (Verification).
+
+**Implemented (Batches 1 and 2, one commit).** `explorer.globals.replace` reaches `GlobalPort` through a composed `REPLACE` read and a `REPLACEALL` write: a bounded walk, a digest guard, one transaction with a per-node old-value check, the `%SYS` refusal, and the `Global` arm judging the directories of the nodes that change. The Global nodes page gets Find, Match case, Replace with and Review; the list descriptor, handler, strings, EXPERIENCE.md row, mirror and baseline key (`false`) follow. Task 0 results and in-stage decisions are under Design Notes.
+
+**Files.** Server: `Port/GlobalPort`, `Api/GlobalError`, `Area/Explorer/GlobalNodes`, `Kernel/Proposal/Prohibited`, `Kernel/Governance/Baseline`, `Screen/Descriptor/ExplorerGlobalList`, new `Screen/Tool/ExplorerGlobalReplace` and `ExplorerGlobalReplaceMint`. Tests: new `Test/GlobalReplace` (10) and added cases in `GlobalRead`, `GlobalWrite`, `GlobalProhibited`, `GlobalLocationSeam`, plus roster updates in `ReadTool`, `ToolWrite`, `ClassicPageGate`, `DeveloperFloor`, `ExplorerDescriptor`, `Governance`, `GovernanceBaseline`, `SurfaceCoverage`, `ToolRoundTrip`, `MappingDescriptor`, `Prohibited`. Client: `global-view.page/store` and specs, `screen-action-handler`, `screen-actions`, `proposal-view`, `strings`, regenerated `screens.generated`, `global.test.mjs`, a new handler spec, the browser spec; EXPERIENCE.md (row 613, add-only).
+
+**DW-2731 / DW-2732.** `Prohibited.ImportedGlobals`'s `Catch` already read `Set tSC = ex.AsStatus()`; no clause was rewritten, and `GlobalWrite.TestAnErrorRaisedWhileJudgingAnImportRefusesIt` now pins it. The Protected row answers 403 and is pinned at the arm and by the name-stem test on both callers.
+
+**Review.** 13 findings: 3 medium and 4 low patched (tests only, no production change), 2 low and 4 false rejected; none deferred (Review Triage Log). Patched by counts: medium 3, low 4.
+
+**Verification.** `reload.sh` `LOADERRORS=0`; `GlobalReplace` 10/10, `GlobalWrite` 11/11, `Prohibited` 16/16 green on `ocupilot-ci` after the patches, the other `(loop)` classes green in the handoff pass; `check-objectscript` 0 problems; `lint-docs` clean; `test:tools` 2,328 and the handler spec green; both browser specs green (11); build clean at 2.12 MB initial. Mutations observed red and reverted in this pass: the globals arm skipped, `FINGERPRINTSUBJECT` shortened, `Replaced`'s haystack left in case. The runner owns the full ObjectScript sweep, `smoke.sh` and the fresh check.
+
+**Residual risks.** The agent's moved-global legs pin the kernel's `PROPOSAL.TARGETCHANGED`, so the port's digest comparison on the agent path is not pinned apart from it. A real protected-database global small enough to replace end to end does not exist on the instance, so the location and code-global refusals are pinned at the arm. Epic 24's worktree has staged edits to `Prohibited.cls`, `ReadTool.cls`, `ToolWrite.cls`, `ClassicPageGate.cls` and EXPERIENCE.md: roster counts on long lines may conflict at integration.

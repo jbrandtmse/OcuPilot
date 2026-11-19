@@ -11566,6 +11566,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "import-local",
         "selfProtection": ""
+      },
+      {
+        "id": "replace",
+        "selfProtection": "protected-global"
       }
     ],
     "context": {

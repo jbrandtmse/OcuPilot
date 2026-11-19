@@ -13882,11 +13882,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-17-global-export-and-import.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Prohibited.cls ImportedGlobals Catch sets pProhibits=0 and keeps tSC OK, unlike Global and SqlPrivilege, which return ex.AsStatus(); reachability of a throw inside the loop is unmeasured (inference)
 - 2026-11-18T11:11:34Z status=routed owner=21-18-global-find-and-replace by=cr note=one-line fix Set tSC = ex.AsStatus(); not patched in 21.17 review: Prohibited.cls is contended with Epic 24
+- 2026-11-18T22:40:25Z status=resolved-by:21-18-global-find-and-replace owner=21-18-global-find-and-replace by=adjudication note=ImportedGlobals'_Catch_already_set_tSC_from_the_exception_at_c9242b054;GlobalWrite.TestAnErrorRaisedWhileJudgingAnImportRefusesIt_pins_it(mutation_red)
 
 ### DW-2732: Story 21.18's matrix answers a protected-global refusal 409, but every protected-global and OcuPilot-code refusal answers 403
 - source: spec-21-17-global-export-and-import.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: spec-21-18 matrix row Protected says 409 PROHIBITED.PROTECTEDGLOBAL / OCUPILOTCODE; 21.5's and 21.17's tests and the 2026-11-18 measurement on ocupilot-ci answer 403 on every caller
 - 2026-11-18T11:11:38Z status=routed owner=21-18-global-find-and-replace by=cr note=plan 21.18's tests on 403, as 21.17's Design Notes record
+- 2026-11-18T22:40:25Z status=resolved-by:21-18-global-find-and-replace owner=21-18-global-find-and-replace by=adjudication note=Protected_row_answers_403;pinned_end_to_end_on_both_callers(GlobalReplace)
 
 ### DW-2733: A timed-out client suite step leaves the sampler and the hung suite running until the job ends, because the runner signals only the step's shell
 - source: spec-21-22-ci-flake-hardening.md | severity: low | fix-risk: high | footprint: in-story
@@ -13928,3 +13930,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-12-quality-measures-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ReadQualityMeasureData's g and m nodes and QualityMeasureElementRow/MetaRow repeat Collect's part-row $ListBuild fields; a field added to one and not the other splits the list from the single read.
 - 2026-11-19T01:49:10Z status=routed owner=burndown by=harvest note=one_shared_field_list
+### DW-2747: The globals arm leaves a replace whose own read the port refuses with a 4xx to the write, which refuses the same way, so only a global that moves back between the arm's read and the write's walk escapes the location judgement
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Prohibited.Global replace branch quits on tUnreadable; measured on ocupilot-ci: NOCHANGE, TOOLARGE, NOTFOUND, SHAPE and PROTECT reads are refused by REPLACEALL's own walk; fail-closed would turn the direct replace's 409 NOCHANGE into 500
+- 2026-11-18T21:37:31Z status=wontfix-theoretical owner=21-18-global-find-and-replace by=cr note=real only if REPLACE and REPLACEALL could disagree with no change between the arm's read and the write's walk
+
+### DW-2748: A global replace takes no lock, so another process's write to a recorded node between the transaction's old-value check and its Set is overwritten
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GlobalPort.VendorReplaceApply compares then sets each node with no LOCK; IRIS locks are advisory, so a lock helps only against writers that lock too; the window is one comparison per node
+- 2026-11-18T21:37:36Z status=wontfix-accepted owner=21-18-global-find-and-replace by=cr note=reopen_if=a product writer that locks global nodes is found racing a replace, or a lost update is reported
+
+### DW-2749: The find and replace matrix's No privilege row (403 PORT.ACCESSDENIED, nothing written) has no test
+- source: spec-21-18-global-find-and-replace.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: No GlobalReplace or GlobalWriteDeveloper leg drives a replace into a database the caller can read but not write; the PROTECT mapping is the port's shared Mapped path, pinned for 21.5's writes
+- 2026-11-18T21:37:41Z status=wontfix-accepted owner=21-18-global-find-and-replace by=cr note=reopen_if=a replace by a principal without WRITE answers anything but 403 PORT.ACCESSDENIED or writes a node
+
+### DW-2750: A rendered ObjectScript script switches namespace on a line of its own, so pasted line by line after a failed switch its write lines run in the terminal's current namespace
+- source: spec-21-18-global-find-and-replace.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Seven ports' Snippet (Analytics, Atelier, DocDb, DevTool, Global, Interop, Sql) render ' Set $NAMESPACE = <literal>' as line 1; a terminal goes on to the next pasted line after a <NAMESPACE> or <PROTECT> error there, so e.g. the global replace walks a same-named global elsewhere.
+- 2026-11-18T22:33:55Z status=routed owner=burndown by=cr note=guard the write lines on the namespace (same line or a check), across every port's script

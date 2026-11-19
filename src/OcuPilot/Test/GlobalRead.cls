@@ -113,7 +113,7 @@ Method TestTheScreensDeclareTheirShape()
     While tIterator.%GetNext(.tIndex, .tAction) {
         Set tActions = tActions _ $Select(tActions = "": "", 1: ",") _ tAction.id
     }
-    Do $$$AssertEquals(tActions, "delete,export,export-browser,import,import-local", "its row actions are delete, and the export and import actions Story 21.17 adds")
+    Do $$$AssertEquals(tActions, "delete,export,export-browser,import,import-local,replace", "its row actions are delete, the export and import actions Story 21.17 adds and the replace Story 21.18 adds")
     Do $$$AssertEquals(tList.classicPage, "%CSP.UI.Portal.GlobalList", "it replaces the classic Globals page")
     Do $$$AssertEquals(tView.route _ "|" _ tView.sideBarPosition _ "|" _ tView.entityType _ "|" _ tView.archetype _ "|" _ tView.toolIdentifier, "system-explorer/globals/document|0|global-node|form-page|explorer.globalnodes", "the node page's route, position, entity type, archetype and identifier")
     Do $$$AssertEquals(tView.%GetTypeOf("read"), "unassigned", "the node page declares no read")
@@ -297,6 +297,49 @@ Method TestAPageStartsWhereItIsToldAndLogsNoValue()
         Do $$$AssertTrue((tLogged [ "UNDEFINED") && (tLogged '[ ##class(OcuPilot.Test.GlobalSeamPort).#SECRET), "and its log line carries no node text: " _ tLogged)
     }
     Do ##class(OcuPilot.Test.GlobalSeamPort).Reset()
+}
+
+/// <p>Story 21.18. A page asked for a <code>find</code> holds only the nodes whose plain-text value holds it, with the case rule, and none of the <code>$ListBuild</code>
+/// value, and a page that scanned 20,000 nodes without filling answers what it found and a cursor after the last node it visited, from which the next page
+/// finds the rest. A <code>find</code> with a control character, or a <code>matchCase</code> that is not a boolean, is refused 400 <code>PORT.VALIDATION</code>.</p>
+/// <p>Mutation (Rule 19): drop the filter in <method>OcuPilot.Port.GlobalPort.VendorFindWalk</method> (keep every node) -> the row assertions go red; continue after
+/// the last row kept instead of the last node visited -> the scanned-out leg loops and goes red.</p>
+Method TestAFindFiltersTheRowsAndTheCursorContinuesAcrossAPageThatScannedOut()
+{
+    Do ..Make()
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "w", "pageSize": 50}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tAnswer), "200|^" _ ..PreparedName _ "(""z1""),^" _ ..PreparedName _ "(""z2""),^" _ ..PreparedName _ "(""z3""),^" _ ..PreparedName _ "(""z4""),^" _ ..PreparedName _ "(""z5""),^" _ ..PreparedName _ "(""zup"",1)", "only the nodes holding the text are rows, the node below one among them")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "W3", "matchCase": false, "pageSize": 50}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tAnswer), "200|^" _ ..PreparedName _ "(""z3"")", "without matching case the other case is found")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "W3", "matchCase": true, "pageSize": 50}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tAnswer) _ "|" _ tAnswer.next, "200||", "and with it matched there is none")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": ("w" _ $Char(1))}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.code, 1: ""), "400|PORT.VALIDATION", "a find with a control character is refused")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "w", "matchCase": "yes"}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.code, 1: ""), "400|PORT.VALIDATION", "and so is a case flag that is not a boolean")
+    Do ..Remove()
+    Set tRoot = "^" _ ..PreparedName
+    For tI = 1:1:20010 Set @tRoot@(tI) = "plain"
+    Set @tRoot@(20011) = "has abc inside"
+    Set @tRoot@("zz") = "ABC upper"
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "abc", "pageSize": 50}, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tAnswer) _ "|" _ tAnswer.next, "200||" _ tRoot _ "(20000)", "a page that scanned 20,000 nodes without a row answers none and a cursor after the last node it visited")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "abc", "after": (tAnswer.next), "pageSize": 50}, .tNext)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tNext) _ "|" _ tNext.next, "200|" _ tRoot _ "(20011)|", "and the next page finds the rest and ends")
+    Set tStatus = ..Post({"global": (..PreparedName), "find": "abc", "matchCase": false, "after": (tAnswer.next), "pageSize": 50}, .tNext)
+    Do $$$AssertEquals(tStatus _ "|" _ ..References(tNext), "200|" _ tRoot _ "(20011)," _ tRoot _ "(""zz"")", "and without matching case it finds the other-case node too")
+}
+
+/// <p>The references of the rows <var>pAnswer</var> holds, comma-joined.</p>
+ClassMethod References(pAnswer As %DynamicObject) As %String
+{
+    Set tText = ""
+    If '$IsObject(pAnswer) || (pAnswer.%GetTypeOf("rows") '= "array") Quit "(none)"
+    Set tIterator = pAnswer.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tRow.reference
+    }
+    Quit tText
 }
 
 /// <p>AD-21. Every text that is not a canonical reference of a global is refused 400 <code>PORT.VALIDATION</code> as a node reference and as a cursor, before

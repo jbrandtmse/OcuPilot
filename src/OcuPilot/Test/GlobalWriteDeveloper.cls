@@ -5,11 +5,12 @@
 /// <code>PROHIBITED.PROTECTEDGLOBAL</code> before any write, as the classic page would not write them either. Story 21.17's transfers, the way a
 /// developer without a server-file pair reaches them: its own global exported to this browser and imported back over itself from the local file, a
 /// non-Latin value included, a local file holding a <code>%</code>-global refused, and an export of one of OcuPilot's own globals refused
-/// <code>GLOBAL.OWNDATA</code>.</p>
+/// <code>GLOBAL.OWNDATA</code>. Story 21.18's find and replace: its own global replaced, and the <code>%</code> copy of it refused
+/// <code>PROHIBITED.PROTECTEDGLOBAL</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because the class creates and deletes a user and a role. <method>OnBeforeAllTests</method> refuses anywhere it does not, and
 /// <method>OnAfterAllTests</method> removes the principal. Each test makes its own <code>^ZZOcuGlbDev&lt;pid&gt;</code> in <code>HSCUSTOM</code> and kills it.
-/// It writes no protected global, and kills the <code>%</code>-global a refused import names.</p>
+/// It writes no protected global other than the <code>%</code> copy of its own global, which the replace test makes, and kills that copy.</p>
 Class OcuPilot.Test.GlobalWriteDeveloper Extends %UnitTest.TestCase
 {
 
@@ -95,14 +96,15 @@ Method Ref(pSubscripts As %String) As %String
 }
 
 /// <p>The screen action <var>pAction</var> of <var>pScreen</var> on <var>pId</var> over HTTP, in <parameter>NAMESPACE</parameter>, signed in as the
-/// developer: the status, and the parsed answer in <var>pAnswer</var>.</p>
-Method Act(pScreen As %String, pAction As %String, pId As %String, pValues As %DynamicObject = "", Output pAnswer As %DynamicObject) As %Integer
+/// developer, through the screen's <var>pRoute</var> (<code>action</code>, or <code>dryrun</code> for a review): the status, and the parsed answer in
+/// <var>pAnswer</var>.</p>
+Method Act(pScreen As %String, pAction As %String, pId As %String, pValues As %DynamicObject = "", Output pAnswer As %DynamicObject, pRoute As %String = "action") As %Integer
 {
     Set tBody = {"action": (pAction)}
     Do tBody.%Set("id", pId, "string")
     If $IsObject(pValues) Do tBody.%Set("values", pValues)
     Set pAnswer = ""
-    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/screens/" _ pScreen _ "/action?ns=" _ ..#NAMESPACE, ..#DEVUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $ZConvert(tBody.%ToJSON(), "O", "UTF8"))
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/screens/" _ pScreen _ "/" _ pRoute _ "?ns=" _ ..#NAMESPACE, ..#DEVUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $ZConvert(tBody.%ToJSON(), "O", "UTF8"))
     If $$$ISERR(tSC) Quit 0
     Try {
         Set pAnswer = ##class(%DynamicObject).%FromJSON(tText)
@@ -208,6 +210,40 @@ Method TestADeveloperExportsAndImportsItsOwnGlobalAndIsRefusedAProtectedOne()
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Data(@tPercent), "403 PROHIBITED.PROTECTEDGLOBAL|0", "a local file holding its % copy is refused and loads nothing")
     Set tStatus = ..Act(..#LISTSCREEN, "export-browser", "OcuPilotZZ" _ $Job, , .tAnswer)
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer), "403 GLOBAL.OWNDATA", "an export of a global named for OcuPilot is refused")
+}
+
+/// <p>Story 21.18. The developer reviews a find and replace in its own global and confirms it, answered 200 with every plain-text occurrence replaced and the
+/// <code>$ListBuild</code> value kept; its replace in the <code>%</code> copy of the global, which the namespace stores in the system database, is refused
+/// <code>PROHIBITED.PROTECTEDGLOBAL</code> before any write, the kernel's globals arm reading where the changing nodes are stored as the developer.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.ReplaceLocations</method> also requires <code>%Admin_Manage:USE</code> -> the
+/// developer's replace of its own global is refused and goes red.</p>
+Method TestADeveloperReplacesInItsOwnGlobalAndIsRefusedAProtectedOne()
+{
+    Do ..AssertPrincipal()
+    For tName = ..PreparedName, "%" _ ..PreparedName {
+        Set tRoot = "^" _ tName
+        Set @tRoot@(1) = "a abc"
+        Set @tRoot@("s") = "abc abc"
+        Set @tRoot@(2) = $ListBuild("abc")
+    }
+    Set tValues = {"Find": "abc", "Replace": "xyz", "MatchCase": "true"}
+    Set tStatus = ..Act(..#LISTSCREEN, "replace", ..PreparedName, tValues, .tReview, "dryrun")
+    Set tDigest = $Select($IsObject(tReview) && $IsObject(tReview.%Get("review")): tReview.review.Digest, 1: "")
+    Do $$$AssertTrue((tStatus = 200) && (tDigest '= ""), "the developer's review of its own global is answered with a digest: " _ $Select($IsObject(tReview): tReview.%ToJSON(), 1: ""))
+    Do tValues.%Set("Reviewed", tDigest, "string")
+    Set tStatus = ..Act(..#LISTSCREEN, "replace", ..PreparedName, tValues, .tAnswer)
+    Set tRoot = "^" _ ..PreparedName
+    Do $$$AssertEquals(tStatus _ "|" _ @tRoot@(1) _ "|" _ @tRoot@("s") _ "|" _ (@tRoot@(2) = $ListBuild("abc")), "200|a xyz|xyz xyz|1", "the developer's replace is answered 200 and replaces every plain-text occurrence: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Set tPercent = "^%" _ ..PreparedName
+    Set tStored = $Piece(##class(%SYS.Namespace).GetGlobalDest(..#NAMESPACE, tPercent), "^", 2)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GlobalProhibited).DirectoriesOf(.tProtected), "the protected directories are read")
+    Do $$$AssertTrue((tStored '= "") && ($ListFind($Get(tProtected), tStored) > 0), "the % copy is stored in a protected database: " _ tStored)
+    Do tValues.%Remove("Reviewed")
+    Set tStatus = ..Act(..#LISTSCREEN, "replace", "%" _ ..PreparedName, tValues, .tReview, "dryrun")
+    Set tDigest = $Select($IsObject(tReview) && $IsObject(tReview.%Get("review")): tReview.review.Digest, 1: "")
+    Do tValues.%Set("Reviewed", tDigest, "string")
+    Set tStatus = ..Act(..#LISTSCREEN, "replace", "%" _ ..PreparedName, tValues, .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ @tPercent@(1) _ "|" _ @tPercent@("s"), "403 PROHIBITED.PROTECTEDGLOBAL|a abc|abc abc", "its replace in the % copy is refused before any write")
 }
 
 /// <p>The principal this class signs in as holds <code>%Development:USE</code> and neither <code>OcuPilotAdmin</code> nor <code>%All</code>.</p>

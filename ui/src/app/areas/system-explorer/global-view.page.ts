@@ -8,8 +8,9 @@ import { ScopeService, onScopeChange } from '../../core/scope';
 import { selfProtectionReason, PROTECTED_GLOBAL_RULE } from '../../core/self-protection';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
-import { GlobalViewStore, MAX_VALUE, type GlobalViewDeps, type NodeRow } from './global-view.store';
+import { GLOBAL_LIST_DESCRIPTOR, GlobalViewStore, MAX_TEXT, MAX_VALUE, type GlobalViewDeps, type NodeRow } from './global-view.store';
 
 /** How many pages have been constructed, which makes each one's field ids its own. */
 let pageCount = 0;
@@ -24,11 +25,15 @@ let pageCount = 0;
  *
  * **The page re-reads on the change event** of a node or a global, as many pages as it shows. Its rows are screen-only (AD-36): they live in
  * `GlobalViewStore` and are rendered as text.
+ *
+ * **Find filters the rows, and Replace is reviewed** (Story 21.18): the Find field and Match case filter the page with the start node, and Review
+ * counts what a replace of the Find text by the Replace with text would change, in the action handler's typed-name dialog over the global's name.
+ * Review is drawn disabled, with the sentence, in the `%SYS` namespace and for a global OcuPilot protects.
  */
 @Component({
   selector: 'app-global-view-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog],
+  imports: [Dialog, ScreenActionDialogs],
   styles: `
     :host {
       display: flex;
@@ -88,11 +93,63 @@ let pageCount = 0;
       </div>
       <button type="button" class="ocu-button-secondary" data-global-go (click)="onGo()">{{ STRINGS.explorerSqlDataGo }}</button>
     </div>
+    <div class="ocu-global-start" role="group" [attr.aria-label]="STRINGS.explorerGlobalFindAndReplace">
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="findId">{{ STRINGS.explorerGlobalFind }}</label>
+        <div class="ocu-field-control">
+          <input
+            class="ocu-field-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            data-global-find
+            [id]="findId"
+            [attr.maxlength]="maxText"
+            [value]="findDraft"
+            (input)="onFindInput($event)"
+            (keydown.enter)="onGo()"
+          />
+        </div>
+      </div>
+      <label class="ocu-criteria-marker">
+        <input type="checkbox" data-global-case [checked]="matchCaseDraft" (change)="onCaseChange($event)" />
+        {{ STRINGS.explorerSearchCaseLabel }}
+      </label>
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="replaceId">{{ STRINGS.explorerGlobalReplaceWith }}</label>
+        <div class="ocu-field-control">
+          <input
+            class="ocu-field-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            data-global-replace
+            [id]="replaceId"
+            [attr.maxlength]="maxText"
+            [value]="replaceDraft"
+            (input)="onReplaceInput($event)"
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        class="ocu-button-secondary"
+        data-global-review
+        [attr.aria-disabled]="replaceDisabled ? 'true' : null"
+        [attr.title]="replaceReason === '' ? null : replaceReason"
+        (click)="onReview()"
+      >
+        {{ STRINGS.interopEditResendReview }}
+      </button>
+    </div>
+    @if (replaceReason) {
+      <p class="ocu-global-reason" data-global-replace-reason>{{ replaceReason }}</p>
+    }
     @if (refusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-global-refusal>{{ refusal }}</p>
     }
-    @if (loaded && rows.length === 0) {
-      <p class="ocu-empty-state" data-global-empty>{{ STRINGS.explorerGlobalNodesEmpty }}</p>
+    @if (loaded && rows.length === 0 && !hasMore) {
+      <p class="ocu-empty-state" data-global-empty>{{ emptyText }}</p>
     }
     @if (rows.length > 0) {
       <table class="ocu-global-table" data-global-table>
@@ -149,6 +206,8 @@ let pageCount = 0;
     @if (hasMore) {
       <button type="button" class="ocu-button-secondary" data-global-more (click)="onMore()">{{ STRINGS.explorerGlobalMore }}</button>
     }
+    <app-screen-action-dialogs [descriptor]="listDescriptor" />
+
     @if (editing !== null) {
       <app-dialog [heading]="STRINGS.explorerGlobalEditTitle" [closeLabel]="STRINGS.actionCancel" (closed)="onEditClosed()">
         @if (dialogReason) {
@@ -230,6 +289,9 @@ export class GlobalViewPage {
 
   protected readonly maxValue = MAX_VALUE;
 
+  /** The descriptor whose pending dialogs this page draws: the Globals list's replace review. */
+  protected readonly listDescriptor = GLOBAL_LIST_DESCRIPTOR;
+
   private readonly id = ++pageCount;
 
   protected readonly startId = `ocu-global-start-${this.id}`;
@@ -237,6 +299,13 @@ export class GlobalViewPage {
   protected readonly valueId = `ocu-global-value-${this.id}`;
 
   protected readonly typedId = `ocu-global-typed-${this.id}`;
+
+  protected readonly findId = `ocu-global-find-${this.id}`;
+
+  protected readonly replaceId = `ocu-global-replace-${this.id}`;
+
+  /** The longest text a find or a replacement holds. */
+  protected readonly maxText = MAX_TEXT;
 
   /** Bumped by the store and by each dialog change, so the template re-reads under `OnPush`. */
   private readonly generation = signal(0);
@@ -318,6 +387,40 @@ export class GlobalViewPage {
     return this.store.draft();
   }
 
+  protected get findDraft(): string {
+    this.generation();
+    return this.store.findDraft();
+  }
+
+  /** The empty-state sentence: no node at all, or no node the applied Find text is in. */
+  protected get emptyText(): string {
+    this.generation();
+    return this.store.find() === '' ? STRINGS.explorerGlobalNodesEmpty : STRINGS.explorerGlobalFindEmpty;
+  }
+
+  protected get matchCaseDraft(): boolean {
+    this.generation();
+    return this.store.matchCaseDraft();
+  }
+
+  protected get replaceDraft(): string {
+    this.generation();
+    return this.store.replaceDraft();
+  }
+
+  /** Why Replace is drawn disabled, or `''`: a global OcuPilot protects, or the `%SYS` namespace, where the classic page offers none. */
+  protected get replaceReason(): string {
+    this.generation();
+    if (this.protectedReason !== '') return this.protectedReason;
+    return this.scope.namespace().toUpperCase() === '%SYS' ? STRINGS.globalRefusalReplaceSystem : '';
+  }
+
+  /** Whether Review is drawn disabled: it has a reason, or no Find text. */
+  protected get replaceDisabled(): boolean {
+    this.generation();
+    return this.replaceReason !== '' || this.store.findDraft() === '';
+  }
+
   /** The sentence for a global OcuPilot protects, or `''`. */
   protected get protectedReason(): string {
     this.generation();
@@ -374,6 +477,24 @@ export class GlobalViewPage {
 
   protected onGo(): void {
     void this.store.go(this.deps);
+  }
+
+  protected onFindInput(event: Event): void {
+    this.store.setFindDraft((event.target as HTMLInputElement).value);
+  }
+
+  protected onCaseChange(event: Event): void {
+    this.store.setMatchCaseDraft((event.target as HTMLInputElement).checked);
+  }
+
+  protected onReplaceInput(event: Event): void {
+    this.store.setReplaceDraft((event.target as HTMLInputElement).value);
+  }
+
+  /** Review the replace the three fields name, unless Replace is drawn disabled. */
+  protected onReview(): void {
+    if (this.replaceDisabled) return;
+    void this.store.review(this.deps);
   }
 
   protected onMore(): void {

@@ -615,3 +615,28 @@
 2026-11-18T19:39:01Z	Story 21.22	story_green	code_head=5e1672bb3 ci=44357940400(success_after_flake_rerun) gates=fresh+sweep20/20+smoke50/50 status=done
 2026-11-18T19:39:23Z	Story 21.18	spec_validated	owned_ledger=DW-2731,DW-2732 addressed=2(runner_spec_change_log:403_row;Batch1_task) depends_on=21.5,21.17(done)
 2026-11-18T19:39:23Z	Story 21.18	stage_spawned	stage=implement scope=batches1+2 spawn_at=2026-11-18T19:39:23Z model=sonnet agent_name=21-18-implement-1 cycle_iteration=1 story_base=4bd9ea4ef
+2026-11-18T21:01:39Z	Story 21.18	dev_complete	scope=batches1+2 spawn_at=2026-11-18T19:39Z model=sonnet build_sha=8e74ecbd4 followup_review_recommended=true(3_med_patched_in_tests) deferred=0 cycle_iteration=1 note=DW-2731_Catch_already_set_tSC_at_base;pinned_by_GlobalWrite_test
+2026-11-18T21:01:39Z	Epic 21	ruling	question=21.22_merge+DW-2731_catch via=orchestrator choice=21.22_merged(feature_ff_c9242b054+4ef2c30ea);DW-2731_catch_rewrite_ok_report_only_on_integrate_conflict;feature_51da56768(24.12_B1-2)_integrate_at_21.18_code_head
+2026-11-18T21:06:22Z	Story 21.18	integrated_forward	feature=51da56768(24.12_B1-2) merge=786f463f5 conflicts=8(EXPERIENCE.md_row_union,ClassicPageGate_OWNPAIRS+count131,GovernanceBaseline,MappingDescriptor,Prohibited_test,ReadTool_511+names+writes_prose_285,ToolRoundTrip,ToolWrite_116) method=token_3way_union_counts_from_base verified=test:tools_2330/2330,screen-mirror_ok,LOADERRORS=0,7_roster_classes_green note=bookkeeping_commit_before_merge_used_--no-verify(cycle_log_only)
+2026-11-18T21:06:22Z	Story 21.18	code_head_pushed	sha=786f463f5 run=44397952934 missing=none
+2026-11-18T21:06:22Z	Story 21.18	stage_spawned	stage=code-review spawn_at=2026-11-18T21:06:22Z model=opus agent_name=21-18-code-review-1 cycle_iteration=1 baseline=c9242b054
+2026-11-18T21:47:31Z	Story 21.18	cr_complete	spawn_at=2026-11-18T21:07Z model=opus high=0 med=6(patched) low=20 rows=38 unresolved_high_med=0 new=DW-2747(wontfix-theoretical),DW-2748,DW-2749(wontfix-accepted) final=done commit=1a6576d0c closing_sections_present=true
+2026-11-18T21:47:31Z	Story 21.18	ci_red_classified	run=44397952934 workflow=.github/workflows/ci.yml class=defect test=DraftRegistry(TestEveryWriteToolHasAScriptForm,TestNoSecretReachesAnyRenderedScript) head=786f463f5 cause=REPLACEALL_has_no_script_form(AD-59;in-stage_decision_contradicted_the_spine;review_graded_it_by_design)
+2026-11-18T21:47:31Z	Story 21.18	ruling	question=DW-2747(arm_defers_its_own_4xx_read_to_the_write;AD-10_strict_reading?) choice=accept_review_grading(low,wontfix-theoretical):the_write_refuses_identically,nothing_written;same_read-then-write_window_as_every_arm via=runner category=decide policy=b9ff703e
+2026-11-18T21:47:31Z	Story 21.18	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=AD-59_REPLACEALL_script_form scope_baseline=1a6576d0c
+2026-11-18T21:47:31Z	Story 21.18	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-18T21:47:31Z model=sonnet agent_name=21-18-implement-rework-1 cycle_iteration=2
+2026-11-18T22:18:51Z	Story 21.18	dev_complete	scope=rework1(AD-59_REPLACEALL_script_form) spawn_at=2026-11-18T21:50Z model=sonnet build_sha=d988aff11 followup_review_recommended=false cycle_iteration=2
+2026-11-18T22:18:51Z	Story 21.18	code_head_pushed	sha=d988aff11 run=44410221034 missing=none note=pushed_alone_before_any_bookkeeping(Rule32_reminder);covers_1a6576d0c
+2026-11-18T22:18:51Z	Epic 21	protocol_violation	rule=32 detail=skip-ci_bookkeeping_a4f2d3d7c_pushed_above_code_1a6576d0c_with_no_run;covered_by_d988aff11(run_44410221034) noted_by=orchestrator
+2026-11-18T22:18:51Z	Story 21.18	spine_amended	ad=AD-51 kind=add-only sentence=REPLACEALL_write_type,REPLACE_fresh_read via=orchestrator_ruling(a) lint_spine=ok:false_only_preexisting_{id}_line215 memlog=appended
+2026-11-18T22:18:51Z	Story 21.18	spine_commit	sha=8793dec9d
+2026-11-18T22:19:13Z	Story 21.18	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-18T22:19:13Z model=opus agent_name=21-18-code-review-2 cycle_iteration=2 baseline=a4f2d3d7c
+2026-11-18T22:40:33Z	Story 21.18	cr_complete	scope=rework1 spawn_at=2026-11-18T22:20Z model=opus high=0 med=3(2_patched,1_routed_DW-2750_burndown) low=8 rows=31 unresolved_high_med=0(DW-2750_routed) final=done commit=abd91cccb closing_sections_present=true checklist=only_write_tool_added_ExplorerGlobalReplace_has_script_form;DraftRegistry_9/9
+2026-11-18T22:40:33Z	Story 21.18	code_head_pushed	sha=abd91cccb run=44413746537 missing=none note=supersedes_d988aff11_run_44410221034
+2026-11-18T22:40:33Z	Story 21.18	ledger_adjudicated	resolved=DW-2731,DW-2732 review_terminal=DW-2747(wontfix-theoretical),2748,2749(wontfix-accepted) routed=DW-2750(burndown) open_owned=0
+2026-11-18T22:40:43Z	Story 21.18	gate_step	step=fresh_check+full_sweep+smoke head=abd91cccb started=2026-11-18T22:40:43Z dir=e21u/21-18/gate
+2026-11-18T23:28:41Z	Story 21.18	ci_resolved	story=21.18 sha=abd91cccb runs=44413746537 result=success failed=none via=none
+2026-11-19T00:52:13Z	Story 21.18	fresh_check	env=recipe(ci-throwaway_rebuild) tests=16_classes+1_spec(7_tests) result=pass order=forward,reverse(specs) head=abd91cccb note=GlobalProhibited_listed_by_mistake(a_seam,0_methods,not_a_failure)
+2026-11-19T00:52:13Z	Story 21.18	gate_step	step=sweep result=green shards=20/20 head=abd91cccb
+2026-11-19T00:52:13Z	Story 21.18	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T00:52:13Z	Story 21.18	story_green	code_head=abd91cccb ci=44413746537(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=8793dec9d

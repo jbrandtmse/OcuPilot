@@ -26,6 +26,18 @@ ClassMethod VendorLocations(pNamespace As %String, pName As %String, Output pLoc
     Set pCaught = $Select($Get(^||OcuPilotGlobalLocationsFail): ##class(%Exception.General).%New("<FUNCTION>", 1), 1: "")
 }
 
+/// <p>A replace that changes one node stored in the armed directories, whatever the global holds, or a replace that fails with the armed failure.</p>
+ClassMethod VendorReplaceScan(pNamespace As %String, pName As %String, pFind As %String, pReplace As %String, pMatchCase As %Boolean, pRecord As %Boolean, pBound As %Integer, pValueMax As %Integer, pFixed As %String, Output pNodes As %Integer, Output pOccurrences As %Integer, Output pOver As %Boolean, Output pLocations As %List, Output pStream As %Stream.TmpBinary, Output pCaught)
+{
+    Set pNodes = 1
+    Set pOccurrences = 1
+    Set pOver = 0
+    Set pLocations = $Get(^||OcuPilotGlobalLocations)
+    Set pStream = ##class(%Stream.TmpBinary).%New()
+    Do pStream.Write("x")
+    Set pCaught = $Select($Get(^||OcuPilotGlobalLocationsFail): ##class(%Exception.General).%New("<FUNCTION>", 1), 1: "")
+}
+
 ClassMethod VendorNode(pNamespace As %String, pName As %String, pReference As %String, Output pNode, Output pCaught)
 {
     Kill pNode
