@@ -2,7 +2,7 @@
 title: 'Story 21.10: The remaining leaves across the six areas'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '251088f4bd525683fbfa89365c663ac4df586cbd'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -227,6 +227,7 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 ### Review Findings
 
+- [ ] [Review][HIGH] CI run 44607797355 (code head `ad39bd393`), instance shards 2/8 and 7/8: three shared-surface rosters this story did not update. (1) `RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list" (a new tool, likely the phone provider delete, is missing from the roster). (2) `ViolationSentenceCoverage.TestEveryCodeTheRouterNamesIsListed`: "the router's arm AUDITEXPORTDIRECTORY (AUDIT.EXPORT.DIRECTORY) is in a violation-code list". (3) `AuditingScreen.TestTheScreenIsBuiltWithBothActionsAndItsRead`: "declaring enable and disable, and Story 12.3's copy and purge" (the Auditing descriptor now also declares `export`). Update each roster with the member's canonical name read from the instance, run each as a full class, and then run every class under `src/OcuPilot/Test` whose name ends in `Sweep`, `Coverage`, `Screen`, `Descriptor`, `Roster` or `Corpus`, one per call, so no other roster is left red. [src/OcuPilot/Test/RemovalRowsSweep.cls, ViolationSentenceCoverage.cls, AuditingScreen.cls]
 - [x] [Review][HIGH] Fresh-environment check (rebuilt `ocupilot-ci`, code head `11cb922ab`): `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` fails "no class outside the set and the tests spells a PROHIBITED. code: OcuPilot.Port.ConfigPort". The review's doc comment at `Port/ConfigPort.cls:173` names `PROHIBITED.SERVICEACCOUNTSIGNIN`; only the set (`Kernel/Proposal/Prohibited.cls`) may spell a `PROHIBITED.` code. Reword the comment to name the rule without the code literal (or point at the set's parameter), sweep this story's other new or changed classes for the same spelling, and run `OcuPilot.Test.Prohibited` as a full class. [src/OcuPilot/Port/ConfigPort.cls:173]
 
 Code review 2026-11-19 (four layers plus a measurement pass on `ocupilot-ci`).

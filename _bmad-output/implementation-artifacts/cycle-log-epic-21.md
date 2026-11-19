@@ -730,3 +730,6 @@
 2026-11-19T20:21:32Z	Story 21.10	ruling	question=re-review_for_a_one-line_comment_rework choice=no_separate_Opus_re-review(the_rework's_own_layers_reviewed_the_one-comment_diff;the_fresh-environment_check_is_the_proof) via=runner category=decide policy=b9ff703e
 2026-11-19T20:21:32Z	Story 21.10	code_head_pushed	sha=ad39bd393 run=44607797355 missing=none note=supersedes_11cb922ab_run_44601785786
 2026-11-19T20:21:32Z	Story 21.10	gate_step	step=fresh_check+full_sweep+smoke head=ad39bd393 started=2026-11-19T20:21:32Z dir=e21u/21-10/gate attempt=2
+2026-11-19T20:52:18Z	Story 21.10	ci_red_classified	run=44607797355 class=defect head=ad39bd393 tests=RemovalRowsSweep,ViolationSentenceCoverage(AUDIT.EXPORT.DIRECTORY),AuditingScreen(export_action) cause=21.10_roster_misses action=sweep_stopped_at_shard_3,rework2
+2026-11-19T20:52:18Z	Story 21.10	rework_opened	cycle_iteration=3 iteration=2 trigger=high(ci_defect) items=3_roster_misses+roster_class_sweep scope_baseline=ad39bd393
+2026-11-19T20:52:18Z	Story 21.10	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-19T20:52:18Z model=sonnet agent_name=21-10-implement-rework-2 cycle_iteration=3 prior_lines_ended=verified
