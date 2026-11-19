@@ -475,3 +475,6 @@
 2026-11-19T10:52:52Z	Story 24.13	stage_spawned	stage=implement-rework spawn_at=2026-11-19T10:52:52Z model=sonnet agent_name=24-13-analytics-settings-rework-1 cycle_iteration=1
 2026-11-19T11:06:32Z	Story 24.13	rework_built	iteration=1 sha=955f0dc2a fix=audit_counts_before_after(Count,Added) fresh_first_run=green second_run=green deferred=1(other_classes_may_share_window_race_unverified)
 2026-11-19T11:06:32Z	Story 24.13	stage_spawned	stage=re-review spawn_at=2026-11-19T11:06:32Z model=opus agent_name=24-13-analytics-settings-rereview-1 cycle_iteration=1 baseline=7953f3b77
+2026-11-19T11:16:35Z	Story 24.13	review_complete	iteration=1(re-review) model=opus layers=4 findings=9(high0,med0,low6,false1,maybe-false2) patched=4 deferred=1 rejected=4 intent_gap=0 commit=fbd1808c2 verify=CubeManager11/11(run4)+baseline_mutation_red(run3)
+2026-11-19T11:16:35Z	Story 24.13	ledger_adjudicated	new=DW-2774(open_owner_24-13_for_batch2) scope=rework1 model=claude-opus-5-5
+2026-11-19T11:16:35Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=fbd1808c2

@@ -14012,3 +14012,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
 - 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED
+
+### DW-2774: Test isolation: AnalyticsCubeActions (and possibly other classes) counts cube ConfigChange rows as an absolute number in AuditEvent.Now() windows, which a sibling test's row written in the same millisecond can enter
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The same race reddened AnalyticsCubeManager on a fresh instance (fixed by before/after counts in 24.13 rework 1); AnalyticsCubeActions windows the same cube, verb and id six times (unverified, not yet observed red).
+- 2026-11-19T11:16:35Z status=open owner=24-13-analytics-settings by=harvest note=apply_the_Count/Added_before-after_form_in_Batch_2
