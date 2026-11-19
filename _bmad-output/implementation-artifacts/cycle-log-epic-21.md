@@ -686,3 +686,6 @@
 2026-11-19T09:47:15Z	Story 21.15	cr_complete	spawn_at=2026-11-19T09:30Z model=opus high=3(2_patched:shipped_subtable_kept,typeless_subtable_loss;1_open:script_imports_whole_file) med=13 low=10 rows=48 unresolved_high_med=4 new=DW-2767(decision-pending,burndown),DW-2768(by-design) final=in-progress commit=510f4ff55 closing_sections_present=true
 2026-11-19T09:47:15Z	Story 21.15	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=script_kept_records_only(AD-59),all_or_nothing_import,lock_kept_locales,owned_temp_dir scope_baseline=510f4ff55
 2026-11-19T09:47:15Z	Story 21.15	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T09:47:15Z model=sonnet agent_name=21-15-implement-rework-1 cycle_iteration=2
+2026-11-19T10:33:46Z	Story 21.15	dev_complete	scope=rework1 spawn_at=2026-11-19T10:00Z model=sonnet build_sha=a1ea97a0f followup_review_recommended=false deferred=1(DW-2769) cycle_iteration=2
+2026-11-19T10:33:46Z	Story 21.15	code_head_pushed	sha=a1ea97a0f run=44506749898 missing=none note=covers_510f4ff55;3869d4ed3_run_44495250779_green
+2026-11-19T10:33:46Z	Story 21.15	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-19T10:33:46Z model=opus agent_name=21-15-code-review-2 cycle_iteration=2 baseline=9f713895c

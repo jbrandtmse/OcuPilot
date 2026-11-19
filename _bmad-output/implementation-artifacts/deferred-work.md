@@ -14027,3 +14027,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: LocaleImport READBACKFIELDS Digest with READBACKPAYLOAD: the re-read reviews the same input file, so it reads matches whatever the vendor wrote.
 - 2026-11-19T09:42:51Z status=by-design owner=21-15-locale-and-table-import by=cr note=AC1 rules readBack matches; PerformImport itself fails unless every reviewed locale is listed and the counts agree
+
+### DW-2769: The import's record check does not reject a table Type of BOGUS or a non-numeric FromToKey; if the vendor rejects one mid-import, a file holding it could still partly import
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: rework 1 residual (unmeasured whether the vendor rejects them) (inference)
+- 2026-11-19T10:33:32Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_re-review
