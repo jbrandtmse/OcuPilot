@@ -95,6 +95,15 @@ deferred: []
 
 ### Review Findings
 
+Code re-review 2026-11-19 (rework 1, four layers, full-opus): 0 decision-needed, 2 patched, 2 ledgered, 2 rejected. The `DependsOn` fix holds: no cycle (`LocaleError` extends `%RegisteredObject`), every compile-time `{##class(OcuPilot...)}` parameter in `src/` sits in a class declaring `DependsOn`, and run 44462033892's fresh installs (both images, all eight instance shards) succeeded.
+
+- [x] [Review][Patch] MED: `CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` was red (CI run 44455430594, and at HEAD): `LocalePropertyMint` had no roster row [src/OcuPilot/Test/CompositeMintSweep.cls:Roster].
+- [x] [Review][Patch] LOW: Verification said no test pins `DependsOn`; `CompileWithoutInterop` does, now mutated and recorded.
+- [x] [Review][Defer] MED: no checker rule for an undeclared compile-time dependency — DW-2459 occurrence, routed 21-23.
+- [x] [Review][Defer] MED: a throwaway's restart hides a failed first-start compile — DW-2761, routed 21-23.
+
+Rejected: `CriterionHints` red in run 44455430594 (fixed by 55d7deb8b, green at HEAD, run 992); the rework item's "every leg" wording (spec text).
+
 - [x] [Review][HIGH] Fixed with the class keyword `DependsOn = OcuPilot.Api.LocaleError` on `LocaleCopySave` and `LocaleTableSave`; no other compile-time `{##class(...)}` over a project class in this story's classes (`Router`'s `Gate` one already carries `DependsOn`); from a clean state both compile with the Save classes named first, and without the keyword that compile reproduces the CI error. CI run 44455430594 (code head 23f0474c5): a fresh compile fails in every leg (images, package, every throwaway): `<CLASS DOES NOT EXIST>pTAKENREASON+1^OcuPilot.Area.OsMgmt.LocaleCopySave.G1 *OcuPilot.Api.LocaleError` and the same in `LocaleTableSave`. Each declares `Parameter TAKENREASON = {##class(OcuPilot.Api.LocaleError).#REASON...}`, a compile-time expression on a class the compiler has not yet compiled; a reload onto an instance that already holds `LocaleError` hides it. Make the compile order hold (declare the dependency on `OcuPilot.Api.LocaleError` with the class keyword `DependsOn`, or the sibling `*Save` classes' literal sentence with a test pinning it equal to `LocaleError`'s), sweep every class this story added for any other compile-time `{##class(...)}` parameter on a project class, and say which you chose. [src/OcuPilot/Area/OsMgmt/LocaleCopySave.cls, LocaleTableSave.cls]
 
 Code review 2026-11-19 (four layers, full-opus; measured on `ocupilot-ci` as real principals). 0 decision-needed, 11 patched, 7 ledgered, 13 rejected.
@@ -231,7 +240,8 @@ The type and table travel as id parts rather than free arguments, so the screen'
 - mutation: P8 the description length check of `LocalePort.Judge` loosened by 1000 -> `LocaleEditRules.TestACopyIsJudgedBeforeAnyCreateAndCopiesTheWholeDefinition` red on the over-length row; reverted, `md5` equal, reloaded.
 - mutation: typed name `TYPED_NAME_ROWS[LOCALE_PROPERTY_LIST]` removed -> `config-settings.page.spec.ts` "confirms Load table before it sends anything" red (`yzzw\u0001PatternTables:Unicode` is not `PatternTables:Unicode`); restored, `git diff` shows the entry.
 - mutation: code review, `WriteUnderLock` locking `^OcuPilotLocaleWrite` again -> `LocaleEditWrite.TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused` red; `IOHIDDENDEFAULTS` left out of `RemoveCode` -> `LocaleEditRules.TestAnAddAndARemoveAreDeltasOverTheFreshReadAndAreJudgedFirst` red on the `CP1251` row; the copy script's `Create` line without its `Exists` gate -> `TestEachWriteRendersItsScriptWithLiteralValues` red; each reverted, `md5` equal, reloaded. `TYPED_NAME_ROWS[LOCALE_PROPERTY_LIST]` removed, rebuilt and redeployed -> `nls-locales` "Load table on a custom locale asks the row name" red (timeout on the typed name); restored, `md5` equal, redeployed.
-- mutation: compile order, `DependsOn` absent from scratch copies of `LocaleCopySave` and `LocaleTableSave` -> no test pins it (a warm instance hides it); a from-clean compile naming them first fails with `<CLASS DOES NOT EXIST>pTAKENREASON`, and the fixed source compiles; the real source reloaded (`LOADERRORS=0`), the scratch copies removed. CI's fresh-compile legs are the pin.
+- mutation: compile order, `DependsOn` removed from `LocaleCopySave` and `LocaleTableSave` -> `CompileWithoutInterop.TestEveryShippedClassCompilesThere` red naming both, `<CLASS DOES NOT EXIST>pTAKENREASON` (run 993); reverted byte-identical, reloaded, green (run 994). CI's `images` and `package` jobs also fail on it.
+- mutation: code re-review, `LocalePropertyMint`'s row absent from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` red naming it (run 990); with the row, green (run 991).
 - Mutations not run (each test names its own in its doc comment): `LocalePropertyRead` (`Loadable` true for every table, `EditCode` empty for the current locale, `State` matching a prefix), the client specs and the browser spec's `VALUE_WORDS`.
 
 ## Auto Run Result
