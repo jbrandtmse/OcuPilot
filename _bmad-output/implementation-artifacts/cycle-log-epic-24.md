@@ -479,3 +479,4 @@
 2026-11-19T11:16:35Z	Story 24.13	ledger_adjudicated	new=DW-2774(open_owner_24-13_for_batch2) scope=rework1 model=claude-opus-5-5
 2026-11-19T11:16:35Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=fbd1808c2
 2026-11-19T11:28:53Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=fbd1808c2 forward=3/3_classes_25_tests_first_run reverse+rosters=14/14_classes_182_tests browser=analytics+analytics-links+a11y-structural_33/33 smoke=50/50 bundle=2.15MB scope=batch1
+2026-11-19T11:29:18Z	Story 24.13	code_head_pushed	sha=fbd1808c2 run=44515203903 missing=none scope=batch1
