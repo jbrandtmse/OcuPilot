@@ -2,11 +2,12 @@
 /// <class>OcuPilot.Test.AnalyticsCubeManager</class> drives the port's mapping of each answer in process without changing a cube. The state
 /// is read from the instance as shipped; only <method>VendorBuild</method>, <method>VendorSynchronize</method> and <method>LogFault</method>
 /// differ, and an unarmed seam answers OK with no statistics.</p>
-/// <p><method>Arm</method> names the answer: <code>ok</code>, <code>errors</code> (the build's #20006 with two failed rows),
+/// <p><method>Arm</method> names the answer: <code>ok</code>, <code>errors</code> (the build's #20006 with two failed rows, which the cube's own status in the statistics carries too),
 /// <code>lock</code> (#20005), <code>absent</code> (#20013), <code>protect</code> (<code>&lt;PROTECT&gt;</code>), <code>other</code> (an
 /// error whose text is <parameter>VENDORTEXT</parameter>) or <code>exception</code>. <code>partial</code> answers a cascade the vendor started and failed:
 /// a build whose Categories cube reads OK and whose Visits cube reads #20005, with #20005 as the answer, and a synchronize whose target reads OK and a dependent
-/// another error, with that error as the answer, each in the vendor's statistics. <code>real</code> answers nothing itself: it calls the port's own vendor build and
+/// another error, with that error as the answer, each in the vendor's statistics; <code>partialraise</code> fills the same statistics and raises an exception in place of the answer;
+/// <code>partialerrors</code> answers a build whose Categories cube reads #20006 alone and whose Visits cube reads #20006 beside another error, with #20005 as the answer. <code>real</code> answers nothing itself: it calls the port's own vendor build and
 /// synchronize, and reads every cube as not being updated, so a lock another process holds is met by the vendor and not by the port's precondition.
 /// <method>Calls</method> counts the vendor calls made, and the logged fault text is kept where <method>Logged</method> reads it.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -58,17 +59,34 @@ ClassMethod Answer(pCube As %String, pBuild As %Boolean, Output pStats, Output p
         Set pStats(tIndex) = 3
     }
     If tMode = "ok" Quit $$$OK
-    If tMode = "partial" {
+    If (tMode = "partial") || (tMode = "partialraise") {
         If pBuild {
             Set pStats("cubes", "OCUPILOTPROBECATEGORIES", "status") = $$$OK
             Set pStats("cubes", "OCUPILOTPROBEVISITS", "status") = $System.Status.Error(..#CODELOCK, "the cube is locked")
-            Quit $System.Status.Error(..#CODELOCK, "the cube is locked")
+        } Else {
+            Set pStatistics("cubes", tIndex, "status") = $$$OK
+            Set pStatistics("cubes", "OCUPILOTPROBEDEPENDENT", "status") = $$$ERROR($$$GeneralError, ..#VENDORTEXT)
         }
-        Set pStatistics("cubes", tIndex, "status") = $$$OK
-        Set pStatistics("cubes", "OCUPILOTPROBEDEPENDENT", "status") = $$$ERROR($$$GeneralError, ..#VENDORTEXT)
-        Quit $$$ERROR($$$GeneralError, ..#VENDORTEXT)
+        If tMode = "partial" {
+            If pBuild Quit $System.Status.Error(..#CODELOCK, "the cube is locked")
+            Quit $$$ERROR($$$GeneralError, ..#VENDORTEXT)
+        }
+        Try {
+            Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#VENDORTEXT))
+        } Catch ex {
+            Set pCaught = ex
+        }
+        Quit $$$OK
     }
-    If tMode = "errors" Quit $System.Status.Error(..#CODEBUILDERRORS, "the build had errors")
+    If tMode = "partialerrors" {
+        Set pStats("cubes", "OCUPILOTPROBECATEGORIES", "status") = $System.Status.Error(..#CODEBUILDERRORS, "the build had errors")
+        Set pStats("cubes", "OCUPILOTPROBEVISITS", "status") = $System.Status.AppendStatus($System.Status.Error(..#CODEBUILDERRORS, "the build had errors"), $$$ERROR($$$GeneralError, ..#VENDORTEXT))
+        Quit $System.Status.Error(..#CODELOCK, "the cube is locked")
+    }
+    If tMode = "errors" {
+        If pBuild Set pStats("cubes", tIndex, "status") = $System.Status.Error(..#CODEBUILDERRORS, "the build had errors")
+        Quit $System.Status.Error(..#CODEBUILDERRORS, "the build had errors")
+    }
     If tMode = "lock" Quit $System.Status.Error(..#CODELOCK, "the cube is locked")
     If tMode = "absent" Quit $System.Status.Error(..#CODENOCUBE, "no such cube")
     If tMode = "errorsplus" Quit $System.Status.AppendStatus($System.Status.Error(..#CODEBUILDERRORS, "the build had errors"), $$$ERROR($$$GeneralError, ..#VENDORTEXT))

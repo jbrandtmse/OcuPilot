@@ -298,7 +298,8 @@ Method TestAnUpdateWhereTheFactsAreReadOnlyOrAnalyticsIsOffIsRefused()
 /// (<method>TestAFailedUpdateRecordsTheCubesItUpdated</method> pins the one that did).</p>
 /// <p>Mutation (Rule 19): map #20006 to <code>FAILED</code> in <method>OcuPilot.Port.AnalyticsPort.VendorOutcome</method> -- the errors leg
 /// goes red; audit the lock case, or call the vendor twice in <method>OcuPilot.Port.AnalyticsPort.PerformCube</method> -- the audit and call-count legs go red;
-/// test #20006 with <code>HasCode</code> rather than <code>OnlyCode</code> -- the errors-and-another-fault leg goes red.</p>
+/// test #20006 with <code>HasCode</code> rather than <code>OnlyCode</code> -- the errors-and-another-fault leg goes red; record the failed-update row for a build that finished with errors
+/// too -- the errors leg goes red on its two rows.</p>
 Method TestTheVendorsAnswersAreMapped()
 {
     Set tFacts = ..Facts("OcuPilotProbeVisits")
@@ -308,7 +309,7 @@ Method TestTheVendorsAnswersAreMapped()
     Do $$$AssertEquals(tAsk, "200 ", "a build that finished with errors is done")
     Do $$$AssertTrue($IsObject(tResult) && (tResult.errors = 1) && (tResult.lines.%ToJSON() = "[""Facts in OcuPilotProbeCategories: 7"",""Build errors in OcuPilotProbeCategories: 2""]"), "and says how many rows failed: " _ $Select($IsObject(tResult): tResult.%ToJSON(), 1: ""))
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "one audit row names the build of the cube")
-    Do $$$AssertTrue((tData [ """namespace"":""USER""") && (tData [ "OcuPilotProbeCategories"), "naming the namespace and the cube: " _ tData)
+    Do $$$AssertTrue((tData [ """namespace"":""USER""") && (tData [ "OcuPilotProbeCategories") && (tData '[ """failed"""), "naming the namespace and the cube, and not failed: " _ tData)
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "the build that finished with errors made exactly one vendor call")
     Do $ClassMethod(..#SEAM, "Reset")
     Do $ClassMethod(..#SEAM, "Arm", "lock")
@@ -391,9 +392,10 @@ ClassMethod StopHolder(pChild As %Integer)
 /// <p>AC8 (DW-2518): a build or synchronize the vendor started and then failed, having updated one cube, records one <code>ConfigChange</code> row for the verb and the cube, with
 /// <code>failed</code> true and exactly the cubes the vendor's statistics report updated, while the answer is the refusal it was: a build whose Categories cube reads OK and whose Visits cube
 /// meets the lock (409 <code>ANALYTICS.CUBE.BUSY</code>), and a synchronize whose target reads OK and whose dependent fails (409 <code>ANALYTICS.CUBE.FAILED</code>), the failed cube named in
-/// neither row. Every failure leg of <method>TestTheVendorsAnswersAreMapped</method> reports no cube updated and records no row.</p>
-/// <p>Mutation (Rule 19): list every cube the statistics name in <method>OcuPilot.Port.AnalyticsPort.UpdatedCubes</method>, whatever its status -- the failed cube appears in both rows and this goes
-/// red.</p>
+/// neither row; and a build whose Categories cube finished with failed rows (#20006 alone) and whose Visits cube's rows failed beside another error, answered by the lock, names Categories
+/// alone. Every failure leg of <method>TestTheVendorsAnswersAreMapped</method> reports no cube updated and records no row.</p>
+/// <p>Mutation (Rule 19): list every cube the statistics name in <method>OcuPilot.Port.AnalyticsPort.UpdatedCubes</method>, whatever its status -- the failed cube appears in every row and this goes
+/// red; drop its #20006 clause -- the last leg records no row.</p>
 Method TestAFailedUpdateRecordsTheCubesItUpdated()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
@@ -411,6 +413,12 @@ Method TestAFailedUpdateRecordsTheCubesItUpdated()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeVisits", "synchronize", .tData), 1, "and one audit row names the synchronize")
     Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeVisits""]"), "it is failed and names only the target: " _ tData)
     Do $$$AssertTrue(tData '[ "OCUPILOTPROBEDEPENDENT", "and not the dependent that failed: " _ tData)
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "partialerrors")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertEquals(..Ask("BUILD", "OcuPilotProbeCategories", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.BUSY", "a build whose Categories finished with failed rows and whose Visits met the lock is busy")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "and one audit row names the build")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeCategories""]"), "it names Categories, updated with failed rows, and not Visits, whose rows failed beside another error: " _ tData)
     Do $$$AssertEquals(..Facts("OcuPilotProbeVisits"), tFacts, "and no fact moved")
 }
 
@@ -434,6 +442,32 @@ Method TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt()
     Do $$$AssertTrue(..Events() > tEvents, "which recorded its build events")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "and one audit row names the build")
     Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeCategories""]"), "it is failed and names Categories alone: " _ tData)
+}
+
+/// <p>AC8 (DW-2518): a vendor call that raises after it updated a cube is refused 409 <code>ANALYTICS.CUBE.FAILED</code> with its text logged and not sent, and records the one
+/// <code>ConfigChange</code> row a failed answer records, naming the cube the statistics report updated and not the one that failed, for a build and for a synchronize. The vendor's own
+/// <code>%BuildCube</code> and <code>%SynchronizeCube</code> answer a status for every failure, so a raise is armed on the seam; the wrapper's own <code>Catch</code> merge is not reached.</p>
+/// <p>Mutation (Rule 19): skip the failed-update row when the call raised in <method>OcuPilot.Port.AnalyticsPort.PerformCube</method> -- both rows go missing and this goes red.</p>
+Method TestARaisedVendorCallAfterAnUpdateRecordsTheCubeItUpdated()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tFacts = ..Facts("OcuPilotProbeVisits")
+    Do $ClassMethod(..#SEAM, "Arm", "partialraise")
+    Do $$$AssertEquals(..Ask("BUILD", "OcuPilotProbeCategories", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.FAILED", "a build that raised after updating Categories is FAILED")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.%ToJSON() '[ $Parameter(..#SEAM, "VENDORTEXT")), "its text is not in the body")
+    Do $$$AssertTrue($ClassMethod(..#SEAM, "Logged") [ $Parameter(..#SEAM, "VENDORTEXT"), "but it is in the log: " _ $ClassMethod(..#SEAM, "Logged"))
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "after one vendor call")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "and one audit row names the build")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeCategories""]"), "it is failed and names the cube that built alone: " _ tData)
+    Do $$$AssertTrue(tData '[ "OcuPilotProbeVisits", "and not the cube that met the lock: " _ tData)
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "partialraise")
+    Do $$$AssertEquals(..Ask("SYNCHRONIZE", "OcuPilotProbeVisits", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.FAILED", "a synchronize that raised after updating its target is FAILED")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "after one vendor call")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeVisits", "synchronize", .tData), 1, "and one audit row names the synchronize")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeVisits""]"), "it is failed and names the target alone: " _ tData)
+    Do $$$AssertTrue(tData '[ "OCUPILOTPROBEDEPENDENT", "and not the dependent that failed: " _ tData)
+    Do $$$AssertEquals(..Facts("OcuPilotProbeVisits"), tFacts, "and no fact moved")
 }
 
 /// <p>The new reads write nothing: <code>LIST</code> and <code>STATE</code> (also composed for an action) leave USER's cache, session, favorites,

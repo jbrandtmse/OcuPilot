@@ -228,7 +228,6 @@ Parameter QMPARTCLASS = "OcuProbeQMP.Analytics.QMP";
 
 Parameter QMPARTOWNCLASS = "OcuPilotQMP.Analytics.QMP";
 
-/// <p>The folder and the folder items in it, by full name.</p>
 /// <p>The analytics settings markers (Story 24.13): the Google Maps key the General tab's save stores, two run-time variables (the first's expression would set
 /// <code>^OcuProbe2413Ran</code> if it ever ran) and a user-defined icon.</p>
 Parameter SETTINGSKEY = "OcuProbe2413SecretKey";
@@ -239,6 +238,7 @@ Parameter SETTINGSVARIABLETWO = "OcuProbe2413Text";
 
 Parameter SETTINGSICON = "OcuProbe2413Icon";
 
+/// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
 
 Parameter PIVOT = "OcuPilotProbe/Visits.pivot";
@@ -1263,9 +1263,9 @@ ClassMethod Remove() As %Status
 }
 
 /// <p>Story 24.13's analytics settings fixture. <method>SnapshotSettings</method> copies <code>USER</code>'s three settings globals
-/// (<code>^DeepSee.UserPortalSettings</code>, <code>^DeepSee.User.Settings</code> and <code>^DeepSee.User.Icons</code>) to <parameter>SETTINGSSNAPSHOT</parameter> once, so a run
+/// (<code>^DeepSee.UserPortalSettings</code>, <code>^DeepSee.User.Settings</code> and <code>^DeepSee.User.Icons</code>) to <code>^OcuPilotProbeSettings</code> once, so a run
 /// that died is restored by the next; <method>ClearSettings</method> empties the three, the state where nothing is stored; <method>SetMarkerSettings</method> stores the markers through the
-/// vendor's own methods, which the class page's save and its worklist options, and the user portal's variable and icon setters, are; <method>RestoreSettings</method> puts the three
+/// vendor's own methods, which the classic page's save and its worklist options, and the user portal's variable and icon setters, are; <method>RestoreSettings</method> puts the three
 /// back from the snapshot and removes it and the marker the never-run variable would set; <method>SettingsDigest</method> is a text that is equal for equal settings.</p>
 ClassMethod SnapshotSettings() As %Status
 {

@@ -18,6 +18,27 @@ deferred:
     location: >-
       src/OcuPilot/Port/AnalyticsPort.cls VendorBuild, VendorSynchronize
     severity: medium
+  - summary: >-
+      Worklists' Shown is the stored option, as the classic tab's checkbox reads it, and ignores the customized flag, so with worklists not customized every row reads not shown while the portal shows its default worklists; the Worklists screen's context does not carry the flag its own prompts ask about.
+    evidence: |-
+      `%DeepSee.UserPortal.Home` and `DashboardViewer` `%OnGetWorklistOptions1/2` read the stored options only when `^DeepSee.UserPortalSettings("Worklist")` is true, else `##super`; the contract fixes Shown as the node's existence (`Settings.cls` :419), so the change belongs with Batch 2's Worklists show and hide.
+    location: >-
+      src/OcuPilot/Port/AnalyticsPort.cls Collect (worklists branch); src/OcuPilot/Screen/Descriptor/AnalyticsWorklistList.cls context
+    severity: medium
+  - summary: >-
+      No test runs the vendor's own synchronize into a partial failure, so the statistics `VendorSynchronize` now passes to `PerformCube` are exercised only through the seam.
+    evidence: |-
+      The probe's Categories source has no DSTIME, so a real partial synchronize needs a DSTIME target with a built dependent (the LinkOne or LinkMany probe cubes) and a held `^DeepSee.Build(index,"SYNC")` lock, which the vendor waits 30 s on (`%SynchronizeOneCube` :2136); unmeasured.
+    location: >-
+      src/OcuPilot/Port/AnalyticsPort.cls VendorSynchronize; src/OcuPilot/Test/AnalyticsCubeManager.cls
+    severity: medium
+  - summary: >-
+      AC4's "first on a fresh instance" holds only when `AnalyticsSettingsRead` runs before every other class or spec that reads the settings; `AnalyticsSettingsEdge` sorts first and a CI shard leg may run it first.
+    evidence: |-
+      `JournalWrites` filters by `$Job`, so a first-call write made by an earlier class's process is outside `TestAAReadsMakeNoJournaledWrite`'s window; the doc comment now states the condition.
+    location: >-
+      src/OcuPilot/Test/AnalyticsSettingsRead.cls TestAAReadsMakeNoJournaledWrite
+    severity: medium
 ---
 
 <intent-contract>
@@ -121,6 +142,32 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
   - `[low]` `[reject]` Intent audit: the gate pair's alternative `%DeepSee_Admin:USE` is untested and the `emptyAgentKey` reading — the pairs are the spec's ruled set (U-115) and every descriptor's `emptyAgentKey` is empty.
   - `[low]` `[reject]` Intent audit: the `real` seam mode overrides the port's state read and the source-text guard cannot see a dynamic call to a forbidden method — the seam's reason is recorded (Decided in-stage 4), and the journal scan catches a write at run time.
 
+### 2026-11-19 — Code review (full-opus, four layers)
+
+- verdicts: 21 findings — high 0, medium 7, low 13, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The #20006 clause of `UpdatedCubes` and the `"errors"` exclusion in `PerformCube` were run by no test — seam mode `partialerrors` and a status on the `errors` mode's statistics; two `mutation:` lines added.
+  - `[medium]` `[patch]` Rule 2: `RowCount`, `Names`, `RowNamed` and `Canonical` copied byte for byte from `AnalyticsQualityMeasureRead` — removed; both settings classes call that class's (`ROWS`).
+  - `[medium]` `[patch]` Both settings classes skipped their end-of-class settings check when the start digest was empty, as on a fresh instance — `StartTaken` decides it.
+  - `[medium]` `[defer]` Worklists' Shown ignores the customized flag the portal reads, and the Worklists screen does not carry the flag its prompt asks about — frontmatter `deferred:` (Batch 2).
+  - `[medium]` `[defer]` The vendor's own partial synchronize is never run — frontmatter `deferred:`.
+  - `[medium]` `[defer]` AC4's first-call clause depends on class order — doc comment corrected; frontmatter `deferred:`.
+  - `[medium]` `[reject]` AD-65 does not yet list the new reads — the spec reserves the line for the owner (Design Notes, Proposed spine line).
+  - `[low]` `[patch]` `AnalyticsProbe`: the settings parameters split `FOLDER` from its doc comment, a doc named a parameter that does not exist, "class page" for classic page.
+  - `[low]` `[patch]` `AnalyticsPort` docs: `VendorSynchronize`'s call, `PerformCube`'s failed row, `AuditWrite`'s "read OK", `CollectState` missing from the seam list.
+  - `[low]` `[patch]` `TestTheStoredSettingsAreReadAsStored` read the key row behind an `$IsObject` guard with no existence assertion.
+  - `[low]` `[patch]` `Store()`'s doc promised a status; the Edge class's mutation note named `Admit` where the change is in `AdmitNamespace`.
+  - `[low]` `[patch]` The EXPERIENCE.md row listed Class as a heading no table draws.
+  - `[low]` `[reject]` A stored empty key reads stored with no mask — within Questions 3's intent (Decided in-stage, implement 1); the vendor's save writes the node on every save.
+  - `[low]` `[reject]` General shows node names and codes, with no default or meaning per row — Decided in-stage (plan) 2 and 3; Batch 2 adds `Kind` and `Accepts`.
+  - `[low]` `[reject]` The Dashboard top panel's Filters option is no row — Decided in-stage (plan) 4.
+  - `[low]` `[reject]` `UpdatedCubes` falls back to a hidden cube's index — `BuildLines` and `SyncLines` do the same for the completed row.
+  - `[low]` `[reject]` `Holder` locks with no timeout — the parent's release message waits in the child's event queue, so a late lock is released at once.
+  - `[low]` `[reject]` Three test helpers raise `<INVALID OREF>` on an unreadable read — a loud failure of the test, not a pass.
+  - `[low]` `[reject]` The browser specs store before their `try` — the snapshot survives a failed store and the next `Remove` restores it (Decided in-stage, implement 5).
+  - `[maybe-false]` `[reject]` The real partial build leaves Visits unbuilt for later tests (inference) — would be low; the class's own rebuild and the green sweep say otherwise.
+  - `[low]` `[reject]` The triage log above overstated the existence assertions — closed by the patch above.
+
 ## Design Notes
 
 **Questions for the runner (intent gap).**
@@ -197,6 +244,14 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 - mutation: AC6 the `AnalyticsRuntimeVariableList` row removed from `StageTwoTools` -> `TestTheRosterAndElsewhereAreEveryRegisteredScreen` red alone; `SETTINGSPAIRS` naming `%DeepSee_PortalEdit:USE` for `%Development:USE` -> `PortGate` red on the four endpoints and `TestTheGateRefusesBeforeAnyVendorCall` red; the worklists branch without its `pMax` stop -> `TestACapBoundsTheListsAndTheScreensSaySo` red alone.
 - mutation: AC7 `AnalyticsProbe.RestoreSettings` leaves `^DeepSee.User.Icons` as the markers made it -> `TestZRestoringTheSettingsLeavesThemAsFound` and the class's `OnAfterAllTests` red, naming the icon node.
 - mutation: AC8 `AnalyticsPort.UpdatedCubes` lists every cube the statistics name -> `TestAFailedUpdateRecordsTheCubesItUpdated` (both rows) and `TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt` red; `VendorBuild` merges the statistics into a variable the caller never reads -> the real-vendor test red alone, on the missing row.
+- mutation: QA `Screen.Tool.Read.View` cuts at one row more than the caller's cap -> `TestAToolReadIsCutByTheCallersCapAndSaysSo` red alone.
+- mutation: QA `AnalyticsPort.AdmitNamespace` skips the analytics-reporting test -> `TestTheToolsAreRefusedWhereAnalyticsIsOff` red alone, on all four tools.
+- mutation: QA the key's mask in `Collect` answered for every stored key -> `TestAnEmptyOrFalsyKeyIsReadAsWhatItIs` red on the empty leg; a key whose text is `0` treated as no key -> the same test red on the `0` leg.
+- mutation: QA the worklists branch of `Collect` stops at `pData > pMax` -> `TestACapInsideTheWorklistsAnswersThatManyOfTheFirstRows` red on every cap.
+- mutation: QA `PerformCube` skips the failed-update row when the vendor call raised -> `TestARaisedVendorCallAfterAnUpdateRecordsTheCubeItUpdated` red alone, on both rows.
+- mutation: CR `AnalyticsPort.UpdatedCubes` without its #20006 clause -> `TestAFailedUpdateRecordsTheCubesItUpdated` red alone, on the `partialerrors` leg (run 824).
+- mutation: CR `PerformCube` records the failed-update row for the `errors` outcome too -> `TestTheVendorsAnswersAreMapped` red alone, on its row counts (run 825).
+- The deferred `Catch` merges stay unpinned: `%BuildCube` and `%SynchronizeCube` run their whole bodies in their own `Try`/`Catch` and answer a status (`irislib/%DeepSee/Utils.cls` :223-310, :1964-2054), so no input on the throwaway makes either raise out of the wrapper; the raised-exception path `PerformCube` handles is pinned through the seam's `partialraise` mode instead.
 - Each pre-existing failure leg of `TestTheVendorsAnswersAreMapped` asserts no row, and stays green: the seam's statistics carry no `status`, so no cube is reported updated.
 
 ## Auto Run Result

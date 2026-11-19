@@ -37,8 +37,14 @@ Parameter SETTINGDEFAULTS = "simple|||||||0|||||||0";
 /// <p>The text the Google Maps key row reads when a key is stored: the shared credential mask.</p>
 Parameter MASK = "[redacted]";
 
+/// <p>The read class whose row helpers (<code>RowCount</code>, <code>Names</code>, <code>RowNamed</code>, <code>Canonical</code>) this class uses.</p>
+Parameter ROWS = "OcuPilot.Test.AnalyticsQualityMeasureRead";
+
 /// <p>What <code>USER</code>'s three settings globals read as before the class changed them.</p>
 Property StartDigest As %String;
+
+/// <p>Whether <property>StartDigest</property> was taken, which an empty digest, the state of a fresh instance, cannot say.</p>
+Property StartTaken As %Boolean [ InitialExpression = 0 ];
 
 Method OnBeforeAllTests() As %Status
 {
@@ -48,7 +54,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Enable")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "SnapshotSettings")
-    If $$$ISOK(tSC) Set ..StartDigest = $ClassMethod(..#PROBE, "SettingsDigest")
+    If $$$ISOK(tSC) Set ..StartDigest = $ClassMethod(..#PROBE, "SettingsDigest"), ..StartTaken = 1
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }
@@ -58,7 +64,7 @@ Method OnAfterAllTests() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISOK(tSC) && '$ClassMethod(..#PROBE, "Gone") Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsSettingsRead left probe state in USER: " _ $ClassMethod(..#PROBE, "Left"))
-    If $$$ISOK(tSC) && (..StartDigest '= "") && ($ClassMethod(..#PROBE, "SettingsDigest") '= ..StartDigest) Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsSettingsRead left USER's analytics settings changed")
+    If $$$ISOK(tSC) && ..StartTaken && ($ClassMethod(..#PROBE, "SettingsDigest") '= ..StartDigest) Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsSettingsRead left USER's analytics settings changed")
     Quit tSC
 }
 
@@ -89,36 +95,6 @@ ClassMethod Read(pEndpoint As %String, pMax As %String = 100, Output pRows, Outp
     Set pRows = ""
     Set pFault = ""
     Quit $ClassMethod(..#PORT, "Invoke", pEndpoint, "LIST", .tQuery, "", .pRows, .pHttp, .pFault)
-}
-
-/// <p>The number of rows of <var>pRows</var>; -1 when it is no array.</p>
-ClassMethod RowCount(pRows As %DynamicArray) As %Integer
-{
-    Quit $Select($IsObject(pRows): pRows.%Size(), 1: -1)
-}
-
-/// <p>The <code>Name</code>s of <var>pRows</var>, comma-separated; <code>"unreadable"</code> for no array.</p>
-ClassMethod Names(pRows As %DynamicArray) As %String
-{
-    If '$IsObject(pRows) Quit "unreadable"
-    Set tNames = ""
-    Set tIterator = pRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRow.%Get("Name")
-    }
-    Quit tNames
-}
-
-/// <p>The row of <var>pRows</var> whose <code>Name</code> is <var>pName</var>, or <code>""</code>.</p>
-ClassMethod RowNamed(pRows As %DynamicArray, pName As %String) As %DynamicObject
-{
-    If '$IsObject(pRows) Quit ""
-    Set tIterator = pRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.%Get("Name") = pName Quit
-        Set tRow = ""
-    }
-    Quit $Get(tRow)
 }
 
 /// <p>The Settings rows of <var>pRows</var> as <code>name=value/stored</code> joined with <code>;</code>, in the order read.</p>
@@ -188,25 +164,7 @@ ClassMethod WorklistNames() As %String
     Quit tText
 }
 
-/// <p>The JSON of each row of <var>pRows</var>, sorted and joined by a newline, so two reads that answer the same rows in different orders compare equal.</p>
-ClassMethod Canonical(pRows As %DynamicArray) As %String
-{
-    Kill tSort
-    Set tIterator = pRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tSort(tRow.%ToJSON()) = ""
-    }
-    Set tText = ""
-    Set tKey = ""
-    For {
-        Set tKey = $Order(tSort(tKey))
-        If tKey = "" Quit
-        Set tText = tText _ tKey _ $Char(10)
-    }
-    Quit tText
-}
-
-/// <p>Store the marker settings through the vendor's own methods, a status that names what failed.</p>
+/// <p>Store the marker settings through the vendor's own methods, asserting that they were stored.</p>
 Method Store()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetMarkerSettings"), "the marker settings are stored through the vendor's own methods")
@@ -220,9 +178,10 @@ Method TestTheStoredSettingsAreReadAsStored()
     Do ..Store()
     Set tSC = ..Read("Settings", 100, .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "the settings read answers")
-    Do $$$AssertEquals(..RowCount(tRows), 15, "one row per node the page saves")
+    Do $$$AssertEquals($ClassMethod(..#ROWS, "RowCount", tRows), 15, "one row per node the page saves")
     Do $$$AssertEquals(..SettingsText(tRows), ..ExpectedSettings(..#SETTINGMARKERS, 1), "each row is the stored value, and stored")
-    Set tKey = ..RowNamed(tRows, "GoogleMapsKey")
+    Set tKey = $ClassMethod(..#ROWS, "RowNamed", tRows, "GoogleMapsKey")
+    Do $$$AssertTrue($IsObject(tKey), "the key's row is read")
     If $IsObject(tKey) Do $$$AssertEquals(tKey.Value _ "|" _ tKey.Stored, ..#MASK _ "|1", "the key row reads the mask and says a key is stored")
 }
 
@@ -233,15 +192,15 @@ Method TestAnUnsetNodeReadsThePagesDefault()
 {
     Do $$$AssertEquals($ClassMethod(..#PROBE, "SettingsDigest"), "", "nothing is stored in the three settings globals")
     Set tSC = ..Read("Settings", 100, .tRows, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tRows), "200|15", "the settings read answers fifteen rows")
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "RowCount", tRows), "200|15", "the settings read answers fifteen rows")
     Do $$$AssertEquals(..SettingsText(tRows), ..ExpectedSettings(..#SETTINGDEFAULTS, 0), "each reads the page's default and not stored")
     Set tSC = ..Read("Worklists", 100, .tWorklists, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tWorklists), "200|16", "the worklists read answers sixteen rows")
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "RowCount", tWorklists), "200|16", "the worklists read answers sixteen rows")
     Do $$$AssertEquals(..WorklistsText(tWorklists), ..ExpectedWorklists($ListBuild()), "none is shown")
     Set tSC = ..Read("RuntimeVariables", 100, .tVariables, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tVariables), "200|0", "no run-time variable is a row")
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "RowCount", tVariables), "200|0", "no run-time variable is a row")
     Set tSC = ..Read("UserIcons", 100, .tIcons, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tIcons), "200|0", "and no icon is")
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "RowCount", tIcons), "200|0", "and no icon is")
 }
 
 /// <p>AC1: with the markers stored, Worklists shows exactly the two options set through the vendor's <code>SetOption</code>, each row naming the class and the name the class answers; the
@@ -259,16 +218,16 @@ Method TestTheWorklistsVariablesAndIconsAreAsStored()
     Do $$$AssertEquals(tNames, ..WorklistNames(), "each worklist's name is the one its class answers")
     Do $$$AssertEquals(tWorklists.%Get(0).Panel _ "|" _ tWorklists.%Get(15).Panel, "1|2", "the panel is a number")
     Set tSC = ..Read("RuntimeVariables", 100, .tVariables, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..Names(tVariables), "200|" _ $Parameter(..#PROBE, "SETTINGSVARIABLETWO") _ "," _ $Parameter(..#PROBE, "SETTINGSVARIABLE"), "the two variables are rows, in the vendor's order")
-    Set tVariable = ..RowNamed(tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLE"))
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "Names", tVariables), "200|" _ $Parameter(..#PROBE, "SETTINGSVARIABLETWO") _ "," _ $Parameter(..#PROBE, "SETTINGSVARIABLE"), "the two variables are rows, in the vendor's order")
+    Set tVariable = $ClassMethod(..#ROWS, "RowNamed", tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLE"))
     Do $$$AssertTrue($IsObject(tVariable), "the first variable's row is read")
     If $IsObject(tVariable) Do $$$AssertEquals(tVariable.Value _ "|" _ tVariable.Comment _ "|" _ tVariable.Context, "$Increment(^OcuProbe2413Ran)|OcuProbe2413 comment|OcuProbe2413Context", "the expression, comment and context are as stored, the expression as text")
-    Set tVariable = ..RowNamed(tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLETWO"))
+    Set tVariable = $ClassMethod(..#ROWS, "RowNamed", tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLETWO"))
     Do $$$AssertTrue($IsObject(tVariable), "the second variable's row is read")
     If $IsObject(tVariable) Do $$$AssertEquals(tVariable.Value _ "|" _ tVariable.Comment _ "|" _ tVariable.Context, """text""_$Char(10)||", "a variable with no comment or context reads them empty")
     Set tSC = ..Read("UserIcons", 100, .tIcons, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ "|" _ ..Names(tIcons), "200|" _ $Parameter(..#PROBE, "SETTINGSICON"), "the icon is a row")
-    Set tIcon = ..RowNamed(tIcons, $Parameter(..#PROBE, "SETTINGSICON"))
+    Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "Names", tIcons), "200|" _ $Parameter(..#PROBE, "SETTINGSICON"), "the icon is a row")
+    Set tIcon = $ClassMethod(..#ROWS, "RowNamed", tIcons, $Parameter(..#PROBE, "SETTINGSICON"))
     Do $$$AssertTrue($IsObject(tIcon), "the icon's row is read")
     If $IsObject(tIcon) Do $$$AssertEquals(tIcon.Path, "/OcuProbe2413/icon.png", "with its path as stored")
 }
@@ -294,8 +253,8 @@ Method TestTheStoredKeyIsNeverAnswered()
         Do $$$AssertEquals(tLeg.%Get("http"), 200, tScreen _ ".read answers")
         Do $$$AssertTrue(tLeg.%ToJSON() '[ tKeyText, tScreen _ ".read: the key is not in the agent's answer")
         If tI = 1 {
-            Set tScreenKey = $Select($IsObject(tAnswer.%Get("rows")): ..RowNamed(tAnswer.rows, "GoogleMapsKey"), 1: "")
-            Set tToolKey = $Select($IsObject(tLeg.%Get("rows")): ..RowNamed(tLeg.rows, "GoogleMapsKey"), 1: "")
+            Set tScreenKey = $Select($IsObject(tAnswer.%Get("rows")): $ClassMethod(..#ROWS, "RowNamed", tAnswer.rows, "GoogleMapsKey"), 1: "")
+            Set tToolKey = $Select($IsObject(tLeg.%Get("rows")): $ClassMethod(..#ROWS, "RowNamed", tLeg.rows, "GoogleMapsKey"), 1: "")
             Do $$$AssertTrue($IsObject(tScreenKey) && $IsObject(tToolKey), "the screen and the tool each carry the key's row")
             If $IsObject(tScreenKey) && $IsObject(tToolKey) Do $$$AssertEquals(tScreenKey.Value _ "|" _ tToolKey.Value, ..#MASK _ "|" _ ..#MASK, "and it reads the mask in each")
         }
@@ -313,10 +272,10 @@ Method TestTheStoredKeyIsNeverAnswered()
     Set $NAMESPACE = tOrigNS
     Do $$$AssertEquals(tMessage, "", "the vendor's save stores a page given nothing")
     Set tSC = ..Read("Settings", 100, .tRows, .tHttp, .tFault)
-    Set tKey = ..RowNamed(tRows, "GoogleMapsKey")
+    Set tKey = $ClassMethod(..#ROWS, "RowNamed", tRows, "GoogleMapsKey")
     Do $$$AssertTrue($IsObject(tKey), "the key's row is read after the save")
     If $IsObject(tKey) Do $$$AssertEquals(tKey.Value _ "|" _ tKey.Stored, "|1", "a key stored as empty is stored and reads no mask")
-    Set tScheme = ..RowNamed(tRows, "Scheme")
+    Set tScheme = $ClassMethod(..#ROWS, "RowNamed", tRows, "Scheme")
     Do $$$AssertTrue($IsObject(tScheme), "the scheme's row is read after the save")
     If $IsObject(tScheme) Do $$$AssertEquals(tScheme.Value _ "|" _ tScheme.Stored, "|1", "and a scheme stored as empty reads empty, as the page shows it")
 }
@@ -331,7 +290,7 @@ Method TestAVariablesExpressionNeverRuns()
     Do $$$AssertEquals(tAnswers, "200,200,200,200|200,200,200,200|200,200", "every read answers")
     Do $$$AssertEquals($Data(^|"USER"|OcuProbe2413Ran), 0, "the global the expression would set is undefined after every read")
     Set tSC = ..Read("RuntimeVariables", 100, .tVariables, .tHttp, .tFault)
-    Set tVariable = ..RowNamed(tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLE"))
+    Set tVariable = $ClassMethod(..#ROWS, "RowNamed", tVariables, $Parameter(..#PROBE, "SETTINGSVARIABLE"))
     Do $$$AssertTrue($IsObject(tVariable) && (tVariable.Value = "$Increment(^OcuProbe2413Ran)"), "while the variable's row shows the expression")
 }
 
@@ -343,7 +302,7 @@ Method TestACapBoundsTheListsAndTheScreensSaySo()
     For tCase = $ListBuild("Settings", "analytics.settings", 15), $ListBuild("Worklists", "analytics.worklists", 16), $ListBuild("RuntimeVariables", "analytics.runtimevariables", 2) {
         Set tEndpoint = $List(tCase, 1)
         Set tSC = ..Read(tEndpoint, 1, .tRows, .tHttp, .tFault)
-        Do $$$AssertEquals(tHttp _ "|" _ ..RowCount(tRows), "200|1", tEndpoint _ ": a cap of one answers one row")
+        Do $$$AssertEquals(tHttp _ "|" _ $ClassMethod(..#ROWS, "RowCount", tRows), "200|1", tEndpoint _ ": a cap of one answers one row")
         Do $ClassMethod(..#CONTROL, "Call", "GET", "/screens/" _ $List(tCase, 2) _ "/read?maxRows=1", "", .tStatus, .tCut)
         Do $$$AssertEquals(tStatus, 200, tEndpoint _ ": the screen reads under a cap of one")
         Do $$$AssertTrue($IsObject(tCut), tEndpoint _ ": the capped read answers a body")
@@ -371,7 +330,7 @@ Method TestTheScreensAndTheAgentsToolsAnswerTheSameRows()
         Do $$$AssertTrue($IsObject(tScreen) && $IsObject(tLeg.%Get("rows")) && $IsObject(tScreen.%Get("rows")), tId _ ": both reads carry rows")
         If $IsObject(tScreen) && $IsObject(tLeg.%Get("rows")) && $IsObject(tScreen.%Get("rows")) {
             Do $$$AssertEquals(tLeg.rows.%Size(), $Piece("15,16,2,1", ",", tI), tId _ ": with the rows the markers make")
-            Do $$$AssertEquals(..Canonical(tLeg.rows), ..Canonical(tScreen.rows), tId _ ": the tool's rows are the screen's, the tool's in its descriptor's sort order and the screen's in the port's")
+            Do $$$AssertEquals($ClassMethod(..#ROWS, "Canonical", tLeg.rows), $ClassMethod(..#ROWS, "Canonical", tScreen.rows), tId _ ": the tool's rows are the screen's, the tool's in its descriptor's sort order and the screen's in the port's")
         }
     }
 }
@@ -405,7 +364,7 @@ Method TestTheGateRefusesBeforeAnyVendorCall()
     }
 }
 
-/// <p>AC4: no read of the matrix makes a journaled write in the calling process. The journal window covers every read, their first calls included. The
+/// <p>AC4: no read of the matrix makes a journaled write in the calling process. The journal window covers every read this test makes, which are the instance's first only when no class or spec that reads the settings ran before it. The
 /// records it does not charge to them are the SQL engine's own: its statement index (<code>^rINDEXSQL</code>) and its <code>^%SYS("sql")</code> bookkeeping,
 /// which a statement's first run on a fresh instance writes. The scan is proved able to see a write: a control write made inside the same window is found by name among its
 /// records, and the reads before it found none. It covers the process's journaled databases; a write to a database that is not journaled is not seen.</p>

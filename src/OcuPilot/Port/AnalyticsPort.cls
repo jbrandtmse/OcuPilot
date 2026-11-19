@@ -112,7 +112,7 @@
 /// a stored Google Maps key as the credential mask and never as the key; <code>Worklists</code> reads which of the four worklist classes each panel shows; <code>RuntimeVariables</code> and
 /// <code>UserIcons</code> read the vendor's lists, a variable's expression as text that is never evaluated.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
-/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
+/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
@@ -2247,7 +2247,7 @@ ClassMethod CubeShownHere(pName As %String, ByRef pList) As %Boolean [ Private ]
 /// <method>CubeNodeHere</method> of cube <code>n</code>, the target first and then each dependent. A dependent the caller's resources
 /// hide is not on the vendor's list and is left out. A list the vendor fails to answer, or an exception, is <var>pCaught</var>.</p>
 /// <p>Everything between the switch and the restore is vendor and system classes and this class's own <code>Here</code> methods
-/// (AD-16); the row is shaped by <method>StateRow</method> after the restore.</p>
+/// (AD-16); the row is shaped by <method>StateRow</method> after the restore. A test seam overrides it and rewrites the eighth element of each row, whether the cube is being updated.</p>
 ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException) [ Private ]
 {
     Kill pData
@@ -2392,7 +2392,8 @@ ClassMethod ReadCube(pNamespace As %String, pName As %String, Output pRow As %Dy
 /// <parameter>OcuPilot.Api.AnalyticsError.CUBEBUSY</parameter> for the vendor's cube lock; 404 for a cube it does not know; 403
 /// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else, an exception the call raised included,
 /// 409 <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
-/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>).</p>
+/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), and a failed one that had already updated a cube records it with
+/// <code>failed</code> true (<method>AuditFailedUpdate</method>).</p>
 /// <p>The answer is <code>{Name, Namespace, lines, errors}</code>: the output lines for the screen (<method>BuildLines</method>,
 /// <method>SyncLines</method>), and whether any cube built with errors.</p>
 ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %String, ByRef pNames, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -2469,7 +2470,7 @@ ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, 
 }
 
 /// <p>The vendor's synchronize of the cube <var>pCube</var> and every cube that depends on it, in <var>pNamespace</var>
-/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts)</code>), under the same switch and capture as <method>VendorBuild</method>.
+/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts, 1, 1, 0, .stats)</code>, the vendor's own defaults for the arguments between), under the same switch and capture as <method>VendorBuild</method>.
 /// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count. <var>pStats</var> is the vendor's synchronize
 /// statistics array, whose <code>("cubes", &lt;index&gt;, "status")</code> is each cube's own status.</p>
 ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String, Output pStats) As %Status
@@ -2642,7 +2643,7 @@ ClassMethod AuditFailedUpdate(pType As %String, pName As %String, pNamespace As 
     Do ..AuditWrite($Select(pType = ..#TYPEBUILD: ..#VERBBUILD, 1: ..#VERBSYNCHRONIZE), pName, tEffects)
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK (AD-15,
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK, or that failed after updating a cube (AD-15,
 /// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
 /// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
 /// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>
