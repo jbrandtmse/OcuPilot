@@ -80,12 +80,13 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
 - Every screen registers the standard screen contract: route with `?ns=`, side-bar entry, archetype, privilege resource, entity-type key, context serializer, actions (destructive last), empty-state sentence, fixed strings and aliases.
 - A sub-screen or tab opened from an item's name or a screen's later tab (a listing group's listings, a quality measure's groups and documentation, the analytics settings' worklists, run-time variables and icons) is never in the side bar and carries its own actions and empty-state agent phrase.
 - On write-capable lists the "Or ask the agent: …" line takes a short phrase, never a full sentence. A screen with no action names no agent phrase.
-- A secret is never shown: a stored secret value (such as the analytics Google Maps key) reads as the mask. Stored expressions and paths are shown as text and never run or loaded. A setting that is not stored shows the classic page's default value.
+- A secret is never shown: a stored secret value (such as the analytics Google Maps key) reads as the mask, and it is set only by its own action, which asks for the value when that action is confirmed. Stored expressions and paths are shown as text and never run or loaded.
+- A setting that is not stored shows the classic page's default value. Where the classic page saves a whole form at once, saving stores every setting with the value shown, as the classic Save does, and the card, dialog and answer say so.
 - Gated controls stay focusable with `aria-disabled` and name their reason; they are never hidden.
 - A screen's destructive action or removal uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target, and a delete or removal that OcuPilot cannot reverse says so in its consequence. A rename is a remove and an add, never an in-place move.
 - Refusals are the server's sentences, shown as sent. Vendor text is logged, never shown.
 - Result and status lines are announced to assistive technology.
-- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class, Class, Caption, Description, Disabled, Name, Setting, Value, Expression, Comment, Path, Page).
+- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class, Class, Caption, Description, Disabled, Name, Setting, Value, Expression, Comment, Path, Page, Set value, Show, Hide).
 
 ## Cross-Story Dependencies
 
