@@ -147,6 +147,15 @@ Closed in this review:
 - [x] [Review][Defer] MED: a person's import shows no review of the locale names, the replaced count or the dropped count [locale-list.page.ts:onImport]. Ledgered as DW-2767, decision-pending: a fix needs ruled strings.
 - [x] [Review][Defer] MED: the import's read-back compares the input file's digest [LocaleImport.cls]. Ledgered as DW-2768, by-design: AC1 rules that `readBack` matches.
 
+Re-review of rework 1 (2026-11-19, `a1ea97a0f`; four layers; measured on `ocupilot-ci`). The four open items are closed: the rendered script, run whole against a file holding custom `yrvw` and the current locale and one of its tables (both edited), imported `1/0/0` and left both shipped records unchanged; the `DateFormat` `abc` file writes nothing; the locks and directories are pinned. DW-2769 measured: the vendor imports a table `Type` `BOGUS`, a non-numeric `FromToKey` and a locale naming absent tables whole, so no partial write (ledger `wontfix-theoretical`). The empty fixed `/tmp/ocupilot-locale`, made only by this story's first build, was removed from `ocupilot-ci`. Patched in this pass:
+
+- [x] [Review][Patch] HIGH (AD-59, Rule 6): the import script ignored the reviewed digest and replaced count, so a file changed after the proposal rendered a different change. It now renders the `CHANGED` sentence as one comment step. [LocalePort.cls:ImportSnippet]
+- [x] [Review][Patch] MED: install and delete took no lock, so a kept locale could still be made current mid-import. Install now locks its locale and the current one, delete its locale, and the import also locks the current locale and refuses `CHANGED` when the locks do not cover it. [LocalePort.cls:Install, Remove, ImportUnderLock, PerformImport]
+- [x] [Review][Patch] MED: four test gaps. The armed rejected-record write sent a bogus digest, so its "nothing written" row could not fail; it now sends the file's own digest. No row changed state between the two reviews; `CurrentOnLock` now poses that. Lock release was unasserted after a refusal and a vendor error. `TransferFiles` counted every directory in `/tmp`. [LocaleTransferWrite.cls, LocaleImportRules.cls, LocaleGateSeam.cls]
+- [x] [Review][Patch] LOW: the script's second and third caps had no row, and a kept record became one unbounded line; records are now written in 2,000-character pieces, pinned at about 9,000 characters and at a kept text under the cap whose script passes it. An import naming no server file rendered a whole-file `ImportAll`; it now renders no step. Doc claims fixed: `RecordValid`, the test headers and labels, the vacuous prefix check, `Draft.cls`'s list of reads. `yqbw` was added to `Restore`.
+
+Rejected in this pass: the snippet reads without `Admit` (low: the drafting user is the minting user, whose pairs the mint checked); a throw inside `TakeLock` leaks locks, an unremoved transfer directory is unlogged, and `RecordValid` maps a system fault to `SHAPE` (low and theoretical, same shape as `WriteUnderLock`); a legacy directory on upgraded instances (false: never shipped); a same-file table reference refused `SHAPE` (false: a locale naming absent tables reviews 200).
+
 Rejected:
 
 - False:
@@ -196,6 +205,10 @@ Rejected:
   - `[low]` `[reject]` Lock contention is posed through a seam, not raced — the seam wraps the real lock and the refusal path is the same code; a real race adds nothing a unit test can hold steady.
   - `[false]` `[reject]` The screen and agent surfaces are not exercised in this diff — this pass changes the port only; the routes and screens are pinned by the unchanged suites, which ran green.
   - `[low]` `[reject]` The script makes its file in the default temporary directory, the port in its own — the script is for a person to read and run; the file's text is byte-identical (pinned).
+
+### 2026-11-19 — Code review (re-review of rework 1)
+
+- verdicts: 36 rows, 18 entries — high 1, medium 5, low 9, false 3; every high and medium patched in this pass (see `### Review Findings`); DW-2769 closed by measurement.
 
 ## Design Notes
 
@@ -291,6 +304,13 @@ Rejected:
 - mutation: rework MED `TransferFile` not refusing an existing directory -> `LocaleImportRules.TestATransferDirectoryThatIsAlreadyThereIsRefusedAndLeftAlone` red on both rows; reverted and reloaded, green.
 - mutation: rework MED `TransferName` constant -> `LocaleImportRules.TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath` red on the three-different-directories row; reverted and reloaded, green.
 - mutation (review of the rework): `KeptRecordsValid`'s table loop skipped -> `LocaleImportRules.TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall` red on the over-long-table-description row (the vendor's `Description` is at most 128 characters); `TakeLocales` taking the names in reverse order -> `TestAnImportLocksEveryLocaleItKeepsInNameOrderAndReleasesThem` red on the held-at-import row; `TakeLocales` not releasing the locks it took on a busy one -> the same test red on the released row; `RemoveTransfer` not removing the directory -> `TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath` red on its import and export rows; `TransferSnippet` routing a local file's content to `ImportSnippet` -> `TestAnImportAndAnExportRenderTheirScript` red on the never-in-the-script row. Each reverted byte-identical and reloaded, green.
+- mutation (re-review of rework 1): five applied together, `LocaleImportRules` red on each row named, all reverted byte-identical and reloaded, green:
+  - The digest compare dropped from `ImportSnippet` -> the changed-file script row.
+  - `SNIPPETPIECE` 2,000,000 -> the line-length row.
+  - The second and third caps dropped -> the under-the-cap row.
+  - `Install` taking no lock -> both install-busy rows and the install lock-order row.
+  - `PerformImport`'s current-locale cover check dropped -> the uncovered-current row.
+- mutation (re-review of rework 1): `KeptRecordsValid`'s refusal dropped -> armed `LocaleTransferWrite.TestARecordTheVendorRejectsLeavesTheLocaleBeforeItUnwritten` red on the review, write and nothing-written rows (the vendor wrote `yqaw`); reverted byte-identical and reloaded, green.
 
 ## Auto Run Result
 
