@@ -13151,6 +13151,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43743358535 (feature 7965f70ab) | severity: low | fix-risk: medium | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs; ui/browser/protocol-retry.mjs
 - evidence: the identical sha was green on OCU-1-epic24 run 43738892741; AC5 ran 403 s; recurrence of the DW-1822/DW-2026/DW-2301 family
 - 2026-11-15T18:29:29Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun
+- 2026-11-19T11:02:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=same_family_as_DW-1822(a11y_governance_settle;reopened_and_routed_to_21-23_2026-11-18);not_in_21.10's_scope
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
@@ -13754,6 +13755,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
 - 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
 - 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=pressRun_waits_for_Run_enabled_and_an_API_call_carrying_ns(f9a4b89f5)
+- 2026-11-19T12:03:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44511016378(7478c45a7)browser_3/5_analytics-mdx_AC1_waited_145s;page_state_busy=false,status='Write_one_MDX_statement,then_Run.'(the_Run_never_took_the_statement,after_21.22's_pressRun_waits);rerun_pending
 
 ### DW-2725: A listing group copy reads back nothingSent (action-style, no READBACKFIELDS), so AC2's 'matches' for each write does not hold for copy; 24.10's term-list copy is the same
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint

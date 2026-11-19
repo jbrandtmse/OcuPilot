@@ -698,3 +698,7 @@
 2026-11-19T11:02:07Z	Story 21.15	code_head_pushed	sha=7478c45a7 run=44511016378 missing=none note=supersedes_a1ea97a0f
 2026-11-19T11:02:07Z	Story 21.15	ledger_adjudicated	resolved=DW-2606,2762,2764 decision-pending=DW-2765(burndown,owner_wording),DW-2767 terminal=DW-2766,2768,2769 routed=DW-2763(burndown) open_owned=0
 2026-11-19T11:02:21Z	Story 21.15	gate_step	step=fresh_check+full_sweep+smoke head=7478c45a7 started=2026-11-19T11:02:21Z dir=e21u/21-15/gate
+2026-11-19T13:20:51Z	Story 21.15	ci_resolved	story=21.15 sha=7478c45a7 runs=44511016378 result=success failed=none via=none note=flake_rerun(analytics-mdx_AC1;DW-2714_reopened_to_21-23)
+2026-11-19T13:20:51Z	Story 21.15	fresh_check	env=recipe(ci-throwaway_rebuild) tests=21_classes+1_spec result=pass order=forward,reverse(specs) head=7478c45a7
+2026-11-19T13:20:51Z	Story 21.15	gate_step	step=sweep result=green shards=20/20 head=7478c45a7
+2026-11-19T13:20:51Z	Story 21.15	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
