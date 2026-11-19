@@ -650,3 +650,8 @@
 2026-11-19T01:08:15Z	Story 21.15	spec_updated	change_log=orchestrator_ruling_U-114 status=ready-for-dev(after_21.16)
 2026-11-19T01:08:15Z	Epic 21	code_head_pushed	sha=6bc7a0d66 run=44434412247 missing=none note=routed_timings_refresh(44413746537)+browser-shard_62min;ci.test_104/104,test:tools_2330/2330
 2026-11-19T01:08:15Z	Story 21.16	stage_spawned	stage=implement scope=batches1-3 spawn_at=2026-11-19T01:08:15Z model=sonnet agent_name=21-16-implement-1 cycle_iteration=1 story_base=29879ab32
+2026-11-19T02:29:42Z	Epic 21	ci_red_classified	run=44434412247 head=6bc7a0d66 class=flake(pending_rerun) tests=users_AC2(DW-2720_reopened),agent-code-save_QA4_spinner_overflow(DW-2282_reopened) routed=21-23
+2026-11-19T02:29:42Z	Story 21.16	stage_returned	stage=implement status=blocked spawn_at=2026-11-19T01:08Z model=sonnet reason=intent_gap:person_Copy/Add_table_have_no_create_route(ScreenAction_reads_target_first;spec_said_no_new_route) work=all_3_batches_in_tree_uncommitted protocol=handoff_edited_4_files_through_Bash(against_stage-common)
+2026-11-19T02:29:42Z	Story 21.16	ruling	question=21.16_implement_halt choice=R1_two_create_routes_as_AnalyticsTermListCreate;R2_AC4_governance_binds_the_agent(AD-22,PERSONGATE_only_for_code);R3_current-first_order;R4_unheld_table_not_Loadable_and_4xx;R5_restore_person-path_asserts via=runner category=decide policy=b9ff703e
+2026-11-19T02:29:42Z	Story 21.16	escalated	question=AD-36_read.criteria_on_locale_source(as_analytics/interop) to=orchestrator(U7)
+2026-11-19T02:29:42Z	Story 21.16	stage_spawned	stage=implement scope=continue(R1-R5)+review+finalize spawn_at=2026-11-19T02:29:42Z model=sonnet agent_name=21-16-implement-2 cycle_iteration=1

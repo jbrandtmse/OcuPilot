@@ -11206,6 +11206,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red in browser shard 2/3 on 9a8f2b2e; no change to _components.scss or tool-call-card.ts since 20.3's baseline; passed in attempt 2's rerun of the shard
 - 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
 - 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=spinner_wait+settled_panel(782b093d,5574fede);no_red_under_throttle_recorded;CI_38755393824
+- 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44434412247(6bc7a0d66)browser_3/5_agent-code-save_QA4:structural_gate_read_app-tool-call-card>span.ocu-tool-call-spinner_2px(1280)/3px(720)_past_its_block;rerun_pending
 
 ### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -13801,6 +13802,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red on attempt 1, green on the unchanged --failed rerun and 4/4 forward and reversed on a fresh ocupilot-ci; 21.14 does not touch the users screen
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
+- 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
