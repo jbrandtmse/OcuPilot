@@ -515,3 +515,5 @@
 2026-11-19T22:39:13Z	Story 24.13	stage_spawned	stage=code-review spawn_at=2026-11-19T22:39:13Z model=opus agent_name=24-13-analytics-settings-code-review-batch3 cycle_iteration=3 baseline=fe4f45059
 2026-11-19T23:08:24Z	Story 24.13	review_complete	spawn_at=2026-11-19T22:40:00Z model=opus layers=4(full-opus) findings=27(high0,med3,low23,false1) patched=8 deferred=1 rejected=18 intent_gap=0 orchestrator_items=1(no_create_tool_for_setting_or_worklist,registry_read)+2(comment)+3(Prohibited_test_load-bearing_run869)+4(drift_bound_logged) qa_defect=empty_Name_unreachable_via_View(pinned) commit=3a0b1c8c4 scope=batch3
 2026-11-19T23:08:24Z	Story 24.13	ledger_adjudicated	resolved=DW-2775 to_decision_sheet=DW-2786 scope=batch3 model=claude-opus-5-5
+2026-11-19T23:10:08Z	Story 24.13	integrated_feature	feature=800f1c579 merge=d2b0259cc conflicts=0(ci-timings.json_only) scope=batch3
+2026-11-19T23:10:08Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=d2b0259cc
