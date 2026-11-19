@@ -10,7 +10,31 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-13-analytics-settings.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-3-startup-memory-and-compatibility-settings.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: 'The script forms of the four writes do not take the namespace settings lock the port takes, so a pasted General script can store a stale form over a concurrent OcuPilot write'
+    evidence: 'InvokeSetting locks ^CacheTemp.OcuPilotAnalyticsSettings(ns) around read-compose-save; SettingSnippet renders the same composition and the Worklist 0 re-set with no lock (InteropPort renders its lock into its scripts)'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls SettingSnippet'
+    severity: med
+  - summary: 'AnalyticsPort.WritePairs and ActionQuery copy AnalyticsAction.PrivilegePairs and PortQuery (Rule 2); AnalyticsAction should delegate to the port helpers, with the permission and file resource as arguments'
+    evidence: 'WritePairs repeats PrivilegePairs line for line without FILERESOURCE; ActionQuery repeats PortQuery; the unification touches all 42 AnalyticsAction descendants, so it is not a review patch'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls WritePairs, ActionQuery; src/OcuPilot/Screen/Tool/AnalyticsAction.cls PrivilegePairs, PortQuery'
+    severity: med
+  - summary: 'The key dialog opens empty, so Set value on the Google Maps key row confirmed without typing clears the stored key; only the shared hint says an empty value clears'
+    evidence: 'interop-item-setting-dialog.ts never prefills a secret; SCREENEMPTY and CLEARABLESECRETS admit the empty key (AD-56); a guard or a key-specific sentence needs a string not in the spec or EXPERIENCE.md'
+    location: 'ui/src/app/areas/interoperability/interop-item-setting-dialog.ts; src/OcuPilot/Screen/Tool/AnalyticsSettingKey.cls SCREENEMPTY'
+    severity: med
+  - summary: 'Worklist set to 0 keeps the chosen options and no sentence says so; the Worklists screen then reads those options Shown while the portal shows its defaults'
+    evidence: 'Decided in-stage (implement) 1; the portal reads options only while the Worklist node is set (%DeepSee/UserPortal/Home.cls :962); Customized is in the read and context, not a column (AD-24)'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls SettingCustomHere; src/OcuPilot/Screen/Descriptor/AnalyticsWorklistList.cls'
+    severity: low
+  - summary: 'setkey with a body that lacks GoogleMapsKey answers PORT.VALIDATION "a set takes the new value as text in Value.", which names the wrong field'
+    evidence: 'SendSetting reuses ConfigPort.#REASONBODY for both write types; no existing sentence names the key field, and a new one is not decided in-stage; neither caller sends that body (the screen and the confirm send GoogleMapsKey)'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls SendSetting'
+    severity: low
+  - summary: 'No test confirms a show or hide proposal across an intervening change of the same option or of Customized'
+    evidence: 'the only stale-proposal test uses AnalyticsSettingSet; FINGERPRINTSUBJECT of AnalyticsWorklistAction is unpinned for that case'
+    location: 'src/OcuPilot/Test/AnalyticsSettingsWriteEdge.cls'
+    severity: low
 ---
 
 <intent-contract>
@@ -116,6 +140,40 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
   - `[low]` `reject` intent reading E2 (`Worklist` 0 keeps the options) — matches the matrix's "options untouched" and Decided 1.
   - `[low]` `reject` the browser tests, not an agent-turn walk-through, carry AC4 — AC4 names a person's walk-through; the agent's card is pinned by the instance tests (AC1, AC2).
 
+### 2026-11-19 — Code review (four layers, Opus)
+
+- verdicts: 29 findings — high 1, medium 6, low 22; patch 9, defer 6, reject 14, intent_gap 0
+- findings:
+  - `[high]` `patch` the agent's `analytics.settings.set` naming `GoogleMapsKey` with the key in `Value` is refused 409, but the dispatcher recorded `Value` in clear in the ledger row and the step (AC3, AD-35) — `AnalyticsSettingSet.CallSecretNames` answers `Value` for that name in any case, as `InteropSettingAction` does; pinned by `TestAKeyTheAgentSendsToTheSetIsRedactedInTheLedgerRowAndTheStep`.
+  - `[low]` `reject` QA's `setkey` minted with an extra `Value` keeps it in the stored proposal — reachable only through the test fixture's direct `Mint`; the model's one entry, `Write.View`, refuses an undeclared argument 400 `TOOL.ARGUMENTS` against the closed schema, now pinned by a `View` leg.
+  - `[medium]` `defer` the script forms take no namespace lock (frontmatter `deferred`).
+  - `[medium]` `defer` `WritePairs` and `ActionQuery` copy `AnalyticsAction`'s (Rule 2; frontmatter `deferred`).
+  - `[medium]` `patch` no test counted the hide's `ConfigChange` row — both callers' hides are counted before and after.
+  - `[medium]` `patch` the `Worklist` flag's own write had no read-back or audit assertion — `TestCustomizingKeepsTheOptions` asserts both for 1 and 0.
+  - `[medium]` `patch` the `Worklist` 0 script appended to a `tOptions` the terminal already held, and `RunScript` hid it — the script kills `tOptions` first; `RunScript` kills the scripts' variables and takes a prelude, and a leg seeds a stale option.
+  - `[medium]` `defer` an untouched key dialog clears the key (frontmatter `deferred`).
+  - `[low]` `patch` the Read test's not-customized leg passed on an empty read — it asserts 200 and sixteen rows.
+  - `[low]` `defer` the `setkey` wrong-field sentence (frontmatter `deferred`).
+  - `[low]` `defer` `Worklist` 0 keeps the options with no sentence, and the screen reads them shown (frontmatter `deferred`).
+  - `[low]` `defer` no stale-proposal test for show and hide (frontmatter `deferred`).
+  - `[low]` `patch` the `analytics.test.mjs` title said the port writes no setting — retitled.
+  - `[low]` `patch` the dialog's unused `multilineField` getter — removed.
+  - `[low]` `patch` an unused `tMessage` in `SendSetting` — removed.
+  - `[low]` `patch` two test reads used a missing answer as an object — guarded with a named assertion.
+  - `[low]` `reject` the lock name is a literal in the port and the tests — the tests hold that lock by name; a parameter changes nothing observable.
+  - `[low]` `reject` the Auto Run Result's "not re-run" and the cycle log's stage — the QA lines record the re-run; the bookkeeping is the lead's.
+  - `[low]` `reject` `Shown` in the worklists' `FINGERPRINTSUBJECT` against its doc — the subject projects the stored payload, which `READBACKPAYLOAD` reads, and the merged `Shown` is the same at mint and confirm.
+  - `[low]` `reject` an unchecked scheme-list status — both vendor methods answer `$$$OK` unconditionally (`%DeepSee/UserPortal/Utils.cls` :855, :900).
+  - `[low]` `reject` a malformed scheme extension node throws in `SchemeNamesHere` — theoretical; real once a node outside the vendor's own `$ListBuild` shape exists.
+  - `[low]` `reject` a stale fault beside a 200 when the re-read fails — theoretical; real once `Collect` fails right after it succeeded under the same lock.
+  - `[low]` `reject` `SetOption` throwing after `SetCustom(0)` loses the options — theoretical; `SetOption` is one global set.
+  - `[low]` `reject` a partial vendor failure goes unaudited — theoretical; real once a setter fails after writing.
+  - `[low]` `reject` the lock name is case-sensitive — measured unreachable: a `ns=user` request met the lock held on `USER` with the port's lock left as is (run 843).
+  - `[low]` `reject` a filtered list hides the save consequence — `store.data()` holds every row; the filter is the table's view.
+  - `[low]` `reject` the rules read the confirm's scope, not the payload's namespace — the port judges again in the target namespace at the write.
+  - `[low]` `reject` AC3's log leg — triaged in the review pass above.
+  - `[low]` `reject` the key test's audit window and its first mint's turn — one row is expected and `RemoveSeeded` clears the turn.
+
 ## Design Notes
 
 **Questions for the runner (veto items).**
@@ -178,7 +236,18 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
 - mutation: AC6 the `Customized` refusal of `AnalyticsPort.JudgeSetting` removed (`If 0 &&`) -> `TestWorklistsThatAreNotCustomizedRefuseShowAndHide` red alone (run 54).
 - mutation: AC7 `AnalyticsProbe.RestoreSettings` does not merge the snapshot's portal nodes back, with one node stored first -> `AnalyticsSettingsWriteEdge`'s `OnAfterAllTests` red, "left USER's analytics settings changed" (run 58).
 - mutation: review pass, pass-through: `SettingsSaveHere` reads a row's default in place of its stored value -> `TestAGeneralSetKeepsTheOtherRows` red (with `TestEachKindIsStoredAsSent` and the script test; run 16); script forms: the shown flag of the show and hide scripts swapped -> `TestEachWritesScriptFormMakesTheSameChange` red; the key's card: `AnalyticsSettingKey.Consequence` answers `""` -> `TestTheCardsSayWhatTheSaveStores` red (run 17). Not mutated: the stored-proposal and ledger search of AC3 and the `ToolEmit` derivation.
+- mutation: QA, `AnalyticsPort.SendSetting` puts the value into the reason of its value refusal -> `AnalyticsSettingsWriteEdge.TestARefusedKeyWriteSaysNothingOfTheKey` red alone (run 833).
+- mutation: QA, `AnalyticsSettingKey.PortQuery` sends no action -> `TestTheAgentsMintRefusesWhatTheScreenRefusesToo` red alone (run 834).
+- mutation: QA, `AnalyticsPort.InvokeSetting` refuses a busy lock for the plain set only -> `TestEveryWriteIsRefusedWhileTheLockIsHeld` red alone (run 835); `TestASecondWriterIsRefusedWhileTheLockIsHeld` stayed green.
+- mutation: QA, `AnalyticsPort.SettingsSaveHere` kills the `Worklist` node after the save -> `TestWritesOfDifferentKindsKeepEachOthersChanges` red alone (run 836).
+- QA run: `AnalyticsSettingsWriteEdge` 10 tests green on its first run (run 832) and again after the reverts (run 837); the Batch 2 browser test and the 14 others of `analytics.browser-spec.mjs` green on a rebuilt and redeployed bundle.
 - Each reverted byte-identical (`cmp` against the saved copy) and reloaded; mutations applied to `ocupilot-b-ci`'s copy of the source, and the analytics write classes reloaded before every run.
+- mutation: code review, `AnalyticsSettingSet.CallSecretNames` answers `""` -> `AnalyticsSettingsWriteEdge.TestAKeyTheAgentSendsToTheSetIsRedactedInTheLedgerRowAndTheStep` red alone (run 844).
+- mutation: code review, `AnalyticsSettingKey.InputSchema` declares `Value` -> `TestTheAgentsMintRefusesWhatTheScreenRefusesToo` red alone on its `View` leg (run 840).
+- mutation: code review, the `Worklist` 0 script without `Kill tOptions` -> `AnalyticsSettingsWrite.TestEachWritesScriptFormMakesTheSameChange` red alone (run 847).
+- mutation: code review, the hide audited as a show in `SendSetting` -> `TestAWorklistIsShownAndHiddenByBothCallers` red alone on both hide counts (run 848).
+- mutation: code review, `SendSetting` skips `AuditWrite` for `Worklist` -> `TestCustomizingKeepsTheOptions` red alone (run 849).
+- Code review run: `AnalyticsSettingsWriteEdge` 11 green (run 845), `AnalyticsSettingsWrite` 8 green (run 850), `AnalyticsSettingsRead` 11 green (run 851), the port's nine test subclasses recompiled with it; each mutation reverted byte-identical (`cmp`, `diff -rq src`).
 
 ## Auto Run Result
 

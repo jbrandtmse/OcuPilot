@@ -571,7 +571,7 @@ test('Story 24.13 Batch 2: each settings refusal and the save consequence is pub
   }
 });
 
-test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes no setting', () => {
+test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes a setting only through the page\'s own setters', () => {
   // Mutation (Rule 19): call ##class(%DeepSee.UserPortal.Utils).%GetUserSetting from AnalyticsPort.cls, or set a node of ^DeepSee.UserPortalSettings -> this goes red naming the call.
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
   const portalCalls = [...code.matchAll(/##class\(%DeepSee\.UserPortal\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);

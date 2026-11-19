@@ -86,6 +86,16 @@ ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As 
     Quit []
 }
 
+/// <p><code>Value</code> when the call <var>pInput</var> names the Google Maps key, in any case, else none: the set refuses that setting, and its ledger row and step show the redaction mark
+/// in place of whatever the agent sent for it (AD-3 layer 1, AD-35, AD-41).</p>
+ClassMethod CallSecretNames(pInput As %DynamicAbstractObject) As %List
+{
+    If '$IsObject(pInput) || 'pInput.%IsA("%Library.DynamicObject") Quit ""
+    If pInput.%GetTypeOf("Name") '= "string" Quit ""
+    If $ZConvert(pInput.%Get("Name"), "U") = $ZConvert(##class(OcuPilot.Port.AnalyticsPort).#SETTINGSECRETNAME, "U") Quit $ListBuild("Value")
+    Quit ""
+}
+
 /// <p>What the schema says of the setting's name.</p>
 ClassMethod NameDescription() As %String
 {

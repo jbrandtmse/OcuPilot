@@ -277,16 +277,26 @@ Method TestEachKindIsStoredAsSent()
 /// <p>Mutation (Rule 19): call <code>SetCustom</code> without setting the options again in <method>OcuPilot.Port.AnalyticsPort.SettingCustomHere</method> -- the option leg goes red.</p>
 Method TestCustomizingKeepsTheOptions()
 {
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = ..Base(tSince, "analytics-setting", "Worklist", "analytics.settings.set")
     Do $$$AssertEquals(..Act("analytics.settings", "set", "Worklist", {"Value": "1"}, .tAnswer), 200, "the worklists are customized")
     Do $$$AssertEquals(..Node("Worklist"), "1|1", "the flag is 1")
+    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "its read-back matches")
+    Do $$$AssertEquals(..Added(tSince, "analytics-setting", "Worklist", "analytics.settings.set", tBase, .tData), 1, "one ConfigChange row names the flag's set")
     Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Home", 1, ..#RECENT))
     Do $$$AssertEquals(..Act("analytics.worklists", "show", tId, {}, .tShown), 200, "an option is shown")
     Do $$$AssertEquals(..Node("Worklist,Home,1,2"), "1|" _ ..#RECENT, "the vendor holds the option")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = ..Base(tSince, "analytics-setting", "Worklist", "analytics.settings.set")
     Do $$$AssertEquals(..Act("analytics.settings", "set", "Worklist", {"Value": "0"}, .tAnswer), 200, "the worklists are not customized any more")
     Do $$$AssertEquals($Piece(..Node("Worklist"), "|", 1), 0, "the flag is gone")
+    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.readBack.verdict, ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "its read-back matches")
+    Do $$$AssertEquals(..Added(tSince, "analytics-setting", "Worklist", "analytics.settings.set", tBase, .tData), 1, "one ConfigChange row names it")
     Do $$$AssertEquals(..Node("Worklist,Home,1,2"), "1|" _ ..#RECENT, "and the option the person chose is kept")
     Do $$$AssertEquals(..Act("analytics.settings", "set", "Worklist", {"Value": "1"}, .tAnswer), 200, "customized again")
     Set tRows = ..ScreenRows("analytics.worklists")
+    Do $$$AssertTrue($IsObject(tRows), "the Worklists screen is read")
+    If '$IsObject(tRows) Quit
     Set tIterator = tRows.%GetIterator()
     Set tShownRows = 0
     While tIterator.%GetNext(.tIndex, .tOne) {
@@ -368,8 +378,11 @@ Method TestAWorklistIsShownAndHiddenByBothCallers()
     Do $$$AssertEquals(..Added(tSince, "analytics-worklist", tId, "analytics.worklists.show", tBase, .tData), 1, "one ConfigChange row names the show")
     Do $$$AssertTrue((tData [ """page"":""Home""") && (tData [ """class"":""" _ ..#RECENT _ """"), "naming the page and the class: " _ tData)
     Do $$$AssertEquals(..Act("analytics.worklists", "show", tId, {}, .tAgain), 200, "showing a shown worklist succeeds")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = ..Base(tSince, "analytics-worklist", tId, "analytics.worklists.hide")
     Do $$$AssertEquals(..Act("analytics.worklists", "hide", tId, {}, .tHidden), 200, "the person's Hide answers 200")
     Do $$$AssertEquals($Piece(..Node("Worklist,Home,1,2"), "|", 1), 0, "the option is gone")
+    Do $$$AssertEquals(..Added(tSince, "analytics-worklist", tId, "analytics.worklists.hide", tBase, .tData), 1, "one ConfigChange row names the person's hide")
     Do $$$AssertEquals(..Act("analytics.worklists", "hide", tId, {}, .tHiddenAgain), 200, "hiding a hidden worklist succeeds")
 
     Do ..Mint(..#SHOWTOOL, {"Page": "Home", "Panel": "1", "Class": (..#RECENT)}, .tProposal, .tTurn)
@@ -390,9 +403,12 @@ Method TestAWorklistIsShownAndHiddenByBothCallers()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     Do ..Mint(..#HIDETOOL, {"Page": "Home", "Panel": "1", "Class": (..#RECENT)}, .tProposal, .tTurn)
     If $IsObject($Get(tProposal)) {
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tBase = ..Base(tSince, "analytics-worklist", tId, "analytics.worklists.hide")
         Do ..Confirm(tProposal, .tConfirmed)
         If $IsObject(tConfirmed) Do $$$AssertEquals(tConfirmed.readBack.verdict, ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "the agent's hide reads back as matching")
         Do $$$AssertEquals($Piece(..Node("Worklist,Home,1,2"), "|", 1), 0, "and removes the option")
+        Do $$$AssertEquals(..Added(tSince, "analytics-worklist", tId, "analytics.worklists.hide", tBase, .tAgentData), 1, "and one ConfigChange row names the agent's hide")
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     }
 }
@@ -416,8 +432,9 @@ Method TestAGeneralSetKeepsTheOtherRows()
 }
 
 /// <p>Run the script form of the write <var>pType</var> on <var>pEndpoint</var> for <var>pId</var> with <var>pBody</var>, one line at a time, in the namespace it names, and assert that its final
-/// status is OK, or, when <var>pExpectOK</var> is 0, that it is not.</p>
-Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, pExpectOK As %Boolean = 1)
+/// status is OK, or, when <var>pExpectOK</var> is 0, that it is not. The variables the scripts use are killed first, and <var>pPrelude</var>, when given, is run after that, as a terminal the script is
+/// pasted into might already hold something.</p>
+Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, pExpectOK As %Boolean = 1, pPrelude As %String = "")
 {
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
@@ -426,7 +443,8 @@ Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, 
     Do $$$AssertTrue($IsObject(tSteps) && (tSteps.%Size() = 1), pType _ " renders one script step")
     If '$IsObject(tSteps) || (tSteps.%Size() '= 1) Quit
     Set tOrigNS = $NAMESPACE
-    XECUTE "Kill tSC"
+    XECUTE "Kill tSC,tOptions,tOption,tData,tMessage,tPage,tPanel,tNumber,tClass,tAt"
+    If pPrelude '= "" XECUTE pPrelude
     Try {
         For tI = 1:1:$Length(tSteps.%Get(0).text, $Char(10)) {
             Set tLine = $Piece(tSteps.%Get(0).text, $Char(10), tI)
@@ -460,8 +478,9 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Do ..RunScript("Worklists", "WORKLISTHIDE", tId, {})
     Do $$$AssertEquals($Piece(..Node("Worklist,Home,1,2"), "|", 1), 0, "the hide script removes it")
     Do ..RunScript("Worklists", "WORKLISTSHOW", tId, {})
-    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "0"})
+    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "0"}, 1, "Set tOptions = 1, tOptions(1) = $ListBuild(""Home"", 2, ""%DeepSee.UserPortal.AlertList"", 3)")
     Do $$$AssertEquals($Piece(..Node("Worklist"), "|", 1) _ "|" _ ..Node("Worklist,Home,1,2"), "0|1|" _ ..#RECENT, "the flag script turns them off and keeps the option")
+    Do $$$AssertEquals($Piece(..Node("Worklist,Home,2,3"), "|", 1), 0, "and sets no option the terminal held from before")
     Do ..RunScript("Worklists", "WORKLISTHIDE", tId, {}, 0)
     Do $$$AssertEquals(..Node("Worklist,Home,1,2"), "1|" _ ..#RECENT, "a hide while the worklists are not customized is refused and changes nothing")
 }

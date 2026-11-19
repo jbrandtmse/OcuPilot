@@ -6746,7 +6746,6 @@ ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %S
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
     Set tCaught = ""
-    Set tMessage = ""
     Set tEffects = {}
     Do tEffects.%Set("namespace", pNamespace, "string")
     If pEndpoint = ..#ENDPOINTSETTINGS {
@@ -6927,7 +6926,7 @@ ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %Strin
     If (pType = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONSETTINGSECRET) _ ")"
     If pId = ..#SETTINGCUSTOMNAME {
         If tValue = 1 Quit tNote _ tNL _ " Do " _ tSettings _ ".SetCustom(1)" _ tNL _ " Set tSC = 1"
-        Set tText = tNote _ tNL _ " Set tPage = """""
+        Set tText = tNote _ tNL _ " Kill tOptions  Set tPage = """""
         Set tText = tText _ tNL _ " For { Set tPage = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage)) Quit:tPage=""""  Set tPanel = """" For { Set tPanel = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel)) Quit:tPanel=""""  Set tNumber = """" For { Set tNumber = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel, tNumber), 1, tClass) Quit:tNumber=""""  Set tOptions($Increment(tOptions)) = $ListBuild(tPage, tPanel, tClass, tNumber) } } }"
         Set tText = tText _ tNL _ " Do " _ tSettings _ ".SetCustom(0)"
         Set tText = tText _ tNL _ " For tAt = 1:1:$Get(tOptions) { Set tOption = tOptions(tAt) Do " _ tSettings _ ".SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1) }"

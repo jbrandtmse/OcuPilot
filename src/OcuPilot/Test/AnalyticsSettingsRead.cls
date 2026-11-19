@@ -433,6 +433,8 @@ Method TestTheRowsCarryTheirKindAndWhetherWorklistsAreCustomized()
         If $IsObject(tRow) Do $$$AssertEquals(tRow.Kind _ "|" _ tRow.Accepts, $List(tCase, 2) _ "|" _ $List(tCase, 3), $List(tCase, 1) _ ": its kind and the sentence that says what it accepts")
     }
     Set tSC = ..Read("Worklists", 100, .tWorklists, .tWorklistHttp, .tFault)
+    Do $$$AssertEquals(tWorklistHttp _ "|" _ $Select($IsObject(tWorklists): tWorklists.%Size(), 1: ""), "200|16", "the Worklists read answers its sixteen rows with nothing stored")
+    If '$IsObject(tWorklists) Quit
     Set tCustomized = 0
     Set tIterator = tWorklists.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tOne) {

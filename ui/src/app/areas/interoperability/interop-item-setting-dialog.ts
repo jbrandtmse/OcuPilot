@@ -237,10 +237,6 @@ export class InteropItemSettingDialog {
     return this.isBoolean();
   }
 
-  protected get multilineField(): boolean {
-    return this.multiline();
-  }
-
   protected get showDefault(): boolean {
     return this.defaultShown();
   }
