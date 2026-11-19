@@ -5,7 +5,9 @@
 /// script each write renders.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and an instance whose current locale and one other locale are ones
 /// InterSystems ships. The posed locale carries the current locale's definition with the tables the seam holds, among them the pattern table <code>Japanese</code> posed as
-/// listed and not compiled, which the instance's own pattern table of that name is for <class>OcuPilot.Test.LocaleEditWrite</class>. It writes nothing to the instance; the real writes are
+/// listed and not compiled, which the instance's own pattern table of that name is for <class>OcuPilot.Test.LocaleEditWrite</class>. That definition lists the pattern tables
+/// <code>Latin1</code> and <code>Unicode</code> (its default), the identifier table <code>Latin1</code>, the collation table <code>IRIS standard</code> and the input/output tables
+/// <code>CP1250</code> and <code>CP1251</code>, as the stock <code>enuw</code> does. It writes nothing to the instance; the real writes are
 /// <class>OcuPilot.Test.LocaleEditWrite</class>'s.</p>
 Class OcuPilot.Test.LocaleEditRules Extends %UnitTest.TestCase
 {
@@ -47,14 +49,15 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Pose a custom, non-current locale whose definition is the current locale's, with the translation table <code>CP1250</code> as an input/output default,
-/// and the tables its <code>Tables</code> query lists: <code>Unicode</code> and <code>Japanese</code> of type <code>Pattern</code>, <code>CP1250</code> and
-/// <code>CP1251</code> of type <code>XLT</code>.</p>
+/// <p>Pose a custom, non-current locale whose definition is the current locale's, with the translation table <code>CP1250</code> as an input/output default
+/// the classic editor shows and <code>CP1251</code> as one it does not (<code>TranDDP</code>), and the tables its <code>Tables</code> query lists: <code>Unicode</code>
+/// and <code>Japanese</code> of type <code>Pattern</code>, <code>CP1250</code> and <code>CP1251</code> of type <code>XLT</code>.</p>
 Method Pose()
 {
     Set tCurrent = $ClassMethod(..#READ, "VendorGet", "", .tNone)
     Do $ClassMethod(..#READ, "VendorGet", tCurrent, .tProps)
     Set tProps("TranZCVT") = "CP1250"
+    Set tProps("TranDDP") = "CP1251"
     Do $ClassMethod(..#SEAM, "HoldLocale", ..#POSED, "a posed copy", 0, 1)
     Do $ClassMethod(..#SEAM, "HoldProperties", ..#POSED, .tProps)
     Do $ClassMethod(..#SEAM, "HoldTables", "Pattern", $ListBuild("Unicode", "Japanese"))
@@ -79,13 +82,14 @@ Method Call(pType As %String, pLocale As %String, pName As %String = "", pBody =
     Quit tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
 }
 
-/// <p>The sentence the mint's rules give the write <var>pType</var> of the tool <var>pTool</var> for the same row, through the seam, or <code>""</code>.</p>
+/// <p>The sentence the mint's rules give the write <var>pType</var> of the tool <var>pTool</var> for the same row, through the seam, or <code>""</code>
+/// for no refusal; a call that fails is no refusal either, so a rule that errors does not read as one that refused.</p>
 Method Mint(pType As %String, pLocale As %String, pName As %String = "", pBody = "") As %String
 {
     Set pBody = ..Body(pBody)
     Set tId = $Select(pType = "COPY": pLocale, 1: ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pLocale, pName)))
     Set tSC = $ClassMethod(..#RULES, "PropertyProblem", ..#SEAM, pType, tId, pBody, .tProblem)
-    Quit $Select($$$ISOK(tSC): tProblem, 1: "error")
+    Quit $Select($$$ISOK(tSC): tProblem, 1: "")
 }
 
 /// <p>The body <var>pBody</var> as an object: a case list holds a body as JSON text, because a list does not keep an object's identity.</p>
@@ -217,15 +221,16 @@ Method TestASetIsJudgedAgainstItsRowAndSendsTheCompleteSetWithOneChange()
 /// <p><b>AC2.</b> An add and a remove are deltas over the fresh read: an add sends the lists as read with the one member added (an input/output table with its
 /// two sides and the locale's character set), a remove sends them with the one member dropped, and each is judged first: an added table the locale lists is
 /// <code>LOCALE.TABLE.TAKEN</code>, one the instance does not hold <code>LOCALE.TABLE.UNAVAILABLE</code>, a malformed row or sides on the wrong list a validation
-/// fault; a removed table that is a default of its list or of an input/output default is <code>LOCALE.TABLE.DEFAULT</code> and a row that is no table
-/// <code>LOCALE.TABLE.ROW</code>.</p>
-/// <p>Mutation (Rule 19): the default check dropped from <code>LocaleRules.RemoveCode</code> -> the two default rows go red.</p>
+/// fault; a removed table that is a default of its list or of an input/output default, one the classic editor does not show included, is
+/// <code>LOCALE.TABLE.DEFAULT</code> and a row that is no table <code>LOCALE.TABLE.ROW</code>.</p>
+/// <p>Mutation (Rule 19): the default check dropped from <code>LocaleRules.RemoveCode</code> -> the default rows go red; <code>IOHIDDENDEFAULTS</code> left out
+/// of it -> the <code>CP1251</code> row goes red.</p>
 Method TestAnAddAndARemoveAreDeltasOverTheFreshReadAndAreJudgedFirst()
 {
     Set tLocale = ..#POSED
     Set tLong = $Translate($Justify("", 65), " ", "a")
     Set tSides = "{""InputFrom"":""Latin2"",""OutputTo"":""Latin2""}"
-    For tCase = $ListBuild("ADD", "PatternTables:Unicode", "{}", "409|LOCALE.TABLE.TAKEN"), $ListBuild("ADD", "XLTTables:CP1250", tSides, "409|LOCALE.TABLE.TAKEN"), $ListBuild("ADD", "PatternTables:Japanese", "{""InputFrom"":""a"",""OutputTo"":""b""}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:myio", "{""InputFrom"":""Latin2""}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:myio", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "NoSuchList:x", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "PatternTables", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:" _ tLong, tSides, "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:a" _ $Char(7) _ "b", tSides, "400|PORT.VALIDATION"), $ListBuild("REMOVE", "PatternTables:Unicode", "", "409|LOCALE.TABLE.DEFAULT"), $ListBuild("REMOVE", "XLTTables:CP1250", "", "409|LOCALE.TABLE.DEFAULT"), $ListBuild("REMOVE", "DateFormat", "", "409|LOCALE.TABLE.ROW"), $ListBuild("REMOVE", "PatternTables:Nope", "", "404|CONFIG.SETTING.NOTFOUND") {
+    For tCase = $ListBuild("ADD", "PatternTables:Unicode", "{}", "409|LOCALE.TABLE.TAKEN"), $ListBuild("ADD", "XLTTables:CP1250", tSides, "409|LOCALE.TABLE.TAKEN"), $ListBuild("ADD", "PatternTables:Japanese", "{""InputFrom"":""a"",""OutputTo"":""b""}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:myio", "{""InputFrom"":""Latin2""}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:myio", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "NoSuchList:x", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "PatternTables", "{}", "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:" _ tLong, tSides, "400|PORT.VALIDATION"), $ListBuild("ADD", "XLTTables:a" _ $Char(7) _ "b", tSides, "400|PORT.VALIDATION"), $ListBuild("REMOVE", "PatternTables:Unicode", "", "409|LOCALE.TABLE.DEFAULT"), $ListBuild("REMOVE", "XLTTables:CP1250", "", "409|LOCALE.TABLE.DEFAULT"), $ListBuild("REMOVE", "XLTTables:CP1251", "", "409|LOCALE.TABLE.DEFAULT"), $ListBuild("REMOVE", "DateFormat", "", "409|LOCALE.TABLE.ROW"), $ListBuild("REMOVE", "PatternTables:Nope", "", "404|CONFIG.SETTING.NOTFOUND") {
         Do $$$AssertEquals(..Call($List(tCase, 1), tLocale, $List(tCase, 2), $List(tCase, 3)), $List(tCase, 4), $List(tCase, 1) _ " " _ $List(tCase, 2) _ " is refused " _ $List(tCase, 4))
         Do $$$AssertNotEquals(..Mint($List(tCase, 1), tLocale, $List(tCase, 2), $List(tCase, 3)), "", "and the mint's rules refuse it")
     }
@@ -351,10 +356,12 @@ Method TestTheKeysShipAsRuledAndOnlyTheLoadIsDestructive()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
 }
 
-/// <p><b>AC1-AC4 (AD-59).</b> Each write renders the script the port would run, with its names and values as string literals: the copy's <code>Get</code>,
-/// <code>Name</code> and <code>Create</code>; a change's <code>Get</code>, the one key and <code>Modify</code>; a load's <code>Tables.Load</code>; and nothing the
+/// <p><b>AC1-AC4 (AD-59).</b> Each write renders the script the port would run, with its names and values as string literals: the copy's <code>Get</code>
+/// and <code>Create</code>, gated on one line by the free-name check and refused with the taken sentence when the name is listed; a change's <code>Get</code>,
+/// the one key and <code>Modify</code>, an emptied list sent as <code>""</code> as the port sends it; a load's <code>Tables.Load</code>; and nothing the
 /// caller typed runs as code.</p>
-/// <p>Mutation (Rule 19): the load's snippet omits the table -> the load row goes red.</p>
+/// <p>Mutation (Rule 19): the load's snippet omits the table -> the load row goes red; the copy's <code>Create</code> line without its <code>Exists</code>
+/// gate -> the copy's gate row goes red; the remove's empty-list line dropped -> the remove's row goes red.</p>
 Method TestEachWriteRendersItsScriptWithLiteralValues()
 {
     Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("yzzw", "PatternTables:Japanese"))
@@ -362,8 +369,9 @@ Method TestEachWriteRendersItsScriptWithLiteralValues()
     Set tQuery("name") = "yaaw"
     Set tCopy = ..Script("Locales", "COPY", .tQuery, {"Source": "enuw", "Description": "d"})
     Do $$$AssertTrue((tCopy [ "Config.NLS.Locales).Get(\""enuw\"""), "the copy reads its source: " _ tCopy)
-    Do $$$AssertTrue((tCopy [ "tProps(\""Name\"") = \""yaaw\"""), "sets the new name as a literal")
-    Do $$$AssertTrue((tCopy [ "Config.NLS.Locales).Create(\""yaaw\"""), "and creates it")
+    Do $$$AssertTrue((tCopy [ "'##class(Config.NLS.Locales).Exists(\""yaaw\"") Set tSC = ##class(Config.NLS.Locales).Create(\""yaaw\"""), "and creates the new name only while it is free")
+    Do $$$AssertTrue((tCopy [ ##class(OcuPilot.Api.LocaleError).#REASONCOPYTAKEN), "a taken name answers the taken sentence")
+    Do $$$AssertTrue((tCopy '[ "tProps(\""Name\"")"), "the copy sends no Name, as the port's create does not")
     Kill tQuery
     Set tQuery("name") = tId
     Set tAdd = ..Script("Properties", "ADD", .tQuery, {})
@@ -371,6 +379,7 @@ Method TestEachWriteRendersItsScriptWithLiteralValues()
     Do $$$AssertTrue((tAdd [ "tProps(\""PatternTables\"", \""Japanese\"")"), "with the one member added")
     Set tRemove = ..Script("Properties", "REMOVE", .tQuery, "")
     Do $$$AssertTrue((tRemove [ "Kill tProps(\""PatternTables\"", \""Japanese\"")"), "a remove kills the one member: " _ tRemove)
+    Do $$$AssertTrue((tRemove [ "If '$Data(tProps(\""PatternTables\"")) Set tProps(\""PatternTables\"") = \""\"""), "and sends a list it empties as \""\"", as the port does")
     Set tSet = ..Script("Properties", "SET", .tQuery, {"Value": "3"})
     Do $$$AssertTrue((tSet [ "= \""3\"""), "a set assigns its value as a literal: " _ tSet)
     Set tLoad = ..Script("Properties", "LOAD", .tQuery, "")

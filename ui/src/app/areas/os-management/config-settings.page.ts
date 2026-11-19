@@ -250,9 +250,10 @@ export class ConfigSettingsPage {
     return this.store.data().filter((entry): entry is Readonly<Record<string, unknown>> => entry !== null && typeof entry === 'object');
   }
 
-  /** Open the Add table dialog, never over another dialog and never for a locale that admits no change. */
+  /** Open the Add table dialog, never over another dialog, never before the list has read its locale, and never for a locale that admits no change. */
   protected onOpenAddTable(): void {
     if (this.tableOpen() || this.target() !== null || this.addOpen() || this.handler.pending() !== null) return;
+    if (typeof this.localeRows()[0]?.['Locale'] !== 'string') return;
     if (localeEditRefusal(this.localeRows()[0]?.['Refusal']) !== '') return;
     this.tableRefusal.set('');
     this.tableOpen.set(true);

@@ -4,8 +4,10 @@
 /// the screen's action route (<class>OcuPilot.Test.EcpActionFixture</class>), a table of an internal list and an input/output table added by the Save route
 /// (<class>OcuPilot.Area.OsMgmt.LocaleTableSave</class>) and removed by the screen's action, and the same by the agent, each read back, with every other property, list member and input/output
 /// table as it was; a table a list defaults to refused before the vendor; the current locale refused every change; and a table of the copy loaded by both callers
-/// with the key on, and, with the default baseline, refused by governance for the agent and not for a person.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed and serving and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
+/// with the key on, and, with the default baseline, refused by governance for the agent and not for a person; and the same writes over HTTP as a principal holding
+/// exactly the screen's write pairs, with one holding the read pairs alone refused.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and <parameter>ARMINGVARIABLE</parameter> and <parameter>PRINCIPALSVARIABLE</parameter>
+/// reading <code>1</code>, because the class creates and deletes two users and their roles named <code>OcuP2116*</code>, and because it
 /// creates, changes and deletes custom locales and loads a table. The current locale is the one the copies are made from, and its definition lists the pattern tables
 /// <code>Unicode</code> (loadable, and its list's default) and <code>Latin1</code> (built in, so not loadable). For its character set the instance lists the pattern tables
 /// <code>Japanese</code> (listed but not compiled) and <code>Latin2</code>, and holds the translation tables to and from <code>Latin2</code>. It never changes the current locale. Every test
@@ -15,6 +17,16 @@ Class OcuPilot.Test.LocaleEditWrite Extends %UnitTest.TestCase
 
 /// <p>The environment variable that arms the writes, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_CONFIG_SETTINGS";
+
+/// <p>The environment variable that arms the principals the gate test signs in as, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter PRINCIPALSVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>The principals the gate test signs in as, each <code>&lt;user&gt;:&lt;the pairs it holds beyond the code database's READ&gt;</code>, separated by
+/// <code>;</code>: exactly the screen's write pairs, then its read pairs alone.</p>
+Parameter PRINCIPALS = "OcuP2116Writer:%Admin_Manage:U,%DB_IRISSYS:RW;OcuP2116Reader:%Admin_Manage:U,%DB_IRISSYS:R";
+
+/// <p>The principals' password for this run.</p>
+Property PreparedPassword As %String [ InitialExpression = "" ];
 
 Parameter PORT = "OcuPilot.Port.LocalePort";
 
@@ -52,6 +64,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LocaleEditWrite creates, changes and deletes custom locales and loads a table on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed.")
     }
+    If $System.Util.GetEnviron(..#PRINCIPALSVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LocaleEditWrite creates and deletes users and roles on this instance and runs on a throwaway container only. " _ ..#PRINCIPALSVARIABLE _ " does not read 1 here, so nothing was created.")
+    }
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
@@ -72,6 +87,7 @@ Method OnAfterOneTest() As %Status
 {
     Kill ^||OcuPilotDatabaseWritePort
     Do ..Restore()
+    Do $$$AssertEquals(..RemovePrincipals(), "", "no principal of the gate test is left")
     Do $$$AssertEquals(..VendorExists(..#COPYA) _ ..VendorExists(..#COPYB), "00", "the copies are gone")
     Do $$$AssertEquals($ClassMethod(..#READ, "VendorGet", "", .tNone), ..PreparedLocale, "the current locale is as the class found it")
     Kill tRows
@@ -245,6 +261,101 @@ ClassMethod SaveAdd(pLocale As %String, pName As %String, pInputFrom As %String 
     If +$Get(tViolations) > 0 Quit "violations " _ $List(tViolations(1), 2)
     If $$$ISERR(tSC) Quit +$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
     Quit $Select($IsObject($Get(tReadBack)): tReadBack.%Get("verdict"), 1: "(none)")
+}
+
+/// <p>Create the principals <parameter>PRINCIPALS</parameter> names, each with a role of its own that also reads the install namespace's code database, as every
+/// caller of the API must.</p>
+Method EnsurePrincipals() As %Status
+{
+    Set tCode = ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()
+    If tCode = "" Quit $$$ERROR($$$GeneralError, "the install namespace's code database resource could not be read")
+    Set ..PreparedPassword = "OcuP2116" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(12), 1), "+/=", "") _ "!Aa9"
+    If ..RemovePrincipals() '= "" Quit $$$ERROR($$$GeneralError, "a principal a stopped run left could not be removed")
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
+            Set tEntry = $Piece(..#PRINCIPALS, ";", tI)
+            Set tUser = $Piece(tEntry, ":", 1)
+            Set tSC = ##class(Security.Roles).Create(tUser _ "Role", "OcuPilot test: locale write gate (throwaway)", tCode _ ":R," _ $Piece(tEntry, ":", 2, *), "")
+            If $$$ISERR(tSC) Quit
+            Set tSC = ##class(Security.Users).Create(tUser, tUser _ "Role", ..PreparedPassword, "OcuPilot locale write gate test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.LocaleEditWrite; deleted after its test")
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the principals and their roles; answers the names of any left, <code>""</code> when none is.</p>
+ClassMethod RemovePrincipals() As %String
+{
+    Set tLeft = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
+            Set tUser = $Piece($Piece(..#PRINCIPALS, ";", tI), ":", 1)
+            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
+            If ##class(Security.Roles).Exists(tUser _ "Role") Do ##class(Security.Roles).Delete(tUser _ "Role")
+            If ##class(Security.Users).Exists(tUser) || ##class(Security.Roles).Exists(tUser _ "Role") Set tLeft = tLeft _ tUser _ ";"
+        }
+    } Catch {
+        Set tLeft = tLeft _ "error;"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tLeft
+}
+
+/// <p>POST <var>pBody</var> to the API path <var>pPath</var> as <var>pUser</var>; answers <code>status|verdict</code> for a write that was made and
+/// <code>status|code</code>, with <code>|failedPair</code> for a denial, for a refusal.</p>
+Method AsPrincipal(pUser As %String, pPath As %String, pBody As %DynamicObject) As %String
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ pPath, pUser, ..PreparedPassword, .tStatus, .tRaw, .tHeaders, pBody.%ToJSON(), "application/json")
+    Set tAnswer = $ClassMethod(..#VERDICT, "Parsed", $Get(tRaw))
+    If '$IsObject(tAnswer) Quit +$Get(tStatus) _ "|" _ $Extract($Get(tRaw), 1, 200)
+    If (tStatus >= 200) && (tStatus < 300) Quit tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer)
+    Set tOut = tStatus _ "|" _ tAnswer.%Get("code")
+    If tAnswer.%GetTypeOf("detail") = "object" Set tOut = tOut _ "|" _ tAnswer.%Get("detail").%Get("failedPair")
+    Quit tOut
+}
+
+/// <p><b>AC1-AC4 as real principals (AD-8, AD-29, AD-53).</b> Over HTTP, a principal holding exactly the screen's write pairs copies the current locale through
+/// the Copy Save route, adds a table to the copy through the Add table Save route, and sets its date format, removes the table and loads a table of it through the
+/// screen's actions, each read back; it is refused <code>LOCALE.EDIT.CURRENT</code> and <code>LOCALE.EDIT.SYSTEM</code> on the current and a shipped locale. A principal
+/// holding the read pairs alone is refused the copy, the add and the set 403 naming <code>%DB_IRISSYS:WRITE</code>, with nothing created or changed.</p>
+/// <p>Mutation (Rule 19): <code>LocalePort.WriteUnderLock</code> locks a global in OcuPilot's own database (<code>^OcuPilotLocaleWrite</code>) -> the writer's
+/// legs answer 500 and go red.</p>
+Method TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused()
+{
+    Set tSC = ..EnsurePrincipals()
+    Do $$$AssertStatusOK(tSC, "the principals are created as the test's own setup")
+    If $$$ISERR(tSC) Quit
+    Set tWriter = $Piece($Piece(..#PRINCIPALS, ";", 1), ":", 1)
+    Set tReader = $Piece($Piece(..#PRINCIPALS, ";", 2), ":", 1)
+    Set tShipped = $ClassMethod(..#READ, "ShippedNotCurrent")
+    Do $$$AssertNotEquals(tShipped, "", "the instance lists a shipped locale that is not current")
+    Set tAction = "/screens/" _ ..#PROPERTYSCREEN _ "/action"
+    Set tDenied = "403|AUTH.NOPRIVILEGE|%DB_IRISSYS:WRITE"
+    Do $$$AssertEquals(..AsPrincipal(tReader, "/locales", {"Name": (..#COPYB), "Source": (..PreparedLocale)}) _ "|" _ ..VendorExists(..#COPYB), tDenied _ "|0", "the read pairs alone are refused the copy by name, and nothing is created")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, "/locales", {"Name": (..#COPYA), "Source": (..PreparedLocale)}) _ "|" _ ..VendorExists(..#COPYA), "201|matches|1", "the write pairs copy the current locale through the Copy Save route")
+    Do $ClassMethod(..#READ, "VendorGet", ..#COPYA, .tBefore)
+    Do $$$AssertEquals(..AsPrincipal(tReader, "/locale-properties", {"Locale": (..#COPYA), "Name": "PatternTables:Latin2"}), tDenied, "the read pairs alone are refused the add by name")
+    Do $$$AssertEquals(..AsPrincipal(tReader, tAction, {"action": "set", "id": (..RowId(..#COPYA, "DateFormat")), "values": {"Value": "3"}}), tDenied, "and the set")
+    Do $ClassMethod(..#READ, "VendorGet", ..#COPYA, .tAfter)
+    Do $$$AssertEquals(..Changed(.tBefore, .tAfter), "", "and the copy is as it was")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, "/locale-properties", {"Locale": (..#COPYA), "Name": "PatternTables:Latin2"}), "201|matches", "the write pairs add a table through the Add table Save route")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "set", "id": (..RowId(..#COPYA, "DateFormat")), "values": {"Value": "3"}}), "200|matches", "set the date format through the screen's action")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "remove-table", "id": (..RowId(..#COPYA, "PatternTables:Latin2"))}), "200|notFound", "remove the table")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "load-table", "id": (..RowId(..#COPYA, "PatternTables:Unicode"))}), "200|nothingSent", "and load a table of the copy")
+    Do $ClassMethod(..#READ, "VendorGet", ..#COPYA, .tAfter)
+    Do $$$AssertEquals(..Changed(.tBefore, .tAfter), "DateFormat;", "the copy holds the one change that stands")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "set", "id": (..RowId(..PreparedLocale, "DateFormat")), "values": {"Value": "3"}}), "409|LOCALE.EDIT.CURRENT", "the current locale is refused")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "set", "id": (..RowId(tShipped, "DateFormat")), "values": {"Value": "3"}}), "409|LOCALE.EDIT.SYSTEM", "a shipped locale is refused")
+    Do $$$AssertEquals(..AsPrincipal(tWriter, "/locale-properties", {"Locale": (tShipped), "Name": "PatternTables:Latin2"}), "409|LOCALE.EDIT.SYSTEM", "and so is an add to it through the Save route")
 }
 
 /// <p>The Save routes answer JSON over the wire: Copy's <code>POST /locales</code> 201 with the new locale's id, its target and a matching read-back, then a taken

@@ -100,11 +100,15 @@ ClassMethod ShippedNotCurrent() As %String
     Kill tQuery
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Locales", "LIST", .tQuery, "", .tList, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit ""
+    Set tFound = ""
     Set tIterator = tList.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If 'tRow.%Get("Custom") && 'tRow.%Get("Current") Quit
+        If 'tRow.%Get("Custom") && 'tRow.%Get("Current") {
+            Set tFound = tRow.%Get("Name")
+            Quit
+        }
     }
-    Quit $Select($IsObject($Get(tRow)): tRow.%Get("Name"), 1: "")
+    Quit tFound
 }
 
 /// <p><b>AC1.</b> The current locale's rows equal the vendor's <code>Get</code> property by property: every editable property of the seven groups

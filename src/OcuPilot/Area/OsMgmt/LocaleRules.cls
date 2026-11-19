@@ -161,12 +161,12 @@ ClassMethod RemoveCode(pRow As %DynamicObject, ByRef pProps) As %String
     Set tList = $Piece(tName, ":", 1)
     Set tTable = $Piece(tName, ":", 2, *)
     If tList = ##class(OcuPilot.Port.LocalePort).#IOLIST {
-        Set tDefaults = ##class(OcuPilot.Port.LocalePort).GroupNames("iodefaults")
+        Set tDefaults = ##class(OcuPilot.Port.LocalePort).GroupNames("iodefaults") _ $ListFromString(##class(OcuPilot.Port.LocalePort).#IOHIDDENDEFAULTS, ",")
+        Set tCode = ""
         For tI = 1:1:$ListLength(tDefaults) {
-            If $Get(pProps($List(tDefaults, tI))) = tTable Quit
+            If $Get(pProps($List(tDefaults, tI))) = tTable Set tCode = ##class(OcuPilot.Api.LocaleError).#TABLEDEFAULT
         }
-        If $Get(pProps($List(tDefaults, tI))) = tTable Quit ##class(OcuPilot.Api.LocaleError).#TABLEDEFAULT
-        Quit ""
+        Quit tCode
     }
     If $Get(pProps($Extract(tList, 1, *-1))) = tTable Quit ##class(OcuPilot.Api.LocaleError).#TABLEDEFAULT
     Quit ""

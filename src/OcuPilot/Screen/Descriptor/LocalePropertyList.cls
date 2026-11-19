@@ -51,7 +51,7 @@ XData Declaration
     "sort": {"fields": ["Group", "Name", "Value"], "default": "Group", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "locale", "labelKey": "aboutLocaleDefinition", "kind": "text", "maxLength": 64, "hint": "One locale, spelled as osmgmt.locales answers its Name."}]
+      "fields": [{"param": "locale", "labelKey": "aboutLocaleDefinition", "kind": "text", "maxLength": 64, "hint": "One locale, spelled as osmgmt.locales.read answers its Name."}]
     }
   },
   "table": {

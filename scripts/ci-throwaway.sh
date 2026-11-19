@@ -378,6 +378,8 @@ services:
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
+      # The locale write class signs in as principals holding the Locale properties screen's write pairs, and its read pairs alone (Story 21.16).
+      # classes: LocaleEditWrite
       # The SQL catalog's live class signs in as a principal granted SELECT on one probe table
       # alone and reads the catalog as it (Story 19.5).
       # classes: AtelierPortCatalogLive

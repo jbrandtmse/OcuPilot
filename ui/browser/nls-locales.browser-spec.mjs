@@ -335,12 +335,19 @@ const GROUP_WORDS = [
 ];
 
 // Mutation (Rule 19): drop `LocalePropertyList` from `VALUE_WORDS` in `table-model.ts` (rebuilt and redeployed) -> the cells read the codes and this goes red.
-test('the properties of the current locale draw each group as its ruled word, and Set value, Remove table and Load table are unavailable with the published sentences', async () => {
+test('the properties of the current locale draw each group as its ruled word, and Add table, Set value and Remove table are unavailable with the published sentence', async () => {
   const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(foundCurrent)}`, VIEWPORTS.wide);
   try {
     await answered(page);
     const groups = await page.$$eval(ROW_SELECTOR, (rows) => [...new Set(rows.map((row) => row.querySelectorAll('[role="gridcell"]')[0]?.textContent.trim()))]);
     assert.ok(groups.length > 0 && groups.every((group) => GROUP_WORDS.includes(group)), `every group cell reads one of the seven ruled words: ${groups.join(' | ')}`);
+    const addTable = await page.evaluate((label) => {
+      const button = [...document.querySelectorAll('.ocu-command-bar-primary')].find((entry) => entry.textContent.trim() === label);
+      if (button === undefined) return null;
+      const id = button.getAttribute('aria-describedby');
+      return { disabled: button.getAttribute('aria-disabled') === 'true', reason: id === null ? '' : (document.getElementById(id)?.textContent.trim() ?? '') };
+    }, STRINGS.localeAddTableAction);
+    assert.deepEqual(addTable, { disabled: true, reason: STRINGS.localeRefusalEditCurrent }, 'Add table is unavailable on the current locale, naming why');
     await selectProperty(page, 'DateFormat');
     assert.deepEqual(await menuEntry(page, STRINGS.interopItemSettingSetAction), { disabled: true, reason: STRINGS.localeRefusalEditCurrent }, 'Set value is unavailable on the current locale, naming why');
     await clickEntry(page, STRINGS.interopItemSettingSetAction);
@@ -381,6 +388,31 @@ test('Set value on a custom locale changes its date format on the instance', asy
     await page.click('[data-interop-setting-confirm]');
     await page.waitForSelector('[data-interop-setting-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
     assert.equal(probe('NLSDATE', [`Set tSC=##class(Config.NLS.Locales).Get("${CUSTOM}",.p) Set result=$Get(p("DateFormat"))`]).value, '5', 'the instance holds the new date format');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the `LOCALE_PROPERTY_LIST` entry of `TYPED_NAME_ROWS` in `screen-action-handler.ts` (rebuilt and redeployed) -> the dialog asks for the
+// composite id, typing the row's name never releases its button, and this goes red.
+test('Load table on a custom locale asks the row name, states the consequence and loads the table', async () => {
+  ensureCustom('LOAD');
+  const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(CUSTOM)}`, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectProperty(page, 'PatternTables:Unicode');
+    assert.deepEqual(await menuEntry(page, STRINGS.localeLoadTableAction), { disabled: false, reason: '' }, 'Load table is offered on a loadable table of a custom locale');
+    await clickEntry(page, STRINGS.localeLoadTableAction);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.localeLoadConsequence, 'the dialog states what a load does');
+    await confirmWith(page, 'PatternTables:Unicode');
+    // The load changes no row, but its change event re-reads the list, which marks the row it names once that read has landed.
+    await page.waitForFunction(
+      (rowSelector, wanted) => [...document.querySelectorAll(rowSelector)].some((row) => row.classList.contains('ocu-data-table-row-changed') && row.querySelectorAll('[role="gridcell"]')[1]?.textContent.trim().startsWith(wanted)),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      'PatternTables:Unicode'
+    );
   } finally {
     await context.close();
   }

@@ -24975,7 +24975,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "aboutLocaleDefinition",
             "kind": "text",
             "maxLength": 64,
-            "hint": "One locale, spelled as osmgmt.locales answers its Name."
+            "hint": "One locale, spelled as osmgmt.locales.read answers its Name."
           }
         ]
       }

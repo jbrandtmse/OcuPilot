@@ -124,6 +124,12 @@ Parameter DEFAULTMAXROWS As INTEGER = 1000;
 /// <p>The most locales one read of the instance's list holds.</p>
 Parameter LOCALESMAXROWS As INTEGER = 5000;
 
+/// <p>The input/output defaults the vendor requires that the classic editor does not show: never a row, but their tables are defaults all the same.</p>
+Parameter IOHIDDENDEFAULTS = "TranDDP,TranDTMDCP";
+
+/// <p>The seconds a write waits for another write to the same locale to finish.</p>
+Parameter LOCKSECONDS As INTEGER = 5;
+
 /// <p>What a custom locale's name starts with: the vendor keeps only these across an upgrade.</p>
 Parameter CUSTOMPREFIX = "y";
 
@@ -545,19 +551,23 @@ ClassMethod Property(pType As %String, ByRef pQuery, pBody As %DynamicAbstractOb
     Quit ..WriteUnderLock(pType, tLocale, tName, pBody, .pResult, .pHttpStatus, .pFault)
 }
 
-/// <p>Take the lock on the locale <var>pLocale</var>, judge and send the write <var>pType</var>, and release the lock.</p>
+/// <p>Take the lock on the locale <var>pLocale</var>, judge and send the write <var>pType</var>, and release the lock. The lock is a node of
+/// <code>^CacheTemp.OcuPilotLocaleWrite</code>, in the instance's temporary database, so a caller holding only the screen's pairs can take it;
+/// a lock another request keeps past <parameter>LOCKSECONDS</parameter> is 409 <code>WRITE.TARGETBUSY</code>.</p>
 ClassMethod WriteUnderLock(pType As %String, pLocale As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
+    Set pResult = ""
     Set tTarget = pLocale
-    Lock +^OcuPilotLocaleWrite(tTarget):5
-    If '$Test Quit ..Fail("the locale " _ tTarget _ " is being written by another request", $$$ERROR($$$GeneralError, "the locale's lock is held"), .pHttpStatus, .pFault)
+    If tTarget = "" Quit ..Refused(##class(OcuPilot.Api.LocaleError).#NOTFOUND, .pHttpStatus, .pFault)
+    Lock +^CacheTemp.OcuPilotLocaleWrite(tTarget):..#LOCKSECONDS
+    If '$Test Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
     Try {
         Set tSC = ..Send(pType, pLocale, pName, pBody, .pResult, .pHttpStatus, .pFault)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Fail("a locale write failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
-    Lock -^OcuPilotLocaleWrite(tTarget)
+    Lock -^CacheTemp.OcuPilotLocaleWrite(tTarget)
     Quit tSC
 }
 
@@ -763,8 +773,8 @@ ClassMethod NameCount(pName As %String) As %Integer
 }
 
 /// <p>The complete settable set the fresh read <var>pProps</var> holds, in <var>pSet</var>: every editable scalar, each of the eight table lists
-/// and the input/output tables, an empty list as <code>""</code> so the vendor empties it (AD-4). The set is returned as its own array.</p>
-ClassMethod SettableSet(ByRef pProps, Output pSet) As %String
+/// and the input/output tables, an empty list as <code>""</code> so the vendor empties it (AD-4).</p>
+ClassMethod SettableSet(ByRef pProps, Output pSet) As %Status
 {
     Kill pSet
     Set tGroups = $ListBuild("basic", "formats", "strings", "tabledefaults", "iodefaults")
@@ -787,7 +797,7 @@ ClassMethod SettableSet(ByRef pProps, Output pSet) As %String
         }
         If '$Data(pSet(tList)) Set pSet(tList) = ""
     }
-    Quit ""
+    Quit $$$OK
 }
 
 /// <p>The limits of the property <var>pName</var> of <var>pLocale</var>, in <method>OcuPilot.Port.ConfigPort.Limits</method>'s shape: the
@@ -1122,11 +1132,12 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tName = $ClassMethod(tAdmin, "Literal", $Get(pQuery(..#NAMEKEY)))
     If pType = ..#TYPECOPY {
         Set tSource = $ClassMethod(tAdmin, "Literal", $Select($IsObject(pBody) && (pBody.%GetTypeOf("Source") = "string"): pBody.%Get("Source"), 1: ""))
-        Set tLines = $ListBuild("Set tSC = ##class(Config.NLS.Locales).Get(" _ tSource _ ", .tProps)", "Set tProps(""Name"") = " _ tName)
+        Set tLines = ..ReadLines(tSource)
         If $IsObject(pBody) && (pBody.%GetTypeOf("Description") = "string") {
             Set tLines = tLines _ $ListBuild("Set tProps(""Description"") = " _ $ClassMethod(tAdmin, "Literal", pBody.%Get("Description")))
         }
-        Set tLines = tLines _ $ListBuild("Set tSC = ##class(Config.NLS.Locales).Create(" _ tName _ ", .tProps)")
+        Set tLines = tLines _ $ListBuild("If ##class(Config.NLS.Locales).Exists(" _ tName _ ") Set tSC = $System.Status.Error(5001, " _ $ClassMethod(tAdmin, "Literal", ##class(OcuPilot.Api.LocaleError).#REASONCOPYTAKEN) _ ")")
+        Set tLines = tLines _ $ListBuild("If $System.Status.IsOK(tSC), '##class(Config.NLS.Locales).Exists(" _ tName _ ") Set tSC = ##class(Config.NLS.Locales).Create(" _ tName _ ", .tProps)")
         Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
     }
     Set tLine = "Set tSC = ##class(Config.NLS.Locales)." _ $Select(pType = ..#TYPEINSTALL: "Install", 1: "Delete") _ "(" _ tName _ ")"
@@ -1143,11 +1154,12 @@ ClassMethod PropertySnippet(pType As %String, ByRef pQuery, pBody As %DynamicAbs
     Set tList = $Piece(tName, ":", 1)
     Set tTable = $Piece(tName, ":", 2, *)
     If pType = ..#TYPELOAD Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tSC = ##class(Config.NLS.Tables).Load(" _ tLocaleLiteral _ ", " _ $ClassMethod(tAdmin, "Literal", ..TypeOf(tList)) _ ", " _ $ClassMethod(tAdmin, "Literal", tTable) _ ")")))]
-    Set tLines = $ListBuild("Set tSC = ##class(Config.NLS.Locales).Get(" _ tLocaleLiteral _ ", .tProps)")
+    Set tLines = ..ReadLines(tLocaleLiteral)
     If pType = ..#TYPESET {
         Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
         Set tLines = tLines _ $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", $Select(..NameCount(tName): " " _ tValue, 1: tValue)))
     } ElseIf pType = ..#TYPEADD {
+        Set tLines = tLines _ $ListBuild("If $Data(tProps(" _ $ClassMethod(tAdmin, "Literal", tList) _ ")) = 1 Kill tProps(" _ $ClassMethod(tAdmin, "Literal", tList) _ ")")
         If tList = ..#IOLIST {
             Set tFrom = $ClassMethod(tAdmin, "Literal", $Select($IsObject(pBody) && (pBody.%GetTypeOf("InputFrom") = "string"): pBody.%Get("InputFrom"), 1: ""))
             Set tTo = $ClassMethod(tAdmin, "Literal", $Select($IsObject(pBody) && (pBody.%GetTypeOf("OutputTo") = "string"): pBody.%Get("OutputTo"), 1: ""))
@@ -1157,9 +1169,17 @@ ClassMethod PropertySnippet(pType As %String, ByRef pQuery, pBody As %DynamicAbs
         }
     } Else {
         Set tLines = tLines _ $ListBuild("Kill tProps(" _ $ClassMethod(tAdmin, "Literal", tList) _ ", " _ $ClassMethod(tAdmin, "Literal", tTable) _ ")")
+        Set tLines = tLines _ $ListBuild("If '$Data(tProps(" _ $ClassMethod(tAdmin, "Literal", tList) _ ")) Set tProps(" _ $ClassMethod(tAdmin, "Literal", tList) _ ") = """"")
     }
-    Set tLines = tLines _ $ListBuild("Set tSC = ##class(Config.NLS.Locales).Modify(" _ tLocaleLiteral _ ", .tProps)")
+    Set tLines = tLines _ $ListBuild("If $System.Status.IsOK(tSC) Set tSC = ##class(Config.NLS.Locales).Modify(" _ tLocaleLiteral _ ", .tProps)")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+}
+
+/// <p>The script's fresh read of the locale <var>pLocaleLiteral</var> (a string literal) into <code>tProps</code>, with the vendor's comment nodes
+/// dropped, as <method>LocaleProperties</method> reads it.</p>
+ClassMethod ReadLines(pLocaleLiteral As %String) As %List [ Private ]
+{
+    Quit $ListBuild("Kill tProps Set tSC = ##class(Config.NLS.Locales).Get(" _ pLocaleLiteral _ ", .tProps)", "Set tKey = """" For { Set tKey = $Order(tProps(tKey)) Quit:tKey=""""  Kill tProps(tKey, ""Comment""), tProps(tKey, ""Comments"") }")
 }
 
 }

@@ -292,7 +292,6 @@ export const LOCALE_COPY = 'copy';
 /** The Locale properties list and its actions: Add table is its primary action, Set value its row action, each registered by the config settings page (Story 21.16). */
 export const LOCALE_PROPERTY_LIST = 'OcuPilot.Screen.Descriptor.LocalePropertyList';
 export const LOCALE_ADD_TABLE = 'add-table';
-export const LOCALE_REMOVE_TABLE = 'remove-table';
 export const LOCALE_LOAD_TABLE = 'load-table';
 export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';

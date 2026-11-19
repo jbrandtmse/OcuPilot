@@ -3,9 +3,6 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 
-/** The member names the copy action sends beside the typed name, as the copy tool declares them (AD-56). */
-export const LOCALE_COPY_DESCRIPTION = 'Description';
-
 /** How many dialogs have been constructed, which makes each one's field ids its own. */
 let dialogCount = 0;
 
