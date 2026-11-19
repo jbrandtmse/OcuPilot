@@ -2,7 +2,7 @@
 title: 'Story 21.16: Custom locales'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b0434b42b79df156a15ad9e1238ec471ac385974'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -92,6 +92,25 @@ deferred: []
 - AC3. Given a shipped locale and the current locale, when either caller sets, adds or removes, then it is refused `LOCALE.EDIT.SYSTEM` or `LOCALE.EDIT.CURRENT` before any vendor call, and the screen draws each action unavailable with that sentence.
 - AC4. Given Load table's key `true` and a copy's loadable table, when a person and the agent load it, then `Config.NLS.Tables.Load` runs with that locale, type and table; with the default baseline governance refuses the agent's; a non-loadable row is refused `LOCALE.TABLE.NOTLOADABLE` before any vendor call.
 - AC5. Given these configure the server's locales rather than OcuPilot's own interface, when the properties screen, both dialogs and the cards render, then every label, group word, refusal and consequence is an English `strings.ts` value pinned equal to its `LocaleError` or `ConfigError` sentence.
+
+### Review Findings
+
+- [ ] [Review][HIGH] CI run 44455430594 (code head 23f0474c5): a fresh compile fails in every leg (images, package, every throwaway): `<CLASS DOES NOT EXIST>pTAKENREASON+1^OcuPilot.Area.OsMgmt.LocaleCopySave.G1 *OcuPilot.Api.LocaleError` and the same in `LocaleTableSave`. Each declares `Parameter TAKENREASON = {##class(OcuPilot.Api.LocaleError).#REASON...}`, a compile-time expression on a class the compiler has not yet compiled; a reload onto an instance that already holds `LocaleError` hides it. Make the compile order hold (declare the dependency on `OcuPilot.Api.LocaleError` with the class keyword `DependsOn`, or the sibling `*Save` classes' literal sentence with a test pinning it equal to `LocaleError`'s), sweep every class this story added for any other compile-time `{##class(...)}` parameter on a project class, and say which you chose. [src/OcuPilot/Area/OsMgmt/LocaleCopySave.cls, LocaleTableSave.cls]
+
+Code review 2026-11-19 (four layers, full-opus; measured on `ocupilot-ci` as real principals). 0 decision-needed, 11 patched, 7 ledgered, 13 rejected.
+
+- [x] [Review][Patch] HIGH: every write by a principal holding only the screen's pairs answered 500: `WriteUnderLock` locked `^OcuPilotLocaleWrite`, in OcuPilot's protected database (`<PROTECT>`, measured on both routes and the action route). Now `^CacheTemp.OcuPilotLocaleWrite` (`DevToolPort`'s precedent); a held lock is 409 `WRITE.TARGETBUSY`, an empty locale 404 [src/OcuPilot/Port/LocalePort.cls:WriteUnderLock]; pinned by `LocaleEditWrite.TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused` (armed by `OCUPILOT_ALLOW_PRINCIPALS` too, roster line added).
+- [x] [Review][Patch] HIGH (AD-59): the scripts did not mirror `Invoke`: Copy had no free-name gate and set `Name`; Remove left an emptied list unsent; Add kept a list's scalar top. Fixed in `Snippet`/`PropertySnippet` (`ReadLines` drops comment nodes as `LocaleProperties` does); each script run on `ocupilot-ci` against test locales did what the port does [src/OcuPilot/Port/LocalePort.cls:Snippet].
+- [x] [Review][Patch] MED: `CriterionHints` red (2 of 4): the `locale` hint named `osmgmt.locales`, not `osmgmt.locales.read` [src/OcuPilot/Screen/Descriptor/LocalePropertyList.cls]; mirror regenerated.
+- [x] [Review][Patch] MED: Remove table admitted the table of `TranDDP` or `TranDTMDCP`, required I/O defaults the classic editor does not show [src/OcuPilot/Area/OsMgmt/LocaleRules.cls:RemoveCode, `LocalePort.IOHIDDENDEFAULTS`].
+- [x] [Review][Patch] MED: `LocaleEditRules.Mint` answered `"error"` for a failed call, which every `AssertNotEquals(..., "")` read as a refusal [src/OcuPilot/Test/LocaleEditRules.cls:Mint].
+- [x] [Review][Patch] MED: Load table's typed-name confirmation was pinned in jsdom only; new browser leg loads a custom locale's table through it, and the current-locale leg now asserts Add table unavailable (its title named Load table, which is available there) [ui/browser/nls-locales.browser-spec.mjs].
+- [x] [Review][Patch] LOW: `LocaleEditRules` header states the definition members it asserts on; `ShippedNotCurrent` no longer answers the last row when none matches; dead exports `LOCALE_COPY_DESCRIPTION`, `LOCALE_REMOVE_TABLE` removed; `SettableSet` returns `%Status`; Add table never opens before the list has read its locale.
+- [x] [Review][Defer] MED: AD-53 has no named gap for a person's Load table (Task 0 (d)) — DW-2754, decision-pending (owner's architecture update, as DW-2613).
+- [x] [Review][Defer] MED: `locale-create.ts` copies `interop-create.ts` with no stated reason (Rule 2) — DW-2755, routed burndown.
+- [x] [Review][Defer] LOW: DW-2756 (load consequence wording vs Task 0 (c)), DW-2757 (group sort and filter by code), DW-2758 (removing a required list's last table answers 500), DW-2759 (no observable of a real load), DW-2760 (no sentence on a failed request) — each `wontfix-accepted` with `reopen_if`.
+
+Rejected: "only a table this locale lists that is not built in" is a necessary condition, true for an uncompiled table; eight `Tables` reads per read (negligible, fix adds a parameter); `LimitsOf` public (the spec's decided note, no named harm); Add table's in-flight guard (cancel then reopen mid-request); `ClassLimits` hiding a failed dictionary read (no reachable failure with the port's pairs); a 100-character weekday text and an empty `MINLEN` value (vendor answers 400 at confirm, the shared `ValueHolds` behavior); a malformed `XLTTables` entry (the vendor stores four-element lists); a copy with no `Source` (a required tool argument); the matrix's "both callers" row, the Add read-back note and the `EndpointCoverage` line (spec text; R1, R2 rule them); fixed 500 ms waits and the browser legs' unrecorded mutations (the siblings' form; AC pins all carry `mutation:` lines).
 
 ## Spec Change Log
 
@@ -203,6 +222,7 @@ The type and table travel as id parts rather than free arguments, so the screen'
 - mutation: P5 `SOURCELOCALE` dropped from `Registry.CriteriaProblem`'s parent-only set -> `ReadTool.TestEveryCriteriaCorpusCaseGetsItsSentence` red on the sound parent-scoped row; the locale port exempted from the refusal -> the same test red on the no-parent row; `SOURCE_LOCALE` dropped from the mirror's `parentOnly` -> `screen-mirror.test.mjs` "criteriaProblem returns every sentence" red on the parent-scoped row; each reverted, `md5` equal, reloaded.
 - mutation: P8 the description length check of `LocalePort.Judge` loosened by 1000 -> `LocaleEditRules.TestACopyIsJudgedBeforeAnyCreateAndCopiesTheWholeDefinition` red on the over-length row; reverted, `md5` equal, reloaded.
 - mutation: typed name `TYPED_NAME_ROWS[LOCALE_PROPERTY_LIST]` removed -> `config-settings.page.spec.ts` "confirms Load table before it sends anything" red (`yzzw\u0001PatternTables:Unicode` is not `PatternTables:Unicode`); restored, `git diff` shows the entry.
+- mutation: code review, `WriteUnderLock` locking `^OcuPilotLocaleWrite` again -> `LocaleEditWrite.TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused` red; `IOHIDDENDEFAULTS` left out of `RemoveCode` -> `LocaleEditRules.TestAnAddAndARemoveAreDeltasOverTheFreshReadAndAreJudgedFirst` red on the `CP1251` row; the copy script's `Create` line without its `Exists` gate -> `TestEachWriteRendersItsScriptWithLiteralValues` red; each reverted, `md5` equal, reloaded. `TYPED_NAME_ROWS[LOCALE_PROPERTY_LIST]` removed, rebuilt and redeployed -> `nls-locales` "Load table on a custom locale asks the row name" red (timeout on the typed name); restored, `md5` equal, redeployed.
 - Mutations not run (each test names its own in its doc comment): `LocalePropertyRead` (`Loadable` true for every table, `EditCode` empty for the current locale, `State` matching a prefix), the client specs and the browser spec's `VALUE_WORDS`.
 
 ## Auto Run Result
