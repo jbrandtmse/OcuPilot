@@ -20,6 +20,9 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
@@ -492,5 +495,87 @@ test('Add table on a custom locale refuses a table it lists with the published s
     assert.deepEqual(await menuEntry(page, STRINGS.localeRemoveTableAction), { disabled: false, reason: '' }, 'and the new row offers Remove table');
   } finally {
     await context.close();
+  }
+});
+
+/** Record the files this browser is asked to save, without leaving the page. */
+function captureDownloads(page) {
+  return page.evaluate(() => {
+    window.__ocuSaved = [];
+    const create = URL.createObjectURL.bind(URL);
+    let blob = null;
+    URL.createObjectURL = (made) => {
+      blob = made;
+      return create(made);
+    };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download && blob !== null) {
+        const kept = blob;
+        const name = this.download;
+        void kept.text().then((text) => window.__ocuSaved.push({ name, type: kept.type, text }));
+        return;
+      }
+      click.call(this);
+    };
+  });
+}
+
+// Mutation (Rule 19): send the export to this browser on the server file's action in `locale-list.page.ts` (rebuilt and redeployed) -> no file is saved and this goes red.
+test('Export of the current locale to this browser saves <locale>.xml holding its record', async () => {
+  const { context, page } = await signedInAt(browser, config, route('locales'), VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await captureDownloads(page);
+    await selectRow(page, foundCurrent);
+    assert.deepEqual(await menuEntry(page, STRINGS.taskExportAction), { disabled: false, reason: '' }, 'Export is offered on any locale');
+    await clickEntry(page, STRINGS.taskExportAction);
+    await page.waitForSelector('app-explorer-export-dialog .ocu-dialog-title', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-export-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.localeExportTitle.replace('<locale>', foundCurrent), 'the dialog is titled by the locale');
+    await page.click('input[data-explorer-export-destination="browser"]');
+    await page.click('[data-explorer-export-confirm]');
+    await page.waitForFunction(() => window.__ocuSaved.length === 1, { timeout: config.navigationTimeoutMs });
+    const saved = await page.evaluate(() => window.__ocuSaved[0]);
+    assert.equal(saved.name, `${foundCurrent}.xml`, 'the browser saves <locale>.xml');
+    assert.equal(saved.type, 'application/xml');
+    assert.ok(saved.text.includes(`<Name>${foundCurrent}</Name>`) && saved.text.includes('<LocalesDeepExport>'), 'the file is the vendor\'s export of that locale');
+    await page.waitForFunction(
+      (wanted) => document.querySelector('[data-locale-transfer-status]')?.textContent.trim() === wanted,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.localeExportSaved.replace('<locale>', foundCurrent).replace('<file>', `${foundCurrent}.xml`)
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the `TASK_IMPORT_ACTION_ID` registration in `locale-list.page.ts` (rebuilt and redeployed) -> the command bar draws no Import and this goes red.
+test('Import opens its dialog, and a local file that holds only a locale InterSystems ships shows the ruled sentence and imports nothing', async () => {
+  const folder = mkdtempSync(join(tmpdir(), 'ocu-locale-import-'));
+  const { context, page } = await signedInAt(browser, config, route('locales'), VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await page.waitForFunction(
+      (wanted) => [...document.querySelectorAll('.ocu-command-bar-action')].some((button) => button.textContent.trim() === wanted && button.getAttribute('aria-disabled') === null),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.actionImport
+    );
+    await page.evaluate((wanted) => [...document.querySelectorAll('.ocu-command-bar-action')].find((button) => button.textContent.trim() === wanted).click(), STRINGS.actionImport);
+    await page.waitForSelector('app-explorer-import-dialog .ocu-dialog-title', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('app-explorer-import-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.localeImportTitle, 'the dialog is titled with the ruled words');
+    assert.equal(await page.$eval('[data-explorer-import-replaces]', (node) => node.textContent.trim()), STRINGS.localeImportReplaces, 'and states what an import replaces');
+    const local = join(folder, 'shipped.xml');
+    writeFileSync(local, `<?xml version="1.0" encoding="UTF-8"?><LocalesDeepExport><LocalesExport><Locales><Name>${foundCurrent}</Name></Locales></LocalesExport></LocalesDeepExport>`, 'utf8');
+    await page.click('input[data-explorer-import-source="local"]');
+    await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
+    await (await page.$('input[data-explorer-import-file]')).uploadFile(local);
+    await page.waitForFunction(() => document.querySelector('[data-explorer-import-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('[data-explorer-import-confirm]');
+    await page.waitForSelector('[data-explorer-transfer-refusal]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-explorer-transfer-refusal]', (node) => node.textContent.trim()), STRINGS.localeRefusalImportEmpty, 'a file of shipped records alone is refused with the published sentence, in the dialog');
+    assert.equal(storedCurrent().value, foundCurrent, 'and the current locale is as it was');
+  } finally {
+    await context.close();
+    rmSync(folder, { recursive: true, force: true });
   }
 });

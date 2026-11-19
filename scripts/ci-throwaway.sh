@@ -931,7 +931,8 @@ services:
       # locale-format switch, installs another locale and the original again, and creates and deletes one custom locale, restoring the
       # current locale and the switch after every method (Story 21.14). LocaleEditWrite copies the current locale to custom locales, sets,
       # adds and removes properties and tables of one, and loads one table of the copy, deleting every copy it made (Story 21.16).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite
+      # LocaleTransferWrite exports and imports custom locales, deleting every one it made (Story 21.15).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable

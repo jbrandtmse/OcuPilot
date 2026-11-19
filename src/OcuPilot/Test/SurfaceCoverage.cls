@@ -339,6 +339,8 @@ XData Coverage
 <tool name="osmgmt.localeproperties.add" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
 <tool name="osmgmt.localeproperties.remove" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
 <tool name="osmgmt.localeproperties.load" class="OcuPilot.Test.LocaleEditWrite" method="TestATableIsLoadedOnBothCallersAndTheDefaultBaselineRefusesIt"/>
+<tool name="osmgmt.locales.import" class="OcuPilot.Test.LocaleTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
+<tool name="osmgmt.locales.export" class="OcuPilot.Test.LocaleTransferWrite" method="TestALocaleIsExportedToThisBrowserAndToAServerFileOnBothCallers"/>
 <tool name="osmgmt.sqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.sqlshellsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.tsqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>

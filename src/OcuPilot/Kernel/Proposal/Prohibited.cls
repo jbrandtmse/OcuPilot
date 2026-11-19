@@ -1767,6 +1767,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; and AD-10 names no effect on a folder item, so the arm reads no target; the port refuses a file that is not folder items only, or whose first
         ; item is another, and a name already held, before any write. An export and a delete read the item and are judged by the reviewed-few sweep below.
         If (tType = ..#TYPEFOLDERITEM) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
+        ; Story 21.15: a locale import names its file by the literal import id, and AD-10 names no effect on a locale, so the arm reads no
+        ; target; the port refuses a file that is not an export, holds no custom record or would replace the current locale before any write.
+        If (tType = ..#TYPELOCALE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) && ($ZConvert(tId, "L") = ..#IMPORTTARGET) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that

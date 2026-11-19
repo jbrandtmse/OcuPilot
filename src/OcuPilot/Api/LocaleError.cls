@@ -4,8 +4,8 @@
 /// <file>ui/src/app/core/strings.ts</file> key. They live beside <class>OcuPilot.Api.Error</class> rather than in it because that class
 /// holds the compiler's limit of 1,000 parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>INSTALL</parameter>, <parameter>DELETE</parameter> and <parameter>LOAD</parameter> are not refusals: they are the consequence
-/// codes the proposal card and the dialog of an install, a delete and a table load carry.</p>
+/// <p><parameter>INSTALL</parameter>, <parameter>DELETE</parameter>, <parameter>LOAD</parameter> and <parameter>IMPORT</parameter> are not
+/// refusals: they are the consequence codes the proposal card and the dialog of an install, a delete, a table load and an import carry.</p>
 Class OcuPilot.Api.LocaleError Extends %RegisteredObject
 {
 
@@ -89,9 +89,46 @@ Parameter LOAD = "LOCALE.LOAD";
 
 Parameter REASONLOAD = "Loading makes this table available to every process on this instance until the next restart; on the current locale it can also change the instance's defaults.";
 
+/// <p>409: an import file is not a locale or table export: it holds a document type declaration, is not well-formed, or holds no
+/// locale, table or subtable record.</p>
+Parameter IMPORTSHAPE = "LOCALE.IMPORT.SHAPE";
+
+Parameter REASONIMPORTSHAPE = "This file is not a locale or table export.";
+
+/// <p>409: an import file holds no custom record: every record's name is one InterSystems ships.</p>
+Parameter IMPORTEMPTY = "LOCALE.IMPORT.EMPTY";
+
+Parameter REASONIMPORTEMPTY = "This file holds no custom locale or table to import.";
+
+/// <p>409: an import file would replace the current locale or a table it loads.</p>
+Parameter IMPORTCURRENT = "LOCALE.IMPORT.CURRENT";
+
+Parameter REASONIMPORTCURRENT = "This file would replace the current locale or a table it loads, so it cannot be imported.";
+
+/// <p>409: the file, or the records it would replace, changed after the import was reviewed.</p>
+Parameter IMPORTCHANGED = "LOCALE.IMPORT.CHANGED";
+
+Parameter REASONIMPORTCHANGED = "The file or the locales changed after the import was reviewed, so nothing was imported. Review the import again.";
+
+/// <p>409: an import file, or a locale exported to this browser, holds more characters than a locale file may.</p>
+Parameter TOOLARGE = "LOCALE.TOOLARGE";
+
+Parameter REASONTOOLARGE = "A locale file holds at most 3,000,000 characters, and this one holds more.";
+
+/// <p>The consequence code an import's proposal card carries.</p>
+Parameter IMPORT = "LOCALE.IMPORT";
+
+Parameter REASONIMPORT = "Importing replaces any custom locale or table with the same name. This cannot be undone.";
+
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not declare.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
+    If pCode = ..#IMPORTSHAPE Quit ..#REASONIMPORTSHAPE
+    If pCode = ..#IMPORTEMPTY Quit ..#REASONIMPORTEMPTY
+    If pCode = ..#IMPORTCURRENT Quit ..#REASONIMPORTCURRENT
+    If pCode = ..#IMPORTCHANGED Quit ..#REASONIMPORTCHANGED
+    If pCode = ..#TOOLARGE Quit ..#REASONTOOLARGE
+    If pCode = ..#IMPORT Quit ..#REASONIMPORT
     If pCode = ..#NOTFOUND Quit ..#REASONNOTFOUND
     If pCode = ..#NOTINSTALLABLE Quit ..#REASONNOTINSTALLABLE
     If pCode = ..#SYSTEM Quit ..#REASONSYSTEM
@@ -118,6 +155,7 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer
     If pCode = ..#COPYNAME Quit 400
     If (pCode = ..#NOTINSTALLABLE) || (pCode = ..#SYSTEM) || (pCode = ..#CURRENT) || (pCode = ..#COPYTAKEN) || (pCode = ..#EDITSYSTEM) || (pCode = ..#EDITCURRENT) Quit 409
     If (pCode = ..#TABLEUNAVAILABLE) || (pCode = ..#TABLETAKEN) || (pCode = ..#TABLEDEFAULT) || (pCode = ..#TABLEROW) || (pCode = ..#TABLENOTLOADABLE) Quit 409
+    If (pCode = ..#IMPORTSHAPE) || (pCode = ..#IMPORTEMPTY) || (pCode = ..#IMPORTCURRENT) || (pCode = ..#IMPORTCHANGED) || (pCode = ..#TOOLARGE) Quit 409
     Quit 0
 }
 

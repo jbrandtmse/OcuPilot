@@ -194,7 +194,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   // Story 21.14: the NLS defaults' Set value opens the settings page's dialog; the locales' Validate opens its own dialog, and Install and Delete type the name.
   'OcuPilot.Screen.Descriptor.NlsDefaultList': { set: STRINGS.interopItemSettingSetAction },
-  'OcuPilot.Screen.Descriptor.LocaleList': { validate: STRINGS.licenseKeyValidate, install: STRINGS.localeInstallAction, delete: STRINGS.actionDelete, copy: STRINGS.auditDatabaseCopyConfirm },
+  'OcuPilot.Screen.Descriptor.LocaleList': { validate: STRINGS.licenseKeyValidate, install: STRINGS.localeInstallAction, delete: STRINGS.actionDelete, copy: STRINGS.auditDatabaseCopyConfirm, export: STRINGS.taskExportAction },
   // Story 21.16: one locale's properties, whose Set value is the configuration settings page's own.
   'OcuPilot.Screen.Descriptor.LocalePropertyList': {
     set: STRINGS.interopItemSettingSetAction,

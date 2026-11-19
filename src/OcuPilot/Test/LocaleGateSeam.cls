@@ -20,6 +20,92 @@ ClassMethod Reset()
 {
     Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
     Kill ^||OcuPilotLocaleProps, ^||OcuPilotLocaleTables, ^||OcuPilotLocaleAvailable, ^||OcuPilotLocaleSent, ^||OcuPilotLocaleUncompiled
+    Kill ^||OcuPilotLocaleCurrent, ^||OcuPilotLocaleImported, ^||OcuPilotLocaleImportCounts, ^||OcuPilotLocaleExportText, ^||OcuPilotLocaleExportCounts
+}
+
+/// <p>Pose <var>pLocale</var> as the current locale, loading the tables in <var>pTables</var> (<code>pTables(type, from, to)</code>) and the sub-tables in
+/// <var>pSubTables</var> (<code>pSubTables(name)</code>), in <method>CurrentFootprint</method>, until <method>Reset</method>.</p>
+ClassMethod HoldCurrent(pLocale As %String, ByRef pTables, ByRef pSubTables)
+{
+    Kill ^||OcuPilotLocaleCurrent
+    Set ^||OcuPilotLocaleCurrent = pLocale
+    Merge ^||OcuPilotLocaleCurrent("tables") = pTables
+    Merge ^||OcuPilotLocaleCurrent("subtables") = pSubTables
+}
+
+ClassMethod CurrentFootprint(Output pLocale As %String, Output pTables, Output pSubTables) As %Status
+{
+    If '$Data(^||OcuPilotLocaleCurrent) Quit ##super(.pLocale, .pTables, .pSubTables)
+    Set pLocale = ^||OcuPilotLocaleCurrent
+    Kill pTables, pSubTables
+    Merge pTables = ^||OcuPilotLocaleCurrent("tables")
+    Merge pSubTables = ^||OcuPilotLocaleCurrent("subtables")
+    Quit $$$OK
+}
+
+/// <p>Make the import report the vendor's counts <var>pLocales</var>, <var>pTables</var> and <var>pSubTables</var> instead of the counts of the records it was
+/// handed, until <method>Reset</method>.</p>
+ClassMethod FeedImportCounts(pLocales As %Integer, pTables As %Integer, pSubTables As %Integer)
+{
+    Set ^||OcuPilotLocaleImportCounts = $ListBuild(pLocales, pTables, pSubTables)
+}
+
+/// <p>The text the last <method>SendImport</method> was handed, the vendor's file in this seam's place.</p>
+ClassMethod Imported() As %String
+{
+    Quit $Get(^||OcuPilotLocaleImported)
+}
+
+/// <p>Make an export answer <var>pText</var> as its text, and the vendor's counts <var>pLocales</var>, <var>pTables</var> and <var>pSubTables</var>, until
+/// <method>Reset</method>.</p>
+ClassMethod FeedExport(pText As %String, pLocales As %Integer = 1, pTables As %Integer = 0, pSubTables As %Integer = 0)
+{
+    Set ^||OcuPilotLocaleExportText = pText
+    Set ^||OcuPilotLocaleExportCounts = $ListBuild(pLocales, pTables, pSubTables)
+}
+
+ClassMethod SendImport(pKept As %Stream.TmpCharacter, Output pCounts) As %Status [ Private ]
+{
+    Kill pCounts
+    Do pKept.Rewind()
+    Set tText = ""
+    While 'pKept.AtEnd {
+        Set tText = tText _ pKept.Read(32000)
+    }
+    Set ^||OcuPilotLocaleImported = tText
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "IMPORT"
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Data(^||OcuPilotLocaleImportCounts) {
+        Set pCounts("Locales") = $List(^||OcuPilotLocaleImportCounts, 1)
+        Set pCounts("Tables") = $List(^||OcuPilotLocaleImportCounts, 2)
+        Set pCounts("SubTables") = $List(^||OcuPilotLocaleImportCounts, 3)
+    } Else {
+        Set pCounts("Locales") = $Length(tText, "<Locales>") - 1
+        Set pCounts("Tables") = $Length(tText, "<Tables>") - 1
+        Set pCounts("SubTables") = $Length(tText, "<SubTables>") - 1
+    }
+    Quit $$$OK
+}
+
+ClassMethod SendExport(pName As %String, pResolved As %String, Output pCounts, Output pText As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+{
+    Kill pCounts
+    Set pText = ""
+    Set pTooLarge = 0
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "EXPORT|" _ pName _ "|" _ $Select(pResolved = "": "browser", 1: "file")
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Set tCounts = $Get(^||OcuPilotLocaleExportCounts, $ListBuild(1, 0, 0))
+    Set pCounts("Locales") = $List(tCounts, 1)
+    Set pCounts("Tables") = $List(tCounts, 2)
+    Set pCounts("SubTables") = $List(tCounts, 3)
+    If pResolved = "" {
+        Set pText = $Get(^||OcuPilotLocaleExportText)
+        If $Length(pText) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
+            Set pText = ""
+            Set pTooLarge = 1
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>Pose the definition <var>pProps</var> (a <code>Get</code> array) as the fresh read of <var>pLocale</var> in <method>LocaleProperties</method>, until
