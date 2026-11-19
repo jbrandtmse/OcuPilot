@@ -38,6 +38,18 @@ export function fieldOf(row: unknown, field: string): unknown {
  */
 const VALUE_WORDS: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>>> = {
   'OcuPilot.Screen.Descriptor.NlsDefaultList': { Source: { config: STRINGS.nlsDefaultSourceConfig, locale: STRINGS.nlsDefaultSourceLocale } },
+  // Story 21.16: a Locale properties row's group, as the classic editor's seven groups are worded.
+  'OcuPilot.Screen.Descriptor.LocalePropertyList': {
+    Group: {
+      basic: STRINGS.localeGroupBasic,
+      formats: STRINGS.localeGroupFormats,
+      tables: STRINGS.localeGroupTables,
+      iotables: STRINGS.localeGroupIoTables,
+      tabledefaults: STRINGS.localeGroupTableDefaults,
+      iodefaults: STRINGS.localeGroupIoDefaults,
+      strings: STRINGS.localeGroupStrings,
+    },
+  },
 };
 
 /** The word `descriptor`'s `field` draws for `value`, or `value` itself where none is declared. */

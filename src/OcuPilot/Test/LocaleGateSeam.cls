@@ -19,6 +19,94 @@ ClassMethod GateClass() As %String
 ClassMethod Reset()
 {
     Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
+    Kill ^||OcuPilotLocaleProps, ^||OcuPilotLocaleTables, ^||OcuPilotLocaleAvailable, ^||OcuPilotLocaleSent, ^||OcuPilotLocaleUncompiled
+}
+
+/// <p>Pose the definition <var>pProps</var> (a <code>Get</code> array) as the fresh read of <var>pLocale</var> in <method>LocaleProperties</method>, until
+/// <method>Reset</method>.</p>
+ClassMethod HoldProperties(pLocale As %String, ByRef pProps)
+{
+    Kill ^||OcuPilotLocaleProps(pLocale)
+    Merge ^||OcuPilotLocaleProps(pLocale) = pProps
+}
+
+/// <p>Make <method>LocaleTables</method> answer the names in <var>pNames</var> (a <code>%List</code>) for tables of type <var>pType</var>, whatever the
+/// locale, until <method>Reset</method>.</p>
+ClassMethod HoldTables(pType As %String, pNames As %List)
+{
+    Set ^||OcuPilotLocaleTables(pType) = pNames
+}
+
+/// <p>Make <method>TableAvailable</method> answer <var>pAvailable</var> whatever it is asked, until <method>Reset</method>.</p>
+ClassMethod FeedAvailable(pAvailable As %Boolean)
+{
+    Set ^||OcuPilotLocaleAvailable = ''pAvailable
+}
+
+/// <p>The complete set the last <method>SendModify</method> or <method>SendCreate</method> was given, in <var>pSet</var>.</p>
+ClassMethod Sent(Output pSet)
+{
+    Kill pSet
+    Merge pSet = ^||OcuPilotLocaleSent
+}
+
+ClassMethod LocaleProperties(pLocale As %String, ByRef pProps) As %Status
+{
+    If '$Data(^||OcuPilotLocaleProps(pLocale)) Quit ##super(pLocale, .pProps)
+    Kill pProps
+    Merge pProps = ^||OcuPilotLocaleProps(pLocale)
+    Quit $$$OK
+}
+
+ClassMethod LocaleTables(pLocale As %String, pType As %String, pBuiltIn As %Boolean = 0) As %List
+{
+    If $Data(^||OcuPilotLocaleTables(pType)) Quit ^||OcuPilotLocaleTables(pType)
+    Quit ##super(pLocale, pType, pBuiltIn)
+}
+
+ClassMethod TableAvailable(pType As %String, pCharacterSet As %String, pTable As %String) As %Boolean
+{
+    If $Data(^||OcuPilotLocaleAvailable) Quit ^||OcuPilotLocaleAvailable
+    Quit ##super(pType, pCharacterSet, pTable)
+}
+
+/// <p>Make <method>TableLoadable</method> answer 0 for a table named <var>pTable</var> on either side, until <method>Reset</method>: the instance lists it
+/// for the locale and has not compiled it. A type whose names <method>HoldTables</method> poses answers 1 for every other table.</p>
+ClassMethod HoldUncompiled(pTable As %String)
+{
+    Set ^||OcuPilotLocaleUncompiled(pTable) = 1
+}
+
+ClassMethod TableLoadable(pType As %String, pFrom As %String, pTo As %String) As %Boolean
+{
+    If $Data(^||OcuPilotLocaleUncompiled(pFrom)) || $Data(^||OcuPilotLocaleUncompiled(pTo)) Quit 0
+    If $Data(^||OcuPilotLocaleTables(pType)) Quit 1
+    Quit ##super(pType, pFrom, pTo)
+}
+
+ClassMethod SendCreate(pName As %String, ByRef pProps) As %Status [ Private ]
+{
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "CREATE|" _ pName
+    Kill ^||OcuPilotLocaleSent
+    Merge ^||OcuPilotLocaleSent = pProps
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit $$$OK
+}
+
+ClassMethod SendModify(pLocale As %String, ByRef pSet) As %Status [ Private ]
+{
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "MODIFY|" _ pLocale
+    Kill ^||OcuPilotLocaleSent
+    Merge ^||OcuPilotLocaleSent = pSet
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit $$$OK
+}
+
+ClassMethod SendLoad(pLocale As %String, pType As %String, pTable As %String) As %Status [ Private ]
+{
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "LOAD|" _ pLocale _ "|" _ pType _ "|" _ pTable
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit $$$OK
 }
 
 /// <p>Answer an error from <method>SendInstall</method> and <method>SendDelete</method> until <method>Reset</method>.</p>

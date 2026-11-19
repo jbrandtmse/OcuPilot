@@ -327,6 +327,12 @@ XData Coverage
 <tool name="osmgmt.nlsdefaults.set" class="OcuPilot.Test.LocaleWrite" method="TestTheSwitchRoundTripsOverTheNodeAndReloadsOnBothCallers"/>
 <tool name="osmgmt.locales.install" class="OcuPilot.Test.LocaleWrite" method="TestAnotherLocaleIsInstalledOnBothCallersAndTheOriginalComesBack"/>
 <tool name="osmgmt.locales.delete" class="OcuPilot.Test.LocaleWrite" method="TestACustomLocaleIsDeletedOnBothCallersAndTheOthersAreRefused"/>
+<screen name="LocalePropertyList" class="OcuPilot.Test.LocalePropertyRead" method="TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences"/>
+<tool name="osmgmt.locales.copy" class="OcuPilot.Test.LocaleEditWrite" method="TestTheCurrentLocaleIsCopiedOnBothCallersAndTheOthersAreRefused"/>
+<tool name="osmgmt.localeproperties.set" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.add" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.remove" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.load" class="OcuPilot.Test.LocaleEditWrite" method="TestATableIsLoadedOnBothCallersAndTheDefaultBaselineRefusesIt"/>
 <tool name="osmgmt.sqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.sqlshellsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.tsqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>

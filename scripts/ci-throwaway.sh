@@ -924,8 +924,9 @@ services:
       # mail password to probe values and restores the stored one after every method (Story 21.24). DdlMappingWrite creates, changes and
       # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13). LocaleWrite sets the
       # locale-format switch, installs another locale and the original again, and creates and deletes one custom locale, restoring the
-      # current locale and the switch after every method (Story 21.14).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite
+      # current locale and the switch after every method (Story 21.14). LocaleEditWrite copies the current locale to custom locales, sets,
+      # adds and removes properties and tables of one, and loads one table of the copy, deleting every copy it made (Story 21.16).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable

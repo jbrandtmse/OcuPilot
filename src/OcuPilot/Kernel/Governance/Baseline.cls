@@ -310,7 +310,12 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.userddlmappings.delete": false,
   "osmgmt.nlsdefaults.set": true,
   "osmgmt.locales.install": false,
-  "osmgmt.locales.delete": false
+  "osmgmt.locales.delete": false,
+  "osmgmt.locales.copy": true,
+  "osmgmt.localeproperties.set": true,
+  "osmgmt.localeproperties.add": true,
+  "osmgmt.localeproperties.remove": true,
+  "osmgmt.localeproperties.load": false
 }
 }
 

@@ -8561,6 +8561,63 @@ export const STRINGS = {
   localeDeleteConsequence: 'The locale and its definition are removed from this instance.',
   /** EXPERIENCE.md:604 */
   nlsDefaultReloadConsequence: 'Changing this reloads the current locale, so new processes take its date, time and number formats.',
+  // Story 21.16: Locale properties and the locale copy -- the title, the entity noun, the seven group words, the three table actions and
+  // the copy action, the two dialog titles, the empty-agent phrase, the three prompts, the nine refusals and the load consequence the server
+  // sends.
+  /** EXPERIENCE.md:604 */
+  localePropertiesLabel: 'Locale properties',
+  /** EXPERIENCE.md:604 */
+  aboutLocaleProperty: 'locale property',
+  /** EXPERIENCE.md:604 */
+  localeGroupBasic: 'Basic properties',
+  /** EXPERIENCE.md:604 */
+  localeGroupFormats: 'Date, time and number formats',
+  /** EXPERIENCE.md:604 */
+  localeGroupTables: 'Internal tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupIoTables: 'Input/output tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupTableDefaults: 'Defaults for internal tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupIoDefaults: 'Defaults for input/output',
+  /** EXPERIENCE.md:604 */
+  localeGroupStrings: 'Strings',
+  /** EXPERIENCE.md:604 */
+  localeAddTableAction: 'Add table',
+  /** EXPERIENCE.md:604 */
+  localeRemoveTableAction: 'Remove table',
+  /** EXPERIENCE.md:604 */
+  localeLoadTableAction: 'Load table',
+  /** EXPERIENCE.md:604 */
+  localeCopyTitle: 'Copy locale <locale>',
+  /** EXPERIENCE.md:604 */
+  localePropertiesEmptyAgent: 'change a locale property',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt1: 'Which date format does this locale use?',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt2: 'Which tables can this locale load?',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt3: 'Copy this locale to a custom locale',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCopyName: 'A new locale\'s name is y, two lowercase letters or digits, and the last character of the locale it copies: w for Unicode or 8 for 8-bit.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCopyTaken: 'A locale with that name already exists.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalEditSystem: 'A locale InterSystems ships cannot be changed; copy it to a custom locale and change the copy.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalEditCurrent: 'The current locale cannot be changed; copy it, change the copy, and install it.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableUnavailable: 'This instance holds no such table for this locale\'s character set.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableTaken: 'This locale already lists that table.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableDefault: 'This table is a default of this locale; choose another default first.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableRow: 'Only a table row can be removed.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableNotLoadable: 'Only a table this locale lists that is not built in can be loaded.',
+  /** EXPERIENCE.md:604 */
+  localeLoadConsequence: 'Loading makes this table available to every process on this instance until the next restart; on the current locale it can also change the instance\'s defaults.',
   // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
   // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
   /** EXPERIENCE.md:594 */

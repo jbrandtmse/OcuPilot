@@ -318,7 +318,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application', 'allowed-directory-fallback', 'protected-global'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application', 'allowed-directory-fallback', 'protected-global', 'locale-table', 'locale-loadable'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -2279,7 +2279,8 @@ export function criteriaProblem(declaration) {
   // except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
   const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
   // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
-  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS;
+  // Story 21.16: a locale read takes criteria only as its parent's route id (one locale's properties), on a parent-scoped list.
+  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS || port === SOURCE_LOCALE;
   if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && port !== SOURCE_DEVTOOL && port !== SOURCE_GLOBAL && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }

@@ -601,8 +601,24 @@ ClassMethod Limits(pEndpoint As %String, pName As %String) As %List
     Quit tLimits
 }
 
+/// <p><method>LimitsOf</method> for the property <var>pName</var> of the vendor class <var>pClass</var>, read in <code>%SYS</code> by save and
+/// restore; <code>""</code> when the class has no such property or cannot be read.</p>
+ClassMethod ClassLimits(pClass As %String, pName As %String) As %List
+{
+    Set tLimits = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tLimits = ..LimitsOf(pClass, pName)
+    } Catch {
+        Set tLimits = ""
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tLimits
+}
+
 /// <p><method>Limits</method> for the vendor class <var>pClass</var>, in <code>%SYS</code>.</p>
-ClassMethod LimitsOf(pClass As %String, pName As %String) As %List [ Private ]
+ClassMethod LimitsOf(pClass As %String, pName As %String) As %List
 {
     Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(pClass _ "||" _ pName, 0)
     If '$IsObject(tProperty) Quit ""

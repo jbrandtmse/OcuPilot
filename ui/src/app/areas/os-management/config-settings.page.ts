@@ -1,17 +1,22 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { ApiService } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { screenForUrl } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { rowFor } from '../../core/table-model';
+import { localeEditRefusal } from '../../core/self-protection';
 import { reasonForField } from '../../core/violations';
 import { ListPage } from '../../shell/list-page';
-import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { LOCALE_ADD_TABLE, LOCALE_PROPERTY_LIST, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { BOOLEAN_TYPE, InteropItemSettingDialog } from '../interoperability/interop-item-setting-dialog';
 import { DdlMappingDialog } from './ddl-mapping-dialog';
+import { LOCALE_PROPERTY_ENTITY, LOCALE_TABLE_PATH, LOCALE_TABLE_TOOL, postLocaleCreate } from './locale-create';
+import { LocaleTableDialog, type LocaleTableValues } from './locale-table-dialog';
 
 /** The descriptors this one page serves (Stories 21.3, 21.4, 21.13 and 21.14). */
 export const STARTUP_SETTING_LIST = 'OcuPilot.Screen.Descriptor.StartupSettingList';
@@ -36,6 +41,7 @@ const SERVED_LISTS: readonly string[] = [
   DDL_SYSTEM_MAPPING_LIST,
   DDL_USER_MAPPING_LIST,
   NLS_DEFAULT_LIST,
+  LOCALE_PROPERTY_LIST,
 ];
 
 /** The one NLS configured default a person changes: the switch that makes new processes take the current locale's formats (Story 21.14). */
@@ -89,11 +95,15 @@ function text(value: unknown): string {
  *
  * **NLS configured defaults offer Set value on the locale-format switch alone**: every table row is read-only and so refused as above. The
  * switch's dialog and the line after an applied change state that the current locale is reloaded.
+ *
+ * **Locale properties** (Story 21.16) are served here too: Set value's reason is the row's `Refusal` sentence, else the read-only one, and Add
+ * table, which this page registers on that screen alone, opens `LocaleTableDialog` and posts `<list>:<table>` of the screen's locale to the add tool's own
+ * Save route, its reason the sentence every row of the locale carries.
  */
 @Component({
   selector: 'app-config-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ListPage, InteropItemSettingDialog, DdlMappingDialog],
+  imports: [ListPage, InteropItemSettingDialog, DdlMappingDialog, LocaleTableDialog],
   // The height chain every page host carries, so the list's viewport keeps its height.
   styles: `
     :host {
@@ -115,6 +125,9 @@ function text(value: unknown): string {
     <app-list-page />
     @if (adding) {
       <app-ddl-mapping-dialog (added)="onCloseAdd()" (cancelled)="onCloseAdd()" />
+    }
+    @if (tableAdding) {
+      <app-locale-table-dialog [refusal]="tableRefusal()" [sending]="tableSending()" (submitted)="onAddTable($event)" (cancelled)="onCloseAddTable()" />
     }
     @if (openTarget; as target) {
       <app-interop-item-setting-dialog
@@ -138,6 +151,10 @@ export class ConfigSettingsPage {
   private readonly handler = inject(ScreenActionHandler);
 
   private readonly actions = inject(ScreenActions);
+
+  private readonly api = inject(ApiService);
+
+  private readonly bus = inject(ChangeBus);
 
   private readonly screen: ScreenDeclaration | null;
 
@@ -186,6 +203,17 @@ export class ConfigSettingsPage {
     return this.addOpen();
   }
 
+  /** Whether the Add table dialog is open, its last refusal and whether a send is in flight (Story 21.16). */
+  private readonly tableOpen = signal(false);
+
+  protected readonly tableRefusal = signal('');
+
+  protected readonly tableSending = signal(false);
+
+  protected get tableAdding(): boolean {
+    return this.tableOpen();
+  }
+
   constructor() {
     const found = screenForUrl(inject(Router).url);
     this.screen = found !== null && this.serves(found.descriptor) ? found : null;
@@ -195,13 +223,70 @@ export class ConfigSettingsPage {
       this.screen.descriptor,
       CONFIG_SET_ACTION,
       () => this.onOpen(),
-      () => (this.selectedRow()?.['ReadOnly'] === true ? STRINGS.configRefusalReadOnly : '')
+      () => {
+        const row = this.selectedRow();
+        if (this.screen?.descriptor === LOCALE_PROPERTY_LIST) {
+          const refusal = localeEditRefusal(row?.['Refusal']);
+          if (refusal !== '') return refusal;
+        }
+        return row?.['ReadOnly'] === true ? STRINGS.configRefusalReadOnly : '';
+      }
     );
     const stopAdd = this.screen.descriptor === DDL_USER_MAPPING_LIST ? this.actions.register(this.screen.descriptor, DDL_MAPPING_ADD_ACTION, () => this.onOpenAdd()) : (): void => undefined;
+    const stopTable =
+      this.screen.descriptor === LOCALE_PROPERTY_LIST
+        ? this.actions.register(this.screen.descriptor, LOCALE_ADD_TABLE, () => this.onOpenAddTable(), () => localeEditRefusal(this.localeRows()[0]?.['Refusal']))
+        : (): void => undefined;
     inject(DestroyRef).onDestroy(() => {
       stop();
       stopAdd();
+      stopTable();
     });
+  }
+
+  /** The locale's rows the list holds, or none while it has not read. */
+  private localeRows(): readonly Readonly<Record<string, unknown>>[] {
+    if (this.screen === null || this.store === null) return [];
+    return this.store.data().filter((entry): entry is Readonly<Record<string, unknown>> => entry !== null && typeof entry === 'object');
+  }
+
+  /** Open the Add table dialog, never over another dialog and never for a locale that admits no change. */
+  protected onOpenAddTable(): void {
+    if (this.tableOpen() || this.target() !== null || this.addOpen() || this.handler.pending() !== null) return;
+    if (localeEditRefusal(this.localeRows()[0]?.['Refusal']) !== '') return;
+    this.tableRefusal.set('');
+    this.tableOpen.set(true);
+  }
+
+  protected onCloseAddTable(): void {
+    this.tableOpen.set(false);
+    this.tableRefusal.set('');
+  }
+
+  /** One Add table posted to the Save route, with the screen's locale and the new row; a refusal stays in the dialog. */
+  protected async onAddTable(values: LocaleTableValues): Promise<void> {
+    const locale = this.localeRows()[0]?.['Locale'];
+    if (this.screen === null || typeof locale !== 'string' || this.tableSending()) return;
+    this.tableSending.set(true);
+    this.tableRefusal.set('');
+    const body: Record<string, string> = { Locale: locale, Name: values.name };
+    if (values.inputFrom !== '') body['InputFrom'] = values.inputFrom;
+    if (values.outputTo !== '') body['OutputTo'] = values.outputTo;
+    const outcome = await postLocaleCreate({
+      api: this.api,
+      bus: this.bus,
+      path: LOCALE_TABLE_PATH,
+      body,
+      type: LOCALE_PROPERTY_ENTITY,
+      tool: LOCALE_TABLE_TOOL,
+      fallbackId: `${locale}\u0001${values.name}`,
+    });
+    this.tableSending.set(false);
+    if (outcome.accepted) {
+      this.onCloseAddTable();
+      return;
+    }
+    this.tableRefusal.set(outcome.reason);
   }
 
   private serves(descriptor: string): boolean {

@@ -166,6 +166,7 @@ XData Titles
 "licenseUsageLabel": "License usage",
 "linksDocumentation": "Documentation",
 "localDatabaseListLabel": "Local databases",
+"localePropertiesLabel": "Locale properties",
 "localesLabel": "Locale definitions",
 "lockListLabel": "Locks",
 "logHubLabel": "Unified log hub",

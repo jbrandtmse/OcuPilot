@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'global' | 'global-node';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -576,6 +576,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "user-ddl-mapping",
   "nls-default",
   "locale",
+  "locale-property",
   "global",
   "global-node"
 ];
@@ -24709,6 +24710,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -24801,6 +24806,172 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "localesEmptyAgent"
     },
     "toolIdentifier": "osmgmt.locales",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalePropertyList",
+    "route": "os-management/locales/properties",
+    "area": "os-management",
+    "labelKey": "localePropertiesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "locale-property",
+    "entityLabelKey": "aboutLocaleProperty",
+    "secondaryEntityTypes": [
+      "locale"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/locales",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Locale",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add-table",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-table",
+        "selfProtection": "locale-table"
+      },
+      {
+        "id": "load-table",
+        "selfProtection": "locale-loadable"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Locale",
+        "Group",
+        "Name",
+        "Value",
+        "Kind",
+        "ReadOnly",
+        "Refusal",
+        "Loadable"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "locale properties"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NLSEdit",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "locale property",
+      "label": "One locale's properties, tables and input/output tables, one row each, by Group. Only a custom locale that is not current can be changed; Refusal says why not. Loadable is true for a table the instance can load.",
+      "source": {
+        "port": "locale",
+        "endpoint": "Properties",
+        "type": "LIST"
+      },
+      "fields": [
+        "Locale",
+        "Group",
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "ReadOnly",
+        "Refusal",
+        "Loadable"
+      ],
+      "filter": [
+        "Group",
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Group",
+          "Name",
+          "Value"
+        ],
+        "default": "Group",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "locale",
+            "labelKey": "aboutLocaleDefinition",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One locale, spelled as osmgmt.locales answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Group",
+          "labelKey": "analyticsColumnGroup",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "localePropertiesEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.localeproperties",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

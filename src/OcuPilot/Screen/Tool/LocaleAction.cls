@@ -80,6 +80,15 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $ClassMethod(..#RULES, "WriteProblem", ..ToolClass(), pIdValue, pArgs, .pProblem)
 }
 
+/// <p>The create's payload with the identifying argument added, so a create's read-back compares the name the caller typed (the kernel's compose
+/// leaves the identifying argument out of a body, and the port reads the name from its query).</p>
+ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If $$$ISOK(tSC) && $IsObject(pPayload) && (pArgs.%GetTypeOf(pIdArgument) = "string") Do pPayload.%Set(pIdArgument, pArgs.%Get(pIdArgument), "string")
+    Quit tSC
+}
+
 /// <p>The screen's action takes no value, so it sends no argument.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {

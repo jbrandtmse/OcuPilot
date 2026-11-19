@@ -37,6 +37,8 @@ const SWITCH = 'LocaleFormat';
 const NODE = '^SYS("NLS","Config","LocaleFormat")';
 const VENDOR = 'OcuPilot.Test.LocaleWriteVendor';
 const CUSTOM = 'yzzw';
+/** The custom locale the Copy test makes, and removes afterwards. */
+const COPIED = 'yzcw';
 
 let browser = null;
 let foundSwitch = '';
@@ -125,6 +127,7 @@ before(async () => {
   foundCurrent = current.value;
   touched = true;
   assert.equal(vendor('NLSCLEAR', 'RemoveCustom', CUSTOM).value, '1', `a custom locale ${CUSTOM} a stopped run left is removed first`);
+  assert.equal(vendor('NLSCLEAR2', 'RemoveCustom', COPIED).value, '1', `a custom locale ${COPIED} a stopped run left is removed first`);
   assert.equal(vendor('NLSMAKE', 'Create', CUSTOM).value, '1', `the custom locale ${CUSTOM} is created from the current one`);
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -134,7 +137,9 @@ after(async () => {
     if (touched && /-ci$/.test(config.container)) {
       const put = restoreSwitch(foundSwitch);
       const removed = vendor('NLSGONE', 'RemoveCustom', CUSTOM);
+      const removedCopy = vendor('NLSGONE2', 'RemoveCustom', COPIED);
       assert.equal(removed.value, '1', `the custom locale ${CUSTOM} is removed: ${removed.output}`);
+      assert.equal(removedCopy.value, '1', `the custom locale ${COPIED} is removed: ${removedCopy.output}`);
       assert.equal(put.value, '1', `the switch is put back to ${JSON.stringify(foundSwitch)} and the locale reloaded: ${put.output}`);
       assert.equal(storedSwitch().value, foundSwitch, 'and its node reads as found');
       assert.equal(storedCurrent().value, foundCurrent, 'and the current locale is as found');
@@ -292,6 +297,167 @@ test('Delete of a custom locale asks its name, states the consequence and remove
     await confirmWith(page, CUSTOM);
     assert.ok((await announcement(page, `${CUSTOM} was deleted`)).startsWith(`${CUSTOM} was deleted`), 'the screen announces the delete');
     assert.equal(vendor('NLSHAS', 'Exists', CUSTOM).value, '0', 'and the instance no longer holds the locale');
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * Narrow the Locale properties list to the rows naming `name` and click the row whose second cell (its Name) starts with it, on its third cell.
+ * The first column is the Group, so `selectRow`'s first-cell match does not apply here.
+ */
+async function selectProperty(page, name) {
+  await page.click(FILTER_SELECTOR, { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type(FILTER_SELECTOR, name);
+  await page.waitForFunction(
+    (rowSelector, wanted) => {
+      const rows = [...document.querySelectorAll(rowSelector)];
+      // The list has narrowed once every row standing names the property, so an index read now is the narrowed list's.
+      return rows.length > 0 && rows.length <= 3 && rows.every((row) => row.querySelectorAll('[role="gridcell"]')[1]?.textContent.trim().startsWith(wanted));
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    name
+  );
+  const at = await page.$$eval(ROW_SELECTOR, (rows, wanted) => rows.findIndex((row) => row.querySelectorAll('[role="gridcell"]')[1]?.textContent.trim().startsWith(wanted)), name);
+  await clickRowCentre(page, { index: at, cell: 2 });
+}
+
+const GROUP_WORDS = [
+  STRINGS.localeGroupBasic,
+  STRINGS.localeGroupFormats,
+  STRINGS.localeGroupTables,
+  STRINGS.localeGroupIoTables,
+  STRINGS.localeGroupTableDefaults,
+  STRINGS.localeGroupIoDefaults,
+  STRINGS.localeGroupStrings,
+];
+
+// Mutation (Rule 19): drop `LocalePropertyList` from `VALUE_WORDS` in `table-model.ts` (rebuilt and redeployed) -> the cells read the codes and this goes red.
+test('the properties of the current locale draw each group as its ruled word, and Set value, Remove table and Load table are unavailable with the published sentences', async () => {
+  const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(foundCurrent)}`, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    const groups = await page.$$eval(ROW_SELECTOR, (rows) => [...new Set(rows.map((row) => row.querySelectorAll('[role="gridcell"]')[0]?.textContent.trim()))]);
+    assert.ok(groups.length > 0 && groups.every((group) => GROUP_WORDS.includes(group)), `every group cell reads one of the seven ruled words: ${groups.join(' | ')}`);
+    await selectProperty(page, 'DateFormat');
+    assert.deepEqual(await menuEntry(page, STRINGS.interopItemSettingSetAction), { disabled: true, reason: STRINGS.localeRefusalEditCurrent }, 'Set value is unavailable on the current locale, naming why');
+    await clickEntry(page, STRINGS.interopItemSettingSetAction);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.equal(await page.$('[data-interop-setting-consequence]'), null, 'and pressing it opens no dialog');
+    await selectProperty(page, 'PatternTables:Unicode');
+    assert.deepEqual(await menuEntry(page, STRINGS.localeRemoveTableAction), { disabled: true, reason: STRINGS.localeRefusalEditCurrent }, 'Remove table is unavailable on a table of the current locale');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Load table is unavailable on a row that is not a table, naming why', async () => {
+  const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(foundCurrent)}`, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectProperty(page, 'DateFormat');
+    assert.deepEqual(await menuEntry(page, STRINGS.localeLoadTableAction), { disabled: true, reason: STRINGS.localeRefusalTableNotLoadable }, 'Load table is unavailable on a property row');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Set value on a custom locale changes its date format on the instance', async () => {
+  ensureCustom('SET');
+  const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(CUSTOM)}`, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectProperty(page, 'DateFormat');
+    assert.deepEqual(await menuEntry(page, STRINGS.interopItemSettingSetAction), { disabled: false, reason: '' }, 'Set value is offered on a custom locale that is not current');
+    await clickEntry(page, STRINGS.interopItemSettingSetAction);
+    await page.waitForSelector('[data-interop-setting-confirm]', { visible: true, timeout: config.navigationTimeoutMs });
+    const field = await page.$('[data-interop-setting-value]');
+    assert.notEqual(field, null, 'the dialog has its value field');
+    await page.click('[data-interop-setting-value]', { clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await page.type('[data-interop-setting-value]', '5');
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector('[data-interop-setting-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(probe('NLSDATE', [`Set tSC=##class(Config.NLS.Locales).Get("${CUSTOM}",.p) Set result=$Get(p("DateFormat"))`]).value, '5', 'the instance holds the new date format');
+  } finally {
+    await context.close();
+  }
+});
+
+/** Make sure the custom locale `CUSTOM` stands, whichever test ran before. */
+function ensureCustom(name) {
+  if (vendor(`NLSHAS${name}`, 'Exists', CUSTOM).value !== '1') assert.equal(vendor(`NLSMAKE${name}`, 'Create', CUSTOM).value, '1', `the custom locale ${CUSTOM} is created`);
+}
+
+/** Type `value` into the field `selector`, replacing what it holds. */
+async function replaceText(page, selector, value) {
+  await page.click(selector, { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type(selector, value);
+}
+
+// Mutation (Rule 19): post the copy to the screen's action route instead of `/api/ocupilot/locales` in `locale-list.page.ts` (rebuilt and redeployed) -> the
+// sentence and the instance assertions go red.
+test('Copy of a locale refuses a name the instance lists with the published sentence, then makes the custom locale the spec names', async () => {
+  ensureCustom('COPY');
+  const { context, page } = await signedInAt(browser, config, route('locales'), VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectRow(page, foundCurrent);
+    assert.deepEqual(await menuEntry(page, STRINGS.auditDatabaseCopyConfirm), { disabled: false, reason: '' }, 'Copy is offered on any locale');
+    await clickEntry(page, STRINGS.auditDatabaseCopyConfirm);
+    await page.waitForSelector('[data-locale-copy-confirm]', { visible: true, timeout: config.navigationTimeoutMs });
+    await replaceText(page, '[data-locale-copy-field="Name"]', CUSTOM);
+    await page.click('[data-locale-copy-confirm]');
+    await page.waitForSelector('[data-locale-copy-reason]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-locale-copy-reason]', (node) => node.textContent.trim()), STRINGS.localeRefusalCopyTaken, 'a name the instance lists is refused with the published sentence, in the dialog');
+    await replaceText(page, '[data-locale-copy-field="Name"]', COPIED);
+    await page.click('[data-locale-copy-confirm]');
+    await page.waitForSelector('[data-locale-copy-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(vendor('NLSHASCOPY', 'Exists', COPIED).value, '1', 'the instance holds the new locale');
+    assert.equal(
+      probe('NLSCOPYSAME', [
+        `Set tSC=##class(Config.NLS.Locales).Get("${COPIED}",.p) Set tSC=##class(Config.NLS.Locales).Get("${foundCurrent}",.q)`,
+        'Set result=($Get(p("DateFormat"))=$Get(q("DateFormat")))&&($Get(p("Currency"))=$Get(q("Currency")))&&($Get(p("CharacterSet"))=$Get(q("CharacterSet")))',
+      ]).value,
+      '1',
+      'and it holds the definition of the locale it copies'
+    );
+    await selectRow(page, COPIED);
+  } finally {
+    await context.close();
+    vendor('NLSGONECOPY', 'RemoveCustom', COPIED);
+  }
+});
+
+// Mutation (Rule 19): post the add to the screen's action route instead of `/api/ocupilot/locale-properties` in `config-settings.page.ts` (rebuilt and redeployed) ->
+// the instance assertion goes red.
+test('Add table on a custom locale refuses a table it lists with the published sentence, then lists the table on the instance', async () => {
+  ensureCustom('ADD');
+  const { context, page } = await signedInAt(browser, config, `${route('locales/properties')}/${encodeURIComponent(CUSTOM)}`, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('[data-locale-table-confirm]', { visible: true, timeout: config.navigationTimeoutMs });
+    await replaceText(page, '[data-locale-table-field="Table"]', 'Unicode');
+    await page.click('[data-locale-table-confirm]');
+    await page.waitForSelector('[data-locale-table-reason]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-locale-table-reason]', (node) => node.textContent.trim()), STRINGS.localeRefusalTableTaken, 'a table the locale lists is refused with the published sentence, in the dialog');
+    await replaceText(page, '[data-locale-table-field="Table"]', 'Latin2');
+    await page.click('[data-locale-table-confirm]');
+    await page.waitForSelector('[data-locale-table-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(probe('NLSADDED', [`Set tSC=##class(Config.NLS.Locales).Get("${CUSTOM}",.p) Set result=$Data(p("PatternTables","Latin2"))`]).value, '1', 'the instance lists the table');
+    // The list re-reads in place once the create is announced: the new row stands, marked as changed, once that read has landed.
+    await page.waitForFunction(
+      (rowSelector, wanted) => [...document.querySelectorAll(rowSelector)].some((row) => row.classList.contains('ocu-data-table-row-changed') && row.querySelectorAll('[role="gridcell"]')[1]?.textContent.trim().startsWith(wanted)),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      'PatternTables:Latin2'
+    );
+    await selectProperty(page, 'PatternTables:Latin2');
+    assert.deepEqual(await menuEntry(page, STRINGS.localeRemoveTableAction), { disabled: false, reason: '' }, 'and the new row offers Remove table');
   } finally {
     await context.close();
   }
