@@ -12308,6 +12308,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T17:56:53Z status=routed owner=burndown by=cr note=rule scope: resolve ..#NAME args via own/inherited params (e.g. ..#FIXTURE); Extends covers the chain
 - 2026-11-14T00:50:20Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
+- 2026-11-19T05:08:55Z occurrence=21-16-custom-locales
 
 ### DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for #ocu-encryption-startup-DBEncStartMode-None in CI browser shard 1/5 (run 38782509360), green on the same tree locally
 - source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13986,3 +13987,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-16-custom-locales.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: locale-create.ts postLocaleCreate answers reason '' when the result is not ok and carries no reason; the dialog re-enables with nothing shown
 - 2026-11-19T04:33:05Z status=wontfix-accepted owner=21-16-custom-locales by=cr note=a new sentence would be an escalation; reopen_if=DW-2755's shared helper lands, or a person reports a silent failure
+
+### DW-2761: A throwaway whose first start fails to compile is restarted by on-failure and comes up installed on the warm volume, so instance and browser legs do not catch a fresh-compile failure
+- source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
+- 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED

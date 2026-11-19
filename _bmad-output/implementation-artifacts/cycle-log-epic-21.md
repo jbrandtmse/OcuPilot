@@ -669,3 +669,7 @@
 2026-11-19T04:59:57Z	Story 21.16	dev_complete	scope=rework1(compile_order_DependsOn) spawn_at=2026-11-19T04:40Z model=sonnet build_sha=d9327710f followup_review_recommended=false cycle_iteration=2
 2026-11-19T04:59:57Z	Story 21.16	code_head_pushed	sha=d9327710f run=44462033892 missing=none note=pushed_alone;covers_55d7deb8b
 2026-11-19T04:59:57Z	Story 21.16	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-19T04:59:57Z model=opus agent_name=21-16-code-review-2 cycle_iteration=2 baseline=0ddd479ee
+2026-11-19T05:24:55Z	Story 21.16	cr_complete	scope=rework1 spawn_at=2026-11-19T05:02Z model=opus high=0 med=3(1_patched_CompositeMintSweep_row;2_ledgered:DW-2459_occurrence,DW-2761_routed_21-23) low=1 rows=7 unresolved_high_med=0 final=done commit=540a51889 closing_sections_present=true
+2026-11-19T05:24:55Z	Story 21.16	code_head_pushed	sha=540a51889 run=44464944337 missing=none note=supersedes_d9327710f_run_44462033892
+2026-11-19T05:24:55Z	Story 21.16	ledger_adjudicated	owned_open=0 review_terminal=DW-2756..2760(wontfix-accepted) routed=DW-2755(burndown),DW-2761(21-23) decision_pending=DW-2754(AD-53_named_gap_wording,owner,as_DW-2613)
+2026-11-19T05:24:55Z	Story 21.16	gate_step	step=fresh_check+full_sweep+smoke head=540a51889 started=2026-11-19T05:24:55Z dir=e21u/21-16/gate
