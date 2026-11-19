@@ -2,8 +2,8 @@
 title: 'Story 24.13: Analytics settings (Batch 1: the read surface, and partly applied cube updates audited)'
 type: 'feature'
 created: '2026-11-19'
-status: 'done'
-baseline_revision: 'b3866e9645634cfaede4cebec341af6c53a6de69'
+status: 'in-progress'
+baseline_revision: '7953f3b7727e5fca4f191c0e902e8eb0ad064bcc'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -109,6 +109,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 - [x] The four descriptors, entity types, strings (once ruled), the regenerated mirror and titles, the EXPERIENCE.md row.
 - [x] Tests: the fixture, `AnalyticsSettingsRead` (the read rows of the matrix at the port and over `GET /screens/<id>/read`, the journal scan, the restore check), the seam modes and the DW-2518 test, the browser test, every roster.
 
+- [ ] [Smoke] `AnalyticsCubeManager.TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt` failed on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6cc61acfb, run 3) and passed on the rerun (run 4): `AuditRows(tSince, ...)` answered not 1 for "one audit row names the build". Both runs wrote the same five Categories build rows (pid-identical); in the failing run the previous test, `TestAFailedUpdateRecordsTheCubesItUpdated` (30 ms), wrote its last failed Categories build row at 10:51:10.062 and this test began about 10:51:10.063, so a window taken with `AuditEvent.Now()` can include a sibling test's row (inference: the audit stamp and `$ZTimeStamp` can land in the same or crossed millisecond). Make every DW-2518 row count in this class independent of a sibling's rows written in the millisecond before (e.g. count the rows this test's own call added, by a before/after count or a strictly later window), in each test that windows on `AuditEvent.Now()`, and prove it with a forward and a reverse run of the class on a rebuilt throwaway, first run green.
+
 **Acceptance Criteria:**
 
 - **AC1 (round trip).** Given marker settings written through the vendor's own methods. When the four screens are read. Then every row equals what those methods stored, and an unset node reads the page's default.
@@ -121,6 +123,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 - **AC8 (DW-2518).** Given a build or synchronize the vendor ran that updated at least one cube and then failed. When the cube manager's write answers. Then its refusal is unchanged and one `ConfigChange` row for that verb and cube carries `failed` true and names exactly the updated cubes; a failure that updated none records no row.
 
 ## Spec Change Log
+
+- 2026-11-19, fresh check: re-opened for rework iteration 1 (one [Smoke] item: a DW-2518 audit-row count is not fresh-instance safe).
 
 - 2026-11-19, spec gate (runner): Questions 1-5 kept as recommended (veto item U-115): three batches, this spec Batch 1; pairs `%DeepSee_Portal:USE,%Development:USE`; the key masked; `^DeepSee.UserPortalSettings` read by name with the AD-65 line left proposed; the proposed strings. The AD-15 sentence is applied to the spine (owner answer U-34 A).
 

@@ -470,3 +470,6 @@
 2026-11-19T10:45:59Z	Story 24.13	ledger_adjudicated	owned=1 resolved=DW-2518(resolved-by:24-13-analytics-settings) kept=DW-2771(open_owner_24-13_for_batch2) born_terminal=DW-2770,DW-2772,DW-2773 reowned=0 scope=batch1 model=claude-opus-5-5
 2026-11-19T10:50:15Z	Story 24.13	integrated_feature	feature=bad0bf336(21.16) merge=6cc61acfb conflicts=5(roster_unions;counts_ReadTool527,Descriptor103;screens.generated_regenerated) test_tools=2333/2333 check_objectscript=0 scope=batch1
 2026-11-19T10:50:15Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=6cc61acfb
+2026-11-19T10:52:52Z	Story 24.13	fresh_check_failed	tree=6cc61acfb class=AnalyticsCubeManager method=TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt first_run=red(run3) rerun=green(run4) cause=audit_window_includes_sibling_row(inference) others=AnalyticsSettingsRead10/10,AnalyticsSettingsEdge4/4
+2026-11-19T10:52:52Z	Story 24.13	rework_opened	iteration=1 items=1([Smoke]) baseline=7953f3b7727e5fca4f191c0e902e8eb0ad064bcc
+2026-11-19T10:52:52Z	Story 24.13	stage_spawned	stage=implement-rework spawn_at=2026-11-19T10:52:52Z model=sonnet agent_name=24-13-analytics-settings-rework-1 cycle_iteration=1
