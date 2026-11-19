@@ -70,21 +70,22 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
   - Console output, return values and error text reach the screen only, never the model, ledger, audit payload, log or screen context.
   - A console run records OcuPilot's own `SecurityChange` row, which names the console and namespace but never the command, arguments or answer.
 - **One operation, two callers.** A screen action and an agent write share target resolution through the declared port, the fresh read, prohibited-set evaluation under the per-target lock, the change event and the read-back. A screen action mints no proposal, emits no marker, and is not gated by read-only or the kill switch.
-- **Reads.** A screen and its tool share one bounded, descriptor-declared read that reports truncation. Every tool result passes the one sanitizer. An agent read tool never executes code.
+- **Reads.** A screen and its tool share one bounded, descriptor-declared read that reports truncation. A parent-scoped declared read (an analytics, interoperability or locale source) takes its parent's route id as `read.criteria`. Every tool result passes the one sanitizer. An agent read tool never executes code.
 - **Files.** No endpoint accepts a filesystem path. A file is named by a fixed enum or a single validated segment and resolved under a directory computed on the instance.
-- **Audit.** Many interoperability and analytics writes have no vendor audit event. Measure each write with auditing on. Where the vendor records nothing, record OcuPilot's own `ConfigChange` or `SecurityChange`, or name the gap.
+- **Audit.** Many interoperability and analytics writes have no vendor audit event. Measure each write with auditing on. Where the vendor records nothing, record OcuPilot's own `ConfigChange` or `SecurityChange`, or name the gap. A cube build or synchronize records OcuPilot's own `ConfigChange` from either caller; one the vendor ran that then failed records the same row with `failed` true, naming only the cubes whose own status in the vendor's statistics reports them updated, and records none when no cube was updated.
 - A `%Persistent` class name is 29 characters or fewer. When an architecture decision must change, amend it in the spine rather than working around it.
 
 ## UX & Interaction Patterns
 
 - Every screen registers the standard screen contract: route with `?ns=`, side-bar entry, archetype, privilege resource, entity-type key, context serializer, actions (destructive last), empty-state sentence, fixed strings and aliases.
-- A sub-screen opened from an item's name (a listing group's listings, a quality measure's groups and documentation tabs) is never in the side bar and carries its own actions and empty-state agent phrase.
+- A sub-screen or tab opened from an item's name or a screen's later tab (a listing group's listings, a quality measure's groups and documentation, the analytics settings' worklists, run-time variables and icons) is never in the side bar and carries its own actions and empty-state agent phrase.
 - On write-capable lists the "Or ask the agent: …" line takes a short phrase, never a full sentence. A screen with no action names no agent phrase.
+- A secret is never shown: a stored secret value (such as the analytics Google Maps key) reads as the mask. Stored expressions and paths are shown as text and never run or loaded. A setting that is not stored shows the classic page's default value.
 - Gated controls stay focusable with `aria-disabled` and name their reason; they are never hidden.
 - A screen's destructive action or removal uses the confirm dialog with a typed name. An agent's destructive proposal uses the destructive card. Confirmations always name the target, and a delete or removal that OcuPilot cannot reverse says so in its consequence. A rename is a remove and an add, never an in-place move.
 - Refusals are the server's sentences, shown as sent. Vendor text is logged, never shown.
 - Result and status lines are announced to assistive technology.
-- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class, Class, Caption, Description, Disabled).
+- Each story's fixed strings are in the experience spine's string table, and the story must use them; reuse the words other screens already publish (Edit, Copy, Delete, New name, New class, Class, Caption, Description, Disabled, Name, Setting, Value, Expression, Comment, Path, Page).
 
 ## Cross-Story Dependencies
 

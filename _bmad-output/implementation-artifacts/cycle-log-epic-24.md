@@ -481,3 +481,5 @@
 2026-11-19T11:28:53Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=fbd1808c2 forward=3/3_classes_25_tests_first_run reverse+rosters=14/14_classes_182_tests browser=analytics+analytics-links+a11y-structural_33/33 smoke=50/50 bundle=2.15MB scope=batch1
 2026-11-19T11:29:18Z	Story 24.13	code_head_pushed	sha=fbd1808c2 run=44515203903 missing=none scope=batch1
 2026-11-19T11:29:31Z	Story 24.13	stage_spawned	stage=pre-warm spawn_at=2026-11-19T11:29:31Z model=opus agent_name=epic-24-context-prewarm-9 cycle_iteration=2 reason=planning_artifact_newer(AD-36_21.16,AD-15_U-34)
+2026-11-19T11:32:24Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(AD-36_21.16,AD-15) model=claude-opus-5-5
+2026-11-19T11:32:24Z	Story 24.13	stage_spawned	stage=plan spawn_at=2026-11-19T11:32:24Z model=opus agent_name=24-13-analytics-settings-plan-batch2 cycle_iteration=2 scope=batch2_general_worklists_writes
