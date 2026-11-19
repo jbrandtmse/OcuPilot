@@ -517,3 +517,4 @@
 2026-11-19T23:08:24Z	Story 24.13	ledger_adjudicated	resolved=DW-2775 to_decision_sheet=DW-2786 scope=batch3 model=claude-opus-5-5
 2026-11-19T23:10:08Z	Story 24.13	integrated_feature	feature=800f1c579 merge=d2b0259cc conflicts=0(ci-timings.json_only) scope=batch3
 2026-11-19T23:10:08Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=d2b0259cc
+2026-11-19T23:33:53Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=d2b0259cc forward=5/5_classes_53_tests_first_run reverse+rosters=20/20_classes_208_tests browser=analytics+links+a11y+config-settings42/42 smoke=50/50 bundle=2.16MB scope=batch3
