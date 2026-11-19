@@ -702,3 +702,5 @@
 2026-11-19T13:20:51Z	Story 21.15	fresh_check	env=recipe(ci-throwaway_rebuild) tests=21_classes+1_spec result=pass order=forward,reverse(specs) head=7478c45a7
 2026-11-19T13:20:51Z	Story 21.15	gate_step	step=sweep result=green shards=20/20 head=7478c45a7
 2026-11-19T13:20:51Z	Story 21.15	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T13:24:08Z	Story 21.15	integrated_forward	feature=c57010f36(24.13_B1+timings) merge=020f2d90e conflicts=2(ReadTool_529+writes_prose_298;ToolRoundTrip_union) verified=screen-mirror_ok,test:tools_2334,LOADERRORS=0,6_roster_classes_green
+2026-11-19T13:24:08Z	Story 21.15	code_head_pushed	sha=020f2d90e run=44533046311 missing=none note=integrated_head;gates_ran_on_7478c45a7
