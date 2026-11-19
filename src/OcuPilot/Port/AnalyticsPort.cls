@@ -5368,7 +5368,7 @@ ClassMethod ListingGroupSnippet(pType As %String, pId As %String, pBody As %Dyna
     Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPTAKEN)
 }
 
-/// <p>Whether <var>pEndpoint</var> is the quality measures endpoint (Story 24.12): the one of the three quality measure endpoints that writes.</p>
+/// <p>Whether <var>pEndpoint</var> is one of the three quality measure endpoints (Story 24.12): the measures, their groups and elements, and their documentation items.</p>
 ClassMethod IsQualityMeasureEndpoint(pEndpoint As %String) As %Boolean
 {
     Quit $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) > 0
@@ -5588,7 +5588,7 @@ ClassMethod QualityMeasureTarget(pEndpoint As %String, pId As %String, Output pN
     If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit 1
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
     Set tExpected = $Select(pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS: 3, 1: 2)
-    Set pName = $List(tParts, 1)
+    Set pName = $ListGet(tParts, 1)
     If ($ListLength(tParts) '= tExpected) || ($List(tParts, 2) = "") Quit 0
     Set pPart = $Select(tExpected = 3: $List(tParts, 2) _ $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR) _ $List(tParts, 3), 1: $List(tParts, 2))
     Quit 1
@@ -5726,8 +5726,8 @@ ClassMethod ContentRoundTrip(pContent As %String, Output pOK As %Boolean) As %St
 
 /// <p>The shape violations of a quality measure write that need nothing from the instance, in <var>pViolations</var>
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>), every one <code>PORT.FIELD.SHAPE</code>: <var>pType</var> is the write, <var>pName</var>
-/// the measure it acts on (an add's is its new name, <method>QualityMeasureNameShaped</method>), <var>pPart</var> the part of it the write acts on (none yet, so <code>""</code>; it keeps
-/// the signature of <method>ListingGroupViolations</method>, which the shared tool base calls), <var>pBody</var> what the caller sends. A text member is a string within its
+/// the measure it acts on (an add's is its new name, <method>QualityMeasureNameShaped</method>), <var>pPart</var> the part of it the write acts on (<code>""</code> on the measures endpoint;
+/// <var>pEndpoint</var>'s part writes are <method>QualityMeasurePartViolations</method>'s), <var>pBody</var> what the caller sends. A text member is a string within its
 /// length (<parameter>QUALITYMEASURETEXTMAX</parameter>, an expression <parameter>LONGTEXTMAX</parameter>, a format <parameter>SHORTTEXTMAX</parameter>); <code>Published</code>
 /// is true or false; and <code>LinkedTo</code> does not name the measure itself. Pure.</p>
 ClassMethod QualityMeasureViolations(pType As %String, pName As %String, pPart As %String, pBody As %DynamicObject, Output pViolations, pEndpoint As %String = "QualityMeasures") As %Status
@@ -5801,12 +5801,14 @@ ClassMethod QualityMeasureMetaViolations(pType As %String, pName As %String, pPa
 }
 
 /// <p>The class text a write's new XML belongs in, composed from the vendor's own model in <var>pNamespace</var>, switched by explicit save and restore (AD-16):
-/// <var>pOp</var> is <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter> or <parameter>TYPECOPY</parameter>. An add starts from the classic page's new model (a
+/// <var>pOp</var> is <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter> or <parameter>TYPECOPY</parameter> on the measures endpoint, or, on the part endpoint
+/// <var>pEndpoint</var>, a part write of the part <var>pPart</var> (<method>ApplyQualityMeasurePart</method>). An add starts from the classic page's new model (a
 /// numerator and a denominator group of one element each, the expression dividing them); the others from <code>%GetModel</code> of <var>pName</var> without its link, read now, so
 /// what the caller cannot see is kept as stored. <var>pBody</var> carries the members to set (<method>QualityMeasureViolations</method> says which), <var>pNewName</var> a copy's
 /// name and <var>pNewClass</var> the class an add or copy creates. <var>pXml</var> is the model written by <code>%XML.Writer</code>. <var>pCode</var> is the refusal, <code>""</code>
-/// for none, in the vendor compile's order: <code>ABSENT</code>, <code>TAKEN</code> (the new name listed or registered, or its class defined), <code>COMPILE</code> (the model's own
-/// <code>%Validate</code>), <code>EXPRESSION</code> (an expression naming a group that is not enabled or holds no enabled element, or unmatched brackets) and <code>LINKED</code>
+/// for none, in the vendor compile's order: <code>ABSENT</code>, <code>LINKEDPARTS</code> and <method>ApplyQualityMeasurePart</method>'s codes on a part endpoint,
+/// <code>TAKEN</code> (the new name listed or registered, or its class defined), <code>COMPILE</code> (the model's own <code>%Validate</code>, or a composed text
+/// <code>%XML.Reader</code> refuses), <code>EXPRESSION</code> (an expression naming a group that is not enabled or holds no enabled element, or unmatched brackets) and <code>LINKED</code>
 /// (a linked measure's expression, format or URL changed). Nothing is written. An exception is <var>pCaught</var>. A seam: a fixture overrides it.</p>
 ClassMethod VendorQualityMeasureCompose(pNamespace As %String, pOp As %String, pName As %String, pBody As %DynamicObject, pNewName As %String, pNewClass As %String, Output pXml As %String, Output pCode As %String, Output pCaught As %Exception.AbstractException, pEndpoint As %String = "QualityMeasures", pPart As %String = "") As %Status
 {
@@ -6057,7 +6059,9 @@ ClassMethod InvokeQualityMeasure(pNamespace As %String, pEndpoint As %String, pT
 }
 
 /// <p>The single-object reads of the quality measures endpoint: <code>QUALITYMEASURE</code> (the measure as <method>QualityMeasureRow</method>) and <code>COPYTARGET</code>
-/// (<code>{Name, Version, Groups, NewName, NewClass, Present, Namespace}</code>, the measure with the copy's own name and class from the query). A measure that is not there is 404
+/// (<code>{Name, Version, Groups, NewName, NewClass, Present, Namespace}</code>, the measure with the copy's own name and class from the query), and on the part endpoint
+/// <var>pEndpoint</var> <code>QUALITYMEASUREELEMENT</code> and <code>QUALITYMEASUREMETA</code> (<method>QualityMeasureElementRow</method>, <method>QualityMeasureMetaRow</method>),
+/// a part that is not there 404 and, composed for a write, <code>PARTABSENT</code>, a held name on an add 409, and a linked measure 409 <code>LINKEDPARTS</code>. A measure that is not there is 404
 /// <code>PORT.NOTFOUND</code> on a plain read and <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> with <var>pAction</var>. A read composed for a write carries the class's
 /// <code>Version</code>, which the proposal's fingerprint covers, and is refused as that write would be refused (<method>PlanQualityMeasure</method>).</p>
 ClassMethod ReadQualityMeasure(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pPart As %String, pAction As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -6174,7 +6178,7 @@ ClassMethod PlanQualityMeasure(pNamespace As %String, pEndpoint As %String, pTyp
     Quit $$$OK
 }
 
-/// <p>The refusal sentence of the write <var>pType</var> of <var>pName</var> (<var>pPart</var>, none yet) with the members <var>pBody</var>, <code>""</code> when nothing refuses it:
+/// <p>The refusal sentence of the write <var>pType</var> of <var>pName</var> (and of its part <var>pPart</var> on the part endpoint <var>pEndpoint</var>) with the members <var>pBody</var>, <code>""</code> when nothing refuses it:
 /// <method>PlanQualityMeasure</method>'s, with nothing written. The mint and a screen's save ask it, so the agent and the person are refused what the write would refuse.</p>
 ClassMethod QualityMeasureProblem(pNamespace As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject, pEndpoint As %String = "QualityMeasures") As %String
 {

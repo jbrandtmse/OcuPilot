@@ -213,7 +213,7 @@ Method TestADocumentationItemIsAddedChangedAndRemovedByEachCaller()
 /// disabling that leaves the expression naming a group that cannot count (422 <code>EXPRESSION</code>); a name, text or flag outside the shape rules (422 <code>PORT.FIELD.SHAPE</code>); and a content
 /// that is not well-formed markup, or that the model cannot hold (422 <code>COMPILE</code>).</p>
 /// <p>Mutation (Rule 19): make the taken check of <method>OcuPilot.Port.AnalyticsPort.ApplyQualityMeasurePart</method> compare exact names -- the case and disabled legs go red; make
-/// <method>OcuPilot.Port.AnalyticsPort.NormalizedContent</method> answer storable for any text -- the content legs go red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.NormalizedContent</method> answer storable for any text -- the leg of a content the writer turns into an entity XML does not define goes red.</p>
 Method TestEachRefusalWritesNothing()
 {
     Set tName = ..Name("Held")
@@ -271,7 +271,8 @@ Method TestEachRefusalWritesNothing()
 
 /// <p>AC1: each write has a script form (AD-59) that makes the same change: an element's and an item's add, change and remove each save and compile the class, and a script for a write the port refuses
 /// only sets the refusal's sentence.</p>
-/// <p>Mutation (Rule 19): make the update branch of <method>OcuPilot.Port.AnalyticsPort.ClassWriteSnippet</method> skip its compile line -- the registered legs go red.</p>
+/// <p>Mutation (Rule 19): make the update branch of <method>OcuPilot.Port.AnalyticsPort.ClassWriteSnippet</method> skip its compile line -- the registered legs go red; make the refusal line of
+/// <method>OcuPilot.Port.AnalyticsPort.QualityMeasureSnippet</method> also throw -- the refusal sentence legs go red.</p>
 Method TestEachWritesScriptFormMakesTheSameChange()
 {
     Set tName = ..Name("Script")
@@ -283,10 +284,12 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Do $$$AssertEquals(..QModel(tName), $Replace(tBefore, "~G:Everyone", ";E:Scripted|From a script|{[Minutes].&[7]}|0~G:Everyone"), "and adds the element, the class compiled")
     Do $$$AssertEquals(..QRegistered(tName, ..#CLASSMARKER _ "Script"), 1, "and registered")
     Do $$$AssertEquals(..RunScript(..PartScript(..#ELEMENTENDPOINT, "ENTRYADD", tElement, {"Name": "Scripted"})), 0, "an add of a name the group holds only sets the refusal")
+    Do $$$AssertTrue(..ScriptRefusal() [ ##class(OcuPilot.Api.AnalyticsError).ReasonFor("ANALYTICS.QUALITYMEASURE.ELEMENTTAKEN"), "and the refusal is the taken sentence: " _ ..ScriptRefusal())
     Do $$$AssertEquals(..RunScript(..PartScript(..#ELEMENTENDPOINT, "ENTRYSET", tElement, {"Caption": "Changed", "GroupCaption": "Long, scripted"})), 1, "the element change's script runs")
     Do $$$AssertEquals(..QModel(tName), $Replace($Replace(tBefore, "~G:Long|Long stays|", "~G:Long|Long, scripted|"), "~G:Everyone", ";E:Scripted|Changed|{[Minutes].&[7]}|0~G:Everyone"), "and changes the element and its group")
     Do $$$AssertEquals(..RunScript(..PartScript(..#ELEMENTENDPOINT, "ENTRYREMOVE", tElement, {})), 1, "the element removal's script runs")
     Do $$$AssertEquals(..RunScript(..PartScript(..#ELEMENTENDPOINT, "ENTRYREMOVE", ..ElementId(tName, "Everyone", ""), {})), 0, "a removal that breaks the expression only sets the refusal")
+    Do $$$AssertTrue(..ScriptRefusal() [ ##class(OcuPilot.Api.AnalyticsError).ReasonFor("ANALYTICS.QUALITYMEASURE.EXPRESSION"), "and the refusal is the expression sentence: " _ ..ScriptRefusal())
     Set tMeta = ..MetaId(tName, "Scripted")
     Do $$$AssertEquals(..RunScript(..PartScript(..#METAENDPOINT, "ENTRYADD", tMeta, {"Name": "Scripted", "Content": "A <i>note</i>."})), 1, "the item add's script runs")
     Do $$$AssertEquals(..RunScript(..PartScript(..#METAENDPOINT, "ENTRYSET", tMeta, {"Caption": "Cap"})), 1, "the item change's script runs")
@@ -297,13 +300,15 @@ Method TestEachWritesScriptFormMakesTheSameChange()
 }
 
 /// <p>The two routes the part screens add answer JSON envelopes of the declared type and shape as the HTTP account: <code>POST /analytics/quality-measure-elements</code> and
-/// <code>/analytics/quality-measure-metas</code> create a part (201 <code>{id, target, readBack}</code>); a measure the instance does not hold is a 404 envelope and a body naming no part a 422 one.</p>
+/// <code>/analytics/quality-measure-metas</code> create a part (201 <code>{id, target, readBack}</code>); a measure the instance does not hold is a 404 envelope carrying <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> and its sentence, and a
+/// body naming no part a 422 one.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Area.Analytics.QualityMeasureElementSave.ParentAbsentCode</method> -- the elements route's 404 leg goes red.</p>
 Method TestTheRoutesAnswerJsonEnvelopesOfTheDeclaredShape()
 {
     Set tName = ..Name("Wire")
     Do $$$AssertStatusOK(..SaveMeasure("Wire", ..#CLASSMARKER _ "Wire"), "the measure is saved and compiled")
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
-    For tCase = $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (tName), "Group": "Long", "Name": "WireElement"}.%ToJSON(), 201), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", {"QualityMeasure": (tName), "Name": "WireItem"}.%ToJSON(), 201), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (..Name("WireNone")), "Group": "Long", "Name": "X"}.%ToJSON(), 404), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", {"QualityMeasure": (..Name("WireNone")), "Name": "X"}.%ToJSON(), 404), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", "{}", 422), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", "{}", 422), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (tName), "Name": "X"}.%ToJSON(), 422) {
+    For tCase = $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (tName), "Group": "Long", "Name": "WireElement"}.%ToJSON(), 201), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", {"QualityMeasure": (tName), "Name": "WireItem"}.%ToJSON(), 201), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (..Name("WireNone")), "Group": "Long", "Name": "X"}.%ToJSON(), 404, "ANALYTICS.QUALITYMEASURE.ABSENT"), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", {"QualityMeasure": (..Name("WireNone")), "Name": "X"}.%ToJSON(), 404, "ANALYTICS.QUALITYMEASURE.ABSENT"), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", "{}", 422), $ListBuild("POST", "/analytics/quality-measure-metas?ns=USER", "{}", 422), $ListBuild("POST", "/analytics/quality-measure-elements?ns=USER", {"QualityMeasure": (tName), "Name": "X"}.%ToJSON(), 422) {
         Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tCase, 1), tBase _ $List(tCase, 2), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, $List(tCase, 3), "application/json")
         Do $$$AssertEquals(tStatus, $List(tCase, 4), $List(tCase, 2) _ " answers " _ $List(tCase, 4) _ ": " _ $Extract(tRaw, 1, 200))
         Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", $List(tCase, 2) _ ": its content type is JSON (" _ $Get(tHeaders("CONTENT-TYPE")) _ ")")
@@ -315,6 +320,7 @@ Method TestTheRoutesAnswerJsonEnvelopesOfTheDeclaredShape()
         }
         If $List(tCase, 4) = 201 Do $$$AssertTrue(tBody.id '= "", "the create names its target")
         If $List(tCase, 4) > 299 Do $$$AssertTrue(tBody.code '= "", "a refusal carries its code")
+        If $ListGet(tCase, 5) '= "" Do $$$AssertEquals(tBody.%Get("code") _ "|" _ tBody.%Get("reason"), $List(tCase, 5) _ "|" _ ##class(OcuPilot.Api.AnalyticsError).ReasonFor($List(tCase, 5)), $List(tCase, 2) _ ": the refusal is the measure's own, with its sentence")
     }
 }
 

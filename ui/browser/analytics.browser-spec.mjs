@@ -858,8 +858,9 @@ async function typedRemoval(page, name, label, typed, consequence) {
 }
 
 // Story 24.12 AC4 (Batch 3, DW-2734). Mutation (Rule 19): make the Add element dialog post to the documentation items' route (bundle rebuilt and redeployed) -> the first element never appears and the first leg goes red; drop the
-// Documentation descriptor's `tab` (mirror regenerated, bundle rebuilt and redeployed) -> the strip leg goes red; the removals' typed-name entries are pinned in `screen-action-handler-qualitymeasure.spec.ts`.
-test('Story 24.12: a person opens a quality measure to its two tabs, adds an element in a new group, changes it, removes it and the group, and adds, changes and removes a documentation item', async () => {
+// Documentation descriptor's `tab` (mirror regenerated, bundle rebuilt and redeployed) -> the strip leg goes red; make the dialog's group-only change send no group field (bundle rebuilt and redeployed)
+// -> the group change leg goes red; the removals' typed-name entries are pinned in `screen-action-handler-qualitymeasure.spec.ts`.
+test('Story 24.12: a person opens a quality measure to its two tabs, adds an element in a new group, changes it, removes it, changes and removes the group, and adds, changes and removes a documentation item', async () => {
   const made = probe('QMPMADE', `$System.Status.IsOK(##class(${PART_BASE}).SaveMeasure("Browse", "OcuProbeQMP.Analytics.QMPBrowse"))`);
   assert.equal(made.value, '1', `the measure is saved and compiled: ${made.output}`);
   const model = (name, lines) => inUser(name, ['Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("' + PART_MEASURE + '",,0),out=""', ...lines]);
@@ -892,6 +893,15 @@ test('Story 24.12: a person opens a quality measure to its two tabs, adds an ele
     await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureElementRemoveAction, 'Seed', STRINGS.analyticsQualityMeasureRemoveConsequence);
     await page.waitForFunction((rowSelector) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.deepEqual((await rowsStartingWith(page, 'Fresh')).map((row) => row[1]), [STRINGS.tableEmptyValue], 'the emptied group stays as its own row, with no element name');
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="GroupCaption"]')?.value === 'Fresh group', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('app-quality-measure-dialog [data-quality-measure-field="Name"]'), null, 'a group\'s row opens Change element on the group\'s fields alone');
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { GroupCaption: ' edited' });
+    assert.equal(model('QMPGROUPSET', ['Set out=m.groups.GetAt(m.groups.Count()).caption']).value, 'Fresh group edited', 'the group\'s change reached the vendor\'s model');
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="GroupCaption"]')?.value === 'Fresh group edited', { timeout: config.navigationTimeoutMs });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('app-quality-measure-dialog') === null, { timeout: config.navigationTimeoutMs });
     await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureGroupRemoveAction, 'Fresh', STRINGS.analyticsQualityMeasureRemoveConsequence);
     await rowGone(page, 'Fresh');
     assert.equal(model('QMPGROUP', ['Set out=m.groups.Count()']).value, '2', 'the group is gone from the vendor\'s model, the measure\'s own two groups remain');

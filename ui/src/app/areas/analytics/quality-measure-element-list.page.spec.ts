@@ -167,6 +167,24 @@ describe('the Groups and elements page', () => {
     expect(Object.keys(posted.at(-1)?.body ?? {})).not.toContain('GroupDisabled');
   });
 
+  it('sends GroupDisabled true with an added element when the group\'s Disabled is ticked', async () => {
+    // Mutation (Rule 19): never send GroupDisabled with an add -> the body assertion goes red.
+    const { fixture, host, store, actions } = mount();
+    store.setSelection([ELEMENT_ID]);
+    actions.run(QUALITY_MEASURE_ELEMENT_LIST, QUALITY_MEASURE_ELEMENT_ADD_ACTION);
+    await settle(fixture);
+    const name = host.querySelector('[data-quality-measure-field="Name"]') as HTMLInputElement;
+    name.value = 'Fresh';
+    name.dispatchEvent(new Event('input'));
+    const groupDisabled = host.querySelector('[data-quality-measure-flag="GroupDisabled"]') as HTMLInputElement;
+    groupDisabled.checked = true;
+    groupDisabled.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    (host.querySelector('[data-quality-measure-confirm]') as HTMLElement).click();
+    await settle(fixture);
+    expect(posted.at(-1)?.body).toMatchObject({ Group: 'Long', Name: 'Fresh', Disabled: false, GroupDisabled: true });
+  });
+
   it('starts Remove group on the group\'s id with the element name empty, and types the group\'s name', () => {
     // Mutation (Rule 19): keep the row's element name in the id -> the target assertion goes red; drop the `fallback` of the typed-name entry -> the name assertion goes red.
     const { store, actions, handler } = mount();

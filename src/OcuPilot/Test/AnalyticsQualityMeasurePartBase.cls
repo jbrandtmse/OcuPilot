@@ -1,6 +1,7 @@
 /// <p>What Story 24.12's element and documentation write tests share (Batch 3): <class>OcuPilot.Test.AnalyticsQualityMeasureBase</class>'s probe, fixtures and helpers under the catalog
 /// <parameter>MARKER</parameter>, with the screens, tools and endpoints of the two part screens, the composite ids, and the rows a screen and the agent's read tool answer set beside the rows the
-/// vendor's model holds. <class>OcuPilot.Test.AnalyticsQualityMeasurePartWrite</class> and <class>OcuPilot.Test.AnalyticsQualityMeasurePartWriteEdge</class> extend it.</p>
+/// vendor's model holds. <class>OcuPilot.Test.AnalyticsQualityMeasurePartWrite</class>, <class>OcuPilot.Test.AnalyticsQualityMeasurePartWriteEdge</class> and
+/// <class>OcuPilot.Test.AnalyticsQualityMeasurePartWriteGaps</class> extend it.</p>
 /// <p><b>What it needs from the environment:</b> the base class's. Every measure and class it makes is named under <parameter>MARKER</parameter> and removed after each test.</p>
 Class OcuPilot.Test.AnalyticsQualityMeasurePartBase Extends OcuPilot.Test.AnalyticsQualityMeasureBase [ Abstract ]
 {
@@ -127,6 +128,14 @@ ClassMethod PartScript(pEndpoint As %String, pType As %String, pId As %String, p
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = pId
     Quit $ClassMethod(..#PORT, "Snippet", pEndpoint, pType, .tQuery, pBody)
+}
+
+/// <p>The error text of the status the last <method>RunScript</method> left, <code>""</code> when it was OK: a refused script's sentence, or the runner's own text when a line threw.</p>
+ClassMethod ScriptRefusal() As %String
+{
+    Set tSC = $Get(@"tSC")
+    If (tSC = "") || $System.Status.IsOK(tSC) Quit ""
+    Quit $System.Status.GetErrorText(tSC)
 }
 
 }

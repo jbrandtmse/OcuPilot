@@ -59,9 +59,11 @@ Method TestALinkedMeasureRefusesEverySixPartWrites()
     Do $$$AssertEquals(..Snapshot(), tBefore, "nothing was written")
 }
 
-/// <p>AC1: two classes that declare the measure's name refuse every part write, each 409 <code>ANALYTICS.QUALITYMEASURE.AMBIGUOUS</code> and before any write; the agent's mint is refused too. The
-/// classes, their text and the registry are as they were.</p>
-/// <p>Mutation (Rule 19): drop the ambiguity check from <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- the six port legs go red.</p>
+/// <p>AC1: two classes that declare the measure's name refuse every part write, each 409 <code>ANALYTICS.QUALITYMEASURE.AMBIGUOUS</code> and before any write, at the port, at the person's call for
+/// each write shape (an element add, change and removal, a group's change and removal, an item add, change and removal) and at the agent's six mints. The classes, their text and the registry are
+/// as they were.</p>
+/// <p>Mutation (Rule 19): drop the ambiguity check from <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> -- the six port legs go red; drop the one in
+/// <method>OcuPilot.Port.AnalyticsPort.ReadQualityMeasure</method> -- the six mint legs go red.</p>
 Method TestTwoClassesThatDeclareAMeasureRefuseEveryPartWrite()
 {
     Set tName = ..Name("Twin")
@@ -75,32 +77,57 @@ Method TestTwoClassesThatDeclareAMeasureRefuseEveryPartWrite()
         Do $$$AssertEquals(..Port($List(tWrite, 2), $List(tWrite, 3), $List(tWrite, 4), ##class(%DynamicAbstractObject).%FromJSON($List(tWrite, 5)), "", .tRes), "409 ANALYTICS.QUALITYMEASURE.AMBIGUOUS", $List(tWrite, 1) _ " is refused")
     }
     Do $$$AssertEquals(..Snapshot(), tBefore, "no class or node was added or lost")
+    Do ..EnableKey("analytics.qualitymeasureelements.remove")
+    Do ..EnableKey("analytics.qualitymeasuremetas.remove")
+    Set tAmbiguous = "409 ANALYTICS.QUALITYMEASURE.AMBIGUOUS"
+    Set tCases = $ListBuild($ListBuild("the person's Add element", "/analytics/quality-measure-elements", "", "", {"QualityMeasure": (tName), "Group": "Long", "Name": "Edge"}.%ToJSON()), $ListBuild("the person's Change element", ..#ELEMENTSCREEN, "set", ..ElementId(tName, "Long", "Over30"), {"Caption": "x"}.%ToJSON()), $ListBuild("the person's Remove element", ..#ELEMENTSCREEN, "remove", ..ElementId(tName, "Long", "Retired"), ""), $ListBuild("the person's change of a group", ..#ELEMENTSCREEN, "set", ..ElementId(tName, "Long", ""), {"GroupCaption": "x"}.%ToJSON()), $ListBuild("the person's Remove group", ..#ELEMENTSCREEN, "remove-group", ..ElementId(tName, "Long", ""), ""), $ListBuild("the person's Add documentation item", "/analytics/quality-measure-metas", "", "", {"QualityMeasure": (tName), "Name": "Edge"}.%ToJSON()), $ListBuild("the person's Change documentation item", ..#METASCREEN, "set", ..MetaId(tName, "Purpose"), {"Caption": "x"}.%ToJSON()), $ListBuild("the person's Remove documentation item", ..#METASCREEN, "remove", ..MetaId(tName, "Purpose"), ""))
+    For tAt = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tAt)
+        Set tValues = $Select($List(tCase, 5) = "": "", 1: ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 5)))
+        Kill tAnswer
+        Set tStatus = $Select($List(tCase, 3) = "": ..Post($List(tCase, 2), tValues, .tAnswer), 1: ..Act($List(tCase, 2), $List(tCase, 3), $List(tCase, 4), tValues, .tAnswer))
+        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: ""), tAmbiguous, $List(tCase, 1) _ " is refused")
+    }
+    Do ..MintRefused(..#ELEMENTADDTOOL, {"QualityMeasure": (tName), "Group": "Long", "Name": "Edge"}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
     Do ..MintRefused(..#ELEMENTSETTOOL, {"QualityMeasure": (tName), "Group": "Long", "Name": "Over30", "Caption": "x"}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
+    Do ..MintRefused(..#ELEMENTREMOVETOOL, {"QualityMeasure": (tName), "Group": "Long", "Name": ""}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
     Do ..MintRefused(..#METAADDTOOL, {"QualityMeasure": (tName), "Name": "Edge"}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
+    Do ..MintRefused(..#METASETTOOL, {"QualityMeasure": (tName), "Name": "Purpose", "Caption": "x"}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
+    Do ..MintRefused(..#METAREMOVETOOL, {"QualityMeasure": (tName), "Name": "Purpose"}, "ANALYTICS.QUALITYMEASURE.AMBIGUOUS")
+    Do $$$AssertEquals(..Snapshot(), tBefore, "and still nothing was written")
 }
 
 /// <p>AD-10: a write whose measure's class is one of OcuPilot's own is refused 403 <code>PROHIBITED.OCUPILOTCODE</code> with the published sentence, by the port, by the person's call and by the agent's
-/// mint, with nothing written, for each of the six writes, on Batch 1's probe measure, whose class has that stem.</p>
-/// <p>Mutation (Rule 19): make the own-code check of <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> and the one in <method>OcuPilot.Port.AnalyticsPort.ReadQualityMeasure</method> answer 0 -- every leg goes red.</p>
+/// mint, with nothing written, for each write shape (an element add, change and removal, a group's change and removal, an item add, change and removal), on Batch 1's probe measure, whose class
+/// has that stem: its class text and its model are as they were.</p>
+/// <p>Mutation (Rule 19): make the own-code check of <method>OcuPilot.Port.AnalyticsPort.PlanQualityMeasure</method> and the one in <method>OcuPilot.Port.AnalyticsPort.ReadQualityMeasure</method> answer 0 -- every leg goes red;
+/// move the plan's check after <method>OcuPilot.Port.AnalyticsPort.WriteClass</method> -- the text and model legs go red.</p>
 Method TestOwnCodeIsRefusedByEveryPartWrite()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateQualityMeasures"), "Batch 1's probe measures are saved and compiled, their classes in an OcuPilot package")
     Set tOwn = $Parameter(..#PROBE, "QMCOMPILED")
+    Set tOwnClass = $Parameter(..#PROBE, "QMCOMPILEDCLASS")
+    Set tOwnText = ..TextOf(tOwnClass)
+    Set tOwnModel = ..QModel(tOwn)
     Do ..EnableKey("analytics.qualitymeasureelements.remove")
     Do ..EnableKey("analytics.qualitymeasuremetas.remove")
     Set tElement = {"QualityMeasure": (tOwn), "Group": "Long", "Name": "Edge", "Caption": "x"}
     Do ..AssertOwnCodeRefused("an element add", ..#ELEMENTENDPOINT, "ENTRYADD", ..ElementId(tOwn, "Long", "Edge"), {"Caption": "x"}, "", "/analytics/quality-measure-elements", "", tElement, ..#ELEMENTADDTOOL, tElement)
     Do ..AssertOwnCodeRefused("an element change", ..#ELEMENTENDPOINT, "ENTRYSET", ..ElementId(tOwn, "Long", "Over30"), {"Caption": "x"}, "", ..#ELEMENTSCREEN, "set", {"Caption": "x"}, ..#ELEMENTSETTOOL, {"QualityMeasure": (tOwn), "Group": "Long", "Name": "Over30", "Caption": "x"})
+    Do ..AssertOwnCodeRefused("an element removal", ..#ELEMENTENDPOINT, "ENTRYREMOVE", ..ElementId(tOwn, "Long", "Over30"), {}, "", ..#ELEMENTSCREEN, "remove", "", ..#ELEMENTREMOVETOOL, {"QualityMeasure": (tOwn), "Group": "Long", "Name": "Over30"})
+    Do ..AssertOwnCodeRefused("a group change", ..#ELEMENTENDPOINT, "ENTRYSET", ..ElementId(tOwn, "Long", ""), {"GroupCaption": "x"}, "", ..#ELEMENTSCREEN, "set", {"GroupCaption": "x"}, ..#ELEMENTSETTOOL, {"QualityMeasure": (tOwn), "Group": "Long", "Name": "", "GroupCaption": "x"})
     Do ..AssertOwnCodeRefused("a group removal", ..#ELEMENTENDPOINT, "ENTRYREMOVE", ..ElementId(tOwn, "Long", ""), {}, "", ..#ELEMENTSCREEN, "remove-group", "", ..#ELEMENTREMOVETOOL, {"QualityMeasure": (tOwn), "Group": "Long", "Name": ""})
     Set tItem = {"QualityMeasure": (tOwn), "Name": "Edge", "Caption": "x"}
     Do ..AssertOwnCodeRefused("an item add", ..#METAENDPOINT, "ENTRYADD", ..MetaId(tOwn, "Edge"), {"Caption": "x"}, "", "/analytics/quality-measure-metas", "", tItem, ..#METAADDTOOL, tItem)
     Do ..AssertOwnCodeRefused("an item change", ..#METAENDPOINT, "ENTRYSET", ..MetaId(tOwn, "Purpose"), {"Caption": "x"}, "", ..#METASCREEN, "set", {"Caption": "x"}, ..#METASETTOOL, {"QualityMeasure": (tOwn), "Name": "Purpose", "Caption": "x"})
     Do ..AssertOwnCodeRefused("an item removal", ..#METAENDPOINT, "ENTRYREMOVE", ..MetaId(tOwn, "Purpose"), {}, "", ..#METASCREEN, "remove", "", ..#METAREMOVETOOL, {"QualityMeasure": (tOwn), "Name": "Purpose"})
-    Do $$$AssertEquals(..QRegistered(tOwn, $Parameter(..#PROBE, "QMCOMPILEDCLASS")), 1, "and the measure is still there")
+    Do $$$AssertEquals(..QRegistered(tOwn, tOwnClass), 1, "and the measure is still there")
+    Do $$$AssertEquals(..TextOf(tOwnClass), tOwnText, "its class text is as it was")
+    Do $$$AssertEquals(..QModel(tOwn), tOwnModel, "and so is its model")
 }
 
 /// <p>AC3: a compile the instance refuses, after the pre-checks passed, undoes each of the six writes: the class text, the model and the registry equal their state before it, a measure that was not
-/// compiled is saved back and not compiled, and each answers 422 <code>ANALYTICS.QUALITYMEASURE.COMPILE</code> and records its audit row.</p>
+/// compiled is saved back and not compiled, and each answers 422 <code>ANALYTICS.QUALITYMEASURE.COMPILE</code> and records one audit row under its own verb with the outcome restored.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.RestoreClass</method> do nothing -- the text, model and snapshot legs go red; drop its <code>&amp;&amp; pCompiled</code> -- the outcome
 /// leg of the not-compiled measure goes red.</p>
 Method TestARefusedCompileUndoesEachPartWrite()
@@ -125,9 +152,11 @@ Method TestARefusedCompileUndoesEachPartWrite()
         Do $$$AssertEquals(..Compiling($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 4))), tCode, $List(tCase, 5) _ ": the refused compile answers the compile's code")
         Do $$$AssertEquals(..TextOf(tClass), tText, $List(tCase, 5) _ ": the class text is as it was")
         Do $$$AssertEquals(..QModel(tName), tModel, $List(tCase, 5) _ ": the model is as it was")
+        Set tType = $Select($List(tCase, 1) = ..#ELEMENTENDPOINT: "quality-measure-element", 1: "quality-measure-meta")
+        Do $$$AssertEquals(..Rows(tSince, tType, $List(tCase, 3), $List(tCase, 5)), 1, $List(tCase, 5) _ ": the write recorded one audit row")
+        Do $$$AssertTrue(..Recorded(tSince, $List(tCase, 3), $List(tCase, 5), "restored", tType), $List(tCase, 5) _ ": with the outcome restored")
     }
     Do $$$AssertEquals(..QRegistered(tName, tClass), 1, "the measure is compiled and registered again")
-    Do $$$AssertEquals(..Rows(tSince, "quality-measure-element", ..ElementId(tName, "Long", "UndoNew"), "analytics.qualitymeasureelements.add") + ..Rows(tSince, "quality-measure-meta", ..MetaId(tName, "Purpose"), "analytics.qualitymeasuremetas.remove"), 2, "the writes recorded their audit rows")
     Do $ClassMethod(..#ATELIERSEAM, "Arm", 1)
     Do $$$AssertEquals(..Compiling(..#ELEMENTENDPOINT, "ENTRYADD", ..ElementId(tOff, "Missing", "Seed"), {}), tCode, "an add that makes the expression of a measure that was not compiled hold answers the compile's code")
     Do $$$AssertEquals(..TextOf(tOffClass) _ "|" _ ..QRegistered(tOff, tOffClass), tOffText _ "|0", "its text is saved back and it is not compiled")

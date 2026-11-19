@@ -12,13 +12,18 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-11-listing-groups-2.md'
 warnings: ['oversized']
 deferred:
-  - summary: >-
-      The pre-save XML read of the composed class text (AnalyticsPort.cls, in VendorQualityMeasureCompose) has no test that reaches it with content already stored in a class, apart from the new-content legs that NormalizedContent refuses first.
-    evidence: |-
-      Deleting that block leaves every test green. It would settle the question to seed a measure whose stored documentation re-emits unreadably (if the compiler accepts such a class in USER at all) and assert 422 COMPILE with an unchanged snapshot.
-    location: >-
-      src/OcuPilot/Port/AnalyticsPort.cls (VendorQualityMeasureCompose, the %XML.Reader.OpenString call)
-    severity: medium (unverified)
+  - summary: 'An element add naming a group that differs only in letter case from an existing one creates a second group'
+    evidence: 'ApplyQualityMeasurePart matches the group exactly; the vendor %Validate refuses an enabled case twin (422 COMPILE, misleading) and keeps a disabled one, so a later enable of either is refused. A refusal needs a ruled sentence.'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls ApplyQualityMeasurePart'
+    severity: low
+  - summary: 'The EXPRESSION refusal sentence names a missing group or brackets, not a group left with no enabled element'
+    evidence: 'Removing or disabling the only enabled element, or disabling a group, answers REASONQUALITYMEASUREEXPRESSION, whose words describe neither case. A truer sentence needs ruling (EXPERIENCE.md).'
+    location: 'src/OcuPilot/Api/AnalyticsError.cls REASONQUALITYMEASUREEXPRESSION'
+    severity: low
+  - summary: 'The group, element and item field captures repeat Collect''s field lists (Rule 2)'
+    evidence: 'ReadQualityMeasureData''s g and m nodes and QualityMeasureElementRow/MetaRow repeat the $ListBuild fields of Collect''s part rows; a field added to one and not the other splits the list from the single read.'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls ReadQualityMeasureData, Collect'
+    severity: low
 ---
 
 <intent-contract>
@@ -132,6 +137,44 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
   - `[low]` `[reject]` Intent alignment: the tab group is `analytics/quality-measures/document`, not `.../elements` — the registry (AD-5) allows only `<parent>/document` for a parent-scoped group, so the named spelling cannot be declared; the person-visible result (two tabs under a measure's name) is the intent's. Recorded in the Spec Change Log as an apply-and-report amendment.
   - `[low]` `[reject]` Intent alignment: no alias for the old Groups and elements route — the route has not left this branch (inference: no persisted link to it exists outside the branch); not worth a redirect.
 
+### 2026-11-18 — Code review (Batch 3, four layers on Opus)
+
+- verdicts: 33 findings — high 0, medium 7, low 22, false 1, maybe-false 3; patch 12, defer 3, reject 18, intent_gap 0
+- findings:
+  - `[medium]` `[patch]` `QualityMeasureTarget` raised `<NULL VALUE>` on an empty id (probed), so a part endpoint answered an internal error, not 422 — `$ListGet`; `PartWriteGaps` `TestAnEmptyOrPartlessTargetIsAShapeRefusal`.
+  - `[medium]` `[patch]` The own-code test's nothing-written check could not see Batch 1's probe class — class text and model legs, plus an element removal and a group change leg (`PartWriteEdge`).
+  - `[medium]` `[patch]` `AMBIGUOUS` was pinned at the port only and two mints — the person's call for eight write shapes and all six mints (`PartWriteEdge`).
+  - `[medium]` `[patch]` The refused-compile test summed two audit rows of seven writes — one row with the outcome restored per write.
+  - `[medium]` `[patch]` The routes' 404 for a missing measure was not pinned to its code and sentence — both routes now assert `ANALYTICS.QUALITYMEASURE.ABSENT` and `ReasonFor`'s sentence.
+  - `[medium]` `[patch]` A script-form refusal could not be told from a script that threw — `PartBase.ScriptRefusal` and the two sentence legs.
+  - `[medium]` `[patch]` AC4's group change had no browser leg — the Batch 3 browser test changes the emptied group and reads it back.
+  - `[low]` `[patch]` Ticking the group's Disabled on Add element was never shown to be sent — element page spec test.
+  - `[low]` `[patch]` The pre-save reader also refuses Batch 2's update of a measure with stored content, untested — an update leg in `PartWriteGaps`.
+  - `[low]` `[patch]` Stale doc comments (`IsQualityMeasureEndpoint`, `QualityMeasureViolations`, `QualityMeasureProblem`, `VendorQualityMeasureCompose`, `ReadQualityMeasure`, the element mint's superclass) — replaced.
+  - `[low]` `[patch]` `PartWriteGaps` was missing from the arming comment and `PartBase`'s header — one add-only comment line, header widened.
+  - `[low]` `[patch]` `TestEachRefusalWritesNothing`'s comment claimed every content leg reddens — corrected to the one leg the recorded mutation reddens.
+  - `[false]` `[reject]` "Making `ContentNormalized` the identity reddens nothing" — applied: the quote and line-break read-back legs went red; mutation line added.
+  - `[low]` `[defer]` A case-variant group name on an element add creates a twin group — needs a ruled sentence (frontmatter).
+  - `[low]` `[defer]` The `EXPRESSION` sentence does not describe a group left with no enabled element — needs a ruled sentence (frontmatter).
+  - `[low]` `[defer]` The part field captures repeat `Collect`'s field lists (Rule 2) — frontmatter.
+  - `[maybe-false]` `[reject]` A plain single read of a linked measure's part reads its own model while the list shows the master's — would be low; settle by reading one listed row of a linked measure through `QUALITYMEASUREELEMENT`.
+  - `[low]` `[reject]` The mint's add read matches exactly while the write's taken check ignores case — both refuse with the taken sentence before any write, and the class `Version` closes a stale proposal.
+  - `[low]` `[reject]` Content the model cannot hold is refused with the compile sentence — Task 0 rules 422 `COMPILE`.
+  - `[maybe-false]` `[reject]` `LINKEDPARTS` is not a precondition code, so a measure linked after a mint may not close target-changed — the confirm still refuses before any write; Batch 2's update omits `LINKED` alike.
+  - `[low]` `[reject]` Remove element on an emptied group's row removes the group — the same write as Remove group, typed with the group's name under the one consequence.
+  - `[maybe-false]` `[reject]` An agent remove that omits `Name` becomes a group removal — the card and the typed group name confirm it, and the key ships off.
+  - `[low]` `[reject]` Change element opens on the list row's values — Decided in-stage (plan) 4, as Change listing.
+  - `[low]` `[reject]` Normalized content can outgrow its length after the Save's check — the port refuses it before any write.
+  - `[low]` `[reject]` A group carrying the separator is refused under `Name` — refused before any write; label only.
+  - `[low]` `[reject]` The XML reader guard in `analytics.test.mjs` is weaker — adjudicated in the review pass above.
+  - `[low]` `[reject]` AD-65 does not yet name the pre-save `%XML.Reader` — no spine edit here; the Proposed spine lines carry it to the owner.
+  - `[low]` `[reject]` The Boundaries still name `.../elements`, and the pass above said the old route had not left this branch — it is on the feature branch, not on main, so no released link breaks; the Change Log records the amendment.
+  - `[low]` `[reject]` Two departures are recorded under Design Notes, not the Change Log — spec edit; Decided in-stage (implement) 3 and 6 record them.
+  - `[low]` `[reject]` `Prohibited.cls` changed `COVEREDTYPES` in place and `IsQualityMeasureType`'s doc line — a roster union (Decided in-stage (plan) 7) and no logic.
+  - `[low]` `[reject]` Short Rule 2 copies (the Saves' parent hooks, `TargetParts`, `ArgumentProblem`, `ComposeCreate`, the three `At` loops) — one to six lines each; a shared base would couple the listing and quality measure tools or read worse.
+  - `[low]` `[reject]` The Auto Run Result's counts and risk lines disagree with the tests — spec edit; this log and Verification hold the current state.
+  - `[low]` `[reject]` Two `MintRefused` legs accept any `TOOL.ARGUMENTS` sentence — `PartWriteGaps` pins the sentences for the taken and expression cases.
+
 ## Design Notes
 
 **Ruled (not re-opened).** U-111: this is Batch 3, the last; the story is `done` when it is. Batch 1's agent phrases "add an element to this quality measure" and "add documentation to this quality measure" are ruled and become the two descriptors' `emptyAgentKey` strings. U-108/U-110/U-112 and every Batch 2 rule carry over.
@@ -211,6 +254,21 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
 - mutation (separator): `PARTSEPARATOR` made `2` -> `AnalyticsQualityMeasurePartWriteEdge` `TestThePartSeparatorIsTheCompositeSeparator` (and the stale-class test) went red.
 - mutation (linked): the linked checks of `VendorQualityMeasureCompose` and `ReadQualityMeasure` made `0 &&` -> `TestALinkedMeasureRefusesEverySixPartWrites` went red on its six port legs, three person legs and mint legs.
 - mutation (content): the `NormalizedContent` refusal in `ApplyMetaPart` made `0 &&` -> `TestEachRefusalWritesNothing` went red on its `&euro;` leg (the legs whose XML is invalid stay green, because the reader refuses them first).
+- mutation (QA, pre-save reader): the `%XML.Reader` check in `VendorQualityMeasureCompose` made `0 &&` -> `AnalyticsQualityMeasurePartWriteGaps` `TestStoredDocumentationThatCannotBeWrittenAgainIsRefusedBeforeAnySave` went red alone, on its audit-row legs and the mint leg (the compile's restore still answers 422 and leaves the text unchanged, so only the audit row and the mint tell the two refusals apart); reverted, the deferred item above is closed by this test.
+- mutation (QA, person's refusals): the element add's taken check made `tHeld && tElementAt` -> `TestThePersonsRoutesRefuseTakenAbsentAndExpressionWrites` went red on its case and disabled legs and `TestTheAgentsMintsAreRefusedWithTheWritesOwnSentence` on its disabled-element leg.
+- mutation (QA, agent's sentences): `QualityMeasureProblem` made to answer the fault's code instead of its sentence -> `TestTheAgentsMintsAreRefusedWithTheWritesOwnSentence` went red alone, on its six sentence legs.
+- mutation (QA, emptied group): the `GroupCaption` line of `ApplyQualityMeasurePart` made to need an element name -> `TestAnEmptiedGroupIsChangedAndFilledAgain` went red alone.
+- mutation (QA, mended measure): the element `Disabled` line of `ApplyQualityMeasurePart` made to apply only to an add -> `TestAWriteThatMakesTheExpressionHoldCompilesARegisteredMeasure` went red on all five legs and `TestThePersonsRoutesRefuseTakenAbsentAndExpressionWrites` on its disabling legs.
+- mutation (review, empty target): `QualityMeasureTarget` reading the measure with `$List` -> `AnalyticsQualityMeasurePartWriteGaps` `TestAnEmptyOrPartlessTargetIsAShapeRefusal` went red on its eight empty-id legs.
+- mutation (review, Batch 2 update on stored content): the `%XML.Reader` check of `VendorQualityMeasureCompose` made `0 &&` -> `TestStoredDocumentationThatCannotBeWrittenAgainIsRefusedBeforeAnySave` went red on the update's audit leg with the part legs.
+- mutation (review, ambiguous): the `listed > 1` check of `ReadQualityMeasure` made `0 &&` -> `TestTwoClassesThatDeclareAMeasureRefuseEveryPartWrite` went red on its six mint legs.
+- mutation (review, own code): the plan's own-code check made `0 &&` and a refusal added after `WriteClass` -> `TestOwnCodeIsRefusedByEveryPartWrite` went red on its class text and model legs.
+- mutation (review, restored audit rows): the element set's verb in `PerformQualityMeasure` made the add's -> `TestARefusedCompileUndoesEachPartWrite` went red on the set's row and outcome legs alone.
+- mutation (review, route 404): `QualityMeasureElementSave.ParentAbsentCode` removed -> `TestTheRoutesAnswerJsonEnvelopesOfTheDeclaredShape` went red on the elements route's 404 leg.
+- mutation (review, script refusal): the refusal line of `QualityMeasureSnippet` made to also throw -> `TestEachWritesScriptFormMakesTheSameChange` went red on its two sentence legs.
+- mutation (review, normalized content): `AnalyticsQualityMeasureMetaAction.ContentNormalized` made to return its argument -> `TestADocumentationItemIsAddedChangedAndRemovedByEachCaller` went red on the quote and line-break read-back legs.
+- mutation (review, ticked group flag): `addBody` made to skip `GroupDisabled` always -> the element page spec's "sends GroupDisabled true ... when the group's Disabled is ticked" went red alone.
+- mutation (review, AC4 group change): the dialog's change made to skip `GroupCaption` (bundle rebuilt and redeployed) -> the Batch 3 browser test went red on its group change leg; reverted, rebuilt, redeployed and green.
 
 **Verification roster** (the Rule 30 grep for `analytics.qualitymeasures.copy`, `AnalyticsListingAdd` and `analytics.listinggrouplistings.remove`, re-run): `ReadTool` (516 tools), `SurfaceCoverage` (six rows), `Governance` and `GovernanceBaseline`, `ClassicPageGate`, `MappingDescriptor`, `ToolRoundTrip`, `ToolWrite` (other-port count 121), `Prohibited` (covered types), `EndpointCoverage` (two probes), `AnalyticsDescriptor` (routes, tab positions, actions, archetype), `SaveHoldCoverage`, `CompositeMintSweep` (two mints), `Navigation`, `ToolNavigateContract`, `ui/tools/screen-mirror.test.mjs`, `ui/tools/navigation.test.mjs`, `ui/tools/analytics.test.mjs`, `ui/browser/structural-walk.mjs`, `strings.ts` (one line reference moved), `proposal-view.ts`, `screens.generated.ts`. **Contended with Epic 21 (add-only or generated):** `EXPERIENCE.md`, `Baseline.cls`, `Prohibited.cls` (the widened `IsQualityMeasureType` body and added lines only), `ReadTool`, `ToolWrite` (the tool counts), `strings.ts`, `screens.generated.ts` (regenerate at merge) and the roster tests above. Green on the throwaway after: the two new classes, those roster classes, `AnalyticsQualityMeasure{Write,WriteEdge,WriteReal,Read,Edge,Gate}`, `AnalyticsListingWrite`, `AnalyticsListingGroupWrite`, `AnalyticsListingGroupWriteEdge`, `Descriptor`, `PortGate`, `StageTwoTools`; `test:tools` 2,330 of 2,330; `test:components` 3,595 of 3,595 (run in directory slices); the two analytics browser specs 18 of 18; the initial bundle 2.14 MB.
 
