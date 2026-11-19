@@ -673,3 +673,8 @@
 2026-11-19T05:24:55Z	Story 21.16	code_head_pushed	sha=540a51889 run=44464944337 missing=none note=supersedes_d9327710f_run_44462033892
 2026-11-19T05:24:55Z	Story 21.16	ledger_adjudicated	owned_open=0 review_terminal=DW-2756..2760(wontfix-accepted) routed=DW-2755(burndown),DW-2761(21-23) decision_pending=DW-2754(AD-53_named_gap_wording,owner,as_DW-2613)
 2026-11-19T05:24:55Z	Story 21.16	gate_step	step=fresh_check+full_sweep+smoke head=540a51889 started=2026-11-19T05:24:55Z dir=e21u/21-16/gate
+2026-11-19T06:16:11Z	Story 21.16	ci_resolved	story=21.16 sha=540a51889 runs=44464944337 result=success failed=none via=none note=images_fresh_compile_success(both)
+2026-11-19T07:36:11Z	Story 21.16	fresh_check	env=recipe(ci-throwaway_rebuild) tests=24_classes+2_specs result=pass order=forward,reverse(specs) head=540a51889 note=CriteriaCorpus_listed_by_mistake(helper,0_methods)
+2026-11-19T07:36:11Z	Story 21.16	gate_step	step=sweep result=green shards=20/20 head=540a51889
+2026-11-19T07:36:11Z	Story 21.16	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T07:36:11Z	Story 21.16	story_green	code_head=540a51889 ci=44464944337(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=edbedfe11 carries=6bc7a0d66(timings)
