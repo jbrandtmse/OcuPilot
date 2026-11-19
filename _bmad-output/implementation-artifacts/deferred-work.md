@@ -14017,3 +14017,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LocaleList.cls declares one empty-agent key and three prompts
 - 2026-11-19T09:18:39Z status=wontfix-accepted owner=21-15-locale-and-table-import by=harvest note=reopen_if=the descriptor model allows more than one empty-agent phrase
+
+### DW-2767: A person's locale import is sent straight from the dialog, so the screen never shows the custom locales, the replaced count or the shipped records the review drops
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: locale-list.page.ts onImport sends import/import-local via handler.sendFor at once (both UNDRAWN); LocaleImport.ScreenActionDelta takes Digest/Replaces from the same request's fresh read; the done line names counts only (matrix row Local import; U-114 'the review states how many').
+- 2026-11-19T09:42:47Z status=decision-pending owner=burndown by=cr note=a review step or a richer done line needs ruled strings (veto window)
+
+### DW-2768: The locale import's read-back compares the file's digest, which the import cannot change, so its verdict never reflects the instance
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: LocaleImport READBACKFIELDS Digest with READBACKPAYLOAD: the re-read reviews the same input file, so it reads matches whatever the vendor wrote.
+- 2026-11-19T09:42:51Z status=by-design owner=21-15-locale-and-table-import by=cr note=AC1 rules readBack matches; PerformImport itself fails unless every reviewed locale is listed and the counts agree

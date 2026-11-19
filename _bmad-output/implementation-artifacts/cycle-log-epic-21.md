@@ -683,3 +683,6 @@
 2026-11-19T09:19:16Z	Story 21.15	code_head_pushed	sha=3869d4ed3 run=44495250779 missing=none
 2026-11-19T09:19:16Z	Story 21.15	ruling	question=AC4_person_import_key choice=person_write_not_governed(AD-22;R2_precedent) via=runner category=decide policy=b9ff703e
 2026-11-19T09:19:16Z	Story 21.15	stage_spawned	stage=code-review spawn_at=2026-11-19T09:19:16Z model=opus agent_name=21-15-code-review-1 cycle_iteration=1 baseline=bcbd830e7
+2026-11-19T09:47:15Z	Story 21.15	cr_complete	spawn_at=2026-11-19T09:30Z model=opus high=3(2_patched:shipped_subtable_kept,typeless_subtable_loss;1_open:script_imports_whole_file) med=13 low=10 rows=48 unresolved_high_med=4 new=DW-2767(decision-pending,burndown),DW-2768(by-design) final=in-progress commit=510f4ff55 closing_sections_present=true
+2026-11-19T09:47:15Z	Story 21.15	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=script_kept_records_only(AD-59),all_or_nothing_import,lock_kept_locales,owned_temp_dir scope_baseline=510f4ff55
+2026-11-19T09:47:15Z	Story 21.15	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T09:47:15Z model=sonnet agent_name=21-15-implement-rework-1 cycle_iteration=2
