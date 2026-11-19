@@ -708,3 +708,8 @@
 2026-11-19T13:24:18Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T13:24:18Z model=sonnet agent_name=21-10-implement-1 cycle_iteration=1 story_base=7c7952a84
 2026-11-19T14:08:26Z	Story 21.10	stage_stopped	stage=implement agent=ac0cca5b0ebaf9de8 child=a8d03e69b8c7097c4 reason=build_subagent_edited_tracked_files_through_Bash(sed_-i.bak_at_13:37:42Z;orchestrator_rule:stop_and_respawn) stopped_by=main evidence=<state>/evidence/epic-21/21-10-bash-edit-implement-20261119T1400Z.{patch,untracked.txt,untracked.tgz}(never_applied) restored_to=ef126c8fa action=respawn
 2026-11-19T14:08:34Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T14:08:34Z model=sonnet agent_name=21-10-implement-2 cycle_iteration=1 note=respawn_after_stop(rule_zero)
+2026-11-19T14:25:54Z	Story 21.15	ci_resolved	story=21.15 sha=020f2d90e runs=44533046311 result=success failed=none via=none
+2026-11-19T14:25:54Z	Story 21.15	story_green	code_head=020f2d90e(integrated;story_code_7478c45a7) ci=44533046311(success) gates=fresh+sweep20/20+smoke50/50_on_7478c45a7 status=done spine=29879ab32(U-114)
+2026-11-19T18:25:43Z	Epic 21	ruling	question=21.15_merged via=orchestrator choice=feature_ff_251088f4b+cdbb7912b;osmgmt.locales.export=true,import=false_noted_for_cut;DW-2765,DW-2767_owner_sheet
+2026-11-19T18:25:43Z	Story 21.10	dev_complete	scope=batches1-4 spawn_at=2026-11-19T14:05Z model=sonnet build_sha=853e759d9 followup_review_recommended=true(3_med_patched) deferred=2(strings_~20_unruled;AC3_0-item_export_evidence) cycle_iteration=1 rule_zero=no_tracked_Bash_edits_found(scan)
+2026-11-19T18:25:43Z	Story 21.10	escalated	question=~20_user-facing_strings_not_ruled(spec_Auto_Run_Result) to=orchestrator class=strings_veto_window
