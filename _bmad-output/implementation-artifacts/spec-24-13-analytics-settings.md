@@ -2,7 +2,7 @@
 title: 'Story 24.13: Analytics settings (Batch 1: the read surface, and partly applied cube updates audited)'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '7953f3b7727e5fca4f191c0e902e8eb0ad064bcc'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -39,6 +39,13 @@ deferred:
     location: >-
       src/OcuPilot/Test/AnalyticsSettingsRead.cls TestAAReadsMakeNoJournaledWrite
     severity: medium
+  - summary: >-
+      Other test classes that open an audit window with `AuditEvent.Now()` and then assert an absolute `AuditRows` or `RowsCarrying` count may share the same-millisecond sibling-row race.
+    evidence: |-
+      The race is a window taken at the millisecond a sibling's row was written; this pass fixed only `AnalyticsCubeManager`. Which other classes assert an absolute count, and whether any has been seen red, is not measured.
+    location: >-
+      src/OcuPilot/Test/ (InteropJobActions, InteropItemChangeClass, AnalyticsTermListEdit, AnalyticsFolderItemTransfer, AuditVerbs)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -109,7 +116,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 - [x] The four descriptors, entity types, strings (once ruled), the regenerated mirror and titles, the EXPERIENCE.md row.
 - [x] Tests: the fixture, `AnalyticsSettingsRead` (the read rows of the matrix at the port and over `GET /screens/<id>/read`, the journal scan, the restore check), the seam modes and the DW-2518 test, the browser test, every roster.
 
-- [ ] [Smoke] `AnalyticsCubeManager.TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt` failed on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6cc61acfb, run 3) and passed on the rerun (run 4): `AuditRows(tSince, ...)` answered not 1 for "one audit row names the build". Both runs wrote the same five Categories build rows (pid-identical); in the failing run the previous test, `TestAFailedUpdateRecordsTheCubesItUpdated` (30 ms), wrote its last failed Categories build row at 10:51:10.062 and this test began about 10:51:10.063, so a window taken with `AuditEvent.Now()` can include a sibling test's row (inference: the audit stamp and `$ZTimeStamp` can land in the same or crossed millisecond). Make every DW-2518 row count in this class independent of a sibling's rows written in the millisecond before (e.g. count the rows this test's own call added, by a before/after count or a strictly later window), in each test that windows on `AuditEvent.Now()`, and prove it with a forward and a reverse run of the class on a rebuilt throwaway, first run green.
+- [x] [Smoke] Fixed: every DW-2518 audit-row count in `AnalyticsCubeManager` is a before/after difference (`Count` baseline, `Added`) over the same window; first run on the rebuilt `ocupilot-b-ci` green (11 tests), second run green. `AnalyticsCubeManager.TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt` failed on a FRESH instance (first run after `ci-throwaway.sh up`, merged tree 6cc61acfb, run 3) and passed on the rerun (run 4): `AuditRows(tSince, ...)` answered not 1 for "one audit row names the build". Both runs wrote the same five Categories build rows (pid-identical); in the failing run the previous test, `TestAFailedUpdateRecordsTheCubesItUpdated` (30 ms), wrote its last failed Categories build row at 10:51:10.062 and this test began about 10:51:10.063, so a window taken with `AuditEvent.Now()` can include a sibling test's row (inference: the audit stamp and `$ZTimeStamp` can land in the same or crossed millisecond). Make every DW-2518 row count in this class independent of a sibling's rows written in the millisecond before (e.g. count the rows this test's own call added, by a before/after count or a strictly later window), in each test that windows on `AuditEvent.Now()`, and prove it with a forward and a reverse run of the class on a rebuilt throwaway, first run green.
 
 **Acceptance Criteria:**
 
@@ -171,6 +178,14 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
   - `[low]` `[reject]` The browser specs store before their `try` — the snapshot survives a failed store and the next `Remove` restores it (Decided in-stage, implement 5).
   - `[maybe-false]` `[reject]` The real partial build leaves Visits unbuilt for later tests (inference) — would be low; the class's own rebuild and the green sweep say otherwise.
   - `[low]` `[reject]` The triage log above overstated the existence assertions — closed by the patch above.
+
+### 2026-11-19 — Review pass (rework 1, verification-gap)
+
+- verdicts: 3 findings — high 0, medium 0, low 2, false 0, maybe-false 1
+- findings:
+  - `[low]` `[reject]` No deterministic proof that `Count`/`Added` cancel a same-window sibling row, and no `mutation:` line — the helpers are two lines whose only failure mode is the race itself; a seeded `ConfigChange` row would need a second audit writer in the class for no reachable user failure, and a mutation that removes the baseline stays green on every non-racing run, so none can be demonstrated red.
+  - `[maybe-false]` `[defer]` Other `OcuPilot.Test` classes that window on `AuditEvent.Now()` may share the race — outside this story's named class; recorded in frontmatter `deferred:` with what would settle it (which of them assert an absolute count).
+  - `[low]` `[reject]` `Count`/`Added` name `OcuPilot.Test.InteropQueueActions` directly where the old code used `$ClassMethod` — both load together on every instance that runs the class, and the class already depends on `OcuPilot.Test.Http`.
 
 ## Design Notes
 
@@ -269,4 +284,5 @@ Blocking condition: none
 
 - **Implement pass:** Task 0 measured (Design Notes › Measured); the four `AnalyticsPort` endpoints behind `SETTINGSPAIRS`, four descriptors in one tab group, four entity types, 24 strings and one EXPERIENCE.md row, the regenerated mirror and titles; DW-2518 (`UpdatedCubes`, `AuditFailedUpdate`, `VendorSynchronize`'s statistics output); `AnalyticsSettingsRead` (10 tests), two `AnalyticsCubeManager` tests, the seam's `partial` and `real` modes, the probe's settings fixture, two browser tests and every roster.
 - **Verification:** `AnalyticsSettingsRead` and `AnalyticsCubeManager` green on `ocupilot-b-ci` (their first runs were red on a fixture check and green after it was fixed, and each ran green again in either order, leaving the three settings globals as found); `AnalyticsDescriptor`, `Descriptor`, `ReadTool`, `PortGate`, `Navigation`, `StageTwoTools`, `SurfaceCoverage`, `ToolNavigateContract`, `ToolRoundTrip`, `ClassicPageGate`, `ToolEmit`, `MappingDescriptor`, `Prohibited`, `ToolDispatch`, `AnalyticsQualityMeasureRead`, `AnalyticsCubeActions` and `AnalyticsCubeGate` green; `test:tools` 2331/2331, `test:components` 3612/3612; `npm run build` clean (initial bundle 2.15 MB); the two Story 24.13 browser tests, `analytics-links` and the existing analytics specs I ran (AC1 to AC5, the Quality measures one) green; `check-objectscript` 0 problems. The full sweep and the full browser suite are the lead's.
+- **Rework 1 (the [Smoke] item):** `AnalyticsCubeManager` takes a baseline `Count` of the cube's and verb's rows right after opening its window and asserts `Added` (rows now minus baseline) in every test that windowed on `AuditEvent.Now()` (five tests; the second `tSince` of `TestAFailedUpdateRecordsTheCubesItUpdated` became a re-baseline). Test-only, no product change; no assertion's meaning changed, so no new `mutation:` line. Verified on a rebuilt `ocupilot-b-ci` (src synced from the worktree): `AnalyticsCubeManager` first run green (11 tests), second run green; `check-objectscript` 0 problems. `(loop)` only, no full sweep (Rule 29). Review: one verification-gap layer, 0 patches, 1 deferred, 2 rejected (Review Triage Log).
 - **Contended (add-only):** `scripts/ci-throwaway.sh` (one arming-roster line), `strings.ts` (new keys, one citation line moved by the new row), `screens.generated.ts`, `Test/ReadTool.cls`, `Test/SurfaceCoverage.cls`, `Test/ToolRoundTrip.cls`, `Kernel/EntityType.cls` (four names).
