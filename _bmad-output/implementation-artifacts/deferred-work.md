@@ -13992,3 +13992,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
 - 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED
+
+### DW-2762: The locale export's %Admin_FileSystemAccess:USE refusal is asserted on the pair list only, not driven through a mint or screen action as a principal lacking it
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: LocaleExportRules asserts the pair; no route-level principal test (build's own deferral, unverified)
+- 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review
+
+### DW-2763: LocalePort copies InteropPort's import source checks, export file resolve and digest; one transfer-file helper would serve both
+- source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LocalePort.ImportText vs InteropPort (Rule 31 copy)
+- 2026-11-19T09:18:39Z status=routed owner=burndown by=harvest note=dedupe
+
+### DW-2764: The vendor's ImportAll deletes an existing custom locale before reading its replacement, so a record it then fails to import leaves the locale gone
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: measured by the build on ocupilot-ci (LocalePort.ImportReview)
+- 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review:prevent_or_state
+
+### DW-2765: ImportAll writes no vendor audit event; the locale import needs an AD-53 named gap
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: spine
+- evidence: build: no %System audit row after ImportAll
+- 2026-11-19T09:18:39Z status=decision-pending owner=21-15-locale-and-table-import by=harvest note=owner_wording_as_DW-2613,DW-2754
+
+### DW-2766: The Locale definitions descriptor wires one empty-agent phrase and three prompts; the spec rules two phrases and two more prompts that are not wired
+- source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LocaleList.cls declares one empty-agent key and three prompts
+- 2026-11-19T09:18:39Z status=wontfix-accepted owner=21-15-locale-and-table-import by=harvest note=reopen_if=the descriptor model allows more than one empty-agent phrase

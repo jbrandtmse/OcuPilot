@@ -679,3 +679,7 @@
 2026-11-19T07:36:11Z	Story 21.16	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
 2026-11-19T07:36:11Z	Story 21.16	story_green	code_head=540a51889 ci=44464944337(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=edbedfe11 carries=6bc7a0d66(timings)
 2026-11-19T07:36:30Z	Story 21.15	stage_spawned	stage=implement scope=batches1+2(U-114) spawn_at=2026-11-19T07:36:30Z model=sonnet agent_name=21-15-implement-2 cycle_iteration=1 story_base=035cf9754
+2026-11-19T09:18:39Z	Story 21.15	dev_complete	scope=batches1+2(U-114) spawn_at=2026-11-19T07:42Z model=sonnet build_sha=3869d4ed3 followup_review_recommended=true(4_med_test_patches) deferred=6(harvested:DW-2762,DW-2763,DW-2764,DW-2765,DW-2766;AC4_person_key_is_R2/AD-22,decided) cycle_iteration=1
+2026-11-19T09:19:16Z	Story 21.15	code_head_pushed	sha=3869d4ed3 run=44495250779 missing=none
+2026-11-19T09:19:16Z	Story 21.15	ruling	question=AC4_person_import_key choice=person_write_not_governed(AD-22;R2_precedent) via=runner category=decide policy=b9ff703e
+2026-11-19T09:19:16Z	Story 21.15	stage_spawned	stage=code-review spawn_at=2026-11-19T09:19:16Z model=opus agent_name=21-15-code-review-1 cycle_iteration=1 baseline=bcbd830e7
