@@ -114,17 +114,17 @@ Method Review(pText As %String, Output pReview, pPort As %String = {..#SEAM}) As
 /// <p><b>AC3, AC4.</b> Every import refusal of the matrix is answered before any vendor call, by the review and by the write alike: both sources or neither and a local name
 /// that is empty, over 255 characters or holds a slash, a backslash or a control character are 400 <code>PORT.VALIDATION</code>; text past 3,000,000 characters is 409
 /// <code>LOCALE.TOOLARGE</code>; a text with a document type declaration (in either letter case), malformed text, text with no record, a locale record
-/// that lacks an element the vendor requires or whose name is not a custom locale's shape are 409 <code>LOCALE.IMPORT.SHAPE</code>; shipped records alone are
-/// <code>LOCALE.IMPORT.EMPTY</code>; a kept record that is the current locale, a table it loads or a sub-table such a table names is
-/// <code>LOCALE.IMPORT.CURRENT</code>; a target that is not the literal is 404; and a server file under no allowed root, or one that is absent, is a
-/// <code>PATH.*</code> refusal.</p>
+/// that lacks an element the vendor requires or whose name is not a custom locale's shape, a sub-table with no type and a record that repeats a value are 409
+/// <code>LOCALE.IMPORT.SHAPE</code>; shipped records alone are <code>LOCALE.IMPORT.EMPTY</code>; a kept record that is the current locale, a table it loads or
+/// a sub-table such a table names is <code>LOCALE.IMPORT.CURRENT</code>, at the review and at a write reviewed before; a target that is not the literal is 404;
+/// and a server file under no allowed root, or one that is absent, is a <code>PATH.*</code> refusal. None of them reaches the vendor.</p>
 /// <p>Mutation (Rule 19): the current-locale check dropped from <code>ImportReview</code> -> the <code>CURRENT</code> rows go red; the <code>&lt;!DOCTYPE</code> check
-/// dropped -> the document type rows go red.</p>
+/// dropped -> the document type rows go red; the sub-table type check or the repeated-value check dropped from <code>ScanImport</code> -> its row goes red.</p>
 Method TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall()
 {
     Set tValid = ..Wrap(..LocaleXml(..#LOCALE))
     Kill tNone
-    Do $$$AssertEquals(..Call("IMPORTFILE", "locales.xml", tValid, .tNone), "200|", "a file that holds one custom locale is reviewed")
+    Do $$$AssertEquals(..Call("IMPORTFILE", "locales.xml", tValid, .tNone, .tValidReview), "200|", "a file that holds one custom locale is reviewed")
     Set tBoth("root") = "x"
     Set tBoth("path") = "y.xml"
     Do $$$AssertEquals(..Call("IMPORTFILE", "locales.xml", tValid, .tBoth), "400|PORT.VALIDATION", "a server file and a local file together are a validation fault")
@@ -136,7 +136,7 @@ Method TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall()
     Do $$$AssertEquals(..Call("IMPORTFILE", "", tValid, .tNone), "400|PORT.VALIDATION", "a local text with no name is a validation fault")
     Do $$$AssertEquals(..Call("IMPORTFILE", "locales.xml", $Justify("", 3000001), .tNone), "409|LOCALE.TOOLARGE", "text past 3,000,000 characters is too large")
     Set tShape = "409|LOCALE.IMPORT.SHAPE"
-    For tCase = $ListBuild($Replace(tValid, "<LocalesDeepExport>", "<!DOCTYPE LocalesDeepExport><LocalesDeepExport>"), tShape), $ListBuild($Replace(tValid, "<LocalesDeepExport>", "<!doctype LocalesDeepExport><LocalesDeepExport>"), tShape), $ListBuild("<!DOCTYPE a [<!ENTITY x SYSTEM ""file:///etc/hostname"">]><a>&x;</a>", tShape), $ListBuild("<!doctype a><LocalesDeepExport/>", tShape), $ListBuild("<a><b></a>", tShape), $ListBuild("not xml", tShape), $ListBuild("<a/>", tShape), $ListBuild(..Wrap("<Locales><Name>" _ ..#LOCALE _ "</Name></Locales>"), tShape), $ListBuild(..Wrap($Replace(..LocaleXml(..#LOCALE), "<Name>" _ ..#LOCALE _ "</Name>", "<Name>yqzzw</Name>")), tShape), $ListBuild(..Wrap($Replace(..LocaleXml(..#LOCALE), "<Name>" _ ..#LOCALE _ "</Name>", "<Name></Name>")), tShape), $ListBuild(..Wrap("", "<Tables><NameFrom>yqone</NameFrom><Type>XLT</Type></Tables>"), tShape), $ListBuild(..Wrap("", "", "<SubTables><Type>0</Type></SubTables>"), tShape), $ListBuild(..Wrap(..LocaleXml("enuw")), "409|LOCALE.IMPORT.EMPTY"), $ListBuild(..Wrap("", ..TableXml("Pattern", "Unicode", "Latin1", "Standard"), ..SubTableXml("Accent-Unicode-Unicode")), "409|LOCALE.IMPORT.EMPTY") {
+    For tCase = $ListBuild($Replace(tValid, "<LocalesDeepExport>", "<!DOCTYPE LocalesDeepExport><LocalesDeepExport>"), tShape), $ListBuild($Replace(tValid, "<LocalesDeepExport>", "<!doctype LocalesDeepExport><LocalesDeepExport>"), tShape), $ListBuild("<!DOCTYPE a [<!ENTITY x SYSTEM ""file:///etc/hostname"">]><a>&x;</a>", tShape), $ListBuild("<!doctype a><LocalesDeepExport/>", tShape), $ListBuild("<a><b></a>", tShape), $ListBuild("not xml", tShape), $ListBuild("<a/>", tShape), $ListBuild(..Wrap("<Locales><Name>" _ ..#LOCALE _ "</Name></Locales>"), tShape), $ListBuild(..Wrap($Replace(..LocaleXml(..#LOCALE), "<Name>" _ ..#LOCALE _ "</Name>", "<Name>yqzzw</Name>")), tShape), $ListBuild(..Wrap($Replace(..LocaleXml(..#LOCALE), "<Name>" _ ..#LOCALE _ "</Name>", "<Name></Name>")), tShape), $ListBuild(..Wrap("", "<Tables><NameFrom>yqone</NameFrom><Type>XLT</Type></Tables>"), tShape), $ListBuild(..Wrap("", "", "<SubTables><Type>0</Type></SubTables>"), tShape), $ListBuild(..Wrap("", ..TableXml("XLT", ..#TABLE, "Unicode", ..#SUBTABLE), "<SubTables><Name>" _ ..#SUBTABLE _ "</Name></SubTables>"), tShape), $ListBuild(..Wrap($Replace(..LocaleXml(..#LOCALE), "<Name>" _ ..#LOCALE _ "</Name>", "<Name>enuw</Name><Name>" _ ..#LOCALE _ "</Name>")), tShape), $ListBuild(..Wrap(..LocaleXml("enuw")), "409|LOCALE.IMPORT.EMPTY"), $ListBuild(..Wrap("", ..TableXml("Pattern", "Unicode", "Latin1", "Standard"), ..SubTableXml("Accent-Unicode-Unicode")), "409|LOCALE.IMPORT.EMPTY") {
         Do $$$AssertEquals(..Review($List(tCase, 1)), $List(tCase, 2), "the review of '" _ $Extract($List(tCase, 1), 1, 40) _ "' is refused " _ $List(tCase, 2))
         Set tWrite("digest") = "x"
         Set tWrite("replaces") = 0
@@ -150,6 +150,10 @@ Method TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall()
     Do $ClassMethod(..#SEAM, "HoldCurrent", ..#LOCALE, .tCurrentTables, .tCurrentSubTables)
     Set tCurrent = "409|LOCALE.IMPORT.CURRENT"
     Do $$$AssertEquals(..Review(..Wrap(..LocaleXml(..#LOCALE))), tCurrent, "a file whose custom locale is the current locale is refused")
+    Kill tReviewed
+    Set tReviewed("digest") = tValidReview.%Get("Digest")
+    Set tReviewed("replaces") = tValidReview.%Get("Replaces")
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tValid, .tReviewed), tCurrent, "a write reviewed before its locale became current is refused at the write")
     Do $ClassMethod(..#SEAM, "HoldCurrent", "yqyw", .tCurrentTables, .tCurrentSubTables)
     Do $$$AssertEquals(..Review(..Wrap("", ..TableXml("XLT", ..#TABLE, "Unicode", "Standard"))), tCurrent, "a custom table the current locale loads is refused")
     Kill tCurrentTables
@@ -157,7 +161,8 @@ Method TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall()
     Do $$$AssertEquals(..Review(..Wrap("", ..TableXml("XLT", ..#TABLE, "Unicode", ..#SUBTABLE), ..SubTableXml(..#SUBTABLE))), tCurrent, "a custom sub-table the current locale loads, named by a kept table, is refused")
     Set tWrite("digest") = "x"
     Set tWrite("replaces") = 0
-    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", ..Wrap(..LocaleXml(..#LOCALE)), .tWrite), "409|LOCALE.IMPORT.CHANGED", "with no current locale posed, a write whose digest is not the reviewed one is refused as changed")
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", ..Wrap(..LocaleXml(..#LOCALE)), .tWrite), "409|LOCALE.IMPORT.CHANGED", "a write whose digest is not the reviewed one is refused as changed")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), "", "no import was made by any refusal of the file")
     Do $ClassMethod(..#SEAM, "Reset")
     Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
     Kill tUnknown
@@ -176,10 +181,12 @@ Method TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall()
 /// <p><b>AC1, AC2 (the port's half).</b> The review keeps only the custom records and counts them: a file holding a custom locale, a custom table, the sub-table the
 /// table names, and a shipped locale, table and sub-table beside them answers one of each and three skipped, lists the locale by name and never answers the text; the write
 /// hands the vendor a file holding just the custom records, answers the vendor's counts, and is refused <code>LOCALE.IMPORT.CHANGED</code> with nothing imported when the
-/// digest or the replaced count is not the reviewed one or is absent. A server file reads as the same file. A vendor that imports fewer locales than were reviewed is a
-/// logged 500; one that answers an error is a logged 500.</p>
+/// digest or the replaced count is not the reviewed one or is absent. A server file reads as the same file. A vendor that imports fewer locales or tables than were
+/// reviewed is a logged 500; one that answers an error is a logged 500. A shipped sub-table a custom table names is skipped and never handed to the vendor, while a
+/// custom one is kept.</p>
 /// <p>Mutation (Rule 19): the digest compare dropped from <code>PerformImport</code> -> the changed rows go red; <code>ScanImport</code> keeping every table -> the
-/// kept-text rows go red; <code>ScanImport</code>'s parse without <code>KeepWhiteSpace</code> -> the leading-space row goes red.</p>
+/// kept-text rows go red; <code>ScanImport</code>'s parse without <code>KeepWhiteSpace</code> -> the leading-space row goes red; <code>IsCustomSubTable</code> answering 1
+/// -> the shipped sub-table rows go red; the table count compare dropped from <code>PerformImport</code> -> the fewer-tables row goes red.</p>
 Method TestOnlyTheCustomRecordsAreKeptCountedAndHandedToTheVendorOnce()
 {
     Set tText = ..MixedText()
@@ -238,6 +245,24 @@ Method TestOnlyTheCustomRecordsAreKeptCountedAndHandedToTheVendorOnce()
     Do $ClassMethod(..#SEAM, "Reset")
     Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
     Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(..#SEAM, "Faults"), "500|INTERNAL|INTERNAL|error", "a locale that is not listed after the import is a logged server error")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
+    Do $ClassMethod(..#SEAM, "HoldLocale", ..#LOCALE, "posed", 0, 1)
+    Do $ClassMethod(..#SEAM, "FeedImportCounts", 1, 0, 1)
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(..#SEAM, "Faults"), "500|INTERNAL|INTERNAL|error", "a vendor that imports fewer tables than were reviewed is a logged server error")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
+    Set tShipped = "XLT-Latin2-Unicode"
+    Set tSuffixed = "XLT-Latin2-Unicode.0001"
+    Set tSubText = ..Wrap("", ..TableXml("XLT", ..#TABLE, "Unicode", tShipped) _ ..TableXml("XLT", ..#TABLE, "Latin2", tSuffixed), ..SubTableXml(tShipped) _ ..SubTableXml(tSuffixed))
+    Do $$$AssertEquals(..Review(tSubText, .tSubReview), "200|", "a file whose custom tables name a shipped and a custom sub-table is reviewed")
+    Do $$$AssertEquals(tSubReview.%Get("TableCount") _ "|" _ tSubReview.%Get("SubTableCount") _ "|" _ tSubReview.%Get("Skipped"), "2|1|1", "the custom sub-table is kept and the shipped one a custom table names is skipped")
+    Kill tSubWrite
+    Set tSubWrite("digest") = tSubReview.%Get("Digest")
+    Set tSubWrite("replaces") = tSubReview.%Get("Replaces")
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tSubText, .tSubWrite), "200|", "and is imported")
+    Set tSubImported = $ClassMethod(..#SEAM, "Imported")
+    Do $$$AssertTrue((tSubImported [ ("<Name>" _ tSuffixed _ "</Name>")) && '(tSubImported [ ("<Name>" _ tShipped _ "</Name>")), "the vendor's file holds the custom sub-table and never the shipped one")
 }
 
 /// <p>The SHA-256 of <var>pText</var>'s UTF-8 bytes, as lower-case hex, computed here as the port's review states it.</p>
@@ -304,9 +329,10 @@ Method TestTheAgentSchemaIsClosedAndTheMintRefusesWhatThePortRefuses()
 
 /// <p><b>AC5 (the file the port makes).</b> The file the port hands the vendor is empty and its own when the vendor is called, under the port's own temporary directory, whatever
 /// the vendor's answer, and is gone afterwards: after an import that ends in a vendor error and one that raises an exception, and after an export to this browser, to a file,
-/// with an error and with an exception. The vendor never receives a caller's value as its file.</p>
+/// with an error and with an exception. The vendor never receives a caller's value as its file, and the log of a vendor error holds its error number, not its text,
+/// which quotes the file's values.</p>
 /// <p>Mutation (Rule 19): <code>SendImport</code> not deleting the file after an error -> the error row goes red; the delete moved inside the <code>Try</code> -> the exception
-/// row goes red.</p>
+/// row goes red; <code>PerformImport</code> logging the vendor's text -> the log row goes red.</p>
 Method TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath()
 {
     Set tPort = ..#TRANSFER
@@ -327,6 +353,7 @@ Method TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath()
         Set tFile = $Piece(tCall, "|", 2)
         Do $$$AssertEquals($Piece(tCall, "|", 1) _ "|" _ $Piece(tCall, "|", 3) _ "|" _ ($Piece(tCall, "|", 4) = tDirectory) _ "|" _ ($Extract(tFile, *-3, *) = ".xml") _ "|" _ ##class(%File).Exists(tFile), "import|1|1|1|0", "an import with the vendor answering " _ tMode _ " hands it a file of ours under the directory, and the file is gone after")
         If tMode '= "ok" Do $$$AssertEquals(tOutcome, "500|INTERNAL", "and a vendor " _ tMode _ " is a server error")
+        If tMode = "error" Do $$$AssertTrue(($ClassMethod(tPort, "Logged") [ "vendor error") && '($ClassMethod(tPort, "Logged") [ "yqfilevalue"), "and the log names the vendor's error, never the file's values its text quotes")
     }
     Do ..Review(tText, .tReview2, tPort)
     Set tQuery("name") = $ClassMethod(..#READ, "VendorGet", "", .tNoneName)

@@ -43,6 +43,9 @@ Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
 
 Property PreparedLocale As %String [ InitialExpression = "" ];
 
+/// <p>How many files the port's temporary directory held before the test, which the test leaves as it found.</p>
+Property PreparedTransferFiles As %Integer [ InitialExpression = 0 ];
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -61,6 +64,7 @@ Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do ..Restore()
+    Set ..PreparedTransferFiles = ..TransferFiles()
     Set tSC = $ClassMethod(..#PROBE, "MakeDirectory")
     If $$$ISERR(tSC) Quit tSC
     Quit ..EnableKeys()
@@ -72,7 +76,7 @@ Method OnAfterOneTest() As %Status
     Do ..Restore()
     Do $$$AssertEquals(..VendorExists(..#COPYA) _ "|" _ ..VendorTableExists(), "0|0|0", "the custom locale, table and sub-table are gone")
     Do $$$AssertEquals($ClassMethod(..#READ, "VendorGet", "", .tNone), ..PreparedLocale, "the current locale is as the class found it")
-    Do $$$AssertEquals(..TransferFiles(), 0, "no temporary file is left in the port's directory")
+    Do $$$AssertEquals(..TransferFiles(), ..PreparedTransferFiles, "no temporary file of this test is left in the port's directory")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveDirectory"), "the probe directory is removed")
     Kill tRows
     Merge tRows = ..PreparedPolicy
@@ -327,8 +331,8 @@ ClassMethod Saved(pAnswer As %DynamicObject) As %String
 /// (<code>import-local</code>), the locale listed again with the definition it had and a matching read-back and the vendor's counts answered; then exported to a server file
 /// by the agent, deleted, and imported from that file by the agent's confirmed proposal, with the same result; and an agent's import whose file changes after the mint is
 /// refused with nothing imported. A text with a record of the locale InterSystems ships beside the custom one imports the custom one alone. No temporary file is left.</p>
-/// <p>Mutation (Rule 19): <code>SendImport</code> passing flags 3 (no locales) -> the listed-again rows go red; the digest compare dropped from <code>PerformImport</code> -> the changed
-/// row goes red.</p>
+/// <p>Mutation (Rule 19): <code>SendImport</code> passing flags 3 (no locales) -> the listed-again rows go red. The changed-file row pins the proposal's fingerprint
+/// (<code>PROPOSAL.TARGETCHANGED</code>), which refuses before the port's own digest compare runs.</p>
 Method TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused()
 {
     Do $$$AssertTrue(..VendorCopy(..#COPYA), "the custom locale is made as the test's own setup")

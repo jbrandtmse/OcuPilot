@@ -1242,12 +1242,13 @@ ClassMethod XmlText(pText As %String) As %String [ Private ]
 
 /// <p>Read <var>pText</var> as a locale and table export and sort its records. <var>pShape</var> is 1 when the text is not well-formed, holds an
 /// element or attribute with a namespace prefix inside a record, or holds a record the vendor could not read (a locale with no name or a name
-/// that is not <parameter>IMPORTNAMEPATTERN</parameter>, a table with no type or no side, a sub-table with no name). Only the three record
-/// paths of the vendor's own export are read. <var>pScan</var> holds, with <code>L</code>, <code>T</code> and <code>S</code> the custom
+/// that is not <parameter>IMPORTNAMEPATTERN</parameter>, a table with no type or no side, a sub-table with no name or no type). Only the three
+/// record paths of the vendor's own export are read. <var>pScan</var> holds, with <code>L</code>, <code>T</code> and <code>S</code> the custom
 /// locales, tables and sub-tables kept: <code>pScan("L", n) = $ListBuild(name, xml)</code>, <code>pScan("T", n) = $ListBuild(type, from, to,
 /// subTableName, xml)</code> and <code>pScan("S", name) = xml</code>, each with its count in the node itself; <code>pScan("seen")</code> the records
 /// read and <code>pScan("skipped")</code> those dropped. A table is custom when its <code>NameFrom</code> or <code>NameTo</code> starts with
-/// <parameter>CUSTOMPREFIX</parameter>; a sub-table is kept only when a kept table names it. Nothing is read from the instance.</p>
+/// <parameter>CUSTOMPREFIX</parameter>; a sub-table is kept only when it is custom (<method>IsCustomSubTable</method>) and a kept table names it.
+/// Nothing is read from the instance.</p>
 ClassMethod ScanImport(pText As %String, Output pScan, Output pShape As %Boolean) As %Status [ Private ]
 {
     Kill pScan
@@ -1315,17 +1316,19 @@ ClassMethod ScanImport(pText As %String, Output pScan, Output pShape As %Boolean
                 Do ..KeepRecord(tRecord, .tFields, tXml, tPrefix, .pScan, .pShape)
                 Set tRecord = ""
             } ElseIf (tField '= "") && (tReader.Depth = tDepth) {
+                ; A record names each of its values once; a repeated one could be read differently by the vendor.
+                If $Data(tFields(tField)) Set pShape = 1
                 Set tFields(tField) = tText
                 Set tField = ""
             }
         }
     }
     If pShape Quit $$$OK
-    ; A sub-table is kept when a kept table names it.
+    ; A sub-table is kept when it is custom and a kept table names it.
     Set tNamed = ""
     For tI = 1:1:pScan("T") {
         Set tSubName = $List(pScan("T", tI), 4)
-        If (tSubName '= "") && $Data(pScan("all", tSubName)) Set tNamed(tSubName) = ""
+        If (tSubName '= "") && $Data(pScan("all", tSubName)) && ..IsCustomSubTable(tSubName) Set tNamed(tSubName) = ""
     }
     Set tName = ""
     For {
@@ -1377,13 +1380,23 @@ ClassMethod KeepRecord(pKind As %String, ByRef pFields, pXml As %String, pPrefix
         Quit
     }
     Set tName = $Get(pFields("Name"))
-    If tName = "" {
+    If (tName = "") || ($Get(pFields("Type")) = "") {
         Set pShape = 1
     } ElseIf $Data(pScan("all", tName)) {
         Set pScan("skipped") = pScan("skipped") + 1
     } Else {
         Set pScan("all", tName) = pXml
     }
+}
+
+/// <p>Whether the sub-table <var>pName</var> (<code>type-from-to</code>) is custom as <code>Config.NLS.SubTables</code> defines it: its from or to
+/// part starts with <parameter>CUSTOMPREFIX</parameter>, or the name ends with a dot and four digits.</p>
+ClassMethod IsCustomSubTable(pName As %String) As %Boolean
+{
+    Set tPrefix = ..#CUSTOMPREFIX
+    If $Extract($Piece(pName, "-", 2), 1, $Length(tPrefix)) = tPrefix Quit 1
+    If $Extract($Piece(pName, "-", 3, *), 1, $Length(tPrefix)) = tPrefix Quit 1
+    Quit $Match(pName, ".*\.[0-9]{4}")
 }
 
 /// <p>Whether the locale record whose child values are <var>pFields</var> holds every element of <parameter>IMPORTREQUIRED</parameter>.</p>
@@ -1607,9 +1620,10 @@ ClassMethod PerformImport(ByRef pQuery, Output pResult As %DynamicObject, Output
         Quit ..Refused(##class(OcuPilot.Api.LocaleError).#IMPORTCHANGED, .pHttpStatus, .pFault)
     }
     Set tVendor = ..SendImport(tKept, .tCounts)
-    If $$$ISERR(tVendor) Quit ..Fail("the import of locales was refused by the vendor", tVendor, .pHttpStatus, .pFault)
-    If +$Get(tCounts("Locales")) '= tReview.%Get("LocaleCount") {
-        Quit ..Fail("the vendor imported fewer locales than were reviewed", $$$ERROR($$$GeneralError, "imported " _ +$Get(tCounts("Locales")) _ " of " _ tReview.%Get("LocaleCount") _ " locales"), .pHttpStatus, .pFault)
+    ; Only the vendor's error numbers are logged: its text quotes the file's values.
+    If $$$ISERR(tVendor) Quit ..Fail("the import of locales was refused by the vendor", $$$ERROR($$$GeneralError, "vendor error " _ $System.Status.GetErrorCodes(tVendor)), .pHttpStatus, .pFault)
+    If (+$Get(tCounts("Locales")) '= tReview.%Get("LocaleCount")) || (+$Get(tCounts("Tables")) '= tReview.%Get("TableCount")) || (+$Get(tCounts("SubTables")) '= tReview.%Get("SubTableCount")) {
+        Quit ..Fail("the vendor imported other counts than were reviewed", $$$ERROR($$$GeneralError, "imported " _ +$Get(tCounts("Locales")) _ "/" _ +$Get(tCounts("Tables")) _ "/" _ +$Get(tCounts("SubTables")) _ " of " _ tReview.%Get("LocaleCount") _ "/" _ tReview.%Get("TableCount") _ "/" _ tReview.%Get("SubTableCount")), .pHttpStatus, .pFault)
     }
     Set tSC = ..LocaleRows(.tRows)
     If $$$ISERR(tSC) Quit ..Fail("the locales could not be read after the import", tSC, .pHttpStatus, .pFault)

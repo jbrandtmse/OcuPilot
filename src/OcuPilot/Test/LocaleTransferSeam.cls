@@ -8,7 +8,26 @@ Class OcuPilot.Test.LocaleTransferSeam Extends OcuPilot.Port.LocalePort
 /// <p>The record of the vendor calls, one <code>operation|file|existed</code> node each.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotTransferCalls, ^||OcuPilotTransferMode
+    Kill ^||OcuPilotTransferCalls, ^||OcuPilotTransferMode, ^||OcuPilotTransferLogged
+}
+
+/// <p>The status texts the port logged since <method>Reset</method>, joined by <code>|</code>.</p>
+ClassMethod Logged() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotTransferLogged(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ "|" _ ^||OcuPilotTransferLogged(tI)
+    }
+    Quit tOut
+}
+
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set ^||OcuPilotTransferLogged($Increment(^||OcuPilotTransferLogged)) = $System.Status.GetErrorText(pStatus)
+    Do ##super(pMessage, pStatus, pCode)
 }
 
 /// <p>How the vendor calls end until <method>Reset</method>: <code>ok</code> (the default), <code>error</code> (an error status) or <code>throw</code> (an
@@ -57,7 +76,7 @@ ClassMethod Answer(Output pCounts) As %Status [ Private ]
     Set pCounts("Locales") = 1
     Set pCounts("Tables") = 0
     Set pCounts("SubTables") = 0
-    If tMode = "error" Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If tMode = "error" Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test, with value: yqfilevalue")
     Quit $$$OK
 }
 
