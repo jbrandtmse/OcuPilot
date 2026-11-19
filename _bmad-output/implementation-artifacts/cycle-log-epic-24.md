@@ -495,3 +495,5 @@
 2026-11-19T16:33:51Z	Story 24.13	stage_spawned	stage=code-review spawn_at=2026-11-19T16:33:51Z model=opus agent_name=24-13-analytics-settings-code-review-batch2 cycle_iteration=2 baseline=07623b77d
 2026-11-19T17:03:08Z	Story 24.13	review_complete	spawn_at=2026-11-19T16:35:00Z model=opus layers=4(full-opus) findings=29(high1,med6,low22) patched=9(HIGH_key_in_ledger_row_redacted) deferred=6 rejected=14 intent_gap=0 commit=ab837dd31 scope=batch2
 2026-11-19T17:03:08Z	Story 24.13	ledger_adjudicated	resolved=DW-2771 rerouted=DW-2774(burndown_residual) new_open=DW-2775(batch3) routed_burndown=DW-2776 to_decision_sheet=DW-2777,DW-2778,DW-2779 born_terminal=DW-2780 scope=batch2 model=claude-opus-5-5
+2026-11-19T17:06:13Z	Story 24.13	integrated_feature	feature=cdbb7912b(21.15) merge=a365495ce conflicts=5(roster_unions;counts_ReadTool533+302_writes,ToolWrite133) prohibited=auto-merged_both_kept(orchestrator_ruling) test_tools=2335/2335 check_objectscript=0 scope=batch2
+2026-11-19T17:06:13Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=a365495ce
