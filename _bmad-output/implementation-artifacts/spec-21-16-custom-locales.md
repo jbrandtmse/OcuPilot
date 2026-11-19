@@ -104,6 +104,8 @@ deferred: []
 
 ## Review Triage Log
 
+- Runner rulings R1-R5 (2026-11-19, see Spec Change Log) accepted by the orchestrator: two person create routes as `AnalyticsTermListCreate`'s; AC4's governance binds the agent (AD-22); current-locale-first order; an unheld table never reads `Loadable` and refuses 4xx; person-path assertions restored. AD-36 `read.criteria` on a `locale` source: spine sentence, orchestrator ruling (a).
+
 ### 2026-11-19 — Review pass
 
 - verdicts: 16 findings — high 0, medium 5, low 11, false 0, maybe-false 0
