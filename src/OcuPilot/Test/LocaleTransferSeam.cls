@@ -5,10 +5,22 @@
 Class OcuPilot.Test.LocaleTransferSeam Extends OcuPilot.Port.LocalePort
 {
 
-/// <p>The record of the vendor calls, one <code>operation|file|existed</code> node each.</p>
+/// <p>The record of the vendor calls, one <code>operation|file|existed|directory|directoryExisted</code> node each.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotTransferCalls, ^||OcuPilotTransferMode, ^||OcuPilotTransferLogged
+    Kill ^||OcuPilotTransferCalls, ^||OcuPilotTransferMode, ^||OcuPilotTransferLogged, ^||OcuPilotTransferName
+}
+
+/// <p>Make every transfer's directory name end in <var>pName</var>, so a test can pose one that is taken, until <method>Reset</method>.</p>
+ClassMethod FixName(pName As %String)
+{
+    Set ^||OcuPilotTransferName = pName
+}
+
+ClassMethod TransferName() As %String
+{
+    If $Data(^||OcuPilotTransferName) Quit ^||OcuPilotTransferName
+    Quit ##super()
 }
 
 /// <p>The status texts the port logged since <method>Reset</method>, joined by <code>|</code>.</p>
@@ -37,7 +49,7 @@ ClassMethod Mode(pMode As %String)
     Set ^||OcuPilotTransferMode = pMode
 }
 
-/// <p>The calls recorded, as <code>operation|file|existed|directory</code>, in order.</p>
+/// <p>The calls recorded, as <code>operation|file|existed|directory|directoryExisted</code>, in order.</p>
 ClassMethod Calls(Output pCalls)
 {
     Kill pCalls
@@ -47,14 +59,14 @@ ClassMethod Calls(Output pCalls)
 ClassMethod VendorImport(pFile As %String, Output pCounts) As %Status [ Private ]
 {
     Kill pCounts
-    Set ^||OcuPilotTransferCalls($Increment(^||OcuPilotTransferCalls)) = "import|" _ pFile _ "|" _ ##class(%File).Exists(pFile) _ "|" _ ##class(%File).GetDirectory(pFile)
+    Set ^||OcuPilotTransferCalls($Increment(^||OcuPilotTransferCalls)) = "import|" _ pFile _ "|" _ ##class(%File).Exists(pFile) _ "|" _ ##class(%File).GetDirectory(pFile) _ "|" _ ##class(%File).DirectoryExists(##class(%File).GetDirectory(pFile))
     Quit ..Answer(.pCounts)
 }
 
 ClassMethod VendorExport(pFile As %String, pName As %String, Output pCounts) As %Status [ Private ]
 {
     Kill pCounts
-    Set ^||OcuPilotTransferCalls($Increment(^||OcuPilotTransferCalls)) = "export|" _ pFile _ "|" _ ##class(%File).Exists(pFile) _ "|" _ ##class(%File).GetDirectory(pFile)
+    Set ^||OcuPilotTransferCalls($Increment(^||OcuPilotTransferCalls)) = "export|" _ pFile _ "|" _ ##class(%File).Exists(pFile) _ "|" _ ##class(%File).GetDirectory(pFile) _ "|" _ ##class(%File).DirectoryExists(##class(%File).GetDirectory(pFile))
     Set tSC = ..Answer(.pCounts)
     If $$$ISOK(tSC) {
         Set tStream = ##class(%Stream.FileCharacter).%New()

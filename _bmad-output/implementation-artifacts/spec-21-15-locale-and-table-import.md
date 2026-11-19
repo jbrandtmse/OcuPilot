@@ -2,10 +2,10 @@
 title: 'Story 21.15: Locale and table import'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: 'bcbd830e7714df9b9e68c4730f802fc2a81dfba9'
+status: 'done'
+baseline_revision: '9f713895ca0219e9f14c6b767c4942427bb9f07e'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -29,6 +29,10 @@ deferred:
     evidence: 'Task 0 (e), ocupilot-ci 2026-11-19 with auditing on: the row count of %SYS.Audit was 229391 before and after ImportAll and Delete of a locale; Create writes one ConfigurationChange row.'
     location: '_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md:AD-53'
     severity: 'medium'
+  - summary: 'The import pre-validates each kept record through the vendor class''s %ValidateObject, which does not reject a table Type of BOGUS or a non-numeric FromToKey, so a record the vendor then rejects could still leave earlier records written'
+    evidence: 'Measured by the rework pass on ocupilot-ci: a bad DateFormat, a sub-table Type xx and a table Description over 128 characters are refused SHAPE; a table Type BOGUS and a non-numeric FromToKey pass validation. Whether ImportAll rejects them is not measured (inference).'
+    location: 'src/OcuPilot/Port/LocalePort.cls:KeptRecordsValid'
+    severity: 'medium (unverified)'
   - summary: 'The two empty-agent phrases and two prompts the spec rules are not wired: the Locale definitions descriptor declares one empty-agent key and three prompts'
     evidence: 'Spec Design Notes, Strings: "import a locale", "export a locale", "Import a locale from a file", "Export a locale to a file"; LocaleList declares emptyAgentKey localesEmptyAgent and three suggestedPrompts, and EXPERIENCE.md states exactly three prompts for each screen.'
     location: 'src/OcuPilot/Screen/Descriptor/LocaleList.cls'
@@ -113,6 +117,8 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 - AC5. Given these configure the server's locales rather than OcuPilot's own interface, when the dialogs, cards and refusals render, then each is an English `strings.ts` value pinned equal to its `LocaleError` sentence.
 - AC6. Given the default baseline and a `y` locale the test created, when a person exports it to this browser and the agent proposes, and the person confirms, an export to a server file already present under an allowed root, then both round-trip over `Config.NLS.Locales.ExportList`: the lines and the replaced file each hold the locale's record and the counts `NumExported` answers, the locale is unchanged, and no temporary file remains; and a principal without `%Admin_FileSystemAccess:USE` is refused before any vendor call.
 
+**Rework pass 1 (closed): implement ONLY the four unchecked `[Review][Patch]` items under `### Review Findings` (the HIGH and three MED), each with its pinning test and `mutation:` line under Verification; everything else in this spec is done and is not re-derived or widened. Any user-facing string is escalated, not invented. Test on `ocupilot-ci` only, with test-owned `y...w` locales and files, removed after; never change the current locale.**
+
 **Review patches, pass 1 (closed; a fresh patch agent closes each and records its `mutation:` line under Verification):**
 
 - P1. `LocaleImportRules`: a valid custom-locale export with a `<!DOCTYPE LocalesDeepExport ...>` prepended (both letter cases) is refused `LOCALE.IMPORT.SHAPE` at the review and at the write; the same text without it reviews 200. Mutation: the `<!DOCTYPE` check dropped -> that row red.
@@ -125,10 +131,10 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 
 Code review 2026-11-19 (blind, edge-case, verification-gap and acceptance layers; measured on `ocupilot-ci` as the real port and principals). Open, for the rework pass:
 
-- [ ] [Review][Patch] HIGH: the import's script imports the caller's whole file, shipped records included (AD-59; AD-51's 2026-11-19 sentence). `TransferSnippet` renders `ImportAll` on the user's file, while `Invoke` hands the vendor only the kept custom records. Render the kept records into the script's own file, line by line, then `ImportAll` and the delete, as `SendImport` does. Past 1,000,000 characters the draft is refused `PROPOSAL.NODRAFT`, as `AtelierPort`'s is. Pin it in `TestAnImportAndAnExportRenderTheirScript` with a file that holds a shipped table. [src/OcuPilot/Port/LocalePort.cls:TransferSnippet]
-- [ ] [Review][Patch] MED: a record the vendor rejects after the review leaves the file's earlier records written, and the port answers 500. Measured: a good `y` locale followed by one with `DateFormat` `abc` answered 500, and the first locale was replaced. Pre-validate each kept record before the vendor call, through the vendor class's XML import into an unsaved object and `%ValidateObject`, and refuse a failure `LOCALE.IMPORT.SHAPE`. [LocalePort.cls:ImportReview]
-- [ ] [Review][Patch] MED: the import locks the literal `import`, not the kept locales. An install, copy or property write on the same custom locale can interleave with it, and a locale made current after the `CURRENT` check is replaced. Take each kept locale's lock (`TakeLock`) before the review is repeated at the write, and release them after. [LocalePort.cls:ImportUnderLock]
-- [ ] [Review][Patch] MED: the temporary directory has a fixed name in the shared OS temp directory and is adopted when it already exists, so it is not a directory OcuPilot owns (U-114). Make a uniquely named directory per transfer, refuse one that already exists, and remove it with the file. [LocalePort.cls:TransferDirectory]
+- [x] [Review][Patch] HIGH: the import's script imports the caller's whole file, shipped records included (AD-59; AD-51's 2026-11-19 sentence). `TransferSnippet` renders `ImportAll` on the user's file, while `Invoke` hands the vendor only the kept custom records. Render the kept records into the script's own file, line by line, then `ImportAll` and the delete, as `SendImport` does. Past 1,000,000 characters the draft is refused `PROPOSAL.NODRAFT`, as `AtelierPort`'s is. Pin it in `TestAnImportAndAnExportRenderTheirScript` with a file that holds a shipped table. [src/OcuPilot/Port/LocalePort.cls:TransferSnippet]
+- [x] [Review][Patch] MED: a record the vendor rejects after the review leaves the file's earlier records written, and the port answers 500. Measured: a good `y` locale followed by one with `DateFormat` `abc` answered 500, and the first locale was replaced. Pre-validate each kept record before the vendor call, through the vendor class's XML import into an unsaved object and `%ValidateObject`, and refuse a failure `LOCALE.IMPORT.SHAPE`. [LocalePort.cls:ImportReview]
+- [x] [Review][Patch] MED: the import locks the literal `import`, not the kept locales. An install, copy or property write on the same custom locale can interleave with it, and a locale made current after the `CURRENT` check is replaced. Take each kept locale's lock (`TakeLock`) before the review is repeated at the write, and release them after. [LocalePort.cls:ImportUnderLock]
+- [x] [Review][Patch] MED: the temporary directory has a fixed name in the shared OS temp directory and is adopted when it already exists, so it is not a directory OcuPilot owns (U-114). Make a uniquely named directory per transfer, refuse one that already exists, and remove it with the file. [LocalePort.cls:TransferDirectory]
 
 Closed in this review:
 
@@ -175,6 +181,21 @@ Rejected:
   - `[maybe-false]` `[reject]` Intent audit: no typed-name step on the person's import — the dialog's replaces sentence is the confirm, as `InteropLookupTableImport`'s screen path; consistent with the sibling.
   - `[maybe-false]` `[reject]` Intent audit: AC3's "current locale's own record" is dropped (EMPTY) not CURRENT for a shipped current locale — the 2026-11-19 ruling keeps custom records only; CURRENT fires for a custom current locale or a table it loads.
   - `[medium]` `[defer]` Vendor deletes a custom locale before reading a replacement, AD-53 audit gap, unwired phrases and prompts — already in `deferred:`.
+
+### 2026-11-19 — Review pass (rework 1)
+
+- verdicts: 10 findings — high 0, medium 2, low 6, false 1, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The table branch of `KeptRecordsValid` has no rejecting row — added a table whose `Description` is over the vendor's 128 characters, refused `SHAPE` at the review and the write; mutation recorded.
+  - `[medium]` `[patch]` `TransferSnippet` routed a local file's text into the script, against the Design Notes' "a local file's text is never in a script" — restored the placeholder for a local file (only `root`/`path` use `ImportSnippet`) and pinned it with a row holding `fileName` and `content`; mutation recorded.
+  - `[low]` `[patch]` Lock order, release-on-busy, directory removal and the table loop had no `mutation:` line — each applied, observed red, reverted byte-identical and reloaded; lines recorded.
+  - `[low]` `[reject]` The posed directory's cleanup runs after the assertions — a throw leaves a directory in the OS temp directory only on a red run; not worth a guard.
+  - `[low]` `[reject]` The held-at-import row cannot tell sorted from unsorted — the `LockOrder` row does, and the reverse-order mutation reddened it.
+  - `[low]` `[reject]` `ImportSnippet` drops a trailing fragment without a line feed — the kept text always ends in one (`ImportReview` writes each record with a line feed).
+  - `[maybe-false]` `[defer]` All or nothing rests on `%ValidateObject`, which does not reject a table `Type` of `BOGUS` or a non-numeric `FromToKey` — in `deferred:` as unverified medium.
+  - `[low]` `[reject]` Lock contention is posed through a seam, not raced — the seam wraps the real lock and the refusal path is the same code; a real race adds nothing a unit test can hold steady.
+  - `[false]` `[reject]` The screen and agent surfaces are not exercised in this diff — this pass changes the port only; the routes and screens are pinned by the unchanged suites, which ran green.
+  - `[low]` `[reject]` The script makes its file in the default temporary directory, the port in its own — the script is for a person to read and run; the file's text is byte-identical (pinned).
 
 ## Design Notes
 
@@ -262,16 +283,22 @@ Rejected:
   All four were reverted and reloaded, and the class ran green (5/5).
 - mutation (code review): the sub-table `Type` check dropped from `KeepRecord` -> `LocaleImportRules.TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall` red on the no-type row; reverted and reloaded, green.
 - mutation (code review): `LocaleExport.WRITERESOURCE` set to `%Admin_Manage` -> `LocaleEditWrite.TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused` red, because the writer's browser export answered 200; reverted and reloaded, green.
+- mutation: rework HIGH `TransferSnippet` never calling `ImportSnippet` (the script imports the named file whole) -> `LocaleImportRules.TestAnImportAndAnExportRenderTheirScript` red on the script, shipped-record, byte-for-byte and cap rows; reverted byte-identical and reloaded, green.
+- mutation: rework HIGH `ImportSnippet`'s cap raised to 100,000,000 -> the same test red on the "refused whole" row alone; reverted and reloaded, green.
+- mutation: rework MED `ImportReview` not refusing when `KeptRecordsValid` fails -> `LocaleImportRules.TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall` red on its three rejected-record rows at the review and the write, and armed `LocaleTransferWrite.TestARecordTheVendorRejectsLeavesTheLocaleBeforeItUnwritten` red on its review and write rows; reverted and reloaded, green.
+- mutation: rework MED `TakeLocales` not taking any locale lock -> `LocaleImportRules.TestAnImportLocksEveryLocaleItKeepsInNameOrderAndReleasesThem` red on the held-at-import, busy and released rows; reverted and reloaded, green.
+- mutation: rework MED `PerformImport`'s uncovered-locale refusal dropped -> the same test red on its changed and covered rows; reverted and reloaded, green.
+- mutation: rework MED `TransferFile` not refusing an existing directory -> `LocaleImportRules.TestATransferDirectoryThatIsAlreadyThereIsRefusedAndLeftAlone` red on both rows; reverted and reloaded, green.
+- mutation: rework MED `TransferName` constant -> `LocaleImportRules.TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath` red on the three-different-directories row; reverted and reloaded, green.
+- mutation (review of the rework): `KeptRecordsValid`'s table loop skipped -> `LocaleImportRules.TestEveryImportRefusalIsAnsweredBeforeAnyVendorCall` red on the over-long-table-description row (the vendor's `Description` is at most 128 characters); `TakeLocales` taking the names in reverse order -> `TestAnImportLocksEveryLocaleItKeepsInNameOrderAndReleasesThem` red on the held-at-import row; `TakeLocales` not releasing the locks it took on a busy one -> the same test red on the released row; `RemoveTransfer` not removing the directory -> `TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath` red on its import and export rows; `TransferSnippet` routing a local file's content to `ImportSnippet` -> `TestAnImportAndAnExportRenderTheirScript` red on the never-in-the-script row. Each reverted byte-identical and reloaded, green.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Both batches built in one pass on the 2026-11-19 ruling (custom records only). Server: `LocalePort` (`IMPORTFILE`, `IMPORT`, `EXPORTLOCALE`, `EXPORT`, `ImportReview`, the temporary file under `ocupilot-locale` in the OS temp directory, `Snippet`), `LocaleError`, `LocaleImport`, `LocaleExport`, `LocaleExportMint`, the two baseline keys, the `LocaleList` row actions, one `Prohibited` line (a locale import reads no target), `ci-throwaway.sh`. Client: the locale page's Export and Import, the handler's undrawn and destructive entries, `LOCALE.IMPORT`, strings, EXPERIENCE.md, the regenerated mirror, `nls-locales.browser-spec.mjs`. Verified on `ocupilot-ci`: the loop's ObjectScript classes one at a time (green, with `DraftRegistry`, `LocaleEditRules`, `LocaleEditWrite`, `LocalePropertyRead`), `LocaleTransferWrite` armed (green), the six mutations above, `check-objectscript.py` and its harness, `lint-docs.sh`, the six tool tests, `npm run test:tools` (2333), the component suite, `npm run build` (initial 2.14 MB) and the two browser specs. The open items are the six in `deferred:`.
+Rework pass 1 closed the four open review patches, all in `LocalePort` and its tests: the import's script renders only the kept custom records (`ImportSnippet`; a script past 1,000,000 characters renders no step, so the draft is refused); each kept record is checked against the vendor's own class before any vendor call (`KeptRecordsValid`, refused `LOCALE.IMPORT.SHAPE` at the review and the write); the import locks each kept locale in name order beside `import`; each transfer makes its own uniquely named directory, refuses one already there and removes it on every path. The review of the rework added a rejecting table row, a pin that a local file's text stays out of the script, and five more `mutation:` lines. Verified on `ocupilot-ci` after reload (`LOADERRORS=0`): `LocaleImportRules` 7/7, armed `LocaleTransferWrite` 5/5, `DraftRegistry` 9/9, `LocaleExportRules` 4/4, `PortGate` 4/4, and the implement agent's `LocaleRead`, `LocaleRules`, `LocaleWrite`, `LocaleEditWrite`; `check-objectscript.py` 0 problems. Not re-run: the client tiers and browser specs (no client file changed).
 
-Review pass 1 (verification-gap and intent-alignment layers): 4 medium and 1 low patched (P1 to P5, tests only, no product code changed; four mutations recorded under Verification); 2 deferred, 3 rejected (see the Triage Log). Verified after the patches on `ocupilot-ci`: reload `LOADERRORS=0`, `LocaleImportRules` 5/5, `DraftRegistry` 9/9, armed `LocaleTransferWrite` 4/4, `LocaleExportRules` 4/4 and `LocaleRead` 12/12 (patch agent), `check-objectscript.py` 0 problems.
+Follow-up review recommended: false (patched this pass beyond the items themselves: two medium, no high).
 
-Follow-up review recommended: true. Four medium patches added armed vendor round trips (replace over existing records, a custom table and subtable) that ran green only once on `ocupilot-ci`; they were not re-reviewed.
-
-Residual risks for the lead: AC4's governance clause holds for the agent path only (a person's screen import is not governed by the key, as every sibling write); the AD-53 named gap for the import (no vendor audit row) is not yet in the spine; the vendor's replace-by-delete can lose a custom locale when a record it rejects follows; Epic 24 also edits `EXPERIENCE.md`, `ci-throwaway.sh` and `ToolWrite.cls`, so expect merge conflicts.
+Residual risks for the lead: the pre-check misses a table `Type` of `BOGUS` and a non-numeric `FromToKey`, so all-or-nothing is not proven for those (in `deferred:`); the lock contention is posed through a seam, not raced; the earlier risks stand (AC4's governance clause holds for the agent path only; the AD-53 named gap is not in the spine; Epic 24 edits `EXPERIENCE.md`, `ci-throwaway.sh` and `ToolWrite.cls`). The old fixed `ocupilot-locale` directory remains in `ocupilot-ci`'s temporary directory and is no longer used.

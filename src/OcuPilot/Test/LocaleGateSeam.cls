@@ -4,7 +4,8 @@
 /// <method>VendorRefuses</method> makes them answer an error, so a test sees what the port would send and no locale changes. The vendor's validity
 /// check answers what <method>Feed</method> names, its install check what <method>FeedInstallable</method> names (every ask recorded, <method>Checks</method>),
 /// the collation of IRISTEMP what <method>Collations</method> names, and a locale <method>HoldLocale</method> names is listed whether or not the instance
-/// holds it. Nothing else differs from the shipped port.</p>
+/// holds it. It records the locks the port takes and releases (<method>Held</method>, <method>LockOrder</method>) and refuses one <method>HoldBusy</method>
+/// names. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.LocaleGateSeam Extends OcuPilot.Port.LocalePort
 {
@@ -21,6 +22,75 @@ ClassMethod Reset()
     Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
     Kill ^||OcuPilotLocaleProps, ^||OcuPilotLocaleTables, ^||OcuPilotLocaleAvailable, ^||OcuPilotLocaleSent, ^||OcuPilotLocaleUncompiled
     Kill ^||OcuPilotLocaleCurrent, ^||OcuPilotLocaleImported, ^||OcuPilotLocaleImportCounts, ^||OcuPilotLocaleExportText, ^||OcuPilotLocaleExportCounts
+    Kill ^||OcuPilotLocaleLocks, ^||OcuPilotLocaleLockOrder, ^||OcuPilotLocaleBusy, ^||OcuPilotLocaleLockedAtImport
+}
+
+/// <p>Make <method>TakeLock</method> refuse the target <var>pTarget</var>, as a lock another request keeps, until <method>Reset</method>.</p>
+ClassMethod HoldBusy(pTarget As %String)
+{
+    Set ^||OcuPilotLocaleBusy(pTarget) = 1
+}
+
+/// <p>The targets whose lock <method>TakeLock</method> took and <method>ReleaseLock</method> has not released, comma-joined in name order.</p>
+ClassMethod Held() As %String
+{
+    Set tOut = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(^||OcuPilotLocaleLocks(tName))
+        If tName = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tName
+    }
+    Quit tOut
+}
+
+/// <p>The locks held (<method>Held</method>) when the last <method>SendImport</method> was called.</p>
+ClassMethod LockedAtImport() As %String
+{
+    Quit $Get(^||OcuPilotLocaleLockedAtImport)
+}
+
+/// <p>The targets locked since <method>Reset</method>, in the order they were taken, comma-joined.</p>
+ClassMethod LockOrder() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotLocaleLockOrder(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ ^||OcuPilotLocaleLockOrder(tI)
+    }
+    Quit tOut
+}
+
+/// <p>The import's write as <method>ImportUnderLock</method> makes it once the locks of the locales in <var>pLockedNames</var> (a <class>%List</class>) are
+/// held, without taking any: a test that poses a file whose locales differ from the ones that were locked.</p>
+ClassMethod ImportCovered(ByRef pQuery, pLockedNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Kill tLocked
+    For tI = 1:1:$ListLength(pLockedNames) {
+        Set tLocked($List(pLockedNames, tI)) = ""
+    }
+    Quit ..PerformImport(.pQuery, .tLocked, .pResult, .pHttpStatus, .pFault)
+}
+
+ClassMethod TakeLock(pTarget As %String) As %Boolean [ Private ]
+{
+    If $Data(^||OcuPilotLocaleBusy(pTarget)) Quit 0
+    Set tTaken = ##super(pTarget)
+    If tTaken {
+        Set ^||OcuPilotLocaleLocks(pTarget) = $Get(^||OcuPilotLocaleLocks(pTarget)) + 1
+        Set ^||OcuPilotLocaleLockOrder($Increment(^||OcuPilotLocaleLockOrder)) = pTarget
+    }
+    Quit tTaken
+}
+
+ClassMethod ReleaseLock(pTarget As %String) [ Private ]
+{
+    Do ##super(pTarget)
+    If '$Data(^||OcuPilotLocaleLocks(pTarget)) Quit
+    Set ^||OcuPilotLocaleLocks(pTarget) = ^||OcuPilotLocaleLocks(pTarget) - 1
+    If ^||OcuPilotLocaleLocks(pTarget) <= 0 Kill ^||OcuPilotLocaleLocks(pTarget)
 }
 
 /// <p>Pose <var>pLocale</var> as the current locale, loading the tables in <var>pTables</var> (<code>pTables(type, from, to)</code>) and the sub-tables in
@@ -73,6 +143,7 @@ ClassMethod SendImport(pKept As %Stream.TmpCharacter, Output pCounts) As %Status
         Set tText = tText _ pKept.Read(32000)
     }
     Set ^||OcuPilotLocaleImported = tText
+    Set ^||OcuPilotLocaleLockedAtImport = ..Held()
     Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "IMPORT"
     If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
     If $Data(^||OcuPilotLocaleImportCounts) {

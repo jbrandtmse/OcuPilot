@@ -43,7 +43,7 @@ Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
 
 Property PreparedLocale As %String [ InitialExpression = "" ];
 
-/// <p>How many files the port's temporary directory held before the test, which the test leaves as it found.</p>
+/// <p>How many transfer directories the port had in the temporary directory before the test, which the test leaves as it found.</p>
 Property PreparedTransferFiles As %Integer [ InitialExpression = 0 ];
 
 Method OnBeforeAllTests() As %Status
@@ -76,7 +76,7 @@ Method OnAfterOneTest() As %Status
     Do ..Restore()
     Do $$$AssertEquals(..VendorExists(..#COPYA) _ "|" _ ..VendorTableExists(), "0|0|0", "the custom locale, table and sub-table are gone")
     Do $$$AssertEquals($ClassMethod(..#READ, "VendorGet", "", .tNone), ..PreparedLocale, "the current locale is as the class found it")
-    Do $$$AssertEquals(..TransferFiles(), ..PreparedTransferFiles, "no temporary file of this test is left in the port's directory")
+    Do $$$AssertEquals(..TransferFiles(), ..PreparedTransferFiles, "no transfer directory of this test is left in the temporary directory")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveDirectory"), "the probe directory is removed")
     Kill tRows
     Merge tRows = ..PreparedPolicy
@@ -194,15 +194,14 @@ Method EnableKeys() As %Status
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 
-/// <p>How many files the port's temporary directory holds.</p>
+/// <p>How many transfer directories the port has left in the operating system's temporary directory.</p>
 ClassMethod TransferFiles() As %Integer
 {
     Set tCount = 0
-    Set tDirectory = $ClassMethod(..#PORT, "TransferDirectory")
     Set tRS = ##class(%ResultSet).%New("%File:FileSet")
-    Set tSC = tRS.Execute(tDirectory, "*")
+    Set tSC = tRS.Execute($ClassMethod(..#PORT, "TransferParent"), $Parameter(..#PORT, "TRANSFERDIRECTORY") _ "-*", "", 1)
     While tRS.Next() {
-        If tRS.Get("Type") = "F" Set tCount = tCount + 1
+        If tRS.Get("Type") = "D" Set tCount = tCount + 1
     }
     Quit tCount
 }
@@ -468,6 +467,22 @@ Method TestACustomTableAndItsSubTableAreImportedBackWithTheirDefinitions()
     Do $$$AssertEquals(..Changed(.tTable, .tTableAfter), "", "the table is the definition it had")
     Do $$$AssertEquals(..Changed(.tSub, .tSubAfter), "", "the sub-table is the definition it had, its items included")
     Do $$$AssertEquals($Get(tTableAfter("SubTableName")), ..#SUBA, "and the table still names its sub-table")
+}
+
+/// <p><b>AC1.</b> A file whose second custom locale the vendor's own class rejects (a <code>DateFormat</code> that is not a number) is refused
+/// <code>LOCALE.IMPORT.SHAPE</code> at the review and at the write, and the good locale before it is not written.</p>
+/// <p>Mutation (Rule 19): <code>KeptRecordsValid</code> dropped from <code>ImportReview</code> -> the review and write rows go red.</p>
+Method TestARecordTheVendorRejectsLeavesTheLocaleBeforeItUnwritten()
+{
+    Set tImportRules = "OcuPilot.Test.LocaleImportRules"
+    Set tText = $ClassMethod(tImportRules, "Wrap", $ClassMethod(tImportRules, "LocaleXml", ..#COPYA) _ $ClassMethod(tImportRules, "BadLocaleXml", "yqbw"))
+    Kill tQuery
+    Do $$$AssertEquals(..Port("IMPORTFILE", tText, .tQuery, .tReview), "409|LOCALE.IMPORT.SHAPE", "the review of the file is refused as not an export")
+    Kill tWrite
+    Set tWrite("digest") = "unreviewed"
+    Set tWrite("replaces") = 0
+    Do $$$AssertEquals(..Port("IMPORT", tText, .tWrite, .tOut), "409|LOCALE.IMPORT.SHAPE", "and so is its write")
+    Do $$$AssertEquals(..VendorExists(..#COPYA) _ "|" _ ..VendorExists("yqbw"), "0|0", "neither locale is written")
 }
 
 /// <p>The current locale's own record,<code>&lt;Locales&gt;...&lt;/Locales&gt;</code>, as the vendor serializes it.</p>

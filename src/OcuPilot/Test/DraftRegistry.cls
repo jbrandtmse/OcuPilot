@@ -79,8 +79,10 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 /// <method>OcuPilot.Test.EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder</method>.
 /// Story 18.23's startup settings update checks the synthetic settings against the instance's rules the
 /// same way; its placeholder is pinned by
-/// <method>OcuPilot.Test.EncryptionStartupWrite.TestThePasswordReachesNoRecord</method>.</p>
-Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update";
+/// <method>OcuPilot.Test.EncryptionStartupWrite.TestThePasswordReachesNoRecord</method>.
+/// Story 21.15's locale import reads the file its script writes the records of, so a synthetic file is refused; its script is pinned against a real file by
+/// <method>OcuPilot.Test.LocaleImportRules.TestAnImportAndAnExportRenderTheirScript</method>.</p>
+Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update,osmgmt.locales.import";
 
 Method OnBeforeOneTest() As %Status
 {
