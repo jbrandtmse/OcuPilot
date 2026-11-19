@@ -678,3 +678,4 @@
 2026-11-19T07:36:11Z	Story 21.16	gate_step	step=sweep result=green shards=20/20 head=540a51889
 2026-11-19T07:36:11Z	Story 21.16	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
 2026-11-19T07:36:11Z	Story 21.16	story_green	code_head=540a51889 ci=44464944337(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=edbedfe11 carries=6bc7a0d66(timings)
+2026-11-19T07:36:30Z	Story 21.15	stage_spawned	stage=implement scope=batches1+2(U-114) spawn_at=2026-11-19T07:36:30Z model=sonnet agent_name=21-15-implement-2 cycle_iteration=1 story_base=035cf9754
