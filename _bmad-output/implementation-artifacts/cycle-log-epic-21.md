@@ -733,3 +733,8 @@
 2026-11-19T20:52:18Z	Story 21.10	ci_red_classified	run=44607797355 class=defect head=ad39bd393 tests=RemovalRowsSweep,ViolationSentenceCoverage(AUDIT.EXPORT.DIRECTORY),AuditingScreen(export_action) cause=21.10_roster_misses action=sweep_stopped_at_shard_3,rework2
 2026-11-19T20:52:18Z	Story 21.10	rework_opened	cycle_iteration=3 iteration=2 trigger=high(ci_defect) items=3_roster_misses+roster_class_sweep scope_baseline=ad39bd393
 2026-11-19T20:52:18Z	Story 21.10	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-19T20:52:18Z model=sonnet agent_name=21-10-implement-rework-2 cycle_iteration=3 prior_lines_ended=verified
+2026-11-19T21:25:19Z	Story 21.10	dev_complete	scope=rework2(3_rosters+roster_class_sweep) spawn_at=2026-11-19T21:00Z model=sonnet build_sha=e4866902a followup_review_recommended=false cycle_iteration=3
+2026-11-19T21:25:19Z	Story 21.10	ruling	question=re-review_for_rework2(roster_rows+one_add-only_Error_list) choice=no_separate_Opus_re-review(the_rework's_layers_reviewed;the_20-shard_sweep_and_CI_are_the_proof) via=runner category=decide policy=b9ff703e
+2026-11-19T21:25:19Z	Story 21.10	code_head_pushed	sha=e4866902a run=44618534578 missing=none
+2026-11-19T21:25:19Z	Epic 21	ruling	question=owner_vetoes via=orchestrator choice=owner_kept_U-114,U-118,U-119,U-105..113
+2026-11-19T21:25:19Z	Story 21.10	gate_step	step=fresh_check+full_sweep+smoke head=e4866902a started=2026-11-19T21:25:19Z dir=e21u/21-10/gate attempt=3
