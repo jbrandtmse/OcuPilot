@@ -899,7 +899,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A `monitor` read names one of `MonitorPort`'s `ENDPOINTS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] (the metrics table, and the three interoperability usage tables of Story 18.37); it takes no criteria.
 
-  **Story 20.11's analytics reads** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: a declared read may name the analytics port (source kind `analytics`): `LIST` on `Cubes`, `TermLists` and `FolderItems`, and on `Measures`, `Dimensions` and `Relationships` (criterion `cube`) and `TermListEntries` (criterion `termlist`), each parent-scoped read taking its parent's route id.
+  **Story 20.11's analytics reads** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: a declared read may name the analytics port (source kind `analytics`): `LIST` on `Cubes`, `TermLists` and `FolderItems`, and on `Measures`, `Dimensions` and `Relationships` (criterion `cube`) and `TermListEntries` (criterion `termlist`), each parent-scoped read taking its parent's route id. A `locale` source also takes `read.criteria` as its parent's route id (Story 21.16's per-locale Properties list), as the analytics and interoperability sources do. [AMENDED 2026-11-19, Story 21.16 implement, orchestrator ruling]
 
   **A metrics sample neither backslash reading parses** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2329, owner 2026-10-11): `MonitorPort.Samples` reads a label value with a single or a doubled backslash; a line neither parses is skipped and counted in one log line, and the read answers the remaining rows.
 
