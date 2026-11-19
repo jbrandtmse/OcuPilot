@@ -30,7 +30,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Name"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "validate", "selfProtection": ""}, {"id": "install", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}],
+  "rowActions": [{"id": "validate", "selfProtection": ""}, {"id": "install", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}],
   "context": {"fields": ["Name", "Description", "Current", "Custom"], "secretFields": []},
   "emptyStateKey": "localesEmpty",
   "commandAliases": ["locale definitions", "locales"],

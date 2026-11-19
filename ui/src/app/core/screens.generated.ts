@@ -25328,6 +25328,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "copy",
         "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
       }
     ],
     "context": {

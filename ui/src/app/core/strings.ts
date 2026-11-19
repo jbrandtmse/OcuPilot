@@ -8710,6 +8710,34 @@ export const STRINGS = {
   localeRefusalTableNotLoadable: 'Only a table this locale lists that is not built in can be loaded.',
   /** EXPERIENCE.md:604 */
   localeLoadConsequence: 'Loading makes this table available to every process on this instance until the next restart; on the current locale it can also change the instance\'s defaults.',
+  // Story 21.15: Locale import and export -- the two dialogs' titles and the import's sentence, the card's Subtables row, the three lines an applied
+  // transfer leaves, the five refusals the server sends and the consequence an import states.
+  /** EXPERIENCE.md:604 */
+  localeImportTitle: 'Import locales and tables',
+  /** EXPERIENCE.md:604 */
+  localeImportReplaces: 'Importing replaces any custom locale or table with the same name.',
+  /** EXPERIENCE.md:604 */
+  localeExportTitle: 'Export locale <locale>',
+  /** EXPERIENCE.md:604 */
+  localeSubtables: 'Subtables',
+  /** EXPERIENCE.md:604 */
+  localeImportDone: 'Imported <locales> locales, <tables> tables and <subtables> subtables.',
+  /** EXPERIENCE.md:604 */
+  localeExportDone: 'Exported locale <locale> to <path>.',
+  /** EXPERIENCE.md:604 */
+  localeExportSaved: 'Saved locale <locale> as <file>.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportShape: 'This file is not a locale or table export.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportEmpty: 'This file holds no custom locale or table to import.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportCurrent: 'This file would replace the current locale or a table it loads, so it cannot be imported.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportChanged: 'The file or the locales changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTooLarge: 'A locale file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:604 */
+  localeImportConsequence: 'Importing replaces any custom locale or table with the same name. This cannot be undone.',
   // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
   // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
   /** EXPERIENCE.md:594 */

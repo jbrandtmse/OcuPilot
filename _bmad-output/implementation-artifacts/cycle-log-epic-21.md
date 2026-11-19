@@ -678,3 +678,33 @@
 2026-11-19T07:36:11Z	Story 21.16	gate_step	step=sweep result=green shards=20/20 head=540a51889
 2026-11-19T07:36:11Z	Story 21.16	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
 2026-11-19T07:36:11Z	Story 21.16	story_green	code_head=540a51889 ci=44464944337(success) gates=fresh+sweep20/20+smoke50/50 status=done spine=edbedfe11 carries=6bc7a0d66(timings)
+2026-11-19T07:36:30Z	Story 21.15	stage_spawned	stage=implement scope=batches1+2(U-114) spawn_at=2026-11-19T07:36:30Z model=sonnet agent_name=21-15-implement-2 cycle_iteration=1 story_base=035cf9754
+2026-11-19T09:18:39Z	Story 21.15	dev_complete	scope=batches1+2(U-114) spawn_at=2026-11-19T07:42Z model=sonnet build_sha=3869d4ed3 followup_review_recommended=true(4_med_test_patches) deferred=6(harvested:DW-2762,DW-2763,DW-2764,DW-2765,DW-2766;AC4_person_key_is_R2/AD-22,decided) cycle_iteration=1
+2026-11-19T09:19:16Z	Story 21.15	code_head_pushed	sha=3869d4ed3 run=44495250779 missing=none
+2026-11-19T09:19:16Z	Story 21.15	ruling	question=AC4_person_import_key choice=person_write_not_governed(AD-22;R2_precedent) via=runner category=decide policy=b9ff703e
+2026-11-19T09:19:16Z	Story 21.15	stage_spawned	stage=code-review spawn_at=2026-11-19T09:19:16Z model=opus agent_name=21-15-code-review-1 cycle_iteration=1 baseline=bcbd830e7
+2026-11-19T09:47:15Z	Story 21.15	cr_complete	spawn_at=2026-11-19T09:30Z model=opus high=3(2_patched:shipped_subtable_kept,typeless_subtable_loss;1_open:script_imports_whole_file) med=13 low=10 rows=48 unresolved_high_med=4 new=DW-2767(decision-pending,burndown),DW-2768(by-design) final=in-progress commit=510f4ff55 closing_sections_present=true
+2026-11-19T09:47:15Z	Story 21.15	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=script_kept_records_only(AD-59),all_or_nothing_import,lock_kept_locales,owned_temp_dir scope_baseline=510f4ff55
+2026-11-19T09:47:15Z	Story 21.15	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T09:47:15Z model=sonnet agent_name=21-15-implement-rework-1 cycle_iteration=2
+2026-11-19T10:33:46Z	Story 21.15	dev_complete	scope=rework1 spawn_at=2026-11-19T10:00Z model=sonnet build_sha=a1ea97a0f followup_review_recommended=false deferred=1(DW-2769) cycle_iteration=2
+2026-11-19T10:33:46Z	Story 21.15	code_head_pushed	sha=a1ea97a0f run=44506749898 missing=none note=covers_510f4ff55;3869d4ed3_run_44495250779_green
+2026-11-19T10:33:46Z	Story 21.15	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-19T10:33:46Z model=opus agent_name=21-15-code-review-2 cycle_iteration=2 baseline=9f713895c
+2026-11-19T11:01:53Z	Story 21.15	cr_complete	scope=rework1 spawn_at=2026-11-19T10:45Z model=opus high=1(patched_in-pass:script_mirrors_CHANGED) med=5(patched) low=9 rows=36 unresolved_high_med=0 final=done commit=7478c45a7 closing_sections_present=true
+2026-11-19T11:01:53Z	Story 21.15	ruling	question=re-review_patched_a_new_HIGH_in-pass(Rule15_loop?) choice=close(precedent:21.16_review_patched_HIGHs_in-pass;mutations_observed;fresh_gate+CI_verify) via=runner category=decide policy=b9ff703e
+2026-11-19T11:01:53Z	Story 21.15	code_head_pushed	sha=7478c45a7 run=44511016378 missing=none note=supersedes_a1ea97a0f
+2026-11-19T11:01:53Z	Story 21.15	ledger_adjudicated	resolved=DW-2606,2762,2764 decision-pending=DW-2765(decision-sheet),DW-2767 terminal=DW-2766,2768,2769 routed=DW-2763(burndown) open_owned=0
+2026-11-19T11:02:07Z	Story 21.15	cr_complete	scope=rework1 spawn_at=2026-11-19T10:45Z model=opus high=1(patched_in-pass:script_mirrors_CHANGED) med=5(patched) low=9 rows=36 unresolved_high_med=0 final=done commit=7478c45a7 closing_sections_present=true
+2026-11-19T11:02:07Z	Story 21.15	ruling	question=re-review_patched_a_new_HIGH_in-pass(Rule15_loop?) choice=close(precedent:21.16_review_patched_HIGHs_in-pass;mutations_observed;fresh_gate+CI_verify) via=runner category=decide policy=b9ff703e
+2026-11-19T11:02:07Z	Story 21.15	code_head_pushed	sha=7478c45a7 run=44511016378 missing=none note=supersedes_a1ea97a0f
+2026-11-19T11:02:07Z	Story 21.15	ledger_adjudicated	resolved=DW-2606,2762,2764 decision-pending=DW-2765(burndown,owner_wording),DW-2767 terminal=DW-2766,2768,2769 routed=DW-2763(burndown) open_owned=0
+2026-11-19T11:02:21Z	Story 21.15	gate_step	step=fresh_check+full_sweep+smoke head=7478c45a7 started=2026-11-19T11:02:21Z dir=e21u/21-15/gate
+2026-11-19T13:20:51Z	Story 21.15	ci_resolved	story=21.15 sha=7478c45a7 runs=44511016378 result=success failed=none via=none note=flake_rerun(analytics-mdx_AC1;DW-2714_reopened_to_21-23)
+2026-11-19T13:20:51Z	Story 21.15	fresh_check	env=recipe(ci-throwaway_rebuild) tests=21_classes+1_spec result=pass order=forward,reverse(specs) head=7478c45a7
+2026-11-19T13:20:51Z	Story 21.15	gate_step	step=sweep result=green shards=20/20 head=7478c45a7
+2026-11-19T13:20:51Z	Story 21.15	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T13:24:08Z	Story 21.15	integrated_forward	feature=c57010f36(24.13_B1+timings) merge=020f2d90e conflicts=2(ReadTool_529+writes_prose_298;ToolRoundTrip_union) verified=screen-mirror_ok,test:tools_2334,LOADERRORS=0,6_roster_classes_green
+2026-11-19T13:24:08Z	Story 21.15	code_head_pushed	sha=020f2d90e run=44533046311 missing=none note=integrated_head;gates_ran_on_7478c45a7
+2026-11-19T13:24:18Z	Story 21.10	spec_validated	owned_ledger=DW-2431,DW-2457 addressed=2 rerouted=DW-2600(->21-23,DW-1822_family)
+2026-11-19T13:24:18Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T13:24:18Z model=sonnet agent_name=21-10-implement-1 cycle_iteration=1 story_base=7c7952a84
+2026-11-19T14:08:26Z	Story 21.10	stage_stopped	stage=implement agent=ac0cca5b0ebaf9de8 child=a8d03e69b8c7097c4 reason=build_subagent_edited_tracked_files_through_Bash(sed_-i.bak_at_13:37:42Z;orchestrator_rule:stop_and_respawn) stopped_by=main evidence=<state>/evidence/epic-21/21-10-bash-edit-implement-20261119T1400Z.{patch,untracked.txt,untracked.tgz}(never_applied) restored_to=ef126c8fa action=respawn
+2026-11-19T14:08:34Z	Story 21.10	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T14:08:34Z model=sonnet agent_name=21-10-implement-2 cycle_iteration=1 note=respawn_after_stop(rule_zero)

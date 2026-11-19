@@ -375,7 +375,7 @@ Method TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences()
     Do $$$AssertStatusOK($ClassMethod(tClass, "DeclarationJson", .tDeclaration), "the declaration parses")
     Do $$$AssertEquals($ClassMethod(tClass, "Route") _ "|" _ $ClassMethod(tClass, "AreaKey") _ "|" _ $ClassMethod(tClass, "SideBarPosition") _ "|" _ $ClassMethod(tClass, "ClassicPage"), "os-management/locales|os-management|37|%CSP.UI.Portal.NLS", "its route, area, position and classic page")
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("%CSP.UI.Portal.NLS", "O", "URL")), "%CSP.UI.Portal.NLS", "which the portal's own resolver recognises (AD-44)")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "locale|validate,install,delete,copy", "its entity type and its row actions")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "locale|validate,install,delete,copy,export,export-browser,import,import-local", "its entity type and its row actions")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "locale|Locales|LIST", "it reads through the locale port")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read is the declared grammar")
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(tClass, .tResolved)
@@ -417,6 +417,98 @@ Method TestTheInstallAndDeleteKeysShipDisabledAndTheAgentIsRefusedAtDispatch()
         Do $$$AssertEquals(tAnswer, "1|{""code"":""GOVERNANCE.DISABLED""}", tKey _ ": the agent's call is refused by the governance gate and nothing is minted")
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey)
     }
+}
+
+/// <p>The tables and the sub-tables the instance holds that the locale <var>pLocale</var> loads, read in <code>%SYS</code> independently of the port:
+/// <code>$ListBuild(tableCount, subTableCount, type, from, to)</code>, the last three naming the locale's first table.</p>
+ClassMethod VendorFootprint(pLocale As %String) As %List
+{
+    Set tOut = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tLocale = ##class(Config.NLS.Locales).%OpenId(pLocale)
+        Do tLocale.GetTables(.tSet)
+        Set tTables = 0
+        Set tFirst = ""
+        Set tType = ""
+        For {
+            Set tType = $Order(tSet(tType))
+            If tType = "" Quit
+            Set tFrom = ""
+            For {
+                Set tFrom = $Order(tSet(tType, tFrom))
+                If tFrom = "" Quit
+                Set tTo = ""
+                For {
+                    Set tTo = $Order(tSet(tType, tFrom, tTo))
+                    If tTo = "" Quit
+                    Set tTables = tTables + 1
+                    If tFirst = "" Set tFirst = $ListBuild(tType, tFrom, tTo)
+                    Kill tProps
+                    If $$$ISOK(##class(Config.NLS.Tables).Get(tType, tFrom, tTo, .tProps)) && ($Get(tProps("SubTableName")) '= "") Set tNamed($Get(tProps("SubTableName"))) = ""
+                }
+            }
+        }
+        Set tSubTables = 0
+        Set tName = ""
+        For {
+            Set tName = $Order(tNamed(tName))
+            If tName = "" Quit
+            If ##class(Config.NLS.SubTables).Exists(tName) Set tSubTables = tSubTables + 1
+        }
+        Set tOut = $ListBuild(tTables, tSubTables) _ tFirst
+    } Catch {
+        Set tOut = ""
+    }
+    Set tLocale = ""
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tOut
+}
+
+/// <p>The number of nodes <var>pNodes</var> holds at <var>pDepth</var> subscripts.</p>
+ClassMethod CountNodes(ByRef pNodes, pDepth As %Integer) As %Integer
+{
+    Set tCount = 0
+    Set tA = ""
+    For {
+        Set tA = $Order(pNodes(tA))
+        If tA = "" Quit
+        If pDepth = 1 {
+            Set tCount = tCount + 1
+            Continue
+        }
+        Set tB = ""
+        For {
+            Set tB = $Order(pNodes(tA, tB))
+            If tB = "" Quit
+            Set tC = ""
+            For {
+                Set tC = $Order(pNodes(tA, tB, tC))
+                If tC = "" Quit
+                Set tCount = tCount + 1
+            }
+        }
+    }
+    Quit tCount
+}
+
+/// <p><b>AC3 (the current-locale footprint).</b> <method>OcuPilot.Port.LocalePort.CurrentFootprint</method> answers the live current locale's name, and
+/// <method>OcuPilot.Port.LocalePort.LocaleFootprint</method> of it holds as many tables and sub-tables as an independent read of the locale's own
+/// <code>GetTables</code> and its tables' <code>SubTableName</code>, with the locale's first real table among its subscripts as type, from, to.</p>
+/// <p>Mutation (Rule 19): the subscript order transposed in <code>LocaleFootprint</code> -> the first-table row goes red.</p>
+Method TestTheCurrentFootprintIsTheCurrentLocalesOwnTablesAndSubTables()
+{
+    Do ..VendorList(.tVendorCurrent)
+    Set tSC = $ClassMethod(..#PORT, "CurrentFootprint", .tCurrent, .tTables, .tSubTables)
+    Do $$$AssertStatusOK(tSC, "the footprint is read")
+    Do $$$AssertTrue((tVendorCurrent '= "") && (tCurrent = tVendorCurrent), "it names the live current locale: " _ tCurrent)
+    Set tVendor = ..VendorFootprint(tVendorCurrent)
+    Do $$$AssertTrue($ListLength(tVendor) = 5, "the independent read finds the current locale's tables")
+    If $ListLength(tVendor) '= 5 Quit
+    Do $$$AssertEquals(..CountNodes(.tTables, 3) _ "|" _ ..CountNodes(.tSubTables, 1), $List(tVendor, 1) _ "|" _ $List(tVendor, 2), "its tables and sub-tables are as many as the independent read finds")
+    Do $$$AssertTrue($List(tVendor, 1) > 0, "and the locale loads tables")
+    Do $$$AssertTrue($Data(tTables($List(tVendor, 3), $List(tVendor, 4), $List(tVendor, 5))) = 1, "a table the vendor names is among its subscripts, as type, from and to")
 }
 
 }

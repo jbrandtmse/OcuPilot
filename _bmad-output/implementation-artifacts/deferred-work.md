@@ -13152,6 +13152,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 43743358535 (feature 7965f70ab) | severity: low | fix-risk: medium | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs; ui/browser/protocol-retry.mjs
 - evidence: the identical sha was green on OCU-1-epic24 run 43738892741; AC5 ran 403 s; recurrence of the DW-1822/DW-2026/DW-2301 family
 - 2026-11-15T18:29:29Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun
+- 2026-11-19T11:02:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=same_family_as_DW-1822(a11y_governance_settle;reopened_and_routed_to_21-23_2026-11-18);not_in_21.10's_scope
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
@@ -13183,6 +13184,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T20:15:08Z status=decision-pending owner=burndown by=spec_gate note=moving scope between stories when no milestone defines the release is the owner's; recommend adding Export to Story 21.15
 - 2026-11-15T20:31:06Z status=decision-pending owner=burndown by=unattended note=inbox=U-58
 - 2026-11-15T20:53:54Z status=routed owner=21-15-locale-and-table-import by=owner note=U-58 A: locale Export joins Story 21.15
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=locale_Export_built(LocaleExport,EXPORTLOCALE/EXPORT,AC6)
 
 ### DW-2607: The shipped System Explorer import (Story 19.13) loads globals from an XML file and judges self-protection by document name only, so OcuPilot's code globals (oddDEF, rOBJ, ROUTINE through the package mapping) and %-globals landing in IRISSYS are not refused
 - source: spec-21-17-global-export-and-import.md | severity: high | fix-risk: med | footprint: in-epic
@@ -13754,6 +13756,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-17T19:25:58Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.35 staging head
 - 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
 - 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=pressRun_waits_for_Run_enabled_and_an_API_call_carrying_ns(f9a4b89f5)
+- 2026-11-19T12:03:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44511016378(7478c45a7)browser_3/5_analytics-mdx_AC1_waited_145s;page_state_busy=false,status='Write_one_MDX_statement,then_Run.'(the_Run_never_took_the_statement,after_21.22's_pressRun_waits);rerun_pending
 
 ### DW-2725: A listing group copy reads back nothingSent (action-style, no READBACKFIELDS), so AC2's 'matches' for each write does not hold for copy; 24.10's term-list copy is the same
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -14014,6 +14017,49 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
 - 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED
 
+### DW-2762: The locale export's %Admin_FileSystemAccess:USE refusal is asserted on the pair list only, not driven through a mint or screen action as a principal lacking it
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: LocaleExportRules asserts the pair; no route-level principal test (build's own deferral, unverified)
+- 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=route-level_403_for_a_principal_without_%Admin_FileSystemAccess:USE(LocaleEditWrite,mutation_red)
+
+### DW-2763: LocalePort copies InteropPort's import source checks, export file resolve and digest; one transfer-file helper would serve both
+- source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LocalePort.ImportText vs InteropPort (Rule 31 copy)
+- 2026-11-19T09:18:39Z status=routed owner=burndown by=harvest note=dedupe
+
+### DW-2764: The vendor's ImportAll deletes an existing custom locale before reading its replacement, so a record it then fails to import leaves the locale gone
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: measured by the build on ocupilot-ci (LocalePort.ImportReview)
+- 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review:prevent_or_state
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=typeless_subtable_refused_SHAPE;every_kept_record_validated_before_the_vendor_call(all_or_nothing);14_failing-record_variants_leave_records
+
+### DW-2765: ImportAll writes no vendor audit event; the locale import needs an AD-53 named gap
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: spine
+- evidence: build: no %System audit row after ImportAll
+- 2026-11-19T09:18:39Z status=decision-pending owner=21-15-locale-and-table-import by=harvest note=owner_wording_as_DW-2613,DW-2754
+- 2026-11-19T11:02:07Z status=decision-pending owner=burndown by=adjudication note=owner's_attended_architecture_update,as_DW-2613,DW-2754:record_the_AD-53_named_gap_for_ImportAll
+
+### DW-2766: The Locale definitions descriptor wires one empty-agent phrase and three prompts; the spec rules two phrases and two more prompts that are not wired
+- source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LocaleList.cls declares one empty-agent key and three prompts
+- 2026-11-19T09:18:39Z status=wontfix-accepted owner=21-15-locale-and-table-import by=harvest note=reopen_if=the descriptor model allows more than one empty-agent phrase
+
+### DW-2767: A person's locale import is sent straight from the dialog, so the screen never shows the custom locales, the replaced count or the shipped records the review drops
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: locale-list.page.ts onImport sends import/import-local via handler.sendFor at once (both UNDRAWN); LocaleImport.ScreenActionDelta takes Digest/Replaces from the same request's fresh read; the done line names counts only (matrix row Local import; U-114 'the review states how many').
+- 2026-11-19T09:42:47Z status=decision-pending owner=burndown by=cr note=a review step or a richer done line needs ruled strings (veto window)
+
+### DW-2768: The locale import's read-back compares the file's digest, which the import cannot change, so its verdict never reflects the instance
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: LocaleImport READBACKFIELDS Digest with READBACKPAYLOAD: the re-read reviews the same input file, so it reads matches whatever the vendor wrote.
+- 2026-11-19T09:42:51Z status=by-design owner=21-15-locale-and-table-import by=cr note=AC1 rules readBack matches; PerformImport itself fails unless every reviewed locale is listed and the counts agree
+
+### DW-2769: The import's record check does not reject a table Type of BOGUS or a non-numeric FromToKey; if the vendor rejects one mid-import, a file holding it could still partly import
+- source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: rework 1 residual (unmeasured whether the vendor rejects them) (inference)
+- 2026-11-19T10:33:32Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_re-review
+- 2026-11-19T10:54:58Z status=wontfix-theoretical owner=21-15-locale-and-table-import by=cr note=measured on ocupilot-ci 2026-11-19: ImportAll of a good locale beside a table Type BOGUS, a non-numeric FromToKey, or a locale naming absent tables answered OK and wrote every record, so no partial write; real only if a record passes %ValidateObject and the vendor's save then refuses it
 ### DW-2774: Test isolation: AnalyticsCubeActions (and possibly other classes) counts cube ConfigChange rows as an absolute number in AuditEvent.Now() windows, which a sibling test's row written in the same millisecond can enter
 - source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The same race reddened AnalyticsCubeManager on a fresh instance (fixed by before/after counts in 24.13 rework 1); AnalyticsCubeActions windows the same cube, verb and id six times (unverified, not yet observed red).

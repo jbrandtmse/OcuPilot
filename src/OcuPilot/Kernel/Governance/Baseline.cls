@@ -325,7 +325,9 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.localeproperties.set": true,
   "osmgmt.localeproperties.add": true,
   "osmgmt.localeproperties.remove": true,
-  "osmgmt.localeproperties.load": false
+  "osmgmt.localeproperties.load": false,
+  "osmgmt.locales.import": false,
+  "osmgmt.locales.export": true
 }
 }
 

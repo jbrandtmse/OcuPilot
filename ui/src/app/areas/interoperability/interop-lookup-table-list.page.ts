@@ -52,7 +52,7 @@ export function fill(template: string, values: Readonly<Record<string, string>>)
 }
 
 /** The lines an export to this browser answered in its `output`, or `[]`. */
-function linesOf(output: unknown): readonly string[] {
+export function linesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];

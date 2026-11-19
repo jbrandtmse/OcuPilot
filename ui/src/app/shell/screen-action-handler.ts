@@ -540,7 +540,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
   // NLS configured defaults' page registers Set value itself, whose dialog sends the value, and Locale definitions' page registers Validate itself, whose dialog reads the locale's checks (Story 21.14).
   'OcuPilot.Screen.Descriptor.NlsDefaultList': ['set'],
-  [LOCALE_LIST]: [LOCALE_VALIDATE, LOCALE_COPY],
+  // Its page also registers Export and Import itself, whose dialogs name the file the four transfer actions send (Story 21.15).
+  [LOCALE_LIST]: [LOCALE_VALIDATE, LOCALE_COPY, 'export', 'export-browser', 'import', 'import-local'],
   // Locale properties' set and Add table are the config settings page's own (Story 21.16).
   [LOCALE_PROPERTY_LIST]: ['set', LOCALE_ADD_TABLE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
@@ -663,7 +664,7 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-t
  * means nothing destructive elsewhere (Story 21.14).
  */
 const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
-  [LOCALE_LIST]: ['install'],
+  [LOCALE_LIST]: ['install', 'import'],
   // Story 21.16: a table load changes what every process can use, and on the current locale can change the instance's defaults.
   [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
   // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
@@ -781,7 +782,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
   // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
-  [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence },
+  [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence, import: STRINGS.localeImportConsequence },
   [LOCALE_PROPERTY_LIST]: { [LOCALE_LOAD_TABLE]: STRINGS.localeLoadConsequence },
   // Story 21.5: a deleted global takes all of its data.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence, replace: STRINGS.globalReplaceConsequence },

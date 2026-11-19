@@ -326,7 +326,8 @@ Method AsPrincipal(pUser As %String, pPath As %String, pBody As %DynamicObject) 
 /// <p><b>AC1-AC4 as real principals (AD-8, AD-29, AD-53).</b> Over HTTP, a principal holding exactly the screen's write pairs copies the current locale through
 /// the Copy Save route, adds a table to the copy through the Add table Save route, and sets its date format, removes the table and loads a table of it through the
 /// screen's actions, each read back; it is refused <code>LOCALE.EDIT.CURRENT</code> and <code>LOCALE.EDIT.SYSTEM</code> on the current and a shipped locale. A principal
-/// holding the read pairs alone is refused the copy, the add and the set 403 naming <code>%DB_IRISSYS:WRITE</code>, with nothing created or changed.</p>
+/// holding the read pairs alone is refused the copy, the add and the set 403 naming <code>%DB_IRISSYS:WRITE</code>, with nothing created or changed. The writer,
+/// who lacks <code>%Admin_FileSystemAccess:USE</code>, is refused Story 21.15's locale export 403 naming that pair.</p>
 /// <p>Mutation (Rule 19): <code>LocalePort.WriteUnderLock</code> locks a global in OcuPilot's own database (<code>^OcuPilotLocaleWrite</code>) -> the writer's
 /// legs answer 500 and go red.</p>
 Method TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused()
@@ -356,6 +357,8 @@ Method TestAPrincipalHoldingTheScreensPairsWritesAndOneShortOfThemIsRefused()
     Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "set", "id": (..RowId(..PreparedLocale, "DateFormat")), "values": {"Value": "3"}}), "409|LOCALE.EDIT.CURRENT", "the current locale is refused")
     Do $$$AssertEquals(..AsPrincipal(tWriter, tAction, {"action": "set", "id": (..RowId(tShipped, "DateFormat")), "values": {"Value": "3"}}), "409|LOCALE.EDIT.SYSTEM", "a shipped locale is refused")
     Do $$$AssertEquals(..AsPrincipal(tWriter, "/locale-properties", {"Locale": (tShipped), "Name": "PatternTables:Latin2"}), "409|LOCALE.EDIT.SYSTEM", "and so is an add to it through the Save route")
+    Set tExport = ..AsPrincipal(tWriter, "/screens/" _ ..#LOCALESCREEN _ "/action", {"action": "export-browser", "id": (..#COPYA)})
+    Do $$$AssertEquals($Piece(tExport, "|", 1) _ "|" _ $Piece(tExport, "|", 3), "403|%Admin_FileSystemAccess:USE", "a principal without the file system pair is refused the export to this browser by name: " _ tExport)
 }
 
 /// <p>The Save routes answer JSON over the wire: Copy's <code>POST /locales</code> 201 with the new locale's id, its target and a matching read-back, then a taken

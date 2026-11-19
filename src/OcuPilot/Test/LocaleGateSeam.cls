@@ -4,7 +4,8 @@
 /// <method>VendorRefuses</method> makes them answer an error, so a test sees what the port would send and no locale changes. The vendor's validity
 /// check answers what <method>Feed</method> names, its install check what <method>FeedInstallable</method> names (every ask recorded, <method>Checks</method>),
 /// the collation of IRISTEMP what <method>Collations</method> names, and a locale <method>HoldLocale</method> names is listed whether or not the instance
-/// holds it. Nothing else differs from the shipped port.</p>
+/// holds it. It records the locks the port takes and releases (<method>Held</method>, <method>LockOrder</method>), refuses one <method>HoldBusy</method>
+/// names, and changes the current locale when one <method>CurrentOnLock</method> names is taken. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.LocaleGateSeam Extends OcuPilot.Port.LocalePort
 {
@@ -20,6 +21,173 @@ ClassMethod Reset()
 {
     Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
     Kill ^||OcuPilotLocaleProps, ^||OcuPilotLocaleTables, ^||OcuPilotLocaleAvailable, ^||OcuPilotLocaleSent, ^||OcuPilotLocaleUncompiled
+    Kill ^||OcuPilotLocaleCurrent, ^||OcuPilotLocaleImported, ^||OcuPilotLocaleImportCounts, ^||OcuPilotLocaleExportText, ^||OcuPilotLocaleExportCounts
+    Kill ^||OcuPilotLocaleLocks, ^||OcuPilotLocaleLockOrder, ^||OcuPilotLocaleBusy, ^||OcuPilotLocaleLockedAtImport, ^||OcuPilotLocaleCurrentOnLock
+}
+
+/// <p>Once <method>TakeLock</method> takes the target <var>pTarget</var>, pose <var>pLocale</var> as the current locale, loading nothing
+/// (<method>HoldCurrent</method>), as another request would have made it current before the lock was taken; until <method>Reset</method>.</p>
+ClassMethod CurrentOnLock(pTarget As %String, pLocale As %String)
+{
+    Set ^||OcuPilotLocaleCurrentOnLock(pTarget) = pLocale
+}
+
+/// <p>Make <method>TakeLock</method> refuse the target <var>pTarget</var>, as a lock another request keeps, until <method>Reset</method>.</p>
+ClassMethod HoldBusy(pTarget As %String)
+{
+    Set ^||OcuPilotLocaleBusy(pTarget) = 1
+}
+
+/// <p>The targets whose lock <method>TakeLock</method> took and <method>ReleaseLock</method> has not released, comma-joined in name order.</p>
+ClassMethod Held() As %String
+{
+    Set tOut = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(^||OcuPilotLocaleLocks(tName))
+        If tName = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tName
+    }
+    Quit tOut
+}
+
+/// <p>The locks held (<method>Held</method>) when the last <method>SendImport</method> was called.</p>
+ClassMethod LockedAtImport() As %String
+{
+    Quit $Get(^||OcuPilotLocaleLockedAtImport)
+}
+
+/// <p>The targets locked since <method>Reset</method>, in the order they were taken, comma-joined.</p>
+ClassMethod LockOrder() As %String
+{
+    Set tOut = ""
+    Set tI = ""
+    For {
+        Set tI = $Order(^||OcuPilotLocaleLockOrder(tI))
+        If tI = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ ^||OcuPilotLocaleLockOrder(tI)
+    }
+    Quit tOut
+}
+
+/// <p>The import's write as <method>ImportUnderLock</method> makes it once the locks of the locales in <var>pLockedNames</var> (a <class>%List</class>) are
+/// held, without taking any: a test that poses a file whose locales differ from the ones that were locked.</p>
+ClassMethod ImportCovered(ByRef pQuery, pLockedNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Kill tLocked
+    For tI = 1:1:$ListLength(pLockedNames) {
+        Set tLocked($List(pLockedNames, tI)) = ""
+    }
+    Quit ..PerformImport(.pQuery, .tLocked, .pResult, .pHttpStatus, .pFault)
+}
+
+ClassMethod TakeLock(pTarget As %String) As %Boolean [ Private ]
+{
+    If $Data(^||OcuPilotLocaleBusy(pTarget)) Quit 0
+    Set tTaken = ##super(pTarget)
+    If tTaken {
+        Set ^||OcuPilotLocaleLocks(pTarget) = $Get(^||OcuPilotLocaleLocks(pTarget)) + 1
+        Set ^||OcuPilotLocaleLockOrder($Increment(^||OcuPilotLocaleLockOrder)) = pTarget
+        If $Data(^||OcuPilotLocaleCurrentOnLock(pTarget)) {
+            Kill ^||OcuPilotLocaleCurrent
+            Set ^||OcuPilotLocaleCurrent = ^||OcuPilotLocaleCurrentOnLock(pTarget)
+        }
+    }
+    Quit tTaken
+}
+
+ClassMethod ReleaseLock(pTarget As %String) [ Private ]
+{
+    Do ##super(pTarget)
+    If '$Data(^||OcuPilotLocaleLocks(pTarget)) Quit
+    Set ^||OcuPilotLocaleLocks(pTarget) = ^||OcuPilotLocaleLocks(pTarget) - 1
+    If ^||OcuPilotLocaleLocks(pTarget) <= 0 Kill ^||OcuPilotLocaleLocks(pTarget)
+}
+
+/// <p>Pose <var>pLocale</var> as the current locale, loading the tables in <var>pTables</var> (<code>pTables(type, from, to)</code>) and the sub-tables in
+/// <var>pSubTables</var> (<code>pSubTables(name)</code>), in <method>CurrentFootprint</method>, until <method>Reset</method>.</p>
+ClassMethod HoldCurrent(pLocale As %String, ByRef pTables, ByRef pSubTables)
+{
+    Kill ^||OcuPilotLocaleCurrent
+    Set ^||OcuPilotLocaleCurrent = pLocale
+    Merge ^||OcuPilotLocaleCurrent("tables") = pTables
+    Merge ^||OcuPilotLocaleCurrent("subtables") = pSubTables
+}
+
+ClassMethod CurrentFootprint(Output pLocale As %String, Output pTables, Output pSubTables) As %Status
+{
+    If '$Data(^||OcuPilotLocaleCurrent) Quit ##super(.pLocale, .pTables, .pSubTables)
+    Set pLocale = ^||OcuPilotLocaleCurrent
+    Kill pTables, pSubTables
+    Merge pTables = ^||OcuPilotLocaleCurrent("tables")
+    Merge pSubTables = ^||OcuPilotLocaleCurrent("subtables")
+    Quit $$$OK
+}
+
+/// <p>Make the import report the vendor's counts <var>pLocales</var>, <var>pTables</var> and <var>pSubTables</var> instead of the counts of the records it was
+/// handed, until <method>Reset</method>.</p>
+ClassMethod FeedImportCounts(pLocales As %Integer, pTables As %Integer, pSubTables As %Integer)
+{
+    Set ^||OcuPilotLocaleImportCounts = $ListBuild(pLocales, pTables, pSubTables)
+}
+
+/// <p>The text the last <method>SendImport</method> was handed, the vendor's file in this seam's place.</p>
+ClassMethod Imported() As %String
+{
+    Quit $Get(^||OcuPilotLocaleImported)
+}
+
+/// <p>Make an export answer <var>pText</var> as its text, and the vendor's counts <var>pLocales</var>, <var>pTables</var> and <var>pSubTables</var>, until
+/// <method>Reset</method>.</p>
+ClassMethod FeedExport(pText As %String, pLocales As %Integer = 1, pTables As %Integer = 0, pSubTables As %Integer = 0)
+{
+    Set ^||OcuPilotLocaleExportText = pText
+    Set ^||OcuPilotLocaleExportCounts = $ListBuild(pLocales, pTables, pSubTables)
+}
+
+ClassMethod SendImport(pKept As %Stream.TmpCharacter, Output pCounts) As %Status [ Private ]
+{
+    Kill pCounts
+    Do pKept.Rewind()
+    Set tText = ""
+    While 'pKept.AtEnd {
+        Set tText = tText _ pKept.Read(32000)
+    }
+    Set ^||OcuPilotLocaleImported = tText
+    Set ^||OcuPilotLocaleLockedAtImport = ..Held()
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "IMPORT"
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Data(^||OcuPilotLocaleImportCounts) {
+        Set pCounts("Locales") = $List(^||OcuPilotLocaleImportCounts, 1)
+        Set pCounts("Tables") = $List(^||OcuPilotLocaleImportCounts, 2)
+        Set pCounts("SubTables") = $List(^||OcuPilotLocaleImportCounts, 3)
+    } Else {
+        Set pCounts("Locales") = $Length(tText, "<Locales>") - 1
+        Set pCounts("Tables") = $Length(tText, "<Tables>") - 1
+        Set pCounts("SubTables") = $Length(tText, "<SubTables>") - 1
+    }
+    Quit $$$OK
+}
+
+ClassMethod SendExport(pName As %String, pResolved As %String, Output pCounts, Output pText As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+{
+    Kill pCounts
+    Set pText = ""
+    Set pTooLarge = 0
+    Set ^||OcuPilotLocaleCalls($Increment(^||OcuPilotLocaleCalls)) = "EXPORT|" _ pName _ "|" _ $Select(pResolved = "": "browser", 1: "file")
+    If $Get(^||OcuPilotLocaleRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Set tCounts = $Get(^||OcuPilotLocaleExportCounts, $ListBuild(1, 0, 0))
+    Set pCounts("Locales") = $List(tCounts, 1)
+    Set pCounts("Tables") = $List(tCounts, 2)
+    Set pCounts("SubTables") = $List(tCounts, 3)
+    If pResolved = "" {
+        Set pText = $Get(^||OcuPilotLocaleExportText)
+        If $Length(pText) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
+            Set pText = ""
+            Set pTooLarge = 1
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>Pose the definition <var>pProps</var> (a <code>Get</code> array) as the fresh read of <var>pLocale</var> in <method>LocaleProperties</method>, until

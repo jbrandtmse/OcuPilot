@@ -49,6 +49,13 @@ const SENTENCES = [
   ['REASONTABLEROW', 'localeRefusalTableRow'],
   ['REASONTABLENOTLOADABLE', 'localeRefusalTableNotLoadable'],
   ['REASONLOAD', 'localeLoadConsequence'],
+  // Story 21.15: the import's five refusals and its consequence.
+  ['REASONIMPORTSHAPE', 'localeRefusalImportShape'],
+  ['REASONIMPORTEMPTY', 'localeRefusalImportEmpty'],
+  ['REASONIMPORTCURRENT', 'localeRefusalImportCurrent'],
+  ['REASONIMPORTCHANGED', 'localeRefusalImportChanged'],
+  ['REASONTOOLARGE', 'localeRefusalTooLarge'],
+  ['REASONIMPORT', 'localeImportConsequence'],
 ];
 
 /** The consequences a card states: the class that declares the sentence, its code parameter, the code, the `proposal-view.ts` constant and the string. */
@@ -56,6 +63,7 @@ const CONSEQUENCES = [
   [LOCALE_ERROR, 'INSTALL', 'REASONINSTALL', 'LOCALE.INSTALL', 'CONSEQUENCE_LOCALEINSTALL', 'localeInstallConsequence'],
   [LOCALE_ERROR, 'DELETE', 'REASONDELETE', 'LOCALE.DELETE', 'CONSEQUENCE_LOCALEDELETE', 'localeDeleteConsequence'],
   [LOCALE_ERROR, 'LOAD', 'REASONLOAD', 'LOCALE.LOAD', 'CONSEQUENCE_LOCALELOAD', 'localeLoadConsequence'],
+  [LOCALE_ERROR, 'IMPORT', 'REASONIMPORT', 'LOCALE.IMPORT', 'CONSEQUENCE_LOCALEIMPORT', 'localeImportConsequence'],
   [CONFIG_ERROR, 'NLSRELOAD', 'REASONNLSRELOAD', 'CONFIG.NLS.RELOAD', 'CONSEQUENCE_CONFIGNLSRELOAD', 'nlsDefaultReloadConsequence'],
 ];
 
@@ -106,6 +114,25 @@ test('Story 21.14: the install, delete and locale-format cards state the sentenc
   assert.equal(classParameter(join(TOOLS, 'LocaleInstall.cls'), 'CONSEQUENCECODE'), 'LOCALE.INSTALL');
   assert.equal(classParameter(join(TOOLS, 'LocaleDelete.cls'), 'CONSEQUENCECODE'), 'LOCALE.DELETE');
   assert.equal(classParameter(join(TOOLS, 'LocaleTableLoad.cls'), 'CONSEQUENCECODE'), 'LOCALE.LOAD');
+  assert.equal(classParameter(join(TOOLS, 'LocaleImport.cls'), 'CONSEQUENCECODE'), 'LOCALE.IMPORT');
+});
+
+// Mutation (Rule 19): change one word of REASONIMPORTCURRENT in LocaleError.cls, or of the import dialog's sentence in strings.ts -> this goes red.
+test('Story 21.15: the transfer dialogs state the ruled sentences, and the import dialog repeats the consequence less its last sentence', () => {
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [key, sentence] of [
+    ['localeImportTitle', 'Import locales and tables'],
+    ['localeImportReplaces', 'Importing replaces any custom locale or table with the same name.'],
+    ['localeExportTitle', 'Export locale <locale>'],
+    ['localeSubtables', 'Subtables'],
+    ['localeImportDone', 'Imported <locales> locales, <tables> tables and <subtables> subtables.'],
+    ['localeExportDone', 'Exported locale <locale> to <path>.'],
+    ['localeExportSaved', 'Saved locale <locale> as <file>.'],
+  ]) {
+    assert.equal(stringValue(key), sentence, `${key} is the ruled sentence`);
+    assert.ok(experience.includes(`"${sentence}"`), `${key}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(`${stringValue('localeImportReplaces')} This cannot be undone.`, classParameter(LOCALE_ERROR, 'REASONIMPORT'));
 });
 
 // Mutation (Rule 19): drop or reorder a name in `LOCALE_TABLE_LISTS` of locale-table-dialog.ts, or a list of `TABLELISTS` in LocalePort.cls -> this goes red.
