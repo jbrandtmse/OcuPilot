@@ -26,6 +26,9 @@ Parameter NAMESPACE = "USER";
 
 Parameter ACTION = "/screens/analytics.cubemanager/action";
 
+/// <p>The child process that holds a cube's build lock for the running test, or 0.</p>
+Property Holding As %Integer [ InitialExpression = 0 ];
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -56,6 +59,8 @@ Method OnBeforeOneTest() As %Status
 /// <p>Release the locks a test took, forget the seam and rebuild the cubes a test killed.</p>
 Method OnAfterOneTest() As %Status
 {
+    Do ..StopHolder(..Holding)
+    Set ..Holding = 0
     Do ..Release()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $ClassMethod(..#SEAM, "Reset")
@@ -289,7 +294,8 @@ Method TestAnUpdateWhereTheFactsAreReadOnlyOrAnalyticsIsOffIsRefused()
 /// how many; the cube lock (#20005) is 409 <code>ANALYTICS.CUBE.BUSY</code>; a cube it does not know (#20013) is 404; a
 /// <code>&lt;PROTECT&gt;</code> or #940 is 403 <code>PORT.ACCESSDENIED</code>; any other error, #20006 beside another error and a raised
 /// exception included, is 409 <code>ANALYTICS.CUBE.FAILED</code>, its text logged and absent from the body. Each makes one vendor call and none changes a fact. A
-/// completed update records one <code>ConfigChange</code> row naming the verb, the cube and the namespace, and a refused or failed one none.</p>
+/// completed update records one <code>ConfigChange</code> row naming the verb, the cube and the namespace, and a refused or failed one that updated no cube none
+/// (<method>TestAFailedUpdateRecordsTheCubesItUpdated</method> pins the one that did).</p>
 /// <p>Mutation (Rule 19): map #20006 to <code>FAILED</code> in <method>OcuPilot.Port.AnalyticsPort.VendorOutcome</method> -- the errors leg
 /// goes red; audit the lock case, or call the vendor twice in <method>OcuPilot.Port.AnalyticsPort.PerformCube</method> -- the audit and call-count legs go red;
 /// test #20006 with <code>HasCode</code> rather than <code>OnlyCode</code> -- the errors-and-another-fault leg goes red.</p>
@@ -344,6 +350,90 @@ Method TestTheVendorsAnswersAreMapped()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tNone), 1, "and left no audit row beyond the first build's")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeVisits", "synchronize", .tNone), 0, "and a refused update left no audit row")
     Do $$$AssertEquals(..Facts("OcuPilotProbeVisits"), tFacts, "and no fact moved")
+}
+
+/// <p>The cube lock <var>pIndex</var> (a cube's upper-case index) held in <code>USER</code> by a child process until <method>StopHolder</method> signals it, which is the way for a
+/// lock to be another process's: one process re-takes its own. The child's job number, or 0 when it did not report holding the lock.</p>
+ClassMethod StartHolder(pIndex As %String) As %Integer
+{
+    Do $System.Event.Clear($Job)
+    Job ##class(OcuPilot.Test.AnalyticsCubeManager).Holder($Job, pIndex)::10
+    If '$Test Quit 0
+    Set tChild = $ZChild
+    Set tMessage = $System.Event.WaitMsg("", 30)
+    If $ListGet(tMessage, 1) '= 1 {
+        Do $System.Event.Signal(tChild, "release")
+        Quit 0
+    }
+    Quit tChild
+}
+
+/// <p>The child <method>StartHolder</method> starts: take the build lock of <var>pIndex</var> in <code>USER</code>, tell the parent, and keep it until signalled.</p>
+ClassMethod Holder(pParent As %Integer, pIndex As %String)
+{
+    Lock +^|"USER"|DeepSee.Build(pIndex)
+    Do $System.Event.Signal(pParent, "held")
+    Set tMessage = $System.Event.WaitMsg("", 120)
+    Lock -^|"USER"|DeepSee.Build(pIndex)
+}
+
+/// <p>Let the child <var>pChild</var> release its lock and wait, at most ten seconds, until it has gone.</p>
+ClassMethod StopHolder(pChild As %Integer)
+{
+    If 'pChild Quit
+    Do $System.Event.Signal(pChild, "release")
+    For tI = 1:1:100 {
+        If '$Data(^$JOB(pChild)) Quit
+        Hang 0.1
+    }
+}
+
+/// <p>AC8 (DW-2518): a build or synchronize the vendor started and then failed, having updated one cube, records one <code>ConfigChange</code> row for the verb and the cube, with
+/// <code>failed</code> true and exactly the cubes the vendor's statistics report updated, while the answer is the refusal it was: a build whose Categories cube reads OK and whose Visits cube
+/// meets the lock (409 <code>ANALYTICS.CUBE.BUSY</code>), and a synchronize whose target reads OK and whose dependent fails (409 <code>ANALYTICS.CUBE.FAILED</code>), the failed cube named in
+/// neither row. Every failure leg of <method>TestTheVendorsAnswersAreMapped</method> reports no cube updated and records no row.</p>
+/// <p>Mutation (Rule 19): list every cube the statistics name in <method>OcuPilot.Port.AnalyticsPort.UpdatedCubes</method>, whatever its status -- the failed cube appears in both rows and this goes
+/// red.</p>
+Method TestAFailedUpdateRecordsTheCubesItUpdated()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tFacts = ..Facts("OcuPilotProbeVisits")
+    Do $ClassMethod(..#SEAM, "Arm", "partial")
+    Do $$$AssertEquals(..Ask("BUILD", "OcuPilotProbeCategories", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.BUSY", "the partial build is refused as busy, as before")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "after one vendor call")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "and one audit row names the build")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeCategories""]") && (tData [ """namespace"":""USER"""), "it is failed, names the namespace and only the cube that built: " _ tData)
+    Do $$$AssertTrue(tData '[ "OcuPilotProbeVisits", "and not the cube that met the lock: " _ tData)
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "partial")
+    Do $$$AssertEquals(..Ask("SYNCHRONIZE", "OcuPilotProbeVisits", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.FAILED", "the partial synchronize is refused as failed, as before")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.%ToJSON() '[ $Parameter(..#SEAM, "VENDORTEXT")), "its text is not in the body")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeVisits", "synchronize", .tData), 1, "and one audit row names the synchronize")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeVisits""]"), "it is failed and names only the target: " _ tData)
+    Do $$$AssertTrue(tData '[ "OCUPILOTPROBEDEPENDENT", "and not the dependent that failed: " _ tData)
+    Do $$$AssertEquals(..Facts("OcuPilotProbeVisits"), tFacts, "and no fact moved")
+}
+
+/// <p>AC8 (DW-2518), with the vendor's own build: another process holds the build lock of Visits and the port's precondition reads it free (<class>OcuPilot.Test.AnalyticsCubeSeam</class>
+/// in mode <code>real</code>), so the vendor builds Categories and then fails Visits on the lock: 409 <code>ANALYTICS.CUBE.BUSY</code>, the vendor's build events grown, and one
+/// <code>ConfigChange</code> row for the build, failed, naming Categories alone.</p>
+/// <p>Mutation (Rule 19): merge the statistics in <method>OcuPilot.Port.AnalyticsPort.VendorBuild</method> into a variable the caller never reads -- this goes red on the missing row.</p>
+Method TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tEvents = ..Events()
+    Set ..Holding = ..StartHolder($ZConvert("OcuPilotProbeVisits", "U"))
+    Do $$$AssertTrue(..Holding > 0, "another process holds the build lock of Visits")
+    If '..Holding Quit
+    Do $ClassMethod(..#SEAM, "Arm", "real")
+    Set tAsk = ..Ask("BUILD", "OcuPilotProbeCategories", .tResult, .tFault, , ..#SEAM)
+    Do ..StopHolder(..Holding)
+    Set ..Holding = 0
+    Do $$$AssertEquals(tAsk, "409 ANALYTICS.CUBE.BUSY", "the vendor's build of Categories met the lock on Visits")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "after one vendor call")
+    Do $$$AssertTrue(..Events() > tEvents, "which recorded its build events")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tData), 1, "and one audit row names the build")
+    Do $$$AssertTrue((tData [ """failed"":true") && (tData [ """cubes"":[""OcuPilotProbeCategories""]"), "it is failed and names Categories alone: " _ tData)
 }
 
 /// <p>The new reads write nothing: <code>LIST</code> and <code>STATE</code> (also composed for an action) leave USER's cache, session, favorites,

@@ -86,9 +86,10 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('LISTINGGROUPPAIRS'), '%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE');
   assert.equal(parameter('LISTINGGROUPSQLPAIRS'), '%DeepSee_ListingGroupSQL:USE');
   assert.equal(parameter('QUALITYMEASUREPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
+  assert.equal(parameter('SETTINGSPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(
     parameter('ENDPOINTS'),
-    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas'
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons'
   );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
@@ -286,7 +287,8 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   // The two vendor calls are exactly the ones the story names.
   const code = codeOf(readFileSync(PORT, 'utf8'), true);
   assert.ok(code.includes('%BuildCube(pCube, 1, 0, 0, 0, 0, .tStats)'), 'the build call is %BuildCube(cube, 1, 0, 0, 0, 0, .stats)');
-  assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts)');
+  // Story 24.13: the call passes the vendor's own defaults for its read-committed, reference-check and async arguments to reach its statistics argument.
+  assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts, 1, 1, 0, .tStats)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts, 1, 1, 0, .stats)');
   const calls = codeOf(readFileSync(PORT, 'utf8'), false);
   assert.equal((calls.match(/##class\(%DeepSee\.Utils\)\.%BuildCube\(/g) ?? []).length, 1, 'and %BuildCube is called once outside a string');
   // Mutation (Rule 19): add `Set tX = $Get(^DeepSee.Fact(1))` to AnalyticsPort or to a tool -> this goes red; the one vendor-global
@@ -296,6 +298,12 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   assert.deepEqual(
     referencing(PORT),
     [
+      // Story 24.13 (AD-65), strings blanked: the analytics settings read by name, the page's own nodes and each worklist option, which the General and Worklists tabs read and never write.
+      'Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne)) # 2',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne), $List(tSetting, 4))',
+      'Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo)) # 2',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo), $List(tSetting, 4))',
+      `Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, ""), tClass, ''$Data(^DeepSee.UserPortalSettings("", tPage, tPanel, tAt)))`,
       'Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1',
       'Lock -^DeepSee.Build(tIndex, "")',
       // Story 24.2 (AD-65), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
@@ -313,7 +321,7 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
       `If '##class(%DeepSee.Utils).%CubeExists(tCube) || $Get(^DeepSee.Cubes("", $ZConvert(tCube, ""), ""), 0) {`,
       `If $Data(^DeepSee.Cubes("", tCubeU, "", tName)) || ($Data(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) && ($Get(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) '= $ZConvert(tModel.name, ""))) {`,
     ],
-    'the port names a vendor global only in the lock probe, in the term list editor\'s named nodes and in the listing group write\'s pre-checks'
+    'the port names a vendor global only in the lock probe, in the term list editor\'s named nodes, in the listing group write\'s pre-checks and in the analytics settings\' reads by name'
   );
   for (const file of [BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) assert.deepEqual(referencing(file), [], `${file} names no vendor global`);
 });
@@ -527,6 +535,18 @@ const QUALITY_MEASURE_SENTENCES = [
 const QUALITY_MEASURE_TOOLS = ['AnalyticsQualityMeasureAdd', 'AnalyticsQualityMeasureUpdate', 'AnalyticsQualityMeasureCopy', 'AnalyticsQualityMeasureDelete'].map((name) =>
   join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`)
 );
+
+test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes no setting', () => {
+  // Mutation (Rule 19): call ##class(%DeepSee.UserPortal.Utils).%GetUserSetting from AnalyticsPort.cls, or set a node of ^DeepSee.UserPortalSettings -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const portalCalls = [...code.matchAll(/##class\(%DeepSee\.UserPortal\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(portalCalls)].sort(), ['%GetUserIconList', '%GetUserSettingsList'], 'the port calls only the two measured list reads of the user portal');
+  for (const never of [/%GetUserSetting\(/, /%SetUserSetting/, /%SetUserIcon/, /%RemoveUser/, /%ClearUser/, /SaveToServer/, /SetOption\(/, /SetCustom\(/, /%DeepSee\.UI\.Settings/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  assert.ok(!/\b(Set|Kill|Merge|Lock)\s+[+-]?\^DeepSee\.(UserPortalSettings|User\.)|\$(Increment|Order)\(\^DeepSee\.User[^\n]*\)\s*=/i.test(code), 'and no line of the port sets, kills, merges into or locks one of the three settings globals');
+  assert.ok(!/\bXECUTE\b|\bX\s+"|\$XECUTE/i.test(code), 'and the port executes no stored expression');
+});
 
 test('Story 24.12 Batch 2: each quality measure refusal and consequence is published once, and the port writes only through the source code port and the model', () => {
   // Mutation (Rule 19): change one word of REASONQUALITYMEASURELINKED in AnalyticsError.cls (or of analyticsRefusalQualityMeasureLinked in strings.ts) -> this goes red naming the pair;

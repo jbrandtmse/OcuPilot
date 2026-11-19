@@ -465,7 +465,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.12: a quality measure's Documentation and Groups and elements (the first tab of the pair), unlisted, sort with them by class name.
       'analytics/quality-measures/document',
       'analytics/quality-measures/documentation',
+      // Story 24.13: the Settings group's Run-time variables sorts after them by class name, User-defined icons and Worklists after the term list entries.
+      'analytics/settings/variables',
       'analytics/term-lists/entries',
+      'analytics/settings/icons',
+      'analytics/settings/worklists',
       'analytics/cubes',
       'analytics/term-lists',
       'analytics/folder-items',
@@ -481,6 +485,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/listing-groups',
       // Story 24.12: Quality measures, listed after them at position 10.
       'analytics/quality-measures',
+      // Story 24.13: Settings, the first tab of its group, listed after it at position 11.
+      'analytics/settings',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
