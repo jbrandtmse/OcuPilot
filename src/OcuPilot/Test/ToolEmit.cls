@@ -297,12 +297,15 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tOwnAt = 1:1:$ListLength(tOwnPairs) {
                 If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
             }
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingSet") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingKey") {
+            ; Story 24.13: the analytics settings' four writes (the General pair and the Worklists actions) declare WRITE on the database ^DeepSee.UserPortalSettings maps to, the cube manager's
+            ; actions the one ^DeepSee.Fact maps to, and both READ on the routines database.
             ; Story 20.34: the cube build and synchronize declare WRITE on the database ^DeepSee.Fact maps to and READ on the routines
             ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's fact database resolves")
+            Set tDestinationGlobal = $Select((tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingSet") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingKey") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsWorklistAction"): ##class(OcuPilot.Port.AnalyticsPort).#SETTINGSGLOBAL, 1: ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL)
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, tDestinationGlobal, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's destination database resolves")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
             For tOwnPair = $ListBuild(tFactResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)

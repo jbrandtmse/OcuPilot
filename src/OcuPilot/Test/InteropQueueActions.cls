@@ -191,6 +191,21 @@ ClassMethod AuditRows(pSince As %String, pType As %String, pId As %String, pVerb
     Quit ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ConfigChange", """type"":""" _ pType _ """,""scope"":""instance"",""id"":""" _ pId _ """", .pData, """verb"":""" _ pVerb _ """")
 }
 
+/// <p>How many <code>ConfigChange</code> rows since <var>pSince</var> name the entity <var>pType</var> with id <var>pId</var> and the verb <var>pVerb</var>, or -1 when the read failed. A window
+/// opened by the audit clock can include a row written by the test before it, so a count is taken as a baseline here and compared by <method>Added</method>.</p>
+ClassMethod Count(pSince As %String, pType As %String, pId As %String, pVerb As %String) As %Integer
+{
+    Quit ..AuditRows(pSince, pType, pId, pVerb, .tIgnored)
+}
+
+/// <p>How many <code>ConfigChange</code> rows for the entity <var>pType</var>, id <var>pId</var> and verb <var>pVerb</var> were written after the baseline <var>pBefore</var> that
+/// <method>Count</method> took over the same <var>pSince</var>, or -1 when either read failed; the data of the newest matching row in the window in <var>pData</var>.</p>
+ClassMethod Added(pSince As %String, pType As %String, pId As %String, pVerb As %String, pBefore As %Integer, Output pData As %String) As %Integer
+{
+    Set tNow = ..AuditRows(pSince, pType, pId, pVerb, .pData)
+    Quit $Select((tNow < 0) || (pBefore < 0): -1, 1: tNow - pBefore)
+}
+
 /// <p>A write by the port itself through <class>OcuPilot.Test.InteropItemSeam</class>, as the running account: the HTTP status and the
 /// wire fault's code, <code>"200 "</code> for an answer; the answer in <var>pResult</var>.</p>
 ClassMethod Port(pEndpoint As %String, pType As %String, pId As %String, Output pResult, pDigest As %String = "", pHasDigest As %Boolean = 0) As %String

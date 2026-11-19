@@ -418,6 +418,37 @@ Method ReadEverything() As %String
     Quit tEndpointsHttp _ "|" _ tToolsHttp _ "|" _ tCapHttp _ "," _ tHttp
 }
 
+/// <p>Story 24.13 Batch 2: each General row carries the kind of value it takes and the sentence that says so (<code>Kind</code>, <code>Accepts</code>): a scheme and the mail flag are choices the
+/// vendor's lists name, the flags are booleans, the texts take up to 2,000 characters and the Google Maps key is a secret that says so whether or not one is stored; each Worklists row carries
+/// <code>Customized</code>, the flag the portal reads before any option, false with nothing stored and true once the worklists are customized.</p>
+/// <p>Mutation (Rule 19): read <code>Kind</code> of the key as <code>text</code> in <method>OcuPilot.Port.AnalyticsPort.Rows</method> -- the key leg goes red; read <code>Customized</code> as false
+/// in <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the customized leg goes red.</p>
+Method TestTheRowsCarryTheirKindAndWhetherWorklistsAreCustomized()
+{
+    Set tSC = ..Read("Settings", 100, .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "the settings read answers with nothing stored")
+    For tCase = $ListBuild("Scheme", "choice", "One of simple, bluechip, chrome, contemporary, mba, roswell."), $ListBuild("ChartSeriesScheme", "choice", "One of urban, tuscan, caribbean, rustbelt, bright, gray, pastel, solid."), $ListBuild("MailEnabled", "choice", "One of 1, 2, 0."), $ListBuild("DashboardNoTitle", "boolean", "0 (off) or 1 (on)."), $ListBuild("Worklist", "boolean", "0 (off) or 1 (on)."), $ListBuild("PageTitle", "text", "Text of up to 2000 characters."), $ListBuild("GoogleMapsKey", "secret", "Text of up to 2000 characters.") {
+        Set tRow = $ClassMethod(..#ROWS, "RowNamed", tRows, $List(tCase, 1))
+        Do $$$AssertTrue($IsObject(tRow), $List(tCase, 1) _ ": its row is read")
+        If $IsObject(tRow) Do $$$AssertEquals(tRow.Kind _ "|" _ tRow.Accepts, $List(tCase, 2) _ "|" _ $List(tCase, 3), $List(tCase, 1) _ ": its kind and the sentence that says what it accepts")
+    }
+    Set tSC = ..Read("Worklists", 100, .tWorklists, .tWorklistHttp, .tFault)
+    Set tCustomized = 0
+    Set tIterator = tWorklists.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tOne) {
+        Set tCustomized = tCustomized + tOne.Customized
+    }
+    Do $$$AssertEquals(tCustomized, 0, "no Worklists row says the worklists are customized while nothing is stored")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetMarkerSettings"), "the markers are stored, among them the flag of customized worklists")
+    Set tSC = ..Read("Worklists", 100, .tAfter, .tAfterHttp, .tFault)
+    Set tCustomized = 0
+    Set tIterator = tAfter.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tOne) {
+        Set tCustomized = tCustomized + tOne.Customized
+    }
+    Do $$$AssertEquals(tCustomized, 16, "all sixteen rows say so once the worklists are customized")
+}
+
 /// <p>AC7: removing the markers by restoring the snapshot leaves the three settings globals as they were when the class started, no marker in any of them and no snapshot: the
 /// fixture's own check sees the markers while they are stored, and the digest of the three equals the one taken first. It sorts last, so no other test runs on what it restores.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Test.AnalyticsProbe.RestoreSettings</method> leave <code>^DeepSee.User.Icons</code> as the markers made it -- this goes red, naming the marker.</p>

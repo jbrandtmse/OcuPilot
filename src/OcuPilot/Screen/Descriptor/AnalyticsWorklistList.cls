@@ -2,7 +2,7 @@
 /// class (sixteen), read through <class>OcuPilot.Port.AnalyticsPort</class> (source kind <code>analytics</code>, endpoint <code>Worklists</code>) and rendered by the <code>detail</code> page
 /// over the declared <code>table</code> (AD-5, AD-29, AD-36, AD-44, AD-65, Story 24.13). <code>Shown</code> is whether the option is stored.</p>
 /// <p><b>It is the second tab of the group <code>analytics/settings</code> and never listed</b> (<code>sideBarPosition</code> 0). Its pairs are the first tab's. <b>Its id is the composite
-/// <code>[Page, Panel, Class]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. It offers no action and does not refresh (AD-43).</p>
+/// <code>[Page, Panel, Class]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its row actions Show and Hide set one option (Story 24.13), and it carries <code>Customized</code>, whether the worklists are customized, which the portal reads before it reads any option. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsWorklistList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -25,8 +25,8 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Page", "Panel", "Class"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Page", "Panel", "Worklist", "Class", "Shown"], "secretFields": []},
+  "rowActions": [{"id": "show", "selfProtection": ""}, {"id": "hide", "selfProtection": ""}],
+  "context": {"fields": ["Page", "Panel", "Worklist", "Class", "Shown", "Customized"], "secretFields": []},
   "emptyStateKey": "analyticsWorklistsEmpty",
   "commandAliases": ["worklists"],
   "suggestedPrompts": [
@@ -39,7 +39,7 @@ XData Declaration
   "read": {
     "row": "worklist option",
     "source": {"port": "analytics", "endpoint": "Worklists", "type": "LIST"},
-    "fields": ["Page", "Panel", "Worklist", "Class", "Shown"],
+    "fields": ["Page", "Panel", "Worklist", "Class", "Shown", "Customized"],
     "filter": ["Page", "Worklist", "Class"],
     "sort": {"fields": ["Page", "Panel", "Worklist", "Shown"], "default": "Page", "direction": "asc"},
     "paging": "cap"
@@ -51,8 +51,8 @@ XData Declaration
       {"field": "Worklist", "labelKey": "analyticsColumnWorklist", "kind": "text"},
       {"field": "Shown", "labelKey": "analyticsColumnShown", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsWorklistsEmptyAgent"
   },
   "tab": {"group": "analytics/settings", "position": 2, "labelKey": "analyticsWorklistsLabel"},
   "toolIdentifier": "analytics.worklists"

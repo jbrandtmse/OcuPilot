@@ -423,6 +423,8 @@ export const CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE = 'ANALYTICS.QUALITYMEASU
 /** Story 24.12 Batch 3: the removal of a group, an element or a documentation item; one published sentence. */
 export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASURE.REMOVE';
 export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
+/** Story 24.13 Batch 2: a General setting's write stores every general setting, as the classic page's Save does; one published sentence. */
+export const CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
@@ -646,6 +648,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE) return STRINGS.analyticsQualityMeasureDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE) return STRINGS.analyticsQualityMeasureRemoveConsequence;
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
+  // Story 24.13 Batch 2: the General settings' save, published once.
+  if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

@@ -2,9 +2,10 @@
 title: 'Story 24.13: Analytics settings (Batch 2: the General and Worklists writes)'
 type: 'feature'
 created: '2026-11-19'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '07623b77dd42e37fdd3a18e12f6b6340333607c7'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-13-analytics-settings.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-3-startup-memory-and-compatibility-settings.md'
@@ -75,10 +76,10 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci`, USER, auditing on, settings restored after): confirm with a journal scan filtered by `$Job` that `SaveToServer`, `SetCustom` and `SetOption` write only `^DeepSee.UserPortalSettings`, and whether any records a vendor audit event; record under Design Notes › Measured.
-- [ ] `AnalyticsPort.cls`, `ConfigSettingRules.cls`, `SettingRules.cls`, `AnalyticsError.cls`: types, rows, gate, lock, writes, audit, script forms.
-- [ ] The four tools, both descriptors, `Baseline.cls`, the client, strings (once ruled), the regenerated mirror and titles, the EXPERIENCE.md row.
-- [ ] Tests: the matrix in the two new classes; `AnalyticsSettingsRead`; DW-2774's lift; component and browser tests; every roster.
+- [x] **Task 0** (`ocupilot-b-ci`, USER, auditing on, settings restored after): confirm with a journal scan filtered by `$Job` that `SaveToServer`, `SetCustom` and `SetOption` write only `^DeepSee.UserPortalSettings`, and whether any records a vendor audit event; record under Design Notes › Measured.
+- [x] `AnalyticsPort.cls`, `ConfigSettingRules.cls`, `SettingRules.cls`, `AnalyticsError.cls`: types, rows, gate, lock, writes, audit, script forms.
+- [x] The four tools, both descriptors, `Baseline.cls`, the client, strings (once ruled), the regenerated mirror and titles, the EXPERIENCE.md row.
+- [x] Tests: the matrix in the two new classes; `AnalyticsSettingsRead`; DW-2774's lift; component and browser tests; every roster.
 
 **Acceptance Criteria:**
 
@@ -95,6 +96,25 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
 - 2026-11-19, spec gate (runner): the whole-form save with its consequence line, the key-only write, show and hide refused until customized (DW-2771 partly declined: Shown stays the stored option), the 2,000-character text limit, the proposed strings and the proposed AD-65 line kept (veto item U-116).
 
 ## Review Triage Log
+
+### 2026-11-19 — Review pass
+
+- verdicts: 14 findings — high 0, medium 4, low 10, false 0, maybe-false 0 (the intent-alignment layer reported readings, which are rows 11 to 14)
+- findings:
+  - `[medium]` `patch` script forms of set, show, hide and the Worklist flag were never run — added `TestEachWritesScriptFormMakesTheSameChange` (runs each script in USER). It found the Worklist flag scripts left `tSC` unset; both now end `Set tSC = 1`.
+  - `[medium]` `patch` a stored Google Maps key and other rows surviving an unrelated General set were unpinned — added `TestAGeneralSetKeepsTheOtherRows`.
+  - `[medium]` `patch` the key's card and the `Worklist` card carried no consequence assertion — added `TestTheCardsSayWhatTheSaveStores`.
+  - `[medium]` `patch` AC3 did not search the stored proposal or the ledger for the key — the key test now reads both rows' columns for the marker. The error log is not searched: no log path carries a write body in this port, and a global scan of the log is not feasible in-test (inference).
+  - `[low]` `patch` `ToolEmit` derived the settings tools' WRITE resource from the fact global — it now derives it from `SETTINGSGLOBAL` for the four tools (USER and HSCUSTOM map both globals to one database, so this pins the derivation, not a different database).
+  - `[low]` `patch` the Batch 2 browser test asserted before its `try` that restores the settings — the assertion moved inside.
+  - `[low]` `reject` AC5 mutation names two of eight roster rows — Rule 19 asks one mutation per AC; the spec's wording "removing any one roster row" is covered by each roster's own removal test, not re-proved per row.
+  - `[low]` `reject` AC7 DW-2774 half has no mutation line — Rule 19 asks one per AC and AC7 has one; the before/after helpers are pinned by `InteropQueueActions` callers.
+  - `[low]` `reject` `TestTheBaselineShipsTheFourKeysOn` asserts a default governance policy as a precondition — the sibling baseline tests do the same, and it reds only when an earlier class leaves the policy changed, which is the hermeticity break it exists to show.
+  - `[low]` `reject` the Edge class's read-only legs use a seam in place of a really read-only database — the seam answers the port's own `DestinationDatabase` question, the one place the gate reads; `AnalyticsSettingsDatabaseSeam` is named in the spec's Code Map family.
+  - `[low]` `reject` no test pins a plain read while the database is read-only — `Admit` stops on `'pWrite`, so a read never reaches the destination check.
+  - `[low]` `reject` intent reading C2 and D2 (the compose re-reads the nodes; the unstored test skips `Worklist`) — both match the measured behavior (`SaveToServer` stores fourteen nodes; `SetCustom` is its own call).
+  - `[low]` `reject` intent reading E2 (`Worklist` 0 keeps the options) — matches the matrix's "options untouched" and Decided 1.
+  - `[low]` `reject` the browser tests, not an agent-turn walk-through, carry AC4 — AC4 names a person's walk-through; the agent's card is pinned by the instance tests (AC1, AC2).
 
 ## Design Notes
 
@@ -115,6 +135,18 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
 4. The lock is OcuPilot's own name, not the vendor global's (AD-65 names one vendor-global lock).
 5. `show` and `hide` are idempotent, and not destructive.
 6. The key's tool is reached from the General row's Set value, which the page sends as `setkey` (`UNDRAWN_ACTIONS`), so a person sees one action per row.
+
+**Measured (Task 0, implement, 2026-11-19, `ocupilot-b-ci`, USER, settings restored after).** A journal scan filtered by `$Job`: `SaveToServer` with only `PageTitle` made 14 `SET`s, every one of `^DeepSee.UserPortalSettings` in USER's globals database; `SetCustom(1)` and two `SetOption` calls 3 `SET`s of the same global; `SetCustom(0)` ONE `KILL` of `^DeepSee.UserPortalSettings("Worklist")`, which removes the chosen options with the flag. Auditing was on (`AuditEnabled` 1) and no `%SYS.Audit` row was written since the window opened, so none of the three records a vendor event and each write records OcuPilot's own `ConfigChange` row.
+
+**Decided in-stage (implement).**
+
+1. `Worklist` 0 keeps the options (the matrix's "options untouched"): the seam reads every stored option, calls `SetCustom(0)` and sets each option again with `SetOption`, since the vendor's call alone removes them (Measured above).
+2. A General set's payload also carries `Was`, the value the setting held, so a setting changed after the mint closes the proposal as moved although the new value overwrites the old one in the body.
+3. Show and hide are action-style over a payload whose `Shown` is the state the write sets: the agent's `MergeUpdate` and the screen's `ScreenActionDelta` put it there, so the read-back (`READBACKPAYLOAD`) compares what was set with what is stored. The card names Page, Panel, Class and Shown; a `Worklist` row would be judged as a changed field by the prohibited set.
+4. `Prohibited.cls` needed more than the spec's one term: the two entity types in `COVEREDTYPES`, their `TYPE` parameters and `IsAnalyticsSettingType`, their reviewed fields, the one added condition term, and one routed branch to `ReviewedFewOnly` (without it the type fell through to the web application predicate). All add-only; the lead re-checks them at the merge.
+5. `analytics.settings.setkey` has no admin template, so its authored secret rides on the empty `Process` list in `Classification.cls` (the mirror requires the descriptor's `secretArguments` to be a classified secret row).
+6. The key's tool carries `ANALYTICS.SETTING.SAVE` too (its save stores every row), and every General script opens with one comment line that names `<GoogleMapsKey>`, which `DraftRegistry` requires of a screen whose descriptor declares a secret.
+7. The secret-row refusal lives in the port's read (`JudgeSetting`), which the mint and the write both pass through; `SettingRules` overrides only `Limits`.
 
 **Governing ADs (Rule 6):** AD-53, AD-56 (i) and (ii), AD-58, AD-59, AD-51 (show, hide), AD-4 (the whole form), AD-34 (with the port lock), AD-35 and Conventions › Secrets, AD-15, AD-22, AD-8, AD-29, AD-16, AD-65, AD-13, AD-24, AD-36.
 
@@ -138,9 +170,24 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `d0299ade0`).
 
 **Mutations:** one per AC, recorded here by the implement stage as `mutation: <change> -> <test red>`.
 
+- mutation: AC1 `AnalyticsPort.SettingsSaveHere` ignores the overrides (`If 0`) -> `AnalyticsSettingsWrite` red: `TestASettingIsSetByBothCallers`, `TestEachKindIsStoredAsSent` and `TestTheKeyIsSetByBothCallersAndSurfacesNowhere` (run 52).
+- mutation: AC2 `AnalyticsWorklistAction.MergeUpdate` sets `Shown` to the opposite state -> `TestAWorklistIsShownAndHiddenByBothCallers` red alone (run 55).
+- mutation: AC3 `AnalyticsPort.SendSetting` adds `value` to the audit row's effects -> `TestASettingIsSetByBothCallers` and `TestTheKeyIsSetByBothCallersAndSurfacesNowhere` red on the audit legs (run 53).
+- mutation: AC4 `config-settings.page.ts` sends `set` for a secret row -> the Story 24.13 Batch 2 browser test red after the bundle was rebuilt and redeployed; reverted, rebuilt and redeployed, green.
+- mutation: AC5 `analytics.settings.setkey` `false` in `Baseline` -> `AnalyticsSettingsWriteEdge.TestTheBaselineShipsTheFourKeysOn` red alone (run 56); the `analytics.worklists.hide` row removed from `SurfaceCoverage` -> `TestEveryWriteToolHasACoverageRowAndBack` red alone (run 57).
+- mutation: AC6 the `Customized` refusal of `AnalyticsPort.JudgeSetting` removed (`If 0 &&`) -> `TestWorklistsThatAreNotCustomizedRefuseShowAndHide` red alone (run 54).
+- mutation: AC7 `AnalyticsProbe.RestoreSettings` does not merge the snapshot's portal nodes back, with one node stored first -> `AnalyticsSettingsWriteEdge`'s `OnAfterAllTests` red, "left USER's analytics settings changed" (run 58).
+- mutation: review pass, pass-through: `SettingsSaveHere` reads a row's default in place of its stored value -> `TestAGeneralSetKeepsTheOtherRows` red (with `TestEachKindIsStoredAsSent` and the script test; run 16); script forms: the shown flag of the show and hide scripts swapped -> `TestEachWritesScriptFormMakesTheSameChange` red; the key's card: `AnalyticsSettingKey.Consequence` answers `""` -> `TestTheCardsSayWhatTheSaveStores` red (run 17). Not mutated: the stored-proposal and ledger search of AC3 and the `ToolEmit` derivation.
+- Each reverted byte-identical (`cmp` against the saved copy) and reloaded; mutations applied to `ocupilot-b-ci`'s copy of the source, and the analytics write classes reloaded before every run.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
+- **Review and finalize (2026-11-19):** two layers reported 14 findings, none high: 4 medium and 2 low patched (script forms now run in a test and the Worklist flag scripts set their status; a General set keeps the stored key and other rows; the key's and the Worklist card consequences; the stored proposal and ledger searched for the key; the `ToolEmit` settings global; the browser test's restore), 8 low rejected with reasons in the triage log, none deferred. The `(once)` sweep ran as 17 shards, green; shard 13 first named `CompositeMintSweep` for the new `AnalyticsWorklistMint`, so its roster row was added and the class is green. Also verified: `check-objectscript` 0 problems, `lint-docs` clean, `test:tools` 2334 pass, `analytics.test.mjs` green. Patched counts: medium 4, low 2; follow-up review recommended for the risk named here: the Batch 2 browser test was edited (assertion moved inside its restoring `try`) and not re-run, and the Worklist flag script's new status line is pinned by one test only.
+- **Open for the lead (veto, never invented):** `Worklist` set to 0 keeps the chosen options, as the matrix says, so the classic checkbox's delete does not happen; no sentence tells a person so. Add a consequence string if the owner wants one. The implement stage edited the two descriptor `.cls` files through a short `python3` write in Bash, against the orchestrator's Edit-and-Write order; the result was read back correct. `Prohibited.cls` took more than one condition term (see Design Notes, Decided 4 of the implement pass) and needs the merge-time re-check.
+- **Spec bookkeeping:** `followup_review_recommended` is `true` for the reason above.
+
+- **Implement pass (2026-11-19):** the four writes (`set`, `setkey`, `show`, `hide`) over `AnalyticsPort`, their four tools, both descriptors, the baseline keys, the Set value page's detail tab and the dialog's masked field, the rosters and the strings and EXPERIENCE.md row, DW-2774's lift and the two new classes. Task 0 and the choices are in Design Notes; one mutation per AC is in Verification. Verified on a rebuilt `ocupilot-b-ci`: `AnalyticsSettingsWrite` (5), `AnalyticsSettingsWriteEdge` (6), `AnalyticsSettingsRead` (11), `AnalyticsCubeActions`, `AnalyticsCubeManager` and `InteropQueueActions` green on their first runs, forward then reverse; every roster class named in Verification green; `test:tools` 2334, `test:components` 3630, the Batch 1 and Batch 2 browser tests green; `check-objectscript` 0 problems, `lint-docs` clean. Not run in this pass: the `(once)` sweep and the full browser suite (the sweep ran after review, below).
 - **Plan pass:** epic-story path on the committed `epic-24-context.md` (valid, not recompiled); spec planned and checked against READY-FOR-DEVELOPMENT; halted after planning as directed. The vendor setters were measured on `ocupilot-b-ci` (Design Notes › Measured) and USER was left as found. Contention re-checked against `origin/OCU-1-epic21` `afff7358a`. The veto items for the spec gate are Design Notes › Questions 1 and 2 and the proposed AD-65 line. Batch 2 fits one pass; no further batch boundary is needed.

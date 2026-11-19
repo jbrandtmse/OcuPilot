@@ -60,7 +60,33 @@ function fill(template: string, placeholder: string, value: string): string {
         } @else {
           <label class="ocu-field-label" [attr.for]="fieldId">{{ STRINGS.errorLogColumnValue }}</label>
           <div class="ocu-field-control">
-            @if (multilineField) {
+            @if (secretField) {
+              <input
+                class="ocu-field-input"
+                [type]="secretType"
+                autocomplete="new-password"
+                spellcheck="false"
+                data-interop-setting-value
+                data-interop-setting-secret
+                [id]="fieldId"
+                [value]="text()"
+                [attr.aria-invalid]="violation() ? 'true' : null"
+                [attr.aria-describedby]="describedBy()"
+                (input)="onText($event)"
+                (keydown.enter)="onEnter($event)"
+              />
+              <button
+                type="button"
+                class="ocu-reveal-toggle"
+                data-interop-setting-reveal
+                [attr.aria-label]="revealLabel"
+                [attr.aria-pressed]="revealedSecret"
+                (click)="toggleReveal()"
+              >
+                <span aria-hidden="true">{{ revealGlyph }}</span>
+              </button>
+            }
+            @if (areaField) {
               <textarea
                 class="ocu-field-input ocu-field-textarea"
                 rows="4"
@@ -72,7 +98,8 @@ function fill(template: string, placeholder: string, value: string): string {
                 [attr.aria-describedby]="describedBy()"
                 (input)="onText($event)"
               ></textarea>
-            } @else {
+            }
+            @if (lineField) {
               <input
                 class="ocu-field-input"
                 type="text"
@@ -123,6 +150,9 @@ export class InteropItemSettingDialog {
   /** Whether the default line is drawn; an entry of a lookup table has no default. */
   readonly defaultShown = input<boolean>(true);
 
+  /** Whether the value is a secret (Story 24.13): drawn as an empty masked field with a reveal toggle, never filled with the current value, which is a mask. */
+  readonly secret = input<boolean>(false);
+
   /** The setting's current value as the instance reported it. */
   readonly current = input<string>('');
 
@@ -169,7 +199,10 @@ export class InteropItemSettingDialog {
 
   protected readonly isBoolean = computed(() => this.type() === BOOLEAN_TYPE);
 
-  protected readonly text = computed(() => this.typed() ?? this.current());
+  /** Whether a secret's text is shown rather than masked. */
+  private readonly revealedFlag = signal(false);
+
+  protected readonly text = computed(() => this.typed() ?? (this.secret() ? '' : this.current()));
 
   protected readonly checked = computed(() => {
     const value = this.typed() ?? this.current();
@@ -210,6 +243,40 @@ export class InteropItemSettingDialog {
 
   protected get showDefault(): boolean {
     return this.defaultShown();
+  }
+
+  protected get secretField(): boolean {
+    return this.secret();
+  }
+
+  /** Whether the value is drawn as a text area: multi-line, and not a secret. */
+  protected get areaField(): boolean {
+    return this.multiline() && !this.secret();
+  }
+
+  /** Whether the value is drawn as a single-line text field: neither multi-line nor a secret. */
+  protected get lineField(): boolean {
+    return !this.multiline() && !this.secret();
+  }
+
+  protected get revealedSecret(): boolean {
+    return this.revealedFlag();
+  }
+
+  protected get secretType(): string {
+    return this.revealedFlag() ? 'text' : 'password';
+  }
+
+  protected get revealGlyph(): string {
+    return String.fromCharCode(this.revealedFlag() ? 0x25cf : 0x25cb);
+  }
+
+  protected get revealLabel(): string {
+    return this.revealedFlag() ? STRINGS.accountHidePassword : STRINGS.accountShowPassword;
+  }
+
+  protected toggleReveal(): void {
+    this.revealedFlag.set(!this.revealedFlag());
   }
 
   private line(template: string, value: string): string {

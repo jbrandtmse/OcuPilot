@@ -171,6 +171,7 @@ Method TestThePersonsBuildRebuildsTheCubeAndItsDependent()
     Set tCategoriesStamp = ..Stamp(..#CATEGORIES)
     Set tVisitsStamp = ..Stamp(..#VISITS)
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = $ClassMethod(..#QUEUES, "Count", tSince, "cube", ..#CATEGORIES, "build")
     Set tStatus = ..Act("build", ..#CATEGORIES, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the Build answers 200: " _ $Select($IsObject(tAnswer): $Extract(tAnswer.%ToJSON(), 1, 300), 1: tAnswer))
     If '$IsObject(tAnswer) Quit
@@ -178,7 +179,7 @@ Method TestThePersonsBuildRebuildsTheCubeAndItsDependent()
     Do $$$AssertEquals(tAnswer.output.lines.%ToJSON() _ "|" _ tAnswer.output.errors, "[""Facts in OcuPilotProbeCategories: 5"",""Facts in OcuPilotProbeVisits: 1000""]|0", "the screen is answered the two facts lines, and no error")
     Do $$$AssertEquals(..Both(), "5|1000", "Categories and its dependent Visits are rebuilt")
     Do $$$AssertTrue((..Stamp(..#CATEGORIES) '= tCategoriesStamp) && (..Stamp(..#VISITS) '= tVisitsStamp), "and both last builds moved")
-    Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", ..#CATEGORIES, "build", .tData), 1, "one audit row names the build of the cube")
+    Do $$$AssertEquals($ClassMethod(..#QUEUES, "Added", tSince, "cube", ..#CATEGORIES, "build", tBase, .tData), 1, "one audit row names the build of the cube")
     Do $$$AssertTrue((tData [ """namespace"":""USER""") && (tData [ ..#VISITS), "naming the namespace and the cubes updated: " _ tData)
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "AgentWrite", ..#CATEGORIES, .tMarker), 0, "and no agent marker is emitted for a person's action")
     Set tStatus = $ClassMethod(..#CONTROL, "Call", "GET", "/screens/analytics.cubes/read", "", .tHttp, .tCubes)
@@ -211,6 +212,7 @@ Method TestTheAgentsBuildIsADestructiveCardNamingItsDependentsBeforeItConfirms()
     Do $$$AssertEquals($Piece(..CardRow(tProposal, "Last build"), ">", 2), "Rebuilt now", "and the last build moving to Rebuilt now")
     Do $$$AssertEquals(..Both(), "5|0", "nothing was built by the mint")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = $ClassMethod(..#QUEUES, "Count", tSince, "cube", ..#CATEGORIES, "build")
     Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the confirm answers 200: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertTrue($IsObject(tAnswer) && ($Length(tRaw, "}{") = 1), "exactly one envelope")
@@ -219,7 +221,7 @@ Method TestTheAgentsBuildIsADestructiveCardNamingItsDependentsBeforeItConfirms()
         Do $$$AssertEquals(tAnswer.output.lines.%ToJSON(), "[""Facts in OcuPilotProbeCategories: 5"",""Facts in OcuPilotProbeVisits: 1000""]", "the screen is answered the lines")
     }
     Do $$$AssertEquals(..Both(), "5|1000", "both cubes are rebuilt")
-    Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", ..#CATEGORIES, "build", .tData), 1, "one ConfigChange row names the build")
+    Do $$$AssertEquals($ClassMethod(..#QUEUES, "Added", tSince, "cube", ..#CATEGORIES, "build", tBase, .tData), 1, "one ConfigChange row names the build")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "AgentWrite", ..#CATEGORIES, .tMarker), 1, "and the agent marker names the cube once")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "LedgerCount", tTurn, $Parameter(..#BUILDTOOL, "TOOLNAME")), 1, "the confirmed write is in the ledger once")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
@@ -251,11 +253,12 @@ Method TestASynchronizeAppliesExactlyTheChangesForBothCallers()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ChangeVisits", 10), "ten Visit rows are changed")
     Set tStamp = ..Stamp(..#VISITS)
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = $ClassMethod(..#QUEUES, "Count", tSince, "cube", ..#VISITS, "synchronize")
     Set tStatus = ..Act("synchronize", ..#VISITS, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the Synchronize answers 200 with no dialog: " _ $Select($IsObject(tAnswer): $Extract(tAnswer.%ToJSON(), 1, 300), 1: tAnswer))
     If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.output.lines.%ToJSON(), "[""Facts updated in OcuPilotProbeVisits: 10""]", "the screen is answered the ten changes")
     Do $$$AssertEquals($ClassMethod(..#MANAGER, "Facts", ..#VISITS) _ "|" _ (..Stamp(..#VISITS) = tStamp), "1000|1", "Visits keeps its facts and its last build")
-    Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", ..#VISITS, "synchronize", .tData), 1, "one audit row names the synchronize")
+    Do $$$AssertEquals($ClassMethod(..#QUEUES, "Added", tSince, "cube", ..#VISITS, "synchronize", tBase, .tData), 1, "one audit row names the synchronize")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "AgentWrite", ..#VISITS, .tMarker), 0, "and no agent marker is emitted for a person's action")
 
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ChangeVisits", 7), "seven more rows are changed")
@@ -264,12 +267,13 @@ Method TestASynchronizeAppliesExactlyTheChangesForBothCallers()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "Consequence") _ "|" _ (##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "Destructive") + 0), "ANALYTICS.CUBE.SYNCHRONIZE|0", "the agent's card carries the synchronize consequence and is not destructive")
     Do $$$AssertEquals($Piece(..CardRow(tProposal, "Last update"), ">", 2), "Synchronized now", "and shows the last update moving to Synchronized now")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = $ClassMethod(..#QUEUES, "Count", tSince, "cube", ..#VISITS, "synchronize")
     Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tConfirmStatus, .tRaw, .tConfirmed)
     Do $$$AssertEquals(tConfirmStatus, 200, "the confirm answers 200 with the baseline's key: " _ $Extract($Get(tRaw), 1, 300))
     If $IsObject(tConfirmed) {
         Do $$$AssertEquals(tConfirmed.%Get("auditMarked") _ "|" _ tConfirmed.output.lines.%ToJSON(), "1|[""Facts updated in OcuPilotProbeVisits: 7""]", "marked, with the seven changes for the screen")
     }
-    Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", ..#VISITS, "synchronize", .tAgentData), 1, "one ConfigChange row names the agent's synchronize")
+    Do $$$AssertEquals($ClassMethod(..#QUEUES, "Added", tSince, "cube", ..#VISITS, "synchronize", tBase, .tAgentData), 1, "one ConfigChange row names the agent's synchronize")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "AgentWrite", ..#VISITS, .tAgentMarker), 1, "and the agent marker names the cube once")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
@@ -285,12 +289,13 @@ Method TestAConfirmAfterAnotherBuildIsRefusedAsMoved()
     Do ..Mint(..#BUILDTOOL, ..#CATEGORIES, .tProposal, .tTurn)
     If '$IsObject($Get(tProposal)) Quit
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tBase = $ClassMethod(..#QUEUES, "Count", tSince, "cube", ..#CATEGORIES, "build")
     Do $$$AssertEquals(..Act("build", ..#CATEGORIES, .tAnswer), 200, "the person builds the same cube")
     Do ..Empty(..#VISITS)
     Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tConfirmed)
     Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tConfirmed): tConfirmed.%Get("code"), 1: ""), "409|PROPOSAL.TARGETCHANGED", "the confirm is refused, the cube having been built since the review: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertEquals(..Both(), "5|0", "and nothing was rebuilt by it")
-    Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", ..#CATEGORIES, "build", .tData), 1, "the person's build is the one audit row")
+    Do $$$AssertEquals($ClassMethod(..#QUEUES, "Added", tSince, "cube", ..#CATEGORIES, "build", tBase, .tData), 1, "the person's build is the one audit row")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
@@ -304,6 +309,11 @@ Method TestAnActionOnAMisspelledOrUnknownCubeIsAbsentAndChangesNothing()
     Do $$$AssertEquals(..Both(), "5|0", "Visits' facts are killed")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ChangeVisits", 3), "three Visit rows are changed")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    For tName = ..#VISITS, $ZConvert(..#VISITS, "L"), "NoSuchCube" {
+        For tVerb = "build", "synchronize" {
+            Set tBase(tName, tVerb) = $ClassMethod(..#QUEUES, "Count", tSince, "cube", tName, tVerb)
+        }
+    }
     For tAction = "build", "synchronize" {
         For tName = $ZConvert(..#VISITS, "L"), "NoSuchCube" {
             Set tStatus = ..Act(tAction, tName, .tAnswer)
@@ -314,7 +324,7 @@ Method TestAnActionOnAMisspelledOrUnknownCubeIsAbsentAndChangesNothing()
     Set tRows = 0
     For tName = ..#VISITS, $ZConvert(..#VISITS, "L"), "NoSuchCube" {
         For tVerb = "build", "synchronize" {
-            Set tRows = tRows + $ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", tName, tVerb, .tData)
+            Set tRows = tRows + $ClassMethod(..#QUEUES, "Added", tSince, "cube", tName, tVerb, tBase(tName, tVerb), .tData)
         }
     }
     Do $$$AssertEquals(tRows, 0, "and no audit row is written under any of the three names")

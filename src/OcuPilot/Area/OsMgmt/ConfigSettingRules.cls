@@ -27,10 +27,17 @@ ClassMethod Code(pEndpoint As %String, pRow As %DynamicObject, pValue As %String
 {
     If '$IsObject(pRow) || 'pRow.%IsA("%Library.DynamicObject") Quit ##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND
     If pRow.%Get("ReadOnly") Quit ##class(OcuPilot.Api.ConfigError).#SETTINGREADONLY
-    Set tLimits = ##class(OcuPilot.Port.ConfigPort).Limits(pEndpoint, pRow.%Get("Name"))
+    Set tLimits = ..Limits(pEndpoint, pRow.%Get("Name"), pRow)
     If tLimits = "" Quit ##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND
     If '..ValueHolds(tLimits, pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
     Quit ""
+}
+
+/// <p>The limits of the setting <var>pName</var> of <var>pEndpoint</var> that <method>Code</method> judges a value by
+/// (<method>OcuPilot.Port.ConfigPort.Limits</method>); a rules class for another port overrides it, and may read the setting's row <var>pRow</var>.</p>
+ClassMethod Limits(pEndpoint As %String, pName As %String, pRow As %DynamicObject = "") As %List
+{
+    Quit ##class(OcuPilot.Port.ConfigPort).Limits(pEndpoint, pName)
 }
 
 /// <p>Whether <var>pValue</var> is one the limits <var>pLimits</var> (<method>OcuPilot.Port.ConfigPort.Limits</method>'s

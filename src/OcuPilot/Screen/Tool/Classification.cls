@@ -1593,6 +1593,13 @@ XData Entries
       "VerifySSLHostName": "ordinary",
       "Custom": "opaque"
     }
+  },
+  "analytics.settings.setkey": {
+    "fieldList": "Process",
+    "classification": {},
+    "authored": {
+      "GoogleMapsKey": "secret"
+    }
   }
 }
 }

@@ -818,6 +818,91 @@ test('Story 24.13: with nothing stored, Settings shows the classic page\'s defau
   }
 });
 
+/** The cells of the first row whose first cell starts with `prefix`, or `null`. */
+async function cellsOf(page, prefix) {
+  return (await allRows(page)).find((row) => row[0].startsWith(prefix)) ?? null;
+}
+
+/** Wait until the first row whose first cell starts with `prefix` reads `cells` (its leading cells, in order). */
+function rowReads(page, prefix, cells) {
+  return page.waitForFunction(
+    (rowSelector, wanted, expected) => {
+      const row = Array.from(document.querySelectorAll(rowSelector)).find((candidate) => candidate.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+      if (!row) return false;
+      const texts = Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim());
+      // A row the instance has just changed carries its marker and read-back in the first cell.
+      return expected.every((text, at) => (at === 0 ? texts[at]?.startsWith(text) : texts[at] === text));
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    prefix,
+    cells
+  );
+}
+
+/** Fill the open Set value dialog's field with `text` and confirm it. */
+async function setValue(page, text) {
+  await page.waitForSelector('[data-interop-setting-value]', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.click('[data-interop-setting-value]', { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type('[data-interop-setting-value]', text);
+  await page.click('[data-interop-setting-confirm]');
+  await page.waitForFunction(() => document.querySelector('app-interop-item-setting-dialog') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.13 Batch 2, AC4. A person sets PageTitle from the General tab, sets the Google Maps key from the masked field, turns Worklist on, and shows and hides a worklist; each screen shows the
+// change and the key row shows the mask. Mutation (Rule 19): send `set` in place of `setkey` for a secret row in `config-settings.page.ts` (bundle rebuilt and redeployed) -> the key leg goes red.
+test('Story 24.13 Batch 2: a person sets a setting, sets the key from a masked field, turns Worklist on, and shows and hides a worklist', async () => {
+  const cleared = probe('SWCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())`);
+  const key = 'OcuProbe2413BrowserKey';
+  try {
+    assert.equal(cleared.value, '11', `nothing is stored: ${cleared.output}`);
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const labels = await rowAction(page, 'PageTitle', STRINGS.interopItemSettingSetAction);
+      assert.ok(labels.length >= 1, 'the General row offers Set value');
+      await setValue(page, 'OcuProbe2413 Browser Title');
+      await rowReads(page, 'PageTitle', ['PageTitle', 'OcuProbe2413 Browser Title']);
+
+      // A reload between actions clears the row selection the previous one left.
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'GoogleMapsKey', STRINGS.interopItemSettingSetAction);
+      await page.waitForSelector('[data-interop-setting-secret]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-interop-setting-secret]', (node) => `${node.type}|${node.value}`), 'password|', 'the key opens as an empty masked field');
+      await setValue(page, key);
+      await rowReads(page, 'GoogleMapsKey', ['GoogleMapsKey', '[redacted]']);
+      assert.ok(!(await page.evaluate(() => document.body.innerText)).includes(key), 'the key\'s text is nowhere on the screen');
+      assert.equal(probe('SWKEY', '$Get(^|"USER"|DeepSee.UserPortalSettings("GoogleMapsKey"))').value, key, 'and the instance holds it');
+
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'Worklist', STRINGS.interopItemSettingSetAction);
+      await page.waitForSelector('[data-interop-setting-checkbox]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.click('[data-interop-setting-checkbox]');
+      await page.click('[data-interop-setting-confirm]');
+      await page.waitForFunction(() => document.querySelector('app-interop-item-setting-dialog') === null, { timeout: config.navigationTimeoutMs });
+      await rowReads(page, 'Worklist', ['Worklist', '1']);
+
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const first = await cellsOf(page, 'DashboardViewer');
+      assert.equal(first?.[3], STRINGS.tableStatusNo, 'the first worklist is not shown');
+      await rowAction(page, 'DashboardViewer', STRINGS.oauthRegisteredClientShow);
+      await rowReads(page, 'DashboardViewer', ['DashboardViewer', '1', 'Favorites', STRINGS.tableStatusYes]);
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'DashboardViewer', STRINGS.oauthRegisteredClientHide);
+      await rowReads(page, 'DashboardViewer', ['DashboardViewer', '1', 'Favorites', STRINGS.tableStatusNo]);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('SWGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
+  }
+});
+
 const MEASURE_NAME = 'OcuProbeQMW/Browse/One';
 const MEASURE_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseOne';
 const COPY_NAME = 'OcuProbeQMW/Browse/Two';

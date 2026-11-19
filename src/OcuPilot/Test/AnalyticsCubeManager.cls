@@ -125,7 +125,7 @@ ClassMethod Events() As %Integer
 /// as a baseline here and compared by <method>Added</method>.</p>
 ClassMethod Count(pSince As %String, pCube As %String, pVerb As %String) As %Integer
 {
-    Quit ##class(OcuPilot.Test.InteropQueueActions).AuditRows(pSince, "cube", pCube, pVerb, .tIgnored)
+    Quit ##class(OcuPilot.Test.InteropQueueActions).Count(pSince, "cube", pCube, pVerb)
 }
 
 /// <p>How many <code>ConfigChange</code> rows for the cube <var>pCube</var> and the verb <var>pVerb</var> were written after the
@@ -133,8 +133,7 @@ ClassMethod Count(pSince As %String, pCube As %String, pVerb As %String) As %Int
 /// of the newest matching row in the window in <var>pData</var>.</p>
 ClassMethod Added(pSince As %String, pCube As %String, pVerb As %String, pBefore As %Integer, Output pData As %String) As %Integer
 {
-    Set tNow = ##class(OcuPilot.Test.InteropQueueActions).AuditRows(pSince, "cube", pCube, pVerb, .pData)
-    Quit $Select((tNow < 0) || (pBefore < 0): -1, 1: tNow - pBefore)
+    Quit ##class(OcuPilot.Test.InteropQueueActions).Added(pSince, "cube", pCube, pVerb, pBefore, .pData)
 }
 
 /// <p>The facts the vendor counts in the cube <var>pCube</var> in <code>USER</code>.</p>
