@@ -738,3 +738,8 @@
 2026-11-19T21:25:19Z	Story 21.10	code_head_pushed	sha=e4866902a run=44618534578 missing=none
 2026-11-19T21:25:19Z	Epic 21	ruling	question=owner_vetoes via=orchestrator choice=owner_kept_U-114,U-118,U-119,U-105..113
 2026-11-19T21:25:19Z	Story 21.10	gate_step	step=fresh_check+full_sweep+smoke head=e4866902a started=2026-11-19T21:25:19Z dir=e21u/21-10/gate attempt=3
+2026-11-19T22:01:26Z	Story 21.10	ci_resolved	story=21.10 sha=e4866902a runs=44618534578 result=success failed=none via=none
+2026-11-19T22:01:26Z	Story 21.10	fresh_check	env=recipe(ci-throwaway_rebuild) tests=36_classes+3_specs result=pass order=forward,reverse(specs) head=e4866902a
+2026-11-19T23:48:15Z	Story 21.10	gate_step	step=sweep result=green shards=20/20 head=e4866902a
+2026-11-19T23:48:15Z	Story 21.10	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
+2026-11-19T23:48:15Z	Story 21.10	story_green	code_head=e4866902a ci=44618534578(success) gates=fresh+sweep20/20+smoke50/50 status=done vetoes=U-118,U-119(owner_kept)
