@@ -689,3 +689,12 @@
 2026-11-19T10:33:46Z	Story 21.15	dev_complete	scope=rework1 spawn_at=2026-11-19T10:00Z model=sonnet build_sha=a1ea97a0f followup_review_recommended=false deferred=1(DW-2769) cycle_iteration=2
 2026-11-19T10:33:46Z	Story 21.15	code_head_pushed	sha=a1ea97a0f run=44506749898 missing=none note=covers_510f4ff55;3869d4ed3_run_44495250779_green
 2026-11-19T10:33:46Z	Story 21.15	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-19T10:33:46Z model=opus agent_name=21-15-code-review-2 cycle_iteration=2 baseline=9f713895c
+2026-11-19T11:01:53Z	Story 21.15	cr_complete	scope=rework1 spawn_at=2026-11-19T10:45Z model=opus high=1(patched_in-pass:script_mirrors_CHANGED) med=5(patched) low=9 rows=36 unresolved_high_med=0 final=done commit=7478c45a7 closing_sections_present=true
+2026-11-19T11:01:53Z	Story 21.15	ruling	question=re-review_patched_a_new_HIGH_in-pass(Rule15_loop?) choice=close(precedent:21.16_review_patched_HIGHs_in-pass;mutations_observed;fresh_gate+CI_verify) via=runner category=decide policy=b9ff703e
+2026-11-19T11:01:53Z	Story 21.15	code_head_pushed	sha=7478c45a7 run=44511016378 missing=none note=supersedes_a1ea97a0f
+2026-11-19T11:01:53Z	Story 21.15	ledger_adjudicated	resolved=DW-2606,2762,2764 decision-pending=DW-2765(decision-sheet),DW-2767 terminal=DW-2766,2768,2769 routed=DW-2763(burndown) open_owned=0
+2026-11-19T11:02:07Z	Story 21.15	cr_complete	scope=rework1 spawn_at=2026-11-19T10:45Z model=opus high=1(patched_in-pass:script_mirrors_CHANGED) med=5(patched) low=9 rows=36 unresolved_high_med=0 final=done commit=7478c45a7 closing_sections_present=true
+2026-11-19T11:02:07Z	Story 21.15	ruling	question=re-review_patched_a_new_HIGH_in-pass(Rule15_loop?) choice=close(precedent:21.16_review_patched_HIGHs_in-pass;mutations_observed;fresh_gate+CI_verify) via=runner category=decide policy=b9ff703e
+2026-11-19T11:02:07Z	Story 21.15	code_head_pushed	sha=7478c45a7 run=44511016378 missing=none note=supersedes_a1ea97a0f
+2026-11-19T11:02:07Z	Story 21.15	ledger_adjudicated	resolved=DW-2606,2762,2764 decision-pending=DW-2765(burndown,owner_wording),DW-2767 terminal=DW-2766,2768,2769 routed=DW-2763(burndown) open_owned=0
+2026-11-19T11:02:21Z	Story 21.15	gate_step	step=fresh_check+full_sweep+smoke head=7478c45a7 started=2026-11-19T11:02:21Z dir=e21u/21-15/gate

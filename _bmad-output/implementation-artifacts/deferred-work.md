@@ -13182,6 +13182,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T20:15:08Z status=decision-pending owner=burndown by=spec_gate note=moving scope between stories when no milestone defines the release is the owner's; recommend adding Export to Story 21.15
 - 2026-11-15T20:31:06Z status=decision-pending owner=burndown by=unattended note=inbox=U-58
 - 2026-11-15T20:53:54Z status=routed owner=21-15-locale-and-table-import by=owner note=U-58 A: locale Export joins Story 21.15
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=locale_Export_built(LocaleExport,EXPORTLOCALE/EXPORT,AC6)
 
 ### DW-2607: The shipped System Explorer import (Story 19.13) loads globals from an XML file and judges self-protection by document name only, so OcuPilot's code globals (oddDEF, rOBJ, ROUTINE through the package mapping) and %-globals landing in IRISSYS are not refused
 - source: spec-21-17-global-export-and-import.md | severity: high | fix-risk: med | footprint: in-epic
@@ -13997,6 +13998,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: LocaleExportRules asserts the pair; no route-level principal test (build's own deferral, unverified)
 - 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=route-level_403_for_a_principal_without_%Admin_FileSystemAccess:USE(LocaleEditWrite,mutation_red)
 
 ### DW-2763: LocalePort copies InteropPort's import source checks, export file resolve and digest; one transfer-file helper would serve both
 - source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
@@ -14007,11 +14009,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: measured by the build on ocupilot-ci (LocalePort.ImportReview)
 - 2026-11-19T09:18:39Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_review:prevent_or_state
+- 2026-11-19T11:01:52Z status=resolved-by:21-15-locale-and-table-import owner=21-15-locale-and-table-import by=adjudication note=typeless_subtable_refused_SHAPE;every_kept_record_validated_before_the_vendor_call(all_or_nothing);14_failing-record_variants_leave_records
 
 ### DW-2765: ImportAll writes no vendor audit event; the locale import needs an AD-53 named gap
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: spine
 - evidence: build: no %System audit row after ImportAll
 - 2026-11-19T09:18:39Z status=decision-pending owner=21-15-locale-and-table-import by=harvest note=owner_wording_as_DW-2613,DW-2754
+- 2026-11-19T11:02:07Z status=decision-pending owner=burndown by=adjudication note=owner's_attended_architecture_update,as_DW-2613,DW-2754:record_the_AD-53_named_gap_for_ImportAll
 
 ### DW-2766: The Locale definitions descriptor wires one empty-agent phrase and three prompts; the spec rules two phrases and two more prompts that are not wired
 - source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
@@ -14032,3 +14036,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: rework 1 residual (unmeasured whether the vendor rejects them) (inference)
 - 2026-11-19T10:33:32Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_re-review
+- 2026-11-19T10:54:58Z status=wontfix-theoretical owner=21-15-locale-and-table-import by=cr note=measured on ocupilot-ci 2026-11-19: ImportAll of a good locale beside a table Type BOGUS, a non-numeric FromToKey, or a locale naming absent tables answered OK and wrote every record, so no partial write; real only if a record passes %ValidateObject and the vendor's save then refuses it
