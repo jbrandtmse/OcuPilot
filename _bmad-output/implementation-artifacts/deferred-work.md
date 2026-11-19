@@ -13963,6 +13963,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: With worklists not customized every row reads not shown while the portal shows its defaults; the classic tab's checkbox reads the stored option the same way. Batch 2's show and hide writes touch the same rows.
 - 2026-11-19T10:43:53Z status=open owner=24-13-analytics-settings by=harvest note=Batch_2_Worklists_show_hide
+- 2026-11-19T17:01:29Z status=resolved-by:24-13-analytics-settings by=adjudication note=Batch 2 cdbfd4cc0: Customized on Worklists rows, show and hide refused until customized; Shown stays the stored option (U-116)
 
 ### DW-2772: Analytics settings: no test runs the vendor's own synchronize into a partial failure; the statistics VendorSynchronize passes are exercised only through the seam
 - source: spec-24-13-analytics-settings.md | severity: med | fix-risk: med | footprint: in-story
@@ -14017,3 +14018,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The same race reddened AnalyticsCubeManager on a fresh instance (fixed by before/after counts in 24.13 rework 1); AnalyticsCubeActions windows the same cube, verb and id six times (unverified, not yet observed red).
 - 2026-11-19T11:16:35Z status=open owner=24-13-analytics-settings by=harvest note=apply_the_Count/Added_before-after_form_in_Batch_2
+- 2026-11-19T17:01:29Z status=routed owner=burndown by=adjudication note=AnalyticsCubeActions fixed in 24.13 Batch 2 (shared Count/Added in InteropQueueActions); residual: other classes that count in AuditEvent.Now() windows
+
+### DW-2775: Analytics settings: the write script forms do not take the namespace settings lock the port takes
+- source: spec-24-13-analytics-settings-2.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AnalyticsPort's set, setkey, show and hide run under one lock per namespace; the AD-59 script forms a person pastes into a terminal write the same nodes without it.
+- 2026-11-19T17:01:28Z status=open owner=24-13-analytics-settings by=harvest note=Batch_3_touches_the_same_script_forms
+
+### DW-2776: Analytics settings: AnalyticsPort.WritePairs and ActionQuery copy AnalyticsAction.PrivilegePairs and PortQuery (Rule 2)
+- source: spec-24-13-analytics-settings-2.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Unifying them touches all 42 AnalyticsAction descendants, so it was not a review patch; a pair changed in one place and not the other splits the screen's gate from the port's.
+- 2026-11-19T17:01:28Z status=routed owner=burndown by=harvest note=one_shared_pair_and_query_source
+
+### DW-2777: Analytics settings: the Google Maps key dialog opens empty, so confirming without typing clears the stored key
+- source: spec-24-13-analytics-settings-2.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The key is never read back, so the field cannot be prefilled; a guard or a warning needs a new sentence, which a stage cannot decide.
+- 2026-11-19T17:01:29Z status=decision-pending owner=24-13-analytics-settings by=harvest note=needs_ruled_sentence(decision_sheet)
+
+### DW-2778: Analytics settings: setting Worklist to 0 keeps the chosen worklist options, no sentence says so, and the Worklists screen then reads them as shown
+- source: spec-24-13-analytics-settings-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The matrix keeps the options as the classic page does; a consequence sentence needs ruling.
+- 2026-11-19T17:01:29Z status=decision-pending owner=24-13-analytics-settings by=harvest note=needs_ruled_sentence(decision_sheet)
+
+### DW-2779: Analytics settings: setkey with the wrong body field answers the Value sentence, which names the wrong field
+- source: spec-24-13-analytics-settings-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PORT.VALIDATION says a set takes the new value as text in Value; no existing sentence names the key field.
+- 2026-11-19T17:01:29Z status=decision-pending owner=24-13-analytics-settings by=harvest note=needs_ruled_sentence(decision_sheet)
+
+### DW-2780: Analytics settings: no test confirms a show or hide proposal after someone else changed the same option
+- source: spec-24-13-analytics-settings-2.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The stale-target check is the shared confirm's and is pinned elsewhere; this tool's leg is not.
+- 2026-11-19T17:01:29Z status=wontfix-accepted owner=24-13-analytics-settings by=harvest note=reopen_if=a show or hide confirm is seen applying over a changed option
