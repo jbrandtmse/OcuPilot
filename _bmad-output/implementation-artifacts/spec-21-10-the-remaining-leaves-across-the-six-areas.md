@@ -2,13 +2,35 @@
 title: 'Story 21.10: The remaining leaves across the six areas'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '251088f4bd525683fbfa89365c663ac4df586cbd'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      User-facing strings this story added beyond the spec's proposed list need a ruling (veto window): they are listed
+      under Auto Run Result, Strings awaiting a ruling.
+    evidence: |-
+      The intent says no string beyond those the spec gate rules. The build needed labels, refusal sentences, prompts and
+      the export dialog's strings the proposed list did not carry; each is in ui/src/app/core/strings.ts and the
+      EXPERIENCE.md tables, and the EXPERIENCE.md literal cap in strings.test.mjs went from 4200 to 4600.
+    location: >-
+      ui/src/app/core/strings.ts
+    severity: medium
+  - summary: >-
+      A full-log audit export on ocupilot-ci ended in an ILLEGAL VALUE error from the vendor's export, so the test bounds
+      every export to before 2000-01-01 and the file holds 0 items.
+    evidence: |-
+      Measured by the implement pass: with the cut-off sent empty, the task ends in ERROR #5002 <ILLEGAL VALUE> in
+      %SYS.Audit zXMLExportInternal on the throwaway's rows; the cause (multibyte characters in test-made rows) is an
+      inference. Settle it by exporting a whole log that holds only ordinary rows and reading "N items exported.", and by
+      reading the vendor routine at +75.
+    location: >-
+      src/OcuPilot/Test/AuditExportWrite.cls
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -207,6 +229,31 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 ## Review Triage Log
 
+### 2026-11-19 — Review pass
+
+- verdicts: 20 findings — high 0, medium 5, low 7, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The script (`Draft.Take`) and HTTP confirm render the KMIP journal sentence with no test — `Impact.Of` is reached only for the delete and role-removal kinds, so a KMIP card never meets it (false for that site); the script leg is real. Added a `Draft.Take` leg to `EncryptionStartupKmipWrite` for the settings-decided cases (the journal-key cases read the real port, not the seam); `Api.Confirm` only forwards the kernel's `pReason`, which the kernel confirm leg pins.
+  - `[low]` `[reject]` The phone read source's refusal branches (wrong endpoint, type, `rowGet`/`forEach`/`query`/`parts`) have no negative row — one declared screen, the fix is new table rows in two validators, and nobody meets it before a second phone screen exists.
+  - `[medium]` `[patch]` The agent card's phone provider delete sentence has no test, and the browser spec's mutation line named it falsely — added a `proposal-view.test.mjs` test reading the tool's declared code, and corrected the browser spec's mutation line.
+  - `[medium]` `[patch]` `AuditExportWrite` could not tell "0 items" from "120 items", nor a finished export from an ERROR — `EndedRow` answers `failed` for an ERROR row, the 0-items assertions match a whole word on all three legs, and the unused `tSince` is gone.
+  - `[low]` `[reject]` `phone-provider-form.store.spec.ts` carries no mutation line — it is not an acceptance criterion's pinning test (`PhoneProviderWrite` and the browser spec are), so Rule 19 does not require one.
+  - `[low]` `[reject]` `PhoneProviderRead` relies on the instance's vendor-shipped providers — it fails loudly if there are none, never passes falsely; the spec records seven.
+  - `[low]` `[patch]` A stray missing space in `screen-mirror.test.mjs` (`background =screens`) — restored.
+  - `[low]` `[reject]` `KERNEL_REFUSAL_VARIANTS` pins the arm by source text — the runtime pin is `EncryptionStartupKmipWrite`; the text check guards the client mirror only.
+  - `[false]` `[reject]` AC1's write half has no mutation line — the AC1 line names `SystemSecuritySettingWrite`'s `TestARefusedSetChangesNothingOnEitherCaller`.
+  - `[false]` `[reject]` The KMIP judgement is tested below the callers — the Save leg, the kernel confirm leg and now the script leg all run through the caller paths; only the journal-key answer is seamed, as in the sibling Interactive arm's tests.
+  - `[false]` `[reject]` DW-2457 covers only the agent mint — the mint is the sole path that stores a proposal.
+  - `[false]` `[reject]` The export's refusal field is `ExportPath`, not `Path` — Batch 4 names `ExportRoot` and `ExportPath`; the matrix's `Path` is the same field.
+  - `[low]` `[reject]` The tool refuses a future `ExportBefore` day while the port accepts any real day — a future day exports every record, so the stricter tool check costs nothing and the port stays the vendor's judge.
+  - `[false]` `[reject]` The export gate adds `%DB_IRISAUDIT:READ` — Task 0 measured it and the spec admits `%DB_*` permissions.
+  - `[medium]` `[defer]` The export test bounds the cut-off, so a whole-log export is unproven and ended in ILLEGAL VALUE on the throwaway — in the frontmatter `deferred:` list with what would settle it.
+  - `[false]` `[reject]` Seven names are read-only in SS-38 — the spec's E1 rules them.
+  - `[low]` `[reject]` `AuditFlags` is a boolean in the roster — Batch 2 lists it among the booleans.
+  - `[false]` `[reject]` The screen's pair is `%Admin_Manage:USE` while the vendor needs fewer — the descriptor's pairs are the spec's.
+  - `[medium]` `[defer]` About twenty user-facing strings are not in the spec's proposed list — in the frontmatter `deferred:` list and under Auto Run Result, Strings awaiting a ruling.
+  - `[false]` `[reject]` The gate tests use seams (`PhoneGateSeam`, `AuditExportSeam`) — they pin the 403 for a caller missing a pair, which needs a substituted principal; the write classes run the real instance.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -235,8 +282,32 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 - One code, two sentences, through `Prohibits`' optional `pReason`. This follows `WalletRungError.ReasonFor(code, pair)`, the existing per-case sentence.
 - DW-2457 is checked once, in `Mint`, after `TargetRefOf`. `ExplorerMint`'s presence read still comes first, and it reads no fresh state for the diff. The problem text is agent-facing and never on screen, because screen actions do not mint: "the target these arguments name is longer than the 2,200 characters a proposal can hold; propose it in smaller parts, for example fewer documents per proposal".
 - `AuditFlags` is not coupled to `AuditEnabled`. Task 0 (a) confirms the vendor stores it. The classic page's coupling is page logic.
-- Security positions are 14 (System-wide security) and 15 (Mobile phone providers).
+- Security positions are 14 (System-wide security) and 15 (Mobile phone providers). Batch 2 took 14, which the tree confirmed free (the highest Security position was Managed file transfer's 13).
+- Batch 2 (SS-38), decided in-stage:
+  - `Modify` leaves unsent properties unchanged (vendor doc), so the port sends the twelve settable roster names, not the whole `Get` array. The screen's one own pair is `%Admin_Manage:USE`, because the Security area already declares `%Admin_Secure:USE` and `%DB_IRISSYS:READ` (AD-8).
+  - The roster grammar gained the kind `integer` with detail `minimum:maximum`; the screen's dialog appends the consequence sentence to the row's own line, and the agent's card carries the code `SECURITY.SYSTEM.SET`.
+  - The write tests are armed by `OCUPILOT_ALLOW_CONFIG_SETTINGS`, the variable the throwaway already sets for the other settings writes.
+  - Three strings beyond the ruled ones were needed for the descriptor's required keys: the entity label "System-wide security setting", the empty-state invitation "change a system-wide security parameter" and a third prompt "What does InactiveLimit change?". They are listed for a ruling.
+- Batch 3 (SS-37), decided in-stage:
+  - The Security position is 15, the next free after Batch 2's 14 (the highest listed Security position is System-wide security's).
+  - The in-use count reads the users through the vendor's `Security.Users:Detail` query and compares `PhoneProvider` with the name without regard to case, which is the vendor's predicate. The vendor's SQL (`SELECT COUNT(*) FROM Security.Users WHERE PhoneProvider = :Name`) failed 500 for a caller holding exactly `%Admin_Secure:USE` and `%DB_IRISSYS:READ` (measured on `ocupilot-ci`; the cause is the table's read of the security database, which no role can hold and the vendor adds to its own process (inference)); the query ran for the same caller and answered the same users.
+  - A merge write's body repeats the fresh read's `Name`, so the port accepts `Name` (equal to the id) beside `SMSGateway` and nothing else.
+  - The reviewed field lists (change and create) name `SMSGateway` alone, not `Name,SMSGateway`: `Prohibited`'s reviewed-few sweep holds them equal to what the tools advertise, and `Name` is the id.
+  - The tools declare `FieldRows` and `READBACKFIELDS` themselves, since the port is not an admin endpoint and no generated field list holds it.
+  - The write tests are armed by `OCUPILOT_ALLOW_CONFIG_SETTINGS`, and `PhoneProviderWrite` is added to that line's class roster in `scripts/ci-throwaway.sh`.
+  - No banner port was added: the list shows no banner.
+  - The Security area's navigation-map tests carry the two screens: `WireSecurityRead` through `PhoneProviderRead.WithScreens`, which gives the screens the verdict Managed file transfer carries in the same answer (the three declare the same pairs), and `WireOAuthRead` through `WithoutScreens`, whose subject is the OAuth 2.0 screens.
+  - The EXPERIENCE.md literal cap in `strings.test.mjs` rises from 4200 to 4600, as the Verification section provides.
+  - Strings beyond the ruled ones that the descriptor and the page required, listed for a ruling: the entity label "Mobile phone provider"; the empty-state invitation "create a mobile phone provider"; the second and third prompts "What is an SMS gateway?" and "Create a mobile phone provider named Example Mobile."; the form's denied action "change the provider"; the server sentences "The provider name is 1 to 50 characters with no control character.", "The SMS gateway is 1 to 50 characters with no control character.", "A mobile phone provider with that name already exists." and "There is no mobile phone provider with that name.".
 - The export's date field is `ExportBefore`, on purge's `PurgeBefore` shape.
+- Batch 4 (SS-36), decided in-stage:
+  - The port's gate pairs are `%Admin_Secure:USE`, `%DB_IRISSYS:READ`, `%DB_IRISAUDIT:READ` and `%Admin_FileSystemAccess:USE`, in that order (`AuditPort.EXPORTPAIRS`, checked before the file is resolved). `%DB_IRISAUDIT:READ` is added because Task 0 measured that the task reads the audit database when `BeginDateTime` is empty, as it always is here. The tool declares the screen's pairs, `%Admin_FileSystemAccess:USE`, `EXTRAPAIRS` `%DB_IRISAUDIT:READ`, then the custom resource of `%CSP.UI.Portal.Audit.ExportLog`. `ClassicPageGate`'s probe principals hold `%DB_IRISAUDIT:READ`.
+  - The field names are the tool's arguments, `ExportRoot`, `ExportPath` and `ExportBefore`, and the spec's "on `Path`" is `ExportPath`. `AUDIT.EXPORT.DIRECTORY` is 400 with its violation there, with the task export's sentence (`Api.Error`).
+  - The port answers 202 with `{id}`, the Background tasks row's composite id, and the read-back is `unchecked` with reason `running`. The class extends `AdminPort`, so `Security.Audit.Record/EXPORT` joins `MUTATINGTYPES` (and `PortFixture`'s copy) and the other-port write count stays 133. Its script form is an `objectscript` step that calls `RunTask` in `%SYS`.
+  - The vendor's job list keeps the first job of each start second only (read in `%CSP.UI.System.BackgroundTask:EnumerateTasks`; a row went missing in two test runs that started two exports in one second), so two exports started in one second show one row (inference: the second run's cause was not isolated further). `AuditExportWrite` waits 1.1 seconds before each start.
+  - `AuditExportWrite` bounds every export to records dated before 2000-01-01, so it never depends on the log's size or on the rows that stop the vendor's XML writer. Each file therefore holds the export document with 0 items; a non-empty export is not asserted, because the rows an earlier run leaves in a throwaway can end the task in an error.
+  - The write test is armed by `OCUPILOT_ALLOW_CONFIG_SETTINGS`, and `AuditExportWrite` is added to that line's class roster in `scripts/ci-throwaway.sh`.
+  - The client reuses the task export's file picker and the shared "Export" string (`taskExportAction`, since every `strings.ts` value is unique). The day field is a text field checked as `YYYY-MM-DD` before Export is available, and the instance judges whether it is a real day.
 
 **Escalated for the spec gate (veto window, unattended):**
 
@@ -278,6 +349,32 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 **Runner ruling at the spec gate (2026-11-15):** the AD-10 KMIP bullet is amended in the spine with the text above (owner answer U-30). E1 to E4 and the escalated strings are kept (veto U-68).
 
+**Task 0 results (measured on `ocupilot-ci`, 2026-11-19):** the method is a probe user holding one probe role, calling the vendor method from an Atelier request process after a `$NAMESPACE` switch to `%SYS`, as the ports do. No pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and `%DB_*` permissions was needed, so there is no `intent gap`.
+
+- (a) `Security.System`:
+  - Least pairs: `%Admin_Secure:USE` and a `%DB_IRISSYS` permission. `Modify` (and `Get`) succeeded with `%Admin_Secure:USE` and `%DB_IRISSYS:READ` alone. `%DB_IRISSYS:WRITE` also sufficed on its own, and `%Admin_Manage:USE` is not needed. The write pairs are therefore `ConfigPort.WRITEPAIRS` plus `%Admin_Secure:USE` (measured with that exact set), and the read pairs `PAIRS` plus `%Admin_Secure:USE`.
+  - Without `%Admin_Secure:USE`, `Get` and `Modify` answer `ERROR #822: Access Denied` (`%Admin_Manage:USE` and `%DB_IRISSYS:RW` held). Without any `%DB_IRISSYS` permission the switch to `%SYS` raises `<PROTECT>`.
+  - `%DB_IRISSECURITY` cannot be granted to a role (`ERROR #1499`), so it is never a pair. `Modify` needed no permission on it.
+  - A malformed `PasswordPattern` is refused `ERROR #958: Invalid password pattern '<value>'` with nothing stored: `(`, `abc`, `3.255XYZ`, `1.2`, `5.3`, `?`. A value over 64 characters is refused too (`#7201`). The vendor accepted `99.255A` and `3.1000ANP`, so its check is loose and the page's is the only tight one (inference, not probed further).
+  - `AuditFlags` 1 is accepted and stored while `AuditEnabled` is 0, alone and in one payload with `AuditEnabled` 0. `AuditEnabled` stays read-only here. Turning it back on from 0 once failed with `<PROTECT>UpdateAuditFile ^IRIS.AuditI("LastIndexed")` for the limited caller, then succeeded in a later payload.
+  - The 19 names, with the vendor class's type and limits (`%Dictionary.CompiledProperty`):
+    - boolean (`Security.Datatype.BooleanYN`): `AuditEnabled`, `ConfigurationSecurityEnabled`, `SQLSecurity`, `WebAppPctAccess`, `SecurityDomains`;
+    - integer: `AuditFlags` (no limits), `InvalidLoginAction` (0 to 1), `PercentGlobalWrite` (no limits), `SSLTelnetServer` (0 to 2), `InactiveLimit`, `InvalidLoginLimit`, `EscalateLoginTimeout`, `EscalateAuthTimeout` (each minimum 0), `PasswordExpirationDays` (no limits);
+    - string: `DefaultSecurityDomain` (1 to 128), `PasswordPattern` (64), `PasswordValidationRoutine` (128), `RequiredRole` (64), `DefaultSignatureHash` (value list `SHA1`, `SHA256`, `SHA384`, `SHA512`, 50).
+  - Vendor refusals, each leaving the value unchanged and carrying `#5802`: below 0 is `#7204`, `InvalidLoginAction` 2 is `#7203`, `MD5` is `#7205`, a non-number is `#7207`.
+  - The vendor does not hold the page's maxima: `InactiveLimit` 366, `InvalidLoginLimit` 65 and `PercentGlobalWrite` 2 were all stored. The 365, 64 and 99999 caps and the 0/1 flag are the roster's to enforce, so the 400 for 366 comes from `ConfigPort`, not the vendor. `PasswordExpirationDays` was not written (a value of 0 or less risks expiring every user).
+- (b) `%SYS.PhoneProviders`:
+  - Least pairs: `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, the same as (a). `Create`, `Modify` and `Delete` all succeeded with them. With `%Admin_Manage:USE` and `%DB_IRISSYS:RW` but no `%Admin_Secure:USE`, all three answer `ERROR #822: Access Denied`. The class's `RESOURCEREQUIRED` is `%Admin_Secure`. The write pairs are `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, so `BackupPort`'s write pair `%DB_IRISSYS:WRITE` is not needed.
+  - A provider named by a user is refused `ERROR #1447: Phone Provider 'ZProbe21Prov' is required by one or more users`, and the same `Delete` succeeded once the user's `PhoneProvider` was cleared.
+  - The vendor's predicate is `SELECT COUNT(*) FROM Security.Users WHERE PhoneProvider = :Name`, which matched a differently-cased name (count 1 for `zprobe21PROV`). A provider is found by exact id: `Delete` and `Get` of that lower-case name answer `ERROR #1414: Mobile phone service provider 'zprobe21prov' does not exist`, as does an absent name.
+- (c) `RunTask("AuditExport", "%SYS", .parms, , .job)` from the request process:
+  - It started, and the job number came back in `.job`. `BackgroundTaskPort`'s list (`LIST`, `maxRows` 100000) carried its row, with `Id` equal to the job number, `Task` "Export Audit Log", `Namespace` `%SYS`, `Status` "Done", and `Details` ending `4446 items exported.` (a bounded range) or `224569 items exported.` (the whole range from 11:43 on).
+  - The job's `$USERNAME` is the starter's (the vendor's own `AuditChange` record "Export audit data" for that job reads user `ZProbe21U`, roles `ZProbe21R`, the job's OS user `irisowner`). The job inherits the starter's roles.
+  - Pairs the starter needs: `%Admin_Secure:USE` (`#822` without it) and `%DB_IRISSYS:READ`, plus `%DB_IRISAUDIT:READ` when `BeginDateTime` is "" (as this spec passes it): without it the task ends `ERROR` with `<PROTECT>Export+19^%SYS.Audit.1 ^IRIS.AuditD("")`. With both dates given the permission was not needed. `%Admin_FileSystemAccess:USE` is OcuPilot's own gate: the vendor did not need it. `^IRIS.Temp` needed no pair (`%DB_IRISTEMP` is public read-write).
+  - Duration, start to job exit: 0.06 to 0.23 s for 4,446 items, and 9.1 to 9.4 s for 224,569 items, a 206 MB file, over the throwaway's 230,023-row log (inflated by earlier test runs, so a clean throwaway is much smaller).
+  - The vendor overwrites a file that exists (the probe file name was reused), so the existing-file refusal is OcuPilot's. A missing directory ends the task `ERROR #5005: Cannot open file '<path>'` after a started job, so the directory refusal before the start is OcuPilot's too.
+  - An export whose range holds one of six `ConfigChange` or `AgentWrite` rows from this throwaway's own earlier test runs (2026-11-19 11:42:47 to 11:42:51) ends `ERROR` with `<ILLEGAL VALUE>zXMLExportInternal+75^%SYS.Audit.1`. A range that excludes them succeeds (end 11:42:40 and begin 11:42:52 both did), and `%XML.Writer` fails on the same six rows and no others in 11:36 to 11:46. The first row's `EventData` holds U+00E9 and U+65E5 in a target id, and the cause is those characters (inference). `AuditExportWrite` should therefore bound its range, or run where no such row exists, and the `Details` carry the vendor's error text when it happens.
+
 ## Verification
 
 **Shared surfaces** (each in the `(loop)` set; the implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for the old shape):
@@ -293,12 +390,12 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 **Mutations (Rule 19)**, one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), and the reverted source reloaded:
 
-- AC1: `RequiredRole` made settable in the roster → `SystemSecuritySettingWrite` red. The roster read replaced by the `Get` array → `SystemSecuritySettingRead` red.
-- AC2: the in-use count skipped → `PhoneProviderWrite` red.
-- AC3: overwrite passed as 1 → `AuditExportWrite`'s existing-file leg red.
-- AC4: the journal judgement left Interactive-only → `EncryptionStartupDescriptor` and `EncryptionStartupKmipWrite` red.
-- AC5: the `Mint` length check removed → `ProposalTargetKey` red (500).
-- AC6: a key's baseline fallback flipped → `GovernanceBaseline` red.
+- AC1: `RequiredRole` made settable in the roster → `SystemSecuritySettingWrite` (`TestARefusedSetChangesNothingOnEitherCaller`) and `SystemSecuritySettingRead` (`TestAWriteSendsTheSettableNamesAndNothingElse`) red; reverted, both green. `CollectSecurity` also emitting every key of the `Get` array → `SystemSecuritySettingRead` (`TestTheReadIsTheRosterAndNoOtherProperty`) red; reverted, green. The client's dialog sentence is pinned by `config-settings.page.spec.ts` and `proposal-view.test.mjs`, each with its mutation line in its own file.
+- AC2: the in-use refusal in `PhoneProviderPort.Remove` made `If 0` (the count skipped) → `PhoneProviderWrite` (`TestAProviderNamedByAUserIsRefusedByBothCallersBeforeAnyVendorCall`: the 409 `PHONEPROVIDER.INUSE` and the empty record of vendor calls) red; reverted (`shasum` of the port identical), reloaded, green. The vendor's own #1447 refusal, which the port maps to the same code, keeps the later screen and agent legs green, so the pin is the port's refusal before any vendor call.
+- AC3: `AuditPort.ExportFile` passing overwrite as 1 to `PathPort.Resolve` → `AuditExportWrite` (`TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts`: the 400 `PATH.EXISTS`, the empty record of started tasks and the screen's 400) and its `TestEachCallerStartsTheExportAndTheFileHoldsIt` (the same name refused) red; reverted (`shasum` of the port identical), reloaded, green. `%DB_IRISAUDIT:READ` dropped from `AuditPort.EXPORTPAIRS` → `TestTheGateNamesEachPairTheCallerLacks` red; reverted (`shasum` identical), green. The `AUDIT.EXPORT.WRITES` branch removed from `consequenceSentence` → `proposal-view.test.mjs` (the audit export's consequence test) red; reverted (`shasum` identical), green. `AuditPort`'s `EndDateTime` sent empty (every record) → `AuditExportWrite` (`TestEachCallerStartsTheExportAndTheFileHoldsIt`: the row ends in ERROR, which the `EndedRow` verdict reads as `failed`, and the 0-items assertions) red; reverted (`shasum` identical), reloaded, green. The `auditing-write` export legs name their own mutations in the spec file.
+- AC4: `Prohibited.LeavesKmipJournal` judging `Interactive` in place of KMIP (the journal judgement left Interactive-only) → `EncryptionStartupDescriptor` (`TestTheStartupArmJudgesKmipWithJournalEncryption`) and `EncryptionStartupKmipWrite` (`TestKmipIsRefusedWhileJournalEncryptionNeedsItsKey`) red; reverted, both green. `Draft.Take` answering an empty `pReason` → the same test's script leg (the sentence assertion) red; reverted (`shasum` identical), reloaded, green. The `PHONEPROVIDER.DELETE` branch removed from `consequenceSentence` → `proposal-view.test.mjs` (the phone provider delete's consequence test) red; reverted (`shasum` identical), green.
+- AC5: the `Mint` length check made `If 0` → `ProposalTargetKey` (`TestAMintWhoseTargetIsOverTheLimitIsRefusedBeforeTheFreshRead`) red with the store's 500 fault in its message; reverted, green.
+- AC6: `security.systemsecurity.set` set `true` in `Baseline` → `GovernanceBaseline` (`TestThePurgeIsTheOneDisabledLine`) and `SystemSecuritySettingRead` (`TestTheKeyShipsDisabledAndAnEnabledKeyMintsADestructiveProposal`) red; reverted, both green. `security.phoneproviders.delete` set `true` in `Baseline` → `GovernanceBaseline` (`TestThePurgeIsTheOneDisabledLine`) and `PhoneProviderRead` (`TestTheDeleteKeyShipsDisabledAndAnEnabledKeyMintsADestructiveProposal`) red; reverted (`shasum` identical), both green. The create and update keys mint (`PhoneProviderWrite`, `TestTheAgentsConfirmWritesOnceWithOneAuditMarker`). `security.auditing.export` set `false` in `Baseline` → `AuditExportWrite` (`TestTheAgentsConfirmStartsTheExportOnceWithOneAuditMarker`: the key ships enabled and the call mints) and the refusal-code legs of `TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts` (the agent's call answers `GOVERNANCE.DISABLED` in place of the port's code) red; reverted (`shasum` identical), reloaded, green.
 
 **Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message:
 
@@ -312,5 +409,26 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** All four batches and Task 0 (measured pairs under Design Notes; no pair beyond the admitted ones).
+
+- Batch 1: the KMIP journal refusal under `PROHIBITED.STARTUPKMIP` with the owner-approved sentence (`Prohibits` answers `pReason`; the Save, the confirm, the script and the card forward it), and the overlong-target 400 in `Mint`. New armed class `EncryptionStartupKmipWrite`, added to `scripts/ci-throwaway.sh`.
+- Batch 2 (SS-38): `Security` endpoint on `ConfigPort`, `SystemSecuritySettingList` (Security position 14), `SystemSecuritySettingSet` (destructive, key `false`).
+- Batch 3 (SS-37): `PhoneProviderPort`, list and form descriptors (position 15), create, update and delete tools, rules, save, error class, routes, client form, store and actions. Create and update ship `true`, delete `false`.
+- Batch 4 (SS-36): the `EXPORT` type on `AuditPort`, `AuditExport` and `AuditExportMint`, the `export` row action on Auditing, the client dialog. Key ships `true`.
+- Rosters and counts recounted from the instance in every shared-surface test; the EXPERIENCE.md literal cap rose from 4200 to 4600.
+
+**Review.** 20 findings: patched 3 medium and 1 low, deferred 2 medium, rejected 14 with reasons in the triage log. Follow-up review recommended: true (three medium patches).
+Unverified risk: `Api.Confirm`'s forwarding of `pReason` to the HTTP envelope is pinned only by the kernel confirm leg, not by an HTTP call, and the script leg runs only the cases the settings alone decide.
+
+**Verification.** Reload `LOADERRORS=0`. Each class green on its own run on `ocupilot-ci`: `SystemSecuritySettingRead`, `SystemSecuritySettingWrite`, `PhoneProviderRead`, `PhoneProviderWrite`, `AuditExportWrite` (rerun after the patch and a mutation), `EncryptionStartupDescriptor`, `EncryptionStartupKmipWrite` (rerun after the patch and a mutation), `ProposalTargetKey`, `DraftRegistry`, `SurfaceCoverage`, `GovernanceBaseline` and the other shared-surface classes. `npm run build` within budgets (initial 2.17 MB), `test:tools` 2337 and `test:components` 3659 passing before the review patches; `proposal-view.test.mjs` and `screen-mirror.test.mjs` rerun after them. Browser specs green before the review patches: `system-security`, `phone-providers`, `auditing-write`, `auditing-screen`, `language-servers`, `mft-connections`, `security`; the review changed only a comment in one. `check-objectscript.py` 0 problems, `lint-docs.sh` clean. Mutations for AC1 to AC6 and the review patches are recorded under Verification. The full ObjectScript sweep and the full browser suite are the runner's and CI's.
+
+**Strings awaiting a ruling (veto window).** The proposed list in Design Notes did not carry these, and the build needed them; each is in `ui/src/app/core/strings.ts` and the EXPERIENCE.md tables.
+
+- System-wide security: entity label "System-wide security setting"; empty-state invitation "change a system-wide security parameter"; prompt "What does InactiveLimit change?".
+- Mobile phone providers: entity label "Mobile phone provider"; empty-state invitation "create a mobile phone provider"; prompts "What is an SMS gateway?" and "Create a mobile phone provider named Example Mobile."; denied action "change the provider"; "The provider name is 1 to 50 characters with no control character."; "The SMS gateway is 1 to 50 characters with no control character."; "A mobile phone provider with that name already exists."; "There is no mobile phone provider with that name.".
+- Audit export: the argument refusals (`ExportBefore` must be YYYY-MM-DD, "is not a date", "is after today", the empty `ExportRoot` and `ExportPath` sentences), the port refusal "The audit export was not given a day it can use", and the tool description and input-schema text. The dialog heading and button reuse the existing "Export".
+
+**Residual risks.** Epic 24's uncommitted worktree touches files this story edited add-only (`Prohibited.cls`, `Baseline.cls`, `strings.ts`, `screen-actions.ts`, `screen-action-handler.ts`, `screens.generated.ts`, `ci-throwaway.sh`), so a textual conflict is possible at integrate-forward. `AuditExportWrite` proves a 0-item export only (deferred). `reload.sh` cannot remove `/tmp/e21src` inside `ocupilot-ci` (it runs as `irisowner`), so stale classes can reload; the runner should remove it as root before each reload. `ui/tools/ci-timings.json` has no row for the new classes until the merge gate's refresh. `Security.System.RequiredRole` read `%All` once on `ocupilot-ci` in an earlier probe and reads empty now (unexplained).

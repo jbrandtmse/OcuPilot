@@ -255,6 +255,41 @@ Method TestTheStartupArmJudgesKmipAndTheJournal()
     Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Interactive"}, tNone), "Interactive with journal encryption off and the journal free is not refused")
 }
 
+/// <p>AD-10 as amended 2026-11-15 (Story 21.10, DW-2431): KMIP key activation is judged for journal encryption as Interactive is --
+/// chosen while journal encryption is set in the payload or the stored settings, set under KMIP, kept while the stored settings
+/// hold it, and refused while the journal allows no key activation to be turned off; Unattended and a mode left alone are not. The
+/// journal case answers <code>PROHIBITED.STARTUPKMIP</code> with its own sentence, which names no caller and the classic page.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.LeavesKmipJournal</method> judge
+/// <code>Interactive</code> only -- every KMIP leg here and <class>OcuPilot.Test.EncryptionStartupKmipWrite</class> go red.</p>
+Method TestTheStartupArmJudgesKmipWithJournalEncryption()
+{
+    Set tP = ..#PROHIBITED
+    Set tNone = {"DBEncStartMode": "None", "DBEncJournal": false, "DBEncIRISSecurity": false, "DBEncIRISTemp": false, "AuditEncrypt": false}
+    Set tKmip = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tKmip.%Set("DBEncStartMode", "KMIP", "string")
+    Set tUnattended = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tUnattended.%Set("DBEncStartMode", "Unattended", "string")
+    Set tJournalHeld = ##class(%DynamicObject).%FromJSON(tUnattended.%ToJSON())
+    Do tJournalHeld.%Set("DBEncJournal", 1, "boolean")
+    Set tJournalKmip = ##class(%DynamicObject).%FromJSON(tKmip.%ToJSON())
+    Do tJournalKmip.%Set("DBEncJournal", 1, "boolean")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "KMIP"}, tJournalHeld), "KMIP chosen while journal encryption is set is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "KMIP", "DBEncJournal": false}, tJournalHeld), "and when the same write turns it off")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipJournal", {"DBEncJournal": true}, tKmip), "journal encryption set under KMIP is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "KMIP"}, tUnattended, 1), "KMIP while the journal allows no key activation to be turned off is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipJournal", {}, tJournalKmip), "a write that keeps KMIP with journal encryption set in the stored settings is refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "Unattended"}, tJournalKmip, 1), "leaving KMIP is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipJournal", {"DBEncJournal": true}, tUnattended), "journal encryption under Unattended is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "KMIP"}, tNone), "KMIP with journal encryption off and the journal free is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipJournal", {"DBEncStartMode": "Interactive"}, tJournalHeld), "and Interactive is not the KMIP arm's")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "KMIP"}, tJournalHeld), "nor KMIP the Interactive arm's")
+    Set tReason = $Parameter(tP, "STARTUPKMIPJOURNALREASON")
+    Do $$$AssertTrue((tReason '= "") && (tReason '= $Parameter(tP, "STARTUPKMIPREASON")), "the journal case carries its own sentence")
+    Do $$$AssertTrue($ZConvert(tReason, "L") '[ "the agent", "naming no caller")
+    Do $$$AssertTrue(tReason [ "classic Database Encryption page", "and the classic page")
+    Do $$$AssertEquals($ClassMethod(tP, "ReasonFor", "PROHIBITED.STARTUPKMIP"), $Parameter(tP, "STARTUPKMIPREASON"), "the code's default sentence stays the databases one")
+}
+
 /// <p>C3, Decision 1: the merge leaves out the startup key file, an <code>AuditEncrypt</code> it does not
 /// change (the port reads it at the write) and a key id it does not change; a changed
 /// <code>AuditEncrypt</code> is carried with no key the port does not send; the unchanged count is the

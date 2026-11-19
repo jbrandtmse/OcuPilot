@@ -1236,6 +1236,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "WEBAUTH." Set tReason = ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Set tReason = ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Set tReason = ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 14) = "PHONEPROVIDER." Set tReason = ##class(OcuPilot.Api.PhoneProviderError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "DOCDBAPP." Set tReason = ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "SQLPRIV." Set tReason = ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
@@ -1441,6 +1442,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
     If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
+    If pCode = ..#AUDITEXPORTDIRECTORY Quit ..#REASONAUDITEXPORTDIRECTORY
     If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
     If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
@@ -1458,6 +1460,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "WEBAUTH." Quit ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Quit ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Quit ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 14) = "PHONEPROVIDER." Quit ##class(OcuPilot.Api.PhoneProviderError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "DOCDBAPP." Quit ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "SQLPRIV." Quit ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
@@ -4360,6 +4363,13 @@ Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does
 Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
 
 Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 21.10): an audit log export whose relative name names a directory that
+/// does not exist under its allowed directory, answered 400 with one violation on <code>ExportPath</code> by
+/// <class>OcuPilot.Port.AuditPort</class> before any vendor call.</p>
+Parameter AUDITEXPORTDIRECTORY = "AUDIT.EXPORT.DIRECTORY";
+
+Parameter REASONAUDITEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
 
 /// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
 /// unreadable XML, another root element, or no task -- answered 422 by

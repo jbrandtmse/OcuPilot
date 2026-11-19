@@ -609,9 +609,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // bound moves to 3800 under the same protocol (approved at both spec gates).
   // Stories 21.3 and 21.4's settings screens, merged beside Story 24.2's analytics editors, take the table past 3800; the
   // bound moves to 4200 under the same protocol (runner ruling at the integrate-forward, 2026-11-15).
+  // Story 21.10's System-wide security and Mobile phone providers literals take the table past 4200; the bound moves to 4600
+  // under the same protocol (the spec's Verification names it).
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 4200,
-    `expected between 150 and 4200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 4600,
+    `expected between 150 and 4600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

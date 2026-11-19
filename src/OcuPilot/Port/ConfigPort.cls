@@ -40,6 +40,12 @@
 /// (<code>^SYS("NLS","Config","LocaleFormat")</code>) reads 1, else <code>0</code>, with <code>Source</code> <code>config</code> while the
 /// node is defined; it is the one row a set changes, and the current locale is reloaded once the write has read OK
 /// (<method>ReloadAfterSet</method>). Only this endpoint's rows carry <code>Source</code>.</p>
+/// <p><b>The system-wide security parameters</b> (<code>Security</code>, Story 21.10) are the settings of <code>Security.System</code>
+/// that the classic Parameters page shows, named by <parameter>SECURITYROSTER</parameter>: a read emits those names and no other
+/// property of the class, whose <code>Get</code> array also carries key material and a mail password (AD-35). A set sends the settable
+/// roster names through the vendor's <code>Modify</code>, the one named key at its new value and every other settable name as the read
+/// answered it (AD-4); a name the roster marks shown and never changed is refused before any vendor call. The endpoint's gate adds
+/// <parameter>SECURITYPAIRS</parameter>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
 /// <method>CreateEntry</method>, <method>DeleteEntry</method>,
@@ -63,11 +69,16 @@ Parameter WRITEPAIRS = "%Admin_Manage:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE";
 /// gate on its Compatibility page.</p>
 Parameter COMPATIBILITYPAIRS = "%Admin_Secure:USE";
 
+/// <p>The pair the <code>Security</code> endpoint requires beyond the read or write set: the one <code>Security.System</code>'s
+/// <code>Get</code> and <code>Modify</code> need of a caller that does not hold <code>%All</code> (measured on
+/// <code>ocupilot-ci</code>).</p>
+Parameter SECURITYPAIRS = "%Admin_Secure:USE";
+
 /// <p>The class the pair sets are evaluated through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -88,6 +99,8 @@ Parameter SYSTEMDDLENDPOINT = "SystemDDL";
 Parameter USERDDLENDPOINT = "UserDDL";
 
 Parameter NLSENDPOINT = "NLSDefaults";
+
+Parameter SECURITYENDPOINT = "Security";
 
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
@@ -144,6 +157,25 @@ Parameter TSQLDEFAULTDIALECT = "Sybase";
 
 /// <p>What a <code>%SYSTEM.TSQL</code> setter's answer starts with when it refused the value.</p>
 Parameter TSQLREFUSAL = "Invalid";
+
+/// <p>The vendor class the <code>Security</code> endpoint reads and sets, and the one record it holds.</p>
+Parameter SECURITYCLASS = "Security.System";
+
+Parameter SECURITYNAME = "SYSTEM";
+
+/// <p>The system-wide security parameters, in <parameter>SHELLROSTER</parameter>'s grammar with one more kind, <code>integer</code>,
+/// whose detail is <code>minimum:maximum</code> (no maximum when it is empty), and a text's detail its longest length. They are the
+/// nineteen fields of the classic Parameters page, each one property of <code>Security.System</code>. The vendor holds some of the
+/// page's limits and not others, so the limits here are the page's: a flag is 0 or 1, <code>InactiveLimit</code> is 0 to 365,
+/// <code>InvalidLoginLimit</code> 0 to 64 and <code>PasswordExpirationDays</code> 0 to 99999. The last field is whether the name is
+/// settable (1) or shown and never changed (0): <code>RequiredRole</code> and <code>PasswordValidationRoutine</code> could lock the
+/// instance's own requests out or run code, <code>ConfigurationSecurityEnabled</code>, <code>SecurityDomains</code> and
+/// <code>DefaultSecurityDomain</code> change how a login is named, <code>AuditEnabled</code> belongs to Auditing, and
+/// <code>SSLTelnetServer</code> is listed on Windows only (<parameter>SECURITYWINDOWSONLY</parameter>).</p>
+Parameter SECURITYROSTER = "AuditEnabled|boolean|||0;AuditFlags|boolean|||1;ConfigurationSecurityEnabled|boolean|||0;DefaultSecurityDomain|text|128||0;DefaultSignatureHash|choice|SHA1,SHA256,SHA384,SHA512||1;EscalateAuthTimeout|integer|0:||1;EscalateLoginTimeout|integer|0:||1;InactiveLimit|integer|0:365||1;InvalidLoginAction|boolean|||1;InvalidLoginLimit|integer|0:64||1;PasswordExpirationDays|integer|0:99999||1;PasswordPattern|text|64||1;PasswordValidationRoutine|text|128||0;PercentGlobalWrite|boolean|||1;RequiredRole|text|64||0;SQLSecurity|boolean|||1;SSLTelnetServer|integer|0:2||0;SecurityDomains|boolean|||0;WebAppPctAccess|boolean|||1";
+
+/// <p>The roster name listed only where <code>$System.Version.GetOS()</code> reads <code>Windows</code>, as the classic page lists it.</p>
+Parameter SECURITYWINDOWSONLY = "SSLTelnetServer";
 
 Parameter TYPELIST = "LIST";
 
@@ -290,6 +322,12 @@ ClassMethod IsNls(pEndpoint As %String) As %Boolean
     Quit pEndpoint = ..#NLSENDPOINT
 }
 
+/// <p>Whether <var>pEndpoint</var> lists the system-wide security parameters.</p>
+ClassMethod IsSecurity(pEndpoint As %String) As %Boolean
+{
+    Quit pEndpoint = ..#SECURITYENDPOINT
+}
+
 /// <p>Whether <var>pName</var> is a <code>%SYS.NLS.Table</code> category <parameter>NLSCATEGORIES</parameter> names.</p>
 ClassMethod IsNlsCategory(pName As %String) As %Boolean
 {
@@ -382,12 +420,14 @@ ClassMethod Rows(pEndpoint As %String, pMax As %Integer, Output pRows As %Dynami
 }
 
 /// <p>The gate: <parameter>WRITEPAIRS</parameter> for a write type, otherwise <parameter>PAIRS</parameter>, with
-/// <parameter>COMPATIBILITYPAIRS</parameter> added for the <code>Compatibility</code> endpoint.</p>
+/// <parameter>COMPATIBILITYPAIRS</parameter> added for the <code>Compatibility</code> endpoint and
+/// <parameter>SECURITYPAIRS</parameter> for the <code>Security</code> endpoint.</p>
 ClassMethod Admit(pEndpoint As %String, pType As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tFailedPair = ""
     Set tSpec = $Select(..IsWrite(pType): ..#WRITEPAIRS, 1: ..#PAIRS)
     If pEndpoint = ..#COMPATIBILITYENDPOINT Set tSpec = tSpec _ "," _ ..#COMPATIBILITYPAIRS
+    If pEndpoint = ..#SECURITYENDPOINT Set tSpec = tSpec _ "," _ ..#SECURITYPAIRS
     ; EvaluateRequired, not EvaluatePairs: a pair parameter mis-edited to empty fails closed.
     If $ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(tSpec), .tFailedPair) Quit $$$OK
     Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -454,6 +494,10 @@ ClassMethod Collect(pEndpoint As %String, pName As %String, Output pRows As %Dyn
             Set tSC = ..CollectNls(pName, .tData)
             Quit
         }
+        If ..IsSecurity(pEndpoint) {
+            Set tSC = ..CollectSecurity(pName, .tData)
+            Quit
+        }
         Set tClass = ..VendorClass(pEndpoint)
         If tClass = "" Quit
         If ..IsNamed(pEndpoint) {
@@ -513,6 +557,25 @@ ClassMethod CollectNls(pName As %String, ByRef pData) As %Status [ Private ]
     If (pName = "") || (pName = ..#NLSFORMATNAME) {
         Set tNode = $Get(^SYS("NLS", "Config", "LocaleFormat"))
         Set pData(..#NLSFORMATNAME) = $ListBuild($Select(tNode = 1: 1, 1: 0), ..Limits(..#NLSENDPOINT, ..#NLSFORMATNAME), 0, 0, 0, $Select($Data(^SYS("NLS", "Config", "LocaleFormat")): "config", 1: "locale"))
+    }
+    Quit $$$OK
+}
+
+/// <p>The rows of the <code>Security</code> endpoint into <var>pData</var>, or the one named <var>pName</var>, in the shape
+/// <method>BuildRow</method> reads: one row per name of <parameter>SECURITYROSTER</parameter> (less the Windows-only name elsewhere),
+/// valued from the vendor's <code>Get</code> through <method>ReadEntry</method>; <parameter>SECURITYWINDOWSONLY</parameter> is left out
+/// off Windows. No other property of the vendor's answer is listed.</p>
+ClassMethod CollectSecurity(pName As %String, ByRef pData) As %Status [ Private ]
+{
+    Set tSC = ..ReadEntry(..#SECURITYCLASS, ..#SECURITYNAME, .tProps)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRoster = ..RosterOf(..#SECURITYENDPOINT)
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tI)
+        Set tKey = $List(tEntry, 1)
+        If (pName '= "") && (tKey '= pName) Continue
+        If (tKey = ..#SECURITYWINDOWSONLY) && ($System.Version.GetOS() '= "Windows") Continue
+        Set pData(tKey) = $ListBuild($Get(tProps(tKey)), ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
     }
     Quit $$$OK
 }
@@ -581,7 +644,7 @@ ClassMethod BuildRow(pName As %String, pData As %List) As %DynamicObject [ Priva
 ClassMethod Limits(pEndpoint As %String, pName As %String) As %List
 {
     Set tLimits = ""
-    If ..IsRoster(pEndpoint) Quit ..EntryLimits(..RosterEntry(pEndpoint, pName))
+    If ..IsRoster(pEndpoint) || ..IsSecurity(pEndpoint) Quit ..EntryLimits(..RosterEntry(pEndpoint, pName))
     If ..IsNamed(pEndpoint) Quit ..DatatypeLimits()
     If ..IsNls(pEndpoint) {
         If pName = ..#NLSFORMATNAME Quit $ListBuild("boolean", "", "", "", "", "")
@@ -796,6 +859,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
     }
     If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
     If ..IsNls(pEndpoint) Quit ..SendNlsNode(pValue)
+    If ..IsSecurity(pEndpoint) Quit ..ModifySecurity(pName, pValue)
     If ..IsNamed(pEndpoint) Quit ..ModifyEntry(..VendorClass(pEndpoint), pName, pValue)
     Quit ..VendorModify(..VendorClass(pEndpoint), pName, pValue)
 }
@@ -804,7 +868,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
 /// <code>""</code> for an endpoint that has none.</p>
 ClassMethod RosterOf(pEndpoint As %String) As %List
 {
-    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, : "")
+    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, : "")
     Set tRoster = ""
     For tI = 1:1:$Length(tSpec, ";") {
         Set tEntry = $Piece(tSpec, ";", tI)
@@ -831,6 +895,7 @@ ClassMethod EntryLimits(pEntry As %List) As %List
     Set tKind = $List(pEntry, 2)
     If tKind = "boolean" Quit $ListBuild("boolean", "", "", "", "", "")
     If tKind = "choice" Quit $ListBuild("choice", "", "", ..ChoiceNames($List(pEntry, 3)), "", "")
+    If tKind = "integer" Quit $ListBuild("integer", +$Piece($List(pEntry, 3), ":", 1), $Piece($List(pEntry, 3), ":", 2), "", "", "")
     Quit $ListBuild("text", "", "", "", $Select($List(pEntry, 3) = "": ..#DEFAULTMAXLEN, 1: $List(pEntry, 3)), "")
 }
 
@@ -1199,6 +1264,25 @@ ClassMethod ModifyEntry(pClass As %String, pName As %String, pValue As %String) 
     Quit ..SendEntry(pClass, pName, .tProps)
 }
 
+/// <p>The vendor's <code>Modify</code> of the system-wide security record with the settable names of <parameter>SECURITYROSTER</parameter>
+/// as <method>ReadEntry</method> answered them and <var>pName</var> set to <var>pValue</var> (AD-4). A name the roster does not mark
+/// settable is an error status and nothing is sent; no other property of the record is sent.</p>
+ClassMethod ModifySecurity(pName As %String, pValue As %String) As %Status [ Private ]
+{
+    Set tEntry = ..RosterEntry(..#SECURITYENDPOINT, pName)
+    If (tEntry = "") || '$List(tEntry, 5) Quit $$$ERROR($$$GeneralError, "the security parameter " _ pName _ " is not one this port changes")
+    Set tSC = ..ReadEntry(..#SECURITYCLASS, ..#SECURITYNAME, .tProps)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRoster = ..RosterOf(..#SECURITYENDPOINT)
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tKey = $List($List(tRoster, tI), 1)
+        If '$List($List(tRoster, tI), 5) Continue
+        If $Data(tProps(tKey))#2 Set tSend(tKey) = tProps(tKey)
+    }
+    Set tSend(pName) = pValue
+    Quit ..SendEntry(..#SECURITYCLASS, ..#SECURITYNAME, .tSend)
+}
+
 /// <p>The one call that changes an existing entry: the vendor's <code>Modify</code> of the entry <var>pName</var> of <var>pClass</var> with
 /// the complete property set <var>pProps</var>, in <code>%SYS</code> by save and restore. Overridable so a fixture can record the set or
 /// feed a vendor refusal; production never overrides it.</p>
@@ -1305,6 +1389,13 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
     If ..IsNamed(pEndpoint) Quit [($ClassMethod(tAdmin, "ObjectScriptStep", ..EntryLines(pEndpoint, pType, tName, tValue)))]
+    If ..IsSecurity(pEndpoint) {
+        Set tEntry = ..RosterEntry(pEndpoint, tName)
+        If (tEntry = "") || '$List(tEntry, 5) Quit []
+        Set tLines = $ListBuild("Set tProps(" _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", tValue))
+        Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ ..#SECURITYCLASS _ ").Modify(" _ $ClassMethod(tAdmin, "Literal", ..#SECURITYNAME) _ ", .tProps)")
+        Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
+    }
     If ..IsNls(pEndpoint) {
         If tName '= ..#NLSFORMATNAME Quit []
         Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set ^SYS(""NLS"", ""Config"", ""LocaleFormat"") = " _ $ClassMethod(tAdmin, "Literal", tValue))))]

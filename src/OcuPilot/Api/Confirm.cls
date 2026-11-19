@@ -40,9 +40,9 @@ ClassMethod HandleConfirm(pId As %String) As %Status
             Set tSC = ..RenderBadBody()
             Quit
         }
-        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail)
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail, .tReason)
         If $$$ISERR(tConfirmSC) {
-            Set tSC = ..RenderRefusal(tConfirmSC, tHttpStatus, tCode, tDetail)
+            Set tSC = ..RenderRefusal(tConfirmSC, tHttpStatus, tCode, tDetail, tReason)
             Quit
         }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
@@ -81,9 +81,9 @@ ClassMethod HandleDraft(pId As %String) As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tDraftSC = ##class(OcuPilot.Kernel.Proposal.Draft).Take(pId, ..CallerUsername(), ..RequestOrigin(), .tResult, .tHttpStatus, .tCode)
+        Set tDraftSC = ##class(OcuPilot.Kernel.Proposal.Draft).Take(pId, ..CallerUsername(), ..RequestOrigin(), .tResult, .tHttpStatus, .tCode, .tReason)
         If $$$ISERR(tDraftSC) {
-            Set tSC = ..RenderRefusal(tDraftSC, tHttpStatus, tCode, "")
+            Set tSC = ..RenderRefusal(tDraftSC, tHttpStatus, tCode, "", tReason)
             Quit
         }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
@@ -112,8 +112,9 @@ ClassMethod RequestOrigin() As %String
 /// <p>A stale-save refusal from OcuPilot's own state is
 /// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter>, the answer every other handler gives it;
 /// a code the kernel did not name at all is an internal error, never an envelope with an empty
-/// <code>code</code>.</p>
-ClassMethod RenderRefusal(pStatus As %Status, pHttpStatus As %Integer, pCode As %String, pDetail As %DynamicObject = "") As %Status [ Private ]
+/// <code>code</code>. A non-empty <var>pReason</var> is the sentence rendered in place of
+/// <method>ReasonFor</method>'s.</p>
+ClassMethod RenderRefusal(pStatus As %Status, pHttpStatus As %Integer, pCode As %String, pDetail As %DynamicObject = "", pReason As %String = "") As %Status [ Private ]
 {
     If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(pStatus) {
         Quit ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
@@ -123,7 +124,7 @@ ClassMethod RenderRefusal(pStatus As %Status, pHttpStatus As %Integer, pCode As 
     }
     Set tHttp = +pHttpStatus
     If tHttp < 400 Set tHttp = 500
-    Quit ##class(OcuPilot.Api.Error).Render(tHttp, ..SlugFor(tHttp), ..ReasonFor(pCode), pCode, pDetail)
+    Quit ##class(OcuPilot.Api.Error).Render(tHttp, ..SlugFor(tHttp), $Select(pReason '= "": pReason, 1: ..ReasonFor(pCode)), pCode, pDetail)
 }
 
 /// <p>The coarse slug <var>pHttpStatus</var> is rendered under, from

@@ -2862,6 +2862,15 @@ export const STRINGS = {
   auditDatabasePurgeDone: 'Purged audit records dated before <date>.',
   /** EXPERIENCE.md:516 */
   auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
+  // Story 21.10: the audit database group's Export (the shared `taskExportAction`), its dialog's day field, and the line shown once it has started.
+  /** EXPERIENCE.md:516 */
+  auditExportBefore: 'Records before',
+  /** EXPERIENCE.md:516 */
+  auditExportBeforeHint: 'Leave empty to export every record.',
+  /** EXPERIENCE.md:516 */
+  auditExportEffect: 'Writes the audit records to a new file on the server.',
+  /** EXPERIENCE.md:516 */
+  auditExportStarted: 'The export has started. Background tasks shows when it finishes and how many records it wrote.',
 
   // Story 12.4: the OAuth 2.0 client server description editor, its tab's Create, Delete and
   // Update JWKS, and the phrase that resolves the tab's agent invitation.
@@ -6281,6 +6290,9 @@ export const STRINGS = {
   encryptionStartupKmipRefusal:
     'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
   /** EXPERIENCE.md:364 */
+  encryptionStartupKmipJournalRefusal:
+    'Journal encryption is on, or a journal file the instance still needs is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds its key, so a start that cannot activate it does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
   encryptionStartupKmipUnconfigured:
     'This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server\'s configuration.',
   /** EXPERIENCE.md:364 */
@@ -8464,6 +8476,46 @@ export const STRINGS = {
   compatibilitySettingsPrompt2: 'Which compatibility settings take effect only after a restart?',
   /** EXPERIENCE.md:604 */
   compatibilitySettingsPrompt3: 'What does the Undefined setting do?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsLabel: 'System-wide security',
+  /** EXPERIENCE.md:604 */
+  aboutSystemSecuritySetting: 'System-wide security setting',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsEmptyAgent: 'change a system-wide security parameter',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt1: 'Which system-wide security parameters differ from the defaults?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt2: 'How many failed logins disable an account?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt3: 'What does InactiveLimit change?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySetConsequence: 'This changes how every user on this instance signs in, is locked out, or is checked.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListLabel: 'Mobile phone providers',
+  /** EXPERIENCE.md:604 */
+  aboutPhoneProvider: 'Mobile phone provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderColumnGateway: 'SMS gateway',
+  /** EXPERIENCE.md:604 */
+  phoneProviderFormName: 'Provider name',
+  /** EXPERIENCE.md:604 */
+  phoneProviderCreateAction: 'Create provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListEmpty: 'No mobile phone providers on this instance.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListEmptyAgent: 'create a mobile phone provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt1: 'Which mobile phone providers can users choose for two-factor text messages?',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt2: 'What is an SMS gateway?',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt3: 'Create a mobile phone provider named Example Mobile.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderRefusedAction: 'change the provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderInUse: 'One or more users name this provider for two-factor text messages, so it cannot be deleted. Change those users\' provider first.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderDeleteConsequence: 'Deleting this provider removes it from this instance. This cannot be undone.',
   /** EXPERIENCE.md:604 */
   configRefusalNotFound: 'There is no setting with that name.',
   /** EXPERIENCE.md:604 */

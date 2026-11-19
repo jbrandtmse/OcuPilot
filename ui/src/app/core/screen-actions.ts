@@ -189,6 +189,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.TsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.10: System-wide security's Set value, which opens the same page's dialog.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
@@ -295,6 +297,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     disable: STRINGS.auditingTurnOffAction,
     copy: STRINGS.auditDatabaseCopyAction,
     purge: STRINGS.auditDatabasePurgeAction,
+    export: STRINGS.taskExportAction,
   },
   // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
@@ -381,6 +384,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
   // Story 18.26: managed file transfer connections' token revoke.
   'OcuPilot.Screen.Descriptor.MftConnectionList': { 'revoke-token': STRINGS.mftConnectionRevokeAction },
+  // Story 21.10: mobile phone providers' Create provider, which opens the provider editor.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList': { create: STRINGS.phoneProviderCreateAction },
   // Story 18.46: the Allowed directories screen's three actions; Add and Change also title their warning dialogs.
   'OcuPilot.Screen.Descriptor.AllowedDirectoryList': {
     add: STRINGS.allowedDirectoryAddAction,

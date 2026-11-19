@@ -317,4 +317,30 @@ Method TestARowStoredBeforeTheKeyKeepsEachColumnInItsSlot()
     Do $$$AssertEquals($ListToString(tActual), $ListToString(tExpected), "the first 31 data slots of a proposal row")
 }
 
+/// <p>DW-2457: the agent's mint of a write whose target reference is longer than
+/// <parameter>OcuPilot.Kernel.State.Propose.TARGETREFMAX</parameter> is a 400 <code>TOOL.ARGUMENTS</code> naming the limit, answered before the
+/// fresh read, so the fixture port is never called and no row is stored, never a 500.</p>
+/// <p>Mutation (Rule 19): remove the length check after <code>TargetRefOf</code> in <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> --
+/// the mint reads, then the store's refusal answers 500 <code>INTERNAL</code>, and this goes red.</p>
+Method TestAMintWhoseTargetIsOverTheLimitIsRefusedBeforeTheFreshRead()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Set tMax = $Parameter(..#STORE, "TARGETREFMAX")
+    Set tId = $Translate($Justify("", tMax + 1), " ", "a")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Name"":""" _ tId _ """,""Enabled"":true}")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded")
+    Set tTool = "OcuPilot.Screen.Tool.ServiceUpdate"
+    Set tArgs = {"Name": (tId), "Enabled": false}
+    Set tSC = $ClassMethod("OcuPilot.Test.ProposalMint", "Mint", "OcuPilot.Screen.Descriptor.ServiceList", $Parameter(tTool, "TOOLNAME"), ..#PROBEUSER, "", tTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusNotOK(tSC, "the mint is refused")
+    Do $$$AssertEquals($Get(tHttp), 400, "as a 400, never a 500: " _ $System.Status.GetErrorText(tSC))
+    Set tFaultCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+    Set tProblem = $Select($IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("problem"), 1: "")
+    Do $$$AssertEquals(tFaultCode, "TOOL.ARGUMENTS", "carrying the tool-arguments code")
+    Do $$$AssertTrue(tProblem [ "characters a proposal can hold", "naming what a proposal can hold: " _ tProblem)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).CallCount(), 0, "and the fresh read is never made")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCount(), 0, "and no proposal is stored")
+}
+
 }

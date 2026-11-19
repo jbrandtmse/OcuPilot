@@ -393,15 +393,17 @@ ClassMethod ReadTarget(pToolClass As %String, pPort As %String, pEndpoint As %St
 /// <var>pProhibitedClass</var> and <var>pHolderClass</var> are the caller's seams: the prohibited
 /// set to ask, and the class whose <code>HoldsPair</code> answers what the user holds.
 /// <var>pPairs</var> is the resolved set, which the caller records on its own ledger row where it
-/// keeps one. An error status means the question could not be answered and the caller must not
-/// write.</p>
-ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As %String, pDiffJson As %String, pArgumentsJson As %String, pUser As %String, pProhibitedClass As %String, pHolderClass As %String, Output pPairs As %List, Output pRefused As %Boolean, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject) As %Status
+/// keeps one. <var>pReason</var> is the prohibited set's sentence for <var>pCode</var> when it
+/// refused, <code>""</code> otherwise. An error status means the question could not be answered and
+/// the caller must not write.</p>
+ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As %String, pDiffJson As %String, pArgumentsJson As %String, pUser As %String, pProhibitedClass As %String, pHolderClass As %String, Output pPairs As %List, Output pRefused As %Boolean, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject, Output pReason As %String) As %Status
 {
     Set pPairs = ""
     Set pRefused = 0
     Set pHttpStatus = 0
     Set pCode = ""
     Set pDetail = ""
+    Set pReason = ""
     Set tSC = $$$OK
     Try {
         If '$IsObject(pTool) {
@@ -425,7 +427,7 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
         ; only other. The set is handed the write's own tool, target, payload and diff, and nothing
         ; of the request's.
         If pProhibitedClass = "" Quit
-        Set tProhibitSC = $ClassMethod(pProhibitedClass, "Prohibits", tToolName, pTargetRef, pPayloadJson, pDiffJson, .tProhibits, .tProhibitCode)
+        Set tProhibitSC = $ClassMethod(pProhibitedClass, "Prohibits", tToolName, pTargetRef, pPayloadJson, pDiffJson, .tProhibits, .tProhibitCode, .tProhibitReason)
         If $$$ISERR(tProhibitSC) {
             ; The underlying text, not just "could not be read": the set reads live state, so the
             ; cause is a property of the instance at this moment and is the only thing a reader of
@@ -437,12 +439,14 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
             Set pRefused = 1
             Set pHttpStatus = 403
             Set pCode = tProhibitCode
+            Set pReason = $Get(tProhibitReason)
         }
     } Catch ex {
         Set pRefused = 0
         Set pHttpStatus = 0
         Set pCode = ""
         Set pDetail = ""
+        Set pReason = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC

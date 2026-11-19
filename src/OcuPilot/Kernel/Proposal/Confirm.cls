@@ -122,17 +122,19 @@ ClassMethod ProhibitedClassName() As %String
 /// instance (AD-26). On a refusal the status is an
 /// error, <var>pCode</var> is the machine code, <var>pHttpStatus</var> the HTTP status it is
 /// rendered at, and <var>pDetail</var> carries the structured detail that code owns
-/// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>.</p>
+/// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>. <var>pReason</var> is the
+/// prohibited set's sentence when it refused, <code>""</code> otherwise.</p>
 /// <p><b>Caller contract:</b> <var>pUser</var> is the authenticated caller, read by the handler as
 /// <code>$Username</code> and never taken from the body. <var>pSuppliedSecrets</var> is the parsed
 /// body -- a flat object, or <code>""</code> for none. Every refusal before the claim leaves the
 /// row exactly as it was; a fingerprint mismatch is the one refusal that closes it.</p>
-ClassMethod Confirm(pProposalId As %String, pSuppliedSecrets As %DynamicObject, pUser As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject) As %Status
+ClassMethod Confirm(pProposalId As %String, pSuppliedSecrets As %DynamicObject, pUser As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject, Output pReason As %String) As %Status
 {
     Set pResult = ""
     Set pHttpStatus = 0
     Set pCode = ""
     Set pDetail = ""
+    Set pReason = ""
     Set tSC = $$$OK
     Try {
         ; AD-40. A request process has never run a turn, so this is the whole barrier.
@@ -173,7 +175,7 @@ ClassMethod Confirm(pProposalId As %String, pSuppliedSecrets As %DynamicObject, 
             Quit
         }
 
-        Set tSC = ..Transition(pProposalId, pUser, .tRow, pSuppliedSecrets, .pResult, .pHttpStatus, .pCode, .pDetail)
+        Set tSC = ..Transition(pProposalId, pUser, .tRow, pSuppliedSecrets, .pResult, .pHttpStatus, .pCode, .pDetail, .pReason)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -245,8 +247,9 @@ ClassMethod StoredArguments(pJson As %String) As %DynamicAbstractObject [ Privat
 /// before the gates through the read-back (AD-34, AD-53). A target another write keeps past the
 /// wait is refused 409 <parameter>OcuPilot.Api.Error.WRITETARGETBUSY</parameter> before any gate,
 /// leaving the row live and unburned.</p>
-ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSuppliedSecrets As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject) As %Status [ Private ]
+ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSuppliedSecrets As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject, Output pReason As %String) As %Status [ Private ]
 {
+    Set pReason = ""
     Set tSC = $$$OK
     Set tHoldKey = ""
     Try {
@@ -296,7 +299,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ;
         ; $ClassName() rather than this class's name: HoldsPair is an overridable seam, and a
         ; fixture that drives a revoked pair overrides it on its own subclass.
-        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), $Get(pRow("arguments")), pUser, ..ProhibitedClassName(), $ClassName(), .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), $Get(pRow("arguments")), pUser, ..ProhibitedClassName(), $ClassName(), .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail, .tGateReason)
         If $$$ISERR(tGateSC) {
             ; Internal() renders a generic reason to the caller and logs the detail (AD-12), which
             ; is what keeps the prohibited set's own live-state failure text out of the client and
@@ -307,6 +310,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         If tRefused {
             Set tSC = ..Refuse(tGateHttp, tGateCode, .pHttpStatus, .pCode)
             Set pDetail = tGateDetail
+            Set pReason = tGateReason
             Quit
         }
 

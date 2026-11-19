@@ -88,6 +88,12 @@ Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete,analytics.q
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
 
+/// <p>The system-wide security parameters' set, which the baseline also disables (Story 21.10).</p>
+Parameter SYSTEMSECURITYDISABLED = "security.systemsecurity.set";
+
+/// <p>The mobile phone provider delete, which the baseline also disables (Story 21.10).</p>
+Parameter PHONEPROVIDERDISABLED = "security.phoneproviders.delete";
+
 /// <p>The license key's activation and the license server delete, which the baseline also disables
 /// (Story 18.6).</p>
 Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.delete";
@@ -219,6 +225,8 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#SYSTEMSECURITYDISABLED Set tExpected = "0|baseline"
+        If tKey = ..#PHONEPROVIDERDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"

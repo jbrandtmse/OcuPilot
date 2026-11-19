@@ -498,11 +498,11 @@ ClassMethod ArmKmip(pNames As %String)
     Set ^||OcuPilotEncryptionSeam("kmipnames") = pNames
 }
 
-/// <p>The configured KMIP servers: the names <method>ArmKmip</method> armed under <code>kmip</code> and
-/// <code>ondiskfails</code>, and the instance's own otherwise.</p>
+/// <p>The configured KMIP servers: the names <method>ArmKmip</method> armed under <code>kmip</code>,
+/// <code>ondiskfails</code> and <code>journalstartupfails</code>, and the instance's own otherwise.</p>
 ClassMethod KmipNames(Output pNames As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    If ($Get(^||OcuPilotEncryptionSeam("mode")) '= "kmip") && ($Get(^||OcuPilotEncryptionSeam("mode")) '= "ondiskfails") Quit ##super(.pNames, .pHttpStatus, .pFault)
+    If '$ListFind($ListBuild("kmip", "ondiskfails", "journalstartupfails"), $Get(^||OcuPilotEncryptionSeam("mode"))) Quit ##super(.pNames, .pHttpStatus, .pFault)
     Set pNames = []
     Set pHttpStatus = 200
     Set pFault = ""

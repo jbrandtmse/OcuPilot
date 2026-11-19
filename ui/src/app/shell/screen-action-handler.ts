@@ -116,6 +116,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SuperserverList',
   // Story 18.26: managed file transfer connections, whose Delete and Revoke token each type the connection's name.
   'OcuPilot.Screen.Descriptor.MftConnectionList',
+  // Story 21.10: mobile phone providers, whose Delete types the provider's name.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList',
   // Story 18.30: Doc DB applications, whose Delete types the record's name.
   'OcuPilot.Screen.Descriptor.DocDbAppList',
   // Story 18.31: privileged routine applications, whose Delete types the application's name.
@@ -174,6 +176,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SqlShellSettingList',
   'OcuPilot.Screen.Descriptor.TsqlSettingList',
   'OcuPilot.Screen.Descriptor.IsqlSettingList',
+  // Story 21.10: System-wide security, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList',
   // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
   'OcuPilot.Screen.Descriptor.DdlUserMappingList',
@@ -530,6 +534,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.TsqlSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
+  // System-wide security's page registers Set value itself, whose dialog sends the value (Story 21.10).
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': ['set'],
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
@@ -729,6 +735,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
   // Story 18.26: a connection's Delete and Revoke token each type its name.
   [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
+  // Story 21.10: a mobile phone provider's Delete types its name.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList': { delete: STRINGS.phoneProviderDeleteConsequence },
   // Story 18.30: a Doc DB application's Delete types its name.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
   // Story 18.31: a privileged routine application's Delete types its name.

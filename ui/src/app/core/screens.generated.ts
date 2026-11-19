@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config' | 'mirror' | 'locale' | 'global';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config' | 'mirror' | 'locale' | 'global' | 'phone';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -582,7 +582,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "locale",
   "locale-property",
   "global",
-  "global-node"
+  "global-node",
+  "system-security-setting",
+  "phone-provider"
 ];
 
 /**
@@ -5471,6 +5473,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "purge",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
         "selfProtection": ""
       }
     ],
@@ -29591,6 +29597,200 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.PhoneProviderForm",
+    "route": "security/phone-providers/edit",
+    "area": "security",
+    "labelKey": "aboutPhoneProvider",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "phone-provider",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.PhoneProvider",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.phoneproviderform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.PhoneProviderList",
+    "route": "security/phone-providers",
+    "area": "security",
+    "labelKey": "phoneProviderListLabel",
+    "sideBarPosition": 15,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "phone-provider",
+    "entityLabelKey": "aboutPhoneProvider",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "SMSGateway"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "phoneProviderListEmpty",
+    "commandAliases": [
+      "mobile phone providers",
+      "phone providers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.PhoneProviders",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "mobile phone provider",
+      "source": {
+        "port": "phone",
+        "endpoint": "PhoneProviders",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "SMSGateway"
+      ],
+      "filter": [
+        "Name",
+        "SMSGateway"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "SMSGateway"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "SMSGateway",
+          "labelKey": "phoneProviderColumnGateway",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "phoneProviderListEmptyAgent"
+    },
+    "toolIdentifier": "security.phoneproviders",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
     "route": "os-management/processes/details",
     "area": "os-management",
@@ -33395,6 +33595,154 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "superserverListEmptyAgent"
     },
     "toolIdentifier": "security.superservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SystemSecuritySettingList",
+    "route": "security/system-security",
+    "area": "security",
+    "labelKey": "systemSecuritySettingsLabel",
+    "sideBarPosition": 14,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "system-security-setting",
+    "entityLabelKey": "aboutSystemSecuritySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "system security",
+      "system-wide security"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemSecuritySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemSecuritySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemSecuritySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Parameters",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "system-wide security parameter",
+      "label": "The instance's system-wide security parameters: how sign-in, lockout, password expiry and audit flags behave for every user. Each row says whether it is shown and never changed here.",
+      "source": {
+        "port": "config",
+        "endpoint": "Security",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "systemSecuritySettingsEmptyAgent"
+    },
+    "toolIdentifier": "security.systemsecurity",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
