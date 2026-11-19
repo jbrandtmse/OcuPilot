@@ -518,3 +518,5 @@
 2026-11-19T23:10:08Z	Story 24.13	integrated_feature	feature=800f1c579 merge=d2b0259cc conflicts=0(ci-timings.json_only) scope=batch3
 2026-11-19T23:10:08Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=d2b0259cc
 2026-11-19T23:33:53Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=d2b0259cc forward=5/5_classes_53_tests_first_run reverse+rosters=20/20_classes_208_tests browser=analytics+links+a11y+config-settings42/42 smoke=50/50 bundle=2.16MB scope=batch3
+2026-11-19T23:34:19Z	Story 24.13	code_head_pushed	sha=d2b0259cc run=44638724058 missing=none scope=batch3(final)
+2026-11-19T23:34:19Z	Story 24.13	tracker_set	key=24-13-analytics-settings status=done (three batches committed; code head d2b0259cc)
