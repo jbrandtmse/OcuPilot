@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,nls-default,locale,global,global-node";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,global,global-node";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -801,6 +801,11 @@ Parameter TYPELISTINGGROUPLISTING = "listing-group-listing";
 /// <class>OcuPilot.Port.AnalyticsPort</class>'s: it refuses <code>OCUPILOTCODE</code> for a class of OcuPilot's own, so a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPEQUALITYMEASURE = "quality-measure";
 
+/// <p>A quality measure's element (or its group) and its documentation item (Story 24.12): written through the same editor, with the same one effect.</p>
+Parameter TYPEQUALITYMEASUREELEMENT = "quality-measure-element";
+
+Parameter TYPEQUALITYMEASUREMETA = "quality-measure-meta";
+
 /// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
 /// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
 /// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
@@ -1238,10 +1243,10 @@ ClassMethod IsListingGroupType(pType As %String) As %Boolean
     Quit (pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPELISTINGGROUPLISTING)
 }
 
-/// <p>Whether <var>pType</var> is the quality measure editor's: a quality measure (Story 24.12). Pure.</p>
+/// <p>Whether <var>pType</var> is the quality measure editor's: a quality measure, one of its elements or one of its documentation items (Story 24.12). Pure.</p>
 ClassMethod IsQualityMeasureType(pType As %String) As %Boolean
 {
-    Quit pType = ..#TYPEQUALITYMEASURE
+    Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPEQUALITYMEASUREELEMENT) || (pType = ..#TYPEQUALITYMEASUREMETA)
 }
 
 /// <p><parameter>COVEREDTYPES</parameter> as a <class>%List</class>.</p>
@@ -1345,6 +1350,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPELISTINGGROUPLISTING Quit $ListFromString("DisplayName,Type,Fields,OrderBy,Joins,Formats,Source,Resource,SelectMode,Disabled,Description,SQL")
     ; Story 24.12: a quality measure change moves its header.
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Caption,Description,SubjectArea,Expression,LinkedTo,Published,Format,Href")
+    If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
+    If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Caption,Content,Disabled")
     If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1519,6 +1526,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELISTINGGROUPLISTING Quit $ListFromString("Name,DisplayName,Type,Fields,OrderBy,Joins,Formats,Source,Resource,SelectMode,Disabled,Description,SQL")
     ; Story 24.12: a quality measure add sets its name, class and header.
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Name,Class,Caption,Description,SubjectArea")
+    If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Name,Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
+    If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Name,Caption,Content,Disabled")
     ; Story 20.26: a partner add sets its name and thirteen fields; its namespace is the payload's.
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     Quit ""

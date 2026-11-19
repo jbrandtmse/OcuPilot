@@ -997,6 +997,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   assert.deepEqual(members, [
     // Story 20.11: a cube's three tabs, a parent-scoped group whose head is unlisted.
     ['analytics/cubes/document', 'analytics/cubes/document', 1, 0],
+    // Story 24.12: a quality measure's Groups and elements and Documentation, a parent-scoped group whose head is unlisted.
+    ['analytics/quality-measures/document', 'analytics/quality-measures/document', 1, 0],
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
@@ -1013,6 +1015,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['analytics/cubes/dimensions', 'analytics/cubes/document', 2, 0],
+    ['analytics/quality-measures/documentation', 'analytics/quality-measures/document', 2, 0],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],

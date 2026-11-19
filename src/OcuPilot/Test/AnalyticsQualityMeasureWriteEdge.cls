@@ -75,22 +75,6 @@ Method TestARefusedCompileUndoesEachWrite()
     Do $$$AssertEquals(..Compiling("QualityMeasures", "UPDATE", tName, {"Caption": "applied"}), "200 ", "with no failure armed the same write applies")
 }
 
-/// <p>The proposal of <var>pTool</var> with <var>pArgs</var>, on the measure whose id is <var>pId</var> in the class <var>pClass</var>, is minted; the class is then saved again with the class
-/// parameter <var>pNote</var> added and the measure as it was, so the confirm closes the proposal as target-changed, 409 <code>PROPOSAL.TARGETCHANGED</code>, and the classes and the registry are
-/// as that second save left them.</p>
-Method AssertStale(pTool As %String, pArgs As %DynamicObject, pId As %String, pClass As %String, pNote As %String)
-{
-    Set tWhat = $Parameter(pTool, "TOOLNAME")
-    Do ..Mint(pTool, pArgs, .tProposal, .tTurn)
-    If '$IsObject($Get(tProposal)) Quit
-    Do $$$AssertStatusOK(..SaveMeasure(pId, pClass, "", "[Long]/[Everyone]", pNote), tWhat _ ": the class is saved again after the mint, with a class parameter added and the measure as it was")
-    Set tBefore = ..Snapshot()
-    Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
-    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "409|PROPOSAL.TARGETCHANGED", tWhat _ ": the confirm is refused as moved: " _ $Extract($Get(tRaw), 1, 200))
-    Do $$$AssertEquals(..Snapshot(), tBefore, tWhat _ ": nothing was written, and the class is as the second save left it")
-    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
-}
-
 /// <p>AC5: a class changed after a proposal was minted closes the proposal as target-changed, 409 <code>PROPOSAL.TARGETCHANGED</code>, and nothing is written, for the update, the copy and the delete;
 /// and the baseline ships the add, the update and the copy on and the delete off, which the governance gate reads.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.QualityMeasureRow</method> answer an empty <code>Version</code> -- the update's and the delete's stale legs go red; make the

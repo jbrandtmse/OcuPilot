@@ -81,8 +81,8 @@ Parameter FOLDERITEMDISABLED = "analytics.folderitems.delete";
 /// <p>Story 24.11: the listing group delete and the listing remove, the two listing group lines the baseline ships off.</p>
 Parameter LISTINGGROUPDISABLED = "analytics.listinggroups.delete,analytics.listinggrouplistings.remove";
 
-/// <p>Story 24.12: the quality measure delete, the one quality measure line the baseline ships off.</p>
-Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete";
+/// <p>Story 24.12: the quality measure delete and the removal of an element or group and of a documentation item, the three quality measure lines the baseline ships off.</p>
+Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete,analytics.qualitymeasureelements.remove,analytics.qualitymeasuremetas.remove";
 
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>

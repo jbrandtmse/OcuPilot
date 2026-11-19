@@ -304,6 +304,12 @@ XData Coverage
 <tool name="analytics.qualitymeasures.update" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAnUpdateChangesTheHeaderAndKeepsEverythingElse"/>
 <tool name="analytics.qualitymeasures.copy" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestACopyMakesANewMeasureAndLeavesTheSource"/>
 <tool name="analytics.qualitymeasures.delete" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
+<tool name="analytics.qualitymeasureelements.add" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.qualitymeasureelements.set" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementAndItsGroupAreChangedByEachCaller"/>
+<tool name="analytics.qualitymeasureelements.remove" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementAndAGroupAreRemovedAndTheKeyShipsOff"/>
+<tool name="analytics.qualitymeasuremetas.add" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
+<tool name="analytics.qualitymeasuremetas.set" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
+<tool name="analytics.qualitymeasuremetas.remove" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

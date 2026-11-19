@@ -220,10 +220,26 @@ ClassMethod HeldPairSpec() As %String
     Quit $Parameter(..#PORT, "QUALITYMEASUREPAIRS")
 }
 
-/// <p>1 when the <code>ConfigChange</code> row of the verb <var>pVerb</var> on the measure <var>pId</var> since <var>pSince</var> records the outcome <var>pOutcome</var>.</p>
-ClassMethod Recorded(pSince As %String, pId As %String, pVerb As %String, pOutcome As %String) As %Boolean
+/// <p>The proposal of <var>pTool</var> with <var>pArgs</var>, on the measure whose id is <var>pId</var> in the class <var>pClass</var>, is minted; the class is then saved again with the class
+/// parameter <var>pNote</var> added and the measure as it was, so the confirm closes the proposal as target-changed, 409 <code>PROPOSAL.TARGETCHANGED</code>, and the classes and the registry are
+/// as that second save left them.</p>
+Method AssertStale(pTool As %String, pArgs As %DynamicObject, pId As %String, pClass As %String, pNote As %String)
 {
-    Do $ClassMethod(..#QUEUES, "AuditRows", pSince, "quality-measure", pId, pVerb, .tData)
+    Set tWhat = $Parameter(pTool, "TOOLNAME")
+    Do ..Mint(pTool, pArgs, .tProposal, .tTurn)
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK(..SaveMeasure(pId, pClass, "", "[Long]/[Everyone]", pNote), tWhat _ ": the class is saved again after the mint, with a class parameter added and the measure as it was")
+    Set tBefore = ..Snapshot()
+    Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "409|PROPOSAL.TARGETCHANGED", tWhat _ ": the confirm is refused as moved: " _ $Extract($Get(tRaw), 1, 200))
+    Do $$$AssertEquals(..Snapshot(), tBefore, tWhat _ ": nothing was written, and the class is as the second save left it")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>1 when the <code>ConfigChange</code> row of the verb <var>pVerb</var> on the entity of type <var>pType</var> and id <var>pId</var> since <var>pSince</var> records the outcome <var>pOutcome</var>.</p>
+ClassMethod Recorded(pSince As %String, pId As %String, pVerb As %String, pOutcome As %String, pType As %String = "quality-measure") As %Boolean
+{
+    Do $ClassMethod(..#QUEUES, "AuditRows", pSince, pType, $Replace(pId, $Char(1), "\u0001"), pVerb, .tData)
     Quit ''(tData [ ("""outcome"":""" _ pOutcome _ """"))
 }
 

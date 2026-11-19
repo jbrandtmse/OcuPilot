@@ -13,7 +13,7 @@ Parameter TOOL = "OcuPilot.Screen.Tool.Navigate";
 /// <p>The screens that were refused an id while their own id was read in place of their parent's,
 /// and take <code>parentId</code> now. Each has a parent whose id is one part and an own id of
 /// more than one.</p>
-Parameter NEWLYOPENABLE = "tasks/schedule/history,analytics/term-lists/entries,analytics/listing-groups/listings,analytics/quality-measures/elements,analytics/quality-measures/documentation,interoperability/lookup-tables/entries,interoperability/productions/items,web-applications/routine-applications/routines,os-management/namespaces/global-mappings,os-management/namespaces/package-mappings,os-management/namespaces/routine-mappings";
+Parameter NEWLYOPENABLE = "tasks/schedule/history,analytics/term-lists/entries,analytics/listing-groups/listings,analytics/quality-measures/document,analytics/quality-measures/documentation,interoperability/lookup-tables/entries,interoperability/productions/items,web-applications/routine-applications/routines,os-management/namespaces/global-mappings,os-management/namespaces/package-mappings,os-management/namespaces/routine-mappings";
 
 /// <p>The screens whose parent's id is two parts, so no id the model supplies can name them: the
 /// four item tabs, which took a model-composed two-part parent id as <code>entityId</code>, and the

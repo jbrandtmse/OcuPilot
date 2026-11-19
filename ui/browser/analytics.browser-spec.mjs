@@ -62,7 +62,7 @@ const LISTING_GROUPS = 'analytics/listing-groups';
 const LISTINGS = `${LISTING_GROUPS}/listings`;
 const LISTING_GROUP = 'OcuPilotProbeListings';
 const QUALITY_MEASURES = 'analytics/quality-measures';
-const QUALITY_ELEMENTS = `${QUALITY_MEASURES}/elements`;
+const QUALITY_ELEMENTS = `${QUALITY_MEASURES}/document`;
 const QUALITY_DOCUMENTATION = `${QUALITY_MEASURES}/documentation`;
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
@@ -614,6 +614,7 @@ test('Story 24.12: Quality measures shows each measure with what the vendor\'s m
       await clickRowCentre(page, { text: measure, link: true });
       await pathHolds(page, `/${QUALITY_ELEMENTS}/${encodeEntityId(measure)}`);
       await answered(page);
+      assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'a measure opens a strip of its two tabs, Groups and elements and Documentation');
       const elements = inUser('QMELEMENTS', [
         `Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${measure}",,1),out=""`,
         'For g=1:1:m.groups.Count() { Set gr=m.groups.GetAt(g)  For e=1:1:gr.elements.Count() { Set el=gr.elements.GetAt(e)  Set out=out_gr.name_"~"_el.name_"~"_el.caption_"~"_el.mdx_"|" } }',
@@ -833,5 +834,84 @@ test('Story 24.11: a person creates a listing group, edits it, adds a listing to
   } finally {
     await context.close();
     probe('LGWCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
+  }
+});
+
+const PART_MEASURE = 'OcuProbeQMP/Probe/Browse';
+const PART_BASE = 'OcuPilot.Test.AnalyticsQualityMeasurePartBase';
+
+/** Click the command bar's primary action and wait for the quality measure dialog titled `label`. */
+async function partDialog(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-confirm]', { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** Choose the row action `label` on the row starting `name`, type `typed` into the typed-name dialog under the consequence `consequence`, and confirm; the dialog closes once the write was applied. */
+async function typedRemoval(page, name, label, typed, consequence) {
+  await rowAction(page, name, label);
+  await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), consequence, `${label} states its consequence and asks for the name typed`);
+  await page.type('.ocu-typed-name-field', typed);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.12 AC4 (Batch 3, DW-2734). Mutation (Rule 19): make the Add element dialog post to the documentation items' route (bundle rebuilt and redeployed) -> the first element never appears and the first leg goes red; drop the
+// Documentation descriptor's `tab` (mirror regenerated, bundle rebuilt and redeployed) -> the strip leg goes red; the removals' typed-name entries are pinned in `screen-action-handler-qualitymeasure.spec.ts`.
+test('Story 24.12: a person opens a quality measure to its two tabs, adds an element in a new group, changes it, removes it and the group, and adds, changes and removes a documentation item', async () => {
+  const made = probe('QMPMADE', `$System.Status.IsOK(##class(${PART_BASE}).SaveMeasure("Browse", "OcuProbeQMP.Analytics.QMPBrowse"))`);
+  assert.equal(made.value, '1', `the measure is saved and compiled: ${made.output}`);
+  const model = (name, lines) => inUser(name, ['Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("' + PART_MEASURE + '",,0),out=""', ...lines]);
+  const { context, page } = await signedInAt(browser, config, url(QUALITY_MEASURES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await clickRowCentre(page, { text: PART_MEASURE, link: true });
+    await pathHolds(page, `/${QUALITY_ELEMENTS}/${encodeEntityId(PART_MEASURE)}`);
+    await answered(page);
+    assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'a measure opens to the strip of its two tabs');
+
+    await partDialog(page, STRINGS.analyticsQualityMeasureElementAddAction);
+    assert.deepEqual(
+      await page.$$eval('app-quality-measure-dialog legend', (nodes) => nodes.map((node) => node.textContent.trim())),
+      [STRINGS.analyticsColumnGroup, STRINGS.analyticsQualityMeasureElementLegend],
+      'the element form draws the group and the element in two fieldsets'
+    );
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Group: 'Fresh', GroupCaption: 'Fresh group', Name: 'Seed', Caption: 'Seed rule', MDX: '{[Minutes].&[1]}' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    // A row the instance has just changed carries its marker and read-back in its first cell.
+    assert.deepEqual((await rowsStartingWith(page, 'Fresh')).map((row) => row.slice(1, 4)), [['Seed', 'Seed rule', '{[Minutes].&[1]}']], 'Groups and elements shows the new element under its new group');
+    assert.equal(model('QMPADD', ['Set g=m.groups.GetAt(m.groups.Count()),out=g.name_"~"_g.caption_"~"_g.elements.GetAt(1).name']).value, 'Fresh~Fresh group~Seed', 'the vendor\'s model holds the group, created at the end, and its element');
+
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value === 'Seed', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.equal(model('QMPSET', ['Set out=m.groups.GetAt(m.groups.Count()).elements.GetAt(1).caption']).value, 'Seed rule edited', 'the change reached the vendor\'s model');
+
+    await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureElementRemoveAction, 'Seed', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await page.waitForFunction((rowSelector) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.deepEqual((await rowsStartingWith(page, 'Fresh')).map((row) => row[1]), [STRINGS.tableEmptyValue], 'the emptied group stays as its own row, with no element name');
+    await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureGroupRemoveAction, 'Fresh', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await rowGone(page, 'Fresh');
+    assert.equal(model('QMPGROUP', ['Set out=m.groups.Count()']).value, '2', 'the group is gone from the vendor\'s model, the measure\'s own two groups remain');
+
+    await openTab(page, QUALITY_DOCUMENTATION);
+    assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'Documentation carries the same strip');
+    await partDialog(page, STRINGS.analyticsQualityMeasureMetaAddAction);
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Name: 'Notes', Caption: 'Notes', Content: 'A <b>bold</b> note.' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('A <b>bold</b> note.')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.equal(model('QMPMETA', ['Set out=m.metas.GetAt(m.metas.Count()).name_"~"_m.metas.GetAt(m.metas.Count()).content']).value, 'Notes~A <b>bold</b> note.', 'the vendor\'s model holds the item and its markup as sent');
+
+    await rowAction(page, 'Notes', STRINGS.analyticsQualityMeasureMetaChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value === 'Notes', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Notes edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    await typedRemoval(page, 'Notes', STRINGS.analyticsQualityMeasureMetaRemoveAction, 'Notes', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await rowGone(page, 'Notes');
+    assert.equal(model('QMPMETAS', ['Set out=m.metas.Count()']).value, '1', 'only the measure\'s own documentation item remains');
+  } finally {
+    await context.close();
+    probe('QMPCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
   }
 });

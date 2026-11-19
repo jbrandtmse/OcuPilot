@@ -66,6 +66,30 @@ describe('the quality measure editor through the generic handler (Story 24.12)',
     expect(['update', 'copy', 'delete'].map((id) => actions.has(MEASURES, id))).toEqual([false, false, true]);
   });
 
+  it('leaves the sub-screens\' Add, Change and Remove group to their pages and registers the removals', () => {
+    // Mutation (Rule 19): drop the sub-screens' entries from `UNDRAWN_ACTIONS` -> the handler registers `set` and `remove-group` and this goes red.
+    const { actions } = mount();
+    const element = 'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList';
+    const meta = 'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList';
+    expect(SCREENS.find((entry) => entry.descriptor === element)!.rowActions.map((action) => action.id)).toEqual(['set', 'remove', 'remove-group']);
+    expect(['set', 'remove', 'remove-group'].map((id) => actions.has(element, id))).toEqual([false, true, false]);
+    expect(['set', 'remove'].map((id) => actions.has(meta, id))).toEqual([false, true]);
+  });
+
+  it('types a group\'s own name when its row holds no element name, and sends the removal only once confirmed', async () => {
+    // Mutation (Rule 19): drop the `fallback` of the Groups and elements' `TYPED_NAME_ROWS` entry -> the dialog asks for the row key and the name assertion goes red.
+    const element = 'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList';
+    const { handler, calls } = mount();
+    const screen = SCREENS.find((entry) => entry.descriptor === element)!;
+    const store = TestBed.inject(ScreenStores).for(screen.descriptor, screen.refreshRates);
+    handler.startFor(element, 'remove-group', 'row-key', { Group: 'Long', Name: '' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', 'Long', STRINGS.analyticsQualityMeasureRemoveConsequence]);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toEqual({ action: 'remove-group', id: 'row-key' });
+  });
+
   it('asks for the name the row shows, typed under the delete consequence, and sends the delete only once confirmed', async () => {
     // The row's key is its name here too, so this fixture gives the row a key that is not its name.
     // Mutation (Rule 19): drop the `DESTRUCTIVE_CONSEQUENCES` entry -> the consequence assertion goes red; drop the `TYPED_NAME_ROWS` entry -> the dialog asks for the key and this goes red.

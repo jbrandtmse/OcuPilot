@@ -2,15 +2,23 @@
 title: 'Story 24.12: Quality measures (Batch 3: the element and documentation writes)'
 type: 'feature'
 created: '2026-11-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e8257a0f20e34e0603193f17e6d1adf8470e903f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-12-quality-measures-2.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-12-quality-measures.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-11-listing-groups-2.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The pre-save XML read of the composed class text (AnalyticsPort.cls, in VendorQualityMeasureCompose) has no test that reaches it with content already stored in a class, apart from the new-content legs that NormalizedContent refuses first.
+    evidence: |-
+      Deleting that block leaves every test green. It would settle the question to seed a measure whose stored documentation re-emits unreadably (if the compiler accepts such a class in USER at all) and assert 422 COMPILE with an unchanged snapshot.
+    location: >-
+      src/OcuPilot/Port/AnalyticsPort.cls (VendorQualityMeasureCompose, the %XML.Reader.OpenString call)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -81,10 +89,10 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci`, USER, marked classes removed after): record under Design Notes › Measured: an item `Content` of plain text, text with `&` and `<`, and `<b>x</b>` written through `%XML.Writer` and read back by `%GetModel`; from that, the form both callers send so the read-back reads `matches`, and whether a content the class cannot hold is caught by reading the composed XML back with `%XML.Reader` before any save (then 422 `COMPILE`, nothing written, and that read journals nothing) or only by the compile's restore; that removing a group, an element and an item from the model and composing writes nothing; each `READBACKFIELDS` reading `matches` after a correct write.
-- [ ] `AnalyticsPort.cls`: the endpoints' reads, writes, pre-checks, audit and script forms.
-- [ ] The two action bases, six tools, two mints and the `MappingMint` parameter; the descriptors; the two Save areas and routes; `Baseline.cls`, `AnalyticsError.cls`, `Prohibited.cls`; the client pages, dialog kinds, maps and typed-name fallback; strings (once ruled), the regenerated mirror and the EXPERIENCE.md edits.
-- [ ] Tests (each class at most about 500 lines, extending `Test/AnalyticsQualityMeasureBase.cls`, so armed by `OCUPILOT_ALLOW_PRINCIPALS`; arming roster comment add-only in `scripts/ci-throwaway.sh` with `ui/tools/ci.test.mjs`):
+- [x] **Task 0** (`ocupilot-b-ci`, USER, marked classes removed after): record under Design Notes › Measured: an item `Content` of plain text, text with `&` and `<`, and `<b>x</b>` written through `%XML.Writer` and read back by `%GetModel`; from that, the form both callers send so the read-back reads `matches`, and whether a content the class cannot hold is caught by reading the composed XML back with `%XML.Reader` before any save (then 422 `COMPILE`, nothing written, and that read journals nothing) or only by the compile's restore; that removing a group, an element and an item from the model and composing writes nothing; each `READBACKFIELDS` reading `matches` after a correct write.
+- [x] `AnalyticsPort.cls`: the endpoints' reads, writes, pre-checks, audit and script forms.
+- [x] The two action bases, six tools, two mints and the `MappingMint` parameter; the descriptors; the two Save areas and routes; `Baseline.cls`, `AnalyticsError.cls`, `Prohibited.cls`; the client pages, dialog kinds, maps and typed-name fallback; strings (once ruled), the regenerated mirror and the EXPERIENCE.md edits.
+- [x] Tests (each class at most about 500 lines, extending `Test/AnalyticsQualityMeasureBase.cls`, so armed by `OCUPILOT_ALLOW_PRINCIPALS`; arming roster comment add-only in `scripts/ci-throwaway.sh` with `ui/tools/ci.test.mjs`):
   - new `Test/AnalyticsQualityMeasurePartWrite.cls`: the six writes by both callers, group set and remove, read-backs through `GET /screens/<id>/read` and the read tools, refusals (taken, absent, expression, shape), script forms;
   - new `Test/AnalyticsQualityMeasurePartWriteEdge.cls`: linked, twin, own code, compile fails, stale, key off, gate as principals;
   - `ui/browser/analytics.browser-spec.mjs`: open a measure, add an element in a new group, change it, remove it, remove the group; open the Documentation tab, add an item, change it, remove it; the two page specs; every roster above.
@@ -101,8 +109,28 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
 ## Spec Change Log
 
 - 2026-11-18, spec gate: the runner kept the key states, the group-through-element model, no rename or reorder, the tab group for DW-2734, the proposed strings and the proposed spine lines (veto item U-113).
+- 2026-11-18, implement (apply and report, Rule 5): the Boundaries' tab group `analytics/quality-measures/elements` cannot be declared (AD-5's registry accepts only `<parent>/document` for a parent-scoped group, with the head's route equal to it). Original: "declare `tab` group `analytics/quality-measures/elements`". Amended: the group is `analytics/quality-measures/document`, Groups and elements' route becomes that route, both screens are `detail` archetype (the one that draws the strip); the person-visible intent is unchanged. See Decided in-stage (implement) 1.
 
 ## Review Triage Log
+
+### 2026-11-18 — Review pass
+
+- verdicts: 14 findings — high 0, medium 4, low 8, false 0, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` The four new refusal sentences and the removal consequence were not pinned across `AnalyticsError`, `strings.ts`, `proposal-view.ts` and EXPERIENCE.md — added the four rows, the `REMOVE` consequence pair and the two remove tools' `CONSEQUENCECODE` to `ui/tools/analytics.test.mjs` (green).
+  - `[medium]` `[patch]` No audit-row assertion for the documentation item's change and removal or the group's removal, at either caller — added `Rows` and `AssertAgentRecords` legs in `AnalyticsQualityMeasurePartWrite` (green on first run).
+  - `[maybe-false]` `[defer]` The pre-save XML read has no test reaching it with already-stored content — deferred, unverified medium; the recipe is in the frontmatter item.
+  - `[low]` `[patch]` The AC2 mutation line named no mutation — replaced by the `Content` of `QualityMeasureMetaRow` made empty (red, reverted).
+  - `[low]` `[patch]` No recorded mutation of the tab group — the Documentation `tab.position` made 1 reddens `AnalyticsDescriptor` (recorded).
+  - `[low]` `[patch]` AC5 mutation covered one key only — the documentation remove key made `true` reddens `GovernanceBaseline` (recorded).
+  - `[low]` `[reject]` The page specs' `Mutation (Rule 19)` comments are not recorded runs — the pinned behaviors have a recorded or applied mutation (the new group-only and add tests were observed red); no harm in the comments.
+  - `[maybe-false]` `[reject]` The browser test asserts the probe's creation before its `try`, so a partial `SaveMeasure` skips cleanup — `SaveMeasure` is one atomic save and compile that restores on refusal; the harm is unlikely and the fix adds a branch.
+  - `[medium]` `[patch]` No test confirms the dialog's group-only change or sends what the dialog builds — added a component test that confirms Change element on a group row and asserts the posted values are the three group fields.
+  - `[medium]` `[patch]` An add into an existing disabled group re-enabled it, because the dialog always sent `GroupDisabled` — `addBody` now sends `GroupDisabled` only when set; a component test pins it and went red under the mutation.
+  - `[low]` `[reject]` Line feeds in documentation content are dropped, so AC1's "exactly what was sent" does not hold for multi-line content — this is the model's stored form, measured in Task 0 and the form the intent's Task 0 rule asked for; the Auto Run Result lists it as a risk.
+  - `[low]` `[reject]` `analytics.test.mjs` checks `.OpenString(` against `%XML.Reader` counts as source text — a guard against file, stream and URL readers, which is what it states.
+  - `[low]` `[reject]` Intent alignment: the tab group is `analytics/quality-measures/document`, not `.../elements` — the registry (AD-5) allows only `<parent>/document` for a parent-scoped group, so the named spelling cannot be declared; the person-visible result (two tabs under a measure's name) is the intent's. Recorded in the Spec Change Log as an apply-and-report amendment.
+  - `[low]` `[reject]` Intent alignment: no alias for the old Groups and elements route — the route has not left this branch (inference: no persisted link to it exists outside the branch); not worth a redirect.
 
 ## Design Notes
 
@@ -117,6 +145,25 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
 5. **DW-2734** is addressed by the tab group (Boundaries), which needs no new string; the name cell already opens the group's first tab.
 6. **Size.** One pass: six tools on Batch 2's lifted path. If the implement stage finds it too large, the boundary is 3a (Groups and elements, DW-2734) and 3b (Documentation).
 7. **Contention.** In `Prohibited.cls` only added lines and the one widened `IsQualityMeasureType` body; the `COVEREDTYPES` entries are a roster union.
+
+**Measured** (implement, 2026-11-18, `ocupilot-b-ci`, USER; `OcuProbeQMP*` classes removed after, `^DeepSee.QMsrs` empty after):
+
+- **Item `Content`** (the model's `content`: `%ZEN.Datatype.html`, `CONTENT=MIXED`, `ESCAPE=HTML`), written by `%XML.Writer` and read back by `%GetModel`: plain text, `<b>x</b>`, entities such as `&amp; &lt;` and a tab read back as sent; a quote reads back as `&quot;`, an apostrophe as `&#39;`, `€` as `&euro;` and a no-break space as `&nbsp;` (the last two are XML entities the format does not define), and line feeds are dropped (`one`, LF, `two` reads `onetwo`). A bare `&` or `<`, `]]>` and a control character wrote XML the compile refused (`ERROR #6301`), after the class was saved.
+- **`%XML.Reader.OpenString` over the composed text** refused each of those before any save; with `%GetModel`, `%Validate`, the writer and the removals it recorded no set or kill in the process's journal (0 records). So a content the class cannot hold is caught before any save (422 `COMPILE`, nothing written), and the compile's restore is the second line.
+- **The form both callers send** is the model's (`NormalizedContent`: written, read back, line feeds dropped), which reads back as sent; a content whose form does not survive a second write unchanged (`€`, a no-break space) is refused 422 `COMPILE`, because writing its stored form again would refuse every later write of the measure.
+- **Removing a group, an element and an item** from the model composes and writes nothing; `RemoveAt` of a member that is not the last leaves a gap in the relationship and the model's own `%Validate` threw `<INVALID OREF>`, so the port clears the relationship and puts the rest back in order (`RemoveFromRelationship`).
+- **Read-back:** each `READBACKFIELDS` read `matches` after a correct write at both callers (`AnalyticsQualityMeasurePartWrite`); a remove reads `notFound`.
+
+**Decided in-stage (implement).**
+
+1. **The tab group's route.** AD-5's registry rule makes a parent-scoped group its parent list's `<route>/document` with the head's route equal to it, so Groups and elements' route is `analytics/quality-measures/document` (not `.../elements`) and Documentation keeps `.../documentation` as position 2. Both are `detail` archetype, the one whose page draws the strip (`DetailPage`, as the cube tabs and Item settings are); their pages wrap `<app-detail-page />`, and a measure's name cell opens the document route (`documentScreenFor`).
+2. **One dialog.** `QualityMeasureDialog` gained `kind` (`measure`, `element`, `documentation`); a group's row with no element opens Change element on the group's fields alone.
+3. **A group target takes no element field.** A merged payload repeats the group row's empty element fields, so an element field on a group target is a shape violation only when it holds text or `true`.
+4. **Shared code.** `ItemSave.IdOf` takes the body, so `QualityMeasureElementSave` joins `Group` into the id; `ListingSave` lifted `ParentEndpoint`, `ParentReadType` and `ParentAbsentCode`; the port's four wrappers (`QualityMeasureElement`/`Meta` `Violations`/`Problem`) carry the endpoint to the tool base's signatures; `AnalyticsQualityMeasureBase` gained `AssertStale` (lifted from the edge class) and `Recorded`'s type; `AnalyticsQualityMeasurePartBase` holds the part tests' fixtures.
+5. **Namespace.** The composing code runs in the analytics namespace, where this product's classes are not mapped, so the composite separator is a literal port parameter (`PARTSEPARATOR`, pinned equal to `EntityId`'s by `AnalyticsQualityMeasurePartWriteEdge`).
+6. **Linked and absent order.** A write's read refuses a linked measure first (409 `LINKEDPARTS`), so a mint on a linked measure answers it before looking for the part; a missing part at the mint is the generic mint's `TOOL.ARGUMENTS`, and its own `PARTABSENT` is the port's and the person's.
+7. **`MappingMint.EMPTYNAMEALLOWED`** is the new parameter's name; `ui/tools/analytics.test.mjs`'s guard now allows an XML reader that opens a string.
+8. **Size.** One pass; the 3a and 3b split was not needed.
 
 **Veto items for the spec gate (recommended defaults, planned as written).**
 
@@ -151,12 +198,29 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `1a5988b06`).
 
 **Hermeticity:** every test added or changed passes on its first run on a fresh instance, in either order.
 
-**Mutations** (Rule 19; one per AC, recorded here by the implement stage as `mutation: <change> -> <test went red>`).
+**Mutations** (Rule 19; each server mutation applied to the throwaway's `src` copy, the class and its subclasses recompiled, observed red, then the tree synced back from the worktree (`diff -rq` identical) and reloaded; the client one reverted, rebuilt and redeployed):
+
+- mutation (AC1): the MDX line of an element add in `ApplyQualityMeasurePart` made `0 &&` -> `AnalyticsQualityMeasurePartWrite` `TestAnElementIsAddedByEachCallerAndReadsBack` went red on its model and read-back legs, `TestAnElementAndItsGroupAreChangedByEachCaller` on its read-back and model legs.
+- mutation (AC2): the `Content` of `QualityMeasureMetaRow` made `""` -> `AnalyticsQualityMeasurePartWrite` `TestADocumentationItemIsAddedChangedAndRemovedByEachCaller` went red on its read-back legs.
+- mutation (AC3): `RestoreClass` made to return at once -> `AnalyticsQualityMeasurePartWriteEdge` `TestARefusedCompileUndoesEachPartWrite` went red on the class text and model legs of all seven writes.
+- mutation (AC4): the add element store call made to post to the documentation items' route (bundle rebuilt and redeployed) -> the browser test timed out waiting for the new element row; `fallback` dropped from the Groups and elements' `TYPED_NAME_ROWS` entry -> the typed-name test in `screen-action-handler-qualitymeasure.spec.ts` and the Remove group test in the element page's spec went red; both reverted, rebuilt and green.
+- mutation (AC4, tab group): the Documentation descriptor's `tab.position` made `1` -> `AnalyticsDescriptor` `TestTheSevenDeclarationsRegister` and `TestTheCubeManagerDeclaration` went red.
+- mutation (AC5, documentation key): the `analytics.qualitymeasuremetas.remove` line of `Baseline.cls` made `true` -> `GovernanceBaseline` `TestThePurgeIsTheOneDisabledLine` went red.
+- mutation (AC5): the element remove line of `Baseline.cls` made `true` -> `TestAnElementAndAGroupAreRemovedAndTheKeyShipsOff` went red on its refusal and still-there legs; the `analytics.qualitymeasureelements.set` row removed from `SurfaceCoverage` -> `TestEveryWriteToolHasACoverageRowAndBack` went red alone.
+- mutation (AC6): the part markers left out of `AnalyticsProbe.RemoveQualityMeasures` -> `AnalyticsQualityMeasurePartWriteEdge` went red at `OnAfterAllTests`, naming the leftover classes.
+- mutation (separator): `PARTSEPARATOR` made `2` -> `AnalyticsQualityMeasurePartWriteEdge` `TestThePartSeparatorIsTheCompositeSeparator` (and the stale-class test) went red.
+- mutation (linked): the linked checks of `VendorQualityMeasureCompose` and `ReadQualityMeasure` made `0 &&` -> `TestALinkedMeasureRefusesEverySixPartWrites` went red on its six port legs, three person legs and mint legs.
+- mutation (content): the `NormalizedContent` refusal in `ApplyMetaPart` made `0 &&` -> `TestEachRefusalWritesNothing` went red on its `&euro;` leg (the legs whose XML is invalid stay green, because the reader refuses them first).
+
+**Verification roster** (the Rule 30 grep for `analytics.qualitymeasures.copy`, `AnalyticsListingAdd` and `analytics.listinggrouplistings.remove`, re-run): `ReadTool` (516 tools), `SurfaceCoverage` (six rows), `Governance` and `GovernanceBaseline`, `ClassicPageGate`, `MappingDescriptor`, `ToolRoundTrip`, `ToolWrite` (other-port count 121), `Prohibited` (covered types), `EndpointCoverage` (two probes), `AnalyticsDescriptor` (routes, tab positions, actions, archetype), `SaveHoldCoverage`, `CompositeMintSweep` (two mints), `Navigation`, `ToolNavigateContract`, `ui/tools/screen-mirror.test.mjs`, `ui/tools/navigation.test.mjs`, `ui/tools/analytics.test.mjs`, `ui/browser/structural-walk.mjs`, `strings.ts` (one line reference moved), `proposal-view.ts`, `screens.generated.ts`. **Contended with Epic 21 (add-only or generated):** `EXPERIENCE.md`, `Baseline.cls`, `Prohibited.cls` (the widened `IsQualityMeasureType` body and added lines only), `ReadTool`, `ToolWrite` (the tool counts), `strings.ts`, `screens.generated.ts` (regenerate at merge) and the roster tests above. Green on the throwaway after: the two new classes, those roster classes, `AnalyticsQualityMeasure{Write,WriteEdge,WriteReal,Read,Edge,Gate}`, `AnalyticsListingWrite`, `AnalyticsListingGroupWrite`, `AnalyticsListingGroupWriteEdge`, `Descriptor`, `PortGate`, `StageTwoTools`; `test:tools` 2,330 of 2,330; `test:components` 3,595 of 3,595 (run in directory slices); the two analytics browser specs 18 of 18; the initial bundle 2.14 MB.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned Batch 3 (six tools on Batch 2's class-write path, the tab group for DW-2734), halted after planning as directed. Nothing was implemented, and no instance was touched at plan.
-- For the spec gate: three veto items under Design Notes (proposed strings and codes; no rename or reorder; Section kept as stored) and two proposed spine lines. The size fallback (3a/3b) is Decided in-stage 6.
+- **Review:** 14 findings (medium 4, low 8, maybe-false 2); patches applied: four medium (sentence roster, audit-row legs, group-only change test, add into a disabled group no longer enables it) and three mutation lines; one item deferred (unverified medium); the rest rejected with reasons in the Review Triage Log. Follow-up review recommended: the client dialog's payload change and the deferred pre-save reader are the unverified risks; the verification pass also fixed `PARTSEPARATOR` (a literal now, because the probe namespace compiles the port without this product's classes).
+- **Verification (lead, final tree):** both new classes green on their first run on a rebuilt `ocupilot-b-ci` (7 and 7 tests); full ObjectScript sweep 17 of 17 shards green on the final code; `test:tools` 2,330; component slices (analytics 69, shell 1,264) green; both analytics browser specs 18 of 18 after the final bundle; `check-objectscript` and `lint-docs` clean.
+- **Implemented:** the six element and documentation writes at both callers on Batch 2's class-write path (the port's reads, plan, compose, restore, audit and script forms; six tools, two bases, two mints and two Saves with routes; descriptors, baseline, error codes, the prohibited-set types), the tab group for DW-2734 (Decided in-stage 1), the client (two pages, the dialog's two kinds, maps, strings, mirror) and the EXPERIENCE.md row.
+- **Verification:** under Verification (the loop commands; the full `(once)` sweep is the lead's). `AnalyticsQualityMeasurePartWrite` (7) and `PartWriteEdge` (6) green on their first run; `check-objectscript` 0 problems; `lint-docs` clean.
+- **Risks:** a measure whose stored documentation holds `&euro;` or `&nbsp;` refuses every write until its class is edited; line feeds in an item's content are not kept (the vendor's read drops them), and any write that composes the class rewrites an existing item's content the same way. The contended files are listed under Verification.

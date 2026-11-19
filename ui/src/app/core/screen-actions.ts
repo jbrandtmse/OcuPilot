@@ -215,6 +215,18 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     delete: STRINGS.actionDelete,
   },
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { add: STRINGS.analyticsListingAddAction, set: STRINGS.analyticsListingChangeAction, remove: STRINGS.analyticsListingRemoveAction },
+  // Story 24.12 Batch 3: Groups and elements' Add element, Change element, Remove element and Remove group, and Documentation's Add, Change and Remove documentation item.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': {
+    add: STRINGS.analyticsQualityMeasureElementAddAction,
+    set: STRINGS.analyticsQualityMeasureElementChangeAction,
+    remove: STRINGS.analyticsQualityMeasureElementRemoveAction,
+    'remove-group': STRINGS.analyticsQualityMeasureGroupRemoveAction,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': {
+    add: STRINGS.analyticsQualityMeasureMetaAddAction,
+    set: STRINGS.analyticsQualityMeasureMetaChangeAction,
+    remove: STRINGS.analyticsQualityMeasureMetaRemoveAction,
+  },
   // Story 24.12: Quality measures' New quality measure opens the dialog that creates a measure, its Edit the dialog that changes one, its Copy the dialog that copies one and its Delete removes one.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': {
     add: STRINGS.analyticsQualityMeasureNewAction,
