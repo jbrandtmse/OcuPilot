@@ -468,3 +468,5 @@
 2026-11-19T10:21:35Z	Story 24.13	stage_spawned	stage=code-review spawn_at=2026-11-19T10:21:35Z model=opus agent_name=24-13-analytics-settings-code-review-batch1 cycle_iteration=1 baseline=b3866e964
 2026-11-19T10:45:59Z	Story 24.13	review_complete	spawn_at=2026-11-19T10:23:00Z model=opus layers=4(full-opus) findings=21(high0,med7,low13,maybe-false1) patched=8 deferred=3 rejected=10 intent_gap=0 verify=CubeManager11/11,SettingsRead10/10,SettingsEdge4/4,test:tools2331 commit=648f99af0 scope=batch1
 2026-11-19T10:45:59Z	Story 24.13	ledger_adjudicated	owned=1 resolved=DW-2518(resolved-by:24-13-analytics-settings) kept=DW-2771(open_owner_24-13_for_batch2) born_terminal=DW-2770,DW-2772,DW-2773 reowned=0 scope=batch1 model=claude-opus-5-5
+2026-11-19T10:50:15Z	Story 24.13	integrated_feature	feature=bad0bf336(21.16) merge=6cc61acfb conflicts=5(roster_unions;counts_ReadTool527,Descriptor103;screens.generated_regenerated) test_tools=2333/2333 check_objectscript=0 scope=batch1
+2026-11-19T10:50:15Z	Story 24.13	fresh_check_started	throwaway=ocupilot-b-ci tree=6cc61acfb
