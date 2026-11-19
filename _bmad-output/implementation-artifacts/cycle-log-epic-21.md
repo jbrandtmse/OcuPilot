@@ -666,3 +666,6 @@
 2026-11-19T04:42:24Z	Story 21.16	ci_red_classified	run=44455430594 workflow=.github/workflows/ci.yml class=defect head=23f0474c5 cause=fresh_compile_fails:TAKENREASON_COSEXPRESSION_on_uncompiled_OcuPilot.Api.LocaleError(LocaleCopySave,LocaleTableSave);every_leg
 2026-11-19T04:42:24Z	Story 21.16	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=compile_order_TAKENREASON scope_baseline=55d7deb8b
 2026-11-19T04:42:24Z	Story 21.16	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T04:42:24Z model=sonnet agent_name=21-16-implement-rework-1 cycle_iteration=2
+2026-11-19T04:59:57Z	Story 21.16	dev_complete	scope=rework1(compile_order_DependsOn) spawn_at=2026-11-19T04:40Z model=sonnet build_sha=d9327710f followup_review_recommended=false cycle_iteration=2
+2026-11-19T04:59:57Z	Story 21.16	code_head_pushed	sha=d9327710f run=44462033892 missing=none note=pushed_alone;covers_55d7deb8b
+2026-11-19T04:59:57Z	Story 21.16	stage_spawned	stage=code-review scope=rework1 spawn_at=2026-11-19T04:59:57Z model=opus agent_name=21-16-code-review-2 cycle_iteration=2 baseline=0ddd479ee
