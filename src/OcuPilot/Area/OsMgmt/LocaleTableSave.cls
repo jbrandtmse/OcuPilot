@@ -6,7 +6,8 @@
 /// <code>OutputTo</code>; a locale the instance does not list is 404 <code>LOCALE.NOTFOUND</code>.</p>
 /// <p>The rules over the row and its sides are <class>OcuPilot.Port.LocalePort</class>'s, asked under its per-locale lock before any vendor call, so
 /// <method>Violations</method> finds none of its own.</p>
-Class OcuPilot.Area.OsMgmt.LocaleTableSave Extends OcuPilot.Area.Interop.ItemSave
+/// <p><code>DependsOn</code> is required: <parameter>TAKENREASON</parameter> is a compile-time expression over <class>OcuPilot.Api.LocaleError</class>.</p>
+Class OcuPilot.Area.OsMgmt.LocaleTableSave Extends OcuPilot.Area.Interop.ItemSave [ DependsOn = OcuPilot.Api.LocaleError ]
 {
 
 /// <p>The tool class both callers resolve the add through (AD-55).</p>

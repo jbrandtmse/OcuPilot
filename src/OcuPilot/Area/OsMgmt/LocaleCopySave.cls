@@ -6,7 +6,8 @@
 /// optionally, <code>Description</code>; any other member is 400 <code>PORT.FIELD.UNEXPECTED</code>.</p>
 /// <p>The rules over the new name and the source are <class>OcuPilot.Port.LocalePort</class>'s, asked under its per-locale lock before any vendor call
 /// (<code>LOCALE.COPY.NAME</code>, <code>LOCALE.NOTFOUND</code>, <code>LOCALE.COPY.TAKEN</code>), so <method>Violations</method> finds none of its own.</p>
-Class OcuPilot.Area.OsMgmt.LocaleCopySave Extends OcuPilot.Area.Interop.ItemSave
+/// <p><code>DependsOn</code> is required: <parameter>TAKENREASON</parameter> is a compile-time expression over <class>OcuPilot.Api.LocaleError</class>.</p>
+Class OcuPilot.Area.OsMgmt.LocaleCopySave Extends OcuPilot.Area.Interop.ItemSave [ DependsOn = OcuPilot.Api.LocaleError ]
 {
 
 /// <p>The tool class both callers resolve the copy through (AD-55).</p>
