@@ -558,7 +558,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (measured by Story 18.42's Task 0 on a throwaway with auditing on; DW-2371, a vendor candidate under the owner's hold, never reported).
 
-  **The cube manager's build and synchronize (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], which the vendor does not audit (its `CubeEvent` rows are bookkeeping; measured with auditing on), record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write.
+  **The cube manager's build and synchronize (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], which the vendor does not audit (its `CubeEvent` rows are bookkeeping; measured with auditing on), record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write. [AMENDED 2026-11-19, Story 24.13 spec gate, owner answer U-34 A] A build or synchronize that the vendor ran and that then failed records the same `ConfigChange` row with `failed` true, naming only the cubes whose own status in the vendor's statistics reports them updated, and records none when no cube was updated.
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
