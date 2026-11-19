@@ -726,3 +726,7 @@
 2026-11-19T20:03:42Z	Story 21.10	fresh_check	env=recipe(ci-throwaway_rebuild) result=fail test=Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode(ConfigPort_doc_comment_spells_PROHIBITED.SERVICEACCOUNTSIGNIN) head=11cb922ab action=gate_aborted(runner_stopped_its_own_sweep_at_shard_2),rework
 2026-11-19T20:03:42Z	Story 21.10	rework_opened	cycle_iteration=2 iteration=1 trigger=high(fresh_check_red) items=ConfigPort_comment_PROHIBITED_literal scope_baseline=11cb922ab
 2026-11-19T20:03:42Z	Story 21.10	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-19T20:03:42Z model=sonnet agent_name=21-10-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(lineended.py)
+2026-11-19T20:21:32Z	Story 21.10	dev_complete	scope=rework1(comment) spawn_at=2026-11-19T20:10Z model=sonnet build_sha=ad39bd393 followup_review_recommended=false cycle_iteration=2
+2026-11-19T20:21:32Z	Story 21.10	ruling	question=re-review_for_a_one-line_comment_rework choice=no_separate_Opus_re-review(the_rework's_own_layers_reviewed_the_one-comment_diff;the_fresh-environment_check_is_the_proof) via=runner category=decide policy=b9ff703e
+2026-11-19T20:21:32Z	Story 21.10	code_head_pushed	sha=ad39bd393 run=44607797355 missing=none note=supersedes_11cb922ab_run_44601785786
+2026-11-19T20:21:32Z	Story 21.10	gate_step	step=fresh_check+full_sweep+smoke head=ad39bd393 started=2026-11-19T20:21:32Z dir=e21u/21-10/gate attempt=2
