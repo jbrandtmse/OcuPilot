@@ -2,7 +2,7 @@
 title: 'Story 21.15: Locale and table import'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: 'e0625697cc0368fe272673c7beda3ad6f0868a41'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -90,6 +90,8 @@ The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 na
 - AC6. Given the default baseline and a `y` locale the test created, when a person exports it to this browser and the agent proposes, and the person confirms, an export to a server file already present under an allowed root, then both round-trip over `Config.NLS.Locales.ExportList`: the lines and the replaced file each hold the locale's record and the counts `NumExported` answers, the locale is unchanged, and no temporary file remains; and a principal without `%Admin_FileSystemAccess:USE` is refused before any vendor call.
 
 ## Spec Change Log
+
+- 2026-11-19 (Task 0 stop, orchestrator ruling, veto U-114; AD-51 sentence `29879ab32`): option 1. The import's review and write keep only the file's custom records; the vendor gets a temporary file holding just those; shipped tables and subtables are dropped, never written, and the review states how many (reuse an existing string; at most one new sentence, listed in U-114). `LOCALE.IMPORT.SYSTEM` is not added. A malformed file is refused before the write with an existing refusal code (the vendor answers OK and imports nothing), pinned by a test; OcuPilot's own Export file round-trips through Import, pinned by a test. The temporary file lives under a directory OcuPilot owns and is deleted on every path, errors included, pinned by a test. Build after Story 21.16 lands.
 
 - 2026-11-15 (re-plan, owner answer U-58): Export joined the intent (Problem, Approach, Always, Never, two matrix rows, AC6); the import's size refusal is one code, `LOCALE.TOOLARGE`, shared with the browser export; the import's descriptor actions follow `InteropLookupTableList`'s row-action form; the armed test is `LocaleTransferWrite`.
 

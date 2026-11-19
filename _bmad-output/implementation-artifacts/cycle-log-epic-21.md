@@ -645,3 +645,8 @@
 2026-11-19T01:03:49Z	Epic 21	ruling	question=21.18_merged;timings_refresh_44413746537_trips_AC9 via=orchestrator choice=21.18_merged(feature_ff_a44ce8fff+9fd1500d1);routed_to_next_code_head:copy_ci-timings-pending-run44413746537.json,browser-shard_timeout-minutes_55->62,run_ci.test+test:tools(Rule29)
 2026-11-19T01:03:49Z	Story 21.15	stage_returned	stage=implement status=blocked spawn_at=2026-11-19T00:52Z model=sonnet reason=Task0:a_y_locale_export_carries_shipped_tables(50+40);ImportAll_writes_shipped_records;planned_LOCALE.IMPORT.SYSTEM_refuses_our_own_export options=1(keep_custom_records_only;amends_AD-51)|2(refuse_shipped)|3(import_all_as_classic) recommended=1 class=U7(AD_amendment)->orchestrator
 2026-11-19T01:03:49Z	Story 21.15	parked_pending	awaiting=orchestrator_ruling(AD-51) next=21.16_meanwhile
+2026-11-19T01:07:37Z	Story 21.15	ruling	question=AD-51_import_of_shipped_records choice=option1_custom_records_only(conditions:counts_stated,malformed_refused_before_write,own_export_round-trips,temp_file_owned_dir_deleted_every_path) via=orchestrator category=veto item=U-114
+2026-11-19T01:07:37Z	Story 21.15	spine_amended	ad=AD-51 kind=add-only sentence=custom_records_only via=orchestrator_ruling veto=U-114 lint_spine=only_preexisting_{id}
+2026-11-19T01:08:15Z	Story 21.15	spec_updated	change_log=orchestrator_ruling_U-114 status=ready-for-dev(after_21.16)
+2026-11-19T01:08:15Z	Epic 21	code_head_pushed	sha=6bc7a0d66 run=44434412247 missing=none note=routed_timings_refresh(44413746537)+browser-shard_62min;ci.test_104/104,test:tools_2330/2330
+2026-11-19T01:08:15Z	Story 21.16	stage_spawned	stage=implement scope=batches1-3 spawn_at=2026-11-19T01:08:15Z model=sonnet agent_name=21-16-implement-1 cycle_iteration=1 story_base=29879ab32
