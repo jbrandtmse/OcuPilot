@@ -473,3 +473,5 @@
 2026-11-19T10:52:52Z	Story 24.13	fresh_check_failed	tree=6cc61acfb class=AnalyticsCubeManager method=TestAPartialBuildTheVendorRanIsRecordedWithTheCubeItBuilt first_run=red(run3) rerun=green(run4) cause=audit_window_includes_sibling_row(inference) others=AnalyticsSettingsRead10/10,AnalyticsSettingsEdge4/4
 2026-11-19T10:52:52Z	Story 24.13	rework_opened	iteration=1 items=1([Smoke]) baseline=7953f3b7727e5fca4f191c0e902e8eb0ad064bcc
 2026-11-19T10:52:52Z	Story 24.13	stage_spawned	stage=implement-rework spawn_at=2026-11-19T10:52:52Z model=sonnet agent_name=24-13-analytics-settings-rework-1 cycle_iteration=1
+2026-11-19T11:06:32Z	Story 24.13	rework_built	iteration=1 sha=955f0dc2a fix=audit_counts_before_after(Count,Added) fresh_first_run=green second_run=green deferred=1(other_classes_may_share_window_race_unverified)
+2026-11-19T11:06:32Z	Story 24.13	stage_spawned	stage=re-review spawn_at=2026-11-19T11:06:32Z model=opus agent_name=24-13-analytics-settings-rereview-1 cycle_iteration=1 baseline=7953f3b77
