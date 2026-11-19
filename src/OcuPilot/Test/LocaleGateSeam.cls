@@ -4,8 +4,8 @@
 /// <method>VendorRefuses</method> makes them answer an error, so a test sees what the port would send and no locale changes. The vendor's validity
 /// check answers what <method>Feed</method> names, its install check what <method>FeedInstallable</method> names (every ask recorded, <method>Checks</method>),
 /// the collation of IRISTEMP what <method>Collations</method> names, and a locale <method>HoldLocale</method> names is listed whether or not the instance
-/// holds it. It records the locks the port takes and releases (<method>Held</method>, <method>LockOrder</method>) and refuses one <method>HoldBusy</method>
-/// names. Nothing else differs from the shipped port.</p>
+/// holds it. It records the locks the port takes and releases (<method>Held</method>, <method>LockOrder</method>), refuses one <method>HoldBusy</method>
+/// names, and changes the current locale when one <method>CurrentOnLock</method> names is taken. Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.LocaleGateSeam Extends OcuPilot.Port.LocalePort
 {
@@ -22,7 +22,14 @@ ClassMethod Reset()
     Kill ^||OcuPilotLocaleCalls, ^||OcuPilotLocaleRefuses, ^||OcuPilotLocaleFed, ^||OcuPilotLocaleInstallable, ^||OcuPilotLocaleChecks, ^||OcuPilotLocaleCollation, ^||OcuPilotLocaleFaults, ^||OcuPilotLocaleHeld
     Kill ^||OcuPilotLocaleProps, ^||OcuPilotLocaleTables, ^||OcuPilotLocaleAvailable, ^||OcuPilotLocaleSent, ^||OcuPilotLocaleUncompiled
     Kill ^||OcuPilotLocaleCurrent, ^||OcuPilotLocaleImported, ^||OcuPilotLocaleImportCounts, ^||OcuPilotLocaleExportText, ^||OcuPilotLocaleExportCounts
-    Kill ^||OcuPilotLocaleLocks, ^||OcuPilotLocaleLockOrder, ^||OcuPilotLocaleBusy, ^||OcuPilotLocaleLockedAtImport
+    Kill ^||OcuPilotLocaleLocks, ^||OcuPilotLocaleLockOrder, ^||OcuPilotLocaleBusy, ^||OcuPilotLocaleLockedAtImport, ^||OcuPilotLocaleCurrentOnLock
+}
+
+/// <p>Once <method>TakeLock</method> takes the target <var>pTarget</var>, pose <var>pLocale</var> as the current locale, loading nothing
+/// (<method>HoldCurrent</method>), as another request would have made it current before the lock was taken; until <method>Reset</method>.</p>
+ClassMethod CurrentOnLock(pTarget As %String, pLocale As %String)
+{
+    Set ^||OcuPilotLocaleCurrentOnLock(pTarget) = pLocale
 }
 
 /// <p>Make <method>TakeLock</method> refuse the target <var>pTarget</var>, as a lock another request keeps, until <method>Reset</method>.</p>
@@ -81,6 +88,10 @@ ClassMethod TakeLock(pTarget As %String) As %Boolean [ Private ]
     If tTaken {
         Set ^||OcuPilotLocaleLocks(pTarget) = $Get(^||OcuPilotLocaleLocks(pTarget)) + 1
         Set ^||OcuPilotLocaleLockOrder($Increment(^||OcuPilotLocaleLockOrder)) = pTarget
+        If $Data(^||OcuPilotLocaleCurrentOnLock(pTarget)) {
+            Kill ^||OcuPilotLocaleCurrent
+            Set ^||OcuPilotLocaleCurrent = ^||OcuPilotLocaleCurrentOnLock(pTarget)
+        }
     }
     Quit tTaken
 }

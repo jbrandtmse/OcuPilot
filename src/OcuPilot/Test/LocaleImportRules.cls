@@ -6,8 +6,9 @@
 /// path, an error and an exception included, and a directory already at the name refused; the locks an import takes; the records the vendor's class rejects; and
 /// the script an import renders.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the manager directory as an allowed root, and an instance that lists no
-/// locale, table or sub-table named <code>yqzw</code>, <code>yqone</code> or <code>XLT-yqone-Unicode</code>. It writes only files under the probe directory
-/// <class>OcuPilot.Test.ExplorerTransferProbe</class> names and the port's own temporary directory, and removes them.</p>
+/// locale, table or sub-table named <code>yqzw</code>, <code>yqaw</code>, <code>yqyw</code>, <code>yqone</code> or <code>XLT-yqone-Unicode</code>. It writes only
+/// files under the probe directory <class>OcuPilot.Test.ExplorerTransferProbe</class> names and directories named for the port's transfers in the operating
+/// system's temporary directory, and removes them.</p>
 Class OcuPilot.Test.LocaleImportRules Extends %UnitTest.TestCase
 {
 
@@ -338,7 +339,7 @@ Method TestTheAgentSchemaIsClosedAndTheMintRefusesWhatThePortRefuses()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), "", "and no import was made")
 }
 
-/// <p><b>AC5 (the file the port makes).</b> The file the port hands the vendor is empty and its own when the vendor is called, under the port's own temporary directory, whatever
+/// <p><b>The file the port makes (Spec Change Log, 2026-11-19).</b> The file the port hands the vendor is empty and its own when the vendor is called, in a directory made for the transfer, whatever
 /// the vendor's answer, and is gone afterwards: after an import that ends in a vendor error and one that raises an exception, and after an export to this browser, to a file,
 /// with an error and with an exception. The vendor never receives a caller's value as its file, and the log of a vendor error holds its error number, not its text,
 /// which quotes the file's values.</p>
@@ -348,7 +349,7 @@ Method TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath()
 {
     Set tPort = ..#TRANSFER
     Set tPrefix = $ClassMethod(tPort, "TransferParent") _ $Parameter(tPort, "TRANSFERDIRECTORY") _ "-"
-    Do $$$AssertTrue((tPrefix '= "") && ##class(%File).DirectoryExists($ClassMethod(tPort, "TransferParent")), "the operating system's temporary directory is found")
+    Do $$$AssertTrue(($ClassMethod(tPort, "TransferParent") '= "") && ##class(%File).DirectoryExists($ClassMethod(tPort, "TransferParent")), "the operating system's temporary directory is found")
     Set tText = ..Wrap(..LocaleXml(..#LOCALE))
     Kill tNone
     Set tHeld = ..Review(tText, .tReview, tPort)
@@ -394,8 +395,8 @@ Method TestTheFileHandedToTheVendorIsOursAndGoneOnEveryPath()
     }
 }
 
-/// <p><b>AC5 (the directory the port owns).</b> Each transfer's directory is made by the port, under a name no other transfer has, and a directory already at that name is
-/// refused: an import and an export are a logged server error, the vendor is never called, and what was in the directory is left as it was.</p>
+/// <p><b>The directory the port owns (Spec Change Log, 2026-11-19).</b> Each transfer's directory is made by the port, under a name no other transfer has, and a directory
+/// already at that name is refused: an import and an export are a server error, the vendor is never called, and what was in the directory is left as it was.</p>
 /// <p>Mutation (Rule 19): <code>TransferFile</code> not refusing an existing directory -> both rows go red.</p>
 Method TestATransferDirectoryThatIsAlreadyThereIsRefusedAndLeftAlone()
 {
@@ -428,12 +429,25 @@ Method TestATransferDirectoryThatIsAlreadyThereIsRefusedAndLeftAlone()
     Do $$$AssertTrue(##class(%File).RemoveDirectoryTree(tDirectory), "the posed directory is removed")
 }
 
-/// <p><b>AC2 (the locks).</b> An import locks <code>import</code> and then each custom locale its file keeps, in name order and whatever order the file names them
-/// in, holds all of them while the vendor is called, and releases all of them; a locale whose lock another request keeps refuses the import
-/// <code>WRITE.TARGETBUSY</code> with nothing imported and every lock it took released; and a write that finds its review keeps a locale the locks did not cover is
-/// <code>LOCALE.IMPORT.CHANGED</code>.</p>
+/// <p>Pose the two locales the lock test imports as listed custom ones and <code>yqyw</code> as the current locale, after a <method>OcuPilot.Test.LocaleGateSeam.Reset</method>.</p>
+Method PoseLockTest()
+{
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
+    Do $ClassMethod(..#SEAM, "HoldLocale", ..#LOCALE, "posed", 0, 1)
+    Do $ClassMethod(..#SEAM, "HoldLocale", "yqaw", "posed", 0, 1)
+    Kill tNone
+    Do $ClassMethod(..#SEAM, "HoldCurrent", "yqyw", .tNone, .tNone)
+}
+
+/// <p><b>AC2 (the locks).</b> An import locks <code>import</code> and then each custom locale its file keeps and the current locale, in name order and whatever
+/// order the file names them in, holds all of them while the vendor is called, and releases all of them after an import, a refusal and a vendor error; a locale whose
+/// lock another request keeps refuses the import <code>WRITE.TARGETBUSY</code> with nothing imported and every lock it took released; a locale made current before its
+/// lock was taken is refused <code>LOCALE.IMPORT.CURRENT</code> by the review the write repeats under the locks; and a write that finds its review keeps a locale, or a
+/// current locale, the locks did not cover is <code>LOCALE.IMPORT.CHANGED</code>. An install takes the locks of its locale and of the current locale, and a delete the
+/// lock of its locale, so either waits for an import that holds one.</p>
 /// <p>Mutation (Rule 19): <code>ImportUnderLock</code> taking only the <code>import</code> lock -> the held and busy rows go red; <code>PerformImport</code>'s covered check
-/// dropped -> the changed row goes red.</p>
+/// dropped -> the changed rows go red; <code>Install</code> taking no lock -> the install rows go red.</p>
 Method TestAnImportLocksEveryLocaleItKeepsInNameOrderAndReleasesThem()
 {
     Set tSeam = ..#SEAM
@@ -442,36 +456,60 @@ Method TestAnImportLocksEveryLocaleItKeepsInNameOrderAndReleasesThem()
     Kill tWrite
     Set tWrite("digest") = tReview.%Get("Digest")
     Set tWrite("replaces") = tReview.%Get("Replaces")
-    Do $ClassMethod(tSeam, "HoldLocale", ..#LOCALE, "posed", 0, 1)
-    Do $ClassMethod(tSeam, "HoldLocale", "yqaw", "posed", 0, 1)
+    Do ..PoseLockTest()
     Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(tSeam, "Calls"), "200||IMPORT", "an import of two locales is made")
-    Do $$$AssertEquals($ClassMethod(tSeam, "LockedAtImport") _ "|" _ $ClassMethod(tSeam, "LockOrder") _ "|" _ $ClassMethod(tSeam, "Held"), "import,yqaw," _ ..#LOCALE _ "|import,yqaw," _ ..#LOCALE _ "|", "the vendor was called with the import and both locales locked, taken in name order, and nothing is held after")
-    Do $ClassMethod(tSeam, "Reset")
-    Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
+    Do $$$AssertEquals($ClassMethod(tSeam, "LockedAtImport") _ "|" _ $ClassMethod(tSeam, "LockOrder") _ "|" _ $ClassMethod(tSeam, "Held"), "import,yqaw,yqyw," _ ..#LOCALE _ "|import,yqaw,yqyw," _ ..#LOCALE _ "|", "the vendor was called with the import, both locales and the current locale locked, taken in name order, and nothing is held after")
+    Do ..PoseLockTest()
     Do $ClassMethod(tSeam, "HoldBusy", ..#LOCALE)
     Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(tSeam, "Calls"), "409|WRITE.TARGETBUSY|", "an import of a locale another request holds is refused as busy, with no vendor call")
-    Do $$$AssertEquals($ClassMethod(tSeam, "LockOrder") _ "|" _ $ClassMethod(tSeam, "Held"), "import,yqaw|", "and the locks it took first were released")
-    Do $ClassMethod(tSeam, "Reset")
-    Do ##class(OcuPilot.Test.LocaleRead).HoldAll()
-    Do $ClassMethod(tSeam, "HoldLocale", ..#LOCALE, "posed", 0, 1)
-    Do $ClassMethod(tSeam, "HoldLocale", "yqaw", "posed", 0, 1)
+    Do $$$AssertEquals($ClassMethod(tSeam, "LockOrder") _ "|" _ $ClassMethod(tSeam, "Held"), "import,yqaw,yqyw|", "and the locks it took first were released")
+    Do ..PoseLockTest()
+    Do $ClassMethod(tSeam, "CurrentOnLock", ..#LOCALE, ..#LOCALE)
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(tSeam, "Calls") _ "|" _ $ClassMethod(tSeam, "Held"), "409|LOCALE.IMPORT.CURRENT||", "a kept locale made current before its lock was taken is refused by the review under the locks, with no vendor call and every lock released")
+    Do ..PoseLockTest()
+    Kill tStale
+    Merge tStale = tWrite
+    Set tStale("digest") = "another"
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tStale) _ "|" _ $ClassMethod(tSeam, "Held"), "409|LOCALE.IMPORT.CHANGED|", "a changed file is refused with every lock released")
+    Do ..PoseLockTest()
+    Do $ClassMethod(tSeam, "VendorRefuses")
+    Do $$$AssertEquals(..Call("IMPORT", "locales.xml", tText, .tWrite) _ "|" _ $ClassMethod(tSeam, "Held"), "500|INTERNAL|", "and so is a vendor error")
+    Do ..PoseLockTest()
     Kill tQuery
     Set tQuery("name") = "import"
     Set tQuery("fileName") = "locales.xml"
     Set tQuery("content") = tText
     Set tQuery("digest") = tReview.%Get("Digest")
     Set tQuery("replaces") = tReview.%Get("Replaces")
-    Set tSC = $ClassMethod(tSeam, "ImportCovered", .tQuery, $ListBuild("yqaw"), .tOut, .tHttp, .tFault)
+    Set tSC = $ClassMethod(tSeam, "ImportCovered", .tQuery, $ListBuild("yqaw", "yqyw"), .tOut, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "|" _ $ClassMethod(tSeam, "Calls"), "409|LOCALE.IMPORT.CHANGED|","a write whose file keeps a locale the locks did not cover is refused as changed")
-    Set tSC = $ClassMethod(tSeam, "ImportCovered", .tQuery, $ListBuild("yqaw", ..#LOCALE), .tOut2, .tHttp2, .tFault2)
-    Do $$$AssertEquals(tHttp2 _ "|" _ $ClassMethod(tSeam, "Calls"), "200|IMPORT", "and one whose locks cover both is imported")
+    Set tSC = $ClassMethod(tSeam, "ImportCovered", .tQuery, $ListBuild("yqaw", ..#LOCALE), .tOut1, .tHttp1, .tFault1)
+    Do $$$AssertEquals(tHttp1 _ "|" _ $Select($IsObject($Get(tFault1)): tFault1.%Get("code"), 1: "") _ "|" _ $ClassMethod(tSeam, "Calls"), "409|LOCALE.IMPORT.CHANGED|","and so is one whose locks do not cover the current locale")
+    Set tSC = $ClassMethod(tSeam, "ImportCovered", .tQuery, $ListBuild("yqaw", "yqyw", ..#LOCALE), .tOut2, .tHttp2, .tFault2)
+    Do $$$AssertEquals(tHttp2 _ "|" _ $ClassMethod(tSeam, "Calls"), "200|IMPORT", "and one whose locks cover both and the current locale is imported")
+    Kill tInstall
+    Set tInstall("name") = ..#LOCALE
+    For tBusy = ..#LOCALE, "yqyw" {
+        Do ..PoseLockTest()
+        Do $ClassMethod(tSeam, "HoldBusy", tBusy)
+        Set tSC = $ClassMethod(tSeam, "Invoke", "Locales", "INSTALL", .tInstall, "", .tOut3, .tHttp3, .tFault3)
+        Do $$$AssertEquals(tHttp3 _ "|" _ $Select($IsObject($Get(tFault3)): tFault3.%Get("code"), 1: "") _ "|" _ $ClassMethod(tSeam, "Calls") _ "|" _ $ClassMethod(tSeam, "Held"), "409|WRITE.TARGETBUSY||", "an install of a locale waits for the lock " _ tBusy _ " an import holds, with no vendor call and no lock left")
+    }
+    Do ..PoseLockTest()
+    Do $ClassMethod(tSeam, "HoldBusy", ..#LOCALE)
+    Set tSC = $ClassMethod(tSeam, "Invoke", "Locales", "DELETE", .tInstall, "", .tOut4, .tHttp4, .tFault4)
+    Do $$$AssertEquals(tHttp4 _ "|" _ $Select($IsObject($Get(tFault4)): tFault4.%Get("code"), 1: "") _ "|" _ $ClassMethod(tSeam, "Calls"), "409|WRITE.TARGETBUSY|", "and so does a delete of it")
+    Do ..PoseLockTest()
+    Set tSC = $ClassMethod(tSeam, "Invoke", "Locales", "INSTALL", .tInstall, "", .tOut5, .tHttp5, .tFault5)
+    Do $$$AssertEquals($ClassMethod(tSeam, "LockOrder") _ "|" _ $ClassMethod(tSeam, "Held"), "yqyw," _ ..#LOCALE _ "|", "an install takes the current locale's lock and its own, in name order, and releases both")
+    Do $ClassMethod(tSeam, "Reset")
 }
 
-/// <p>A file whose one kept sub-table holds more than 1,000,000 characters, named by a kept custom table.</p>
-ClassMethod BigText() As %String
+/// <p>A file whose one kept sub-table holds <var>pItems</var> items, named by a kept custom table: at the default, more than 1,000,000 characters.</p>
+ClassMethod BigText(pItems As %Integer = 25000) As %String
 {
     Set tItems = ""
-    For tKey = 1:1:25000 {
+    For tKey = 1:1:pItems {
         Set tItems = tItems _ "<FromToItem FromToKey=""" _ tKey _ """>66</FromToItem>"
     }
     Set tSub = "<SubTables><Description>big</Description><FromTo>" _ tItems _ "</FromTo><Name>" _ ..#SUBTABLE _ "</Name><Type>0</Type></SubTables>"
@@ -505,42 +543,74 @@ ClassMethod ScriptFile(pScript As %String) As %String [ PublicList = (tFile, tSt
     Quit tText
 }
 
+/// <p>The length of the longest line of <var>pScript</var>.</p>
+ClassMethod LongestLine(pScript As %String) As %Integer
+{
+    Set tMax = 0
+    For tI = 1:1:$Length(pScript, $Char(10)) {
+        If $Length($Piece(pScript, $Char(10), tI)) > tMax Set tMax = $Length($Piece(pScript, $Char(10), tI))
+    }
+    Quit tMax
+}
+
+/// <p>The review of the server file <var>pName</var> in the probe directory, in <var>pQuery</var> with the reviewed digest and replaced count added as a draft's
+/// query carries them; <code>http|code</code>.</p>
+Method ServerReview(pName As %String, Output pQuery) As %String
+{
+    Kill pQuery
+    Set pQuery("name") = "import"
+    Set pQuery("root") = $ClassMethod(..#PROBE, "Root")
+    Set pQuery("path") = $ClassMethod(..#PROBE, "RelativeName", pName)
+    Set tOutcome = ..Call("IMPORTFILE", "", "", .pQuery, .tReview)
+    If $IsObject($Get(tReview)) {
+        Set pQuery("digest") = tReview.%Get("Digest")
+        Set pQuery("replaces") = tReview.%Get("Replaces")
+    }
+    Quit tOutcome
+}
+
 /// <p><b>AD-59.</b> An import and an export each render a script of the vendor's own call and the locale as a string literal. An import of a file the query names
-/// renders the records the review keeps, never the file: the script writes them line by line into a temporary file, byte for byte the file the port hands the vendor, with
-/// none of the shipped records the file holds, and imports that file with the literal flags and deletes it; a script that would pass 1,000,000 characters is refused. An
-/// import that names no file says the file is the one this browser sent.</p>
+/// renders the records the review keeps, never the file: the script writes them in pieces of at most 2,000 characters into a temporary file, byte for byte the file the
+/// port hands the vendor, with none of the shipped records the file holds, and imports that file with the literal flags and deletes it. A file whose digest is no longer the
+/// reviewed one renders the changed refusal, as the write refuses it; a script that would pass 1,000,000 characters is refused, whether its kept text passes that or only
+/// its script does. An import that names no server file renders no step.</p>
 /// <p>Mutation (Rule 19): the flags in <code>TransferSnippet</code> changed -> the import row goes red; <code>ImportSnippet</code> rendering the import of the whole file
-/// instead of the kept records, or the 1,000,000-character check dropped -> the kept-records and the cap rows go red.</p>
+/// instead of the kept records, or the 1,000,000-character check dropped -> the kept-records and the cap rows go red; the digest compare dropped from
+/// <code>ImportSnippet</code> -> the changed row goes red; <code>SNIPPETPIECE</code> raised past a record's length -> the line-length row goes red.</p>
 Method TestAnImportAndAnExportRenderTheirScript()
 {
     Set tSeam = ..#SEAM
     Do $$$AssertEquals($ClassMethod(tSeam, "SnippetForm", "Locales", "IMPORT") _ "|" _ $ClassMethod(tSeam, "SnippetForm", "Locales", "EXPORT") _ "|" _ $ClassMethod(tSeam, "SnippetForm", "Locales", "IMPORTFILE"), "objectscript|objectscript|", "both writes render a script and the review renders none")
     Set tText = ..MixedText()
     Do $ClassMethod(..#PROBE, "WriteFile", "locales.xml", tText)
-    Set tQuery("name") = "import"
-    Set tQuery("root") = $ClassMethod(..#PROBE, "Root")
-    Set tQuery("path") = $ClassMethod(..#PROBE, "RelativeName", "locales.xml")
+    Do $$$AssertEquals(..ServerReview("locales.xml", .tQuery), "200|", "the file is reviewed")
     Set tServer = $ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tQuery).%Get(0).%Get("text")
     Do $$$AssertTrue((tServer [ "ImportAll(tFile, .tImported, 7)") && (tServer [ ("allowed directory " _ tQuery("root") _ " and the name " _ tQuery("path"))) && '(tServer [ "Set tFile = ""locales.xml"""), "an import of a server file names its directory and name and the literal flags, and imports a file the script makes")
     Do $$$AssertTrue((tServer [ "<Name>" _ ..#LOCALE _ "</Name>") && (tServer [ "<NameFrom>" _ ..#TABLE _ "</NameFrom>") && (tServer [ "<Name>" _ ..#SUBTABLE _ "</Name>"), "the script holds the custom locale, table and sub-table")
     Do $$$AssertTrue('(tServer [ "<Name>enuw</Name>") && '(tServer [ "Accent-Unicode-Unicode") && '(tServer [ "<NameTo>Latin1</NameTo>"), "and none of the shipped records the file holds")
-    Kill tNone
-    Do $$$AssertEquals(..Call("IMPORTFILE", "", "", .tQuery, .tReview), "200|", "the same file is reviewed")
     Do $ClassMethod(tSeam, "HoldLocale", ..#LOCALE, "posed", 0, 1)
     Kill tWrite
     Merge tWrite = tQuery
-    Set tWrite("digest") = tReview.%Get("Digest")
-    Set tWrite("replaces") = tReview.%Get("Replaces")
     Do $$$AssertEquals(..Call("IMPORT", "", "", .tWrite) _ "|" _ $ClassMethod(tSeam, "Calls"), "200||IMPORT", "and imported")
     Set tScripted = ..ScriptFile(tServer)
     Do $$$AssertTrue((tScripted '= "") && (tScripted = $ClassMethod(tSeam, "Imported")), "the file the script writes is the file the port hands the vendor, byte for byte")
+    Do $ClassMethod(..#PROBE, "WriteFile", "locales.xml", tText _ " ")
+    Set tChangedSteps = $ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tQuery)
+    Do $$$AssertEquals(tChangedSteps.%Size() _ "|" _ tChangedSteps.%Get(0).%Get("kind") _ "|" _ tChangedSteps.%Get(0).%Get("text"), "1|comment|" _ ##class(OcuPilot.Api.LocaleError).#REASONIMPORTCHANGED, "a file changed after the review renders the changed refusal as one comment, as the write refuses it")
+    Do $ClassMethod(tSeam, "Reset")
+    Do $ClassMethod(..#PROBE, "WriteFile", "medium.xml", ..BigText(200))
+    Do $$$AssertEquals(..ServerReview("medium.xml", .tMedium), "200|", "a file whose kept sub-table is one record of about 9,000 characters is reviewed")
+    Set tMediumScript = $ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tMedium).%Get(0).%Get("text")
+    Kill tMediumWrite
+    Merge tMediumWrite = tMedium
+    Do $$$AssertEquals(..Call("IMPORT", "", "", .tMediumWrite) _ "|" _ $ClassMethod(tSeam, "Calls"), "200||IMPORT", "and imported")
+    Do $$$AssertTrue((..LongestLine(tMediumScript) <= 4100) && (..ScriptFile(tMediumScript) = $ClassMethod(tSeam, "Imported")), "its script writes the record in lines of at most 4,100 characters, byte for byte the file the port hands the vendor: " _ ..LongestLine(tMediumScript))
     Do $ClassMethod(..#PROBE, "WriteFile", "big.xml", ..BigText())
-    Kill tBig
-    Set tBig("name") = "import"
-    Set tBig("root") = tQuery("root")
-    Set tBig("path") = $ClassMethod(..#PROBE, "RelativeName", "big.xml")
-    Do $$$AssertEquals(..Call("IMPORTFILE", "", "", .tBig, .tBigReview), "200|", "a file whose kept sub-table holds more than 1,000,000 characters is reviewed")
+    Do $$$AssertEquals(..ServerReview("big.xml", .tBig), "200|", "a file whose kept sub-table holds more than 1,000,000 characters is reviewed")
     Do $$$AssertEquals($ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tBig).%Size(), 0, "and its script is refused whole")
+    Do $ClassMethod(..#PROBE, "WriteFile", "under.xml", ..BigText(22000))
+    Do $$$AssertEquals(..ServerReview("under.xml", .tUnder), "200|", "a file whose kept text is under 1,000,000 characters is reviewed")
+    Do $$$AssertEquals($ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tUnder).%Size(), 0, "and its script, which passes 1,000,000 characters, is refused whole")
     Kill tAbsent
     Set tAbsent("name") = "import"
     Set tAbsent("root") = tQuery("root")
@@ -549,12 +619,10 @@ Method TestAnImportAndAnExportRenderTheirScript()
     Do $$$AssertEquals(tAbsentSteps.%Size() _ "|" _ tAbsentSteps.%Get(0).%Get("kind"), "1|comment", "and a file the import refuses renders its refusal as one comment")
     Kill tLocal
     Set tLocal("name") = "import"
-    Set tLocalScript = $ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tLocal).%Get(0).%Get("text")
-    Do $$$AssertTrue((tLocalScript [ "ImportAll(tFile, .tImported, 7)") && (tLocalScript [ "this browser sent"), "an import of a local file says it is the file this browser sent")
+    Do $$$AssertEquals($ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tLocal).%Size(), 0, "an import that names no server file renders no step")
     Set tLocal("fileName") = "mine.xml"
     Set tLocal("content") = tText
-    Set tLocalScript = $ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tLocal).%Get(0).%Get("text")
-    Do $$$AssertTrue((tLocalScript [ "this browser sent") && '(tLocalScript [ "<Name>") && '(tLocalScript [ "mine.xml"), "and a local file's name and text are never in the script")
+    Do $$$AssertEquals($ClassMethod(tSeam, "Snippet", "Locales", "IMPORT", .tLocal).%Size(), 0, "nor does one of a local file, whose name and text are never in a script")
     Kill tExport
     Set tExport("name") = "yq""zw"
     Set tExportScript = $ClassMethod(tSeam, "Snippet", "Locales", "EXPORT", .tExport).%Get(0).%Get("text")

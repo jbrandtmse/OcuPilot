@@ -5,8 +5,9 @@
 /// conditional live-to-terminal update Cancel uses (AD-34).</p>
 /// <p><b>It sends nothing.</b> No port write, no mint, no token, no ledger row, no agent marker
 /// (AD-15 binds only an executed write) and no change event. The only reads are the proposal's own
-/// row and the prohibited set's own read of its target (AD-10), which refuses a prohibited effect
-/// with the row left live.</p>
+/// row, the prohibited set's own read of its target (AD-10), which refuses a prohibited effect
+/// with the row left live, and what a port's <code>Snippet</code> reads to mirror its branch, such as
+/// the server file a locale import names.</p>
 /// <p><b>No secret is rendered.</b> Every name the tool declares secret, every <code>secret</code>
 /// row of its field list and every name the credential pattern matches
 /// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) reads as the placeholder

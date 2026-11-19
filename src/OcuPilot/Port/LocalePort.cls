@@ -122,6 +122,9 @@ Parameter IMPORTFLAGS As INTEGER = 7;
 /// <p>The most locale names an import review lists.</p>
 Parameter LISTEDLOCALES As INTEGER = 50;
 
+/// <p>The most characters of a kept record one line of an import's script writes, so each line stays short enough to paste into a terminal.</p>
+Parameter SNIPPETPIECE As INTEGER = 2000;
+
 /// <p>The name every transfer's directory starts with, under the operating system's temporary directory; the rest of the name is unique to the transfer.</p>
 Parameter TRANSFERDIRECTORY = "ocupilot-locale";
 
@@ -485,8 +488,27 @@ ClassMethod ReadInstallable(pName As %String, Output pInstallable As %Boolean) A
 
 /// <p>Install the locale <var>pName</var> as the instance's current locale: the locale is read, the vendor's own check
 /// (<method>ReadInstallable</method>) is asked, the rules refuse a locale it does not admit, and then <method>SendInstall</method> installs it with the default collation of IRISTEMP read before and after
-/// (<method>TempCollation</method>). Answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>.</p>
+/// (<method>TempCollation</method>). Answers <code>{Name, TempCollationBefore, TempCollationAfter}</code>. It runs under the write lock on the locale and on
+/// the current locale (<method>TakeLocales</method>), the locks an import holds; a lock another request keeps is 409 <code>WRITE.TARGETBUSY</code>.</p>
 ClassMethod Install(pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If pName = "" Quit ..Refused(##class(OcuPilot.Api.LocaleError).#NOTFOUND, .pHttpStatus, .pFault)
+    Set tSC = ..CurrentFootprint(.tCurrent, .tCurrentTables, .tCurrentSubTables)
+    If $$$ISERR(tSC) Quit ..Fail("the current locale could not be read before an install", tSC, .pHttpStatus, .pFault)
+    If '..TakeLocales($ListBuild(pName) _ $Select(tCurrent = "": "", 1: $ListBuild(tCurrent)), .tLocked) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
+    Try {
+        Set tSC = ..InstallLocked(pName, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("a locale install failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Do ..ReleaseLocales(.tLocked)
+    Quit tSC
+}
+
+/// <p><method>Install</method>'s work, with its locks held.</p>
+ClassMethod InstallLocked(pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = ..State(pName, .tRow, .pHttpStatus, .pFault)
@@ -507,8 +529,25 @@ ClassMethod Install(pName As %String, Output pResult As %DynamicObject, Output p
 }
 
 /// <p>Delete the locale <var>pName</var>: the locale is read, the rules refuse a locale InterSystems ships and the current locale, and then
-/// <method>SendDelete</method> deletes it. Answers <code>{Name}</code>.</p>
+/// <method>SendDelete</method> deletes it. Answers <code>{Name}</code>. It runs under the write lock on the locale; a lock another request keeps is 409
+/// <code>WRITE.TARGETBUSY</code>.</p>
 ClassMethod Remove(pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If pName = "" Quit ..Refused(##class(OcuPilot.Api.LocaleError).#NOTFOUND, .pHttpStatus, .pFault)
+    If '..TakeLock(pName) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
+    Try {
+        Set tSC = ..RemoveLocked(pName, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("a locale delete failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Do ..ReleaseLock(pName)
+    Quit tSC
+}
+
+/// <p><method>Remove</method>'s work, with its lock held.</p>
+ClassMethod RemoveLocked(pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = ..State(pName, .tRow, .pHttpStatus, .pFault)
@@ -1486,9 +1525,10 @@ ClassMethod ImportReview(pText As %String, Output pReview As %DynamicObject, Out
     Quit $$$OK
 }
 
-/// <p>Whether every record <var>pScan</var> keeps (<method>ScanImport</method>) reads and validates as the vendor's own class would take it
-/// (<method>RecordValid</method>), in <var>pValid</var>. The vendor's import writes the records in order and fails on the first it rejects, so a rejected
-/// record would leave the records before it written. Read in <code>%SYS</code> by save and restore; nothing is saved.</p>
+/// <p>Whether every record <var>pScan</var> keeps (<method>ScanImport</method>) reads into the vendor's own class and passes its
+/// <code>%ValidateObject</code> (<method>RecordValid</method>), in <var>pValid</var>. The vendor's import writes the records in order and fails on the first it
+/// rejects, so a rejected record would leave the records before it written; a rule the vendor applies only when it saves is not checked here. Read in
+/// <code>%SYS</code> by save and restore; nothing is saved.</p>
 ClassMethod KeptRecordsValid(ByRef pScan, Output pValid As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -1641,10 +1681,10 @@ ClassMethod ReadImportFile(pName As %String, ByRef pQuery, Output pResult As %Dy
     Quit $$$OK
 }
 
-/// <p>Import the file <var>pQuery</var> names under the write lock on <parameter>IMPORTID</parameter> and on each custom locale the file keeps, taken in
-/// name order (<method>TakeLocales</method>), the locks <method>WriteUnderLock</method> takes for the same locale: the file is read and reviewed once to
-/// name them, and <method>PerformImport</method> reviews it again under them. A lock another request keeps past <parameter>LOCKSECONDS</parameter> is 409
-/// <code>WRITE.TARGETBUSY</code>, with every lock this call took released.</p>
+/// <p>Import the file <var>pQuery</var> names under the write lock on <parameter>IMPORTID</parameter> and on each custom locale the file keeps and the current
+/// locale, taken in name order (<method>TakeLocales</method>), the locks <method>WriteUnderLock</method>, <method>Install</method> and <method>Remove</method> take
+/// for the same locale: the file is read and reviewed once to name them, and <method>PerformImport</method> reviews it again under them. A lock another request
+/// keeps past <parameter>LOCKSECONDS</parameter> is 409 <code>WRITE.TARGETBUSY</code>, with every lock this call took released.</p>
 ClassMethod ImportUnderLock(pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -1655,6 +1695,9 @@ ClassMethod ImportUnderLock(pName As %String, ByRef pQuery, Output pResult As %D
     If $$$ISERR(tSC) Quit tSC
     Set tText = ""
     Set tKept = ""
+    Set tSC = ..CurrentFootprint(.tCurrent, .tCurrentTables, .tCurrentSubTables)
+    If $$$ISERR(tSC) Quit ..Fail("the current locale could not be read", tSC, .pHttpStatus, .pFault)
+    If tCurrent '= "" Set tNames = tNames _ $ListBuild(tCurrent)
     If '..TakeLock(..#IMPORTID) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
     If '..TakeLocales(tNames, .tLocked) {
         Do ..ReleaseLock(..#IMPORTID)
@@ -1708,7 +1751,8 @@ ClassMethod ReleaseLocales(ByRef pLocked) [ Private ]
 }
 
 /// <p>The import, with the locks of <var>pLocked</var> held: the file is read and reviewed again (<method>ImportText</method>,
-/// <method>ImportReview</method>), and unless it keeps no locale the locks do not cover, and its digest and the count of records it replaces are the
+/// <method>ImportReview</method>), and unless it keeps no locale the locks do not cover, the current locale is one they cover, and its digest and the count
+/// of records it replaces are the
 /// reviewed <parameter>DIGESTPARAM</parameter> and <parameter>REPLACESPARAM</parameter> of the query, the write is 409
 /// <code>LOCALE.IMPORT.CHANGED</code> with nothing imported. Then <method>SendImport</method> hands the vendor the kept records, and
 /// every locale reviewed must be listed. Answers <code>{Locales, Tables, SubTables}</code>, the vendor's own counts.</p>
@@ -1723,6 +1767,9 @@ ClassMethod PerformImport(ByRef pQuery, ByRef pLocked, Output pResult As %Dynami
     For tI = 1:1:$ListLength(tNames) {
         If '$Data(pLocked($List(tNames, tI))) Set tUncovered = 1
     }
+    Set tSC = ..CurrentFootprint(.tCurrent, .tCurrentTables, .tCurrentSubTables)
+    If $$$ISERR(tSC) Quit ..Fail("the current locale could not be read", tSC, .pHttpStatus, .pFault)
+    If (tCurrent '= "") && '$Data(pLocked(tCurrent)) Set tUncovered = 1
     If tUncovered Quit ..Refused(##class(OcuPilot.Api.LocaleError).#IMPORTCHANGED, .pHttpStatus, .pFault)
     If '$Data(pQuery(..#DIGESTPARAM)) || '$Data(pQuery(..#REPLACESPARAM)) || (pQuery(..#DIGESTPARAM) '= tReview.%Get("Digest")) || (pQuery(..#REPLACESPARAM) '= tReview.%Get("Replaces")) {
         Quit ..Refused(##class(OcuPilot.Api.LocaleError).#IMPORTCHANGED, .pHttpStatus, .pFault)
@@ -2096,40 +2143,39 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 }
 
 /// <p>The script of an import or an export (AD-59): the vendor's own call on a file and the locale as a string literal. An import whose file the query
-/// names (<method>ImportSnippet</method>) writes the kept records into the script's own file and imports that; an export, and an import that names no
-/// file, use a placeholder file name. A server file is named by its allowed directory and relative name in a comment, since the directory is resolved
-/// when the write runs; a local file's text is never in a script, so its comment says the file is the one this browser sent.</p>
+/// names (<method>ImportSnippet</method>) writes the kept records into the script's own file and imports that; an import that names no server file renders
+/// no step, since a local file's text is never in a script and an import of the whole file would write records the port drops. An export uses a placeholder
+/// file name, and a server file is named by its allowed directory and relative name in a comment, since the directory is resolved when the write runs.</p>
 ClassMethod TransferSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
 {
     Set tAdmin = "OcuPilot.Port.AdminPort"
     Set tPath = $Get(pQuery(..#PATHPARAM))
     If (pType = ..#TYPEIMPORT) && (($Get(pQuery(..#ROOTPARAM)) '= "") || (tPath '= "")) Quit ..ImportSnippet(.pQuery)
+    If pType = ..#TYPEIMPORT Quit []
     If tPath '= "" {
         Set tSource = "; The file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTPARAM)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
-    } ElseIf pType = ..#TYPEIMPORT {
-        Set tSource = "; tFile names the file this browser sent, which no script carries"
     } Else {
         Set tSource = ""
     }
     Set tLines = $Select(tSource = "": "", 1: $ListBuild(tSource)) _ $ListBuild("Set tFile = ""locales.xml""")
-    If pType = ..#TYPEIMPORT {
-        Set tLines = tLines _ $ListBuild("Set tSC = ##class(Config.NLS.Locales).ImportAll(tFile, .tImported, " _ ..#IMPORTFLAGS _ ")")
-    } Else {
-        Set tLines = tLines _ $ListBuild("Set tLocales(" _ $ClassMethod(tAdmin, "Literal", $Get(pQuery(..#NAMEKEY))) _ ") = """"", "Set tSC = ##class(Config.NLS.Locales).ExportList(tFile, .tExported, .tLocales)")
-    }
+    Set tLines = tLines _ $ListBuild("Set tLocales(" _ $ClassMethod(tAdmin, "Literal", $Get(pQuery(..#NAMEKEY))) _ ") = """"", "Set tSC = ##class(Config.NLS.Locales).ExportList(tFile, .tExported, .tLocales)")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
 }
 
-/// <p>The script of an import of the file <var>pQuery</var> names: the records <method>ImportReview</method> keeps, written line by line into a
-/// temporary file the script makes as <method>SendImport</method> does, then <code>ImportAll</code> of that file with <parameter>IMPORTFLAGS</parameter>
-/// and the file's deletion. A file the import refuses renders that refusal's sentence as one comment step; a script that would pass
-/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> characters renders no step.</p>
+/// <p>The script of an import of the file <var>pQuery</var> names: the records <method>ImportReview</method> keeps, written in pieces of at most
+/// <parameter>SNIPPETPIECE</parameter> characters into a temporary file the script makes, then <code>ImportAll</code> of that file with
+/// <parameter>IMPORTFLAGS</parameter> and the file's deletion. A file the import refuses, and one whose digest or replaced count is no longer the reviewed
+/// <parameter>DIGESTPARAM</parameter> and <parameter>REPLACESPARAM</parameter> of the query (<code>LOCALE.IMPORT.CHANGED</code>), renders that refusal's
+/// sentence as one comment step; a script that would pass <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> characters renders no step.</p>
 ClassMethod ImportSnippet(ByRef pQuery) As %DynamicArray [ Private ]
 {
     Set tAdmin = "OcuPilot.Port.AdminPort"
     Set tMax = ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS
     Set tSC = ..ImportText(.pQuery, .tText, .tHttpStatus, .tFault)
     If $$$ISOK(tSC) Set tSC = ..ImportReview(tText, .tReview, .tKept, .tNames, .tHttpStatus, .tFault)
+    If $$$ISOK(tSC) && ('$Data(pQuery(..#DIGESTPARAM)) || '$Data(pQuery(..#REPLACESPARAM)) || (pQuery(..#DIGESTPARAM) '= tReview.%Get("Digest")) || (pQuery(..#REPLACESPARAM) '= tReview.%Get("Replaces"))) {
+        Set tSC = ..Refused(##class(OcuPilot.Api.LocaleError).#IMPORTCHANGED, .tHttpStatus, .tFault)
+    }
     If $$$ISERR(tSC) Quit [($ClassMethod(tAdmin, "Step", "comment", $Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)))]
     Set tKeptText = ""
     While 'tKept.AtEnd && ($Length(tKeptText) <= tMax) {
@@ -2142,10 +2188,14 @@ ClassMethod ImportSnippet(ByRef pQuery) As %DynamicArray [ Private ]
     Set tLines = tLines _ $ListBuild("Set tFile = ##class(%File).TempFilename(""xml"")", "Set tStream = ##class(%Stream.FileCharacter).%New()", "Set tStream.TranslateTable = ""UTF8""", "Set tSC = tStream.LinkToFile(tFile)")
     Set tLength = 0
     For tI = 1:1:$Length(tKeptText, $Char(10)) - 1 {
-        Set tLine = "Do tStream.Write(" _ $ClassMethod(tAdmin, "Literal", $Piece(tKeptText, $Char(10), tI) _ $Char(10)) _ ")"
-        Set tLength = tLength + $Length(tLine)
+        Set tRecord = $Piece(tKeptText, $Char(10), tI) _ $Char(10)
+        For tAt = 1:..#SNIPPETPIECE:$Length(tRecord) {
+            Set tLine = "Do tStream.Write(" _ $ClassMethod(tAdmin, "Literal", $Extract(tRecord, tAt, tAt + ..#SNIPPETPIECE - 1)) _ ")"
+            Set tLength = tLength + $Length(tLine)
+            If tLength > tMax Quit
+            Set tLines = tLines _ $ListBuild(tLine)
+        }
         If tLength > tMax Quit
-        Set tLines = tLines _ $ListBuild(tLine)
     }
     If tLength > tMax Quit []
     Set tLines = tLines _ $ListBuild("If $System.Status.IsOK(tSC) Set tSC = tStream.%Save()", "If $System.Status.IsOK(tSC) Set tSC = ##class(Config.NLS.Locales).ImportAll(tFile, .tImported, " _ ..#IMPORTFLAGS _ ")", "Do ##class(%File).Delete(tFile)")

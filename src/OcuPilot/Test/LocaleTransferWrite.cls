@@ -2,7 +2,8 @@
 /// test made is exported to this browser by the screen's action and, by the agent's confirmed proposal, to a server file that already holds another text, which it
 /// replaces; the locale is deleted and imported back from the browser's lines by the screen's action and, from the server file, by the agent's proposal, each listing it
 /// again with a definition equal to the original's and a matching read-back; an agent's import is refused once its file has changed after the mint, with nothing imported; an
-/// export of a locale past the browser's cap is <code>LOCALE.TOOLARGE</code>; the port's counts equal the file's; and no temporary file is left.</p>
+/// export of a locale past the browser's cap is <code>LOCALE.TOOLARGE</code>; the port's counts equal the file's; a file holding a record the vendor's class rejects
+/// writes nothing; and no transfer directory is left.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the manager directory as an allowed root, and <parameter>ARMINGVARIABLE</parameter>
 /// reading <code>1</code>, because the class creates, exports, deletes and imports custom locales. The custom locales <parameter>COPYA</parameter> are made from the
 /// current locale's definition; the current locale is never changed. Every test deletes the locales it made and the files it wrote on every path
@@ -31,6 +32,9 @@ Parameter KEYS = "osmgmt.locales.import,osmgmt.locales.export";
 
 /// <p>The custom locale every test makes.</p>
 Parameter COPYA = "yqaw";
+
+/// <p>The custom locale whose record the vendor's class rejects, which a test only tries to import.</p>
+Parameter REJECTED = "yqbw";
 
 /// <p>The custom table and the custom sub-table it names, which the tests that need them make.</p>
 Parameter TABLEA = "yqtab";
@@ -94,10 +98,11 @@ Method OnAfterAllTests() As %Status
     Quit ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
 }
 
-/// <p>Delete the custom locale, table and sub-table, in <code>%SYS</code>.</p>
+/// <p>Delete the custom locales, table and sub-table, in <code>%SYS</code>.</p>
 Method Restore()
 {
     Do ..VendorDelete(..#COPYA)
+    Do ..VendorDelete(..#REJECTED)
     Do ..VendorDeleteTable()
 }
 
@@ -199,7 +204,7 @@ ClassMethod TransferFiles() As %Integer
 {
     Set tCount = 0
     Set tRS = ##class(%ResultSet).%New("%File:FileSet")
-    Set tSC = tRS.Execute($ClassMethod(..#PORT, "TransferParent"), $Parameter(..#PORT, "TRANSFERDIRECTORY") _ "-*", "", 1)
+    Set tSC = tRS.Execute($ClassMethod(..#PORT, "TransferParent"), $Parameter(..#PORT, "TRANSFERDIRECTORY") _ "-*", "", 0)
     While tRS.Next() {
         If tRS.Get("Type") = "D" Set tCount = tCount + 1
     }
@@ -470,19 +475,20 @@ Method TestACustomTableAndItsSubTableAreImportedBackWithTheirDefinitions()
 }
 
 /// <p><b>AC1.</b> A file whose second custom locale the vendor's own class rejects (a <code>DateFormat</code> that is not a number) is refused
-/// <code>LOCALE.IMPORT.SHAPE</code> at the review and at the write, and the good locale before it is not written.</p>
-/// <p>Mutation (Rule 19): <code>KeptRecordsValid</code> dropped from <code>ImportReview</code> -> the review and write rows go red.</p>
+/// <code>LOCALE.IMPORT.SHAPE</code> at the review and at a write that carries the file's own digest, and the good locale before it is not written.</p>
+/// <p>Mutation (Rule 19): <code>KeptRecordsValid</code> dropped from <code>ImportReview</code> -> the review, write and written rows go red, the write reaching the vendor,
+/// which writes the first locale and fails on the second.</p>
 Method TestARecordTheVendorRejectsLeavesTheLocaleBeforeItUnwritten()
 {
     Set tImportRules = "OcuPilot.Test.LocaleImportRules"
-    Set tText = $ClassMethod(tImportRules, "Wrap", $ClassMethod(tImportRules, "LocaleXml", ..#COPYA) _ $ClassMethod(tImportRules, "BadLocaleXml", "yqbw"))
+    Set tText = $ClassMethod(tImportRules, "Wrap", $ClassMethod(tImportRules, "LocaleXml", ..#COPYA) _ $ClassMethod(tImportRules, "BadLocaleXml", ..#REJECTED))
     Kill tQuery
     Do $$$AssertEquals(..Port("IMPORTFILE", tText, .tQuery, .tReview), "409|LOCALE.IMPORT.SHAPE", "the review of the file is refused as not an export")
     Kill tWrite
-    Set tWrite("digest") = "unreviewed"
+    Set tWrite("digest") = $ClassMethod(tImportRules, "Digest", tText)
     Set tWrite("replaces") = 0
-    Do $$$AssertEquals(..Port("IMPORT", tText, .tWrite, .tOut), "409|LOCALE.IMPORT.SHAPE", "and so is its write")
-    Do $$$AssertEquals(..VendorExists(..#COPYA) _ "|" _ ..VendorExists("yqbw"), "0|0", "neither locale is written")
+    Do $$$AssertEquals(..Port("IMPORT", tText, .tWrite, .tOut), "409|LOCALE.IMPORT.SHAPE", "and so is its write, which carries the file's own digest")
+    Do $$$AssertEquals(..VendorExists(..#COPYA) _ "|" _ ..VendorExists(..#REJECTED), "0|0", "neither locale is written")
 }
 
 /// <p>The current locale's own record,<code>&lt;Locales&gt;...&lt;/Locales&gt;</code>, as the vendor serializes it.</p>
