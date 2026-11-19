@@ -115,7 +115,7 @@ ClassMethod HandleCreate() As %Status
         Set tName = ""
         If (..#PRODUCTIONMEMBER '= "") && (tBody.%GetTypeOf(..#PRODUCTIONMEMBER) = "string") Set tProduction = tBody.%Get(..#PRODUCTIONMEMBER)
         If tBody.%GetTypeOf(..#NAMEMEMBER) = "string" Set tName = tBody.%Get(..#NAMEMEMBER)
-        Set tId = ..IdOf(tProduction, tName)
+        Set tId = ..IdOf(tProduction, tName, tBody)
         Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tId, .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
@@ -133,8 +133,9 @@ ClassMethod HandleCreate() As %Status
 /// <p>The composite id of the item <var>pName</var> of the production <var>pProduction</var>, or
 /// <code>""</code> when either is empty or carries the separator character, which the rules then
 /// refuse. With no <parameter>PRODUCTIONMEMBER</parameter> the id is <var>pName</var> alone, <code>""</code> when it is empty or
-/// carries the separator character.</p>
-ClassMethod IdOf(pProduction As %String, pName As %String) As %String
+/// carries the separator character. <var>pFields</var> is the body the call carries beside them, for a subclass whose id has a part between the two (a group's element, Story 24.12);
+/// this class ignores it.</p>
+ClassMethod IdOf(pProduction As %String, pName As %String, pFields As %DynamicObject = "") As %String
 {
     Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
     If ..#PRODUCTIONMEMBER = "" Quit $Select((pName = "") || (pName [ tSeparator): "", 1: pName)
@@ -172,7 +173,7 @@ ClassMethod Create(pProduction As %String, pName As %String, pFields As %Dynamic
         }
         Set tSC = ..Violations(tNamespace, pProduction, pName, pFields, .pViolations)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
-        Set tId = ..IdOf(pProduction, pName)
+        Set tId = ..IdOf(pProduction, pName, pFields)
         If tId = "" {
             Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ..#NAMEEMPTYCODE)
             Quit

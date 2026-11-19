@@ -218,6 +218,14 @@ Parameter QMWRITECLASS = "OcuProbeQMW.Analytics.QMW";
 
 Parameter QMWRITEOWNCLASS = "OcuPilotQMW.Analytics.QMW";
 
+/// <p>The same three names for the tests of the element and documentation writes (Story 24.12, Batch 3): <method>RemoveQualityMeasures</method>, <method>KillQualityMeasureWriteNodes</method> and
+/// <method>Left</method> cover them as they cover <parameter>QMWRITE</parameter>'s.</p>
+Parameter QMPART = "OcuProbeQMP";
+
+Parameter QMPARTCLASS = "OcuProbeQMP.Analytics.QMP";
+
+Parameter QMPARTOWNCLASS = "OcuPilotQMP.Analytics.QMP";
+
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
 
@@ -965,7 +973,7 @@ ClassMethod RemoveQualityMeasures() As %Status
             Kill ^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))
         }
         ; The write tests' measures and classes, whatever a failed test left of them, in any letter case.
-        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS, ..#QMPART _ ".", ..#QMPARTOWNCLASS {
             Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
             While tRS.%Next() {
                 Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
@@ -984,13 +992,13 @@ ClassMethod RemoveQualityMeasures() As %Status
 ClassMethod KillQualityMeasureWriteNodes(pKill As %Boolean) As %Integer
 {
     Set tCount = 0
-    Set tNamePrefix = $ZConvert(..#QMWRITE, "U") _ "/"
-    Set tClassPrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ ".", $ZConvert($Piece(..#QMWRITEOWNCLASS, ".", 1), "U") _ ".")
+    Set tNamePrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ "/", $ZConvert(..#QMPART, "U") _ "/")
+    Set tClassPrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ ".", $ZConvert($Piece(..#QMWRITEOWNCLASS, ".", 1), "U") _ ".", $ZConvert(..#QMPART, "U") _ ".", $ZConvert($Piece(..#QMPARTOWNCLASS, ".", 1), "U") _ ".")
     Set tName = ""
     For {
         Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tName))
         If tName = "" Quit
-        If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+        If ..QMNameMarked(tName, tNamePrefixes) {
             Set tCount = tCount + 1
             If pKill Kill ^DeepSee.QMsrs("qmsrNames", tName)
         }
@@ -1016,13 +1024,23 @@ ClassMethod KillQualityMeasureWriteNodes(pKill As %Boolean) As %Integer
         For {
             Set tName = $Order(^DeepSee.QMsrs("cubes", tArea, tName))
             If tName = "" Quit
-            If $Extract(tName, 1, $Length(tNamePrefix)) = tNamePrefix {
+            If ..QMNameMarked(tName, tNamePrefixes) {
                 Set tCount = tCount + 1
                 If pKill Kill ^DeepSee.QMsrs("cubes", tArea, tName)
             }
         }
     }
     Quit tCount
+}
+
+/// <p>1 when the registry name <var>pName</var> starts with one of the upper-case catalog prefixes <var>pPrefixes</var>.</p>
+ClassMethod QMNameMarked(pName As %String, pPrefixes As %List) As %Boolean
+{
+    Set tMarked = 0
+    For tAt = 1:1:$ListLength(pPrefixes) {
+        If $Extract(pName, 1, $Length($List(pPrefixes, tAt))) = $List(pPrefixes, tAt) Set tMarked = 1
+    }
+    Quit tMarked
 }
 
 /// <p>Write the Category rows and the Visit rows, in <code>USER</code>, deterministically.</p>
@@ -1317,7 +1335,7 @@ ClassMethod Left() As %String
             If $Data(^DeepSee.QMsrs("qmsrClasses", tClass)) Set tLeft = tLeft _ ",quality measure class node " _ tClass
         }
         If ..KillQualityMeasureWriteNodes(0) Set tLeft = tLeft _ ",quality measure write nodes"
-        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS {
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS, ..#QMPART _ ".", ..#QMPARTOWNCLASS {
             Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
             If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",quality measure classes " _ tPrefix
         }

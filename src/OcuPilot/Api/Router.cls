@@ -281,6 +281,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
   <Route Url="/analytics/quality-measures/form" Method="GET" Call="AnalyticsQualityMeasureForm"/>
   <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
+  <Route Url="/analytics/quality-measure-elements" Method="POST" Call="AnalyticsQualityMeasureElementCreate"/>
+  <Route Url="/analytics/quality-measure-metas" Method="POST" Call="AnalyticsQualityMeasureMetaCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
@@ -2011,6 +2013,20 @@ ClassMethod AnalyticsQualityMeasureForm() As %Status
 ClassMethod AnalyticsQualityMeasureCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.QualityMeasureSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-elements</code> (Story 24.12): the Groups and elements screen's Add element, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureElementCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureElementSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-metas</code> (Story 24.12): the Documentation screen's Add documentation item, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureMetaCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureMetaSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business

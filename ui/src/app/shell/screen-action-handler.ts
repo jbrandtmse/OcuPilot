@@ -162,6 +162,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
   // Story 24.12: the Quality measures, whose Delete types the name and whose New, Edit and Copy dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
+  // Story 24.12 Batch 3: the Groups and elements and the Documentation lists, whose removals type the name and whose Add and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -558,6 +561,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': ['set'],
   // Story 24.12: the Quality measures' Edit and Copy, which their dialogs send.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': ['update', 'copy'],
+  // Story 24.12 Batch 3: the Groups and elements' page registers Change element and Remove group itself, and the Documentation's page Change documentation item.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['set', 'remove-group'],
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': ['set'],
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
@@ -656,6 +662,8 @@ const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
   [LOCALE_LIST]: ['install'],
   // Story 21.16: a table load changes what every process can use, and on the current locale can change the instance's defaults.
   [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
+  // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['remove-group'],
 };
 
 /**
@@ -781,6 +789,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { remove: STRINGS.analyticsListingRemoveConsequence },
   // Story 24.12: a quality measure's deletion.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { delete: STRINGS.analyticsQualityMeasureDeleteConsequence },
+  // Story 24.12 Batch 3: a removed group takes its elements, and nothing a removal takes can be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence, 'remove-group': STRINGS.analyticsQualityMeasureRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence },
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
@@ -823,7 +834,7 @@ const SCOPED_TARGETS: Readonly<
  * instance's answer (AD-10).
  */
 const TYPED_NAME_ROWS: Readonly<
-  Record<string, { readonly name: string; readonly field: string; readonly equals: string; readonly advisory: string }>
+  Record<string, { readonly name: string; readonly fallback?: string; readonly field: string; readonly equals: string; readonly advisory: string }>
 > = {
   [TASK_SCHEDULE]: { name: 'Name', field: 'Type', equals: 'System', advisory: STRINGS.taskSystemDeleteConsequence },
   // Deleting OcuPilot's own marker event stops agent writes being marked (AD-15).
@@ -884,6 +895,9 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.12: a delete types the quality measure's full name, which the list's name column shows.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.12 Batch 3: a removal types the element's or the documentation item's name; a group's, which has no element name, types the group's.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { name: 'Name', fallback: 'Group', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
@@ -1498,7 +1512,9 @@ export class ScreenActionHandler {
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
     const read = TYPED_NAME_ROWS[descriptor];
     const row = read === undefined ? null : rowFields;
-    const rowName = row?.[read?.name ?? ''];
+    const named = row?.[read?.name ?? ''];
+    // A row whose own name is empty (a group's, on its Remove group) types the field `fallback` names.
+    const rowName = (named === undefined || named === '') && read?.fallback !== undefined ? row?.[read.fallback] : named;
     // A numeric field, a superserver's port, is typed as its digits (Story 18.25).
     const name = typeof rowName === 'number' ? String(rowName) : rowName;
     this.open(

@@ -29,17 +29,33 @@ ClassMethod ParentHeld(pNamespace As %String, pParent As %String) As %Boolean
     Quit $$$ISOK(..ParentRefusal(pNamespace, pParent, .tHttp, .tFault))
 }
 
-/// <p>The port's group read of <var>pParent</var> in <var>pNamespace</var>: <code>$$$OK</code> when it is held, 404 <code>ANALYTICS.LISTINGGROUP.ABSENT</code> when it is not, and any
+/// <p>The endpoint, read type and absence code of the parent's own read: the listing group's here; the quality measure's in the Saves of its parts (Story 24.12).</p>
+ClassMethod ParentEndpoint() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#ENDPOINTLISTINGGROUPS
+}
+
+ClassMethod ParentReadType() As %String
+{
+    Quit ##class(OcuPilot.Port.AnalyticsPort).#TYPELISTINGGROUP
+}
+
+ClassMethod ParentAbsentCode() As %String
+{
+    Quit ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPABSENT
+}
+
+/// <p>The port's read of the parent <var>pParent</var> in <var>pNamespace</var>: <code>$$$OK</code> when it is held, 404 with <method>ParentAbsentCode</method> when it is not, and any
 /// other refusal of the read as the port answered it.</p>
 ClassMethod ParentRefusal(pNamespace As %String, pParent As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Kill tQuery
     Set tQuery(##class(OcuPilot.Port.AnalyticsPort).#IDKEY) = pParent
     Set tQuery(##class(OcuPilot.Port.AnalyticsPort).#NAMESPACEKEY) = pNamespace
-    Set tSC = $ClassMethod(..PortClass(), "Invoke", ##class(OcuPilot.Port.AnalyticsPort).#ENDPOINTLISTINGGROUPS, ##class(OcuPilot.Port.AnalyticsPort).#TYPELISTINGGROUP, .tQuery, "", .tRow, .pHttpStatus, .pFault)
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", ..ParentEndpoint(), ..ParentReadType(), .tQuery, "", .tRow, .pHttpStatus, .pFault)
     If $$$ISOK(tSC) || (+$Get(pHttpStatus) '= 404) Quit tSC
-    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPABSENT)
-    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPABSENT)
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ..ParentAbsentCode(), ##class(OcuPilot.Api.AnalyticsError).ReasonFor(..ParentAbsentCode()))
+    Quit $$$ERROR($$$GeneralError, ..ParentAbsentCode())
 }
 
 ClassMethod Violations(pNamespace As %String, pParent As %String, pName As %String, pFields As %DynamicObject, Output pViolations) As %Status

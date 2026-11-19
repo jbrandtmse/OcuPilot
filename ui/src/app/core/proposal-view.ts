@@ -420,6 +420,8 @@ export const CONSEQUENCE_ANALYTICSLISTINGGROUPSQL = 'ANALYTICS.LISTINGGROUP.SQL'
 export const CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE = 'ANALYTICS.LISTINGGROUP.SAVE';
 /** Story 24.12: the quality measure editor's two consequences: the delete and every other write; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE = 'ANALYTICS.QUALITYMEASURE.DELETE';
+/** Story 24.12 Batch 3: the removal of a group, an element or a documentation item; one published sentence. */
+export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASURE.REMOVE';
 export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
@@ -642,6 +644,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE) return STRINGS.analyticsListingGroupSaveConsequence;
   // Story 24.12: the quality measure editor's sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE) return STRINGS.analyticsQualityMeasureDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE) return STRINGS.analyticsQualityMeasureRemoveConsequence;
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;

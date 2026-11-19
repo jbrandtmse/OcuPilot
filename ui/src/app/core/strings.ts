@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:657 */
+  /** EXPERIENCE.md:658 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8270,6 +8270,36 @@ export const STRINGS = {
   analyticsRefusalQualityMeasureLinked: 'This quality measure is linked to another measure, which defines its expression, format and URL.',
   /** EXPERIENCE.md:615 */
   analyticsQualityMeasuresEmptyAgent: 'create a quality measure',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementAddAction: 'Add element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementChangeAction: 'Change element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementRemoveAction: 'Remove element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureGroupRemoveAction: 'Remove group',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaAddAction: 'Add documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaChangeAction: 'Change documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaRemoveAction: 'Remove documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementLegend: 'Element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureRemoveConsequence: 'Removing a group removes every element in it. A removed group, element or documentation item cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureElementTaken: 'This group already holds an element with that name.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureMetaTaken: 'This quality measure already holds a documentation item with that name.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasurePartAbsent: 'This group, element or documentation item no longer exists.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureLinkedParts: 'This quality measure is linked to another measure, which defines its groups and documentation.',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementsEmptyAgent: 'add an element to this quality measure',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetasEmptyAgent: 'add documentation to this quality measure',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

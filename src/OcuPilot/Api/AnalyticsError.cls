@@ -290,8 +290,30 @@ Parameter QUALITYMEASURECLASS = "ANALYTICS.QUALITYMEASURE.CLASS";
 
 Parameter REASONQUALITYMEASURECLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
 
-/// <p>The consequence codes of the quality measure delete and of every other quality measure write (Story 24.12).</p>
+/// <p>409: the group the element add names already holds an element of that name, without regard to case, disabled or not.</p>
+Parameter QUALITYMEASUREELEMENTTAKEN = "ANALYTICS.QUALITYMEASURE.ELEMENTTAKEN";
+
+Parameter REASONQUALITYMEASUREELEMENTTAKEN = "This group already holds an element with that name.";
+
+/// <p>409: the quality measure already holds a documentation item of that name, without regard to case, disabled or not.</p>
+Parameter QUALITYMEASUREMETATAKEN = "ANALYTICS.QUALITYMEASURE.METATAKEN";
+
+Parameter REASONQUALITYMEASUREMETATAKEN = "This quality measure already holds a documentation item with that name.";
+
+/// <p>404: the group, element or documentation item the write names is not there.</p>
+Parameter QUALITYMEASUREPARTABSENT = "ANALYTICS.QUALITYMEASURE.PARTABSENT";
+
+Parameter REASONQUALITYMEASUREPARTABSENT = "This group, element or documentation item no longer exists.";
+
+/// <p>409: a linked quality measure's groups and documentation are its master's, which the classic page shows read-only.</p>
+Parameter QUALITYMEASURELINKEDPARTS = "ANALYTICS.QUALITYMEASURE.LINKEDPARTS";
+
+Parameter REASONQUALITYMEASURELINKEDPARTS = "This quality measure is linked to another measure, which defines its groups and documentation.";
+
+/// <p>The consequence codes of the quality measure delete, of the removal of a group, element or documentation item, and of every other quality measure write (Story 24.12).</p>
 Parameter QUALITYMEASUREDELETE = "ANALYTICS.QUALITYMEASURE.DELETE";
+
+Parameter QUALITYMEASUREREMOVE = "ANALYTICS.QUALITYMEASURE.REMOVE";
 
 Parameter QUALITYMEASURESAVE = "ANALYTICS.QUALITYMEASURE.SAVE";
 
@@ -359,6 +381,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#QUALITYMEASUREEXPRESSION Quit ..#REASONQUALITYMEASUREEXPRESSION
     If pCode = ..#QUALITYMEASURELINKED Quit ..#REASONQUALITYMEASURELINKED
     If pCode = ..#QUALITYMEASURECLASS Quit ..#REASONQUALITYMEASURECLASS
+    If pCode = ..#QUALITYMEASUREELEMENTTAKEN Quit ..#REASONQUALITYMEASUREELEMENTTAKEN
+    If pCode = ..#QUALITYMEASUREMETATAKEN Quit ..#REASONQUALITYMEASUREMETATAKEN
+    If pCode = ..#QUALITYMEASUREPARTABSENT Quit ..#REASONQUALITYMEASUREPARTABSENT
+    If pCode = ..#QUALITYMEASURELINKEDPARTS Quit ..#REASONQUALITYMEASURELINKEDPARTS
     Quit ""
 }
 
@@ -406,16 +432,16 @@ ClassMethod ListingGroupConsequenceCodes() As %List
     Quit $ListBuild(..#LISTINGGROUPDELETE, ..#LISTINGGROUPREMOVE, ..#LISTINGGROUPSQL, ..#LISTINGGROUPSAVE)
 }
 
-/// <p>The quality measure writes' eight refusal codes (Story 24.12), as a <class>%List</class>.</p>
+/// <p>The quality measure writes' twelve refusal codes (Story 24.12), as a <class>%List</class>.</p>
 ClassMethod QualityMeasureCodes() As %List
 {
-    Quit $ListBuild(..#QUALITYMEASURETAKEN, ..#QUALITYMEASUREAMBIGUOUS, ..#QUALITYMEASURECOMPILE, ..#QUALITYMEASUREABSENT, ..#QUALITYMEASUREREADONLY, ..#QUALITYMEASUREEXPRESSION, ..#QUALITYMEASURELINKED, ..#QUALITYMEASURECLASS)
+    Quit $ListBuild(..#QUALITYMEASURETAKEN, ..#QUALITYMEASUREAMBIGUOUS, ..#QUALITYMEASURECOMPILE, ..#QUALITYMEASUREABSENT, ..#QUALITYMEASUREREADONLY, ..#QUALITYMEASUREEXPRESSION, ..#QUALITYMEASURELINKED, ..#QUALITYMEASURECLASS, ..#QUALITYMEASUREELEMENTTAKEN, ..#QUALITYMEASUREMETATAKEN, ..#QUALITYMEASUREPARTABSENT, ..#QUALITYMEASURELINKEDPARTS)
 }
 
 /// <p>The consequence codes of the quality measure writes (Story 24.12), as a <class>%List</class>.</p>
 ClassMethod QualityMeasureConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#QUALITYMEASUREDELETE, ..#QUALITYMEASURESAVE)
+    Quit $ListBuild(..#QUALITYMEASUREDELETE, ..#QUALITYMEASUREREMOVE, ..#QUALITYMEASURESAVE)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

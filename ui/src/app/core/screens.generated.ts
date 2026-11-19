@@ -3335,11 +3335,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList",
-    "route": "analytics/quality-measures/elements",
+    "route": "analytics/quality-measures/document",
     "area": "analytics",
     "labelKey": "analyticsQualityMeasureElementsLabel",
     "sideBarPosition": 0,
-    "archetype": "list",
+    "archetype": "detail",
     "built": true,
     "refreshes": false,
     "refreshRates": [],
@@ -3374,10 +3374,23 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-group",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "QualityMeasure",
@@ -3484,13 +3497,17 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsQualityMeasureElementsEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/quality-measures/document",
+      "position": 1,
+      "labelKey": "analyticsQualityMeasureElementsLabel"
     },
     "toolIdentifier": "analytics.qualitymeasureelements",
     "refreshDefault": 0,
     "banner": null,
-    "tab": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
@@ -3689,7 +3706,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "area": "analytics",
     "labelKey": "linksDocumentation",
     "sideBarPosition": 0,
-    "archetype": "list",
+    "archetype": "detail",
     "built": true,
     "refreshes": false,
     "refreshRates": [],
@@ -3723,10 +3740,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "QualityMeasure",
@@ -3822,13 +3848,17 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsQualityMeasureMetasEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/quality-measures/document",
+      "position": 2,
+      "labelKey": "linksDocumentation"
     },
     "toolIdentifier": "analytics.qualitymeasuremetas",
     "refreshDefault": 0,
     "banner": null,
-    "tab": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],

@@ -30,6 +30,10 @@ Parameter SEPARATORNOUNS = "namespace or mapping name";
 /// the same two rules as the first, and <method>PartDescription</method> words the refusal for an empty one.</p>
 Parameter PARTARGUMENTS = "";
 
+/// <p>Whether the last part may be empty, as a group's id is whose element name is empty (Story 24.12): the id then names the group itself. Off, an empty name is refused
+/// as it is for every other mint.</p>
+Parameter EMPTYNAMEALLOWED As BOOLEAN = 0;
+
 /// <p>The leading arguments of the composite id, as a <class>%List</class> of argument names:
 /// <parameter>PARTARGUMENTS</parameter>, else <parameter>NAMESPACEARGUMENT</parameter>.</p>
 ClassMethod PartArguments() As %List
@@ -72,7 +76,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tParts = tParts _ $ListBuild(tValue)
         }
         If tRefused Quit
-        If pIdValue = "" {
+        If (pIdValue = "") && '..#EMPTYNAMEALLOWED {
             Set tSC = ..Refuse("'" _ pIdArgument _ "' names " _ ..#CHILDDESCRIPTION _ " and cannot be empty", .pHttpStatus, .pFault)
             Quit
         }

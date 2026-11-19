@@ -518,6 +518,10 @@ const QUALITY_MEASURE_SENTENCES = [
   ['REASONQUALITYMEASUREEXPRESSION', 'analyticsRefusalQualityMeasureExpression'],
   ['REASONQUALITYMEASURELINKED', 'analyticsRefusalQualityMeasureLinked'],
   ['REASONQUALITYMEASURECLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONQUALITYMEASUREELEMENTTAKEN', 'analyticsRefusalQualityMeasureElementTaken'],
+  ['REASONQUALITYMEASUREMETATAKEN', 'analyticsRefusalQualityMeasureMetaTaken'],
+  ['REASONQUALITYMEASUREPARTABSENT', 'analyticsRefusalQualityMeasurePartAbsent'],
+  ['REASONQUALITYMEASURELINKEDPARTS', 'analyticsRefusalQualityMeasureLinkedParts'],
 ];
 
 const QUALITY_MEASURE_TOOLS = ['AnalyticsQualityMeasureAdd', 'AnalyticsQualityMeasureUpdate', 'AnalyticsQualityMeasureCopy', 'AnalyticsQualityMeasureDelete'].map((name) =>
@@ -540,6 +544,7 @@ test('Story 24.12 Batch 2: each quality measure refusal and consequence is publi
   const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
   for (const [code, key] of [
     ['ANALYTICS.QUALITYMEASURE.DELETE', 'analyticsQualityMeasureDeleteConsequence'],
+    ['ANALYTICS.QUALITYMEASURE.REMOVE', 'analyticsQualityMeasureRemoveConsequence'],
     ['ANALYTICS.QUALITYMEASURE.SAVE', 'analyticsQualityMeasureSaveConsequence'],
   ]) {
     const constant = `CONSEQUENCE_ANALYTICSQUALITYMEASURE${code.split('.').pop()}`;
@@ -548,6 +553,9 @@ test('Story 24.12 Batch 2: each quality measure refusal and consequence is publi
     assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
   }
   assert.equal(classParameter(QUALITY_MEASURE_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.QUALITYMEASURE.DELETE', 'the delete names its consequence code');
+  for (const name of ['AnalyticsQualityMeasureElementRemove', 'AnalyticsQualityMeasureMetaRemove']) {
+    assert.equal(classParameter(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'CONSEQUENCECODE'), 'ANALYTICS.QUALITYMEASURE.REMOVE', `${name} names its consequence code`);
+  }
   for (const file of QUALITY_MEASURE_TOOLS) {
     assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsQualityMeasureAction'), `${file} extends the quality measure tool base`);
   }
@@ -563,7 +571,7 @@ test('Story 24.12 Batch 2: each quality measure refusal and consequence is publi
 });
 
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
-  // Mutation (Rule 19): call $System.OBJ.Load or an XML reader from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
+  // Mutation (Rule 19): call $System.OBJ.Load or an XML reader of a file, stream or URL from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
   for (const file of FOLDER_ITEM_TOOLS) {
     assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsFolderItem'), `${file} extends the folder item tool base`);
   }
@@ -571,9 +579,11 @@ test('Story 24.10: the three folder manager tools declare write, the analytics p
   assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.FolderManager";'), 'the base declares the classic Folder Manager');
   assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
-  for (const never of [/\$System\.OBJ\.(?!IsUpToDate\()/i, /%XML\.Reader/, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
+  for (const never of [/\$System\.OBJ\.(?!IsUpToDate\()/i, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
+  // Story 24.12: an XML reader reads only text the port composed, which it checks before saving it (never a file, stream or URL).
+  assert.equal([...code.matchAll(/\.OpenString\(/g)].length, [...code.matchAll(/##class\(%XML\.Reader\)/g)].length, 'every XML reader the port makes opens a string');
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.UserLibrary\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
   assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import'], 'and only those Utils calls');
   const imports = [...code.matchAll(/\.%Import\(([^)]*)\)/g)].map((match) => match[1]);
