@@ -120,17 +120,17 @@ ClassMethod Events() As %Integer
     Quit tCount
 }
 
-/// <p>How many <code>ConfigChange</code> rows since <var>pSince</var> name the cube <var>pCube</var> and the verb <var>pVerb</var>.
-/// A window opened by the audit clock can include a row written by the test before it, so a count is taken as a baseline here and
-/// compared by <method>Added</method>.</p>
+/// <p>How many <code>ConfigChange</code> rows since <var>pSince</var> name the cube <var>pCube</var> and the verb <var>pVerb</var>,
+/// or -1 when the read failed. A window opened by the audit clock can include a row written by the test before it, so a count is taken
+/// as a baseline here and compared by <method>Added</method>.</p>
 ClassMethod Count(pSince As %String, pCube As %String, pVerb As %String) As %Integer
 {
     Quit ##class(OcuPilot.Test.InteropQueueActions).AuditRows(pSince, "cube", pCube, pVerb, .tIgnored)
 }
 
-/// <p>How many <code>ConfigChange</code> rows for the cube <var>pCube</var> and the verb <var>pVerb</var> this test's own calls wrote
-/// since the baseline <var>pBefore</var> that <method>Count</method> took over the same <var>pSince</var>, or -1 when either read failed;
-/// the last such row's data in <var>pData</var>.</p>
+/// <p>How many <code>ConfigChange</code> rows for the cube <var>pCube</var> and the verb <var>pVerb</var> were written after the
+/// baseline <var>pBefore</var> that <method>Count</method> took over the same <var>pSince</var>, or -1 when either read failed; the data
+/// of the newest matching row in the window in <var>pData</var>.</p>
 ClassMethod Added(pSince As %String, pCube As %String, pVerb As %String, pBefore As %Integer, Output pData As %String) As %Integer
 {
     Set tNow = ##class(OcuPilot.Test.InteropQueueActions).AuditRows(pSince, "cube", pCube, pVerb, .pData)

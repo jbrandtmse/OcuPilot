@@ -44,7 +44,7 @@ deferred:
     evidence: |-
       The race is a window taken at the millisecond a sibling's row was written; this pass fixed only `AnalyticsCubeManager`. Which other classes assert an absolute count, and whether any has been seen red, is not measured.
     location: >-
-      src/OcuPilot/Test/ (InteropJobActions, InteropItemChangeClass, AnalyticsTermListEdit, AnalyticsFolderItemTransfer, AuditVerbs)
+      src/OcuPilot/Test/ (AnalyticsCubeActions, InteropJobActions, InteropItemChangeClass, AnalyticsTermListEdit, AnalyticsFolderItemTransfer, AuditVerbs)
     severity: medium (unverified)
 ---
 
@@ -183,9 +183,23 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 
 - verdicts: 3 findings — high 0, medium 0, low 2, false 0, maybe-false 1
 - findings:
-  - `[low]` `[reject]` No deterministic proof that `Count`/`Added` cancel a same-window sibling row, and no `mutation:` line — the helpers are two lines whose only failure mode is the race itself; a seeded `ConfigChange` row would need a second audit writer in the class for no reachable user failure, and a mutation that removes the baseline stays green on every non-racing run, so none can be demonstrated red.
+  - `[low]` `[reject]` No deterministic proof that `Count`/`Added` cancel a same-window sibling row, and no `mutation:` line — closed by the re-review below: the `partialerrors` leg's window always holds the first leg's row, so dropping the baseline reddens it on every run.
   - `[maybe-false]` `[defer]` Other `OcuPilot.Test` classes that window on `AuditEvent.Now()` may share the race — outside this story's named class; recorded in frontmatter `deferred:` with what would settle it (which of them assert an absolute count).
   - `[low]` `[reject]` `Count`/`Added` name `OcuPilot.Test.InteropQueueActions` directly where the old code used `$ClassMethod` — both load together on every instance that runs the class, and the class already depends on `OcuPilot.Test.Http`.
+
+### 2026-11-19 — Re-review (rework iteration 1)
+
+- verdicts: 9 findings — high 0, medium 0, low 6, false 1, maybe-false 2
+- findings:
+  - `[low]` `[patch]` `Added`'s data is the newest matching row in the window, not necessarily this test's; the `partialerrors` leg's window always holds the first leg's identical row — measured: the `%SYS.Audit` scan returns rows in IDKEY (`UTCTimeStamp, SystemID, AuditIndex`) order (14 of 14 ascending on `ocupilot-b-ci`), so the own row is last; doc comment now says "newest matching row", the leg kept because it pins the baseline.
+  - `[low]` `[patch]` `Count`'s doc comment did not state its -1 on a failed read — added.
+  - `[low]` `[patch]` No `mutation:` line for the baseline — `Added` ignoring `pBefore` reddens `TestAFailedUpdateRecordsTheCubesItUpdated` alone on the `partialerrors` leg; line added under `## Verification`, the rework-1 rejection above corrected.
+  - `[low]` `[patch]` Rework 1 said "five tests" and "no assertion's meaning changed" — corrected to five windows in four tests and the leg that pins the baseline.
+  - `[maybe-false]` `[reject]` No reverse-order run recorded — `ci-runner.mjs` has no method-order option, so one class has one order; the in-window case is now proven on every run by the mutation above, and order across classes is the lead's `fresh_check`.
+  - `[maybe-false]` `[defer]` The deferred sibling-race entry left out `AnalyticsCubeActions`, which counts the same cube, verb and id absolutely after `AuditEvent.Now()` (six windows) — added first to its `location:`.
+  - `[low]` `[reject]` `Count`/`Added` are local to the class rather than beside `RowsCarrying`, or `Now()` could wait out the millisecond — no second caller yet; the deferred entry is where a shared helper would land.
+  - `[low]` `[reject]` A -1 baseline is not asserted on its own — `Added` returns -1, which fails every 0 or 1 assertion, so it is loud, not vacuous.
+  - `[false]` `[reject]` New spec additions beyond the open item on an `oversized` spec — the triage log and `deferred:` are where review findings are recorded.
 
 ## Design Notes
 
@@ -270,6 +284,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a90e7151f`).
 - mutation: QA `PerformCube` skips the failed-update row when the vendor call raised -> `TestARaisedVendorCallAfterAnUpdateRecordsTheCubeItUpdated` red alone, on both rows.
 - mutation: CR `AnalyticsPort.UpdatedCubes` without its #20006 clause -> `TestAFailedUpdateRecordsTheCubesItUpdated` red alone, on the `partialerrors` leg (run 824).
 - mutation: CR `PerformCube` records the failed-update row for the `errors` outcome too -> `TestTheVendorsAnswersAreMapped` red alone, on its row counts (run 825).
+- mutation: CR `AnalyticsCubeManager.Added` ignores its baseline `pBefore` -> `TestAFailedUpdateRecordsTheCubesItUpdated` red alone, on the `partialerrors` leg (`ocupilot-b-ci` run 3; reverted, run 4 green).
 - The deferred `Catch` merges stay unpinned: `%BuildCube` and `%SynchronizeCube` run their whole bodies in their own `Try`/`Catch` and answer a status (`irislib/%DeepSee/Utils.cls` :223-310, :1964-2054), so no input on the throwaway makes either raise out of the wrapper; the raised-exception path `PerformCube` handles is pinned through the seam's `partialraise` mode instead.
 - Each pre-existing failure leg of `TestTheVendorsAnswersAreMapped` asserts no row, and stays green: the seam's statistics carry no `status`, so no cube is reported updated.
 
@@ -284,5 +299,5 @@ Blocking condition: none
 
 - **Implement pass:** Task 0 measured (Design Notes › Measured); the four `AnalyticsPort` endpoints behind `SETTINGSPAIRS`, four descriptors in one tab group, four entity types, 24 strings and one EXPERIENCE.md row, the regenerated mirror and titles; DW-2518 (`UpdatedCubes`, `AuditFailedUpdate`, `VendorSynchronize`'s statistics output); `AnalyticsSettingsRead` (10 tests), two `AnalyticsCubeManager` tests, the seam's `partial` and `real` modes, the probe's settings fixture, two browser tests and every roster.
 - **Verification:** `AnalyticsSettingsRead` and `AnalyticsCubeManager` green on `ocupilot-b-ci` (their first runs were red on a fixture check and green after it was fixed, and each ran green again in either order, leaving the three settings globals as found); `AnalyticsDescriptor`, `Descriptor`, `ReadTool`, `PortGate`, `Navigation`, `StageTwoTools`, `SurfaceCoverage`, `ToolNavigateContract`, `ToolRoundTrip`, `ClassicPageGate`, `ToolEmit`, `MappingDescriptor`, `Prohibited`, `ToolDispatch`, `AnalyticsQualityMeasureRead`, `AnalyticsCubeActions` and `AnalyticsCubeGate` green; `test:tools` 2331/2331, `test:components` 3612/3612; `npm run build` clean (initial bundle 2.15 MB); the two Story 24.13 browser tests, `analytics-links` and the existing analytics specs I ran (AC1 to AC5, the Quality measures one) green; `check-objectscript` 0 problems. The full sweep and the full browser suite are the lead's.
-- **Rework 1 (the [Smoke] item):** `AnalyticsCubeManager` takes a baseline `Count` of the cube's and verb's rows right after opening its window and asserts `Added` (rows now minus baseline) in every test that windowed on `AuditEvent.Now()` (five tests; the second `tSince` of `TestAFailedUpdateRecordsTheCubesItUpdated` became a re-baseline). Test-only, no product change; no assertion's meaning changed, so no new `mutation:` line. Verified on a rebuilt `ocupilot-b-ci` (src synced from the worktree): `AnalyticsCubeManager` first run green (11 tests), second run green; `check-objectscript` 0 problems. `(loop)` only, no full sweep (Rule 29). Review: one verification-gap layer, 0 patches, 1 deferred, 2 rejected (Review Triage Log).
+- **Rework 1 (the [Smoke] item):** `AnalyticsCubeManager` takes a baseline `Count` of the cube's and verb's rows right after opening its window and asserts `Added` (rows now minus baseline) in every test that windowed on `AuditEvent.Now()` (five windows in four tests; the second `tSince` of `TestAFailedUpdateRecordsTheCubesItUpdated` became a re-baseline, so that leg's window always holds the first leg's row and pins the baseline). Test-only, no product change. Verified on a rebuilt `ocupilot-b-ci` (src synced from the worktree): `AnalyticsCubeManager` first run green (11 tests), second run green; `check-objectscript` 0 problems. `(loop)` only, no full sweep (Rule 29). Review: one verification-gap layer, 0 patches, 1 deferred, 2 rejected (Review Triage Log).
 - **Contended (add-only):** `scripts/ci-throwaway.sh` (one arming-roster line), `strings.ts` (new keys, one citation line moved by the new row), `screens.generated.ts`, `Test/ReadTool.cls`, `Test/SurfaceCoverage.cls`, `Test/ToolRoundTrip.cls`, `Kernel/EntityType.cls` (four names).
