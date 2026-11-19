@@ -107,8 +107,12 @@
 /// <code>QUALITYMEASUREELEMENT</code> and <code>QUALITYMEASUREMETA</code> and the writes <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code>, on the targets
 /// <code>[QualityMeasure, Group, Name]</code> (an empty name is the group itself) and <code>[QualityMeasure, Name]</code> (<method>QualityMeasureTarget</method>). They compose the class from the
 /// measure's own model as the measure writes do (<method>ApplyQualityMeasurePart</method>), refuse a linked measure, and read the composed text back with <code>%XML.Reader</code> before saving it.</p>
+/// <p><b>The analytics settings (Story 24.13, AD-65).</b> The <code>Settings</code>, <code>Worklists</code>, <code>RuntimeVariables</code> and <code>UserIcons</code> endpoints are reads of the
+/// classic Settings page's four tabs, gated by <parameter>SETTINGSPAIRS</parameter>. <code>Settings</code> reads the page's own nodes of <code>^DeepSee.UserPortalSettings</code> by name,
+/// a stored Google Maps key as the credential mask and never as the key; <code>Worklists</code> reads which of the four worklist classes each panel shows; <code>RuntimeVariables</code> and
+/// <code>UserIcons</code> read the vendor's lists, a variable's expression as text that is never evaluated.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
-/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
+/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
@@ -117,7 +121,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -157,6 +161,18 @@ Parameter ENDPOINTQUALITYMEASUREELEMENTS = "QualityMeasureElements";
 /// <p>One quality measure's documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
 Parameter ENDPOINTQUALITYMEASUREMETAS = "QualityMeasureMetas";
 
+/// <p>The analytics settings the classic Settings page's General tab holds, one name and value row per setting (Story 24.13).</p>
+Parameter ENDPOINTSETTINGS = "Settings";
+
+/// <p>The Worklists tab's options: which worklist each panel of the home and dashboard pages shows.</p>
+Parameter ENDPOINTWORKLISTS = "Worklists";
+
+/// <p>The run-time variables of the namespace, each an expression shown as text and never run.</p>
+Parameter ENDPOINTRUNTIMEVARIABLES = "RuntimeVariables";
+
+/// <p>The user-defined icons of the namespace, each a name and a path shown as text.</p>
+Parameter ENDPOINTUSERICONS = "UserIcons";
+
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
 Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
@@ -176,6 +192,10 @@ Parameter LISTINGGROUPPAIRS = "%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE";
 
 /// <p>The classic Quality Measures Manager's pairs: the portal's, and <code>%DeepSee_PortalEdit:USE</code>, the <code>RESOURCE</code> of the classic page.</p>
 Parameter QUALITYMEASUREPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
+
+/// <p>The pairs of the classic Settings page's four tabs (Story 24.13): the portal's, and <code>%Development:USE</code>, because a run-time variable is code. Stricter than the classic page,
+/// which admits <code>%DeepSee_Admin:USE</code> or <code>%Development:USE</code>.</p>
+Parameter SETTINGSPAIRS = "%DeepSee_Portal:USE,%Development:USE";
 
 /// <p>The pair a listing's SQL needs to be answered: the classic page's own check for showing the field (<code>CheckListingGroupSQLViewAccess</code>).</p>
 Parameter LISTINGGROUPSQLPAIRS = "%DeepSee_ListingGroupSQL:USE";
@@ -557,7 +577,7 @@ ClassMethod Endpoints() As %List
 
 /// <p>The pair set <var>pEndpoint</var> requires, as the <code>%List</code> of two-element <code>%List</code>s the gate
 /// evaluates; <code>""</code> for an endpoint this port does not serve. The cubes and their three tabs take the Model Browser's
-/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's, the listing groups and their listings the Listing Group Manager's and the quality measures with their two tabs the Quality Measures Manager's.</p>
+/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's, the listing groups and their listings the Listing Group Manager's, the quality measures with their two tabs the Quality Measures Manager's and the four settings tabs <parameter>SETTINGSPAIRS</parameter>.</p>
 ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
@@ -572,6 +592,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#LISTINGGROUPPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
         Set tSpec = ..#QUALITYMEASUREPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTSETTINGS, ..#ENDPOINTWORKLISTS, ..#ENDPOINTRUNTIMEVARIABLES, ..#ENDPOINTUSERICONS), pEndpoint) {
+        Set tSpec = ..#SETTINGSPAIRS
     } Else {
         Quit ""
     }
@@ -659,6 +681,11 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// <li>QualityMeasureElements: <code>{QualityMeasure, Group, GroupCaption, GroupDescription, GroupDisabled, Name, Caption, MDX, Disabled}</code>, one row per element of the measure
 /// the criterion <parameter>QUALITYMEASUREKEY</parameter> names, a group with no element one row with empty element fields.</li>
 /// <li>QualityMeasureMetas: <code>{QualityMeasure, Name, Caption, Section, Content, Disabled}</code>, one row per documentation item of that measure.</li>
+/// <li>Settings: <code>{Name, Value, Stored}</code>, one row per node the classic page saves, <code>Value</code> the page's default for a node not stored and, for
+/// <code>GoogleMapsKey</code>, the credential mask when a key is stored and <code>""</code> otherwise.</li>
+/// <li>Worklists: <code>{Page, Panel, Worklist, Class, Shown}</code>, sixteen rows: the pages <code>Home</code> and <code>DashboardViewer</code>, their panels 1 and 2 and the four worklist classes.</li>
+/// <li>RuntimeVariables: <code>{Name, Value, Comment, Context}</code>, <code>Value</code> the stored expression as text.</li>
+/// <li>UserIcons: <code>{Name, Path}</code>.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -1054,6 +1081,65 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     }
                 }
             }
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTSETTINGS, ..#ENDPOINTWORKLISTS, ..#ENDPOINTRUNTIMEVARIABLES, ..#ENDPOINTUSERICONS), pEndpoint) {
+            ; The classic Settings page's own reads, which write nothing and run nothing: the page's nodes read by name, two lists the vendor answers from its settings
+            ; globals, and the worklist classes' names. A run-time variable's expression is data here and is never evaluated.
+            If pEndpoint = ..#ENDPOINTSETTINGS {
+                ; Each setting: its name, its node (a second subscript when it is nested), what the page shows when it is unset, whether it reads as a number and whether it is a secret.
+                Set tSettings = $ListBuild($ListBuild("Scheme", "Scheme", "", "simple", 0, 0), $ListBuild("ChartSeriesScheme", "ChartSeriesScheme", "", "", 0, 0), $ListBuild("PageTitle", "PageTitle", "", "", 0, 0), $ListBuild("CompanyName", "CompanyName", "", "", 0, 0), $ListBuild("CompanyImage", "CompanyImage", "", "", 0, 0), $ListBuild("CompanyLink", "CompanyLink", "", "", 0, 0), $ListBuild("GoogleMapsKey", "GoogleMapsKey", "", "", 0, 1), $ListBuild("MailEnabled", "MailEnabled", "", 0, 1, 0), $ListBuild("DefaultResource", "DefaultResource", "", "", 0, 0), $ListBuild("DashboardNoTitle", "DashboardNoTitle", "", "", 0, 0), $ListBuild("DashboardNoBorder", "DashboardNoBorder", "", "", 0, 0), $ListBuild("Controls.showCalculated", "Controls", "showCalculated", "", 0, 0), $ListBuild("autosaveAnalyzer", "autosaveAnalyzer", "", "", 0, 0), $ListBuild("autosaveUserPortal", "autosaveUserPortal", "", "", 0, 0), $ListBuild("Worklist", "Worklist", "", 0, 1, 0))
+                For tAt = 1:1:$ListLength(tSettings) {
+                    If (pMax > 0) && (pData >= pMax) Quit
+                    Set tSetting = $List(tSettings, tAt)
+                    Set tNodeOne = $List(tSetting, 2)
+                    Set tNodeTwo = $List(tSetting, 3)
+                    If tNodeTwo = "" {
+                        Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne)) # 2
+                        Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne), $List(tSetting, 4))
+                    } Else {
+                        Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo)) # 2
+                        Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo), $List(tSetting, 4))
+                    }
+                    If $List(tSetting, 5) Set tValue = +tValue
+                    ; A secret never enters a row: only whether one is stored does.
+                    Set tMasked = 0
+                    If $List(tSetting, 6) {
+                        Set tMasked = ''(tStored && (tValue '= ""))
+                        Set tValue = ""
+                    }
+                    Set pData = pData + 1
+                    Set pData(pData) = $ListBuild($List(tSetting, 1), tValue, ''tStored, tMasked)
+                }
+            } ElseIf pEndpoint = ..#ENDPOINTWORKLISTS {
+                Set tClasses = $ListBuild("%DeepSee.UserPortal.FavoritesList", "%DeepSee.UserPortal.RecentList", "%DeepSee.UserPortal.AlertList", "%DeepSee.UserPortal.DetailsList")
+                Set tStop = 0
+                For tPage = "Home", "DashboardViewer" {
+                    For tPanel = 1, 2 {
+                        For tAt = 1:1:$ListLength(tClasses) {
+                            If (pMax > 0) && (pData >= pMax) Set tStop = 1
+                            If tStop Quit
+                            Set tClass = $List(tClasses, tAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, "%GetName"), tClass, ''$Data(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tAt)))
+                        }
+                        If tStop Quit
+                    }
+                    If tStop Quit
+                }
+            } Else {
+                If pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES {
+                    Set pVendorStatus = ##class(%DeepSee.UserPortal.Utils).%GetUserSettingsList(.tList, "")
+                } Else {
+                    Set pVendorStatus = ##class(%DeepSee.UserPortal.Utils).%GetUserIconList(.tList)
+                }
+                Set tAt = ""
+                While $$$ISOK(pVendorStatus) {
+                    Set tAt = $Order(tList(tAt))
+                    If tAt = "" Quit
+                    If (pMax > 0) && (pData >= pMax) Quit
+                    Set pData = pData + 1
+                    Set pData(pData) = tList(tAt)
+                }
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -1190,6 +1276,25 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As
             Do tRow.%Set("Section", $List(tValues, 4), "string")
             Do tRow.%Set("Content", $List(tValues, 5), "string")
             Do tRow.%Set("Disabled", $List(tValues, 6), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            ; A stored secret reads as the mask, so a person sees that one is stored and never what it is (Conventions, Secrets).
+            Do tRow.%Set("Value", $Select($List(tValues, 4): ##class(OcuPilot.Port.SqlPort).#CREDENTIALMASK, 1: $List(tValues, 2)), "string")
+            Do tRow.%Set("Stored", $List(tValues, 3), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTWORKLISTS {
+            Do tRow.%Set("Page", $List(tValues, 1), "string")
+            Do tRow.%Set("Panel", $List(tValues, 2), "number")
+            Do tRow.%Set("Worklist", $List(tValues, 3), "string")
+            Do tRow.%Set("Class", $List(tValues, 4), "string")
+            Do tRow.%Set("Shown", $List(tValues, 5), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Value", $List(tValues, 2), "string")
+            Do tRow.%Set("Comment", $List(tValues, 3), "string")
+            Do tRow.%Set("Context", $List(tValues, 4), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTUSERICONS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Path", $List(tValues, 2), "string")
         } Else {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Type", $List(tValues, 2), "string")
@@ -2142,7 +2247,7 @@ ClassMethod CubeShownHere(pName As %String, ByRef pList) As %Boolean [ Private ]
 /// <method>CubeNodeHere</method> of cube <code>n</code>, the target first and then each dependent. A dependent the caller's resources
 /// hide is not on the vendor's list and is left out. A list the vendor fails to answer, or an exception, is <var>pCaught</var>.</p>
 /// <p>Everything between the switch and the restore is vendor and system classes and this class's own <code>Here</code> methods
-/// (AD-16); the row is shaped by <method>StateRow</method> after the restore.</p>
+/// (AD-16); the row is shaped by <method>StateRow</method> after the restore. A test seam overrides it and rewrites the eighth element of each row, whether the cube is being updated.</p>
 ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException) [ Private ]
 {
     Kill pData
@@ -2287,7 +2392,8 @@ ClassMethod ReadCube(pNamespace As %String, pName As %String, Output pRow As %Dy
 /// <parameter>OcuPilot.Api.AnalyticsError.CUBEBUSY</parameter> for the vendor's cube lock; 404 for a cube it does not know; 403
 /// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else, an exception the call raised included,
 /// 409 <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
-/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>).</p>
+/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), and a failed one that had already updated a cube records it with
+/// <code>failed</code> true (<method>AuditFailedUpdate</method>).</p>
 /// <p>The answer is <code>{Name, Namespace, lines, errors}</code>: the output lines for the screen (<method>BuildLines</method>,
 /// <method>SyncLines</method>), and whether any cube built with errors.</p>
 ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %String, ByRef pNames, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -2300,11 +2406,12 @@ ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %Strin
     If pType = ..#TYPEBUILD {
         Set tVendorSC = ..VendorBuild(pNamespace, pName, .tStats, .tCaught, .tWritten)
     } Else {
-        Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten)
+        Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten, .tStats)
     }
     Set tMessage = "the cube " _ $ZConvert(pType, "L") _ " failed" _ $Select(tWritten = "": "", 1: "; the vendor wrote: " _ tWritten)
     If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
     Set tOutcome = ..VendorOutcome(tVendorSC)
+    If (tOutcome '= "ok") && (tOutcome '= "errors") Do ..AuditFailedUpdate(pType, pName, pNamespace, .tStats, .pNames)
     If tOutcome = "denied" Quit ..Statused(tVendorSC, tMessage, .pHttpStatus, .pFault)
     If tOutcome = "busy" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#CUBEBUSY, .pHttpStatus, .pFault)
     If tOutcome = "absent" Quit ..Absent(.pHttpStatus, .pFault)
@@ -2354,6 +2461,7 @@ ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, 
         Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
@@ -2362,11 +2470,13 @@ ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, 
 }
 
 /// <p>The vendor's synchronize of the cube <var>pCube</var> and every cube that depends on it, in <var>pNamespace</var>
-/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts)</code>), under the same switch and capture as <method>VendorBuild</method>.
-/// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count.</p>
-ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String) As %Status
+/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts, 1, 1, 0, .stats)</code>, the vendor's own defaults for the arguments between), under the same switch and capture as <method>VendorBuild</method>.
+/// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count. <var>pStats</var> is the vendor's synchronize
+/// statistics array, whose <code>("cubes", &lt;index&gt;, "status")</code> is each cube's own status.</p>
+ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String, Output pStats) As %Status
 {
     Kill pFacts
+    Kill pStats
     Set pCaught = ""
     Set pWritten = ""
     Set tSC = $$$OK
@@ -2376,10 +2486,14 @@ ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pF
     Try {
         Set $NAMESPACE = pNamespace
         Kill tFacts
-        Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(pCube, 0, .tFacts)
+        Kill tStats
+        Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(pCube, 0, .tFacts, 1, 1, 0, .tStats)
         Merge pFacts = tFacts
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Merge pFacts = tFacts
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
@@ -2492,7 +2606,44 @@ ClassMethod SyncLines(ByRef pFacts, ByRef pNames, pLines As %DynamicArray, pCube
     }
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK (AD-15,
+/// <p>The logical names, in name order, of the cubes the vendor's statistics <var>pStats</var> report updated: those whose own
+/// <code>status</code> is OK or holds only #20006, a build that finished with failed rows. A cube with no status, or any other error, was not updated, and its
+/// counters are not read (a cube that fails to start carries the statistics of the one before it). <var>pNames</var> gives the logical name of an index. Pure.</p>
+ClassMethod UpdatedCubes(ByRef pStats, ByRef pNames) As %DynamicArray
+{
+    Set tCubes = []
+    Set tIndex = ""
+    For {
+        Set tIndex = $Order(pStats("cubes", tIndex))
+        If tIndex = "" Quit
+        If '$Data(pStats("cubes", tIndex, "status")) Continue
+        Set tStatus = pStats("cubes", tIndex, "status")
+        If $$$ISOK(tStatus) || ..OnlyCode(tStatus, ..#CODEBUILDERRORS) Set tByName($Get(pNames(tIndex), tIndex)) = ""
+    }
+    Set tName = ""
+    For {
+        Set tName = $Order(tByName(tName))
+        If tName = "" Quit
+        Do tCubes.%Push(tName, "string")
+    }
+    Quit tCubes
+}
+
+/// <p>Record the failed update of the cube <var>pName</var> that the vendor started and then failed, when it had already updated a cube (AD-15, Story 24.13): one
+/// <code>ConfigChange</code> row, the verb of <var>pType</var>, with <code>{namespace, cubes, failed: true}</code>, <code>cubes</code> being <method>UpdatedCubes</method>. No cube
+/// updated, no row. Called after the namespace is restored, and it never changes the answer.</p>
+ClassMethod AuditFailedUpdate(pType As %String, pName As %String, pNamespace As %String, ByRef pStats, ByRef pNames) [ Private ]
+{
+    Set tCubes = ..UpdatedCubes(.pStats, .pNames)
+    If tCubes.%Size() = 0 Quit
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("cubes", tCubes)
+    Do tEffects.%Set("failed", 1, "boolean")
+    Do ..AuditWrite($Select(pType = ..#TYPEBUILD: ..#VERBBUILD, 1: ..#VERBSYNCHRONIZE), pName, tEffects)
+}
+
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK, or that failed after updating a cube (AD-15,
 /// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
 /// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
 /// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>

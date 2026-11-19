@@ -24,6 +24,8 @@
 /// <p>Story 24.12 adds the quality measures: <method>CreateQualityMeasures</method> saves and compiles four measure classes in the probe's package (compiled, refused, linked and
 /// disabled), <method>CreateEdgeQualityMeasures</method> the edge measures (no subject area, a dangling link), <method>CreateTwinQualityMeasure</method> a second class declaring
 /// the compiled measure's name, which <method>RemoveTwinQualityMeasure</method> deletes, and <method>RemoveQualityMeasures</method> deletes them all with their <code>^DeepSee.QMsrs</code> nodes. <method>Remove</method> calls it and <method>Left</method> checks those nodes.</p>
+/// <p>Story 24.13 adds the analytics settings fixture: <method>SnapshotSettings</method>, <method>ClearSettings</method>, <method>SetMarkerSettings</method>, <method>RestoreSettings</method>,
+/// <method>SettingsDigest</method> and <method>SettingsLeft</method>. <method>Remove</method> restores the settings from the snapshot and <method>Left</method> reports what is left of them.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
 /// <code>USER</code> by explicit save and restore of the namespace, and a run needs a throwaway instance.</p>
 Class OcuPilot.Test.AnalyticsProbe Extends %RegisteredObject
@@ -225,6 +227,16 @@ Parameter QMPART = "OcuProbeQMP";
 Parameter QMPARTCLASS = "OcuProbeQMP.Analytics.QMP";
 
 Parameter QMPARTOWNCLASS = "OcuPilotQMP.Analytics.QMP";
+
+/// <p>The analytics settings markers (Story 24.13): the Google Maps key the General tab's save stores, two run-time variables (the first's expression would set
+/// <code>^OcuProbe2413Ran</code> if it ever ran) and a user-defined icon.</p>
+Parameter SETTINGSKEY = "OcuProbe2413SecretKey";
+
+Parameter SETTINGSVARIABLE = "OcuProbe2413Var";
+
+Parameter SETTINGSVARIABLETWO = "OcuProbe2413Text";
+
+Parameter SETTINGSICON = "OcuProbe2413Icon";
 
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
@@ -1195,6 +1207,7 @@ ClassMethod Remove() As %Status
         }
         Do ..RemoveListingGroups()
         Do ..RemoveQualityMeasures()
+        Do ..RestoreSettings()
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
         Kill ^OBJ.DSTIME(..#VISITCLASS), ^OBJ.DSTIME(..#CATEGORYCLASS)
         Do ..ForgetBuilds()
@@ -1247,6 +1260,163 @@ ClassMethod Remove() As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Story 24.13's analytics settings fixture. <method>SnapshotSettings</method> copies <code>USER</code>'s three settings globals
+/// (<code>^DeepSee.UserPortalSettings</code>, <code>^DeepSee.User.Settings</code> and <code>^DeepSee.User.Icons</code>) to <code>^OcuPilotProbeSettings</code> once, so a run
+/// that died is restored by the next; <method>ClearSettings</method> empties the three, the state where nothing is stored; <method>SetMarkerSettings</method> stores the markers through the
+/// vendor's own methods, which the classic page's save and its worklist options, and the user portal's variable and icon setters, are; <method>RestoreSettings</method> puts the three
+/// back from the snapshot and removes it and the marker the never-run variable would set; <method>SettingsDigest</method> is a text that is equal for equal settings.</p>
+ClassMethod SnapshotSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If '$Data(^OcuPilotProbeSettings) {
+            Merge ^OcuPilotProbeSettings("portal") = ^DeepSee.UserPortalSettings
+            Merge ^OcuPilotProbeSettings("variables") = ^DeepSee.User.Settings
+            Merge ^OcuPilotProbeSettings("icons") = ^DeepSee.User.Icons
+            Set ^OcuPilotProbeSettings = 1
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Kill the three settings globals in <code>USER</code>: the state where no setting, variable or icon is stored. The snapshot is the way back.</p>
+ClassMethod ClearSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill ^DeepSee.UserPortalSettings
+        Kill ^DeepSee.User.Settings
+        Kill ^DeepSee.User.Icons
+        Kill ^OcuProbe2413Ran
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Store the marker settings in <code>USER</code> through the vendor's own methods: <code>%DeepSee.UI.Settings.SaveToServer</code> (every setting of the General tab, the key
+/// <parameter>SETTINGSKEY</parameter> among them), <code>SetCustom</code> and two <code>SetOption</code> calls (the home page's top panel shows its favorites and the dashboard page's
+/// bottom panel its details), two run-time variables (one whose expression would set <code>^OcuProbe2413Ran</code> if it ever ran) and a user-defined icon. A status that names what the
+/// vendor refused.</p>
+ClassMethod SetMarkerSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tData = ##class(%ZEN.proxyObject).%New()
+        Set tData.Scheme = "OcuProbe2413Scheme"
+        Set tData.ChartSeriesScheme = "OcuProbe2413Series"
+        Set tData.CompanyName = "OcuProbe2413 Company"
+        Set tData.CompanyLogo = "/OcuProbe2413/logo.png"
+        Set tData.CompanyLink = "http://OcuProbe2413.invalid/home"
+        Set tData.GoogleMapsKey = ..#SETTINGSKEY
+        Set tData.PageTitle = "OcuProbe2413 Title"
+        Set tData.MailEnabled = 1
+        Set tData.DefaultResource = "OcuProbe2413Resource"
+        Set tData.DbNoTitle = 1
+        Set tData.DbNoBorder = 1
+        Set tData.ctrlShowCalc = 1
+        Set tData.autosaveAnalyzer = 1
+        Set tData.autosaveUserPortal = 1
+        Set tMessage = ##class(%DeepSee.UI.Settings).SaveToServer(tData)
+        If tMessage '= "" Set tSC = $$$ERROR($$$GeneralError, "SaveToServer refused: " _ tMessage)
+        Do ##class(%DeepSee.UI.Settings).SetCustom(1)
+        Do ##class(%DeepSee.UI.Settings).SetOption("Home", 1, "%DeepSee.UserPortal.FavoritesList", 1, 1)
+        Do ##class(%DeepSee.UI.Settings).SetOption("DashboardViewer", 2, "%DeepSee.UserPortal.DetailsList", 4, 1)
+        Set tVariable = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(..#SETTINGSVARIABLE, "$Increment(^OcuProbe2413Ran)", "OcuProbe2413 comment", "OcuProbe2413Context")
+        If $$$ISERR(tVariable) Set tSC = $$$ADDSC(tSC, tVariable)
+        Set tVariable = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(..#SETTINGSVARIABLETWO, """text""_$Char(10)", "", "")
+        If $$$ISERR(tVariable) Set tSC = $$$ADDSC(tSC, tVariable)
+        Set tIcon = ##class(%DeepSee.UserPortal.Utils).%SetUserIcon(..#SETTINGSICON, "/OcuProbe2413/icon.png")
+        If $$$ISERR(tIcon) Set tSC = $$$ADDSC(tSC, tIcon)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Put the three settings globals back as <method>SnapshotSettings</method> found them, remove the snapshot and the marker a never-run variable would set; <code>$$$OK</code> when
+/// there is no snapshot.</p>
+ClassMethod RestoreSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill ^OcuProbe2413Ran
+        If $Data(^OcuPilotProbeSettings) {
+            Kill ^DeepSee.UserPortalSettings
+            Kill ^DeepSee.User.Settings
+            Kill ^DeepSee.User.Icons
+            Merge ^DeepSee.UserPortalSettings = ^OcuPilotProbeSettings("portal")
+            Merge ^DeepSee.User.Settings = ^OcuPilotProbeSettings("variables")
+            Merge ^DeepSee.User.Icons = ^OcuPilotProbeSettings("icons")
+            Kill ^OcuPilotProbeSettings
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>A text of every node of the three settings globals in <code>USER</code>, equal for equal settings; <code>"unreadable"</code> when they cannot be read.</p>
+ClassMethod SettingsDigest() As %String
+{
+    Set tText = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tRoot = "^DeepSee.UserPortalSettings", "^DeepSee.User.Settings", "^DeepSee.User.Icons" {
+            If $Data(@tRoot) # 2 Set tText = tText _ tRoot _ "=" _ @tRoot _ $Char(10)
+            Set tNode = tRoot
+            For {
+                Set tNode = $Query(@tNode)
+                If (tNode = "") || ($Extract(tNode, 1, $Length(tRoot) + 1) '= (tRoot _ "(")) Quit
+                Set tText = tText _ tNode _ "=" _ @tNode _ $Char(10)
+            }
+        }
+    } Catch ex {
+        Set tText = "unreadable"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tText
+}
+
+/// <p>What the settings fixture leaves in <code>USER</code>: the snapshot, a marker node in any of the three globals, or the never-run marker; <code>""</code> for nothing.</p>
+ClassMethod SettingsLeft() As %String
+{
+    Set tLeft = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If $Data(^OcuPilotProbeSettings) Set tLeft = tLeft _ ",settings snapshot"
+        If $Data(^OcuProbe2413Ran) Set tLeft = tLeft _ ",variable ran"
+        For tRoot = "^DeepSee.UserPortalSettings", "^DeepSee.User.Settings", "^DeepSee.User.Icons" {
+            Set tNode = tRoot
+            For {
+                Set tNode = $Query(@tNode)
+                If (tNode = "") || ($Extract(tNode, 1, $Length(tRoot) + 1) '= (tRoot _ "(")) Quit
+                If (tNode [ "OcuProbe2413") || (@tNode [ "OcuProbe2413") Set tLeft = tLeft _ ",marker " _ tNode
+            }
+        }
+    } Catch ex {
+        Set tLeft = tLeft _ ",unreadable: " _ ex.DisplayString()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit $Extract(tLeft, 2, *)
 }
 
 /// <p>The journal's current position as <code>file|offset</code>, after the journal buffer is flushed, for <method>JournalWrites</method> to scan from
@@ -1357,6 +1527,8 @@ ClassMethod Left() As %String
         Set tGlobal = $Order(^$GLOBAL($Extract(tPrefix, 1, *-1)))
         If (tGlobal '= "") && ($Extract(tGlobal, 1, $Length(tPrefix)) = tPrefix) Set tLeft = tLeft _ ",data globals"
         If $Data(^OcuPilotProbeAnalytics) Set tLeft = tLeft _ ",probe node"
+        Set tSettingsLeft = ..SettingsLeft()
+        If tSettingsLeft '= "" Set tLeft = tLeft _ "," _ tSettingsLeft
         Set tKey = $Order(^DeepSee.Cache.Results(""))
         While tKey '= "" {
             If ..IsProbeCube(tKey) Set tLeft = tLeft _ ",cache of " _ tKey

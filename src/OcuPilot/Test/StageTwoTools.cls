@@ -159,6 +159,10 @@ XData Elsewhere
 <screen name="AnalyticsQualityMeasureElementList"/>
 <screen name="AnalyticsQualityMeasureList"/>
 <screen name="AnalyticsQualityMeasureMetaList"/>
+<screen name="AnalyticsRuntimeVariableList"/>
+<screen name="AnalyticsSettingList"/>
+<screen name="AnalyticsUserIconList"/>
+<screen name="AnalyticsWorklistList"/>
 <screen name="AnalyticsMdxQuery"/>
 <screen name="AnalyticsTermListEntryList"/>
 <screen name="AnalyticsTermListList"/>

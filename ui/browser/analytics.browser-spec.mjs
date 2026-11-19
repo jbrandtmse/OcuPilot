@@ -21,6 +21,9 @@
  * Story 24.12 adds one test: Quality measures lists the probe's measures with what the vendor's model reads, a name that holds slashes opens the measure's Groups and elements,
  * its Documentation shows the measure's items, and the three screens pass the structural and contrast checks.
  *
+ * Story 24.13 adds two tests: Settings shows the markers the vendor's own methods stored, the Google Maps key as the mask, under a strip of its four tabs, each passing the structural and
+ * contrast checks; and with nothing stored it shows the classic page's defaults and the two empty tabs draw their own sentences. Each restores USER's settings from a snapshot.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -64,6 +67,10 @@ const LISTING_GROUP = 'OcuPilotProbeListings';
 const QUALITY_MEASURES = 'analytics/quality-measures';
 const QUALITY_ELEMENTS = `${QUALITY_MEASURES}/document`;
 const QUALITY_DOCUMENTATION = `${QUALITY_MEASURES}/documentation`;
+const SETTINGS = 'analytics/settings';
+const SETTINGS_WORKLISTS = `${SETTINGS}/worklists`;
+const SETTINGS_VARIABLES = `${SETTINGS}/variables`;
+const SETTINGS_ICONS = `${SETTINGS}/icons`;
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -184,6 +191,13 @@ async function openTab(page, route) {
   await answered(page);
 }
 
+/** Open the strip's tab on `route`, a tab whose route takes no id, and wait for its rows or its empty sentence. */
+async function openGroupTab(page, route) {
+  await (await page.waitForSelector(`button.ocu-detail-tab[data-route="${route}"]`, { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForFunction((wanted) => new URL(window.location.href).pathname.endsWith(wanted), { timeout: config.navigationTimeoutMs }, `/${route}`);
+  await answered(page);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
@@ -233,8 +247,9 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsCubeManagerLabel,
         STRINGS.analyticsListingGroupsLabel,
         STRINGS.analyticsQualityMeasuresLabel,
+        STRINGS.interopItemTabSettings,
       ],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11) and Quality measures (Story 24.12)'
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12) and Settings (Story 24.13)'
     );
 
     const cubes = inUser('ANCUBES', [
@@ -677,6 +692,129 @@ test('Story 24.12: a namespace with no quality measure, and a measure no one hol
     } finally {
       await context.close();
     }
+  }
+});
+
+// Story 24.13, AC3. The markers are written through the vendor's own methods; the General tab shows the Google Maps key as the mask and the key's text appears nowhere on any tab.
+// Mutation (Rule 19): make the settings branch of `AnalyticsPort.Rows` answer the key's own value -> the mask leg goes red (class reloaded); drop the Panel column
+// from `AnalyticsWorklistList.cls` (mirror regenerated, bundle rebuilt and redeployed) -> the Worklists leg goes red.
+test('Story 24.13: Settings shows each analytics setting with the Google Maps key as the mask, and its Worklists, Run-time variables and User-defined icons tabs show what is stored', async () => {
+  const stored = probe('STMADE', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())_$System.Status.IsOK(##class(${PROBE}).SetMarkerSettings())`);
+  assert.equal(stored.value, '111', `the markers are stored through the vendor's own methods: ${stored.output}`);
+  const key = probe('STKEY', `##class(${PROBE}).#SETTINGSKEY`).value;
+  assert.match(key, /^OcuProbe2413/, `the marker key is the probe's: ${key}`);
+  const placeholder = (cell) => (cell === '' ? STRINGS.tableEmptyValue : cell);
+  const yesNo = (flag) => (flag ? STRINGS.tableStatusYes : STRINGS.tableStatusNo);
+  const byName = (rows) => Object.fromEntries(rows.map((row) => [row[0], row]));
+  try {
+    const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await openEntry(page, STRINGS.interopItemTabSettings);
+      await pathHolds(page, `/${SETTINGS}`);
+      await answered(page);
+      assert.deepEqual(
+        await stripLabels(page),
+        [STRINGS.processDetailsGroupGeneral, STRINGS.analyticsWorklistsLabel, STRINGS.analyticsRuntimeVariablesLabel, STRINGS.analyticsUserIconsLabel],
+        'Settings opens a strip of its four tabs, General, Worklists, Run-time variables and User-defined icons'
+      );
+      const expectedSettings = {
+        Scheme: ['OcuProbe2413Scheme', true],
+        ChartSeriesScheme: ['OcuProbe2413Series', true],
+        PageTitle: ['OcuProbe2413 Title', true],
+        CompanyName: ['OcuProbe2413 Company', true],
+        CompanyImage: ['/OcuProbe2413/logo.png', true],
+        CompanyLink: ['http://OcuProbe2413.invalid/home', true],
+        GoogleMapsKey: ['[redacted]', true],
+        MailEnabled: ['1', true],
+        DefaultResource: ['OcuProbe2413Resource', true],
+        DashboardNoTitle: ['1', true],
+        DashboardNoBorder: ['1', true],
+        'Controls.showCalculated': ['1', true],
+        autosaveAnalyzer: ['1', true],
+        autosaveUserPortal: ['1', true],
+        Worklist: ['1', true],
+      };
+      const settings = byName(await allRows(page));
+      assert.deepEqual(Object.keys(settings).sort(), Object.keys(expectedSettings).sort(), 'General shows one row for each of the fifteen settings the classic page saves');
+      for (const [name, [value, isStored]] of Object.entries(expectedSettings)) {
+        assert.deepEqual(settings[name], [name, placeholder(value), yesNo(isStored)], `General: ${name} shows the value the vendor's save stored`);
+      }
+      assert.ok(!(await page.evaluate(() => document.body.innerText)).includes(key), 'and the Google Maps key\'s text is nowhere on the screen');
+      assert.deepEqual(await structural(page, SETTINGS), [], `${SETTINGS}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const worklists = await allRows(page);
+      assert.equal(worklists.length, 16, 'Worklists shows sixteen rows: two pages, two panels, four worklists');
+      assert.deepEqual(
+        worklists.filter((row) => row[3] === STRINGS.tableStatusYes).map((row) => `${row[0]}/${row[1]}/${row[2]}`),
+        ['DashboardViewer/2/Details', 'Home/1/Favorites'],
+        'Worklists, sorted by page, marks the two options the vendor\'s SetOption stored as shown, and no other'
+      );
+      assert.deepEqual(await structural(page, SETTINGS_WORKLISTS), [], `${SETTINGS_WORKLISTS}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_VARIABLES);
+      assert.deepEqual(
+        await allRows(page),
+        [
+          ['OcuProbe2413Text', '"text"_$Char(10)', STRINGS.tableEmptyValue, STRINGS.tableEmptyValue],
+          ['OcuProbe2413Var', '$Increment(^OcuProbe2413Ran)', 'OcuProbe2413 comment', 'OcuProbe2413Context'],
+        ],
+        'Run-time variables shows each variable with its stored expression as text, its comment and its context'
+      );
+      assert.equal(probe('STRAN', '$Data(^|"USER"|OcuProbe2413Ran)').value, '0', 'and no expression ran');
+      assert.deepEqual(await structural(page, SETTINGS_VARIABLES), [], `${SETTINGS_VARIABLES}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_ICONS);
+      assert.deepEqual(await allRows(page), [['OcuProbe2413Icon', '/OcuProbe2413/icon.png']], 'User-defined icons shows the icon with its path as text');
+      assert.deepEqual(await structural(page, SETTINGS_ICONS), [], `${SETTINGS_ICONS}: no violation beyond the baseline's entries`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('STGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored and none of the fixture's markers is left: ${restored.output}`);
+  }
+});
+
+// Story 24.13, matrix row Unset. Mutation (Rule 19): point the User-defined icons screen's `emptyStateKey` at `analyticsRuntimeVariablesEmpty` in `AnalyticsUserIconList.cls`
+// (mirror regenerated, bundle rebuilt and redeployed) -> the icons leg draws the variables sentence and goes red.
+test('Story 24.13: with nothing stored, Settings shows the classic page\'s defaults, Worklists shows nothing as shown, and the variables and icons tabs draw their own empty sentences', async () => {
+  const cleared = probe('STCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())`);
+  assert.equal(cleared.value, '11', `nothing is stored: ${cleared.output}`);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const settings = await allRows(page);
+      assert.equal(settings.length, 15, 'General shows its fifteen rows with nothing stored');
+      assert.ok(settings.every((row) => row[2] === STRINGS.tableStatusNo), 'none of them is stored');
+      const byName = Object.fromEntries(settings.map((row) => [row[0], row[1]]));
+      assert.equal(`${byName.Scheme}|${byName.MailEnabled}|${byName.Worklist}|${byName.PageTitle}`, `simple|0|0|${STRINGS.tableEmptyValue}`, 'the scheme reads simple, the mail and worklist flags 0 and the rest empty, as the classic page shows them');
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const worklists = await allRows(page);
+      assert.equal(worklists.length, 16, 'Worklists shows its sixteen rows');
+      assert.ok(worklists.every((row) => row[3] === STRINGS.tableStatusNo), 'none of them is shown');
+    } finally {
+      await context.close();
+    }
+    for (const { route, empty } of [
+      { route: SETTINGS_VARIABLES, empty: STRINGS.analyticsRuntimeVariablesEmpty },
+      { route: SETTINGS_ICONS, empty: STRINGS.analyticsUserIconsEmpty },
+    ]) {
+      const screen = await signedInAt(browser, config, url(route), VIEWPORTS.wide, REDUCED_MOTION);
+      try {
+        await waitForMapAnswered(screen.page, config.navigationTimeoutMs);
+        await screen.page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+        assert.equal(await screen.page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), empty, `${route}: the screen draws its own empty sentence`);
+        assert.equal((await allRows(screen.page)).length, 0, `${route}: and no row`);
+      } finally {
+        await screen.context.close();
+      }
+    }
+  } finally {
+    const restored = probe('STCLEARGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
   }
 });
 

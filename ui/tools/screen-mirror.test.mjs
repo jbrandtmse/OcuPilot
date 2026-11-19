@@ -999,6 +999,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['analytics/cubes/document', 'analytics/cubes/document', 1, 0],
     // Story 24.12: a quality measure's Groups and elements and Documentation, a parent-scoped group whose head is unlisted.
     ['analytics/quality-measures/document', 'analytics/quality-measures/document', 1, 0],
+    // Story 24.13: the analytics settings' four tabs, a listed group whose head is its first tab.
+    ['analytics/settings', 'analytics/settings', 1, 11],
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
@@ -1016,6 +1018,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['security/oauth', 'security/oauth', 1, 5],
     ['analytics/cubes/dimensions', 'analytics/cubes/document', 2, 0],
     ['analytics/quality-measures/documentation', 'analytics/quality-measures/document', 2, 0],
+    ['analytics/settings/worklists', 'analytics/settings', 2, 0],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
@@ -1027,6 +1030,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['analytics/cubes/relationships', 'analytics/cubes/document', 3, 0],
+    ['analytics/settings/variables', 'analytics/settings', 3, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-schemas/procedures', 'system-explorer/sql-schemas/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
@@ -1036,6 +1040,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/interoperability-usage/impact', 'os-management/interoperability-usage', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['analytics/settings/icons', 'analytics/settings', 4, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
     ['interoperability/productions/items/log', 'interoperability/productions/items/document', 4, 0],
     ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
@@ -2765,8 +2770,12 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+      'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList',
+      'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
+      'OcuPilot.Screen.Descriptor.AnalyticsUserIconList',
+      'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
       'OcuPilot.Screen.Descriptor.BackupDatabaseList',
       'OcuPilot.Screen.Descriptor.BackupHistoryList',
@@ -3558,6 +3567,10 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsQualityMeasureList', 'QualityMeasures'],
     ['AnalyticsQualityMeasureElementList', 'QualityMeasureElements'],
     ['AnalyticsQualityMeasureMetaList', 'QualityMeasureMetas'],
+    ['AnalyticsSettingList', 'Settings'],
+    ['AnalyticsWorklistList', 'Worklists'],
+    ['AnalyticsRuntimeVariableList', 'RuntimeVariables'],
+    ['AnalyticsUserIconList', 'UserIcons'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

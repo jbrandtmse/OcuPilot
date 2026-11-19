@@ -12618,6 +12618,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=AD-15 call: whether and how a partly applied cube update is audited; the spec's Always list audits completed ones only
 - 2026-11-14T10:35:34Z status=decision-pending owner=burndown by=unattended note=inbox=U-34
 - 2026-11-15T15:32:34Z status=routed owner=24-13-analytics-settings by=orchestrator note=owner_answer_U-34_A(audit_a_partly_applied_cube_update_as_a_failed_configuration_change_naming_the_steps_that_applied);AD-15_sentence_owner-sanctioned
+- 2026-11-19T10:43:53Z status=resolved-by:24-13-analytics-settings by=adjudication note=Batch 1 d0b58a2b6, AD-15 sentence ae20ac117 (U-34 A)
 
 ### DW-2519: A cube whose dependent the caller's resources hide is judged BUSY, NODSTIME and NOTBUILT without that dependent, while the vendor's cascade still reaches it (inference)
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -13956,6 +13957,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Seven ports' Snippet (Analytics, Atelier, DocDb, DevTool, Global, Interop, Sql) render ' Set $NAMESPACE = <literal>' as line 1; a terminal goes on to the next pasted line after a <NAMESPACE> or <PROTECT> error there, so e.g. the global replace walks a same-named global elsewhere.
 - 2026-11-18T22:33:55Z status=routed owner=burndown by=cr note=guard the write lines on the namespace (same line or a check), across every port's script
 
+### DW-2770: Analytics settings: a vendor build or synchronize that raises after updating a cube is not pinned against the real vendor (the wrapper Catch merges)
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: %DeepSee.Utils %BuildCube and %SynchronizeCube run their whole bodies in their own Try/Catch and answer a status, so no input raises out to the wrapper; the raised path PerformCube handles is pinned through the seam's partialraise mode.
+- 2026-11-19T10:43:53Z status=wontfix-theoretical owner=24-13-analytics-settings by=harvest note=reopen_if=a vendor build or synchronize is observed raising out of %DeepSee.Utils
+
+### DW-2771: Analytics settings: Worklists' Shown is the stored option and ignores the customized flag the portal reads, and the Worklists screen does not carry that flag
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: With worklists not customized every row reads not shown while the portal shows its defaults; the classic tab's checkbox reads the stored option the same way. Batch 2's show and hide writes touch the same rows.
+- 2026-11-19T10:43:53Z status=open owner=24-13-analytics-settings by=harvest note=Batch_2_Worklists_show_hide
+
+### DW-2772: Analytics settings: no test runs the vendor's own synchronize into a partial failure; the statistics VendorSynchronize passes are exercised only through the seam
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The probe's Categories source records no changes, so it cannot be synchronized; a real leg needs another target with a built dependent and a held sync lock (a 30-second vendor wait), not yet measured.
+- 2026-11-19T10:43:53Z status=wontfix-accepted owner=24-13-analytics-settings by=harvest note=reopen_if=a partly applied synchronize is reported without a failed ConfigChange row
+
+### DW-2773: Analytics settings: AC4's first-on-a-fresh-instance journal check holds only when AnalyticsSettingsRead runs before every class or spec that reads the settings
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AnalyticsSettingsEdge sorts first and a CI shard leg may run it first; a later run then sees no first-call writes, so the check weakens rather than reddens. The doc comment states the condition.
+- 2026-11-19T10:43:53Z status=wontfix-accepted owner=24-13-analytics-settings by=harvest note=reopen_if=a first-call settings read is found to write
 ### DW-2754: AD-53 named gap: a person's Load table (Story 21.16) records no vendor audit event, and AD-53 does not name it
 - source: spec-21-16-custom-locales.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Task 0 (d) on ocupilot-ci with auditing on: Create, Modify, Delete record %System/ConfigurationChange; Config.NLS.Tables.Load records none; spine AD-53 has no 21.16 entry
@@ -14039,3 +14059,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: rework 1 residual (unmeasured whether the vendor rejects them) (inference)
 - 2026-11-19T10:33:32Z status=routed owner=21-15-locale-and-table-import by=harvest note=for_re-review
 - 2026-11-19T10:54:58Z status=wontfix-theoretical owner=21-15-locale-and-table-import by=cr note=measured on ocupilot-ci 2026-11-19: ImportAll of a good locale beside a table Type BOGUS, a non-numeric FromToKey, or a locale naming absent tables answered OK and wrote every record, so no partial write; real only if a record passes %ValidateObject and the vendor's save then refuses it
+### DW-2774: Test isolation: AnalyticsCubeActions (and possibly other classes) counts cube ConfigChange rows as an absolute number in AuditEvent.Now() windows, which a sibling test's row written in the same millisecond can enter
+- source: spec-24-13-analytics-settings.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The same race reddened AnalyticsCubeManager on a fresh instance (fixed by before/after counts in 24.13 rework 1); AnalyticsCubeActions windows the same cube, verb and id six times (unverified, not yet observed red).
+- 2026-11-19T11:16:35Z status=open owner=24-13-analytics-settings by=harvest note=apply_the_Count/Added_before-after_form_in_Batch_2

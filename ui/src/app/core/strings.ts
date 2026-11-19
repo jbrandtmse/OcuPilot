@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:658 */
+  /** EXPERIENCE.md:659 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8300,6 +8300,54 @@ export const STRINGS = {
   analyticsQualityMeasureElementsEmptyAgent: 'add an element to this quality measure',
   /** EXPERIENCE.md:616 */
   analyticsQualityMeasureMetasEmptyAgent: 'add documentation to this quality measure',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsLabel: 'Worklists',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesLabel: 'Run-time variables',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsLabel: 'User-defined icons',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnPanel: 'Panel',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnWorklist: 'Worklist',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnShown: 'Shown',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnContext: 'Context',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnStored: 'Stored',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsEmpty: 'No analytics setting can be read in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsEmpty: 'No worklist can be read in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesEmpty: 'No run-time variable is defined in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsEmpty: 'No user-defined icon is defined in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt1: 'Summarize the analytics settings in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt2: 'Which settings still have their default value?',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt3: 'Can dashboards send email in this namespace?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt1: 'Which worklists does the home page show?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt2: 'Are the worklists customized in this namespace?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt3: 'Which worklists does the dashboard page show?',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt1: 'Summarize the run-time variables in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt2: 'Explain what each run-time variable\'s expression returns.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt3: 'Which run-time variables have no comment?',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt1: 'Summarize the user-defined icons in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt2: 'Which icons point outside this instance?',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt3: 'List each icon\'s name and path.',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
