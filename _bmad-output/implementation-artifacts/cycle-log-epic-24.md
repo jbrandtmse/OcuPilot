@@ -521,3 +521,5 @@
 2026-11-19T23:34:19Z	Story 24.13	code_head_pushed	sha=d2b0259cc run=44638724058 missing=none scope=batch3(final)
 2026-11-19T23:34:19Z	Story 24.13	tracker_set	key=24-13-analytics-settings status=done (three batches committed; code head d2b0259cc)
 2026-11-19T23:34:30Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-19T23:34:30Z model=opus agent_name=epic-24-context-prewarm-11 cycle_iteration=1 reason=planning_artifact_newer(EXPERIENCE.md_rows)
+2026-11-19T23:36:31Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
+2026-11-19T23:36:31Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-19T23:36:31Z model=opus agent_name=24-14-pmml-model-tester-and-dashboard-viewer-plan cycle_iteration=1
