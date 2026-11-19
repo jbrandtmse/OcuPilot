@@ -62,6 +62,7 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.AnalyticsListingMint", "args": {"ListingGroup": "ProbeGroup", "Name": "ProbeListing"}, "idValue": "ProbeListing", "parts": ["ProbeGroup", "ProbeListing"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.AnalyticsQualityMeasureElementMint", "args": {"QualityMeasure": "ProbeCatalog/ProbeSet/ProbeId", "Group": "ProbeGroup", "Name": "ProbeElement"}, "idValue": "ProbeElement", "parts": ["ProbeCatalog/ProbeSet/ProbeId", "ProbeGroup", "ProbeElement"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.AnalyticsQualityMeasureMetaMint", "args": {"QualityMeasure": "ProbeCatalog/ProbeSet/ProbeId", "Name": "ProbeItem"}, "idValue": "ProbeItem", "parts": ["ProbeCatalog/ProbeSet/ProbeId", "ProbeItem"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.LocalePropertyMint", "args": {"Locale": "yprobe", "Name": "ProbeProperty"}, "idValue": "ProbeProperty", "parts": ["yprobe", "ProbeProperty"]})
     Quit tRoster
 }
 
