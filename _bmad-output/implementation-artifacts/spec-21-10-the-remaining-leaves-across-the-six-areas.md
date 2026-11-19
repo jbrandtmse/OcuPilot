@@ -2,8 +2,8 @@
 title: 'Story 21.10: The remaining leaves across the six areas'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: '251088f4bd525683fbfa89365c663ac4df586cbd'
+status: 'done'
+baseline_revision: 'ffc186d3d1359f191c30d969fcb6e5a56f7010f0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -227,7 +227,7 @@ A pair beyond `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and the `%DB_*`
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI run 44607797355 (code head `ad39bd393`), instance shards 2/8 and 7/8: three shared-surface rosters this story did not update. (1) `RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list" (a new tool, likely the phone provider delete, is missing from the roster). (2) `ViolationSentenceCoverage.TestEveryCodeTheRouterNamesIsListed`: "the router's arm AUDITEXPORTDIRECTORY (AUDIT.EXPORT.DIRECTORY) is in a violation-code list". (3) `AuditingScreen.TestTheScreenIsBuiltWithBothActionsAndItsRead`: "declaring enable and disable, and Story 12.3's copy and purge" (the Auditing descriptor now also declares `export`). Update each roster with the member's canonical name read from the instance, run each as a full class, and then run every class under `src/OcuPilot/Test` whose name ends in `Sweep`, `Coverage`, `Screen`, `Descriptor`, `Roster` or `Corpus`, one per call, so no other roster is left red. [src/OcuPilot/Test/RemovalRowsSweep.cls, ViolationSentenceCoverage.cls, AuditingScreen.cls]
+- [x] [Review][HIGH] CI run 44607797355 (code head `ad39bd393`), instance shards 2/8 and 7/8: three shared-surface rosters this story did not update. (1) `RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list" (a new tool, likely the phone provider delete, is missing from the roster). (2) `ViolationSentenceCoverage.TestEveryCodeTheRouterNamesIsListed`: "the router's arm AUDITEXPORTDIRECTORY (AUDIT.EXPORT.DIRECTORY) is in a violation-code list". (3) `AuditingScreen.TestTheScreenIsBuiltWithBothActionsAndItsRead`: "declaring enable and disable, and Story 12.3's copy and purge" (the Auditing descriptor now also declares `export`). Update each roster with the member's canonical name read from the instance, run each as a full class, and then run every class under `src/OcuPilot/Test` whose name ends in `Sweep`, `Coverage`, `Screen`, `Descriptor`, `Roster` or `Corpus`, one per call, so no other roster is left red. [src/OcuPilot/Test/RemovalRowsSweep.cls, ViolationSentenceCoverage.cls, AuditingScreen.cls]
 - [x] [Review][HIGH] Fresh-environment check (rebuilt `ocupilot-ci`, code head `11cb922ab`): `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` fails "no class outside the set and the tests spells a PROHIBITED. code: OcuPilot.Port.ConfigPort". The review's doc comment at `Port/ConfigPort.cls:173` names `PROHIBITED.SERVICEACCOUNTSIGNIN`; only the set (`Kernel/Proposal/Prohibited.cls`) may spell a `PROHIBITED.` code. Reword the comment to name the rule without the code literal (or point at the set's parameter), sweep this story's other new or changed classes for the same spelling, and run `OcuPilot.Test.Prohibited` as a full class. [src/OcuPilot/Port/ConfigPort.cls:173]
 
 Code review 2026-11-19 (four layers plus a measurement pass on `ocupilot-ci`).
@@ -285,6 +285,16 @@ Rejected: `InactiveLimit`, `InvalidLoginLimit`/`Action` and `AuditFlags` lockout
 
 - verdicts: 0 findings — high 0, medium 0, low 0, false 0, maybe-false 0
 - findings: none; both layers read the one-comment diff and reported nothing.
+
+### 2026-11-19 — Review pass (rework 2, follow-up)
+
+- verdicts: 5 findings — high 0, medium 1, low 3, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Dropping the second leg for `PhoneProviderDelete` left its precondition refusal unpinned — `RemovalRowsSweep` now gives that tool a read without `SMSGateway` and asserts a problem and no rows.
+  - `[low]` `[patch]` The control `tOmitted = N - 1` followed from the `tNoSpare` control and could not fail — deleted with its counter.
+  - `[low]` `[reject]` The roster's skip flag for `PhoneProviderDelete` is pinned only by source text — the flag cannot change that tool's rows; a theoretical gap.
+  - `[false]` `[reject]` `AuditExportViolationCodes` is not forced to grow with a second code — the arm-based test and the `MINARMS` floor guard the single code, as the reviewer says.
+  - `[low]` `[reject]` The doc comment wording "for the reason `ViolationCodes` exists" — the same wording as every sibling list.
 
 ## Design Notes
 
@@ -434,6 +444,11 @@ Rejected: `InactiveLimit`, `InvalidLoginLimit`/`Action` and `AuditFlags` lockout
   - mutation: `SCREENEMPTY` dropped from `AuditExport` → `AuditExportWrite` (`TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts`, the empty-day leg) red.
   - mutation: the `Exists` gate dropped from `AuditPort.Snippet` → `DraftPorts` (`TestAuditPort`) red; `Modify` rendered for a provider create → `DraftPorts` (`TestSecurityAndPhoneProviderScripts`) red.
   - mutation: `isExportDay`'s up-to-today check removed → `audit-export-dialog.spec.ts` red.
+- Roster rows added after CI run 44607797355, each removed, observed red, restored (`shasum` of the three files identical) and reloaded into `ocupilot-ci`:
+  - mutation: the `PhoneProviderDelete:1:ReadAnswers` entry removed from `RemovalRowsSweep.Sites` → `RemovalRowsSweep` (`TestEachToolPassesItsOwnNamesAndSkip`, the names-callers control, and `TestEachDrivenToolAnswersTheRowsItsRosterNames`) red; restored, green.
+  - mutation: `AuditExportViolationCodes` in `Api.Error` answering an empty list → `ViolationSentenceCoverage` (`TestEveryCodeTheRouterNamesIsListed`, and `TestEveryListedCodeHasASentence` for the empty list) red; restored, green.
+  - mutation: `export` removed from the expected row actions in `AuditingScreen` → `AuditingScreen` (`TestTheScreenIsBuiltWithBothActionsAndItsRead`) red; restored, green.
+  - mutation: the precondition guard of `PhoneProviderDelete.StateDiff` made `If 0` → `RemovalRowsSweep` (`TestEachDrivenToolAnswersTheRowsItsRosterNames`, the precondition-unassigned leg) red; reverted (`shasum` identical), reloaded, green.
 - AC5: the `Mint` length check made `If 0` → `ProposalTargetKey` (`TestAMintWhoseTargetIsOverTheLimitIsRefusedBeforeTheFreshRead`) red with the store's 500 fault in its message; reverted, green.
 - AC6: `security.systemsecurity.set` set `true` in `Baseline` → `GovernanceBaseline` (`TestThePurgeIsTheOneDisabledLine`) and `SystemSecuritySettingRead` (`TestTheKeyShipsDisabledAndAnEnabledKeyMintsADestructiveProposal`) red; reverted, both green. `security.phoneproviders.delete` set `true` in `Baseline` → `GovernanceBaseline` (`TestThePurgeIsTheOneDisabledLine`) and `PhoneProviderRead` (`TestTheDeleteKeyShipsDisabledAndAnEnabledKeyMintsADestructiveProposal`) red; reverted (`shasum` identical), both green. The create and update keys mint (`PhoneProviderWrite`, `TestTheAgentsConfirmWritesOnceWithOneAuditMarker`). `security.auditing.export` set `false` in `Baseline` → `AuditExportWrite` (`TestTheAgentsConfirmStartsTheExportOnceWithOneAuditMarker`: the key ships enabled and the call mints) and the refusal-code legs of `TestAnExistingFileAndABadNameOrDirectoryAreRefusedBeforeAnyTaskStarts` (the agent's call answers `GOVERNANCE.DISABLED` in place of the port's code) red; reverted (`shasum` identical), reloaded, green.
 
@@ -451,6 +466,8 @@ Rejected: `InactiveLimit`, `InvalidLoginLimit`/`Action` and `AuditFlags` lockout
 
 Status: done
 Blocking condition: none
+
+**Rework 2.** CI run 44607797355 found three rosters this story left stale. `RemovalRowsSweep` gained `PhoneProviderDelete:1:ReadAnswers` (that tool's only name is its precondition field, so its second leg is a read without that name answering a problem and no rows); `Api.Error` gained `AuditExportViolationCodes` so the router's `AUDIT.EXPORT.DIRECTORY` arm is in a violation-code list; `AuditingScreen` expects the `export` row action. Verified: reload `LOADERRORS=0`; `RemovalRowsSweep` (7), `ViolationSentenceCoverage` (4) and `AuditingScreen` (9) green as full classes; the 49 other `*Sweep`, `*Coverage`, `*Screen` and `*Descriptor` test classes green one per call; `check-objectscript.py` clean. Mutation lines for the four rows are under Verification. Review: 5 findings, patched 1 medium and 1 low, rejected 3; follow-up review recommended `false`.
 
 **Rework 1.** The doc comment of `SECURITYROSTER` in `src/OcuPilot/Port/ConfigPort.cls` named the AD-10 service-account refusal by its code literal; it now names the rule in words, so only the set spells a `PROHIBITED.` code. The sweep of the story's changed classes found no other letter-suffixed spelling (three `PROHIBITED.*` wildcards remain, which the test does not count). Verified: reload `LOADERRORS=0`; `OcuPilot.Test.Prohibited` green as a full class on `ocupilot-ci` (16 tests, 0 failed); `check-objectscript.py` clean. Review of the pass diff: no findings; follow-up review recommended `false`. No test changed, so no mutation line.
 

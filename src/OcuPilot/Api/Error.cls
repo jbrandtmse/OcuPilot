@@ -4371,6 +4371,13 @@ Parameter AUDITEXPORTDIRECTORY = "AUDIT.EXPORT.DIRECTORY";
 
 Parameter REASONAUDITEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
 
+/// <p>Every <code>AUDIT.EXPORT.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>ViolationCodes</method> exists.</p>
+ClassMethod AuditExportViolationCodes() As %List
+{
+    Quit $ListBuild(..#AUDITEXPORTDIRECTORY)
+}
+
 /// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
 /// unreadable XML, another root element, or no task -- answered 422 by
 /// <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
