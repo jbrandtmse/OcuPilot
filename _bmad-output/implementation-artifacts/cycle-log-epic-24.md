@@ -520,3 +520,4 @@
 2026-11-19T23:33:53Z	Story 24.13	fresh_check_passed	throwaway=ocupilot-b-ci tree=d2b0259cc forward=5/5_classes_53_tests_first_run reverse+rosters=20/20_classes_208_tests browser=analytics+links+a11y+config-settings42/42 smoke=50/50 bundle=2.16MB scope=batch3
 2026-11-19T23:34:19Z	Story 24.13	code_head_pushed	sha=d2b0259cc run=44638724058 missing=none scope=batch3(final)
 2026-11-19T23:34:19Z	Story 24.13	tracker_set	key=24-13-analytics-settings status=done (three batches committed; code head d2b0259cc)
+2026-11-19T23:34:30Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-19T23:34:30Z model=opus agent_name=epic-24-context-prewarm-11 cycle_iteration=1 reason=planning_artifact_newer(EXPERIENCE.md_rows)
