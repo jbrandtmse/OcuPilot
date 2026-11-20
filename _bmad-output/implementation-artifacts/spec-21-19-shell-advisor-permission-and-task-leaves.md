@@ -2,10 +2,10 @@
 title: 'Story 21.19: Shell, advisor, permission and task leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: 'f6e5cc741b5cd175f4ea5311e442a64015a6734b'
+status: 'done'
+baseline_revision: 'c757d6c0c3b546b56c36f2a3329073f016ca9d92'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 deferred:
   - summary: >-
       The Task Manager email settings' UseSTARTTLS and message values have no real set-and-read-back leg against the vendor.
@@ -123,7 +123,7 @@ warnings: ['multiple-goals', 'oversized']
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI runs 44674547477 and 44682408366 (and the runner's fresh check): two tests this story's new screens broke. (1) `OcuPilot.Test.PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces`: "OcuPilot.Screen.Descriptor.ResourceList: and its one row action is Delete" — the Resources list now also declares export and import (PM-24). (2) `OcuPilot.Test.BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks`: "its other screens are open, and Background tasks is refused on its own pair" — a tasks-area screen this story added (the Task Manager email settings) changes what a tasks holder sees. Read each assertion and the story's change, update the test to the new shape (with names read from the instance, never recalled) or fix the product if the test caught a real defect, and say which. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `Permissions`, `BackgroundTasks`, `Tasks`, `Resource`, `Advisor` or `WebApp`, one per call. [src/OcuPilot/Test/PermissionsLists.cls, src/OcuPilot/Test/BackgroundTasksLive.cls]
+- [x] [Review][HIGH] CI runs 44674547477 and 44682408366 (and the runner's fresh check): two tests this story's new screens broke. (1) `OcuPilot.Test.PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces`: "OcuPilot.Screen.Descriptor.ResourceList: and its one row action is Delete" — the Resources list now also declares export and import (PM-24). (2) `OcuPilot.Test.BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks`: "its other screens are open, and Background tasks is refused on its own pair" — a tasks-area screen this story added (the Task Manager email settings) changes what a tasks holder sees. Read each assertion and the story's change, update the test to the new shape (with names read from the instance, never recalled) or fix the product if the test caught a real defect, and say which. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `Permissions`, `BackgroundTasks`, `Tasks`, `Resource`, `Advisor` or `WebApp`, one per call. [src/OcuPilot/Test/PermissionsLists.cls, src/OcuPilot/Test/BackgroundTasksLive.cls]
 
 Code review 2026-11-20 (four layers, full-opus; 42 rows, 34 entries). Measured on `ocupilot-ci`; every roster class green before and after the patches.
 
@@ -180,6 +180,12 @@ Code review 2026-11-20 (four layers, full-opus; 42 rows, 34 entries). Measured o
   - `[low]` `[reject]` the mail descriptor carries `ReadOnly` beyond the matrix's five members -- it is the config roster family's own field.
   - `[false]` `[reject]` the matrix's 173 rows were not observed -- the test compares to the pane at run time, and 173 was slot A's count, which the throwaway need not equal.
   - `[false]` `[reject]` the substitution check calls the vendor -- the matrix's "no vendor call" means no `EmailSet`, which the tests record.
+
+### 2026-11-19 -- Review pass (rework 1)
+
+- verdicts: 1 finding -- high 0, medium 0, low 1, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` the email screen's own-pair verdict is asserted on the navigation map only, and the test's doc-comment mutation names Background tasks alone -- the read's 403 is pinned by `TaskMailSettingRead`, and this pass's mutation is in `## Verification`.
 
 ## Design Notes
 
@@ -280,6 +286,8 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - PM-24 (the 2,000 bound): mutation: `Review` refusing at `>=` the cap -> `ResourceTransferRead` 1 of 8 red (run 1236), reverted and reloaded.
 - PM-24 (kernel route): mutation: `Prohibited.Prohibits` not calling `ResourceImport` for a resource import -> `ResourceTransferWrite` 1 of 2 red, on the kernel's own row only (run 1229), reverted (diff empty), 2 of 2 green (run 1230).
 - PM-24 (client): mutation: `resource-list.page.ts` sending `export` for the all target -> `resource-transfer.spec.ts` 1 of 6 red (the body assertion), reverted (shasum equal). Browser: the `export` registration dropped, rebuilt and redeployed -> `resources-transfer.browser-spec.mjs` 1 of 2 red (no export dialog opens), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green.
+- PM-24 (Resources row actions, `PermissionsLists`): mutation: `export-all` removed from `ResourceList`'s `rowActions` -> `PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces` 1 of 7 red (the row-action roster), reverted (diff empty) and reloaded, 7 of 7 green.
+- AC2 (Task Manager email own pair, `BackgroundTasksLive`): mutation: `%Admin_Manage:USE` removed from `TaskMailSettingList`'s `privileges` (its `ownPrivileges` left as is) -> `BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks` 1 of 9 red (the email screen reads open), reverted (diff empty) and reloaded, 9 of 9 green.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
@@ -298,10 +306,10 @@ Every test added or changed passes on a fresh environment, in either order. Each
 Status: done
 Blocking condition: none
 
-**Change.** Security advisor (`AdvisorPort`, `SecurityAdvisorList`, ignore and stop-ignoring tools), Task Manager email settings (`ConfigPort` `TaskMail`, `TaskMailSettingList`, `TaskMailSettingSet`), web application Copy from, the three create pages' hand-off (DW-2372), the shared read's unreadable-200 refusal (DW-2471), and resource export and import (PM-24, `ResourceTransferPort` and its tools, `ResourceList` actions). TM-17 and TM-18's password are Story 21.36's; nothing is built for either, and the tree holds no half-built code for them (`TaskDetails.cls` and `AuditPort.cls` are unchanged from the baseline).
+**Change (rework 1).** Both CI reds were test-shape updates, not product defects. `PermissionsLists` now expects `ResourceList`'s row actions `delete,export,export-all,import,import-local` (PM-24, by design). `BackgroundTasksLive` now expects `tasks/email=%Admin_Manage:USE` among a tasks holder's verdicts: `TaskMailSettingList` declares that own pair on purpose, as Background tasks does for `%Admin_Operate:USE`. No product file changed.
 
-**Review.** 22 findings, none high: 7 patched (2 medium, 5 low), 1 deferred (`UseSTARTTLS` and message round trip, unverified medium), 14 rejected with their reasons in the Review Triage Log. Patches: executing tests for `warmEditPage`'s tolerance, the advisor read-source grammar, the advisor screen read's cap, the agent's unlisted-row mint, and the import consequence sentence; a browser-spec key map and one spacing fix. Follow-up review recommended: true, for the two medium patches, whose new tests each carry one mutation and whose changed-after-mint leg is guarded twice, so no single mutation reddens it alone.
+**Review.** 1 finding (low), rejected with its reason in the Review Triage Log; no patches, nothing deferred. Follow-up review recommended: false (a follow-up pass that patched no high has converged).
 
-**Verification.** `reload.sh` into `ocupilot-ci` `LOADERRORS=0`; the roster sweep (every `*Sweep`, `*Coverage`, `*Screen`, `*Descriptor` class plus `DraftRegistry`, `ToolEmit`, `ReadDescriptions`, `Navigation`) 53 classes green, `ProposalScreen` being an unregistered fixture with no tests; the pin classes, eight browser specs and `npm run test:components` green in the implement pass; after the patches `AdvisorRead` 8 of 8, `AdvisorWrite` 5 of 5, `GovernanceBaseline` 3 of 3, `screen-outlet.spec.ts` 33 of 33, `npm run test:tools` 2351 of 2351, `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues.
+**Verification.** On `ocupilot-ci`, full classes, one per call: `PermissionsLists` 7 of 7, `BackgroundTasksLive` 9 of 9, `BackgroundTasks` 13, `AdvisorRead` 9, `AdvisorWrite` 5, `ResourceCreate` 8, `ResourceDelete` 6, `ResourceTransferRead` 8, `ResourceTransferWrite` 2, `ResourceUpdate` 8, `ResourceWire` 5, `WebApp` 26, `WebAppCreate` 10, `WebAppLocation` 5, `WebAppPctAccess` 11, `WebAppRolesRead` 2, `WebAppSave` 7, `WebAppWeakening` 9, `WebAppWire` 6, all green; `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues. Mutation lines for both changed assertions are in `## Verification`.
 
-**Residual risk.** The full ObjectScript sweep and the full browser suite are left to CI (Rule 29).
+**Residual risk.** Both tests hold a literal roster pin, so a later screen or row action in either area reddens them again, by design.

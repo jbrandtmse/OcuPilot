@@ -149,8 +149,8 @@ Method TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces()
             ; Story 8.4: the Resources list's Create opens the resource editor, so its empty state
             ; invites the agent instead of naming a next step.
             Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
-            ; Story 9.3: Delete.
-            Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete", tClass _ ": and its one row action is Delete")
+            ; Story 9.3: Delete; the transfer actions: export, export all, import and import from this screen's text.
+            Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete,export,export-all,import,import-local", tClass _ ": and its row actions are Delete and the four resource transfer actions")
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|resourceListEmptyAgent", tClass _ ": so its empty state invites the agent")
         } Else {
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")

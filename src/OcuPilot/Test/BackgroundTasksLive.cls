@@ -438,8 +438,9 @@ Method TestThePausedCompactFillsTheNodeCountItIsGiven()
 }
 
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its
-/// other screens, while Background tasks is shown and refused on <code>%Admin_Operate:USE</code>, and
-/// its read is refused naming that pair.</p>
+/// other screens, while Background tasks is shown and refused on <code>%Admin_Operate:USE</code> and
+/// Task Manager email on <code>%Admin_Manage:USE</code>, and the Background tasks read is refused
+/// naming its pair.</p>
 /// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from the descriptor's
 /// <code>privileges</code> and <code>ownPrivileges</code> -- Background tasks reads open and this goes
 /// red.</p>
@@ -463,7 +464,7 @@ Method TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks()
         If tScreen.%Get("sideBarPosition") = 0 Continue
         Set tVerdicts = tVerdicts _ $ListBuild(tScreen.%Get("route") _ "=" _ $Select(tScreen.%Get("allowed"): "open", 1: tScreen.%Get("failedPair")))
     }
-    Do $$$AssertEquals($ListToString(tVerdicts, " "), "tasks/schedule=open tasks/on-demand=open tasks/upcoming=open tasks/history=open tasks/background=%Admin_Operate:USE", "its other screens are open, and Background tasks is refused on its own pair")
+    Do $$$AssertEquals($ListToString(tVerdicts, " "), "tasks/schedule=open tasks/on-demand=open tasks/upcoming=open tasks/history=open tasks/background=%Admin_Operate:USE tasks/email=%Admin_Manage:USE", "its other screens are open, and Background tasks and Task Manager email are each refused on their own pair")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/screens/tasks.background/read?maxRows=5", ..#TASKUSER, ..PreparedPassword, .tStatus, .tRaw, .tHeaders)
     Set tBody = ""
     Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch {}
