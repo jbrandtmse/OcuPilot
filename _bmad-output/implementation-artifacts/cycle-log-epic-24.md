@@ -587,3 +587,5 @@
 2026-11-20T17:25:39Z	Story 24.14	code_head_pushed	sha=bbbb18845 run=44782846386 missing=none scope=batch2(fix) merged_into_B3_line=6e571a7b5 tmp_worktree=removed scratch_branch=deleted(never_pushed)
 2026-11-20T17:26:41Z	Story 24.14	ruling	question=product_Cancel_reliability choice=Batch_2b_inside_24.14(after_B3_review,before_B4;U-123_cancel_mechanics_released;target_20/20_within_2s) category=orchestrator
 2026-11-20T17:26:41Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T17:26:41Z model=sonnet agent_name=24-14-qa-batch3 cycle_iteration=3 throwaway_tree=6e571a7b5
+2026-11-20T17:37:59Z	Story 24.14	qa_complete	spawn_at=2026-11-20T17:28:00Z model=sonnet tests=AnalyticsPmmlCreateGap(new,6) mutations_demonstrated=6 first_run_failures=0 product_defects=1(PMML_bound_checked_on_text_enforced_on_class_text:2999900-3000000_chars_refused_EXPLORER.SAVE.TOOLARGE) scope=batch3
+2026-11-20T17:37:59Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T17:37:59Z model=opus agent_name=24-14-code-review-batch3 cycle_iteration=3 baseline=3713fb798
