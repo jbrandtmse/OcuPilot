@@ -566,3 +566,4 @@
 2026-11-20T11:20:39Z	Story 24.14	integrated_feature	feature=837fcf2fa(21.19) merge=5fd4364a1 conflicts=6(ReadTool557+317_writes,vocabulary109,unions,mirror+Titles_regenerated) prohibited=auto(equal_to_feature) test_tools=2354 check_objectscript=0 scope=batch2
 2026-11-20T11:20:39Z	Story 24.14	fresh_check_started	throwaway=ocupilot-b-ci tree=5fd4364a1
 2026-11-20T11:39:14Z	Story 24.14	fresh_check_passed	tree=5fd4364a1 forward=3/3_classes_20_tests_first_run reverse+rosters=16/16_classes_177_tests browser=analytics+mdx+a11y42/42 smoke=50/50 bundle=2.19MB DeveloperFloor=86/86 scope=batch2
+2026-11-20T11:39:39Z	Story 24.14	code_head_pushed	sha=5fd4364a1 run=44729361774 missing=none scope=batch2
