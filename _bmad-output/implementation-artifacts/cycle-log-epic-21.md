@@ -779,3 +779,5 @@
 2026-11-20T09:27:28Z	Story 21.19	ledger	resolved=DW-2372,DW-2471 by=21-19
 2026-11-20T09:27:28Z	Story 21.19	story_complete	head=bc5a2e37f run=44691109965 ci=success fresh=pass sweep=20/20 smoke=50/50 veto=U-121 split=TM-17+mail_password->21.36
 2026-11-20T09:28:09Z	Story 21.10	tracker_repair	found=in-progress expected=done(story_green_2026-11-19T23:48Z;spec_done) cause=status_write_missed_after_rework1 action=set_done
+2026-11-20T09:28:50Z	Story 21.20	story_started	spec=validated(veto_U-66) baseline=b7aaccb16 doctrine=3d11cec9 policy=b9ff703e hold=none
+2026-11-20T09:28:50Z	Story 21.20	stage_spawned	stage=implement scope=all_batches spawn_at=2026-11-20T09:28:50Z model=sonnet agent_name=21-20-implement cycle_iteration=1 prior_lines_ended=verified
