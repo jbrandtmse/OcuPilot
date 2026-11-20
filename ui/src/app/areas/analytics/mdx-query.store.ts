@@ -81,7 +81,7 @@ const REFUSAL_SENTENCES = new Map<string, string>([
   ['ANALYTICS.MDX.LOST', STRINGS.analyticsRefusalMdxLost],
   ['ANALYTICS.FOLDERITEM.ABSENT', STRINGS.analyticsRefusalFolderItemAbsent],
   ['ANALYTICS.PIVOT.CUBE', STRINGS.analyticsRefusalPivotCube],
-  // Story 24.14 Batch 2: a PMML model's test is the same kind of run, and its refusals read through this function.
+  // A PMML model's test is the same kind of run, and its refusals read through this function.
   ['ANALYTICS.PMML.INPUT', STRINGS.analyticsRefusalPmmlInput],
   ['ANALYTICS.PMML.ABSENT', STRINGS.analyticsPmmlModelGone],
   ['ANALYTICS.PMML.QUERYONLY', STRINGS.analyticsRefusalPmmlQueryOnly],

@@ -13,8 +13,8 @@
 /// refusal or an immediate answer.</p>
 /// <p><b>The job</b> (<method>Work</method>) runs <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method> under the bound <method>BoundSeconds</method>, which reads the answer and drops the test's result rows
 /// on every path. The run ends <code>canceled</code> on its owner's cancel and <code>stopped</code> at the bound. The SQL text is handed to the job as one <code>JOB</code> argument and is stored nowhere.</p>
-/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method> and <method>Spawn</method>. Production overrides
-/// none.</p>
+/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method>, <method>Spawn</method>, <method>Work</method>
+/// and the <code>CANCEL*</code> parameters. Production overrides none.</p>
 Class OcuPilot.Area.Analytics.PmmlTest Extends OcuPilot.Kernel.Shell.BackgroundRun
 {
 
@@ -180,10 +180,10 @@ Parameter CANCELPAUSE = 0.1;
 Parameter CANCELBUDGET As %Integer = 10;
 
 /// <p>What a cancel sends to the job: <code>$SYSTEM.SQL.CancelQuery</code>, which reaches the statement the job runs, the data source's or the custom one, whose rows the vendor reads one at a time and
-/// runs the model on between reads, so the job is inside a statement only a moment of each row: the cancel is given <parameter>CANCELSECONDS</parameter> seconds to meet it, and sent again up to
-/// <parameter>CANCELTRIES</parameter> times, and for no more than <parameter>CANCELBUDGET</parameter> seconds in all, so a run that never enters a statement does not hold the request (measured: an
-/// interrupt is accepted only while the job is inside the engine, so a single cancel often reaches no statement and the run goes to its end; the alarm does not stop the vendor's loop either). Once the
-/// statement ends the vendor's loop ends and the job, which reads its owner's flag then, ends the run <code>canceled</code>.</p>
+/// runs the model on between reads. An interrupt is accepted only while the job is inside a statement, so the cancel is given <parameter>CANCELSECONDS</parameter> seconds to meet it and is sent up to
+/// <parameter>CANCELTRIES</parameter> times in all; it is not sent again once <parameter>CANCELBUDGET</parameter> seconds have passed, so a request returns within that budget plus one send's
+/// <parameter>CANCELSECONDS</parameter>, and a run that never enters a statement goes on to the vendor's end. Once the statement ends the vendor's loop ends and the job, which reads its owner's flag then,
+/// ends the run <code>canceled</code>.</p>
 ClassMethod CancelJob(pId As %String, pUser As %String, pJobId As %String, pLive As %Boolean) As %Status
 {
     Set tSC = $$$OK

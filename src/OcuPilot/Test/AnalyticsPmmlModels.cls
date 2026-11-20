@@ -233,6 +233,77 @@ Method TestAnAbsentClassOrModelReadsNoRow()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: "none"), "200|0", "an empty criterion names no model")
 }
 
+/// <p>The agent's tool <var>pName</var> run with the arguments <var>pArgs</var> and the context cap <var>pCap</var> as the process's user, in <code>USER</code>: the whole result, whose <code>truncated</code> and
+/// <code>rowsAvailable</code> the cuts set; <code>""</code> when the tool does not resolve or answers a fault.</p>
+ClassMethod ToolResult(pName As %String, pArgs As %DynamicObject, pCap As %Integer) As %DynamicObject
+{
+    Set tResult = ""
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(pName, .tTool)
+    If $$$ISOK(tSC) && $IsObject($Get(tTool)) Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, pArgs, pCap, .tResult, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Quit $Select($IsObject(tResult) && ($Get(tHttp) = 200): tResult, 1: "")
+}
+
+/// <p>The rows a tool result carries, whether it was cut, and the rows it counted before the cut, as <code>rows|truncated|available</code>.</p>
+ClassMethod Cut(pResult) As %String
+{
+    If '$IsObject(pResult) Quit "none"
+    Quit pResult.rows.%Size() _ "|" _ pResult.truncated _ "|" _ pResult.rowsAvailable
+}
+
+/// <p>The list is cut where the tool's caps say and says so. The tool's own <code>maxRows</code> argument and the context cap its caller supplies each stop the rows short of what the screen holds, with
+/// <code>truncated</code> set and, for the context cap, <code>rowsAvailable</code> counting what was cut; a cap or a <code>maxRows</code> that holds the whole list leaves it uncut, and the port's own limit
+/// stops its read at that many rows.</p>
+/// <p>Mutation (Rule 19): drop the context cap's cut from <method>OcuPilot.Screen.Tool.Read.View</method> -- the context-cap legs go red; ignore the <code>maxRows</code> argument in the same method -- the
+/// <code>maxRows</code> legs go red.</p>
+Method TestTheListIsCutAtTheToolsCapAndSaysSo()
+{
+    Set tAll = ..ToolResult(..#MODELS _ ".read", {}, 200)
+    Set tTotal = $Select($IsObject(tAll): tAll.rows.%Size(), 1: 0)
+    Do $$$AssertTrue((tTotal >= 3) && 'tAll.truncated, "the whole list is at least the probe's three models, uncut: " _ ..Cut(tAll))
+    Do $$$AssertEquals(..Cut(..ToolResult(..#MODELS _ ".read", {}, 2)), "2|1|" _ tTotal, "a context cap of two cuts it to two, says so, and counts what was cut")
+    Do $$$AssertEquals(..Cut(..ToolResult(..#MODELS _ ".read", {}, tTotal)), tTotal _ "|0|" _ tTotal, "a context cap that holds it all leaves it whole")
+    Set tNarrow = ..ToolResult(..#MODELS _ ".read", {"maxRows": 2}, 200)
+    Do $$$AssertTrue($IsObject(tNarrow) && (tNarrow.rows.%Size() = 2) && tNarrow.truncated, "a maxRows of two reads two and says the list was cut: " _ ..Cut(tNarrow))
+    Set tWhole = ..ToolResult(..#MODELS _ ".read", {"maxRows": (tTotal)}, 200)
+    Do $$$AssertTrue($IsObject(tWhole) && (tWhole.rows.%Size() = tTotal) && 'tWhole.truncated, "a maxRows that holds it all leaves it whole: " _ ..Cut(tWhole))
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("maxRows") = 2
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "PmmlModels", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: "none"), "200|2", "the port's own limit stops its read at that many rows")
+}
+
+/// <p>A caller who holds both pairs but cannot read the namespace's globals database sees no model: both reads and the run's resolution are refused 403 naming the database's read, and answer no row, and once
+/// the read is held the same calls answer the probe's models. The refusal is made before any lookup, so neither a model nor its absence is told.</p>
+/// <p>Mutation (Rule 19): drop the <code>EvaluateRequired</code> database-read test from <method>OcuPilot.Port.AnalyticsPort.AdmitNamespace</method> -- the refusal legs go red.</p>
+Method TestACallerWhoCannotReadTheDatabaseSeesNoModel()
+{
+    Set tGlobals = ""
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(..#NAMESPACE, .tGlobals, .tReadOnly) && (tGlobals '= ""), "the namespace's globals database is named: " _ tGlobals)
+    Set tRoutines = ""
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase(..#NAMESPACE, .tRoutines, .tReadOnly) && (tRoutines '= ""), "and its routines database: " _ tRoutines)
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Development", "USE")
+    For tEndpoint = "PmmlModels", "PmmlModel" {
+        For tModel = "Colors", "NoSuchModel" {
+            Set tSC = ..Read(tEndpoint, ..IdOf(tModel), .tRows, .tHttp, .tFault, ..#SEAM, ..#NAMESPACE)
+            Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "") _ "|" _ $Select($IsObject(tRows): "rows", 1: "none"), "403|AUTH.NOPRIVILEGE|none", tEndpoint _ " " _ tModel _ ": without the database's read the read is refused and tells nothing")
+            Do $$$AssertEquals($Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: ""), tGlobals _ ":READ", tEndpoint _ " " _ tModel _ ": naming the read")
+        }
+    }
+    Set tSC = $ClassMethod(..#SEAM, "PmmlResolve", ..#NAMESPACE, ..#DEFINITION, "Colors", "verification", "", "", .tSQL, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "403|AUTH.NOPRIVILEGE", "and so is resolving a test of that model")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(tGlobals, "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(tRoutines, "READ")
+    Set tSC = ..Read("PmmlModel", ..IdOf("Colors"), .tRows, .tHttp, .tFault, ..#SEAM, ..#NAMESPACE)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: "none"), "200|1", "with the read held the model is read")
+    Set tSC = $ClassMethod(..#SEAM, "PmmlResolve", ..#NAMESPACE, ..#DEFINITION, "Colors", "verification", "", "", .tSQL, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 0, "and a test of it resolves")
+}
+
 /// <p>The gate: with only the portal's pair held a read of each endpoint is refused 403, naming <code>%Development:USE</code>, and a namespace that does not report analytics is refused 409
 /// <code>ANALYTICS.NAMESPACE</code>, each before any vendor call. The run's own gate, <method>OcuPilot.Port.AnalyticsPort.PmmlResolve</method>, refuses the same two ways. The pair refusal of the endpoints is also
 /// pinned by <class>OcuPilot.Test.PortGate</class>.</p>

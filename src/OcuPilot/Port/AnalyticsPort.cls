@@ -122,7 +122,7 @@
 /// checked for syntax (<method>VariableExpressionHolds</method>) and never run.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
-/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, <method>PmmlLookup</method>, <method>PmmlVendor</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
+/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, <method>PmmlLookup</method>, <method>PmmlVendor</method>, <method>PmmlAnswer</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -2779,14 +2779,15 @@ ClassMethod PmmlAnswer(pTestId As %Integer, pMode As %String) As %DynamicObject
 }
 
 /// <p>Drop the vendor's result rows of test <var>pTestId</var> with an embedded <code>DELETE</code> bound to the id (Story 24.14, AD-7): the vendor's own drop method prepares dynamic
-/// SQL, which a caller without the SQL privilege on the shared table is refused (measured), while this writes the same IRISTEMP rows. A statement that fails, as a cancel that arrives while it runs
-/// makes it, is sent again up to five times. The vendor's test-id counter stays. A failure is logged, never the run's answer.</p>
+/// SQL, which a caller without the SQL privilege on the shared table is refused (measured), while this writes the same IRISTEMP rows. A statement that fails, as one that waits out the process's SQL lock
+/// timeout on a row (<code>SQLCODE</code> -110) or one a cancel interrupts (-456) does, is sent up to five times in all, so a drop that meets a held lock waits up to five lock timeouts. The vendor's
+/// test-id counter stays. A failure is logged once, never the run's answer.</p>
 ClassMethod PmmlDrop(pTestId As %Integer)
 {
     For tTry = 1:1:5 {
         &sql(DELETE FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId)
         If SQLCODE >= 0 Quit
-        Hang 0.2
+        If tTry < 5 Hang 0.2
     }
     If SQLCODE < 0 Do ..LogFault("a PMML test's result rows could not be dropped", $$$ERROR($$$GeneralError, "SQLCODE " _ SQLCODE), ##class(OcuPilot.Api.AnalyticsError).#PMMLLOST)
 }

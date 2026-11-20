@@ -247,6 +247,39 @@ The implement stage re-runs the `git log` check before editing.
     - `[low]` `[reject]` the fault path has no drop test -- same as the intent-alignment row above.
     - `[low]` `[patch]` British spelling `Colour` in the probe, three test classes, the browser and component specs -- renamed `Color` throughout.
 
+### 2026-11-20 — Follow-up review
+
+- scope: the review patches in `344608ed6` and QA's uncommitted tests and fixtures; four layers on Opus.
+- verdicts: 28 findings after grouping — high 0, medium 2, low 24, false 2; patch 15, defer 0, reject 13, intent_gap 0.
+- findings:
+  - `[medium]` `[patch]` no test lands a cancel on the drop's `DELETE` -- measured on `ocupilot-b-ci`: a cancel landing there is accepted and the statement answers `SQLCODE` -456, so the retry sees it; `TestADropACancelInterruptsIsSentAgain` pins it.
+  - `[medium]` `[patch]` the idle cancel test cancels once the row reads `running`, before the job's work begins -- `PmmlTestIdle` sets an `entered` node and the test waits for it.
+  - `[false]` `[reject]` an interrupted `DELETE` throws past `PmmlRun`'s `Try` -- the same measurement: it answers `SQLCODE`, not an exception.
+  - `[false]` `[reject]` the budget is tested only on a fixture with no rows -- a run whose cancel gave up takes the stop-after-the-vendor path, pinned by the "canceled once the vendor returned" leg.
+  - `[low]` `[patch]` a cancel request can run one send's `CANCELSECONDS` past `CANCELBUDGET` -- `CancelJob`'s comment states that ceiling.
+  - `[low]` `[patch]` the two retry comments say "again up to N" for N sends in all, and `PmmlDrop`'s omits that each try waits out the lock timeout -- reworded.
+  - `[low]` `[patch]` the drop test has no upper bound, so a drop that spins passes -- it asserts under eight seconds.
+  - `[low]` `[patch]` `PmmlDrop` hangs after its last failed try -- no hang after the fifth; retrying only lock codes is rejected, since a cancel answers -456.
+  - `[low]` `[patch]` the idle test does not check the reservation's key -- asserted.
+  - `[low]` `[patch]` `Seed` ignores the vendor's status -- answers `""` on an error.
+  - `[low]` `[patch]` the drop test's cleanup sleeps instead of waiting for its job -- waits for `done`.
+  - `[low]` `[patch]` "neither a model nor its absence is told" is unchecked -- an absent model's legs read the same 403.
+  - `[low]` `[patch]` `PmmlTest`'s seam list omits `Work` and the `CANCEL*` parameters, and the port's omits `PmmlAnswer` -- added.
+  - `[low]` `[patch]` the `maxRows` mutation names `BoundedMaxRows` in the header and `Read.View` here -- the header names `View`.
+  - `[low]` `[patch]` the "Not run" line still lists the cancel's retries -- the mutation is run and recorded.
+  - `[low]` `[patch]` a story tag in `mdx-query.store.ts`'s comment and measurement narration in `CancelJob`'s (Rule 14) -- removed.
+  - `[low]` `[patch]` the Auto Run Result calls the budget and the retry untested -- corrected.
+  - `[low]` `[reject]` the idle job is not released when the test raises -- no step raises; the job ends itself after 60 seconds.
+  - `[low]` `[reject]` a cancel with no statement id can interrupt the job's own store SQL -- a window of milliseconds after the vendor returns; a `DELETE` it meets is retried; the fix needs a cross-process signal.
+  - `[low]` `[reject]` "dropped on every path" against a drop that gives up -- the drop runs on every path; only a process holding that test's own rows can stop it, and it is logged once.
+  - `[low]` `[reject]` production's `CANCELBUDGET` and `CANCELTRIES` are not run -- the loop is pinned; the values are constants.
+  - `[low]` `[reject]` the routines-database branch of `AdmitNamespace` is unpinned in USER -- existing code outside this batch.
+  - `[low]` `[reject]` Cancel does not interrupt a run that never enters a statement -- the amended Intent and Decided in-stage 4 record it; the run ends `canceled` when the vendor returns.
+  - `[low]` `[reject]` `CancelJob` copies `SqlBackground`'s (Rule 2) -- the reason is Decided in-stage 4; sharing it edits the SQL console's class; reopen if a third retrying cancel appears.
+  - `[low]` `[reject]` the matrix gives `QUERYONLY` where session and privilege statements get SQL query's codes -- the fix edits the frozen matrix; AC4 holds.
+  - `[low]` `[reject]` the "no table or view" check races under its mutation -- the 422 and footprint legs pin it.
+  - `[low]` `[reject]` AC4's 403 half and AC1's journal half carry no `mutation:` line -- one per AC, which both have.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** AD-5, AD-7, AD-8, AD-9, AD-11, AD-13, AD-16, AD-21, AD-24, AD-29, AD-36, AD-39, AD-41, AD-42, AD-44, AD-60, AD-65. There is no governance key, because the run is a read-kind run (AD-22; Batch 1 Question 5).
@@ -341,7 +374,17 @@ The implement stage re-runs the `git log` check before editing.
 - mutation: AC6 `AnalyticsPmmlRun.OnAfterAllTests` skips the probe's `PmmlProbe.Remove` (the throwaway's copy, loaded) -> the class ends red at class level, "left probe state in USER: classes:12", and the class reads green again once reverted and reloaded (`AnalyticsPmmlRun`).
 - mutation: bound `AnalyticsPort.PmmlRun` drops the elapsed-time clause of its bound test (the throwaway's copy, loaded) -> `TestARunPastItsBoundIsStoppedAndLeavesNoRow` red alone, the run answering `ran` over 248,832 records (`AnalyticsPmmlRunEdge`); the port was reverted, the tree and the copy compared equal by `diff -rq`, and reloaded.
 - mutation: refusal map `mdx-query.store.ts` maps `ANALYTICS.PMML.CUBE` to the busy sentence -> `reads each of the eight PMML refusal codes as its own sentence` red; and `pmml-test.store.ts` swaps the singular and plural stopped sentences -> `reads a run stopped at its bound as its status line` red (the Test page spec).
-- Not run against a mutation: the gate (`PMMLPAIRS`) and the cancel's retries, pinned by `TestTheGateRefusesBeforeAnyLookup` and `TestACancelEndsARunAndLeavesNoRow`, whose `Mutation (Rule 19)` lines name their changes in each test's header; the cancel's ten-second budget and the drop's retry, which no test reaches.
+- Not run against a mutation: the gate (`PMMLPAIRS`), pinned by `TestTheGateRefusesBeforeAnyLookup`, whose `Mutation (Rule 19)` line names its change in the test's header.
+- mutation: cancel retries `PmmlTest.CancelJob` sends its cancel once -> `TestACancelEndsARunAndLeavesNoRow` red (the run not canceled, 60.2 seconds) and `TestACancelThatMeetsNoStatementIsBoundedByItsBudget` red (0.11 seconds), with two later tests of the class red behind the live run (`AnalyticsPmmlRunEdge`, run 862); reverted, the class green again (run 863).
+- mutation: cancel budget `PmmlTest.CancelJob` drops the budget clause from its loop (the throwaway's copy; `PmmlTestIdle` and `PmmlTestQuick` recompiled) -> `TestACancelThatMeetsNoStatementIsBoundedByItsBudget` red alone, the cancel taking 6.25 seconds against the fixture's two (`AnalyticsPmmlRunEdge`).
+- mutation: non-query kinds `PmmlTest.Check` skips its kind test -> `TestAnSqlStatementOfAnyOtherKindIsRefusedBeforeAnythingRuns` red on the table, view, insert and delete legs and on the table made and the footprint, its session, privilege and second-statement legs green, and `TestASourceThatIsNotAQueryIsRefusedBeforeAnythingRuns` red beside it (`AnalyticsPmmlRunEdge`).
+- mutation: drop retry `AnalyticsPort.PmmlDrop` sends its `DELETE` once (the port and its seam subclasses recompiled) -> `TestADropThatMeetsALockIsSentAgainAndGivenUp` red on both holds, the drop taking 1.2 seconds and the shorter hold leaving its rows (`AnalyticsPmmlRun`); the leftover rows reddened three other tests of the class until its `Settle` dropped them, which it now does.
+- mutation: drop under cancel `AnalyticsPort.PmmlDrop` sends its `DELETE` again only after a lock timeout (`SQLCODE` -110) -> `TestADropACancelInterruptsIsSentAgain` red alone on the rows left and the failure logged, the five other tests green (`AnalyticsPmmlRun`, runs 858-859).
+- mutation: drop cap `AnalyticsPort.PmmlDrop` tries 50 times, not five -> `TestADropThatMeetsALockIsSentAgainAndGivenUp` red alone, the drop taking 30.05 seconds against the bound of eight (`AnalyticsPmmlRun`, run 860). Each follow-up mutation was applied to the throwaway's copy, the port's subclasses recompiled, then reverted by copying the tree's file back; `diff -rq` of the tree and the copy is empty.
+- mutation: neighbors `AnalyticsPort.PmmlDrop` reads `TestId >= :pTestId`, then `TestId <= :pTestId` -> `TestOtherTestsRowsSurviveEveryEnding` red alone on the other tests' rows in all five endings, each time (`AnalyticsPmmlRun`).
+- mutation: fault ending `AnalyticsPort.PmmlRun` skips the drop when it caught an exception -> `TestOtherTestsRowsSurviveEveryEnding` red alone, on the faulted leg's own rows (`AnalyticsPmmlRun`).
+- mutation: database read `AnalyticsPort.AdmitNamespace` skips its globals-database read test -> `TestACallerWhoCannotReadTheDatabaseSeesNoModel` red alone, on both reads and the resolution (`AnalyticsPmmlModels`).
+- mutation: tool caps `Read.View` drops the context cap's cut, then ignores the `maxRows` argument (the throwaway's copy, `Read`'s subclasses recompiled) -> `TestTheListIsCutAtTheToolsCapAndSaysSo` red alone on the context-cap leg, then on the `maxRows` leg (`AnalyticsPmmlModels`). Each mutation was applied to the throwaway's copy only, reverted by copying the tree's file back and reloaded; `diff -rq` of the tree and the copy is empty.
 
 ## Auto Run Result
 
@@ -349,8 +392,8 @@ Status: done
 
 **Change.** The PMML models list and its Test screen, the third background-run kind (`PmmlTest`, three routes) and the agent's two derived reads, built to the amended Intent (the alarm stops a slow start; a run past the bound is `stopped` and discarded; Cancel interrupts; the drop is an embedded `DELETE` bound to the test id; `%DropResults` is named in no product code or comment). The Design Notes hold Task 0's measurements and the decisions. The batch's new files are the two descriptors, `PmmlTest`, `PmmlProbe`, `PmmlTestQuick` (the two-second-bound fixture), the three test classes, the store, the page and its component spec.
 
-**Review pass (one).** Four layers (verification gaps, intent alignment, edge cases, adversarial) reported 45 findings; the Review Triage Log holds every row. Patched, 10 rows in 6 fixes: `CancelJob` is bounded to ten seconds in all (`CANCELBUDGET`); `PmmlDrop` sends its `DELETE` again up to five times and its comment no longer names the vendor's drop method; the component spec reads all eight PMML refusal codes and the `stopped` status line; the bound's mutation is run; `Colour` is `Color` throughout the probe, tests and specs. Deferred, 1 entry covering 3 rows (the shared attach-on-busy behavior). Rejected, 24 low and 8 false, each with its reason in the log. Follow-up review recommended: the cancel budget and the drop's retry, which no test reaches (the first needs a verification-source run that never enters a statement; the second a cancel that lands on the `DELETE`), on top of five patched medium entries.
+**Review pass (one).** Four layers (verification gaps, intent alignment, edge cases, adversarial) reported 45 findings; the Review Triage Log holds every row. Patched, 10 rows in 6 fixes: `CancelJob` is bounded to ten seconds in all (`CANCELBUDGET`); `PmmlDrop` sends its `DELETE` again up to five times and its comment no longer names the vendor's drop method; the component spec reads all eight PMML refusal codes and the `stopped` status line; the bound's mutation is run; `Colour` is `Color` throughout the probe, tests and specs. Deferred, 1 entry covering 3 rows (the shared attach-on-busy behavior). Rejected, 24 low and 8 false, each with its reason in the log. Follow-up review recommended: the cancel budget and the drop's retry, on top of five patched medium entries; it ran, under Review Triage Log › Follow-up review.
 
 **Verification.** On a throwaway rebuilt fresh (`down`, `up`, readiness installed): `AnalyticsPmmlModels` (4), `AnalyticsPmmlRun` (3) and `AnalyticsPmmlRunEdge` (6) green on their first run, then again in reverse order (run ids 1-6); the full ObjectScript sweep in 17 shards, 6,299 tests in 828 classes, with one failure in shard 16, `InteropItemRun.TestEachRefusalIsMadeByNameBeforeAnyVendorCall` ("the probe production's operation holds no job after the start", an interop start-timing failure in a class this batch does not touch), green on its single re-run. Mutations: the bound clause (`TestARunPastItsBoundIsStoppedAndLeavesNoRow` red alone), the AC6 cleanup (class red, then green again once reverted), and the two component mutations; each reverted and the tree equal to the copy. `analytics.browser-spec.mjs` 18 of 18 and `a11y-structural-invariants.browser-spec.mjs` 13 of 13 on the rebuilt, redeployed bundle; `test:tools` 2343 of 2343; component suite 3,689 of 3,689 (308 files); `npm run build` clean; `check-objectscript` and `lint-docs` clean. The proposed strings stay the owner's veto items; the literal drift bound in `strings.test.mjs` held.
 
-**Residual risks.** The deferred attach-on-busy entry; the two untested patches above; the continuous-model formulas equal `AbstractTester` lines 493-494 by reading, not by a vendor-run comparison of a continuous model beyond the probe's.
+**Residual risks.** The deferred attach-on-busy entry; the cancel budget is pinned through `PmmlTestIdle`'s two-second budget, not production's ten, and the drop's retry through a held row lock and a cancel landing on the `DELETE`; the continuous-model formulas equal `AbstractTester` lines 493-494 by reading, not by a vendor-run comparison of a continuous model beyond the probe's.

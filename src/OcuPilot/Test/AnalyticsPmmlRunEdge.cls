@@ -20,6 +20,8 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 Parameter QUICK = "OcuPilot.Test.PmmlTestQuick";
 
+Parameter IDLE = "OcuPilot.Test.PmmlTestIdle";
+
 Parameter START = "/api/ocupilot/analytics/pmml/background";
 
 Parameter POLL = "/api/ocupilot/analytics/pmml/background/:id";
@@ -201,6 +203,76 @@ Method TestASourceThatIsNotAQueryIsRefusedBeforeAnythingRuns()
     Do $$$AssertEquals(tLine, "200 ", "an SQL the instance cannot prepare is answered at once, with no run: " _ tLine)
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("outcome") _ "|" _ tAnswer.%IsDefined("id"), 1: ""), "error|0", "as an error outcome")
     Do $$$AssertEquals(..Counter() _ "|" _ ..Footprint(), tBefore, "nothing was allocated, started or changed")
+}
+
+/// <p>Whether <var>pClass</var> is compiled in <code>USER</code>.</p>
+ClassMethod Compiled(pClass As %String) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tExists = 0
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tExists = ''##class(%Dictionary.CompiledClass).%ExistsId(pClass)
+    } Catch {
+        Set tExists = -1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tExists
+}
+
+/// <p>A custom SQL statement of any other kind is refused before anything is reserved, spawned or run: a statement that creates a table or a view is 422
+/// <code>ANALYTICS.PMML.QUERYONLY</code> as one that inserts or deletes rows is, and one that controls a session or grants a privilege is refused with SQL query's own code for it, not this one. A second statement
+/// after a query does not prepare, so it is answered as an error at once. No statement here would change a source row were it to run, and none does: no table or view is made, no source row changes
+/// and no test id is allocated.</p>
+/// <p>Mutation (Rule 19): drop the kind test from <method>OcuPilot.Area.Analytics.PmmlTest.Check</method> -- the DDL and DML legs go red; the session and privilege legs, which SQL query refuses first, stay green.</p>
+Method TestAnSqlStatementOfAnyOtherKindIsRefusedBeforeAnythingRuns()
+{
+    Set tBefore = ..Counter() _ "|" _ ..Footprint()
+    Set tQuery = "SELECT ID, X, Color, Y FROM ProbePmml.Source"
+    For tCase = $ListBuild("a table is created", "CREATE TABLE ProbePmml.Scratch (A INT)", "422 ANALYTICS.PMML.QUERYONLY"), $ListBuild("a view is created", "CREATE VIEW ProbePmml.ScratchView AS " _ tQuery, "422 ANALYTICS.PMML.QUERYONLY"), $ListBuild("rows are inserted", "INSERT INTO ProbePmml.Source (X, Color, Y) SELECT X, Color, Y FROM ProbePmml.Source WHERE X < 0", "422 ANALYTICS.PMML.QUERYONLY"), $ListBuild("rows are deleted", "DELETE FROM ProbePmml.Source WHERE X < 0", "422 ANALYTICS.PMML.QUERYONLY"), $ListBuild("a transaction option is set", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED", "422 " _ ##class(OcuPilot.Api.AtelierError).#SQLSESSION), $ListBuild("a privilege is granted", "GRANT SELECT ON ProbePmml.Source TO PUBLIC", "422 " _ ##class(OcuPilot.Api.AtelierError).#SQLADMINISTRATION) {
+        Set tLine = ..Start("Colors", "custom", "", $List(tCase, 2), .tAnswer)
+        Do $$$AssertEquals(tLine, $List(tCase, 3), $List(tCase, 1) _ " as a custom source: " _ tLine)
+    }
+    Set tLine = ..Start("Colors", "custom", "", tQuery _ "; DELETE FROM ProbePmml.Source WHERE X < 0", .tAnswer)
+    Do $$$AssertEquals(tLine _ "|" _ $Select($IsObject(tAnswer): tAnswer.%Get("outcome") _ "|" _ tAnswer.%IsDefined("id"), 1: ""), "200 |error|0", "a second statement after a query is answered as an error with no run")
+    Do $$$AssertEquals(..Compiled("ProbePmml.Scratch") _ ..Compiled("ProbePmml.ScratchView"), "00", "no table or view was made")
+    Do $$$AssertEquals(..Counter() _ "|" _ ..Footprint(), tBefore, "nothing was allocated, started or changed")
+}
+
+/// <p>A cancel of a run whose job never enters a statement is bounded by the cancel's budget: the fixture's run is idle, so the interrupt is refused every time it is sent, and the cancel request stops
+/// sending it once the fixture's two seconds have passed, not after its sixty sends (which take over six). The run is still live when the request returns, and ends <code>canceled</code> once its job
+/// is released.</p>
+/// <p>Mutation (Rule 19): drop the budget clause from the loop of <method>OcuPilot.Area.Analytics.PmmlTest.CancelJob</method> -- this goes red on the seconds the cancel took.</p>
+Method TestACancelThatMeetsNoStatementIsBoundedByItsBudget()
+{
+    Kill ^IRIS.Temp.OcuPilotPmmlIdle
+    Set tSC = $ClassMethod(..#STORE, "GuardedReserve", $Username, ..#NAMESPACE, 1000, ..#LIMITS, .tKey, .tBusy, .tFull, .tSweep, "pmml")
+    Do $$$AssertTrue($$$ISOK(tSC) && ($Get(tKey) '= ""), "a run is reserved: " _ $Get(tKey) _ " busy " _ $Get(tBusy) _ " full " _ $Get(tFull))
+    Do $$$AssertTrue($ClassMethod(..#IDLE, "Spawn", tKey, $Username, ..#NAMESPACE, $ListBuild(..#DEFINITION _ "||Colors", "verification", "", ""), .tChild), "and its idle job is spawned")
+    Set tDeadline = $ZHorolog + 30
+    While ('$Data(^IRIS.Temp.OcuPilotPmmlIdle("entered"))) && ($ZHorolog < tDeadline) {
+        Hang 0.1
+    }
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT State FROM OcuPilot_Kernel_State.SqlRun WHERE RunKey = ?", tKey)
+    Set tState = $Select(tResult.%Next(): tResult.%GetData(1), 1: "")
+    Do $$$AssertEquals($Data(^IRIS.Temp.OcuPilotPmmlIdle("entered")) _ " " _ tState, "1 running", "the job began its work and holds its run")
+    Set tStart = $ZHorolog
+    Set tSC = $ClassMethod(..#IDLE, "Cancel", tKey, $Username, .tFound)
+    Set tSeconds = $ZHorolog - tStart
+    Do $$$AssertTrue($$$ISOK(tSC) && tFound, "the cancel is accepted")
+    Do $$$AssertTrue(tSeconds >= 1.9, "it kept sending for its budget of two seconds: " _ tSeconds)
+    Do $$$AssertTrue(tSeconds < 4.5, "and stopped there, not after its sixty sends: " _ tSeconds)
+    Do $ClassMethod(..#IDLE, "View", tKey, $Username, .tFound, .tView)
+    Do $$$AssertEquals($Select($IsObject($Get(tView)): tView.%Get("status") _ " " _ tView.%Get("cancelRequested"), 1: ""), "running 1", "the run is still live, its cancel flag set")
+    Set ^IRIS.Temp.OcuPilotPmmlIdle("release") = 1
+    Set tDeadline = $ZHorolog + 30
+    For {
+        Do $ClassMethod(..#IDLE, "View", tKey, $Username, .tFound, .tView)
+        If '$Get(tFound) || (tView.%Get("status") '= "running") || ($ZHorolog > tDeadline) Quit
+        Hang 0.1
+    }
+    Do $$$AssertEquals($Select($IsObject($Get(tView)): tView.%Get("status"), 1: "absent"), "canceled", "and ends canceled once its job is released")
+    Kill ^IRIS.Temp.OcuPilotPmmlIdle
 }
 
 /// <p>A class or model that is not there is 404 <code>ANALYTICS.PMML.ABSENT</code>; a data source the definition does not declare, and verification records a model does not carry, are 400

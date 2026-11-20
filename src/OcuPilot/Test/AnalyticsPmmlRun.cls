@@ -31,6 +31,10 @@ Parameter CUSTOM = "SELECT ID, X, Color, Y FROM ProbePmml.Source WHERE X < 8";
 
 Parameter CANCEL = "/api/ocupilot/analytics/pmml/background/:id/cancel";
 
+Parameter RUNSEAM = "OcuPilot.Test.PmmlRunSeam";
+
+Parameter GATESEAM = "OcuPilot.Test.AnalyticsGateSeam";
+
 /// <p>The content type of the last response <method>Send</method> read.</p>
 Property PreparedType As %String;
 
@@ -71,7 +75,7 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Stop every live PMML run of the suite's account, wait up to 20 seconds for each to end, then remove every row of the account's; an error when a run is still live.</p>
+/// <p>Stop every live PMML run of the suite's account, wait up to 20 seconds for each to end, then remove every run row of the account's and every result row of the probe's models; an error when a run is still live.</p>
 Method Settle() As %Status
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
@@ -89,6 +93,7 @@ Method Settle() As %Status
         Do $ClassMethod(..#STORE, "GuardedSweep", ..#LIMITS)
     }
     Do $ClassMethod(..#STORE, "GuardedForgetUser", tUser)
+    Do $ClassMethod(..#PMML, "DropRows")
     If tLive Quit $$$ERROR($$$GeneralError, "a PMML run of this class was still live after 20 seconds")
     Quit $$$OK
 }
@@ -126,6 +131,47 @@ Method RunToEnd(pBody As %DynamicObject, Output pStatus As %Integer, pSeconds As
 ClassMethod Counter() As %Integer
 {
     Quit +$Get(^IRIS.Temp.DeepSee.PMML.ResultI("TestIdx"))
+}
+
+/// <p>The vendor's own run of the probe's tree over its verification records in <code>USER</code>, which writes four result rows under test id <var>pId</var> (a new one when it is empty); the id, or
+/// <code>""</code> when the run failed.</p>
+ClassMethod Seed(pId As %Integer = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tId = pId
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.tId, ..#DEFINITION, "Colors", , 0)
+        If $$$ISERR(tSC) Set tId = ""
+    } Catch {
+        Set tId = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tId
+}
+
+/// <p>Hold the lock the vendor's result table takes on its row <var>pRowId</var> until <code>^IRIS.Temp.OcuPilotPmmlDrop("release")</code> is set or <var>pSeconds</var> have passed, and say so in
+/// <code>("held")</code> and <code>("done")</code>. The job a test spawns to make another process's <code>DELETE</code> wait.</p>
+ClassMethod HoldRow(pRowId As %Integer, pSeconds As %Numeric)
+{
+    Lock +^IRIS.Temp.DeepSee.PMML.ResultD(pRowId):5
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("held") = $Test
+    Set tEnd = $ZHorolog + pSeconds
+    While ('$Data(^IRIS.Temp.OcuPilotPmmlDrop("release"))) && ($ZHorolog < tEnd) {
+        Hang 0.05
+    }
+    Lock -^IRIS.Temp.DeepSee.PMML.ResultD(pRowId)
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("done") = 1
+}
+
+/// <p>Wait up to 30 seconds for <code>^IRIS.Temp.OcuPilotPmmlDrop(<var>pNode</var>)</code> to be set by the job <method>HoldRow</method>; whether it was.</p>
+ClassMethod AwaitNode(pNode As %String) As %Boolean
+{
+    Set tDeadline = $ZHorolog + 30
+    While ('$Data(^IRIS.Temp.OcuPilotPmmlDrop(pNode))) && ($ZHorolog < tDeadline) {
+        Hang 0.05
+    }
+    Quit $Data(^IRIS.Temp.OcuPilotPmmlDrop(pNode)) > 0
 }
 
 /// <p>The answer the vendor's own run computes for the model <var>pModel</var> of the probe's definition against <var>pSource</var> (<code>dataset</code>, <code>verification</code> or <code>custom</code> with
@@ -315,6 +361,133 @@ Method TestARunTheVendorRefusesAnswersItsErrorAndLeavesNothing()
     If '$IsObject(tView) || '$IsObject(tView.%Get("result")) Quit
     Do $$$AssertTrue($Length(tView.result.message) && ($Length(tView.result.message) <= ##class(OcuPilot.Port.AnalyticsPort).#MDXMAXCELL), "the vendor's text is the message, within the cut: " _ tView.result.message)
     Do $$$AssertEquals(..Counter() - tBefore _ "|" _ $ClassMethod(..#PMML, "RowsOf", ..Counter()) _ "|" _ $ClassMethod(..#PMML, "Rows"), "1|0|0", "the run allocated its id and left no row")
+}
+
+/// <p>AC3: a drop that fails is sent again, and given up on after five tries without failing the run. Another process holds the lock on one of a test's result rows, and the process's lock timeout is one
+/// second. A hold that outlasts the five tries leaves the rows, takes the five seconds of waiting, and logs the failure once; a hold of two and a half seconds is outlived by the second or third try, which
+/// removes the rows and logs nothing. Once the lock is free a later drop removes the rows that were left.</p>
+/// <p>Mutation (Rule 19): send the <code>DELETE</code> in <method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method> once, not up to five times -- both holds go red, the long one on the seconds it took and the short one on the rows left.</p>
+Method TestADropThatMeetsALockIsSentAgainAndGivenUp()
+{
+    Set tOldTimeout = ""
+    Kill ^IRIS.Temp.OcuPilotPmmlDrop
+    Do $SYSTEM.SQL.Util.SetOption("ProcessLockTimeout", 1, .tOldTimeout)
+    Try {
+        Set tId = ..Seed()
+        &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
+        Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 30)::5
+        Do $$$AssertTrue($Test && ..AwaitNode("held") && (^IRIS.Temp.OcuPilotPmmlDrop("held") = 1), "a job holds the lock on one of the test's rows")
+        Do $ClassMethod(..#GATESEAM, "Reset")
+        Do $ClassMethod(..#GATESEAM, "Arm", "capture")
+        Set tStart = $ZHorolog
+        Do $ClassMethod(..#GATESEAM, "PmmlDrop", tId)
+        Set tSeconds = $ZHorolog - tStart
+        Set tLog = $Get(^||OcuPilotAnalyticsSeam("log"))
+        Do $$$AssertTrue(tSeconds >= 5, "the drop waited out the lock five times, one second each: " _ tSeconds)
+        Do $$$AssertTrue(tSeconds < 8, "and then gave up rather than waiting out the hold: " _ tSeconds)
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId), 4, "the locked test's rows are still there")
+        Do $$$AssertEquals($Length(tLog, "could not be dropped") - 1 _ "|" _ ($Length(tLog, "SQLCODE -110") - 1), "1|1", "and the failure is logged once, as a lock timeout: " _ tLog)
+        Set ^IRIS.Temp.OcuPilotPmmlDrop("release") = 1
+        Do $$$AssertTrue(..AwaitNode("done"), "the job lets go")
+        Do $ClassMethod(..#GATESEAM, "PmmlDrop", tId)
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId), 0, "and a drop once the lock is free removes them")
+        Kill ^IRIS.Temp.OcuPilotPmmlDrop
+        Do $ClassMethod(..#GATESEAM, "Reset")
+        Do $ClassMethod(..#GATESEAM, "Arm", "capture")
+        Set tId = ..Seed()
+        &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
+        Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 2.5)::5
+        Do $$$AssertTrue($Test && ..AwaitNode("held"), "a job holds the lock on one of another test's rows for two and a half seconds")
+        Set tStart = $ZHorolog
+        Do $ClassMethod(..#GATESEAM, "PmmlDrop", tId)
+        Set tSeconds = $ZHorolog - tStart
+        Do $$$AssertTrue(tSeconds >= 1, "the first try waited out its second: " _ tSeconds)
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId) _ "|" _ $Get(^||OcuPilotAnalyticsSeam("log")), "0|", "a later try removed the rows and nothing was logged")
+        Do $$$AssertTrue(..AwaitNode("done"), "the job let go")
+    } Catch ex {
+        Do $$$AssertTrue(0, "the drop's test raised: " _ ex.DisplayString())
+    }
+    Do $SYSTEM.SQL.Util.SetOption("ProcessLockTimeout", tOldTimeout)
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("release") = 1
+    Do ..AwaitNode("done")
+    Kill ^IRIS.Temp.OcuPilotPmmlDrop
+    Do $ClassMethod(..#GATESEAM, "Reset")
+}
+
+/// <p>Drop test <var>pTestId</var>'s rows through the gate seam, in a job, with its log captured, and say so in <code>^IRIS.Temp.OcuPilotPmmlDrop</code>: <code>("dropper")</code> is the job's
+/// process id once it starts, <code>("log")</code> what the drop logged, and <code>("dropped")</code> is set when it returns. The job a test spawns so that another process can cancel its
+/// <code>DELETE</code>.</p>
+ClassMethod DropInJob(pTestId As %Integer)
+{
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("dropper") = $Job
+    Do $ClassMethod(..#GATESEAM, "Reset")
+    Do $ClassMethod(..#GATESEAM, "Arm", "capture")
+    Do $ClassMethod(..#GATESEAM, "PmmlDrop", pTestId)
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("log") = $Get(^||OcuPilotAnalyticsSeam("log"))
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("dropped") = 1
+}
+
+/// <p>AC3: a drop whose <code>DELETE</code> a cancel interrupts is sent again and removes the rows. Another process holds the lock on one of a test's rows, so the drop's <code>DELETE</code> waits
+/// inside the SQL engine at the instance's lock timeout; an SQL cancel sent to the dropping job is accepted there, and once the lock is free a later try removes the rows and nothing is logged.</p>
+/// <p>Mutation (Rule 19): send the <code>DELETE</code> in <method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method> again only after a lock timeout (<code>SQLCODE</code> -110) -- this goes red on the rows
+/// left and the failure logged.</p>
+Method TestADropACancelInterruptsIsSentAgain()
+{
+    Kill ^IRIS.Temp.OcuPilotPmmlDrop
+    Try {
+        Set tId = ..Seed()
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId), 4, "the vendor's run wrote a test's four rows")
+        &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
+        Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 30)::5
+        Do $$$AssertTrue($Test && ..AwaitNode("held") && (^IRIS.Temp.OcuPilotPmmlDrop("held") = 1), "a job holds the lock on one of the test's rows")
+        Job ##class(OcuPilot.Test.AnalyticsPmmlRun).DropInJob(tId)::5
+        Do $$$AssertTrue($Test && ..AwaitNode("dropper"), "a job starts the drop")
+        Hang 1
+        Set tCancel = $SYSTEM.SQL.CancelQuery(^IRIS.Temp.OcuPilotPmmlDrop("dropper"), , 3)
+        Do $$$AssertStatusOK(tCancel, "the cancel is accepted while the DELETE waits on the lock")
+        Set ^IRIS.Temp.OcuPilotPmmlDrop("release") = 1
+        Do $$$AssertTrue(..AwaitNode("dropped") && ..AwaitNode("done"), "the drop returns and the hold lets go")
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId) _ "|" _ $Get(^IRIS.Temp.OcuPilotPmmlDrop("log")), "0|", "a later try removed the rows and nothing was logged")
+    } Catch ex {
+        Do $$$AssertTrue(0, "the drop's cancel test raised: " _ ex.DisplayString())
+    }
+    Set ^IRIS.Temp.OcuPilotPmmlDrop("release") = 1
+    Do ..AwaitNode("done")
+    Kill ^IRIS.Temp.OcuPilotPmmlDrop
+}
+
+/// <p>AC3: every ending of a test drops its own rows and no one else's. Two other tests' rows, one under a lower test id than the runs and one under a higher, stay whole through a run that is answered, one
+/// whose source the vendor refuses, one stopped at its bound, one canceled once the vendor has returned and one whose answer faults, and each of those runs leaves no row of its own. A fault is raised again
+/// after the drop.</p>
+/// <p>Mutation (Rule 19): read <code>TestId &gt;= :pTestId</code> in the <code>DELETE</code> of <method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method> -- every leg goes red on the higher test's rows; read <code>&lt;=</code> -- every
+/// leg goes red on the lower test's.</p>
+Method TestOtherTestsRowsSurviveEveryEnding()
+{
+    Set tLow = ..Seed()
+    Set tHigh = ..Seed(..Counter() + 100000)
+    Set tLowRows = $ClassMethod(..#PMML, "RowsOf", tLow)
+    Set tHighRows = $ClassMethod(..#PMML, "RowsOf", tHigh)
+    Do $$$AssertEquals(tLowRows _ "|" _ tHighRows, "4|4", "two other tests hold four rows each, under a lower and a higher id than the runs'")
+    Set tOthers = tLowRows + tHighRows
+    For tCase = $ListBuild("answered", "verification", "", 60, "", "ran||"), $ListBuild("refused by the vendor", "custom", "SELECT ID, X FROM ProbePmml.Source", 60, "", "error||"), $ListBuild("stopped at its bound", "verification", "", 0.0001, "", "stopped|bound|"), $ListBuild("canceled once the vendor returned", "verification", "", 60, "stop", "stopped|request|"), $ListBuild("faulted in its answer", "verification", "", 60, "fault", "||PmmlAnswer") {
+        Do $ClassMethod(..#RUNSEAM, "Reset")
+        If $List(tCase, 5) '= "" Do $ClassMethod(..#RUNSEAM, "Arm", $List(tCase, 5))
+        Set tBefore = ..Counter()
+        Set tThrown = ""
+        Kill tAnswer, tStopped
+        Try {
+            Set tSC = $ClassMethod(..#RUNSEAM, "PmmlRun", ..#NAMESPACE, ..#DEFINITION, "Colors", $List(tCase, 2), "", $List(tCase, 3), $List(tCase, 4), $Select($List(tCase, 5) = "stop": ..#RUNSEAM, 1: ""), "key", .tAnswer, .tStopped)
+        } Catch ex {
+            Set tThrown = ex.Name
+        }
+        Set tId = ..Counter()
+        Set tLabel = $List(tCase, 1)
+        Do $$$AssertEquals(tId - tBefore, 1, tLabel _ ": the run allocated one test id")
+        Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%Get("outcome"), 1: "") _ "|" _ $Get(tStopped) _ "|" _ tThrown, $List(tCase, 6), tLabel _ ": and ended as expected")
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId), 0, tLabel _ ": it left no row of its own")
+        Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tLow) _ "|" _ $ClassMethod(..#PMML, "RowsOf", tHigh) _ "|" _ $ClassMethod(..#PMML, "Rows"), tLowRows _ "|" _ tHighRows _ "|" _ tOthers, tLabel _ ": and the other tests' rows are whole")
+    }
+    Do $ClassMethod(..#RUNSEAM, "Reset")
 }
 
 }
