@@ -594,3 +594,4 @@
 2026-11-20T18:06:44Z	Story 24.14	integrated_feature	feature=5837f0155(21.20) merge=4019da6da conflicts=8(Prohibited_two_additive_hunks,ReadTool562/320/205,ToolWrite147,vocabulary111,covered99,unions,mirror_regenerated) review_commit=34581ac90 test_tools=2357 check_objectscript=0 scope=batch3
 2026-11-20T18:06:44Z	Story 24.14	fresh_check_started	throwaway=ocupilot-b-ci tree=4019da6da
 2026-11-20T18:27:14Z	Story 24.14	fresh_check_passed	tree=4ac0106c9 forward=3/3_first_run reverse+rosters=17_classes(Prohibited_red_on_merge_order->fixed_4ac0106c9->green) browser=analytics+links+a11y38/38 smoke=see_next scope=batch3 push=held_until_M2(orchestrator)
+2026-11-20T18:35:16Z	Story 24.14	integrate_head_pushed	sha=b70aa5d69(M2:bbbb18845+feature_5837f0155,no_B3) run=44794079238 checks=14_classes_187_tests_green,test_tools2355 tmp_worktree=removed scratch_branch=deleted(never_pushed) merged_into_B3_line=d61a00a37
