@@ -97,6 +97,5 @@ Bring the rest of Stage 5's custom-REST parity onto a second slot, running besid
 - Story 24.5 establishes the run-code exception and `PERSONGATE`. Stories 24.6 and 24.7 build under it, and they rely on Story 21.30's guarded stores to protect OcuPilot's administrative state.
 - Story 24.8's environment diff should compare the per-namespace default settings that Story 24.15 reads (DW-2636). Story 24.9's promote is the tool the harvested promote guided workflow is waiting for, and that workflow has no steps until promote lands.
 - Story 24.10 extends the term-list editor from Story 24.2. Story 24.12's quality measures reuse the listing groups' (24.11) class-save pattern and refusal sentences.
-- Story 24.14 is split from Story 24.2 and carries its criterion: each remaining analytics editor (PMML model tester, dashboard and pivot viewer) round-trips over its backing class.
 - The 28 harvested tools are split across Stories 24.4 (14), 24.21 (10), 24.22 (3) and 24.23 (1). Story 24.20's undo applies to the write path as a whole.
 - Stories 24.5 and 24.8 add rows to Epic 22's exclusion register, and its test holds the register equal to the catalog.

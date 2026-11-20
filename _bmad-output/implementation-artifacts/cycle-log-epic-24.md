@@ -596,3 +596,5 @@
 2026-11-20T18:27:14Z	Story 24.14	fresh_check_passed	tree=4ac0106c9 forward=3/3_first_run reverse+rosters=17_classes(Prohibited_red_on_merge_order->fixed_4ac0106c9->green) browser=analytics+links+a11y38/38 smoke=see_next scope=batch3 push=held_until_M2(orchestrator)
 2026-11-20T18:35:16Z	Story 24.14	integrate_head_pushed	sha=b70aa5d69(M2:bbbb18845+feature_5837f0155,no_B3) run=44794079238 checks=14_classes_187_tests_green,test_tools2355 tmp_worktree=removed scratch_branch=deleted(never_pushed) merged_into_B3_line=d61a00a37
 2026-11-20T18:36:03Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T18:36:03Z model=opus agent_name=epic-24-context-prewarm-14 cycle_iteration=4 reason=planning_artifact_newer(EXPERIENCE.md_rows) scope=batch2b
+2026-11-20T18:38:12Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
+2026-11-20T18:38:12Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-20T18:38:12Z model=opus agent_name=24-14-plan-batch2b cycle_iteration=4 scope=batch2b_product_cancel
