@@ -585,3 +585,5 @@
 2026-11-20T16:50:20Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-20T16:50:20Z model=sonnet agent_name=24-14-b2-rework-1 cycle_iteration=2
 2026-11-20T17:25:39Z	Story 24.14	rework_built	scope=batch2 iteration=1 sha=bbbb18845 cause=CancelQuery_accepted_only_inside_SQL_engine(~2pct_of_fast_loop),test_cancelled_by_luck fix=test_only(SLOWSCAN+AwaitInStatement+AwaitRows,25s_bound) five_runs=green(cancel_test_234-794ms) first_run=green product_cancel_reliability=open_question
 2026-11-20T17:25:39Z	Story 24.14	code_head_pushed	sha=bbbb18845 run=44782846386 missing=none scope=batch2(fix) merged_into_B3_line=6e571a7b5 tmp_worktree=removed scratch_branch=deleted(never_pushed)
+2026-11-20T17:26:41Z	Story 24.14	ruling	question=product_Cancel_reliability choice=Batch_2b_inside_24.14(after_B3_review,before_B4;U-123_cancel_mechanics_released;target_20/20_within_2s) category=orchestrator
+2026-11-20T17:26:41Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T17:26:41Z model=sonnet agent_name=24-14-qa-batch3 cycle_iteration=3 throwaway_tree=6e571a7b5
