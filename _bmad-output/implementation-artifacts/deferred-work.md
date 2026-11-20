@@ -14194,6 +14194,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-24 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AssertStatusOK: the probe runs, with a disabled item and a pool-size-0 process stored => ERROR #5001: the probe production's operation holds no job after the start; passed on the one rerun of failed jobs; the change under test touched analytics only (inference: start timing).
 - 2026-11-20T03:50:33Z status=routed owner=burndown by=runner note=flake_policy:a_second_red_of_this_or_DW-2535_is_a_defect_not_a_flake;route_with_DW-2535
+- 2026-11-20T18:56:50Z status=routed owner=burndown by=runner note=recurred:21.21_runner_sweep_shard_5(head_83e75a7f8):InteropItemRun.TestTheAgentsStopAndStartConfirmOverHttp:operation_holds_no_job_after_the_start;CI_run_44790510586_ran_the_class_green;per_policy_a_second_red_is_a_defect
 
 ### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: low | footprint: in-epic

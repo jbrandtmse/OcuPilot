@@ -821,3 +821,6 @@
 2026-11-20T18:12:36Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=83e75a7f8 started=2026-11-20T18:12:36Z dir=e21u/21-21/gate
 2026-11-20T18:13:57Z	Story 21.21	ad_amended	ad=AD-8 marker=[AMENDED_2026-11-20,Story_21.21,DW-1850,Rule_20] commit=aff694cd9 lint_spine=ok(pre-existing_{id}_only) memlog=appended ledger=DW-2805_resolved
 2026-11-20T18:13:57Z	Story 21.21	ruling	question=DW-2806(WA-16) via=orchestrator choice=to_owner_via_Planner(decision-pending,owner=burndown;register_text_unchanged)
+2026-11-20T19:08:45Z	Story 21.21	ci_red_classified	run=44790510586 sha=83e75a7f8 defect=ClaimReach(review_seam_KernelConfirmClass_names_the_claim_by_string) sweep_red=InteropItemRun(DW-2787_recurrence,not_this_story;CI_ran_it_green) runner_sweep=stopped_at_shard_5
+2026-11-20T19:08:45Z	Story 21.21	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ClaimReach scope_baseline=83e75a7f8
+2026-11-20T19:08:45Z	Story 21.21	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T19:08:45Z model=sonnet agent_name=21-21-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a283a19c1)

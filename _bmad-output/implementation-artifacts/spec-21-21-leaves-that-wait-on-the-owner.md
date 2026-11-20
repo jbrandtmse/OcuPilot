@@ -2,7 +2,7 @@
 title: 'Story 21.21: Leaves that wait on the owner'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd576e032e0da8e01cee1e7ef942f1fbb1830140b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -143,6 +143,8 @@ deferred: []
 - AC17 (browser, the outermost surface): Given the deployed bundle, when `page-resources.browser-spec.mjs` signs in as a `%Admin_Secure` holder, assigns a resource to a probe-safe page, sees its row, changes it, clears it, and tries a page a Home screen declares, then each step shows the screen's own answer, and the refusal shows the existing sentence.
 
 ### Review Findings
+
+- [ ] [Review][HIGH] CI run 44790510586 (on `83e75a7f8`): `OcuPilot.Test.ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` is red: "the shipped classes naming <"OcuPilot.Kernel.Proposal.Confirm"> are exactly the expected ones" -- the review's `KernelConfirmClass` seam in `src/OcuPilot/Api/Confirm.cls` (:24) returns the confirm class's name as a quoted string, which is the dynamic route to the claim that `ClaimReach` exists to forbid. Fix the product, not the test: keep `ClaimReach`'s rows unchanged, remove the quoted name from every shipped class, and keep AC3's proof running the shipped `HandleConfirm` (for example, a seam whose default refers to the class by `##class()` and which only a test subclass overrides; read how `ClaimReach` and `AsTheUser.SitesNaming` scan before choosing). Run `ClaimReach`, `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `ProhibitedRoute`, `Envelope` and every class whose name starts with `Confirm`, one per call, and write a `mutation:` line for the changed assertion. [src/OcuPilot/Api/Confirm.cls, src/OcuPilot/Test/ConfirmRenderProbe.cls]
 
 Code review 2026-11-20 (Batches 1, 2 and 4; full-opus, four layers; 33 rows, 14 entries: 0 high, 5 med, 9 low). Patches applied, uncommitted.
 
