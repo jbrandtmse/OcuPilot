@@ -782,3 +782,4 @@
 2026-11-20T09:28:50Z	Story 21.20	story_started	spec=validated(veto_U-66) baseline=b7aaccb16 doctrine=3d11cec9 policy=b9ff703e hold=none
 2026-11-20T09:28:50Z	Story 21.20	stage_spawned	stage=implement scope=all_batches spawn_at=2026-11-20T09:28:50Z model=sonnet agent_name=21-20-implement cycle_iteration=1 prior_lines_ended=verified
 2026-11-20T09:31:36Z	Story 21.20	integrated_forward	feature=837fcf2fa(21.19_merge;deps_hash+timings) merge=2a8804226 conflicts=0 files=bookkeeping_only verified=ci.test.mjs_104/104 note=stage_in_flight;index_was_clean;spec_untouched_by_merge
+2026-11-20T09:31:50Z	Story 21.20	lead_slip	what=bookkeeping_commit_2d3d743fa_used_bk_not_bkl_while_the_stage_runs;swept_3_lines_of_the_stage's_spec_edit effect=none_on_the_tree(the_stage's_own_edit,already_in_its_working_copy) fix=bkl_only_while_a_stage_is_in_flight
