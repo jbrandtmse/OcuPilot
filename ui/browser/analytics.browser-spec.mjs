@@ -24,6 +24,9 @@
  * Story 24.13 adds two tests: Settings shows the markers the vendor's own methods stored, the Google Maps key as the mask, under a strip of its four tabs, each passing the structural and
  * contrast checks; and with nothing stored it shows the classic page's defaults and the two empty tabs draw their own sentences. Each restores USER's settings from a snapshot.
  *
+ * Story 24.14 adds one test: a dashboard opens from Folder items to its Definition and Widgets tabs, only the pivot widget links, and the pivot's Definition runs to the vendor's cells;
+ * the dashboard's Definition, Widgets and the pivot's Definition with its grid pass the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -71,6 +74,8 @@ const SETTINGS = 'analytics/settings';
 const SETTINGS_WORKLISTS = `${SETTINGS}/worklists`;
 const SETTINGS_VARIABLES = `${SETTINGS}/variables`;
 const SETTINGS_ICONS = `${SETTINGS}/icons`;
+const FOLDER_ITEM_DEFINITION = `${FOLDER_ITEMS}/document`;
+const FOLDER_ITEM_WIDGETS = `${FOLDER_ITEMS}/widgets`;
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -1258,13 +1263,15 @@ test('Story 24.14: a person opens a dashboard from Folder items, sees its three 
     const definition = (await allRows(page))[0];
     assert.deepEqual([definition[0], definition[1]], [board, 'Dashboard'], 'the Definition tab reads the dashboard: its name and its type');
     assert.equal(await page.$('[data-ocu-pivot="run-panel"]'), null, 'a dashboard offers no Run');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries`);
 
-    await openTab(page, `${FOLDER_ITEMS}/widgets`);
+    await openTab(page, FOLDER_ITEM_WIDGETS);
     const widgets = await allRows(page);
     assert.deepEqual(widgets.map((row) => [row[0], row[1], row[2], row[3]]), [['1', 'Sales by place', 'pivot', pivot], ['2', 'A KPI', 'kpi', 'OcuPilotProbe/Score.kpi'], ['3', 'Follows the first', 'pivot', STRINGS.tableEmptyValue]], 'Widgets lists the three widgets in the stored order');
     assert.equal(widgets[2][4], 'Sales', 'the third widget keeps the widget it takes its data from');
     const links = await page.$$eval(`${ROW_SELECTOR} .ocu-data-table-link`, (anchors) => anchors.map((anchor) => anchor.textContent.trim()));
     assert.deepEqual(links, [pivot], 'only the pivot widget\'s data source links');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_WIDGETS), [], `${FOLDER_ITEM_WIDGETS}: no violation beyond the baseline's entries`);
 
     await clickRowCentre(page, { text: '1', link: true });
     await pathHolds(page, `/${FOLDER_ITEMS}/document/${encodeEntityId(pivot)}`);
@@ -1275,6 +1282,7 @@ test('Story 24.14: a person opens a dashboard from Folder items, sees its three 
     const vendor = probe('VWVENDOR', `##class(OcuPilot.Test.AnalyticsMdx).VendorCells(##class(OcuPilot.Test.AnalyticsPivotRun).BaseMdx("${pivot}"))`);
     assert.match(vendor.value, /^C=Amount;R=Category 1:/, `the vendor answers the pivot's cells: ${vendor.output}`);
     assert.equal(await drawnGrid(page), vendor.value, 'the grid shows the cells the vendor\'s own result set answers for the pivot\'s MDX');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries, with the run's grid drawn`);
   } finally {
     await context.close();
   }

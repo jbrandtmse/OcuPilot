@@ -2,7 +2,7 @@
 title: 'Story 24.14: PMML model tester and dashboard viewer (Batch 1: the dashboard and pivot viewer)'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'd459004502a425e9ee31dfdaecc078854d490613'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -128,7 +128,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
 - [x] The two descriptors, the entity type, the client page and store change, strings (once ruled), the regenerated mirror and titles, and the EXPERIENCE.md row.
 - [x] Tests: the matrix in the two new classes, component and browser tests (`ui/browser/analytics.browser-spec.mjs`), and every roster.
 
-- [ ] [Smoke] `ui/browser/a11y-structural-invariants.browser-spec.mjs` AC5 fails on the fresh throwaway (tree d45900450): "these screens need an id the walk could not resolve and are not in SKIP: analytics/folder-items/widgets, analytics/folder-items/document". HSCUSTOM is not analytics-enabled, so the walk cannot open a folder item there. Follow the 24.11/24.12 pattern: add both routes to `ui/browser/structural-walk.mjs`'s SKIP (add-only, one comment line naming Story 24.14), and make the SKIP reason true by having the Story 24.14 test in `ui/browser/analytics.browser-spec.mjs` run the structural and contrast checks (`structural(page, route)` at the same viewports as its siblings) on both screens in USER on its probe. Re-run both browser specs on the rebuilt bundle, first run green.
+- [x] [Smoke] (fixed: both routes are in `structural-walk.mjs`'s SKIP and the Story 24.14 test runs `structural` on the dashboard's Definition and Widgets and on the pivot's Definition with the grid drawn; `analytics.browser-spec.mjs` 17 of 17 and `a11y-structural-invariants.browser-spec.mjs` 13 of 13 green on the rebuilt bundle) `ui/browser/a11y-structural-invariants.browser-spec.mjs` AC5 fails on the fresh throwaway (tree d45900450): "these screens need an id the walk could not resolve and are not in SKIP: analytics/folder-items/widgets, analytics/folder-items/document". HSCUSTOM is not analytics-enabled, so the walk cannot open a folder item there. Follow the 24.11/24.12 pattern: add both routes to `ui/browser/structural-walk.mjs`'s SKIP (add-only, one comment line naming Story 24.14), and make the SKIP reason true by having the Story 24.14 test in `ui/browser/analytics.browser-spec.mjs` run the structural and contrast checks (`structural(page, route)` at the same viewports as its siblings) on both screens in USER on its probe. Re-run both browser specs on the rebuilt bundle, first run green.
 
 **Acceptance Criteria:**
 
@@ -303,6 +303,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
 - mutation: review AC1 `AnalyticsPort.ReadFolderItemView` without its test of the item's kind -> `TestAbsentHiddenAndOtherItemsReadNoRow` red alone on the link leg (`AnalyticsFolderItemView` run 31); without its `FolderItemVisible` test it stays green (run 33), since a hidden item reads no kind.
 - mutation: review gate `AnalyticsMdxRead.View` without its evaluation of `PIVOTDESCRIPTORCLASS` -> `TestAPivotReadFollowsTheDefinitionTabsPairs` red alone (`AnalyticsMdxReadGate` run 32).
 - mutation: review client `FolderItemDefinitionPage.onCancelRun` sends nothing -> the page spec's Cancel case red alone; dropping `state.busy()` from `blocked` stays green, since the run state refuses a second start itself. The server mutations of runs 30 to 32 were made on the throwaway's copy together and run 33's alone, each with the port's, the run's and the tool's subclasses recompiled, and reverted by `rsync` of the tree (`diff -rq` empty); the client one with `shasum` equal before and after.
+- mutation: rework smoke, `structural-walk.mjs` SKIP without its `analytics/folder-items/widgets` row -> `a11y-structural-invariants.browser-spec.mjs` AC5 "every built screen is walked or skipped" red alone (12 of 13 green); reverted (`shasum` of both edited files equal before and after).
 - Not run against a mutation: AC6's fresh-instance clause (`ci-runner` has no order option; each new class was green on its first run on `ocupilot-b-ci`, which held no probe state, and left `Gone()` true); the component spec's `Mutation (Rule 19)` lines name their changes in its comments.
 
 ## Auto Run Result
@@ -321,3 +322,5 @@ Blocking condition: none
 **Follow-up review recommended: true.** Three medium patches landed with no second review; each has its mutation line, and the gate leg is the one most likely to hide a second layer.
 
 **Residual.** A confirmed restriction run reaches the vendor's own error on the probe cube (named limit); the AD-65 line stays proposed.
+
+**Rework 1 (smoke).** Test harness only: `ui/browser/structural-walk.mjs` SKIP gains `analytics/folder-items/document` and `analytics/folder-items/widgets`; the Story 24.14 test in `ui/browser/analytics.browser-spec.mjs` runs `structural` on the dashboard's Definition and Widgets and on the pivot's Definition with the grid drawn. Verified on `ocupilot-b-ci` with the existing bundle: `analytics.browser-spec.mjs` 17 of 17, `a11y-structural-invariants.browser-spec.mjs` 13 of 13, `test:tools` 2342 of 2342; one mutation line recorded under Verification.
