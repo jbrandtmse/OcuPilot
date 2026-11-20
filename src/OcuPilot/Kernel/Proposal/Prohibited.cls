@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -557,8 +557,9 @@ Parameter TYPEDATABASEKEYS = "database-encryption-keys";
 Parameter TYPEDATAELEMENTKEYS = "data-element-encryption-keys";
 
 /// <p>The instance's encryption startup settings (Story 18.23), a singleton whose one merge write
-/// <method>EncryptionStartup</method> judges: Interactive key activation is refused while the audit log,
-/// IRISSECURITY or IRISTEMP is encrypted, and every other change passes the reviewed-few sweep.</p>
+/// <method>EncryptionStartup</method> judges: Interactive and KMIP key activation are refused while the audit log,
+/// IRISSECURITY or IRISTEMP is encrypted or journal encryption is on, and every other change passes the
+/// reviewed-few sweep.</p>
 Parameter TYPEENCRYPTIONSTARTUP = "encryption-startup";
 
 /// <p>The write would leave key activation at startup Interactive while the audit log, IRISSECURITY or
@@ -600,13 +601,20 @@ Parameter STARTUPJOURNALREASON = "Journal encryption is on, or a journal file th
 
 /// <p>The write would choose, or keep, KMIP key activation at startup while the audit log, IRISSECURITY or
 /// IRISTEMP is encrypted, now or at the next start (AD-10 as amended 2026-10-14, Story 18.48), read as the
-/// Interactive arm reads it: OcuPilot cannot judge a KMIP server's reach or key list, and a start that cannot
-/// activate their keys does not finish (measured).</p>
+/// Interactive arm reads it, or while journal encryption is on or the vendor's own journal check answers an
+/// error (AD-10 as amended 2026-11-15, owner answer U-30), read as the journal arm reads it: OcuPilot cannot
+/// judge a KMIP server's reach or key list, and a start that cannot activate their keys does not finish
+/// (measured). The databases case carries <parameter>STARTUPKMIPREASON</parameter> and the journal case
+/// <parameter>STARTUPKMIPJOURNALREASON</parameter>, the databases case first when both hold.</p>
 Parameter STARTUPKMIP = "PROHIBITED.STARTUPKMIP";
 
-/// <p>The one sentence <parameter>STARTUPKMIP</parameter> carries, published and pinned as
+/// <p>The one sentence <parameter>STARTUPKMIP</parameter> carries for the databases case, published and pinned as
 /// <parameter>STARTUPJOURNALREASON</parameter> is, against <code>encryptionStartupKmipRefusal</code>.</p>
 Parameter STARTUPKMIPREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.";
+
+/// <p>The sentence <parameter>STARTUPKMIP</parameter> carries for the journal case, caller-neutral and pinned equal to
+/// <code>encryptionStartupKmipJournalRefusal</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter STARTUPKMIPJOURNALREASON = "Journal encryption is on, or a journal file the instance still needs is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds its key, so a start that cannot activate it does not finish. Keep Unattended, or make this change on the classic Database Encryption page.";
 
 /// <p>A mirror's removal together with taking its databases out of mirroring (AD-10, Story 21.12), refused from either caller before any
 /// vendor call: the effect is the vendor's own <code>DeleteDB</code> and <code>DeleteDBs</code> flags, and no mirror write is built that could
@@ -873,6 +881,14 @@ Parameter TYPEUSERDDLMAPPING = "user-ddl-mapping";
 /// argument (grep of <code>src/OcuPilot</code> outside <code>Test/</code>, (inference)), and installing another locale left the instance
 /// and the product's own smoke green (measured on <code>ocupilot-ci</code>). A write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPENLSDEFAULT = "nls-default";
+
+/// <p>A system-wide security parameter (Story 21.10). AD-10 names no effect on one: the roster of <class>OcuPilot.Port.ConfigPort</class>
+/// shows and never changes the parameters that could cut OcuPilot off, so a write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPESYSTEMSECURITYSETTING = "system-security-setting";
+
+/// <p>A mobile phone provider (Story 21.10), whose create, change and delete the reviewed-few sweep alone judges: AD-10 names no
+/// effect on one, and OcuPilot owns none.</p>
+Parameter TYPEPHONEPROVIDER = "phone-provider";
 
 Parameter TYPELOCALE = "locale";
 
@@ -1387,6 +1403,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEANALYTICSRUNTIMEVARIABLE Quit $ListBuild("Value", "Comment", "Context")
     If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Path")
     If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
+    If pType = ..#TYPESYSTEMSECURITYSETTING Quit $ListBuild("Value")
+    If pType = ..#TYPEPHONEPROVIDER Quit $ListBuild("SMSGateway")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
@@ -1540,6 +1558,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("create")
     If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
     If pType = ..#TYPEMFTCONNECTION Quit ..MftConnectionFields(1)
+    If pType = ..#TYPEPHONEPROVIDER Quit $ListBuild("SMSGateway")
     If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
     ; Story 19.17: a document database create sets its name, which the docdb arm judges by the class it creates.
     If pType = ..#TYPEDOCDBDATABASE Quit $ListBuild("Name")
@@ -1639,10 +1658,14 @@ ClassMethod RegistryClass() As %String
 /// <var>pProhibits</var> is 0 and <var>pCode</var> is <code>""</code> on that path, so a caller
 /// that reads them without checking the status is refused by its own <code>$$$ISERR</code> rather
 /// than by a false negative.</p>
-ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+/// <p><var>pReason</var> is the sentence a caller renders for <var>pCode</var>: the arm's own variant where a
+/// code carries more than one sentence, otherwise <method>ReasonFor</method> of the code, and
+/// <code>""</code> when nothing is prohibited.</p>
+ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String, Output pReason As %String) As %Status
 {
     Set pProhibits = 0
     Set pCode = ""
+    Set pReason = ""
     Set tSC = $$$OK
     Try {
         Set tParseSC = ##class(OcuPilot.Kernel.EntityRef).Parse(pTargetRef, .tType, .tScope, .tId)
@@ -1650,7 +1673,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && '..IsAnalyticsSettingType(tType) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && '..IsAnalyticsSettingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -2017,7 +2040,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; The encryption startup settings (Story 18.23): a start that cannot finish is not chosen.
         If tType = ..#TYPEENCRYPTIONSTARTUP {
-            Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode, .pReason)
             Quit
         }
         ; A production (Stories 20.2 and 24.3): AD-10 names no effect on one -- the five actions' card row is the
@@ -2098,6 +2121,17 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
+        ; A system-wide security parameter (Story 21.10): the port's roster admits only the parameters that cannot cut OcuPilot off, so a write
+        ; passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPESYSTEMSECURITYSETTING {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A mobile phone provider (Story 21.10): AD-10 names no effect on one, so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEPHONEPROVIDER {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         ; An analytics General setting, a Worklists option, a run-time variable or a user-defined icon (Story 24.13): AD-10 names no effect on any of them, so a write passes the reviewed-few sweep and nothing else.
         If ..IsAnalyticsSettingType(tType) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
@@ -2147,6 +2181,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
     If $$$ISERR(tSC) {
         Set pProhibits = 0
         Set pCode = ""
+        Set pReason = ""
+    } ElseIf pProhibits && (pReason = "") {
+        Set pReason = ..ReasonFor(pCode)
     }
     Quit tSC
 }
@@ -3693,17 +3730,21 @@ ClassMethod EncryptionStartupFields() As %List [ Private ]
 /// when the settings the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation
 /// with the audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
 /// <parameter>STARTUPINTERACTIVE</parameter>; when they are KMIP key activation with one of them encrypted
-/// (<method>LeavesKmipRequired</method>), <parameter>STARTUPKMIP</parameter>; and when they are Interactive with
-/// journal encryption on (<method>LeavesInteractiveJournal</method>), <parameter>STARTUPJOURNAL</parameter>.
-/// Every write then passes the reviewed-few sweep. A write that leaves Interactive or KMIP also reads, through
+/// (<method>LeavesKmipRequired</method>), <parameter>STARTUPKMIP</parameter> with
+/// <parameter>STARTUPKMIPREASON</parameter>; when they are Interactive with journal encryption on
+/// (<method>LeavesInteractiveJournal</method>), <parameter>STARTUPJOURNAL</parameter>; and when they are KMIP with
+/// journal encryption on (<method>LeavesKmipJournal</method>), <parameter>STARTUPKMIP</parameter> with
+/// <parameter>STARTUPKMIPJOURNALREASON</parameter> in <var>pReason</var>. Every write then passes the
+/// reviewed-few sweep. A write that leaves Interactive or KMIP also reads, through
 /// <var>pToolClass</var>'s port as the caller, whether one of their databases is still encrypted on disk
-/// (<method>StartupDatabasesEncrypted</method>), and a write that leaves Interactive with journal encryption
-/// not set whether the journal allows no key at startup (<method>StartupJournalRefused</method>); a read that
-/// fails refuses.</p>
-ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// (<method>StartupDatabasesEncrypted</method>), and a write that leaves Interactive or KMIP with journal
+/// encryption not set whether the journal allows no key at startup (<method>StartupJournalRefused</method>); a
+/// read that fails refuses.</p>
+ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, Output pReason As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
+    Set pReason = ""
     Set tSC = $$$OK
     Try {
         Set tMode = ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD)
@@ -3717,11 +3758,16 @@ ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject,
             Do ..Refuse(..#STARTUPKMIP, .pProhibits, .pCode)
             Quit
         }
-        If tMode = "Interactive" {
+        If (tMode = "Interactive") || (tMode = ..#STARTUPKMIPMODE) {
             Set tJournalRefused = 0
             If '..SetsJournalEncryption(pPayload, pTarget) Set tJournalRefused = ..StartupJournalRefused(..PortClassOf(pToolClass))
             If ..LeavesInteractiveJournal(pPayload, pTarget, tJournalRefused) {
-                Do ..Refuse(..#STARTUPJOURNAL, .pProhibits, .pCode)
+                Do ..Refuse(..#STARTUPJOURNAL, .pProhibits, .pCode, .pReason)
+                Quit
+            }
+            If ..LeavesKmipJournal(pPayload, pTarget, tJournalRefused) {
+                Do ..Refuse(..#STARTUPKMIP, .pProhibits, .pCode, .pReason)
+                Set pReason = ..#STARTUPKMIPJOURNALREASON
                 Quit
             }
         }
@@ -3729,6 +3775,7 @@ ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject,
     } Catch ex {
         Set pProhibits = 0
         Set pCode = ""
+        Set pReason = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -3785,7 +3832,20 @@ ClassMethod SetsJournalEncryption(pPayload As %DynamicObject, pTarget As %Dynami
 /// answer that the journal allows no key activation to be turned off, set.</p>
 ClassMethod LeavesInteractiveJournal(pPayload As %DynamicObject, pTarget As %DynamicObject, pJournalRefused As %Boolean = 0) As %Boolean
 {
-    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    Quit ..LeavesModeJournal("Interactive", pPayload, pTarget, pJournalRefused)
+}
+
+/// <p><method>LeavesInteractiveJournal</method>'s judgement for KMIP key activation at startup.</p>
+ClassMethod LeavesKmipJournal(pPayload As %DynamicObject, pTarget As %DynamicObject, pJournalRefused As %Boolean = 0) As %Boolean
+{
+    Quit ..LeavesModeJournal(..#STARTUPKMIPMODE, pPayload, pTarget, pJournalRefused)
+}
+
+/// <p>Whether a write leaves start mode <var>pMode</var> with journal encryption set or
+/// <var>pJournalRefused</var> set, as <method>LeavesInteractiveJournal</method> reads it.</p>
+ClassMethod LeavesModeJournal(pMode As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pJournalRefused As %Boolean = 0) As %Boolean [ Private ]
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= pMode Quit 0
     If ..SetsJournalEncryption(pPayload, pTarget) Quit 1
     Quit ''pJournalRefused
 }
@@ -6305,11 +6365,13 @@ ClassMethod ParsedArray(pText As %String) As %DynamicArray [ Private ]
 }
 
 /// <p>Record the refusal <var>pCode</var> for the caller. A refusal is a successful answer to the
-/// question, never an error status: the confirm renders it 403.</p>
-ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutCode As %String) [ Private ]
+/// question, never an error status: the confirm renders it 403. <var>pOutReason</var> is the code's one
+/// sentence, which an arm with a variant overwrites.</p>
+ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutCode As %String, Output pOutReason As %String) [ Private ]
 {
     Set pProhibits = 1
     Set pOutCode = pCode
+    Set pOutReason = ..ReasonFor(pCode)
 }
 
 /// <p>The audit event predicates, <var>pType</var> being a system or a user event: the

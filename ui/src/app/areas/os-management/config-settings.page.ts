@@ -30,6 +30,8 @@ export const ISQL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.IsqlSettingList';
 export const DDL_SYSTEM_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlSystemMappingList';
 export const DDL_USER_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlUserMappingList';
 export const NLS_DEFAULT_LIST = 'OcuPilot.Screen.Descriptor.NlsDefaultList';
+/** System-wide security (Story 21.10), a Security screen this page serves with the same dialog. */
+export const SYSTEM_SECURITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SystemSecuritySettingList';
 /** Analytics' General settings (Story 24.13): the first tab of the Settings group, a detail screen, whose Set value this page sends. */
 export const ANALYTICS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.AnalyticsSettingList';
 
@@ -46,6 +48,7 @@ const SERVED_LISTS: readonly string[] = [
   DDL_USER_MAPPING_LIST,
   NLS_DEFAULT_LIST,
   LOCALE_PROPERTY_LIST,
+  SYSTEM_SECURITY_SETTING_LIST,
 ];
 
 /** The one NLS configured default a person changes: the switch that makes new processes take the current locale's formats (Story 21.14). */
@@ -231,7 +234,10 @@ export class ConfigSettingsPage {
   }
 
   protected get openTarget(): SettingTarget | null {
-    return this.target();
+    const target = this.target();
+    // A system-wide security parameter's dialog states what a change reaches, after the line the row's own flags give it (Story 21.10).
+    if (target === null || this.screen?.descriptor !== SYSTEM_SECURITY_SETTING_LIST) return target;
+    return { ...target, statement: `${target.statement} ${STRINGS.systemSecuritySetConsequence}` };
   }
 
   protected get adding(): boolean {

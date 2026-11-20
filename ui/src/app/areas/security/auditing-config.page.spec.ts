@@ -45,7 +45,7 @@ async function mount(
     postRefusal?: boolean;
     systemRows?: unknown[];
     refuseId?: string;
-    /** Story 12.3: answers a copy or purge POST in place of the default. */
+    /** Story 12.3: answers a copy, purge or (Story 21.10) export POST in place of the default. */
     databaseAction?: (body: Record<string, unknown>) => Promise<JsonResult<unknown>>;
   } = {}
 ) {
@@ -60,7 +60,12 @@ async function mount(
       calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
       if (init.method === 'POST' && options.databaseAction !== undefined) {
         const request = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
-        if (request['action'] === 'copy' || request['action'] === 'purge') return (await options.databaseAction(request)) as JsonResult<T>;
+        if (request['action'] === 'copy' || request['action'] === 'purge' || request['action'] === 'export') {
+          return (await options.databaseAction(request)) as JsonResult<T>;
+        }
+      }
+      if (path.includes('security.alloweddirectories')) {
+        return { kind: 'ok', status: 200, body: { fields: ['Directory'], rows: [{ Directory: '/durable/iris/mgr/' }], truncated: false, banner: '' } as T };
       }
       if (init.method === 'POST' && options.postRefusal === true) {
         return {
@@ -385,10 +390,10 @@ describe('the Auditing configuration page', () => {
       await settle(fixture);
     }
 
-    it('offers Copy to namespace and Purge old records, and the command bar opens their dialogs rather than sending', async () => {
+    it('offers Copy to namespace, Purge old records and Export, and the command bar opens their dialogs rather than sending', async () => {
       const { fixture, host, calls } = await mount();
       const buttons = Array.from(host.querySelectorAll('[data-audit-database] [data-audit-action]')).map((button) => button.textContent?.trim());
-      expect(buttons).toEqual([STRINGS.auditDatabaseCopyAction, STRINGS.auditDatabasePurgeAction]);
+      expect(buttons).toEqual([STRINGS.auditDatabaseCopyAction, STRINGS.auditDatabasePurgeAction, STRINGS.taskExportAction]);
       const actions = TestBed.inject(ScreenActions);
       actions.run('OcuPilot.Screen.Descriptor.AuditingConfig', 'copy');
       await settle(fixture);
@@ -398,7 +403,74 @@ describe('the Auditing configuration page', () => {
       actions.run('OcuPilot.Screen.Descriptor.AuditingConfig', 'purge');
       await settle(fixture);
       expect(host.querySelector('[data-audit-purge-days]')).not.toBeNull();
+      (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+      await settle(fixture);
+      actions.run('OcuPilot.Screen.Descriptor.AuditingConfig', 'export');
+      await settle(fixture);
+      expect(host.querySelector('[data-audit-export-before]')).not.toBeNull();
       expect(calls.filter((call) => call.method === 'POST')).toEqual([]);
+    });
+
+    async function chooseExport(host: HTMLElement, fixture: ComponentFixture<unknown>, name: string, day = ''): Promise<void> {
+      (host.querySelector('[data-audit-action="export"]') as HTMLButtonElement).click();
+      await settle(fixture);
+      const input = host.querySelector('input.ocu-field-input') as HTMLInputElement;
+      input.value = name;
+      input.dispatchEvent(new Event('input'));
+      if (day !== '') {
+        const before = host.querySelector('[data-audit-export-before]') as HTMLInputElement;
+        before.value = day;
+        before.dispatchEvent(new Event('input'));
+      }
+      await settle(fixture);
+      (host.querySelector('[data-audit-export-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+    }
+
+    // mutation: the page sends `ExportBefore` under another name -> the body assertion goes red.
+    it('sends the chosen file and day through sendFor, then closes the dialog and states the started line with a link to Background tasks', async () => {
+      const bodies: Record<string, unknown>[] = [];
+      const { fixture, host, calls } = await mount({
+        databaseAction: async (body) => {
+          bodies.push(body);
+          return { kind: 'ok', status: 200, body: { ...updated.body, continues: true } };
+        },
+      });
+      await chooseExport(host, fixture, 'audit/log.xml', '2026-11-19');
+      expect(bodies).toEqual([
+        { action: 'export', id: 'SYSTEM', values: { ExportRoot: '/durable/iris/mgr/', ExportPath: 'audit/log.xml', ExportBefore: '2026-11-19' } },
+      ]);
+      expect(calls.filter((call) => call.method === 'POST').map((call) => call.path)).toEqual(['/api/ocupilot/screens/security.auditing/action']);
+      expect(host.querySelector('app-audit-export-dialog')).toBeNull();
+      expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe(STRINGS.auditExportStarted);
+      expect(host.querySelector('.ocu-banner-warning')).toBeNull();
+      const link = host.querySelector('[data-audit-export-link]') as HTMLAnchorElement;
+      expect(link.textContent?.trim()).toBe(STRINGS.backgroundTaskListLabel);
+      expect(link.getAttribute('href')).toContain('tasks/background');
+    });
+
+    it('keeps the dialog open on a refusal and draws it on the field the instance names, with no started line', async () => {
+      const refusal = (field: string, code: string, reason: string): JsonResult<unknown> => ({
+        kind: 'error',
+        status: 400,
+        code,
+        reason,
+        detail: { violations: [{ field, code, reason }] },
+      });
+      const answers: JsonResult<unknown>[] = [
+        refusal('ExportPath', 'PATH.EXISTS', 'A file already stands at that name.'),
+        { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'That day is after today.', detail: null },
+      ];
+      const { fixture, host } = await mount({ databaseAction: async () => answers.shift() ?? updated });
+      await chooseExport(host, fixture, 'audit/log.xml');
+      expect(host.querySelector('app-audit-export-dialog')).not.toBeNull();
+      expect(Array.from(host.querySelectorAll('.ocu-form-error')).map((node) => node.textContent?.trim())).toEqual(['A file already stands at that name.']);
+      (host.querySelector('[data-audit-export-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('[data-audit-export-refusal]')?.textContent?.trim()).toBe('That day is after today.');
+      expect(host.querySelector('.ocu-banner-warning')).toBeNull();
+      expect(host.querySelector('[data-audit-export-link]')).toBeNull();
+      expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe('');
     });
 
     it('sends the chosen namespace through sendFor, shows the running line while it is in flight, then the finished sentence', async () => {

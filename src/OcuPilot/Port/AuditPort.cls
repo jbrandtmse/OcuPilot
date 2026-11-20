@@ -20,6 +20,10 @@
 /// <p><b>It names no administration API class.</b> Both calls go through
 /// <method>OcuPilot.Port.AdminPort.Invoke</method>, so the gate, the stubs, the namespace switch,
 /// the queued-write await and the fault mapping are the admin port's (AD-27).</p>
+/// <p><b>The export is the one request type it carries out itself</b> (<parameter>EXPORTTYPE</parameter>): the
+/// vendor's own background task, started as the classic export page starts it, because the administration API has
+/// no audit export. The file is named by an allowed root and a relative name, never a path (AD-21's sixth case),
+/// and a file already at the name is refused, never replaced.</p>
 Class OcuPilot.Port.AuditPort Extends OcuPilot.Port.AdminPort
 {
 
@@ -49,25 +53,52 @@ Parameter NAMESPACEQUERY = "CopyNamespace";
 
 Parameter CUTOFFQUERY = "PurgeBefore";
 
+/// <p>The export's request type, and the query keys its two file arguments and its optional cut-off day travel
+/// under, which are also the fields the read adds empty.</p>
+Parameter EXPORTTYPE = "EXPORT";
+
+Parameter EXPORTROOTQUERY = "ExportRoot";
+
+Parameter EXPORTPATHQUERY = "ExportPath";
+
+Parameter EXPORTBEFOREQUERY = "ExportBefore";
+
+/// <p>The export's own pair set, checked in this order in the calling process before any vendor call (AD-29). The
+/// vendor's export reads the audit database, so it needs <code>%DB_IRISAUDIT:READ</code> beside the pairs the
+/// auditing screen declares, and writes a file, so it needs the file system pair.</p>
+Parameter EXPORTPAIRS = "%Admin_Secure:USE,%DB_IRISSYS:READ,%DB_IRISAUDIT:READ,%Admin_FileSystemAccess:USE";
+
+/// <p>The vendor's background task runner, the task it is asked for and the namespace it runs in: what the classic
+/// export page starts.</p>
+Parameter EXPORTTASKCLASS = "%CSP.UI.System.BackgroundTask";
+
+Parameter EXPORTTASK = "AuditExport";
+
+Parameter EXPORTNAMESPACE = "%SYS";
+
 /// <p>The <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> pairs whose vendor body this
 /// port composes from the tool's declared arguments, as comma-separated
 /// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries (AD-51).</p>
-Parameter COMPOSEDTYPES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE";
+Parameter COMPOSEDTYPES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.Audit.Record/EXPORT";
 
 /// <p>The admin port's call, with <parameter>RECORDENDPOINT</parameter>'s
 /// <parameter>DATABASETYPE</parameter> and every <parameter>COMPOSEDTYPES</parameter> pair resolved
 /// here; a listed pair <method>Body</method> cannot compose is refused, never sent.</p>
 /// <p><b>Caller contract:</b> the arguments and outputs are
 /// <method>OcuPilot.Port.AdminPort.Invoke</method>'s. <parameter>DATABASETYPE</parameter> answers
-/// <code>{Enabled, CopyNamespace: "", PurgeBefore: ""}</code>. A copy or a purge sends
+/// <code>{Enabled, CopyNamespace: "", PurgeBefore: "", ExportRoot: "", ExportPath: "", ExportBefore: ""}</code>. A copy or a purge sends
 /// <method>Body</method>'s answer with an empty query; a query <method>Body</method> cannot compose
 /// from is 400 <code>PORT.VALIDATION</code> and nothing is sent. A caller body for either is refused
 /// as the admin port refuses one for a constant-body pair. A <parameter>QUEUEDWRITES</parameter>
 /// pair the vendor has not finished within <method>AsyncTimeout</method> returns OK with
 /// <var>pHttpStatus</var> <parameter>STARTEDHTTP</parameter>, <var>pResult</var> and
 /// <var>pFault</var> empty.</p>
+/// <p><parameter>EXPORTTYPE</parameter> is <method>Export</method>: it starts the vendor's export task and
+/// answers <var>pHttpStatus</var> <parameter>STARTEDHTTP</parameter> with <var>pResult</var> <code>{id}</code>,
+/// the Background tasks row's id, and takes no caller body.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    If (pEndpoint = ..#RECORDENDPOINT) && (pType = ..#EXPORTTYPE) Quit ..Export(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     If (pEndpoint '= ..#RECORDENDPOINT) || ((pType '= ..#DATABASETYPE) && '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType)) Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     Set pResult = ""
     Set pHttpStatus = 0
@@ -81,6 +112,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Do pResult.%Set("Enabled", tEnabled.%Get("Enabled"), tEnabled.%GetTypeOf("Enabled"))
         Do pResult.%Set(..#NAMESPACEQUERY, "", "string")
         Do pResult.%Set(..#CUTOFFQUERY, "", "string")
+        Do pResult.%Set(..#EXPORTROOTQUERY, "", "string")
+        Do pResult.%Set(..#EXPORTPATHQUERY, "", "string")
+        Do pResult.%Set(..#EXPORTBEFOREQUERY, "", "string")
         Set pHttpStatus = 200
         Quit $$$OK
     }
@@ -383,6 +417,164 @@ ClassMethod MaskedSettingLine(pLine As %String) As %String [ Private ]
     Quit tHead _ tPad _ tJson
 }
 
+/// <p>Start the vendor's audit export (<parameter>EXPORTTYPE</parameter>) and answer
+/// <parameter>STARTEDHTTP</parameter>: a task that outlasts the request, so its end is the Background tasks row's to
+/// show (AD-26). In order: the gate (<method>ExportGate</method>); a caller body is refused; the file
+/// (<method>ExportFile</method>); the cut-off day; then <method>VendorStart</method>. <var>pResult</var> is
+/// <code>{id}</code>, the row's composite id. Nothing is written before the vendor call, and no caller value
+/// reaches the vendor except as the resolved path and the day.</p>
+ClassMethod Export(ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        If '..ExportGate(.tFailedPair) {
+            Set tSC = ..ExportGateRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $IsObject(pBody) || (pBody '= "") {
+            Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+            Do ..LogFault(..#RECORDENDPOINT _ " " _ ..#EXPORTTYPE _ " was given a caller body, and its call is composed by the port", $$$ERROR($$$GeneralError, "a COMPOSEDTYPES pair takes no caller body"), pFault.code)
+            Quit
+        }
+        Set tSC = ..ExportFile($Get(pQuery(..#EXPORTROOTQUERY)), $Get(pQuery(..#EXPORTPATHQUERY)), .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tBefore = $Get(pQuery(..#EXPORTBEFOREQUERY))
+        If '..BeforeAdmitted(tBefore) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "The audit export was not given a day it can use", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tJob = 0
+        Set tVendorSC = ..VendorStart(tResolved, tBefore, .tJob)
+        If $$$ISOK(tVendorSC) && ('+tJob) Set tVendorSC = $$$ERROR($$$GeneralError, "the export task started no job")
+        If $$$ISERR(tVendorSC) {
+            Set tSC = ..Fail(..#RECORDENDPOINT, 500, tVendorSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("id", ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(##class(OcuPilot.Port.BackgroundTaskPort).#SOURCEPORTAL, +tJob)), "string")
+        Set pHttpStatus = ..#STARTEDHTTP
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail(..#RECORDENDPOINT, 500, ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked exactly as
+/// <method>Export</method> checks it before its vendor call, for a mint that must refuse what the write would:
+/// the gate, then <method>ExportFile</method>. Nothing is written.</p>
+ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        If '..ExportGate(.tFailedPair) {
+            Set tSC = ..ExportGateRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ExportFile(pRoot, pPath, .tResolved, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set tSC = ..Fail(..#RECORDENDPOINT, 500, ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether the calling process holds every pair in <parameter>EXPORTPAIRS</parameter>, checked in order through
+/// <method>OcuPilot.Port.AdminPort.HoldsPair</method>. <var>pFailedPair</var> names the first it lacks, or is
+/// <code>""</code>.</p>
+ClassMethod ExportGate(Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    Set tPairs = $ListFromString(..#EXPORTPAIRS)
+    For tI = 1:1:$ListLength(tPairs) {
+        If ..HoldsPair($List(tPairs, tI)) Continue
+        Set pFailedPair = $List(tPairs, tI)
+        Quit
+    }
+    Quit (pFailedPair = "")
+}
+
+/// <p>The 403 the export's gate answers: the admin port's own mapping of 403, with the pair in
+/// <code>detail.failedPair</code> (AD-8, AD-39).</p>
+ClassMethod ExportGateRefusal(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {}
+    Do tDetail.%Set("failedPair", pFailedPair, "string")
+    Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tVendorText)
+    Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The new file <var>pRoot</var> and <var>pPath</var> name, in <var>pResolved</var>: resolved through
+/// <class>OcuPilot.Port.PathPort</class> as a file that is never replaced (AD-21's sixth case), each refusal on
+/// <parameter>EXPORTROOTQUERY</parameter> or <parameter>EXPORTPATHQUERY</parameter>, then
+/// <code>AUDIT.EXPORT.DIRECTORY</code>, 400 with one violation on <parameter>EXPORTPATHQUERY</parameter>, when the
+/// name's directory does not exist. The vendor overwrites a file that exists and fails only after its task has
+/// started when the directory is missing, so both refusals are made here. A directory is never created.</p>
+ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResolved = ""
+    Set tSC = ##class(OcuPilot.Port.PathPort).Resolve(pRoot, pPath, ##class(OcuPilot.Port.PathPort).#KINDFILE, ..#EXPORTROOTQUERY, ..#EXPORTPATHQUERY, .pResolved, .pHttpStatus, .pFault, 0)
+    If $$$ISERR(tSC) {
+        Set pResolved = ""
+        Quit tSC
+    }
+    If '##class(%File).DirectoryExists(##class(%File).GetDirectory(pResolved)) {
+        Set pResolved = ""
+        Quit ..ExportViolation(##class(OcuPilot.Api.Error).#AUDITEXPORTDIRECTORY, ##class(OcuPilot.Api.Error).#REASONAUDITEXPORTDIRECTORY, ..#EXPORTPATHQUERY, .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>A 400 refusal on one field, as <var>pCode</var> with its sentence, carried again as that field's one violation
+/// (AD-39).</p>
+ClassMethod ExportViolation(pCode As %String, pReason As %String, pField As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolation = {}
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", pReason, "string")
+    Set tDetail = {}
+    Do tDetail.%Set("violations", [(tViolation)])
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, pCode, pReason, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>Whether <var>pBefore</var> is empty, every record, or a real day written <code>YYYY-MM-DD</code>.</p>
+ClassMethod BeforeAdmitted(pBefore As %String) As %Boolean
+{
+    If pBefore = "" Quit 1
+    If '$Match(pBefore, "^\d{4}-\d{2}-\d{2}$") Quit 0
+    Quit ($ZDateH(pBefore, 3, , , , , , , -1) '= -1)
+}
+
+/// <p>The vendor's export of the audit records dated before <var>pBefore</var> (every record when empty) to
+/// <var>pFile</var>, started as a background task in <parameter>EXPORTNAMESPACE</parameter> (AD-16), with no deletion
+/// and no start day. <var>pJob</var> is the job the task runs in, <code>0</code> when none started. Overridable so a
+/// fixture can observe or deny the call; production never overrides it.</p>
+ClassMethod VendorStart(pFile As %String, pBefore As %String, Output pJob As %Integer) As %Status [ Private ]
+{
+    Set pJob = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#EXPORTNAMESPACE
+        Kill tParms, tItems
+        Set tParms("FileName") = pFile
+        Set tParms("AuditFlag") = 0
+        Set tParms("BeginDateTime") = ""
+        Set tParms("EndDateTime") = $Select(pBefore = "": "", 1: pBefore _ " 00:00:00")
+        Set tSC = $ClassMethod(..#EXPORTTASKCLASS, "RunTask", ..#EXPORTTASK, ..#EXPORTNAMESPACE, .tParms, .tItems, .pJob)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pJob = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The vendor body for <var>pType</var>, composed from <var>pQuery</var>, or <code>""</code> when
 /// the query cannot supply it.</p>
 /// <p><parameter>COPYTYPE</parameter>: <code>{AuditCopyNamespace, DeleteAfterCopy: false,
@@ -415,18 +607,30 @@ ClassMethod Body(pType As %String, ByRef pQuery) As %DynamicObject
     Quit ""
 }
 
-/// <p>The admin port's answer: this port's copy and purge are the vendor's own routes.</p>
+/// <p><code>objectscript</code> for <parameter>EXPORTTYPE</parameter>, which this port carries out itself; the admin
+/// port's answer otherwise, since this port's copy and purge are the vendor's own routes.</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If (pEndpoint = ..#RECORDENDPOINT) && (pType = ..#EXPORTTYPE) Quit "objectscript"
     Quit ##super(pEndpoint, pType)
 }
 
-/// <p><method>Invoke</method>'s branches as a script (AD-59): a <parameter>COMPOSEDTYPES</parameter>
-/// pair is the vendor call with <method>Body</method>'s body and an empty query, and a query
-/// <method>Body</method> cannot compose from answers no step; every other call is the admin port's
-/// script.</p>
+/// <p><method>Invoke</method>'s branches as a script (AD-59): <parameter>EXPORTTYPE</parameter> is the vendor's
+/// task started in <parameter>EXPORTNAMESPACE</parameter> for the file <code>ExportRoot</code> and
+/// <code>ExportPath</code> name, resolved as <class>OcuPilot.Port.PathPort</class> joins them and started only while no
+/// file stands there, since the vendor replaces one; any other <parameter>COMPOSEDTYPES</parameter> pair is the vendor call with
+/// <method>Body</method>'s body and an empty query, and a query <method>Body</method> cannot compose from answers no
+/// step; every other call is the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
+    If (pEndpoint = ..#RECORDENDPOINT) && (pType = ..#EXPORTTYPE) {
+        Set tBefore = $Get(pQuery(..#EXPORTBEFOREQUERY))
+        Set tFile = ##class(%File).NormalizeFilename(##class(%File).NormalizeDirectory($Get(pQuery(..#EXPORTROOTQUERY))) _ $Get(pQuery(..#EXPORTPATHQUERY)))
+        Set tLines = $ListBuild("Kill tParms, tItems", "Set tParms(""FileName"") = " _ ..Literal(tFile), "Set tParms(""AuditFlag"") = 0", "Set tParms(""BeginDateTime"") = """"", "Set tParms(""EndDateTime"") = " _ ..Literal($Select(tBefore = "": "", 1: tBefore _ " 00:00:00")))
+        Set tLines = tLines _ $ListBuild("Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.Error).#REASONPATHEXISTS) _ ")")
+        Set tLines = tLines _ $ListBuild("If '##class(%File).Exists(tParms(""FileName"")) Set tSC = ##class(" _ ..#EXPORTTASKCLASS _ ").RunTask(" _ ..Literal(..#EXPORTTASK) _ ", " _ ..Literal(..#EXPORTNAMESPACE) _ ", .tParms, .tItems, .tJob)", "Do $System.Status.DisplayError(tSC)")
+        Quit [(..ObjectScriptStep(tLines))]
+    }
     If (pEndpoint '= ..#RECORDENDPOINT) || '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
     Set tBody = ..Body(pType, .pQuery)
     If '$IsObject(tBody) Quit []

@@ -143,6 +143,9 @@ XData Elsewhere
 <screen name="SqlShellSettingList"/>
 <screen name="TsqlSettingList"/>
 <screen name="IsqlSettingList"/>
+<screen name="SystemSecuritySettingList"/>
+<screen name="PhoneProviderList"/>
+<screen name="PhoneProviderForm"/>
 <screen name="MirrorMonitor"/>
 <screen name="DdlSystemMappingList"/>
 <screen name="DdlUserMappingList"/>

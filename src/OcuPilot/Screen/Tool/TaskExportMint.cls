@@ -12,6 +12,11 @@ Class OcuPilot.Screen.Tool.TaskExportMint Extends OcuPilot.Kernel.Proposal.Mint
 /// <p>The tool whose file is resolved first.</p>
 Parameter TOOLCLASS = "OcuPilot.Screen.Tool.TaskExport";
 
+/// <p>The names of the tool's port parameters that hold the root and the relative name arguments.</p>
+Parameter PORTROOTPARAM = "ROOTPARAM";
+
+Parameter PORTPATHPARAM = "PATHPARAM";
+
 /// <p>The superclass's <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>, reached only once
 /// <var>pArgs</var>' file resolves.</p>
 ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String, pConvKey As %String, pTurnKey As %String, pArgs As %DynamicObject, pLimitsClass As %String, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "", pIdParam As %String = "", pIdValue As %String = "", pIdArgument As %String = "", pSettable As %List = "", pToolClass As %String = "") As %Status
@@ -27,7 +32,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tPort = $ClassMethod(..#TOOLCLASS, "PortClass")
-        Set tSC = $ClassMethod(tPort, "CheckExport", pArgs.%Get($Parameter(tPort, "ROOTPARAM")), pArgs.%Get($Parameter(tPort, "PATHPARAM")), .pHttpStatus, .pFault)
+        Set tSC = $ClassMethod(tPort, "CheckExport", pArgs.%Get($Parameter(tPort, ..#PORTROOTPARAM)), pArgs.%Get($Parameter(tPort, ..#PORTPATHPARAM)), .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Set pHttpStatus = 0
         Set pFault = ""

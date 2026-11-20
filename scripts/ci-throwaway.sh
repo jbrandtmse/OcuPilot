@@ -920,6 +920,9 @@ services:
       # every startup setting change only to a seam port that sends nothing, and sends the vendor one
       # Settings PUT of the settings unchanged.
       # classes: EncryptionStartupWrite
+      # Story 21.10's class holds the same shape for KMIP start mode with journal encryption, again only
+      # through the seam port.
+      # classes: EncryptionStartupKmipWrite
       # Story 18.48's class activates one probe database key, which sets key activation at startup to
       # Interactive, creates one encrypted probe database over it and, on every path, deletes the database,
       # deactivates the key and sets key activation at startup back to None through the settings PUT. It
@@ -946,7 +949,10 @@ services:
       # current locale and the switch after every method (Story 21.14). LocaleEditWrite copies the current locale to custom locales, sets,
       # adds and removes properties and tables of one, and loads one table of the copy, deleting every copy it made (Story 21.16).
       # LocaleTransferWrite exports and imports custom locales, deleting every one it made (Story 21.15).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite
+      # SystemSecuritySettingWrite changes the system-wide security parameter InactiveLimit and back (Story 21.10).
+      # PhoneProviderWrite creates, changes and deletes marker mobile phone providers and one probe user, removing each (Story 21.10).
+      # AuditExportWrite starts the audit export task for new files under the first allowed directory, each bounded to a day no record predates, and removes them (Story 21.10).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
     volumes:
       - $DIR/data:/durable

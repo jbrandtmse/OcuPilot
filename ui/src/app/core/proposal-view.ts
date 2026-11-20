@@ -203,6 +203,9 @@ export const CONSEQUENCE_SERVERCLIENTSECRETCHANGE = 'OAUTH.SERVERCLIENTSECRETCHA
 /** Story 14.2: the agent's audit purge, which removes the markers of the agent's own writes too. */
 export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
 
+/** Story 21.10: the agent's audit export, which writes the audit records, event data included, to a new server file. */
+export const CONSEQUENCE_AUDITEXPORT = 'AUDIT.EXPORT.WRITES';
+
 /** Story 18.14: a global mapping whose name begins with `%`, which shadows a system global (AD-10). */
 export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 
@@ -433,6 +436,10 @@ export const CONSEQUENCE_ANALYTICSICONREMOVE = 'ANALYTICS.ICON.REMOVE';
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGPURGE = 'CONFIG.SETTING.PURGE';
+/** Story 21.10: a change of a system-wide security parameter; one published sentence. */
+export const CONSEQUENCE_SYSTEMSECURITYSET = 'SECURITY.SYSTEM.SET';
+/** Story 21.10: a mobile phone provider's deletion; one published sentence. */
+export const CONSEQUENCE_PHONEPROVIDERDELETE = 'PHONEPROVIDER.DELETE';
 /** Story 21.13: a DDL mapping's deletion; one published sentence. */
 export const CONSEQUENCE_CONFIGMAPPINGDELETE = 'CONFIG.MAPPING.DELETE';
 /** Story 21.14: a set of the locale-format switch, and a locale's install and delete; each is one published sentence. */
@@ -527,6 +534,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
   if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
+  if (code === CONSEQUENCE_AUDITEXPORT) return STRINGS.auditExportEffect;
   if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
   if (code === CONSEQUENCE_SCREENACCESSLOWERED) return STRINGS.screenPermissionsLowerConsequence;
   // The copy dialog's own consequence sentence, published once.
@@ -572,6 +580,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_CONFIGSETTINGRESTART) return STRINGS.encryptionStartupRestart;
   // Story 21.4: a SQL setting whose change purges the cached queries, published once.
   if (code === CONSEQUENCE_CONFIGSETTINGPURGE) return STRINGS.configSettingPurge;
+  // Story 21.10: a change of a system-wide security parameter, published once.
+  if (code === CONSEQUENCE_SYSTEMSECURITYSET) return STRINGS.systemSecuritySetConsequence;
+  // Story 21.10: a mobile phone provider's deletion, published once.
+  if (code === CONSEQUENCE_PHONEPROVIDERDELETE) return STRINGS.phoneProviderDeleteConsequence;
   if (code === CONSEQUENCE_CONFIGMAPPINGDELETE) return STRINGS.configMappingDelete;
   // Story 21.14: the locale-format switch's reload, and a locale's install and delete.
   if (code === CONSEQUENCE_CONFIGNLSRELOAD) return STRINGS.nlsDefaultReloadConsequence;

@@ -175,6 +175,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.TsqlSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.10: System-wide security, on the same page.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.13: System and User DDL mappings, on the same page, which adds New mapping to the user list.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': CONFIG_SETTINGS_PAGE,
@@ -217,6 +219,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SuperserverForm': () => import('../areas/security/superserver-form.page').then((m) => m.SuperserverFormPage),
   // Story 18.26: the managed file transfer connection editor; the list is the shared list page.
   'OcuPilot.Screen.Descriptor.MftConnectionForm': () => import('../areas/security/mft-connection-form.page').then((m) => m.MftConnectionFormPage),
+  // Story 21.10: the mobile phone provider editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.PhoneProviderForm': () => import('../areas/security/phone-provider-form.page').then((m) => m.PhoneProviderFormPage),
   // Story 18.30: the Doc DB application editor; the list is the shared list page.
   'OcuPilot.Screen.Descriptor.DocDbAppForm': () => import('../areas/web-applications/docdb-app-form.page').then((m) => m.DocDbAppFormPage),
   // Story 18.31: the privileged routine application editor; the list is the shared list page.

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { AllowedDirectoriesStore } from '../../core/allowed-directories';
 import { ApiService } from '../../core/api';
 import { AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY, AUDITING_CONFIG_ENTITY } from '../../core/agent-status';
 import { ChangeBus } from '../../core/change-bus';
@@ -22,9 +23,11 @@ import { DEFAULT_MAX_ROWS, ScreenStores, type ScreenStore } from '../../core/scr
 import { ENTITY_SINGLETON_ID, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { cellView, fieldOf } from '../../core/table-model';
-import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { reasonForField } from '../../core/violations';
+import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { WarningDialog } from '../../shell/warning-dialog';
 import { AuditCopyDialog } from './audit-copy-dialog';
+import { AuditExportDialog, type AuditExportRequest } from './audit-export-dialog';
 import { AuditPurgeDialog } from './audit-purge-dialog';
 import { SqlAuditDialog, type SqlAuditChange } from './sql-audit-dialog';
 import {
@@ -64,9 +67,18 @@ interface SectionView {
   readonly sqlWizard: boolean;
 }
 
-/** The audit database's two row actions (Story 12.3), each run by this page through its own dialog. */
+/** The audit database's row actions (Story 12.3, Story 21.10), each run by this page through its own dialog. */
 export const AUDIT_COPY_ACTION = 'copy';
 export const AUDIT_PURGE_ACTION = 'purge';
+export const AUDIT_EXPORT_ACTION = 'export';
+
+/** The values the export action sends beside its target, under the names its tool declares (AD-56). */
+export const EXPORT_ROOT_VALUE = 'ExportRoot';
+export const EXPORT_PATH_VALUE = 'ExportPath';
+export const EXPORT_BEFORE_VALUE = 'ExportBefore';
+
+/** The route the started line points to. */
+const BACKGROUND_TASKS_ROUTE = 'tasks/background';
 
 /** One copy or purge in flight: which, its namespace or cut-off, and when it was sent. */
 interface AuditOperation {
@@ -110,13 +122,18 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
  * the operation finished, or that it is still running on the instance where the answer says it
  * continues (AD-26), or the refusal banner carries the envelope's sentence.
  *
+ * **Export** (Story 21.10) opens the shared file picker over the allowed directories and an optional cut-off day. The
+ * instance starts its own background task and never replaces a file, so a refusal on the root, the name or the day is
+ * drawn on that field with the dialog kept open, and a started export closes it and leaves the started line, which
+ * links to Background tasks, where the task ends.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-auditing-config-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AuditCopyDialog, AuditPurgeDialog, SqlAuditDialog, WarningDialog],
+  imports: [AuditCopyDialog, AuditExportDialog, AuditPurgeDialog, SqlAuditDialog, WarningDialog],
   template: `<section class="ocu-details-page">
     @if (refusalText) {
       <p class="ocu-banner ocu-banner-warning" role="alert">
@@ -165,8 +182,22 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
           >
             {{ STRINGS.auditDatabasePurgeAction }}
           </button>
+          <button
+            type="button"
+            class="ocu-button-secondary"
+            data-audit-action="export"
+            [attr.aria-disabled]="operationBusy"
+            (click)="onOpenExport()"
+          >
+            {{ STRINGS.taskExportAction }}
+          </button>
         </div>
         <p role="status" data-audit-operation>{{ operationLine }}</p>
+        @if (exportStartedVisible) {
+          <a class="ocu-details-link" data-audit-export-link [href]="relative(backgroundHref)" (click)="go($event, backgroundHref)">{{
+            STRINGS.backgroundTaskListLabel
+          }}</a>
+        }
       </section>
     }
     <nav class="ocu-details-links">
@@ -226,6 +257,18 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
     @if (purgeOpen) {
       <app-audit-purge-dialog [today]="purgeToday" (confirmed)="onPurge($event)" (cancelled)="onCloseDatabaseDialog()" />
     }
+    @if (exportOpen) {
+      <app-audit-export-dialog
+        [store]="directories"
+        [rootReason]="exportRootReason()"
+        [pathReason]="exportPathReason()"
+        [beforeReason]="exportBeforeReason()"
+        [refusal]="exportRefusal()"
+        [sending]="exportSending()"
+        (submitted)="onExport($event)"
+        (cancelled)="onCloseExport()"
+      />
+    }
     @if (pendingWarning; as pending) {
       <app-warning-dialog
         [verb]="pending.verb"
@@ -277,8 +320,28 @@ export class AuditingConfigPage {
   /** The copy or purge in flight, or `null`. */
   private readonly operation = signal<AuditOperation | null>(null);
 
-  /** The line the last copy or purge left behind once it answered, or `''`. */
+  /** The line the last copy, purge or export left behind once it answered, or `''`. */
   private readonly operationOutcome = signal('');
+
+  /** The allowed directories the export dialog offers, read each time it opens. */
+  protected readonly directories = new AllowedDirectoriesStore();
+
+  private readonly exportDialogOpen = signal(false);
+
+  /** An export request is in flight. */
+  protected readonly exportSending = signal(false);
+
+  /** The open export dialog's refusal on each of its fields, and any other refusal's sentence. */
+  protected readonly exportRootReason = signal('');
+
+  protected readonly exportPathReason = signal('');
+
+  protected readonly exportBeforeReason = signal('');
+
+  protected readonly exportRefusal = signal('');
+
+  /** Whether the line left behind is the started export's, which links to Background tasks. */
+  private readonly exportStarted = signal(false);
 
   constructor() {
     const screen = screenForDescriptor(AUDITING_CONFIG_DESCRIPTOR);
@@ -305,6 +368,7 @@ export class AuditingConfigPage {
       // Story 12.3: replaces the handler's own registrations, so every surface opens this page's dialogs.
       stops.push(this.actions.register(this.form.screen.descriptor, AUDIT_COPY_ACTION, () => this.onOpenCopy()));
       stops.push(this.actions.register(this.form.screen.descriptor, AUDIT_PURGE_ACTION, () => this.onOpenPurge()));
+      stops.push(this.actions.register(this.form.screen.descriptor, AUDIT_EXPORT_ACTION, () => this.onOpenExport()));
     }
     const routed = this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd)) return;
@@ -551,6 +615,21 @@ export class AuditingConfigPage {
     return this.databaseDialogOpenedAt();
   }
 
+  protected get exportOpen(): boolean {
+    return this.exportDialogOpen();
+  }
+
+  /** The started line's link to Background tasks is drawn while that line is the one shown. */
+  protected get exportStartedVisible(): boolean {
+    this.generation();
+    return this.exportStarted() && this.operation() === null;
+  }
+
+  protected get backgroundHref(): string {
+    this.generation();
+    return withQuery(BACKGROUND_TASKS_ROUTE, this.router.url);
+  }
+
   /** The namespaces the scope lists; the copy dialog leaves `%SYS` out. */
   protected get namespaceNames(): readonly string[] {
     return this.scope.namespaces().map((entry) => entry.name);
@@ -566,7 +645,7 @@ export class AuditingConfigPage {
 
   /** Opens one dialog, never over another, and never while an operation is in flight. */
   private openDatabaseDialog(action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION): void {
-    if (this.operation() !== null || this.databaseDialog() !== null || this.handler.pending() !== null || this.wizardOpen()) return;
+    if (this.operation() !== null || this.databaseDialog() !== null || this.exportDialogOpen() || this.handler.pending() !== null || this.wizardOpen()) return;
     this.databaseDialogOpenedAt.set(new Date());
     this.databaseDialog.set(action);
     this.bump();
@@ -575,6 +654,69 @@ export class AuditingConfigPage {
   protected onCloseDatabaseDialog(): void {
     this.databaseDialog.set(null);
     this.bump();
+  }
+
+  /**
+   * Opens the export dialog, never over another dialog and never while an operation or a request is in flight, and reads
+   * the allowed directories it offers.
+   */
+  protected onOpenExport(): void {
+    if (this.operation() !== null || this.databaseDialog() !== null || this.exportDialogOpen() || this.exportSending()) return;
+    if (this.handler.pending() !== null || this.wizardOpen()) return;
+    this.exportRootReason.set('');
+    this.exportPathReason.set('');
+    this.exportBeforeReason.set('');
+    this.exportRefusal.set('');
+    this.exportDialogOpen.set(true);
+    void this.directories.load(this.api);
+    this.bump();
+  }
+
+  protected onCloseExport(): void {
+    if (this.exportSending()) return;
+    this.exportDialogOpen.set(false);
+    this.bump();
+  }
+
+  /**
+   * One export through the handler's `sendFor`, whose refusal is read back from the handler and drawn in the dialog rather
+   * than on the page's banner (AD-39). An applied answer closes the dialog and leaves the started line: the task ends on
+   * the instance, and Background tasks shows how (AD-26).
+   */
+  protected async onExport(request: AuditExportRequest): Promise<void> {
+    if (this.exportSending()) return;
+    this.exportSending.set(true);
+    this.exportRootReason.set('');
+    this.exportPathReason.set('');
+    this.exportBeforeReason.set('');
+    this.exportRefusal.set('');
+    this.bump();
+    this.selectSingleton();
+    const sink: ActionSink = { setRefusal: () => undefined };
+    const values = { [EXPORT_ROOT_VALUE]: request.root, [EXPORT_PATH_VALUE]: request.path, [EXPORT_BEFORE_VALUE]: request.before };
+    const applied = await this.handler.sendFor(AUDITING_CONFIG_DESCRIPTOR, AUDIT_EXPORT_ACTION, ENTITY_SINGLETON_ID, values, sink);
+    this.exportSending.set(false);
+    if (applied) {
+      this.exportDialogOpen.set(false);
+      this.operationOutcome.set(STRINGS.auditExportStarted);
+      this.exportStarted.set(true);
+    } else {
+      this.showExportRefusal();
+    }
+    this.bump();
+  }
+
+  /** Put the handler's last refusal on the open export dialog: on its field where it names one. */
+  private showExportRefusal(): void {
+    const refused = this.handler.lastRefusal();
+    if (refused === null) return;
+    const onRoot = reasonForField(refused.violations, EXPORT_ROOT_VALUE);
+    const onPath = reasonForField(refused.violations, EXPORT_PATH_VALUE);
+    const onBefore = reasonForField(refused.violations, EXPORT_BEFORE_VALUE);
+    this.exportRootReason.set(onRoot);
+    this.exportPathReason.set(onPath);
+    this.exportBeforeReason.set(onBefore);
+    if (onRoot === '' && onPath === '' && onBefore === '') this.exportRefusal.set(refused.reason);
   }
 
   protected onCopy(namespace: string): Promise<void> {
@@ -598,6 +740,7 @@ export class AuditingConfigPage {
     this.databaseDialog.set(null);
     if (this.operation() !== null) return;
     this.operationOutcome.set('');
+    this.exportStarted.set(false);
     this.operation.set({ action, subject, started: new Date() });
     this.bump();
     this.selectSingleton();

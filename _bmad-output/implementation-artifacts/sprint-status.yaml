@@ -395,7 +395,7 @@ development_status:
   21-4-nls-locales-and-sql-settings: done
   21-5-globals-and-the-data-tools: done
   21-6-the-sql-tuning-track: ready-for-dev
-  21-10-the-remaining-leaves-across-the-six-areas: ready-for-dev
+  21-10-the-remaining-leaves-across-the-six-areas: in-progress
   21-12-mirroring: done
   21-13-ddl-mappings: done
   21-14-nls-configured-defaults-and-locale-definitions: done

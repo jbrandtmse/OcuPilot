@@ -355,6 +355,24 @@ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings
   }
 });
 
+// A code that carries a second sentence for one case: `Prohibits` answers it in `pReason`, and `ReasonFor` keeps the code's default.
+const KERNEL_REFUSAL_VARIANTS = [['STARTUPKMIP', 'STARTUPKMIPJOURNAL', 'encryptionStartupKmipJournalRefusal']];
+
+test('Story 21.10, AD-53: each variant sentence of a kernel refusal is published verbatim in Fixed strings and is the sentence its arm answers', () => {
+  // Mutation (Rule 19): change one word of a variant parameter, or let its arm answer the code's default sentence -> that row goes red.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [code, variant, key] of KERNEL_REFUSAL_VARIANTS) {
+    const kernel = new RegExp(`Parameter ${variant}REASON = "([^"]+)";`).exec(prohibited);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${variant}REASON`);
+    assert.ok(experience.includes(`"${kernel[1]}"`), `${variant}REASON is published in EXPERIENCE.md's Fixed strings table`);
+    assert.equal(kernel[1], stringValue(key), `${variant}REASON and ${key} are one published sentence`);
+    assert.ok(prohibited.includes(`Set pReason = ..#${variant}REASON`), `the ${code} arm answers ${variant}REASON in pReason`);
+    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${variant}REASON names no caller: ${kernel[1]}`);
+    assert.ok(kernel[1].includes('classic Database Encryption page'), `${variant}REASON names the classic page`);
+  }
+});
+
 test('Story 9.3: system-role answers a name beginning % and system-resource a row reading AllowDelete false', async () => {
   // Mutation (Rule 19): make `system-resource` ignore the row -> the AllowDelete false leg goes red;
   // answer '' for `system-role` -> the %Developer leg goes red.

@@ -368,11 +368,11 @@ ClassMethod Prohibited(pToolClass As %String, pId As %String, pPayload As %Dynam
     Set pFault = ""
     Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(..#DESCRIPTORCLASS, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(..#DESCRIPTORCLASS, "Scope")), pId, .tTargetRef)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", $Parameter(pToolClass, "TOOLNAME"), tTargetRef, pPayload.%ToJSON(), pDiff.%ToJSON(), .tProhibits, .tCode)
+    Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", $Parameter(pToolClass, "TOOLNAME"), tTargetRef, pPayload.%ToJSON(), pDiff.%ToJSON(), .tProhibits, .tCode, .tReason)
     If $$$ISERR(tSC) Quit tSC
     If 'tProhibits Quit $$$OK
     Set pHttpStatus = 403
-    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode))
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tCode, $Select($Get(tReason) '= "": tReason, 1: ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode)))
     Quit $$$ERROR($$$GeneralError, tCode)
 }
 

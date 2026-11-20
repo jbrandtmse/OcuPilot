@@ -39,7 +39,7 @@ ClassMethod Sites() As %String
     For tI = 1:1:$Length(tFingerprint, ",") {
         Set tSites = tSites _ $Select(tSites = "": "", 1: ",") _ $Piece(tFingerprint, ",", tI) _ ":0:FingerprintSubject"
     }
-    Quit tSites _ ",SuperserverDelete:1:ReadAnswers,DocDbAppDelete:1:ReadAnswers,WalletSecretDelete:1:ReadAnswers,WebAppPctAccessDelete:1:ReadAnswers,MappingDelete:0:ReadAnswers"
+    Quit tSites _ ",SuperserverDelete:1:ReadAnswers,DocDbAppDelete:1:ReadAnswers,WalletSecretDelete:1:ReadAnswers,WebAppPctAccessDelete:1:ReadAnswers,MappingDelete:0:ReadAnswers,PhoneProviderDelete:1:ReadAnswers"
 }
 
 /// <p>The compiled <package>OcuPilot.Screen.Tool</package> classes whose own <code>StateDiff</code> source names
@@ -249,7 +249,8 @@ Method TestARowKeepsItsFieldOrderAndTypes()
 /// <p>Each tool on <method>Driven</method>, given a read that assigns every name it reads or fingerprints, answers
 /// <code>StateDiff</code> rows that are exactly those names in order, each with the value read; given a read
 /// that leaves one name unassigned, a tool with the skip omits that row and a tool without it keeps the row
-/// empty. A tool that migrated to <method>RemovalRows</method> with another names source or flag is seen here
+/// empty; a tool whose only name is its precondition field (<code>PhoneProviderDelete</code>) is instead given a
+/// read without that name and answers a problem and no rows. A tool that migrated to <method>RemovalRows</method> with another names source or flag is seen here
 /// by its rows, not by its source.</p>
 /// <p>Mutation (Rule 19): pass skip <code>0</code> in <code>SuperserverDelete</code> -- this goes red naming
 /// it.</p>
@@ -258,7 +259,7 @@ Method TestEachDrivenToolAnswersTheRowsItsRosterNames()
     Set tSites = ..Driven()
     Set tWrong = ""
     Set tRowsChecked = 0
-    Set tOmitted = 0
+    Set tNoSpare = ""
     For tI = 1:1:$Length(tSites, ",") {
         Set tSite = $Piece(tSites, ",", tI)
         Set tShort = $Piece(tSite, ":", 1)
@@ -283,7 +284,15 @@ Method TestEachDrivenToolAnswersTheRowsItsRosterNames()
         For tJ = $ListLength(tNames):-1:1 {
             If $List(tNames, tJ) '= tPre Set tOmit = $List(tNames, tJ) Quit
         }
-        If tOmit '= "" Set tOmitted = tOmitted + 1
+        If tOmit = "" {
+            Set tNoSpare = tNoSpare _ " " _ tShort
+            Do tFresh.%Remove(tPre)
+            Set tRows = ""
+            Set tProblem = ""
+            Set tSC = $ClassMethod(tClass, "StateDiff", tFresh, .tRows, .tProblem)
+            If $$$ISERR(tSC) || (tProblem = "") || ('$IsObject(tRows)) || (tRows.%Size() '= 0) Set tWrong = tWrong _ " " _ tShort _ "(precondition unassigned)"
+            Continue
+        }
         Do tFresh.%Remove(tOmit)
         Set tRows = ""
         Set tProblem = ""
@@ -292,7 +301,7 @@ Method TestEachDrivenToolAnswersTheRowsItsRosterNames()
         If $$$ISERR(tSC) || (tProblem '= "") || (tRows.%ToJSON() '= tExpected) Set tWrong = tWrong _ " " _ tShort _ "(one unassigned)"
         Set tRowsChecked = tRowsChecked + tRows.%Size()
     }
-    Do $$$AssertEquals(tOmitted, $Length(tSites, ","), "control: each tool's second leg left one name unassigned")
+    Do $$$AssertEquals(tNoSpare, " PhoneProviderDelete", "control: the one tool whose only name is its precondition field has no second leg")
     Do $$$AssertTrue(tRowsChecked > $Length(tSites, ","), "control: the legs produced rows (" _ tRowsChecked _ ")")
     Do $$$AssertEquals(tWrong, "", "each tool's rows are its names in order, with its skip:" _ tWrong)
 }

@@ -422,13 +422,13 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Do pPreview.%Set("diff", tDiff)
             Quit
         }
-        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, tPayloadJson, tDiff.%ToJSON(), tArgs.%ToJSON(), ..CallerUsername(), ..ProhibitedClassName(), "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, tPayloadJson, tDiff.%ToJSON(), tArgs.%ToJSON(), ..CallerUsername(), ..ProhibitedClassName(), "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail, .tGateReason)
         If $$$ISERR(tGateSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tGateSC))
             Quit
         }
         If tRefused {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
+            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, $Select($Get(tGateReason) '= "": tGateReason, 1: ..ReasonFor(tGateCode)), tGateCode, tGateDetail)
             Quit
         }
 

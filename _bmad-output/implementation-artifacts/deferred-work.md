@@ -12124,6 +12124,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 - 2026-11-14T00:21:26Z status=decision-pending owner=burndown by=unattended note=inbox=U-30
 - 2026-11-15T15:32:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=owner_answer_U-30_A(amend_AD-10_KMIP_bullet_and_add_the_refusal_with_the_proposed_sentence_in_inbox_U-30);spine_amendment_owner-sanctioned
+- 2026-11-19T19:47:01Z status=resolved-by:21-10-the-remaining-leaves-across-the-six-areas owner=21-10-the-remaining-leaves-across-the-six-areas by=adjudication note=KMIP_refusal_judges_journal_encryption_on_Save,confirm_and_script(EncryptionStartupKmipWrite)
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12271,6 +12272,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T13:19:21Z status=escalated owner=burndown by=cr note=decision sheet: a typed refusal at Mint (after Operation.TargetRefOf) naming the limit, or a document cap bounded by target length
 - 2026-10-15T20:39:51Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-15: a defect, not a decision; a mint target over 2,200 chars must answer a field refusal, never 500 (MED)
 - 2026-11-14T00:50:20Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
+- 2026-11-19T19:47:01Z status=resolved-by:21-10-the-remaining-leaves-across-the-six-areas owner=21-10-the-remaining-leaves-across-the-six-areas by=adjudication note=over_2200_chars_answers_400_TOOL.ARGUMENTS_before_the_fresh_read_(measured_over_HTTP)
 ### DW-2454: A proposal card's diff row overflows the panel at its 320 px minimum: an unbreakable value runs past its row, so impact.browser-spec's 720 px pass of a role delete is clean only while the panel is still narrowing
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
@@ -13704,6 +13706,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 24.10's copy of the same branch, run on ocupilot-b-ci, ended not OK with the relative path and wrote the file once resolved through PathPort; 20.5's branch is the same text (inference for Interop's outcome)
 - 2026-11-17T13:04:24Z status=routed owner=burndown by=cr note=AD-59 prevents a script that makes a different change; resolve through ExportFile/PathPort as AnalyticsPort now does
+- 2026-11-19T19:15:46Z occurrence=21-10-the-remaining-leaves-across-the-six-areas
 
 ### DW-2703: AD-39's fifth exception names an export's XML lines; Story 24.10's term list export answers CSV lines to the screen, which no spine line names
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -14101,3 +14104,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-13-analytics-settings-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Observed on the analytics settings writes (24.13 Batch 3 QA); the busy refusal is the shared confirm's, so the behavior is kernel-wide. Whether a busy refusal should leave the proposal open is an owner call.
 - 2026-11-19T23:06:53Z status=decision-pending owner=burndown by=harvest note=owner_call(decision_sheet)
+### DW-2781: An audit export of every record ends in the vendor's ILLEGAL VALUE error when the log holds OcuPilot audit rows whose text has a character above U+00FF
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-19: of 232,396 rows exactly 6 hold a character above U+00FF, all OcuPilot ConfigChange/AgentWrite markers naming a test target; any range holding them ends <ILLEGAL VALUE>zXMLExportInternal+75^%SYS.Audit.1, ranges excluding them export (224,569 items). A non-empty OcuPilot export (begin always empty) is unproven on this throwaway, since every non-empty range from the log's start holds those rows.
+- 2026-11-19T19:15:30Z status=decision-pending owner=burndown by=cr note=product call: escape non-Latin-1 text in OcuPilot's own audit markers, or document; any vendor report is owner-only
+
+### DW-2782: The mobile phone provider form's client store and page are near-copies of the managed file transfer connection form's (Rule 2), where the spec said to extend them
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: ui/src/app/areas/security/phone-provider-form.store.ts (405 lines) and phone-provider-form.page.ts (357) import nothing from mft-connection-form.store.ts/page.ts and repeat their shape; phone-provider-actions.ts differs from mft-connection-actions.ts only in names.
+- 2026-11-19T19:15:34Z status=escalated owner=burndown by=cr note=a shared form base would refactor two shipped form screens; decide at the decision sheet
+
+### DW-2783: The audit export dialog draws Export unavailable for a day it refuses but says nothing visible about why or what format it wants
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: audit-export-dialog.ts sets aria-invalid and aria-disabled for a day isExportDay refuses; the hint reads only 'Leave empty to export every record.', as the purge dialog's day field also says nothing; a visible sentence needs a new ruled string.
+- 2026-11-19T19:15:39Z status=wontfix-accepted owner=21-10-the-remaining-leaves-across-the-six-areas by=cr note=reopen_if=a person reports an Export they could not tell how to enable, or the purge dialog gains a format line
+
+### DW-2784: An audit export started in the same second as another portal background task can have no Background tasks row under the id the 202 answer names
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The vendor's EnumerateTasks keeps the first job of each start second (spec Design Notes, Batch 4); AuditExportWrite waits 1.1 s between its own starts. The export still runs; only the row the answer names may be absent.
+- 2026-11-19T19:15:42Z status=wontfix-accepted owner=21-10-the-remaining-leaves-across-the-six-areas by=cr note=reopen_if=a started export's Background tasks row is missing outside a test run
+
+### DW-2785: A confirmed system-wide security set's AgentWrite audit marker lists a Purges field that the security parameters do not have
+- source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-19: the marker of a confirmed security.systemsecurity.set of InactiveLimit carried fields including Purges, from the shared ConfigSettingSet shape (inference); the reviewed-few sweep holds the tools' advertised fields, so narrowing them is not a one-line change.
+- 2026-11-19T19:15:45Z status=wontfix-accepted owner=21-10-the-remaining-leaves-across-the-six-areas by=cr note=reopen_if=an audit reader or a test reads Purges on a security parameter marker as a changed field
