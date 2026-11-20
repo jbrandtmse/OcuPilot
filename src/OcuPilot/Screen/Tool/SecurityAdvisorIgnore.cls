@@ -93,7 +93,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     If tProperties.%GetTypeOf(..IdArgument()) '= "object" Quit tSchema
     Do tProperties.%Get(..IdArgument()).%Set("description", "The recommendation's code, copied as a string exactly as the security advisor list's Code reports it, for example RoleHasSecure. A recommendation the list does not report is refused.", "string")
     Set tType = {"type": "string", "description": "The recommendation's type, exactly as the security advisor list's Type reports it."}
-    Do tType.%Set("enum", ["Auditing", "Services", "Roles", "Users", "AppsCSP", "AppsRoutine", "AppsExecutable"])
+    Set tAreas = ##class(OcuPilot.Port.AdvisorPort).#ADVISORAREAS
+    Set tTypes = []
+    For tI = 1:1:$Length(tAreas, "|") Do tTypes.%Push($Piece($Piece(tAreas, "|", tI), "=", 1))
+    Do tType.%Set("enum", tTypes)
     Do tProperties.%Set("type", tType)
     Do tProperties.%Set("element", {"type": "string", "description": "The element the recommendation is about, copied exactly as the security advisor list's Element reports it: a role, a user, a service, a web application or an auditing event. A single space is the general row of a type."})
     Do tSchema.%Get("required").%Push("type")

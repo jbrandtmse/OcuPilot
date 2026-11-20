@@ -272,8 +272,10 @@ Method TestTheAgentsConfirmIgnoresAndStopsIgnoringOnceWithOneAuditMarker()
 }
 
 /// <p><b>AC1, AD-6.</b> The agent's Ignore of a recommendation the page does not list mints nothing, and a proposal minted on a listed recommendation is
-/// refused at confirm once the flag changed after the mint, leaving the flag as the other change left it.</p>
-/// <p>Mutation (Rule 19): <code>AdvisorPort.Find</code> answers an unlisted recommendation as found -> the unlisted-code mint assertion goes red.</p>
+/// refused at confirm as changed (<code>PROPOSAL.TARGETCHANGED</code>, the fingerprint's refusal, ahead of the port's own 409) once the flag changed after
+/// the mint, leaving the flag as the other change left it.</p>
+/// <p>Mutation (Rule 19): <code>AdvisorPort.Find</code> answers an unlisted recommendation as found -> the unlisted-code mint assertion goes red;
+/// <code>SecurityAdvisorIgnore.FINGERPRINTSUBJECT</code> set to <code>Code</code> -> the changed-after-mint assertion goes red.</p>
 Method TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone()
 {
     Set tId = ..Target(.tType, .tElement, .tCode)
@@ -283,7 +285,7 @@ Method TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone()
     Do $$$AssertEquals(..Dispatched(..#IGNORE, tType, tElement, tCode, .tProposalId, .tTurnKey), "minted", "an Ignore of a listed recommendation mints")
     Do $ClassMethod(..#SEAM, "Vendor", tType, tElement, tCode, 1)
     Set tOutcome = ..Confirmed(tProposalId, .tResult)
-    Do $$$AssertNotEquals(tOutcome, "ok", "its confirm is refused once the flag changed after the mint: " _ tOutcome)
+    Do $$$AssertEquals(tOutcome, "409 PROPOSAL.TARGETCHANGED", "its confirm is refused as changed once the flag changed after the mint")
     Do $$$AssertEquals(..StateOf(tType, tElement, tCode), 1, "and the flag stays as the other change left it")
 }
 

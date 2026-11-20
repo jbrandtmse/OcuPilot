@@ -40,6 +40,9 @@ const SOURCE = {
 
 const planted: HTMLElement[] = [];
 
+/** How many create requests the mounted page has sent. */
+let creates = 0;
+
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   for (let pass = 0; pass < 6; pass += 1) {
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -53,6 +56,7 @@ async function mount(
   sourceAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: SOURCE }
 ): Promise<ComponentFixture<WebAppCreateFormPage>> {
   TestBed.resetTestingModule();
+  creates = 0;
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       if (path === WEB_APPLICATIONS_FORM_PATH) return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
@@ -60,7 +64,10 @@ async function mount(
         return { kind: 'ok', status: 200, body: { rows: [{ Name: '/csp/source' }, { Name: '/csp/other' }] } } as unknown as JsonResult<T>;
       }
       if (path.startsWith(`${WEB_APPLICATIONS_FORM_PATH}?name=`)) return sourceAnswer as JsonResult<T>;
-      if (path === WEB_APPLICATIONS_PATH && init.method === 'POST') return createAnswer as JsonResult<T>;
+      if (path === WEB_APPLICATIONS_PATH && init.method === 'POST') {
+        creates += 1;
+        return createAnswer as JsonResult<T>;
+      }
       return { kind: 'ok', status: 200, body: {} } as unknown as JsonResult<T>;
     },
   };
@@ -164,6 +171,21 @@ describe('the create-a-web-application page hand-off to the editor (DW-2372, AC4
     expect(navigate).toHaveBeenCalledTimes(1);
     expect(String(navigate.mock.calls[0][0])).toContain(encodeEntityId('/csp/probe'));
     expect(statuses(fixture.nativeElement), 'the form\'s own Saved is never shown; the editor draws its own').toEqual([]);
+  });
+
+  // Mutation (Rule 19): drop the `handingOff()` check from `onSave`'s guard -> the second Save posts again and the count goes red.
+  it('a Save pressed again while the editor\'s page code is held sends nothing', async () => {
+    const hold = holdEditor();
+    const fixture = await mount();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    save(fixture);
+    await settle(fixture);
+    save(fixture);
+    await settle(fixture);
+    hold.release();
+    await settle(fixture);
+    expect(creates, 'one create was sent').toBe(1);
+    expect(navigate).toHaveBeenCalledTimes(1);
   });
 
   it('a refused Save hands nothing off', async () => {

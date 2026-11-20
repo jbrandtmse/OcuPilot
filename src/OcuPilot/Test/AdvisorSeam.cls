@@ -1,6 +1,7 @@
 /// <p><class>OcuPilot.Port.AdvisorPort</class> with its seams armable by a test: <method>Arm</method> answers the recommendations from rows the
 /// test names, so <method>OcuPilot.Port.AdvisorPort.SetFlag</method> changes the armed rows and never the instance's ignore flags;
-/// <method>DenyPair</method> answers the gate as not holding one pair; and <method>NoEffect</method> makes the flag call change nothing. Every
+/// <method>ArmPublicRoles</method> answers the roles <code>_PUBLIC</code> holds; <method>DenyPair</method> answers the gate as not holding one
+/// pair; and <method>NoEffect</method> makes the flag call change nothing. Every
 /// read and flag call made while armed is recorded (<method>Calls</method>). Unarmed, every seam is the port's own, so a test can drive the real
 /// instance through this class too.</p>
 /// <p><method>PaneLines</method> and <method>Vendor</method> are the real pane and the real flag call, whatever is armed, for the tests that compare
@@ -24,6 +25,28 @@ ClassMethod Arm(pRows As %DynamicArray)
         Set ^||OcuPilotAdvisorSeam("rec", tRow.%Get(0), tRow.%Get(1), "list", tRow.%Get(2)) = $Select(tRow.%Get(3): 1, 1: "")
     }
     Set ^||OcuPilotAdvisorSeam = 1
+}
+
+/// <p>Answer the roles <code>_PUBLIC</code> holds as <var>pRoles</var>, joined by <code>,</code>.</p>
+ClassMethod ArmPublicRoles(pRoles As %String)
+{
+    Set ^||OcuPilotAdvisorSeam("roles") = pRoles
+}
+
+/// <p>The armed roles, or the instance's own when none are armed.</p>
+ClassMethod PublicRoles() As %String [ Private ]
+{
+    If $Data(^||OcuPilotAdvisorSeam("roles"), tRoles) && '$Get(^||OcuPilotAdvisorSeam("bypass")) Quit tRoles
+    Quit ##super()
+}
+
+/// <p>The roles <code>_PUBLIC</code> holds on the instance, as the port reads them, whatever is armed.</p>
+ClassMethod PaneRoles() As %String
+{
+    Set ^||OcuPilotAdvisorSeam("bypass") = 1
+    Set tRoles = ..PublicRoles()
+    Kill ^||OcuPilotAdvisorSeam("bypass")
+    Quit tRoles
 }
 
 /// <p>Answer the gate as not holding <var>pPair</var>.</p>

@@ -7,8 +7,9 @@
 /// <code>root</code> and <code>path</code> (AD-21's sixth case), resolved as a source. The port reviews the file's text and refuses a file that is
 /// not a resource export or holds no resource. A local file's name and text are screen values alone: the input schema never carries them, and
 /// nothing stores or logs them.</p>
-/// <p><b>The reviewed state is the file's resource names and digest and the count of resources it replaces</b>: the fresh read composes them, the
-/// fingerprint holds them, and the port refuses the write <code>RESOURCEFILE.CHANGED</code> unless the file reads the same at the write. A file
+/// <p><b>The reviewed state is the file's resource names and digest and the count of resources it replaces</b>: the fresh read composes them and
+/// the fingerprint holds all three, and the port refuses the write <code>RESOURCEFILE.CHANGED</code> unless the file still yields the reviewed
+/// names and digest at the write. A file
 /// that gives one of OcuPilot's own resources a public permission it does not hold is refused as every resource write is
 /// (<method>OcuPilot.Kernel.Proposal.Prohibited.ImportedResources</method>), at the confirm, in the screen's gate and again in the port's write.</p>
 /// <p><b>It is destructive</b>: an import overwrites a resource of the same name without asking, which cannot be undone from OcuPilot. It

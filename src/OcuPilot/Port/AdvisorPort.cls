@@ -16,7 +16,7 @@
 /// code.</p>
 /// <p><b>Two refusals are published</b>, both 409 on the conflict slug: <code>ADVISOR.IGNORED</code> for an ignore of a
 /// recommendation already ignored and <code>ADVISOR.NOTIGNORED</code> for the opposite.</p>
-/// <p>Seams a test subclass overrides: <method>Recommendations</method> and <method>SetFlag</method>, with the admin port's own
+/// <p>Seams a test subclass overrides: <method>Recommendations</method>, <method>PublicRoles</method> and <method>SetFlag</method>, with the admin port's own
 /// <method>HoldsPair</method> and <method>LogFault</method>. Production overrides none of them. Every seam that reaches the
 /// vendor is private, so <method>Invoke</method>, behind the gate, is the only way in.</p>
 Class OcuPilot.Port.AdvisorPort Extends OcuPilot.Port.AdminPort
@@ -57,6 +57,13 @@ Parameter ADVISORAREAS = "Auditing=Auditing|Services=Services|Roles=Roles|Users=
 
 /// <p>The sentence each code is published as, as <code>Code=sentence</code> entries joined by <code>|</code>.</p>
 Parameter ADVISORTEXTS = "AuditingSBON=Auditing should be enabled|AuditingTypeSBON=Auditing for this event type should be enabled|AuditingON=Auditing is enabled|AuditingOFF=Auditing is disabled|ServiceSBOFF=Service should be disabled unless required|UnauthenticatedSBOFF=Unauthenticated should be off|ServiceSHClientIPS=Service should have client IP addresses assigned|ServiceSHKerberos=Service should use Kerberos authentication where possible|ServicePublic=Service should not be Public where possible|ServiceOneAuthentication=Service should only have one authentication mode on|ServiceNoAuthentication=Service has no authentication modes enabled|PasswordSBChanged=Password should be changed from default password|DormantCount=Dormant users should be disabled or deleted|NotUsedCount=Users who never logged in should be disabled or deleted|UserIsDormant=User appears dormant and should be disabled or deleted|UserNotUsed=User has never logged in and should be disabled or deleted|UserNoNamespace=User has a default namespace which does not exist|AllCountMinMax=At least 2 and at most 5 users should have the %All role|PUBLICHasRoles=_PUBLIC user should not have roles|PUBLICRolesList=All users are granted the following roles from _PUBLIC:|MGRCount=WRITE privilege to IRISSYS should be restricted|SecureCount=WRITE privilege to system security settings should be restricted|AuditCount=READ and WRITE privilege to the audit database should be restricted|UnknownUserHasAll=UnknownUser user should not have the %All role|AAllUsersInherit=All user's inherit the following roles from _PUBLIC|PercentGlobalWrite=Ability to set % globals should be turned off|UserHasAll=This user holds the %All role|UserHasAudit=This user holds READ or WRITE privileges on the Audit database|UserHasSys=This user holds WRITE privilege on the IRISSYS database|UserHasSecure=This user holds WRITE privilege on the system security settings|RoleHasAudit=This role holds READ or WRITE privileges on the Audit database|RoleHasSys=This role holds WRITE privilege on the IRISSYS database|RoleHasSecure=This role holds WRITE privilege on the system security settings|AppIsPublic=Application is Public|AppCondGrantsAll=Application conditionally grants the %All role|AppGrantsAll=Application grants the %All role|AppSHKerberos=Application should use Kerberos authentication where possible|AppOneAuthentication=Application should only have one authentication mode on|AppNoAuthentication=Application has no authentication modes enabled";
+
+/// <p>The code of the page's second line under <code>PUBLICRolesList</code>, whose text is the roles <parameter>PUBLICUSER</parameter> holds,
+/// not a sentence: its row's <code>Recommendation</code> is those roles (<method>PublicRoles</method>).</p>
+Parameter PUBLICROLESCODE = "PUBLICRolesList1";
+
+/// <p>The account whose roles every user is granted.</p>
+Parameter PUBLICUSER = "_PUBLIC";
 
 /// <p>The admin port's call, except for <parameter>ENDPOINT</parameter>: <parameter>LISTTYPE</parameter> answers the rows, at
 /// most <parameter>MAXROWSPARAM</parameter> of them, ordered by type, then element, then code;
@@ -189,7 +196,8 @@ ClassMethod Find(pKey As %String, Output pType As %String, Output pElement As %S
 }
 
 /// <p>The row for a recommendation: its parts, the area and the sentence it is published as (the raw type or code where the
-/// rosters name none) and <code>Ignored</code> as a boolean.</p>
+/// rosters name none, and the roles <method>PublicRoles</method> answers for <parameter>PUBLICROLESCODE</parameter>) and
+/// <code>Ignored</code> as a boolean.</p>
 ClassMethod Listed(pType As %String, pElement As %String, pCode As %String, pIgnored As %Boolean) As %DynamicObject [ Private ]
 {
     Set tRow = {}
@@ -197,7 +205,10 @@ ClassMethod Listed(pType As %String, pElement As %String, pCode As %String, pIgn
     Do tRow.%Set("Area", ..Published(..#ADVISORAREAS, pType), "string")
     Do tRow.%Set("Element", pElement _ "", "string")
     Do tRow.%Set("Code", pCode _ "", "string")
-    Do tRow.%Set("Recommendation", ..Published(..#ADVISORTEXTS, pCode), "string")
+    Set tText = ""
+    If pCode = ..#PUBLICROLESCODE Set tText = ..PublicRoles()
+    If tText = "" Set tText = ..Published(..#ADVISORTEXTS, pCode)
+    Do tRow.%Set("Recommendation", tText, "string")
     Do tRow.%Set("Ignored", ''pIgnored, "boolean")
     Quit tRow
 }
@@ -292,6 +303,25 @@ ClassMethod Recommendations(Output pRecommend) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The roles <parameter>PUBLICUSER</parameter> holds, joined by <code>,</code> in the account's order, as the page's own second line lists
+/// them, read in <code>%SYS</code> by save and restore (AD-16); <code>""</code> when it holds none or cannot be read.</p>
+ClassMethod PublicRoles() As %String [ Private ]
+{
+    Set tRoles = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(..#PUBLICUSER, .tUser) {
+            For tI = 1:1:tUser.Roles.Count() Set tRoles = tRoles _ $Select(tRoles = "": "", 1: ",") _ tUser.Roles.GetAt(tI)
+        }
+        Set tUser = ""
+    } Catch {
+        Set tRoles = ""
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tRoles
 }
 
 /// <p>Set the ignore flag of the recommendation <var>pType</var>, <var>pElement</var>, <var>pCode</var> to <var>pFlag</var>

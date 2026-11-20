@@ -659,8 +659,9 @@ describe('warmEditPage: the hand-off of the create pages never strands the perso
     vi.restoreAllMocks();
   });
 
-  it('resolves for a descriptor that registers no editor, and calls no loader', async () => {
-    // Mutation (Rule 19): drop the `Object.hasOwn` guard -> the lookup throws a TypeError and this goes red.
+  it('resolves for a descriptor that registers no editor', async () => {
+    // Mutation (Rule 19): drop both the `Object.hasOwn` guard and the `try`/`catch` -> calling the absent loader throws a TypeError and this goes red
+    // (either one alone keeps it resolving).
     await expect(warmEditPage('OcuPilot.Screen.Descriptor.NoSuchForm')).resolves.toBeUndefined();
   });
 

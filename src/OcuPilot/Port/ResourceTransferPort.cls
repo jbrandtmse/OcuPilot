@@ -63,8 +63,6 @@ Parameter NAMESPARAM = "names";
 
 Parameter DIGESTPARAM = "digest";
 
-Parameter REPLACESPARAM = "replaces";
-
 /// <p>Whether an export replaces a file already at its name: declared by the export itself, never a caller value (AD-21).</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
 

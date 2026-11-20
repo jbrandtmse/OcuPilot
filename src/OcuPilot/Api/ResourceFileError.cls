@@ -14,7 +14,7 @@ Parameter SHAPE = "RESOURCEFILE.SHAPE";
 
 Parameter REASONSHAPE = "This file is not a resource export, or it holds no resource.";
 
-/// <p>409: the file, or the resources it would replace, changed after the import was reviewed.</p>
+/// <p>409: the file no longer yields the resource names and digest the import was reviewed with.</p>
 Parameter CHANGED = "RESOURCEFILE.CHANGED";
 
 Parameter REASONCHANGED = "The file's resources changed after the import was reviewed, so nothing was imported. Review the import again.";

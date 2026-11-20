@@ -574,7 +574,7 @@ export class UserCreateFormPage {
   }
 
   protected async onSave(): Promise<void> {
-    if (this.store.busy()) return;
+    if (this.store.busy() || this.handingOff()) return;
     this.handingOff.set(true);
     const saved = await this.store.save();
     if (!saved) {

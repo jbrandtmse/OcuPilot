@@ -3,7 +3,8 @@
 /// hold; the import review answers the file's names, digest, replaced count and per-resource letters from a local text, runs the vendor's
 /// preview, and refuses what is not a resource export, a file too large, and a local text named beside a server file; an export refuses a
 /// root outside the allowed directories and a name whose directory is absent on its field; the kernel's own-resource rule judges every
-/// resource a file holds; and the two tools' declarations and baseline keys.</p>
+/// resource a file holds; an import whose file is not the one reviewed is refused before the vendor's import; and the two tools' declarations and baseline
+/// keys.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot compiled and at least one allowed directory. It writes nothing on the instance: every
 /// vendor call is a read or a preview, and every text names resources the test invents.</p>
 Class OcuPilot.Test.ResourceTransferRead Extends %UnitTest.TestCase
@@ -47,6 +48,13 @@ ClassMethod Review(pText As %String, Output pOut, pType As %String = "IMPORTSET"
     Quit $ClassMethod(..#PORT, "Ask", pType, .tQuery, .pOut)
 }
 
+/// <p>The field of <var>pFault</var>'s first violation, or <code>""</code>.</p>
+ClassMethod FieldOf(pFault) As %String
+{
+    If '$IsObject($Get(pFault)) || '$IsObject(pFault.%Get("detail")) || '$IsObject(pFault.%Get("detail").%Get("violations")) Quit ""
+    Quit pFault.%Get("detail").%Get("violations").%Get(0).%Get("field")
+}
+
 /// <p>How many resources the instance holds, by its own list query.</p>
 ClassMethod VendorCount() As %Integer
 {
@@ -66,7 +74,7 @@ ClassMethod VendorCount() As %Integer
     Quit tCount
 }
 
-/// <p><b>AC1, AC6.</b> A caller that lacks a pair of the port's gate is refused <code>PORT.ACCESSDENIED</code> naming it, on every type, before any vendor call.</p>
+/// <p><b>PM-24, AD-29.</b> A caller that lacks a pair of the port's gate is refused <code>PORT.ACCESSDENIED</code> naming it, on every type, before any vendor call.</p>
 /// <p>Mutation (Rule 19): <code>Invoke</code> not asking <method>Gate</method> -> the denial rows go red.</p>
 Method TestTheGateNamesThePairACallerLacksBeforeAnyVendorCall()
 {
@@ -87,7 +95,7 @@ Method TestTheGateNamesThePairACallerLacksBeforeAnyVendorCall()
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "no vendor call was made")
 }
 
-/// <p><b>AC1.</b> The export target answers every resource's count for <code>*</code>, one resource by its name, and 404 for a name the instance does not hold or a name no
+/// <p><b>PM-24.</b> The export target answers every resource's count for <code>*</code>, one resource by its name, and 404 for a name the instance does not hold or a name no
 /// resource can carry.</p>
 Method TestTheExportTargetAnswersAllOneAndAnAbsentName()
 {
@@ -104,7 +112,7 @@ Method TestTheExportTargetAnswersAllOneAndAnAbsentName()
     }
 }
 
-/// <p><b>AC2.</b> The review of a local text answers its names in file order, the SHA-256 of the text, the count, how many resources the instance already holds and each
+/// <p><b>PM-24.</b> The review of a local text answers its names in file order, the SHA-256 of the text, the count, how many resources the instance already holds and each
 /// resource's letters and held letters, never the text itself, and the vendor is asked its preview (<code>Flags</code> 1) and nothing else.</p>
 /// <p>Mutation (Rule 19): <code>Review</code> counting no held resource -> the replaced row goes red.</p>
 Method TestTheImportReviewAnswersTheFilesNamesDigestAndLetters()
@@ -126,8 +134,11 @@ Method TestTheImportReviewAnswersTheFilesNamesDigestAndLetters()
     Do $$$AssertTrue(tOtherOut.%Get("Digest") '= tOut.%Get("Digest"), "another text has another digest")
 }
 
-/// <p><b>AC2.</b> What is not a resource export is refused <code>RESOURCEFILE.SHAPE</code>, a file of more than 2,000 resources <code>RESOURCEFILE.TOOLARGE</code>, an id other than
-/// the import's is 404, and a text named beside a server file, or no file, is 400; no vendor write is made.</p>
+/// <p><b>PM-24, AD-21.</b> What is not a resource export is refused <code>RESOURCEFILE.SHAPE</code>, a file of more than 2,000 resources <code>RESOURCEFILE.TOOLARGE</code>, an id
+/// other than the import's is 404, a text named beside a server file, or no file, is 400, and a server file outside the allowed directories is refused on
+/// <code>root</code>, for the review and the write; no vendor call is made by a refusal.</p>
+/// <p>Mutation (Rule 19): <code>ImportText</code> reading the server file without <method>OcuPilot.Port.ResourceTransferPort.Locate</method> -> the outside-root rows go
+/// red; <code>Review</code> refusing at <code>&gt;=</code> the cap -> the 2,000-resource row goes red.</p>
 Method TestTheImportReviewRefusesWhatIsNotAResourceExport()
 {
     Set tHead = "<?xml version=""1.0"" encoding=""UTF-8""?>" _ $Char(10)
@@ -138,10 +149,13 @@ Method TestTheImportReviewRefusesWhatIsNotAResourceExport()
         Do $$$AssertEquals(..Review($Piece(tCase, "|", 2, *), .tOut), "409|RESOURCEFILE.SHAPE", $Piece(tCase, "|", 1) _ " is not a resource export")
     }
     Set tMany = tHead _ "<ResourcesExport>"
-    For tI = 1:1:2001 {
+    For tI = 1:1:2000 {
         Set tMany = tMany _ "<Resources><Name>T21Pm24M" _ tI _ "</Name><PublicPermission>1</PublicPermission></Resources>"
     }
+    Do $$$AssertEquals(..Review(tMany _ "</ResourcesExport>", .tOut) _ "|" _ $Select($IsObject($Get(tOut)): tOut.%Get("Count"), 1: ""), "200||2000", "2,000 resources is the most a file may hold")
+    Set tMany = tMany _ "<Resources><Name>T21Pm24M2001</Name><PublicPermission>1</PublicPermission></Resources>"
     Do $$$AssertEquals(..Review(tMany _ "</ResourcesExport>", .tOut), "409|RESOURCEFILE.TOOLARGE", "more than 2,000 resources is too large")
+    Do $ClassMethod(..#PORT, "Clear")
     Do $$$AssertEquals(..Review($Translate($Justify("", 3000001), " ", "a"), .tOut), "409|RESOURCEFILE.TOOLARGE", "a local text past the character cap is too large")
     Kill tQuery
     Set tQuery("id") = "other"
@@ -160,11 +174,19 @@ Method TestTheImportReviewRefusesWhatIsNotAResourceExport()
     Set tQuery("fileName") = "dir/a.xml"
     Set tQuery("content") = tOne
     Do $$$AssertEquals($ClassMethod(..#PORT, "Ask", "IMPORTSET", .tQuery, .tOut), "400|PORT.VALIDATION", "a local file's name holds no slash")
+    Kill tQuery
+    Set tQuery("id") = "import"
+    Set tQuery("root") = "/t21pm24-no-such-allowed-root/"
+    Set tQuery("path") = "a.xml"
+    For tType = "IMPORTSET", "IMPORT" {
+        Set tSC = $ClassMethod(..#PORT, "Invoke", "ResourceTransfer", tType, .tQuery, "", .tOut, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ ..FieldOf(tFault), "400|root", tType _ " of a server file outside the allowed directories is refused on root")
+    }
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "no vendor call was made by a refusal")
 }
 
-/// <p><b>AC3.</b> An export names its file on the field a refusal is about: a root outside the allowed directories on <code>root</code>, and a name whose directory the allowed root
-/// lacks <code>TASK.EXPORT.DIRECTORY</code> on <code>path</code>, each before any vendor call.</p>
+/// <p><b>PM-24, AD-21.</b> An export names its file on the field a refusal is about: a root outside the allowed directories on <code>root</code>, and a name whose directory the
+/// allowed root lacks <code>TASK.EXPORT.DIRECTORY</code> on <code>path</code>, each before any vendor call.</p>
 /// <p>Mutation (Rule 19): <code>ExportFile</code> skipping the directory check -> the directory row goes red.</p>
 Method TestAnExportRefusesAFileOnTheFieldItIsAbout()
 {
@@ -172,8 +194,8 @@ Method TestAnExportRefusesAFileOnTheFieldItIsAbout()
     Set tQuery("id") = "*"
     Set tQuery("root") = "/t21pm24-no-such-allowed-root/"
     Set tQuery("path") = "a.xml"
-    Set tStatus = $ClassMethod(..#PORT, "Ask", "EXPORT", .tQuery, .tOut)
-    Do $$$AssertTrue($Piece(tStatus, "|", 1) = 400, "a root outside the allowed directories is refused: " _ tStatus)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "ResourceTransfer", "EXPORT", .tQuery, "", .tOut, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ ..FieldOf(tFault), "400|root", "a root outside the allowed directories is refused on root")
     Set tRoot = ##class(OcuPilot.Test.TaskTransferFixture).FirstRoot()
     Do $$$AssertTrue(tRoot '= "", "the instance has an allowed directory")
     Set tQuery("root") = tRoot
@@ -184,7 +206,7 @@ Method TestAnExportRefusesAFileOnTheFieldItIsAbout()
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "no vendor call was made")
 }
 
-/// <p><b>AC4.</b> The kernel's own-resource rule judges every resource of a file: one of OcuPilot's own that the file gives a public permission letter it does not hold, or
+/// <p><b>PM-24, AD-10.</b> The kernel's own-resource rule judges every resource of a file: one of OcuPilot's own that the file gives a public permission letter it does not hold, or
 /// that the instance lacks and the file gives one, is refused; the same letters, fewer, or no letters are not; another resource is not. The port refuses an import of such a
 /// file, after its review and before any vendor write.</p>
 /// <p>Mutation (Rule 19): <code>ImportedResources</code> reading only the first entry -> the second-entry row goes red.</p>
@@ -214,6 +236,30 @@ Method TestTheOwnResourceRuleJudgesEveryResourceOfAFile()
     Set tQuery("digest") = tReview.%Get("Digest")
     Do $$$AssertEquals($ClassMethod(..#PORT, "Ask", "IMPORT", .tQuery, .tOut), "403|" _ tCode, "the port refuses an import that opens OcuPilot's own resource")
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "IMPORT 1|IMPORT 1", "and only the two previews (the test's review and the write's) reached the vendor")
+}
+
+/// <p><b>PM-24, AD-21.</b> An import whose reviewed digest or names are not the file's now, or that carries none, is refused <code>RESOURCEFILE.CHANGED</code>
+/// after the port's own review and before the vendor's import; each write's vendor import is armed to fail, so a refusal that did not hold writes nothing.</p>
+/// <p>Mutation (Rule 19): <code>Import</code> without its reviewed-values comparison -> every row goes red.</p>
+Method TestAnImportIsRefusedWhenItsFileIsNotTheOneReviewed()
+{
+    Set tText = ..Text($ListBuild($ListBuild("T21Pm24Rd1", 1)))
+    Do $$$AssertEquals(..Review(tText, .tReview), "200|", "the file is reviewed")
+    Set tStale = $ListBuild("digest|" _ tReview.%Get("Names") _ "|" _ $Translate($Justify("", 64), " ", "0"), "names|T21Pm24Rd2|" _ tReview.%Get("Digest"), "none||")
+    For tI = 1:1:$ListLength(tStale) {
+        Set tCase = $List(tStale, tI)
+        Kill tQuery
+        Set tQuery("id") = "import"
+        Set tQuery("fileName") = "resources.xml"
+        Set tQuery("content") = tText
+        If $Piece(tCase, "|", 1) '= "none" {
+            Set tQuery("names") = $Piece(tCase, "|", 2)
+            Set tQuery("digest") = $Piece(tCase, "|", 3)
+        }
+        Do $ClassMethod(..#PORT, "FailVendor")
+        Do $$$AssertEquals($ClassMethod(..#PORT, "Ask", "IMPORT", .tQuery, .tOut), "409|RESOURCEFILE.CHANGED", "an import reviewed with another " _ $Piece(tCase, "|", 1) _ " is refused")
+    }
+    Do $$$AssertTrue($ClassMethod(..#PORT, "Calls") '[ "IMPORT 0", "no import reached the vendor: " _ $ClassMethod(..#PORT, "Calls"))
 }
 
 /// <p><b>AC6.</b> The export key ships enabled and the import key disabled; the import is destructive and the export is not; both name the classic page and the one port; the

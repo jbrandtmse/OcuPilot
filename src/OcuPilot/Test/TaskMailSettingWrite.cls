@@ -1,7 +1,8 @@
 /// <p>Pins Story 21.19's set of a Task Manager email setting on both callers (AC2, AC6; AD-4, AD-6, AD-15, AD-22, AD-35, AD-53, AD-58): the screen's Set
 /// value through its own action route (<class>OcuPilot.Test.EcpActionFixture</class>) and the agent's mint and confirm
 /// (<class>OcuPilot.Test.LicenseProbe</class>), against the real instance. A set changes exactly the one setting, reads its value back and writes one
-/// configuration-change audit row; a setting the port does not list, a port out of range, a field the Task Manager does not fill in and a value the
+/// configuration-change audit row; <code>UseSTARTTLS</code> and the two messages are stored as the vendor's own <code>EmailGet</code> reads them; a
+/// setting the port does not list, a port out of range, a field the Task Manager does not fill in and a value the
 /// vendor refuses change nothing, at the screen and at the mint; a write the vendor did not store reads back as different; and with the key
 /// disabled the agent is refused while a person is not. The mail password is never read or changed.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>,
@@ -238,6 +239,41 @@ ClassMethod OtherPort(pFound As %String) As %String
     Quit $Select(pFound = 2525: 2526, 1: 2525)
 }
 
+/// <p>The value of <var>pName</var> as the vendor's own <code>EmailGet</code> answers it in <code>%SYS</code>, or <code>(error)</code>.</p>
+ClassMethod VendorValue(pName As %String) As %String
+{
+    Set tValue = "(error)"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(%SYS.Task.Config).EmailGet(pName, .tRead)
+        If $$$ISOK(tSC) Set tValue = $Get(tRead)
+    } Catch {
+        Set tValue = "(error)"
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tValue
+}
+
+/// <p><b>AC2.</b> <code>UseSTARTTLS</code> and the two messages round-trip through the vendor: the screen's Set value turns <code>UseSTARTTLS</code> on
+/// and then off and sets <code>MessageSuccess</code> to a two-line text, and the agent's confirmed proposal sets <code>MessageFailure</code> to a text
+/// of the 32,000-character cap, each reading back <code>matches</code> and read by the vendor's own <code>EmailGet</code> exactly as sent.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.ConfigPort</class>'s <code>SendNode</code> sends no <code>EmailSet</code> for the mail endpoint -> every
+/// row goes red.</p>
+Method TestTheStartTlsFlagAndTheMessagesRoundTripThroughTheVendor()
+{
+    For tFlag = 1, 0 {
+        Set tStatus = ..Act("UseSTARTTLS", tFlag, .tAnswer)
+        Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ ..VendorValue("UseSTARTTLS"), "200|matches|" _ tFlag, "UseSTARTTLS " _ tFlag _ ": the screen's Set value stores it as the vendor reads it: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    }
+    Set tTwoLines = "Task #(NAME)# ran." _ $Char(13, 10) _ "Status: #(SUCCESS)#"
+    Set tStatus = ..Act("MessageSuccess", tTwoLines, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ (..VendorValue("MessageSuccess") = tTwoLines), "200|matches|1", "MessageSuccess: a two-line text is stored as sent: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Set tLong = $Translate($Justify("", 32000), " ", "x")
+    Set tOutcome = ..Agent("MessageFailure", tLong, .tResult, .tProposal)
+    Do $$$AssertEquals(tOutcome _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult) _ "|" _ $Length(..VendorValue("MessageFailure")) _ "|" _ (..VendorValue("MessageFailure") = tLong), "200 |matches|32000|1", "MessageFailure: the agent's text at the cap is stored whole: " _ tOutcome)
+}
+
 /// <p><b>AC2.</b> The screen's Set value and the agent's confirmed proposal change exactly <code>Port</code> and a subject, on both callers, each
 /// with a read-back reading <code>matches</code>, every other setting reading as before and the mail password untouched; an empty port is accepted
 /// and clears it, and the vendor wrote a configuration-change audit row for the port.</p>
@@ -249,10 +285,11 @@ Method TestASetChangesOnlyItsSettingOnBothCallersAndIsRestored()
     Set tPassword = ##class(OcuPilot.Test.TaskMailAuditMask).Stored()
     Set tBefore = ..Snapshot()
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
-    Set tStatus = ..Act("Port", "587", .tAnswer)
-    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ ..ValueOf("Port"), "200|matches|587", "Port: the screen's Set value changes it and reads it back: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Set tScreenPort = $Select(tFound = 587: 588, 1: 587)
+    Set tStatus = ..Act("Port", tScreenPort, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ ..ValueOf("Port"), "200|matches|" _ tScreenPort, "Port: the screen's Set value changes it and reads it back: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals(..Without(..Snapshot(), "Port"), ..Without(tBefore, "Port"), "Port: every other setting reads as before")
-    Do $$$AssertTrue($ClassMethod("OcuPilot.Test.AuditVendorSecrets", "VendorCarries", tSince, "587", ..#EVENT) >= 1, "and the vendor wrote a configuration-change row that carries the new port")
+    Do $$$AssertTrue($ClassMethod("OcuPilot.Test.AuditVendorSecrets", "VendorCarries", tSince, tScreenPort, ..#EVENT) >= 1, "and the vendor wrote a configuration-change row that carries the new port")
     Set tSubject = "Task #(NAME)# #(SUCCESS)#"
     Set tStatus = ..Act("SubjectSuccess", tSubject, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ ..ValueOf("SubjectSuccess"), "200|matches|" _ tSubject, "SubjectSuccess: the screen's Set value changes it and reads it back")

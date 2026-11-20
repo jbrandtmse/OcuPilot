@@ -179,7 +179,7 @@ ClassMethod Agent(pTool As %String, pName As %String, pArgs As %DynamicObject, O
     Quit $ClassMethod(..#AGENT, "Confirm", tProposal, .pResult)
 }
 
-/// <p><b>AC1, AC2, AC3.</b> A resource the test made is exported by the screen and by the agent, to a file that already holds another text, which the agent's export replaces;
+/// <p><b>PM-24, AD-53, AD-58.</b> A resource the test made is exported by the screen and by the agent, to a file that already holds another text, which the agent's export replaces;
 /// every resource is exported by the screen; the resource is deleted and imported back from its text by the screen's local import and, from the file, by the agent's confirmed
 /// proposal, listed again with the description and permission it had; an agent's import whose file changes after the mint is refused with nothing imported. No temporary file
 /// is left.</p>
@@ -222,9 +222,11 @@ Method TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused()
     Do $$$AssertEquals(tChanged _ "|" _ ..VendorExists(..#RESOURCEA), "409 PROPOSAL.TARGETCHANGED|0", "a file that changed after the mint is refused (" _ tChanged _ "), and nothing is imported")
 }
 
-/// <p><b>AC4.</b> A file that gives one of OcuPilot's own resources a public permission it does not hold is refused as every own-resource write is, on both callers: the
-/// screen's local import answers 403 and the agent's confirm refuses, with the resource's public permission as it was and the other resource of the file not imported.</p>
-/// <p>Mutation (Rule 19): <code>Prohibits</code> not routing a resource import to <code>ResourceImport</code> -> both refusal rows go red.</p>
+/// <p><b>PM-24, AD-10.</b> A file that gives one of OcuPilot's own resources a public permission it does not hold is refused as every own-resource write is, on both
+/// callers: the screen's local import answers 403 and the agent's confirm refuses, with the resource's public permission as it was and the other resource of the file
+/// not imported; the kernel's own set refuses the server file by itself, apart from the port's check at the write.</p>
+/// <p>Mutation (Rule 19): <code>Prohibits</code> not routing a resource import to <code>ResourceImport</code> -> the kernel's own row goes red (the port still refuses
+/// both callers).</p>
 Method TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers()
 {
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).OcuPilotResources(.tOwn)
@@ -238,6 +240,9 @@ Method TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers()
     Set tRoot = $ClassMethod(..#PROBE, "Root")
     Set tPath = $ClassMethod(..#PROBE, "RelativeName", "own.xml")
     Do $ClassMethod(..#PROBE, "WriteFile", "own.xml", tText)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("resource", "instance", "import", .tImportRef), "the import's target key is built")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("permissions.resources.import", tImportRef, {"root": (tRoot), "path": (tPath)}.%ToJSON(), "[]", .tProhibits, .tFound), "the kernel's set answers")
+    Do $$$AssertEquals($Get(tProhibits) _ "|" _ $Get(tFound), "1|" _ tCode, "the kernel's own set refuses the file")
     Set tOutcome = ..Agent("OcuPilot.Screen.Tool.ResourceImport", "import", {"Name": "import", "root": (tRoot), "path": (tPath)}, .tResult)
     Do $$$AssertTrue(tOutcome [ tCode, "the agent's confirmed import of the same file is refused: " _ tOutcome)
     Do $$$AssertEquals(..VendorExists(..#RESOURCEA) _ "|" _ (..VendorRead(tName) = tHeldBefore), "0|1", "and nothing is imported by it either")

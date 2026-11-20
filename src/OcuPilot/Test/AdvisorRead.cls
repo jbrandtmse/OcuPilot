@@ -125,7 +125,11 @@ Method TestTheRowsAreThePanesRecommendationsInItsOrder()
         If ##class(OcuPilot.Test.LicenseKey).Keys(tRow) '= "Area,Code,Element,Ignored,Recommendation,Type" Set tBad = tBad _ " keys" _ (tIndex + 1)
         If tRow.%GetTypeOf("Ignored") '= "boolean" Set tBad = tBad _ " boolean" _ (tIndex + 1)
         If tRow.%Get("Area") '= $Select(..Rostered("ADVISORAREAS", tRow.%Get("Type")) '= "": ..Rostered("ADVISORAREAS", tRow.%Get("Type")), 1: tRow.%Get("Type")) Set tBad = tBad _ " area" _ (tIndex + 1)
-        If tRow.%Get("Recommendation") '= $Select(..Rostered("ADVISORTEXTS", tRow.%Get("Code")) '= "": ..Rostered("ADVISORTEXTS", tRow.%Get("Code")), 1: tRow.%Get("Code")) Set tBad = tBad _ " text" _ (tIndex + 1)
+        If tRow.%Get("Code") = $Parameter(..#PORT, "PUBLICROLESCODE") {
+            If tRow.%Get("Recommendation") '= $ClassMethod(..#SEAM, "PaneRoles") Set tBad = tBad _ " roles" _ (tIndex + 1)
+        } ElseIf tRow.%Get("Recommendation") '= $Select(..Rostered("ADVISORTEXTS", tRow.%Get("Code")) '= "": ..Rostered("ADVISORTEXTS", tRow.%Get("Code")), 1: tRow.%Get("Code")) {
+            Set tBad = tBad _ " text" _ (tIndex + 1)
+        }
     }
     Do $$$AssertEquals(tBad, "", "each row is the page's line in the page's order, with exactly its six members, a boolean flag, and the area and sentence its rosters publish")
     Set tResult = ##class(OcuPilot.Screen.Read).Execute(..#LIST, "", .tScreen, .tScreenHttp, .tScreenFault)
@@ -228,6 +232,23 @@ Method TestTheGeneralRowAnUnknownCodeAndASlashElementReadAsThePortSaysTheyDo()
     }
 }
 
+/// <p><b>AC1.</b> The page's second line under the <code>_PUBLIC</code> roles sentence reads the roles <code>_PUBLIC</code> holds, not its code, while
+/// the sentence above it reads as published; with no roles to read it answers its code, as an unknown code does.</p>
+/// <p>Mutation (Rule 19): <code>Listed</code> skips <method>OcuPilot.Port.AdvisorPort.PublicRoles</method> -> the roles row goes red.</p>
+Method TestThePublicRolesLineReadsTheRolesPublicHolds()
+{
+    Set tCode = $Parameter(..#PORT, "PUBLICROLESCODE")
+    Do $ClassMethod(..#SEAM, "Arm", [["Users", " ", "PUBLICRolesList", 0], ["Users", " ", (tCode), 0]])
+    Do $ClassMethod(..#SEAM, "ArmPublicRoles", "%Developer,%Operator")
+    Set tSC = ..Call(..#SEAM, "LIST", "", "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ tRows.%Size(), "200|2", "the list answers both lines")
+    Do $$$AssertEquals(tRows.%Get(0).%Get("Recommendation"), ..Rostered("ADVISORTEXTS", "PUBLICRolesList"), "the sentence reads as published")
+    Do $$$AssertEquals(tRows.%Get(1).%Get("Code") _ "|" _ tRows.%Get(1).%Get("Recommendation"), tCode _ "|%Developer,%Operator", "the second line reads the roles")
+    Do $ClassMethod(..#SEAM, "ArmPublicRoles", "")
+    Set tSC = ..Call(..#SEAM, "ROW", "id", ..Id("Users", " ", tCode), .tRow, .tRowHttp, .tRowFault)
+    Do $$$AssertEquals(tRowHttp _ "|" _ tRow.%Get("Recommendation"), "200|" _ tCode, "with no roles to read it answers its code")
+}
+
 /// <p><b>AC6, AD-29.</b> Every read and every write is refused to a caller short of a pair, naming the first pair it lacks, and the page is read for none of
 /// them: <code>Calls</code> stays empty. A caller holding all three reads.</p>
 /// <p>Mutation (Rule 19): <code>Gate</code> returns success before it checks the pairs -> the refusal rows go red.</p>
@@ -278,7 +299,7 @@ Method TestTheRostersNameTheSevenTypesAndEverySentenceTheInstanceLists()
         Set tType = $Piece(tPane(tI), "|", 1)
         Set tCode = $Piece(tPane(tI), "|", 3)
         If ..Rostered("ADVISORAREAS", tType) = "" Set tUnknown = tUnknown _ " type " _ tType
-        If ..Rostered("ADVISORTEXTS", tCode) = "" Set tUnknown = tUnknown _ " code " _ tCode
+        If (tCode '= $Parameter(..#PORT, "PUBLICROLESCODE")) && (..Rostered("ADVISORTEXTS", tCode) = "") Set tUnknown = tUnknown _ " code " _ tCode
     }
     Do $$$AssertEquals(tUnknown, "", "every type and code the instance lists now is on the rosters")
     Do $$$AssertEquals(..Rostered("ADVISORTEXTS", "PUBLICHasRoles"), "_PUBLIC user should not have roles", "a sentence names the _PUBLIC user as the instance does")
