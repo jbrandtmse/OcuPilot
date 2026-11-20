@@ -589,3 +589,5 @@
 2026-11-20T17:26:41Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T17:26:41Z model=sonnet agent_name=24-14-qa-batch3 cycle_iteration=3 throwaway_tree=6e571a7b5
 2026-11-20T17:37:59Z	Story 24.14	qa_complete	spawn_at=2026-11-20T17:28:00Z model=sonnet tests=AnalyticsPmmlCreateGap(new,6) mutations_demonstrated=6 first_run_failures=0 product_defects=1(PMML_bound_checked_on_text_enforced_on_class_text:2999900-3000000_chars_refused_EXPLORER.SAVE.TOOLARGE) scope=batch3
 2026-11-20T17:37:59Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T17:37:59Z model=opus agent_name=24-14-code-review-batch3 cycle_iteration=3 baseline=3713fb798
+2026-11-20T17:59:41Z	Story 24.14	review_complete	spawn_at=2026-11-20T17:39:00Z model=opus layers=4(full-opus) findings=38(high0,med3,low35) patched=13 deferred=2 rejected=23 intent_gap=0 required=bound_fix(422_TEXT_on_class_text),Prohibited_word-diff_clean,U-127_conditions_hold commit= scope=batch3
+2026-11-20T17:59:41Z	Story 24.14	ledger_adjudicated	born_terminal=DW-2808 routed_burndown=DW-2809 scope=batch3 model=claude-opus-5-5

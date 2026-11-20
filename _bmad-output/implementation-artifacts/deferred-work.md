@@ -14216,3 +14216,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Shared BackgroundRun behavior that MDX query has too (24.14 Batch 2 implement review); fixing it touches the shared client store.
 - 2026-11-20T11:16:08Z status=routed owner=burndown by=harvest note=attach_only_the_same_target's_run
+
+### DW-2808: PMML New: the mint's absence read is write-gated but no test arms the database seam on it (the confirm's write is gated and pinned)
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Review of 24.14 Batch 3: the read-only seam is exercised at the confirm only.
+- 2026-11-20T17:59:41Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a mint is seen passing on a read-only database
+
+### DW-2809: PMML New: near-copies left as found (PmmlDefinitionProblem beside its two siblings; the copy-the-body-and-set-Class lines at four sites; the dialog's FileReader block) (Rule 2)
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Review of 24.14 Batch 3; each copy is a few lines and differs in its target.
+- 2026-11-20T17:59:41Z status=routed owner=burndown by=harvest note=share_the_three_helpers
