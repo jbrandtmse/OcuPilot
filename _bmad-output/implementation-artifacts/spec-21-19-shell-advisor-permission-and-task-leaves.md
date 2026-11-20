@@ -2,7 +2,8 @@
 title: 'Story 21.19: Shell, advisor, permission and task leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'f6e5cc741b5cd175f4ea5311e442a64015a6734b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -120,6 +121,8 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-11-20, orchestrator rulings on the implement halt: (1) PM-24's ten strings are accepted under the orchestrator's grant (U-118 precedent), style-checked at review, and listed verbatim in a veto item; EXPERIENCE.md stays add-only. (2) TM-17 (a task's output file) and TM-18's mail password move to Story 21.36 (split, Rule 5; owner answer U-70 carries); this story closes with Batches 1 to 3 and PM-24, and Batch 4's TM-17 and mail-password bullets and their acceptance clauses are out of scope here. The AD-35 audit mask for the mail password's ConfigurationChange row is already in feature (Story 21.24, `b706fb831`, `AuditPort.VENDORCONFIGSECRETS`, pinned by `OcuPilot.Test.TaskMailAuditMask`).
+
 ## Review Triage Log
 
 ## Design Notes
@@ -146,6 +149,21 @@ deferred:
 - Copy from copies no `%`-class access, as the classic page does on a create.
 - The tree held another stage's uncommitted Story 21.12 files at this plan's start; this stage wrote only its spec.
 - The epic context is reused as the runner instructed.
+- Batch 3: `warmEditPage` is exported from `screen-outlet.ts` and imported by the three create pages; `build-output.test.mjs` and the lazy-load tooling accepted it (initial bundle 2.18 MB). It resolves on a missing descriptor or a failed chunk, and the page's `handingOff` keeps its own Saved hidden for the whole hand-off.
+- Batch 3, Copy from: the picker's empty choice reuses "None" through `STRINGS.sslVerifyPeerNone` (`strings.test.mjs` holds every value unique), so no string is added; the form fills the type its source's fields describe (dispatch class: REST, application file: Python) and the source's methods the instance offers, keeps a typed name through a choice or its clearing, and a refused read returns the select to the source the form holds.
+
+**Batch 4 state:**
+
+- PM-24 is built and verified on `ocupilot-ci`: `Port/ResourceTransferPort.cls`, `Api/ResourceFileError.cls`, `Screen/Tool/ResourceExport.cls`, `ResourceExportMint.cls`, `ResourceImport.cls`; `ResourceList.cls` row actions `export`, `export-all`, `import`, `import-local`; the add-only rows (`Baseline.cls` export `true` and import `false`, `AdminPort` `ResourceTransfer/EXPORT` and `/IMPORT`, `Error.cls`, `Prohibited.cls`, `strings.ts`, `proposal-view.ts`); client `resource-list.page.ts`, `explorer-export-dialog.ts`; tests `Test/ResourceTransferFixture`, `ResourceTransferRead`, `ResourceTransferWrite`, `ui/tools/resource-transfer.test.mjs`, `resource-transfer.spec.ts`, `ui/browser/resources-transfer.browser-spec.mjs`.
+- PM-24 pairs, measured on `ocupilot-ci` (2026-11-20, a throwaway user whose role held `%Admin_Secure:USE` and `%DB_IRISSYS:READ` only, in a jobbed process after `$SYSTEM.Security.Login`): `Security.Resources` `Export` of every resource, `Import` with `Flags` 1 and with `Flags` 0 all succeed in `%SYS` (185 resources exported; the one resource imported and then held). `%DB_IRISSYS:WRITE` is not needed, so `ResourceTransferPort.PAIRS` stays `%Admin_Secure:USE,%DB_IRISSYS:READ` and no tool declares `WRITEPAIRS`.
+- TM-17 is not built: `TaskDetails.cls` carries no `OutputFile` and no Open output action. It needs a viewer for the file's tail and its strings, which no ruled list holds (`## Clarification Needed`).
+- TM-18's password is not built: no `tasks.mail.password` tool. The agent's leg needs a `ConfigPort` write type and the secret-only machinery (`Classification`, `ToolFields`, the descriptor's secret field), and the person's leg needs a password dialog and its strings, which no ruled list holds (`## Clarification Needed`).
+
+**Task 0, measured on `ocupilot-ci` (2026-11-19, a throwaway user whose role held exactly the listed pairs, run in a jobbed process after `$SYSTEM.Security.Login`):**
+
+- (a) `%Admin_Secure:USE` + `%DB_IRISSYS:READ` is not enough: `GetRecommendations` raises `<PROTECT>` at `$ZU(69,64)` (`GetServiceRecommendations+14`), and adding `%Admin_Manage:USE` does not help. With `%DB_IRISSYS:WRITE` added it reads (184 rows on `ocupilot-ci`), `SetIgnoreFlag(...,1,"")` and `(...,0,"")` run with the null device current (`Open <null>::1`; `Open <null>:1` fails with `$Test` 0), and the flag reads back `1` then empty. No pair beyond `%DB_IRISSYS:WRITE` is needed, so there is no halt. **Decided:** `AdvisorPort.PAIRS` is `%Admin_Secure:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE` for the read and both writes, so no tool declares `WRITEPAIRS`; the screen's privilege set carries the same three pairs. This is stricter than the classic page's `%Admin_Secure` alone, never looser.
+- (b) `%Admin_Manage:USE` + `%DB_IRISSYS:READ` (ConfigPort's `PAIRS`) reads all 12 non-secret `EmailGet` names, and `EmailSet("Port", ...)` succeeds with those pairs alone: no `WRITEPAIRS` for `tasks.mail.set`. Each set writes one `%System/%System/ConfigurationChange` row, `Modify Task Config.MailPort`, so a set and its restore wrote two.
+- (c) Not re-measured: Story 21.24 recorded it in the spine (AD-35, `Config.MailAuthPassword`, Base64 in `Old value` and `New value`, measured 2026-11-16).
 
 **Declined:** none. DW-2372 and DW-2471 are addressed in Batch 3 (AC4, AC5).
 
@@ -183,12 +201,21 @@ Shared surfaces (each is in the `(loop)` set; the implement stage greps `ui/brow
 
 Every test added or changed passes on a fresh environment, in either order. Each pinning test records `mutation:` lines here:
 
-- AC1: `IGNORE` skips `SetFlag`.
-- AC2: drop the `Port` range rule.
-- AC3: copy `Path` too.
-- AC4: navigate before the warm resolves.
-- AC5: restore the `server-fault` mapping at `screen-read.ts:230-234`.
-- AC6: the key fallback.
+- AC1: `IGNORE` skips `SetFlag`. mutation: `AdvisorPort.Control` sets `tSC = $$$OK` in place of the `SetFlag` call -> `AdvisorWrite` 4 of 4 red (person, agent, seam, key legs; run 904), reverted and reloaded, 180 rows / 0 ignored as before.
+- AC1 (words): `ui/tools/advisor-strings.test.mjs`. mutation: `AuditingON=Auditing is enabled` respelled `Auditing is turned on` in `AdvisorPort.cls`'s `ADVISORTEXTS` -> 2 of 5 red (the EXPERIENCE.md literal and string-source legs), file restored byte-identical (shasum equal; never loaded, so no reload).
+- AC1 (browser): `ui/browser/security-advisor.browser-spec.mjs`. mutation: `screen-action-handler.ts`'s send maps `ignore` to `unignore` -> AC2 red (the Ignored cell never changes, the instance reads the row not ignored), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green; the ignored count is 0 before and after.
+- AC2: drop the `Port` range rule. mutation: `ConfigSettingRules.TaskMailCode` loses its `MAXPORT` comparison -> `TaskMailSettingRules` 2 of 5 red (the 65536 and 99999 rows with a vendor call recorded, and the mint; run 969), reverted (shasum equal) and reloaded, 5 of 5 green. Also: `ConfigPort.CollectRoster` ignores `ReadMail`'s status -> `TaskMailSettingRead` 1 of 7 red (a failed read is a fault, run 974); `SendNode` sends no `EmailSet` -> `TaskMailSettingWrite` 2 of 4 red (read-back `differs`, run 975); the page's `multiline` binding removed -> the spec's message leg red.
+- AC3: copy `Path` too. mutation: `fill` in `create-form.store.ts` also sets `next['Path'] = textAt(source, 'Path')` -> `create-form.store.spec.ts` 1 of 16 red (`value('Path')` reads `/probe/path/`), reverted (shasum equal).
+- AC4: navigate before the warm resolves. mutation: `void warmEditPage(...)` in place of the `await` in the web application create page -> `create-form.page.spec.ts` 1 of 5 red (navigation while the loader is held), reverted (shasum equal). Browser: the `handingOff` check dropped from `showSaved` on all three create pages, rebuilt and redeployed -> the held-chunk leg red in `web-applications-create`, `users-create` and `roles-create` (a `Saved` status shows while the chunk is held), reverted (shasum equal), rebuilt and redeployed, all green.
+- AC5: restore the `server-fault` mapping at `screen-read.ts`. mutation: the unreadable `ok` answer mapped to `server-fault` -> `screen-read.test.mjs` 1 of 15, `web-app-class-access-tab.spec.ts` 1 of 23 (the unreadable leg, which now passes through the shared read) and `list-page.spec.ts` 1 of 38 red, reverted (shasum equal).
+- AC6 (tasks.mail.set): the key fallback. mutation: the `tasks.mail.set` line removed from `Baseline.cls` -> `TaskMailSettingRead` 1 of 7 red (the baseline leg and the mint; run 971), reverted (shasum equal) and reloaded, 7 of 7 green.
+- AC6: the key fallback. mutation: the `security.advisor.unignore` line removed from `Baseline.cls` (an absent key reads disabled) -> `AdvisorWrite` 2 of 4 red (the agent's mint and the baseline leg; run 905), reverted and reloaded.
+- PM-24 (import writes): mutation: `ResourceTransferPort.SendImport` passing `Flags` 1 -> `ResourceTransferWrite` 1 of 2 red (the screen's and the agent's imports; run 1021), reverted (shasum equal) and reloaded.
+- PM-24 (review): mutation: `Review` adding 0 in place of 1 for a resource the instance holds -> `ResourceTransferRead` 1 of 7 red (the replaced count; run 1022), reverted (shasum equal).
+- PM-24 (export directory): mutation: `ExportFile` with its directory check made unreachable -> `ResourceTransferRead` 1 of 7 red (a name whose directory is absent; run 1023), reverted (shasum equal).
+- PM-24 (gate): mutation: `Invoke` with its `Gate` check made unreachable -> `ResourceTransferRead` 1 of 7 red (the denial test; run 1024), reverted (shasum equal).
+- PM-24 (own resources): mutation: `Prohibited.ImportedResources` stopping after the first entry -> `ResourceTransferRead` 1 of 7 red (every second-entry row and the port's refusal; run 1025), reverted (shasum equal) and reloaded.
+- PM-24 (client): mutation: `resource-list.page.ts` sending `export` for the all target -> `resource-transfer.spec.ts` 1 of 6 red (the body assertion), reverted (shasum equal). Browser: the `export` registration dropped, rebuilt and redeployed -> `resources-transfer.browser-spec.mjs` 1 of 2 red (no export dialog opens), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
@@ -204,7 +231,13 @@ Every test added or changed passes on a fresh environment, in either order. Each
 
 **Owner answer U-70 (2026-11-16, "A: all three + mask (Recommended)"):** the AD-51 entry and AD-21 consumer line for PM-24 and the AD-21 case for TM-17 are written into the spine as proposed above; the AD-35 record names the mail-password row. Batch 4 is built in this story; the audit mask itself is Story 21.24's and is already in the code, so TM-18's password task is the secret-only write alone.
 
+## Clarification Needed
+
+- PM-24's strings are in `strings.ts` and EXPERIENCE.md's Fixed strings but in no ruled list: "Export all", "Export resources", "Import resources", "Importing replaces any existing resource with the same name.", "Resources imported: <count>.", "Resources exported to <path>: <count>.", "This file is not a resource export, or it holds no resource.", "The file's resources changed after the import was reviewed, so nothing was imported. Review the import again.", "A resource file holds at most 2,000 resources, and this one is larger.", "It overwrites any existing resource with the same name. This cannot be undone." Each needs a ruling or a rewording.
+- TM-17 (Open output) needs strings no list holds (the action's label, the viewer's title and empty state, the refusal for an output outside the manager directory) and a viewer for the file's tail, which the log screens' routed pages do not offer for a task.
+- TM-18's password needs the person's dialog strings (its action label and field label) and the card's label for the secret.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: Clarification Needed -- user-facing strings for PM-24 (ten, already in the tree), TM-17 and TM-18's password are in no ruled list, and TM-17 needs a task-output viewer; the tree is kept uncommitted (Batches 1-3 and PM-24 built and verified on ocupilot-ci, 76-class roster sweep green, ClassicPageGate OWNPAIRS message re-derived to 158; TM-17 and TM-18's password not built).

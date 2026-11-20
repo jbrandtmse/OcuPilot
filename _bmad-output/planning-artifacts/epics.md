@@ -9435,13 +9435,15 @@ So that the last of the Explorer's data surfaces exists.
 
 [AMENDED 2026-11-16, owner answer U-70, "A: all three + mask (Recommended)", Rule 5] The three records are written; resource export and import, a task's output file and the Task Manager mail password return to this story. The audit mask is Story 21.24's.
 
+[AMENDED 2026-11-20, Story 21.19 implement, orchestrator ruling: split into a sibling, Rule 5] A task's output file (it needs a viewer no screen offers) and the Task Manager mail password move to Story 21.36; owner answer U-70 carries to it. This story builds the rest.
+
 As a developer-administrator,
-I want the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy,
+I want the Security Advisor, resource export and import, the Task Manager email settings and web application copy,
 So that no area has a remaining gap.
 
 **Acceptance Criteria:**
 
-- **Given** the Security Advisor, resource export and import, a task's output file, the Task Manager email settings and web application copy
+- **Given** the Security Advisor, resource export and import, the Task Manager email settings and web application copy
 - **When** each runs
 - **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
 
@@ -9762,6 +9764,20 @@ So that code run with development rights can neither steer an uninstall nor read
 
 - DW-2651: The install-owned stores and screen access still take any caller's public guarded write (ledger; routed by owner answer U-90)
 - DW-2652: Base's public reads let a %Development holder read another user's turns, conversations, proposals and ledger rows (ledger; routed by owner answer U-90)
+
+### Story 21.36: Task output and mail password
+
+[AMENDED 2026-11-20, Story 21.19 implement, orchestrator ruling: split into a sibling, Rule 5] Split from Story 21.19; it carries owner answer U-70's records for a task's output file and the Task Manager mail password. The audit mask is Story 21.24's and already ships.
+
+As a developer-administrator,
+I want to open a task's output file from its details and set the Task Manager mail password,
+So that the Task Manager has no remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** a task whose record names an output file, and the Task Manager email settings
+- **When** a person or the agent opens the output, or sets the mail password
+- **Then** the output reads bounded and tail-first only where the record allows it, and the password is a secret-only write that no read, card, audit row or log carries.
 
 ---
 
