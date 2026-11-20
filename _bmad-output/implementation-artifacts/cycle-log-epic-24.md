@@ -552,3 +552,8 @@
 2026-11-20T06:02:48Z	Story 24.14	ruling	question=models_list,PmmlTest_run_always_drop,stored_SQL_query_check,pairs,strings,AD-7/65/41_lines choice=keep category=veto inbox=U-122 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-20T06:02:48Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) scope=batch2
 2026-11-20T06:02:48Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T06:02:48Z model=sonnet agent_name=24-14-implement-batch2 cycle_iteration=2 story_base=cb997d156 scope=batch2
+2026-11-20T07:23:24Z	Story 24.14	ci_resolved	sha=171365989 runs=44683199382 result=success scope=batch1 merged_feature=dfc986c41
+2026-11-20T07:23:24Z	Story 24.14	dev_blocked	scope=batch2 condition=intent_gap(alarm_cannot_interrupt_vendor_RunModel_loop) tree=uncommitted
+2026-11-20T07:23:24Z	Story 24.14	ruling	question=PMML_run_bound_after_the_fact+Cancel+embedded_DELETE_drop choice=accept_amendment category=veto inbox=U-123 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T07:23:24Z	Story 24.14	protocol_violation	stage=implement-handoff what=sed_-i_on_DeveloperFloor.cls(count_word) git_protocol=clean action=logged
+2026-11-20T07:23:24Z	Story 24.14	stage_spawned	stage=implement-resume spawn_at=2026-11-20T07:23:24Z model=sonnet agent_name=24-14-implement-batch2-resume cycle_iteration=2 scope=batch2_review_finalize
