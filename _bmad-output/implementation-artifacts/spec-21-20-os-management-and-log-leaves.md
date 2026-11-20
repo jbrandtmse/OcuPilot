@@ -2,7 +2,7 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '57f19f9f8eef7d0b941614c3379901309447be1b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -158,6 +158,11 @@ deferred: []
 - AC6 (DW-2479). Given the probe's +2 h offset, when `LocalFromUtc` converts a UTC instant, then the result is two hours later; swapping the direction turns the test red.
 
 ## Spec Change Log
+
+- 2026-11-20, orchestrator rulings on the Task 0 halt:
+  - (a) OS-24 stays in this story. The gate is `SqlActivityPort.PAIRS` and the tool's `WRITEPAIRS` equal `PAIRS`; Design Notes record that no resource pair grants the SQL admin privilege `%CANCEL_QUERY`, as measured. The vendor's #5521 / SQLCODE -99 maps to 403 `SQLACTIVITY.NOPRIVILEGE` on both paths (the agent's confirm and the person's row action), and a refused call leaves no record claiming the statement was canceled. Cancel stays drawn for any holder of the pair. `REASONNOPRIVILEGE`, accepted verbatim (veto item): "Canceling another user's query needs the SQL privilege %CANCEL_QUERY." An add-only `SqlActivityProbe` option may keep its job alive after its statement ends. AC1's tests, on `ocupilot-ci` only: canceling one's own statement succeeds without the privilege; another user's statement is refused 403 with that sentence; with `%CANCEL_QUERY` granted it succeeds (SQLCODE -456, row gone, process alive). Teardown revokes every grant.
+  - (b) LG-12's reset `WRITEPAIRS` are `%Admin_Manage:USE` plus `%DB_IRISSYS:READ`, in-spec; no new string.
+  - (c) Transactions as planned.
 
 ## Review Triage Log
 
