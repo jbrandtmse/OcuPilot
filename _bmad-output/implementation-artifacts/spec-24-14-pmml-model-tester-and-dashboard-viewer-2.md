@@ -3,7 +3,7 @@ title: 'Story 24.14: PMML model tester and dashboard viewer (Batch 2: the PMML m
 type: 'feature'
 created: '2026-11-20'
 status: 'done'
-baseline_revision: '96e539d9602dd3a50613c782254b69f906547692'
+baseline_revision: 'fa07e912661f1c32e64f3f8efb5fc51987fa8faa'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -158,6 +158,9 @@ The implement stage re-runs the `git log` check before editing.
 - [x] The two descriptors, the entity type, the page, the store, the outlet, the strings (once ruled), the regenerated mirror and titles, and one EXPERIENCE.md Fixed strings row.
 - [x] Tests: the matrix in the three new classes, the component and browser tests, the walk SKIP and every roster.
 
+- [x] [CI] `AnalyticsPmmlRunEdge.TestACancelEndsARunAndLeavesNoRow` failed on CI run 44736623307 (instance shard 3/8, head fa07e9126) and passed in run 44729361774: "the run ends canceled", "and not when the join would end: 70.069863 seconds", "the run allocated its id, and the rows it wrote are gone". The cancel did not land on CI's runner, so the run ran to its end. Find why (candidates: the retry budget too short for a slower host; the interrupt sent before the statement is inside the SQL engine; the test firing cancel before the run has really started) and make the cancel deterministic, or make the test wait on an observable started state (e.g. the job inside its statement) rather than on time. Prove it with at least 5 consecutive runs of the class on a rebuilt throwaway and record each run's timings. If the vendor cannot cancel reliably, stop and report before changing the ruled behavior (U-123). Touch only Batch 2's files.
+  - Closed (rework 1): the vendor's loop is inside the SQL engine, the only place an interrupt is accepted, for about 2% of a run over a fast cross join, so the cancel landed by chance (53 sends locally, none in 10 s on CI); the test now runs a statement the job spends all its time inside (`SLOWSCAN`) and sends the cancel once `INFORMATION_SCHEMA.CURRENT_STATEMENTS` lists the job, and 5 consecutive runs of the class on a rebuilt throwaway were green with the cancel test at 234-240 ms (794 ms on the first).
+
 **Acceptance Criteria:**
 
 - **AC1 (round trip, reads; Integration, Rule 1).**
@@ -186,6 +189,8 @@ The implement stage re-runs the `git log` check before editing.
   - **Then** `PmmlProbe.Gone()` is true.
 
 ## Spec Change Log
+
+- 2026-11-20, CI: re-opened for rework iteration 1 (one [CI] item: the cancel test did not land on CI's runner).
 
 - 2026-11-20, implement intent gap ruled (runner, veto item U-123): Decided in-stage 3-5 accepted. Original: "under an alarm of `MDXSECONDS`" and "drops the id's rows" (with `%DropResults`). Amended: the alarm stops a slow start; a run past the bound is answered `stopped` and discarded when the vendor returns; Cancel interrupts; the drop is an embedded `DELETE` bound to the test id; the proposed AD-7 line reads the same.
 
@@ -385,10 +390,30 @@ The implement stage re-runs the `git log` check before editing.
 - mutation: fault ending `AnalyticsPort.PmmlRun` skips the drop when it caught an exception -> `TestOtherTestsRowsSurviveEveryEnding` red alone, on the faulted leg's own rows (`AnalyticsPmmlRun`).
 - mutation: database read `AnalyticsPort.AdmitNamespace` skips its globals-database read test -> `TestACallerWhoCannotReadTheDatabaseSeesNoModel` red alone, on both reads and the resolution (`AnalyticsPmmlModels`).
 - mutation: tool caps `Read.View` drops the context cap's cut, then ignores the `maxRows` argument (the throwaway's copy, `Read`'s subclasses recompiled) -> `TestTheListIsCutAtTheToolsCapAndSaysSo` red alone on the context-cap leg, then on the `maxRows` leg (`AnalyticsPmmlModels`). Each mutation was applied to the throwaway's copy only, reverted by copying the tree's file back and reloaded; `diff -rq` of the tree and the copy is empty.
+- mutation: cancel landing (rework 1) `PmmlTest.CancelJob` never sends its `CancelQuery` (the throwaway's copy; `PmmlTestIdle` and `PmmlTestQuick` recompiled) -> `TestACancelEndsARunAndLeavesNoRow` red on the status (not `canceled`) and the time (40.05 seconds), with the idle and busy tests red behind the live run (`AnalyticsPmmlRunEdge`, run 11); reverted by copying the tree's file back, `diff -rq` of the tree and the copy empty, recompiled, `git status --short` and `git diff --stat` unchanged, and the class green again (run 12, cancel test 243 ms).
+
+- mutation: cancel drop (rework 1) `PmmlRun` skips its `PmmlDrop(tId)` (the throwaway's copy; `PmmlRunSeam` recompiled) -> `TestACancelEndsARunAndLeavesNoRow` red on its rows-gone leg, with `TestARunPastItsBoundIsStoppedAndLeavesNoRow` red beside it (`AnalyticsPmmlRunEdge`, run 14); reverted by copying the tree's file back, `diff -rq` of the tree and the copy empty, recompiled.
+
+**Rework 1 timings** (source: `^UnitTest.Result`, each method's duration read as seconds and shown in milliseconds; the runner prints none). Before the fix, one run on the old test: cancel 17,481.7, busy 10,206.1. After, on `ocupilot-b-ci` rebuilt from this tree, `AnalyticsPmmlRunEdge` (8 tests, 0 failed each time; run 1 is the first run on the rebuilt instance; `AnalyticsPmmlRun`, 6 tests, run 2 and `AnalyticsPmmlModels`, 6 tests, run 3 each green on their first run):
+
+| Test | run 1 | run 4 | run 5 | run 6 | run 7 |
+|---|---|---|---|---|---|
+| ACancelEndsARunAndLeavesNoRow | 794.3 | 239.6 | 238.1 | 240.3 | 234.3 |
+| ACancelThatMeetsNoStatementIsBoundedByItsBudget | 2,299.2 | 2,252.6 | 2,242.5 | 2,248.0 | 2,259.9 |
+| ARunPastItsBoundIsStoppedAndLeavesNoRow | 10,428.0 | 10,236.4 | 10,222.8 | 10,290.8 | 10,240.8 |
+| ASourceThatIsNotAQueryIsRefusedBeforeAnythingRuns | 524.6 | 439.2 | 434.2 | 449.2 | 442.6 |
+| AnAbsentOrUndeclaredSourceIsRefusedBeforeTheVendorRuns | 403.8 | 396.9 | 397.1 | 395.8 | 396.4 |
+| AnSqlStatementOfAnyOtherKindIsRefusedBeforeAnythingRuns | 622.3 | 594.4 | 590.1 | 592.2 | 597.4 |
+| AnotherUsersPollIsNotFoundAndASecondStartIsBusy | 195.0 | 189.8 | 191.0 | 193.3 | 188.3 |
+| AnyOtherShapeAndAnUnpairedCallerAreRefused | 94.2 | 105.8 | 77.1 | 102.4 | 109.0 |
+
+`check-objectscript` and `lint-docs` clean.
 
 ## Auto Run Result
 
 Status: done
+
+**Rework 1 (the [CI] cancel flake).** Root cause: the vendor's model loop is inside the SQL engine, the only place `CancelQuery` is accepted, for about 2% of the time over a fast cross join (measured: 307 of 19,770 polls of `INFORMATION_SCHEMA.CURRENT_STATEMENTS`; 4 of 200 sends accepted), so the cancel landed by chance, after 53 sends locally and not at all in `CANCELBUDGET` on CI. Fix, in `AnalyticsPmmlRunEdge` only: the cancel and busy tests run `SLOWSCAN`, a nine-way self join the job spends all its time inside, and wait on `AwaitInStatement` (the job listed in `CURRENT_STATEMENTS`), the cancel test also on `AwaitRows` (a row to drop); the retry loop is gone and the time bound is 25 seconds. Verified by 5 consecutive green runs on the rebuilt throwaway, `AnalyticsPmmlRun` and `AnalyticsPmmlModels` green on their first run, and the two mutation lines (timings and mutations under Verification). One verification-gap layer ran; its row-written precondition finding was patched (`AwaitRows` restored, the drop mutation recorded); its other points (the `CURRENT_STATEMENTS` signal is per process, and no mutation removes the wait) are accepted: the wait is what makes the first send land. Residual: a cancel of a run over a fast statement is still probabilistic in production (about 2% per send, up to 100 sends in `CANCELBUDGET`); `CancelJob` is unchanged, as ruled.
 
 **Change.** The PMML models list and its Test screen, the third background-run kind (`PmmlTest`, three routes) and the agent's two derived reads, built to the amended Intent (the alarm stops a slow start; a run past the bound is `stopped` and discarded; Cancel interrupts; the drop is an embedded `DELETE` bound to the test id; `%DropResults` is named in no product code or comment). The Design Notes hold Task 0's measurements and the decisions. The batch's new files are the two descriptors, `PmmlTest`, `PmmlProbe`, `PmmlTestQuick` (the two-second-bound fixture), the three test classes, the store, the page and its component spec.
 
