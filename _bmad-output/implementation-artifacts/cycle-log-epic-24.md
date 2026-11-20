@@ -533,3 +533,5 @@
 2026-11-20T03:50:33Z	Story 24.13	ci_resolved	story=24.13 sha=d2b0259cc runs=44638724058 result=success failed=InteropItemRun(flake,rerun_once_green) via=rerun_failed_once ledger=DW-2787 carried_by=4fd03cd10
 2026-11-20T03:50:33Z	Story 24.14	fresh_check_passed	tree=045c9aca4 own_classes_first_run=2/2_green reverse+rosters=14/14_classes_155_tests scope=batch1_on_new_base
 2026-11-20T03:50:33Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T03:50:33Z model=sonnet agent_name=24-14-qa-batch1 cycle_iteration=1
+2026-11-20T04:02:57Z	Story 24.14	qa_complete	spawn_at=2026-11-20T03:52:00Z model=sonnet tests=AnalyticsFolderItemView(+3),AnalyticsPivotRun(+3) tests_added=6 mutations_demonstrated=6 first_run_failures=0 product_defects=0 scope=batch1
+2026-11-20T04:02:57Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T04:02:57Z model=opus agent_name=24-14-code-review-batch1 cycle_iteration=1 baseline=36722b87e
