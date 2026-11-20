@@ -92,6 +92,16 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-20, orchestrator rulings at the spec gate (authoritative over the escalated list in Design Notes):
+  - AD-21 note applied in the spine (`fbc419892`).
+  - Strings ruled (veto item), four changed: truncated "OcuPilot shows only the end of this file."; empty reuses the shared viewer's "No entries."; elsewhere "OcuPilot reads output files only in the manager directory. Open this one on the server."; not yet written "This task has not written its output file yet. It writes one each time it runs." Kept as proposed: "Open output file", "Task output", "Output directory", "This task does not write its output to a file.", the three prompts, and "Set mail password" with the reused "Value" label and clear hint.
+  - `tasks.mail.password` ships enabled on `tasks.mail.set`'s pairs (stricter than the vendor's `%Admin_Manage:USE`, accepted).
+  - The output read never echoes the path, in a refusal or in the agent tool's result.
+  - The 65,536-byte tail starts at a line boundary, never mid-line; a file under 64 KB is never marked truncated.
+  - The 8-bit text is shown as the server stores it, with no encoding guessed; a test carries a non-ASCII byte.
+  - Report at finalize whether the read added a Baseline key.
+  - Task 0's REST-read stop rule stands: if a REST process cannot read the file, HALT `intent gap` as a question; never widen privilege.
+
 ## Review Triage Log
 
 ## Design Notes
