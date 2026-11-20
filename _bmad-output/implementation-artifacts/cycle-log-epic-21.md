@@ -805,3 +805,6 @@
 2026-11-20T15:59:53Z	Story 21.20	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-20T15:59:53Z	Story 21.20	ledger	resolved=DW-1562,DW-2479 by=21-20 new=DW-2803(owner_burndown,decision-pending)
 2026-11-20T15:59:53Z	Story 21.20	story_complete	head=bdee5d94e run=44743879162 ci=success fresh=pass sweep=20/20 smoke=50/50 vetoes=U-124,U-126
+2026-11-20T16:01:33Z	Story 21.21	integrated_forward	feature=71ede15f2(Epic_17_done) conflicts=0 files=sprint-status_only
+2026-11-20T16:01:33Z	Story 21.21	story_started	spec=validated(veto_U-73;U-74_batch5_unheld) baseline=b477b4593 doctrine=3d11cec9 policy=b9ff703e hold=none note=batch5_strings_and_ACs_unwritten:stage_drafts_them_after_batch4_and_halts
+2026-11-20T16:01:33Z	Story 21.21	stage_spawned	stage=implement scope=task0+batches1-4+batch5_drafts spawn_at=2026-11-20T16:01:33Z model=sonnet agent_name=21-21-implement cycle_iteration=1 prior_lines_ended=verified(aa86594de)
