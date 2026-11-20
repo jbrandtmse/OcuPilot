@@ -530,3 +530,6 @@
 2026-11-20T03:45:29Z	Story 24.14	dev_complete	spawn_at=2026-11-19T23:53:00Z model=sonnet build_sha=475cf04e4 baseline_revision=36722b87e followup_review_recommended=true deferred=0 sweep=17/17_green scope=batch1 amendment=tab_group_route_analytics/folder-items/document
 2026-11-20T03:45:29Z	Epic 24	integrated_feature	feature=3bd54835a(21.10) integrate_only_head=4fd03cd10(parents_36722b87e+3bd54835a) run=44669283267 conflicts=Prohibited.cls2(additive),rosters(ReadTool546,ToolWrite143,covered_types93) checks=22_classes_green_one_per_call orchestrator_plan=approved
 2026-11-20T03:45:29Z	Story 24.14	integrated_feature	merge=045c9aca4(S_475cf04e4+M_4fd03cd10) conflicts=5(ReadTool548,vocabulary106,unions,mirror_regenerated) test_tools=2342 check_objectscript=0
+2026-11-20T03:50:33Z	Story 24.13	ci_resolved	story=24.13 sha=d2b0259cc runs=44638724058 result=success failed=InteropItemRun(flake,rerun_once_green) via=rerun_failed_once ledger=DW-2787 carried_by=4fd03cd10
+2026-11-20T03:50:33Z	Story 24.14	fresh_check_passed	tree=045c9aca4 own_classes_first_run=2/2_green reverse+rosters=14/14_classes_155_tests scope=batch1_on_new_base
+2026-11-20T03:50:33Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T03:50:33Z model=sonnet agent_name=24-14-qa-batch1 cycle_iteration=1

@@ -12770,6 +12770,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
 - 2026-11-13T16:40:28Z owner=20-25-item-runtime-and-configuration-actions by=orchestrator note=fix_after_20.40
 - 2026-11-13T21:07:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=InteropItemControl.StartProduction waits for the ScheduleHandler startup update (6d08b6ce), pinned by TestTheStartHelperWaitsForTheProductionsOwnUpdate (b38aa6b8); shard 8/8 order on a fresh ocupilot-b-ci green (InteropItemRun 9/9 at run 26)
+- 2026-11-20T03:50:33Z owner=burndown by=runner note=routed together with DW-2787 (same class InteropItemRun, production timing); a second red of either is a defect, not a flake (orchestrator)
 
 ### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
 - source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
@@ -14128,3 +14129,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-19: the marker of a confirmed security.systemsecurity.set of InactiveLimit carried fields including Purges, from the shared ConfigSettingSet shape (inference); the reviewed-few sweep holds the tools' advertised fields, so narrowing them is not a one-line change.
 - 2026-11-19T19:15:45Z status=wontfix-accepted owner=21-10-the-remaining-leaves-across-the-six-areas by=cr note=reopen_if=an audit reader or a test reads Purges on a security parameter marker as a changed field
+
+### DW-2787: Flake: InteropItemRun.TestEachRefusalIsMadeByNameBeforeAnyVendorCall's probe production start held no operation job (CI run 44638724058, instance shard 5/8); sibling of DW-2535 (same class, timing dependence on shard 8/8)
+- source: cycle-log-epic-24 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AssertStatusOK: the probe runs, with a disabled item and a pool-size-0 process stored => ERROR #5001: the probe production's operation holds no job after the start; passed on the one rerun of failed jobs; the change under test touched analytics only (inference: start timing).
+- 2026-11-20T03:50:33Z status=routed owner=burndown by=runner note=flake_policy:a_second_red_of_this_or_DW-2535_is_a_defect_not_a_flake;route_with_DW-2535
