@@ -772,3 +772,9 @@
 2026-11-20T06:50:58Z	Story 21.19	gate_step	step=fresh_check+full_sweep+smoke head=73c4c2fe6 started=2026-11-20T06:50:58Z dir=e21u/21-19/gate attempt=2
 2026-11-20T06:54:40Z	Story 21.19	integrated_forward	feature=dfc986c41(24.14_B1) merge=bc5a2e37f conflicts=5(EntityType_union;Descriptor_108;ReadTool_555;ToolRoundTrip_union;screens.generated.ts_regenerated) verified=screen-mirror,test:tools_2353,LOADERRORS=0,ReadTool,Descriptor,ToolRoundTrip,Navigation_green
 2026-11-20T06:54:40Z	Story 21.19	code_head_pushed	sha=bc5a2e37f run=44691109965 missing=none note=supersedes_73c4c2fe6
+2026-11-20T07:39:57Z	Story 21.19	ci_resolved	story=21.19 sha=bc5a2e37f runs=44691109965 result=success failed=none via=none
+2026-11-20T07:39:57Z	Story 21.19	fresh_check	env=recipe(ci-throwaway_rebuild) tests=33_classes+7_specs result=pass order=forward,reverse(specs) head=bc5a2e37f
+2026-11-20T09:27:28Z	Story 21.19	sweep	shards=20/20_green head=bc5a2e37f
+2026-11-20T09:27:28Z	Story 21.19	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T09:27:28Z	Story 21.19	ledger	resolved=DW-2372,DW-2471 by=21-19
+2026-11-20T09:27:28Z	Story 21.19	story_complete	head=bc5a2e37f run=44691109965 ci=success fresh=pass sweep=20/20 smoke=50/50 veto=U-121 split=TM-17+mail_password->21.36
