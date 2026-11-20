@@ -542,3 +542,5 @@
 2026-11-20T05:05:27Z	Story 24.14	fresh_check_failed	tree=d45900450 classes=forward5/5+reverse14/14_green browser=analytics17/17,analytics-mdx11/11,links+a11y18/19(a11y_AC5_unresolved_folder-items_routes)
 2026-11-20T05:05:27Z	Story 24.14	rework_opened	iteration=1 items=1([Smoke]) baseline=d459004502a425e9ee31dfdaecc078854d490613
 2026-11-20T05:05:27Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-20T05:05:27Z model=sonnet agent_name=24-14-rework-1 cycle_iteration=1
+2026-11-20T05:45:56Z	Story 24.14	rework_built	iteration=1 sha=171365989 fix=structural-walk_SKIP+24.14_browser_structural_checks review=lead_read(17-line_test_harness) mutation=SKIP_row_removed_AC5_red
+2026-11-20T05:45:56Z	Story 24.14	fresh_check_passed	tree=171365989 classes=forward5+reverse14(162_tests) browser=analytics17/17,analytics-mdx11/11,a11y13/13,links smoke=50/50 bundle=2.18MB scope=batch1
