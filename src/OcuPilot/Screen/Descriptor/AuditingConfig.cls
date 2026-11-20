@@ -33,6 +33,9 @@
 /// <class>OcuPilot.Screen.Tool.AuditPurge</class>, each carrying one value -- the namespace, the
 /// cut-off day -- to the same singleton. The purge tool is unadvertised, so this screen's context
 /// lists the copy tool and not it (AD-53).</p>
+/// <p>Its <code>export</code> row action writes the audit records to a new server file
+/// (<class>OcuPilot.Screen.Tool.AuditExport</class>), carrying the file's allowed directory and name and an
+/// optional cut-off day.</p>
 /// <p>It does not refresh (AD-43): a form whose fields move under the operator's cursor is what
 /// auto-refresh must not do, and EXPERIENCE.md's roster does not name it.</p>
 Class OcuPilot.Screen.Descriptor.AuditingConfig Extends OcuPilot.Screen.Descriptor.Base
@@ -57,7 +60,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "purge", "selfProtection": ""}],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "purge", "selfProtection": ""}, {"id": "export", "selfProtection": ""}],
   "context": {"fields": ["Enabled"], "secretFields": []},
   "emptyStateKey": "",
   "commandAliases": ["auditing"],

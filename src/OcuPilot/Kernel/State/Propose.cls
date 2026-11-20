@@ -87,7 +87,8 @@ Property ToolName As %String(MAXLEN = 128);
 /// <p>The longest <property>TargetRef</property> a row holds; the property's own <code>MAXLEN</code>
 /// equals it. The longest resend target, 100 message ids of 19 digits in a namespace of up to 64
 /// characters, is about 2,080 characters. A tool can name a longer target, a long document set among
-/// them, and <method>GuardedMint</method> refuses it.</p>
+/// them: <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> refuses it as the agent's argument error, and
+/// <method>GuardedMint</method> refuses it as the store's own fault.</p>
 Parameter TARGETREFMAX As INTEGER = 2200;
 
 /// <p>The scoped target as <method>OcuPilot.Kernel.EntityRef.Key</method> spells it: the entity

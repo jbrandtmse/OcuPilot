@@ -1726,6 +1726,35 @@ describe('the Managed file transfer list\u2019s Delete and Revoke token (Story 1
 });
 
 /**
+ * Story 21.10: the Mobile phone providers list's Delete types the provider's name -- the row key itself -- under its published
+ * consequence, and sends the name with no other argument.
+ */
+describe('the Mobile phone providers list Delete (Story 21.10)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.PhoneProviderList';
+  const target = 'OcuPhoneProbeA';
+
+  it('registers Delete, typing the provider name under its published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the list draws no Delete.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: target, SMSGateway: 'sms.ocuphoneprobe.invalid' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.phoneProviderDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the name and no argument', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'delete', target: { type: 'phone-provider', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+});
+
+/**
  * Story 18.30: the Doc DB applications list's Delete types the record's name -- the row key is `[Namespace, Name]`,
  * whose separator no one can type -- under its published consequence, and sends the whole row key.
  */

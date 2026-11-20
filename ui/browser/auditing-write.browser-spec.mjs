@@ -25,6 +25,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { signedInAt } from './panel-spec.mjs';
+import { slotText } from './proposal-card-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -364,6 +365,152 @@ test('AC5, AC6, AC7: the confirmed disable raises the banner, and the re-enable 
     await reenable.context.close();
     forgetTag(reenable.tag);
     dropProposals();
+  }
+});
+
+// --- Story 21.10: the audit log export ---------------------------------------------------------
+
+/** The directory under the first allowed directory this spec's exports go in; every file in it is removed afterwards. */
+const EXPORT_DIRECTORY = 'OcuP2110Browser';
+
+/** The audit export's provider-side tool name (AD-42). */
+const EXPORT_WIRE_NAME = 'security_auditing_export';
+
+/** The cut-off every export here names: no audit record is dated before it, so the file never depends on the log's size. */
+const EXPORT_BOUND = '2000-01-01';
+
+/** The screen this page opens on. */
+const AUDITING_URL = '/ocupilot/security/auditing?ns=HSCUSTOM';
+
+/** Create the export directory, empty, under the first allowed directory and answer that directory as the instance lists it. */
+function makeExportDirectory() {
+  removeExportDirectory();
+  const output = runIris([
+    `Set root=##class(OcuPilot.Test.TaskTransferFixture).FirstRoot()`,
+    `Do ##class(%File).CreateDirectoryChain(##class(%File).NormalizeDirectory(root_"${EXPORT_DIRECTORY}"))`,
+    `Write "OCU-AUDXROOT-START:"_root_":OCU-AUDXROOT-END",!`,
+  ]);
+  const root = markerValue(output, 'AUDXROOT') ?? '';
+  assert.notEqual(root, '', `the instance lists an allowed directory to export under: ${output}`);
+  return root;
+}
+
+/** Remove the export directory and every file in it. */
+function removeExportDirectory() {
+  runIris([
+    `Set root=##class(OcuPilot.Test.TaskTransferFixture).FirstRoot()`,
+    `Set dir=##class(%File).NormalizeDirectory(root_"${EXPORT_DIRECTORY}")`,
+    `If ##class(%File).DirectoryExists(dir) Do ##class(%File).RemoveDirectoryTree(dir)`,
+  ]);
+}
+
+/** Whether the export directory holds a file `name` that reads as the vendor's export document. */
+function exportFileHolds(name) {
+  const output = runIris([
+    `Set root=##class(OcuPilot.Test.TaskTransferFixture).FirstRoot()`,
+    `Write "OCU-AUDXFILE-START:"_##class(OcuPilot.Test.AuditExportWrite).IsExportFile(##class(%File).NormalizeDirectory(root_"${EXPORT_DIRECTORY}")_"${name}")_":OCU-AUDXFILE-END",!`,
+  ]);
+  return markerValue(output, 'AUDXFILE') === '1';
+}
+
+/** Wait, at most a minute, for the export task to write `name`. */
+async function exportFileWritten(name) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    if (exportFileHolds(name)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
+}
+
+test('Story 21.10 AC3: the Auditing screen exports the audit records to a new file, links to Background tasks, and refuses a file that exists', async () => {
+  // Mutation (Rule 19): `OcuPilot.Port.AuditPort.ExportFile` passes overwrite as 1 to `PathPort.Resolve` -> the second
+  // Export is started instead of refused, no reason is drawn on the name, and the refusal assertions go red.
+  makeExportDirectory();
+  const { context, page } = await signedInAt(browser, config, AUDITING_URL);
+  try {
+    await page.waitForSelector('[data-audit-action="export"]', { timeout: config.navigationTimeoutMs });
+    const exportOnce = async () => {
+      await page.click('[data-audit-action="export"]');
+      await page.waitForSelector('app-audit-export-dialog input.ocu-field-input', { timeout: config.navigationTimeoutMs });
+      await page.type('app-audit-export-dialog input.ocu-field-input', `${EXPORT_DIRECTORY}/screen.xml`);
+      await page.type('[data-audit-export-before]', EXPORT_BOUND);
+      await page.waitForFunction(
+        () => document.querySelector('[data-audit-export-confirm]')?.getAttribute('aria-disabled') === null,
+        { timeout: config.navigationTimeoutMs }
+      );
+      await page.click('[data-audit-export-confirm]');
+    };
+    await exportOnce();
+    await page.waitForSelector('[data-audit-export-link]', { timeout: config.navigationTimeoutMs });
+    const started = await page.evaluate(() => ({
+      line: (document.querySelector('[data-audit-operation]')?.textContent ?? '').trim(),
+      link: (document.querySelector('[data-audit-export-link]')?.textContent ?? '').trim(),
+      href: document.querySelector('[data-audit-export-link]')?.getAttribute('href') ?? '',
+      dialog: document.querySelector('app-audit-export-dialog') !== null,
+    }));
+    assert.equal(started.line, STRINGS.auditExportStarted, 'the page says the export has started');
+    assert.equal(started.link, STRINGS.backgroundTaskListLabel, 'and links to Background tasks');
+    assert.ok(started.href.includes('tasks/background'), `to that screen: ${started.href}`);
+    assert.equal(started.dialog, false, 'with the dialog closed');
+    assert.equal(await exportFileWritten('screen.xml'), true, 'the file holds the export document under the allowed directory');
+
+    // The same name again: refused on the name, with the dialog kept open and no second task.
+    await exportOnce();
+    await page.waitForSelector('app-audit-export-dialog .ocu-form-error', { timeout: config.navigationTimeoutMs });
+    const refused = await page.evaluate(() => ({
+      reason: (document.querySelector('app-audit-export-dialog .ocu-form-error')?.textContent ?? '').trim(),
+      dialog: document.querySelector('app-audit-export-dialog') !== null,
+    }));
+    assert.notEqual(refused.reason, '', 'the refusal is drawn on the name');
+    assert.equal(refused.dialog, true, 'and the dialog stays open for another name');
+  } finally {
+    await context.close();
+    removeExportDirectory();
+  }
+});
+
+test('Story 21.10 AC3, AC6: the agent proposes the audit export, the card states what the file holds, and Confirm writes it', async () => {
+  // Mutation (Rule 19): `security.auditing.export` set false in `OcuPilot.Kernel.Governance.Baseline` -> no card is
+  // minted and the wait for it goes red. `consequenceSentence` drops the AUDIT.EXPORT.WRITES branch -> the consequence
+  // assertion goes red.
+  const root = makeExportDirectory();
+  await requireFreeSlot(config);
+  const tag = nextTag();
+  setTag(tag);
+  const input = {
+    Name: TARGET,
+    ExportRoot: root,
+    ExportPath: `${EXPORT_DIRECTORY}/agent.xml`,
+    ExportBefore: EXPORT_BOUND,
+    rationale: 'You asked for a copy of the audit records in a file.',
+    expectedImpact: 'a new file holds the audit records',
+  };
+  scriptReply(tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_audx", "name": "${EXPORT_WIRE_NAME}", "input": ${JSON.stringify(input)}}])`);
+  scriptReply(tag, 0, textReply('done'));
+  const { context, page } = await signedInAt(browser, config, HOME_URL);
+  try {
+    await page.waitForFunction(
+      () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.type('#ocu-panel-composer', 'export the audit records to a file');
+    await page.click('.ocu-panel-send');
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
+    const card = await page.evaluate(() => ({
+      destructive: document.querySelector('app-proposal-card .ocu-proposal-card')?.classList.contains('ocu-proposal-card-destructive') ?? null,
+      diff: Array.from(document.querySelectorAll('.ocu-diff-row')).map((row) => (row.textContent ?? '').replace(/\s+/g, ' ').trim()),
+    }));
+    assert.equal(card.destructive, false, 'the export is not destructive, so the card is drawn plain');
+    assert.equal(await slotText(page, 'consequence'), STRINGS.auditExportEffect, 'the card says what the file holds');
+    assert.ok(card.diff.some((row) => row.includes(`${EXPORT_DIRECTORY}/agent.xml`)), `the card names the file: ${JSON.stringify(card.diff)}`);
+    await page.click('.ocu-proposal-card-confirm');
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', { timeout: config.navigationTimeoutMs });
+    assert.equal(await exportFileWritten('agent.xml'), true, 'Confirm started the task and the file holds the export document');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+    removeExportDirectory();
   }
 });
 

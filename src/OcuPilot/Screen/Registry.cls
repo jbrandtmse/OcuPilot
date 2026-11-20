@@ -1220,8 +1220,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS, ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL, ##class(OcuPilot.Screen.Read).#SOURCEBACKUP, ##class(OcuPilot.Screen.Read).#SOURCECONFIG, ##class(OcuPilot.Screen.Read).#SOURCEMIRROR, ##class(OcuPilot.Screen.Read).#SOURCELOCALE, ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKUP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCECONFIG _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMIRROR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOCALE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL _ "', the twenty-one sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS, ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL, ##class(OcuPilot.Screen.Read).#SOURCEBACKUP, ##class(OcuPilot.Screen.Read).#SOURCECONFIG, ##class(OcuPilot.Screen.Read).#SOURCEMIRROR, ##class(OcuPilot.Screen.Read).#SOURCELOCALE, ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL, ##class(OcuPilot.Screen.Read).#SOURCEPHONE), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKUP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCECONFIG _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMIRROR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOCALE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEPHONE _ "', the twenty-two sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1408,6 +1408,26 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on a locale source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A phone source lists the instance's mobile phone providers through OcuPilot.Port.PhoneProviderPort, which answers its endpoint whole
+        ; behind its own gate (AD-29, AD-36, Story 21.10): its endpoint, a LIST, and nothing the port would have to issue per row, per parent,
+        ; under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEPHONE {
+            If '$ListFind($ListFromString(##class(OcuPilot.Port.PhoneProviderPort).#ENDPOINTS), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the phone port's endpoints ('" _ $ListToString($ListFromString(##class(OcuPilot.Port.PhoneProviderPort).#ENDPOINTS), "', '") _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.PhoneProviderPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a phone source, which lists the instance's mobile phone providers (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a phone source, which answers its list whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit

@@ -228,8 +228,9 @@ ClassMethod ProhibitedClass() As %String
 /// <method>OcuPilot.Test.ConfirmFixture.ProhibitedClassName</method> to answer with. The signature
 /// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls;
 /// <class>OcuPilot.Kernel.Proposal.Prohibited</class> implements the same one.</p>
-ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String, Output pReason As %String) As %Status
 {
+    Set pReason = ""
     If ($Get(^||OcuPilotProposalFixture("lockprobe")) '= "") && '$Data(^||OcuPilotProposalFixture("lockfreegate")) Set ^||OcuPilotProposalFixture("lockfreegate") = ..LockFreeInAnotherProcess(^||OcuPilotProposalFixture("lockprobe"))
     Set pProhibits = 1
     Set pCode = "AGENT.PROHIBITED"

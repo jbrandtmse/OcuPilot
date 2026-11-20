@@ -1053,7 +1053,9 @@ export const SOURCE_MIRROR = 'mirror';
 export const SOURCE_LOCALE = 'locale';
 /** A namespace's globals read through `OcuPilot.Port.GlobalPort` (AD-29, AD-36, Story 21.5). */
 export const SOURCE_GLOBAL = 'global';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL];
+/** The instance's mobile phone providers read through `OcuPilot.Port.PhoneProviderPort` (AD-29, AD-36, Story 21.10). */
+export const SOURCE_PHONE = 'phone';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL, SOURCE_PHONE];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1270,6 +1272,22 @@ export function localeEndpoints() {
 
 /** The one request type a `locale` source declares. */
 export const LOCALE_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.PhoneProviderPort` declares the endpoint a `phone` read names. */
+export const PHONE_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PhoneProviderPort.cls');
+
+let phoneEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.PhoneProviderPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function phoneEndpoints() {
+  if (phoneEndpointsCache === undefined) {
+    phoneEndpointsCache = parseInteropEndpoints(readFileSync(PHONE_PORT_SOURCE, 'utf8'));
+  }
+  return phoneEndpointsCache;
+}
+
+/** The one request type a `phone` source declares. */
+export const PHONE_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.GlobalPort` declares the endpoints a `global` read names. */
 export const GLOBAL_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'GlobalPort.cls');
@@ -1552,8 +1570,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}' or '${SOURCE_GLOBAL}', ` +
-      'the twenty-one sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}', '${SOURCE_GLOBAL}' or '${SOURCE_PHONE}', ` +
+      'the twenty-two sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1765,6 +1783,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a mirror source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A phone source lists the instance's mobile phone providers through `OcuPilot.Port.PhoneProviderPort`, which answers its endpoint whole
+  // behind its own gate (AD-29, AD-36, Story 21.10): its endpoint, a LIST, and nothing the port would have to issue per row, per parent,
+  // under a fixed query or in parts.
+  if (source.port === SOURCE_PHONE) {
+    const endpoints = phoneEndpoints();
+    if (endpoints === null) return `${PHONE_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the phone port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
+    }
+    if (source.type !== PHONE_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a phone source, which lists the instance's mobile phone providers (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a phone source, which answers its list whole (AD-36)`;
     }
   }
   // A locale source lists the instance's locale definitions through `OcuPilot.Port.LocalePort`, which answers its endpoint whole behind its own

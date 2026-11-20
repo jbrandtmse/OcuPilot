@@ -6,8 +6,9 @@
 Class OcuPilot.Test.ScreenSaveSet Extends OcuPilot.Kernel.Proposal.Prohibited
 {
 
-ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String, Output pReason As %String) As %Status
 {
+    Set pReason = ""
     Do ##class(OcuPilot.Test.ScreenSaveTrace).Mark("prohibited")
     Do ##class(OcuPilot.Test.ScreenSaveTrace).Asked(pToolName, pTargetRef, pPayload, pDiff)
     Set pProhibits = 0

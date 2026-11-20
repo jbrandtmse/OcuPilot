@@ -329,6 +329,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/edit',
       'security/oauth/server/edit',
       'security/oauth/server',
+      // Story 21.10: the unlisted mobile phone provider editor, reached from Mobile phone providers. Mutation (Rule 19): drop this line
+      // from the expectation -> this test goes red on the route the mirror lists before the SSL/TLS editor.
+      'security/phone-providers/edit',
       // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
       'security/ssl/edit',
       // Story 18.25: the unlisted superserver editor, reached from Superservers.
@@ -355,6 +358,12 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.26: Managed file transfer, the thirteenth Security and secrets entry. Mutation (Rule 19): drop
       // this line from the expectation -> this test goes red on the route the mirror lists at position 13.
       'security/mft-connections',
+      // Story 21.10: System-wide security, the fourteenth Security and secrets entry. Mutation (Rule 19): drop this line from the
+      // expectation -> this test goes red on the route the mirror lists at position 14.
+      'security/system-security',
+      // Story 21.10: Mobile phone providers, the fifteenth Security and secrets entry. Mutation (Rule 19): drop this line from the
+      // expectation -> this test goes red on the route the mirror lists at position 15.
+      'security/phone-providers',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -810,8 +819,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers', 'security/mft-connections'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options, Superservers and Managed file transfer'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers', 'security/mft-connections', 'security/system-security', 'security/phone-providers'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options, Superservers, Managed file transfer, System-wide security and Mobile phone providers'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

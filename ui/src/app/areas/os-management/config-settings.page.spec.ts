@@ -29,6 +29,7 @@ import {
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
+  SYSTEM_SECURITY_SETTING_LIST,
   TSQL_SETTING_LIST,
 } from './config-settings.page';
 
@@ -314,6 +315,24 @@ describe('the settings page', () => {
   });
 
   // Mutation (Rule 19): drop `DDL_USER_MAPPING_LIST` from `SERVED_LISTS` -> the user list's assertions go red.
+  // Mutation (Rule 19): drop `SYSTEM_SECURITY_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+  it('serves System-wide security, and registers Set value on its own screen alone', () => {
+    const { actions } = mount([], SYSTEM_SECURITY_SETTING_LIST);
+    expect(actions.has(SYSTEM_SECURITY_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+    expect(actions.has(STARTUP_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+  });
+
+  // Mutation (Rule 19): drop the `systemSecuritySetConsequence` suffix from `openTarget` -> the first assertion goes red, and the Startup dialog's statement is unchanged.
+  it('states what a system-wide security change reaches after the line of the setting itself, and only on that screen', async () => {
+    const security = mount([], SYSTEM_SECURITY_SETTING_LIST);
+    await open(security.fixture, security.store, security.actions, SYSTEM_SECURITY_SETTING_LIST, 'LineRecall');
+    expect(security.host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`0 (off) or 1 (on). ${STRINGS.systemSecuritySetConsequence}`);
+    expect(STRINGS.systemSecuritySetConsequence).toBe('This changes how every user on this instance signs in, is locked out, or is checked.');
+    const startup = mount([], STARTUP_SETTING_LIST);
+    await open(startup.fixture, startup.store, startup.actions, STARTUP_SETTING_LIST, 'LineRecall');
+    expect(startup.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.systemSecuritySetConsequence);
+  });
+
   it('serves both DDL mapping screens, and registers New mapping on the user list alone', () => {
     const system = mount([], DDL_SYSTEM_MAPPING_LIST);
     expect(system.actions.has(DDL_SYSTEM_MAPPING_LIST, CONFIG_SET_ACTION)).toBe(true);
