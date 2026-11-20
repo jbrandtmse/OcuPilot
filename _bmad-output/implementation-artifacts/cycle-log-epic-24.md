@@ -559,3 +559,5 @@
 2026-11-20T07:23:24Z	Story 24.14	stage_spawned	stage=implement-resume spawn_at=2026-11-20T07:23:24Z model=sonnet agent_name=24-14-implement-batch2-resume cycle_iteration=2 scope=batch2_review_finalize
 2026-11-20T10:25:11Z	Story 24.14	dev_complete	spawn_at=2026-11-20T07:24:00Z model=sonnet build_sha=344608ed6 followup_review_recommended=true review=45(high0,med7_patched,low3_patched,3_deferred,32_rejected) sweep=17/17(InteropItemRun_red_once_then_green_on_rerun=DW-2787_second_red) fresh_first_run=pass(forward+reverse) DeveloperFloor_TOOLS=86 held=86(run840_green_asserts_equal) scope=batch2
 2026-11-20T10:25:11Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T10:25:11Z model=sonnet agent_name=24-14-qa-batch2 cycle_iteration=2
+2026-11-20T10:49:42Z	Story 24.14	qa_complete	spawn_at=2026-11-20T10:26:00Z model=sonnet tests_added=6(+fixtures_PmmlTestIdle,PmmlRunSeam) mutations_demonstrated=8 first_run_failures=0 product_defects=0 scope=batch2
+2026-11-20T10:49:42Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T10:49:42Z model=opus agent_name=24-14-code-review-batch2 cycle_iteration=2 baseline=8fd5f4960
