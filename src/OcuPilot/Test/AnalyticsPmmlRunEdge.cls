@@ -40,10 +40,13 @@ Parameter NODEV = "OcuP2414PmmlNoDev";
 
 Parameter READER = "OcuP2414PmmlReader";
 
-/// <p>A cross join of the source rows with itself five times (248,832 rows) and six times (2,985,984): slow enough to stop at a short bound, and to cancel.</p>
+/// <p>A cross join of the source rows with itself five times (248,832 rows): slow enough to stop at a short bound.</p>
 Parameter FIVEWAY = "SELECT a.ID, a.X, a.Color, a.Y FROM ProbePmml.Source a, ProbePmml.Source b, ProbePmml.Source c, ProbePmml.Source d, ProbePmml.Source e";
 
-Parameter SIXWAY = "SELECT a.ID, a.X, a.Color, a.Y FROM ProbePmml.Source a, ProbePmml.Source b, ProbePmml.Source c, ProbePmml.Source d, ProbePmml.Source e, ProbePmml.Source f";
+/// <p>A cross join of the source rows with itself nine times (over five billion combinations) that keeps the one combination whose nine <code>X</code> values sum to nine, which is the first one scanned.
+/// The job writes that row and then spends its time inside the statement's scan, where an interrupt is accepted: a run over a statement that returns a row every few microseconds is inside the statement
+/// for a small share of its time, and a cancel sent then misses it, unpredictably.</p>
+Parameter SLOWSCAN = "SELECT a.ID, a.X, a.Color, a.Y FROM ProbePmml.Source a, ProbePmml.Source b, ProbePmml.Source c, ProbePmml.Source d, ProbePmml.Source e, ProbePmml.Source f, ProbePmml.Source g, ProbePmml.Source h, ProbePmml.Source i WHERE a.X + b.X + c.X + d.X + e.X + f.X + g.X + h.X + i.X = 9";
 
 Property PreparedPassword As %String;
 
@@ -334,45 +337,59 @@ Method TestARunPastItsBoundIsStoppedAndLeavesNoRow()
     Do $$$AssertEquals(..Counter() - tBefore _ "|" _ $ClassMethod(..#PMML, "RowsOf", ..Counter()) _ "|" _ $ClassMethod(..#PMML, "Rows"), "1|0|0", "the run allocated its id, and the rows it wrote are gone")
 }
 
-/// <p>The owner's cancel ends a run <code>canceled</code> well before the cross join would end, and leaves no result row; the cancel's own answer is the run as it then reads.</p>
-/// <p>Mutation (Rule 19): drop the <code>CancelQuery</code> from <method>OcuPilot.Area.Analytics.PmmlTest.CancelJob</method> -- the run is not interrupted and this goes red on the time it took.</p>
+/// <p>The owner's cancel ends a run <code>canceled</code> well before its statement would end, and leaves no result row; the cancel's own answer is the run as it then reads. The cancel is sent once the
+/// job is inside its statement (<method>AwaitInStatement</method>), where the interrupt is accepted, so the run ends within seconds of it.</p>
+/// <p>Mutation (Rule 19): drop the <code>CancelQuery</code> from <method>OcuPilot.Area.Analytics.PmmlTest.CancelJob</method> -- the run is not interrupted and this goes red on its status and the time it took.</p>
 Method TestACancelEndsARunAndLeavesNoRow()
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tBefore = ..Counter()
-    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, {"model": (..#DEFINITION _ "||Colors"), "source": "custom", "sql": (..#SIXWAY)})
+    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, {"model": (..#DEFINITION _ "||Colors"), "source": "custom", "sql": (..#SLOWSCAN)})
     Do $$$AssertEquals(tStatus, 202, "the start is accepted")
     If tStatus '= 202 Quit
     Set tKey = tAnswer.%Get("id")
-    Do ..AwaitRows(tBefore + 1)
+    Do $$$AssertTrue(..AwaitInStatement(tKey), "the job is inside its statement")
+    Do $$$AssertTrue(..AwaitRows(tBefore + 1), "and has written a result row, which the cancel must drop")
     Set tAsked = $ZHorolog
     Do ..Send("POST", $Replace(..#CANCEL, ":id", tKey), tUser, .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("cancelRequested"), 1: ""), "200 1", "the cancel is answered with the run, its flag set")
-    ; An interrupt reaches the vendor's loop only while the job is inside the engine, so a cancel that met the job elsewhere is sent again.
-    Set tDeadline = $ZHorolog + 60
-    For tRetry = 1:1:6 {
-        Do ..Send("GET", $Replace(..#POLL, ":id", tKey), tUser, .tStatus, .tAnswer)
-        If '$IsObject(tAnswer) || (tAnswer.%Get("status") '= "running") || ($ZHorolog > tDeadline) Quit
-        Hang 1
-        If tRetry = 3 Do ..Send("POST", $Replace(..#CANCEL, ":id", tKey), tUser, .tStatus, .tAnswer)
-    }
+    Set tDeadline = $ZHorolog + 30
     For {
         Do ..Send("GET", $Replace(..#POLL, ":id", tKey), tUser, .tStatus, .tAnswer)
         If '$IsObject(tAnswer) || (tAnswer.%Get("status") '= "running") || ($ZHorolog > tDeadline) Quit
         Hang 0.25
     }
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("status"), 1: ""), "canceled", "the run ends canceled")
-    Do $$$AssertTrue(($ZHorolog - tAsked) < 60, "and not when the join would end: " _ ($ZHorolog - tAsked) _ " seconds")
+    Do $$$AssertTrue(($ZHorolog - tAsked) < 25, "and not when the scan would end: " _ ($ZHorolog - tAsked) _ " seconds")
     Do $$$AssertEquals(..Counter() - tBefore _ "|" _ $ClassMethod(..#PMML, "RowsOf", ..Counter()) _ "|" _ $ClassMethod(..#PMML, "Rows"), "1|0|0", "the run allocated its id, and the rows it wrote are gone")
 }
 
-/// <p>Wait up to 30 seconds for the run that holds test id <var>pId</var> to have written a result row, so that a cancel meets a run that is running.</p>
-ClassMethod AwaitRows(pId As %Integer)
+/// <p>Wait up to 30 seconds for the job of run <var>pKey</var> to be inside its SQL statement, which the instance lists in <code>INFORMATION_SCHEMA.CURRENT_STATEMENTS</code> under the job's process id:
+/// 1 when it is, so that a cancel meets a run an interrupt can reach.</p>
+ClassMethod AwaitInStatement(pKey As %String) As %Boolean
+{
+    Set tDeadline = $ZHorolog + 30
+    Set tInside = 0
+    While ('tInside) && ($ZHorolog < tDeadline) {
+        Set tRun = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE RunKey = ?", pKey)
+        Set tJob = $Select(tRun.%Next(): tRun.%GetData(1), 1: "")
+        If tJob '= "" {
+            Set tStatements = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.CURRENT_STATEMENTS WHERE ProcessID = ?", tJob)
+            Set tInside = $Select(tStatements.%Next(): +tStatements.%GetData(1) > 0, 1: 0)
+        }
+        If 'tInside Hang 0.1
+    }
+    Quit tInside
+}
+
+/// <p>Wait up to 30 seconds for the run that holds test id <var>pId</var> to have written a result row: 1 when it has, so that a canceled run has a row to drop.</p>
+ClassMethod AwaitRows(pId As %Integer) As %Boolean
 {
     Set tDeadline = $ZHorolog + 30
     While ($ClassMethod(..#PMML, "RowsOf", pId) = 0) && ($ZHorolog < tDeadline) {
-        Hang 0.25
+        Hang 0.1
     }
+    Quit ($ClassMethod(..#PMML, "RowsOf", pId) > 0)
 }
 
 /// <p>Another user's poll and cancel of a run answer the 404 an unknown id answers, <code>ANALYTICS.PMML.NOTFOUND</code>, and the owner's own second start while the run is live is 409
@@ -382,7 +399,7 @@ Method TestAnotherUsersPollIsNotFoundAndASecondStartIsBusy()
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tBefore = ..Counter()
-    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, {"model": (..#DEFINITION _ "||Colors"), "source": "custom", "sql": (..#SIXWAY)})
+    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, {"model": (..#DEFINITION _ "||Colors"), "source": "custom", "sql": (..#SLOWSCAN)})
     Do $$$AssertEquals(tStatus, 202, "the start is accepted")
     If tStatus '= 202 Quit
     Set tKey = tAnswer.%Get("id")
@@ -395,6 +412,7 @@ Method TestAnotherUsersPollIsNotFoundAndASecondStartIsBusy()
     Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("runId"), 1: ""), tKey, "and names the live run")
     Do ..Send("GET", $Replace(..#POLL, ":id", tKey), tUser, .tStatus, .tAnswer)
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("status") _ " " _ tAnswer.%Get("cancelRequested"), 1: ""), "running 0", "the run itself is unchanged by either")
+    Do ..AwaitInStatement(tKey)
     Do ..Send("POST", $Replace(..#CANCEL, ":id", tKey), tUser, .tStatus, .tAnswer)
 }
 
