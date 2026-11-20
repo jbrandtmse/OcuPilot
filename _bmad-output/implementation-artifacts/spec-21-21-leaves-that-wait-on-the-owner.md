@@ -2,7 +2,7 @@
 title: 'Story 21.21: Leaves that wait on the owner'
 type: 'feature'
 created: '2026-11-15'
-status: 'blocked'
+status: 'done'
 baseline_revision: 'd576e032e0da8e01cee1e7ef942f1fbb1830140b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -115,7 +115,7 @@ deferred: []
 - `extract-stages.md` -- move the four rows from Stage 4 into a new last Stage 5 group, `**Not planned** — 4 rows`, in the same row grammar. Name the group in Stage 5's prose (:644), and recompute every total that counted the rows. Starting list: :17, :28, :29, :369, :375, :390, :413, :624-638, :642, :767-779 (add a TM row), :816-831, the backing rows :837, :839, :843 and :850, :921, and :973-974. Then grep each ID and each count to find the rest.
 - `epics.md:9570` -- Story 22.1's group list gains "; and not planned" last, only if the spec gate rules it (Epic 22's block; escalated). Without that ruling, Batch 4 is not built and is reported.
 
-### Batch 5: SH-27, a custom resource on a classic menu item (unheld by owner answer U-74; ACs AC6 to AC17 below; build after the escalated strings are ruled)
+### Batch 5: SH-27, a custom resource on a classic menu item (MOVED to Story 21.37 by the orchestrator's ruling of 2026-11-20; AC6 to AC17 and the ruled strings below are 21.37's, kept here as its source and not built or reviewed in this story)
 
 - `src/OcuPilot/Port/PortalResourcePort.cls` -- new, on `UserCopyPort`'s shape. `PAIRS` is `%Admin_Secure:USE`. `LIST` reads `%SYS.Portal.Resources:List`. `SET` calls `%CSP.Portal.Utils.%SetCustomResource(page, resource)` in `%SYS` for a page `%IsPortalPage` resolves and a resource `Security.Resources` defines. `CLEAR` is the same call with "".
 - `src/OcuPilot/Screen/Descriptor/PortalPageResources.cls` -- new Permissions list with `classicPage` `%CSP.Portal.ResourceDialog`. Tools `permissions.pageresources.assign` and `.clear` (AD-51, AD-53), whose keys ship enabled and are added to `Baseline.cls`.
@@ -143,6 +143,8 @@ deferred: []
 - AC17 (browser, the outermost surface): Given the deployed bundle, when `page-resources.browser-spec.mjs` signs in as a `%Admin_Secure` holder, assigns a resource to a probe-safe page, sees its row, changes it, clears it, and tries a page a Home screen declares, then each step shows the screen's own answer, and the refusal shows the existing sentence.
 
 ## Spec Change Log
+
+- 2026-11-20, orchestrator ruling on the Batch 5 halt: SH-27 (Batch 5, AC6 to AC17) is split to Story 21.37 (epics.md, add-only, with an amended note on this story); owner answer U-74 carries to it. This story closes with Batches 1, 2 and 4; Batch 3 is not built under Task 0 (b)'s decision rule and DW-2348 is closed `wontfix-accepted` with its `reopen_if`. Batch 5's strings are ruled for 21.37 (veto item) with two changes: the screen-replaces line reads "<screen> follows this page's resource and will require it from the next request.", and the clear warning reads "After this, the page needs no custom resource."
 
 ## Review Triage Log
 
@@ -283,7 +285,7 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- Batch 5 strings await the orchestrator's ruling
+Status: done
+Blocking condition: none (lead, 2026-11-20: Batch 5 split to Story 21.37 by the orchestrator's ruling; this story's scope is Batches 1, 2 and 4, built below)
 
 This pass (2026-11-20, baseline d576e032e): Task 0 measured on `ocupilot-ci`, (a) PASS and (b) FAIL (see "Task 0 results"). Committed: Batch 1 `db22ccb70` (DW-1850, AC1 and AC2), Batch 2 `d0b4d7101` (DW-1280, AC3), Batch 4 `e7f4b799d` (AC5). Batch 3 (DW-2348, AC4) is not built: the header removed the opener but not the stored token pair, so DW-2348 closes `wontfix-accepted` with a `reopen_if` naming the pair check. Batch 5 (AC6 to AC17) and its strings are written above and not built. Verification run on the committed tree: every Database test class (11), `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `Static`, `ScreenGrounding`, `DraftRegistry`, `Prohibited`, `PortGate` green; `exclusion-register.test.mjs`, `npm run test:tools`, `check-objectscript.py` and `lint-docs.sh` clean. Not run: the full ObjectScript sweep and the code-review layers, which follow Batch 5.
