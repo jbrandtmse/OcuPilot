@@ -602,3 +602,4 @@
 2026-11-20T18:57:19Z	Story 24.14	ruling	question=cancel_ends_own_recorded_job+drops_rows,temp_run_node,AD-7_wording choice=keep category=veto inbox=U-129 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-20T18:57:19Z	Story 24.14	spec_validated	scope=batch2b owned_ledger=none spec2_origin_fix=Cancel_sentence_replaced
 2026-11-20T18:57:19Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T18:57:19Z model=sonnet agent_name=24-14-implement-batch2b cycle_iteration=4 story_base=9fb5dca17 scope=batch2b
+2026-11-20T18:58:07Z	Story 24.14	coordinator_conditions_relayed	scope=batch2b to=implement conditions=temp_node_removed_every_path,canceller_writes_canceled,no_tx_or_extra_lock_at_end,tests(no_job/lock/rows/node_both_scans,other_user_refused,stale_pid_never_ended) AD-7=proposed_accepted_spine_unedited
