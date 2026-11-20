@@ -753,3 +753,4 @@
 2026-11-20T03:27:12Z	Story 21.19	ruling	question=PM-24_strings;TM-17+TM-18_password_scope via=orchestrator choice=strings_(a)_accepted(veto_item_after_review_style_check);split_TM-17+mail_password_to_new_Story_21.36(Rule5;U-70_carries);AD-35_mail-password_audit_mask_already_in_feature(21.24_b706fb831,TaskMailAuditMask)
 2026-11-20T03:27:12Z	Story 21.36	story_split	from=21.19 epics.md=heading+body_added;21.19_text_trimmed;tracker=21-36-task-output-and-mail-password:backlog(generate) test:tools=2350/2350
 2026-11-20T03:27:12Z	Epic 21	deps_hash_rerecorded	reason=split story=21.36 note=orchestrator_records_the_hash
+2026-11-20T03:27:38Z	Story 21.19	stage_spawned	stage=implement scope=finalize_after_split spawn_at=2026-11-20T03:27:38Z model=sonnet agent_name=21-19-implement-3 cycle_iteration=1 prior_lines_ended=verified
