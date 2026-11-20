@@ -2,8 +2,8 @@
 title: 'Story 24.14: PMML model tester and dashboard viewer (Batch 1: the dashboard and pivot viewer)'
 type: 'feature'
 created: '2026-11-19'
-status: 'done'
-baseline_revision: '36722b87e4a4c2581923b4ee1c83e109113cb853'
+status: 'in-progress'
+baseline_revision: 'd459004502a425e9ee31dfdaecc078854d490613'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -128,6 +128,8 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
 - [x] The two descriptors, the entity type, the client page and store change, strings (once ruled), the regenerated mirror and titles, and the EXPERIENCE.md row.
 - [x] Tests: the matrix in the two new classes, component and browser tests (`ui/browser/analytics.browser-spec.mjs`), and every roster.
 
+- [ ] [Smoke] `ui/browser/a11y-structural-invariants.browser-spec.mjs` AC5 fails on the fresh throwaway (tree d45900450): "these screens need an id the walk could not resolve and are not in SKIP: analytics/folder-items/widgets, analytics/folder-items/document". HSCUSTOM is not analytics-enabled, so the walk cannot open a folder item there. Follow the 24.11/24.12 pattern: add both routes to `ui/browser/structural-walk.mjs`'s SKIP (add-only, one comment line naming Story 24.14), and make the SKIP reason true by having the Story 24.14 test in `ui/browser/analytics.browser-spec.mjs` run the structural and contrast checks (`structural(page, route)` at the same viewports as its siblings) on both screens in USER on its probe. Re-run both browser specs on the rebuilt bundle, first run green.
+
 **Acceptance Criteria:**
 
 - **AC1 (round trip, definitions).** Given the matrix's pivot and dashboard saved through their vendor classes, when Definition and Widgets are read by the screen and by their derived tools, then each field equals the stored property.
@@ -138,6 +140,8 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
 - **AC6 (fresh, either order).** Given any new or changed test, run first on a fresh instance in either order, when it ends, then the probe folder holds only `AnalyticsProbe`'s items.
 
 ## Spec Change Log
+
+- 2026-11-20, fresh check: re-opened for rework iteration 1 (one [Smoke] item: the structural walk has no SKIP or walk for the two new screens).
 
 - 2026-11-20, spec gate (runner): Questions 1-6 ruled (veto item U-120): three batches (this spec Batch 1; Batch 2 the PMML tester; Batch 3 PMML New and Export to cube as confirmed writes with keys, so no scope is dropped); viewer pairs `%DeepSee_Portal:USE,%Development:USE` plus MdxAdmit; the agent's pivot argument; Batch 2's run as a person's read-kind run with the agent's models read only; the proposed strings; the AD-65 line left proposed.
 
