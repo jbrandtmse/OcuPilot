@@ -137,7 +137,7 @@ deferred: []
 
 **Pass scope (runner, 2026-11-20):** the current pass builds Task 0, Batches 1 to 4 and nothing of Batch 5 (its ACs and strings are drafted by the lead afterward). The lead commits each batch at its boundary; a subagent never commits. The step now handed to a subagent is named in the line below.
 
-Current step: Batch 2 only (DW-1280), with its shared-surface updates, the Batch 2 `(loop)` classes (`ProposalConfirm`, `ConfirmRoute` and every other class that calls `Confirm`/`Transition` or asserts the confirm envelope, found by grep), and its Rule 19 mutation (AC3) recorded in `## Verification` as a `mutation:` line. Batch 1 is committed and Task 0 is done (below): Batch 3 is not built. Nothing of Batches 3 to 5.
+Current step: Batch 4 only (the register rows, AC5), including the `epics.md` Story 22.1 group line (ruled at the spec gate: veto U-73, add-only), the recount of every total in the catalog and extract from the files themselves, `cd ui && node --test tools/exclusion-register.test.mjs`, `cd ui && npm run test:tools`, and `bash scripts/lint-docs.sh` on the files it edits; its Rule 19 mutation (AC5) is recorded in `## Verification` as a `mutation:` line. Batches 1 and 2 are committed, Task 0 is done (below), and Batch 3 is not built. Nothing of Batch 5.
 
 **Task 0 results (2026-11-20, `ocupilot-ci`, bundle md5 `5e3a2fd1` as deployed):**
 
@@ -222,6 +222,7 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 - mutation: AC1, `OWNSETRESOURCE` and its `PrivilegePairs` override restored on `DatabaseDismount` -> `DatabaseActionsGate` red (`TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet` and `TestExactlyTheDeclaredPairsWriteOnBothCallers`).
 - mutation: AC2, the dismount branch of `Prohibited.Database` passes `pFromConfig` 0 -> `DatabaseActionsProhibited.TestTheDismountJudgesTheSetWithoutTheAdminRoutes` red.
 - mutation: AC3 (Batch 2), `Api.Confirm.RenderRefusal` ignores `pReason` -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (`ConfirmRoute` stays green: it cannot arm the fixture); and `Kernel.Proposal.Confirm.Transition`'s write-failure branch drops its `pReason` assignment -> `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned` and the same test red. Both reverted with Edit (`git diff` shows only the intended change) and the source reloaded.
+- mutation: AC5 (Batch 4), the SH-28 row removed from the register -> `exclusion-register.test.mjs` red (the catalog-P4 test, the extract-position test and the new not-planned test; 15 pass, 3 fail); restored with Edit, `cmp` against the pre-mutation copy identical, 18 pass.
 
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):
 

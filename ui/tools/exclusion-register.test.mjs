@@ -331,6 +331,18 @@ test('each license-gated mirroring row names the mirroring license and the vendo
   assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
 });
 
+test('the not-planned group holds SH-26, SH-28, TM-19 and WA-16, each with its reason', () => {
+  const group = parseRegister().groups.find((candidate) => candidate.heading === 'Not planned');
+  assert.ok(group !== undefined, `${REGISTER_PATH}: no 'Not planned' group`);
+  assert.deepEqual(group.rows.map((row) => row.id).sort(), ['SH-26', 'SH-28', 'TM-19', 'WA-16'], `${REGISTER_PATH}: the not-planned group's rows`);
+  const reasons = { 'SH-26': /own token/, 'SH-28': /vendor[^.]*\(NFR-6\)/, 'TM-19': /vendor[^.]*\(NFR-6\)/, 'WA-16': /No IRIS class backs it/ };
+  const problems = [];
+  for (const row of group.rows) {
+    if (!reasons[row.id].test(row.reason)) problems.push(`${row.id}: the reason does not read ${reasons[row.id]}`);
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+});
+
 test('a deprecation gate names the deprecated feature and the owner decision that clears it', () => {
   const deprecated = registerRows(parseRegister()).filter((row) => row.kind === 'deprecation');
   assert.ok(deprecated.length > 0, `${REGISTER_PATH}: no row carries the deprecation kind, so this test would check nothing`);

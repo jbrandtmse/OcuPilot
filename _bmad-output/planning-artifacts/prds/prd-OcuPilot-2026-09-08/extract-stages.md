@@ -14,7 +14,7 @@ Complexity, as the catalog's legend defines it: **S** list only · **M** list pl
 
 The catalog's own reading of the tiers for co-pilot rows (Judgment calls): "for co-pilot features P2 was read as 'API exists or is a bounded extension' and P3 as 'new server-side path'" — which is why CP-34 streaming sits at P2 and CP-40 undo at P3.
 
-Catalog totals for the three tiers: **P2 137 · P3 156 · P4 64 = 357 rows** (the parse of the catalog tables reproduces the summary table exactly). Three duplicates the catalog keeps deliberately are all P0/P1 (LG-02 = SS-14, LG-09 = IO-01, EX-01 = SH-03), so no duplicate inflates these tiers.
+Catalog totals for the three tiers: **P2 137 · P3 152 · P4 68 = 357 rows** (the parse of the catalog tables reproduces the summary table exactly). Three duplicates the catalog keeps deliberately are all P0/P1 (LG-02 = SS-14, LG-09 = IO-01, EX-01 = SH-03), so no duplicate inflates these tiers.
 
 ## 2. Stage outline
 
@@ -25,8 +25,8 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 1. **Stage 1** takes every P2 row backed by `admin-v2`, plus the P2 rows on the two official routes the first release already wires (`mgmnt` for WA-06/07, `monitor` for OS-09/LG-01): WA-13, WA-14, OS-30, SO-08. Three P2 rows with custom backing whose screen family is already shipped go here too, flagged as custom endpoints: PM-19, LG-11, PK-25.
 2. **Stage 2** takes every P2 row backed by `atelier` or by the Explorer section, plus the Documatic embed (EX-34) and, **by extension**, DT-01 (the DocDB data browser on the official `/api/docdb` route — a sibling of the SQL data browser; the addendum does not name it). OS-23 (SQL activity) is an OS-section row but needs the Stage 2 action/query plumbing, so it sits here.
 3. **Stage 3** takes every P2 row backed by `interop-v7` or an `embed`, the two shell rows that gate embedding and namespace categories (SH-23, SH-25), and, **by extension and flagged**, the nine Analytics P2 rows on `/api/deepsee` (AN-02..AN-10) plus IO-17 (also deepsee). The addendum names no Analytics stage; Analytics is attached here as a rider because both categories are namespace-gated by the same SH-25 mechanism and are official-route work with no custom endpoints. The PRD author may split it out as a stage of its own.
-4. **Stage 4** takes all 156 P3 rows, sub-grouped by catalog section so the Explorer, Interoperability, Analytics, Operations and Developer-tools sub-tracks are visible. CP-34 (streaming, P2) is placed here because the addendum sequences streaming last in the agent's growth.
-5. **Stage 5** takes all 64 P4 rows, grouped by the catalog's exclusion reason.
+4. **Stage 4** takes all 152 P3 rows, sub-grouped by catalog section so the Explorer, Interoperability, Analytics, Operations and Developer-tools sub-tracks are visible. CP-34 (streaming, P2) is placed here because the addendum sequences streaming last in the agent's growth.
+5. **Stage 5** takes all 68 P4 rows, grouped by the catalog's exclusion reason.
 6. **CP rows follow the agent-growth sequence, not their API.** The addendum names four steps — "confirmed single writes, then guided multistep workflows, undo, and streaming" — laid across Stages 1–4 in that order: Stage 1 confirmed single writes over the admin-v2 remainder (CP-35, CP-39, CP-41 as hardening); Stage 2 single writes over Atelier plus the agent picker (CP-36); Stage 3 guided multistep workflows (CP-37, CP-38); Stage 4 undo (CP-40) and streaming (CP-34), plus the 28 session-agent tools (IO-91..IO-118). Stage 5 adds nothing to the agent.
 
 "Custom endpoint" below means the catalog's API-backing column names `custom(...)`. For CP rows and the IO-91..118 tools this is server-side agent code that rides on the existing chat endpoint (CP-02) rather than a new REST route; they are counted but footnoted.
@@ -366,19 +366,17 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 
 ### Stage 4 — Custom-REST parity harvested from the MCP suite's handlers (P3)
 
-**157 rows** · S 59 / M 78 / L 20 · custom endpoints 152
+**153 rows** · S 59 / M 74 / L 20 · custom endpoints 148
 
 **What the user can do at the end.** Every remaining SMP leaf with a backing class but no route is reachable through OcuPilot's own REST router, with handlers harvested from the MCP suite where one exists. System Administration completes with backup (list, run, status, history, freeze/thaw), the mirror monitor, startup/memory/compatibility tables, NLS locales, SQL/TSQL/ISQL settings, DDL mappings, monitor/OpenTelemetry, source control, log daemon, archive targets, ML configurations and SQL Gateway. Explorer completes with globals (list, view, edit, kill, export/import), replace, query history, the SQL statement index with frozen plans, tune table, cached-query purge, runtime statistics, index analyzer, alternate plans, troubleshooting reports, the SQL wizards, CSV/Excel round-trip and composite keys. Interoperability completes with credentials, default settings, purge, auto-start, managed alerts, rule and BP logs, suspended messages, export, schedules, PEX, registries, record maps, interface maps and references, port authority, system monitor, archive, workflow, deployment, shutdown groups, settings, HL7 custom-schema authoring and the EDI document viewers. Analytics gains its editors; developer tools add a unit-test runner, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes and environment diff/promote. The remaining shell, permission, security, task, OS and log leaves close. The co-pilot gains the 28 session-agent inspection and search tools for interop sessions, undo/rollback of an agent-applied change, and streamed responses.
 
 **Rows in this stage, grouped by catalog section.**
 
-**0. Portal shell and platform (SH)** — 3 rows (S 0 / M 3 / L 0)
+**0. Portal shell and platform (SH)** — 1 row (S 0 / M 1 / L 0)
 
 | ID | Name | Kind | Backing (API or class) | Size | Note |
 |---|---|---|---|---|---|
-| SH-26 | Security escalation | platform | custom(%session.EscalateLogin) | M | Escalate login to role; %session.EscalateLogin. |
 | SH-27 | Assign custom resource to a menu item | platform | custom(%CSP.Portal.Utils.%SetCustomResource) | M | Resource mode for %Admin_Secure; no harvest, write from the backing class. |
-| SH-28 | Contact / open WRC issue form | platform | custom(SMTP send) | M | Sends email to the WRC; needs SMTP configuration; no harvest. |
 
 **1. Co-pilot agent (CP)** — 2 rows (S 0 / M 0 / L 2)
 
@@ -387,12 +385,11 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | CP-34 | Streaming responses | agent | custom(new provider-side path) | L | P2 by tier, sequenced last by the addendum; new provider-side SSE path; PK-08 gateway timeout. |
 | CP-40 | Undo / rollback of an agent-applied change | agent | custom | L | Not evidenced in any source; iris-copilot version-snapshot rollback is the nearest idea. |
 
-**2. Contest area 1: Web apps and REST APIs (WA)** — 2 rows (S 0 / M 2 / L 0)
+**2. Contest area 1: Web apps and REST APIs (WA)** — 1 row (S 0 / M 1 / L 0)
 
 | ID | Name | Kind | Backing (API or class) | Size | Note |
 |---|---|---|---|---|---|
 | WA-15 | Web application copy / export / import | action | custom(Security.Applications.Export/Import) | M | co-pilot write-confirm. |
-| WA-16 | Web Gateway Management | settings | custom(backing class not inventoried) | M | Legacy CSP; backing class not inventoried (Gaps). |
 
 **3. Contest area 2: Permission management (PM)** — 2 rows (S 1 / M 1 / L 0)
 
@@ -410,13 +407,12 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | SS-38 | System-wide security parameters | settings | custom(Security.System) | M | co-pilot write-confirm. |
 | SS-39 | Security Advisor recommendations | viewer | custom(%CSP.UI.System.SecurityAdvisorPane) | M | Legacy CSP; pairs with the audit-security-posture prompt (CP-38). |
 
-**5. Contest area 4: Task management (TM)** — 3 rows (S 1 / M 2 / L 0)
+**5. Contest area 4: Task management (TM)** — 2 rows (S 1 / M 1 / L 0)
 
 | ID | Name | Kind | Backing (API or class) | Size | Note |
 |---|---|---|---|---|---|
 | TM-17 | Task output file viewer | viewer | custom(file read) | S | co-pilot read. |
 | TM-18 | Task Manager email settings | settings | custom(backing not inventoried) | M | Legacy CSP; backing not inventoried (Gaps). |
-| TM-19 | Diagnostic Reports | form | custom(%SYS.Task DiagnosticReport) | M | legacy CSP page, source not exported; co-pilot write-confirm. |
 
 **6. Contest area 5: OS management (OS)** — 6 rows (S 2 / M 3 / L 1)
 
@@ -609,8 +605,8 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 **API readiness that gates the stage.**
 
 - **OcuPilot REST router (PK-12)** with per-area handler classes is the substrate; handlers are harvested from the MCP suite's `ExecuteMCPv2.REST.*` classes where the MCP-tool column is filled (the catalog maps 88 tools to SMP rows and 17 to new rows), and from iris-session-agent for the 28 tools. Names to avoid: `SessionAgent.*`, `ExecuteMCPv2`, `IRISCouch` (PK-07).
-- **Legacy CSP pages were never exported** (Backup ×6, Task Manager Email, Web Gateway Management, SQL Gateway Connections, Security Advisor, Journals, Global View/Edit, Find/Replace, SQL wizards): actions are inferred from rendered HTML; pull the source from the container before writing those screens (addendum, Secondary risks).
-- **Backing not inventoried or not captured:** SA-40, SA-41, TM-18, WA-16, SA-30 (ObjectSettings), IO-54, AN-16; SO-13 purge method unresolved.
+- **Legacy CSP pages were never exported** (Backup ×6, Task Manager Email, SQL Gateway Connections, Security Advisor, Journals, Global View/Edit, Find/Replace, SQL wizards): actions are inferred from rendered HTML; pull the source from the container before writing those screens (addendum, Secondary risks).
+- **Backing not inventoried or not captured:** SA-40, SA-41, TM-18, SA-30 (ObjectSettings), IO-54, AN-16; SO-13 purge method unresolved.
 - **Hidden EnsPortal classes** (IO-45, IO-46, IO-51, IO-52) have estimated action sets.
 - DT-04 needs the Atelier v7 WebSocket proxied through the Web Gateway.
 - **CP-40 undo** needs a snapshot model per entity type with no harvest to lean on; **CP-34 streaming** needs the provider path and the ≥300 s gateway timeout (PK-08).
@@ -619,12 +615,12 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 
 | Section | S | M | L | Total |
 |---|---|---|---|---|
-| SH | 0 | 3 | 0 | 3 |
+| SH | 0 | 1 | 0 | 1 |
 | CP | 0 | 0 | 2 | 2 |
-| WA | 0 | 2 | 0 | 2 |
+| WA | 0 | 1 | 0 | 1 |
 | PM | 1 | 1 | 0 | 2 |
 | SS | 2 | 2 | 0 | 4 |
-| TM | 1 | 2 | 0 | 3 |
+| TM | 1 | 1 | 0 | 2 |
 | OS | 2 | 3 | 1 | 6 |
 | LG | 1 | 0 | 0 | 1 |
 | SA | 1 | 19 | 2 | 22 |
@@ -633,13 +629,13 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | IO | 40 | 25 | 4 | 69 |
 | AN | 0 | 5 | 2 | 7 |
 | DT | 2 | 3 | 3 | 8 |
-| **Stage 4** | **59** | **78** | **20** | **157** |
+| **Stage 4** | **59** | **74** | **20** | **153** |
 
 ### Stage 5 — The long tail, as demand shows (P4)
 
-**64 rows** · S 12 / M 30 / L 22 · custom endpoints 38
+**68 rows** · S 12 / M 34 / L 22 · custom endpoints 42
 
-**What the user can do at the end.** Nothing is scheduled; each row is picked up only when demand shows and its gate (license, edition, deprecation status, platform) clears. The groups are: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and iKnow Text Analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter-specific dialogs; full applications linked instead of rebuilt (Architect, Analyzer, User Portal); and dead references, dead placeholders and cosmetic items.
+**What the user can do at the end.** Nothing is scheduled; each row is picked up only when demand shows and its gate (license, edition, deprecation status, platform) clears. The groups are: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and iKnow Text Analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter-specific dialogs; full applications linked instead of rebuilt (Architect, Analyzer, User Portal); dead references, dead placeholders and cosmetic items; and not planned (a feature the architecture does not allow, or that no IRIS class backs).
 
 **Rows in this stage, grouped by the catalog's exclusion reason** (section in the ID prefix).
 
@@ -752,21 +748,31 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | DT-11 | Remote instance profiles | settings | none | M | Excluded: not applicable; OcuPilot manages the instance that serves it. |
 | DT-03 | Async work queue viewer | viewer | official atelier GET/DELETE /:ns/work/:id | S | Excluded: not planned; the vendor's queue records no owner (owner answer U-77, 2026-11-16). |
 
+**Not planned** — 4 rows
+
+| ID | Name | Kind | Backing (API or class) | Size | Note |
+|---|---|---|---|---|---|
+| SH-26 | Security escalation | platform | custom(%session.EscalateLogin) | M | Excluded: not planned; escalation changes the roles of the session OcuPilot's own token runs in. |
+| SH-28 | Contact / open WRC issue form | platform | custom(SMTP send) | M | Excluded: not planned; it sends mail to the vendor (NFR-6). |
+| WA-16 | Web Gateway Management | settings | custom(backing class not inventoried) | M | Excluded: not planned; no IRIS class backs it. |
+| TM-19 | Diagnostic Reports | form | custom(%SYS.Task DiagnosticReport) | M | Excluded: not planned; it mails a report to the vendor (NFR-6). |
+
 **Agent co-pilot capabilities in this stage.**
 
 - None. If a P4 row is promoted, it takes the read/write-confirm tool pattern of the stage its API belongs to.
 
 **API readiness that gates the stage.**
 
-- A demand signal, then the specific gate per group: a sharding license (SA-50..52); a mirroring license (SA-45..49, SO-17); a HealthShare, Message Bank or Enterprise edition (SS-40, IO-71, IO-74..IO-81); ITK present on the instance (IO-90); Windows (WA-17, OS-34); a decision to support deprecated shadowing or iKnow at all (LG-13, SA-59, SO-18, SO-19, AN-18..22); a debugger implementation (DT-12); the AI Hub EAP (PK-26). The three admin-v2-backed rows here (OS-31, OS-32, SA-50) need no new API and are the cheapest to promote.
+- A demand signal, then the specific gate per group: a sharding license (SA-50..52); a mirroring license (SA-45..49, SO-17); a HealthShare, Message Bank or Enterprise edition (SS-40, IO-71, IO-74..IO-81); ITK present on the instance (IO-90); Windows (WA-17, OS-34); a decision to support deprecated shadowing or iKnow at all (LG-13, SA-59, SO-18, SO-19, AN-18..22); a debugger implementation (DT-12); the AI Hub EAP (PK-26); an approved architecture amendment that lets OcuPilot re-role its token (SH-26) or send to the vendor (SH-28, TM-19); an IRIS class that backs Web Gateway management (WA-16). The three admin-v2-backed rows here (OS-31, OS-32, SA-50) need no new API and are the cheapest to promote.
 
 **Counts per size.**
 
 | Section | S | M | L | Total |
 |---|---|---|---|---|
-| SH | 1 | 0 | 0 | 1 |
-| WA | 0 | 1 | 0 | 1 |
+| SH | 1 | 2 | 0 | 3 |
+| WA | 0 | 2 | 0 | 2 |
 | SS | 0 | 1 | 0 | 1 |
+| TM | 0 | 1 | 0 | 1 |
 | OS | 0 | 4 | 0 | 4 |
 | LG | 1 | 0 | 0 | 1 |
 | SA | 2 | 6 | 10 | 18 |
@@ -776,7 +782,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | AN | 0 | 3 | 4 | 7 |
 | DT | 1 | 1 | 1 | 3 |
 | PK | 0 | 0 | 1 | 1 |
-| **Stage 5** | **12** | **30** | **22** | **64** |
+| **Stage 5** | **12** | **34** | **22** | **68** |
 
 ## 3. Rows with no route at all (custom endpoints), per stage
 
@@ -809,16 +815,16 @@ Rows whose API backing names `custom(...)`. Where the catalog shows a route for 
 | IO-14 | Business partners view | write/action half | interop-v7 GET /{ns}/business-partners; custom(Ens.Config.BusinessPartner) for save/remove | View via v7; save/remove need custom (Ens.Config.BusinessPartner). |
 | IO-28 | Message contents renderer | whole row, or the embed | custom(Ens.Util.MessageBodyMethods) or embed message-viewer | Must be rebuilt for a non-Zen viewer, or use the embed. |
 
-### Stage 4 — 152 rows
+### Stage 4 — 148 rows
 
 | Section | Rows | With an MCP-suite or session-agent handler to harvest | Without any harvest (write from the backing class) |
 |---|---|---|---|
-| SH | 3 | 0: — | 3: SH-26, SH-27, SH-28 |
+| SH | 1 | 0: — | 1: SH-27 |
 | CP | 2 | 0: — | 2: CP-34, CP-40 |
-| WA | 2 | 0: — | 2: WA-15, WA-16 |
+| WA | 1 | 0: — | 1: WA-15 |
 | PM | 2 | 0: — | 2: PM-23, PM-24 |
 | SS | 4 | 2: SS-36, SS-39 | 2: SS-37, SS-38 |
-| TM | 3 | 0: — | 3: TM-17, TM-18, TM-19 |
+| TM | 2 | 0: — | 2: TM-17, TM-18 |
 | OS | 6 | 3: OS-26, OS-28, OS-29 | 3: OS-24, OS-25, OS-27 |
 | LG | 1 | 1: LG-12 | 0: — |
 | SA | 22 | 7: SA-23, SA-24, SA-26, SA-27, SA-35, SA-42, SA-44 | 15: SA-25, SA-28, SA-29, SA-30, SA-31, SA-32, SA-33, SA-34, SA-36, SA-37, SA-38, SA-39, SA-40, SA-41, SA-43 |
@@ -828,26 +834,22 @@ Rows whose API backing names `custom(...)`. Where the catalog shows a route for 
 | AN | 6 | 0: — | 6: AN-11, AN-12, AN-13, AN-14, AN-15, AN-16 |
 | DT | 6 | 6: DT-05, DT-06, DT-07, DT-08, DT-09, DT-10 | 0: — |
 
-Totals: 152 custom rows, 69 with a handler or tool to harvest, 83 to be written from the backing class alone. The five Stage 4 rows that are **not** custom (official routes, kept at P3 by size or dependency): EX-35 (atelier page loops), EX-54 (browser print), AN-17 (deepsee), DT-02, DT-04 (Atelier work and terminal routes).
+Totals: 148 custom rows, 69 with a handler or tool to harvest, 79 to be written from the backing class alone. The five Stage 4 rows that are **not** custom (official routes, kept at P3 by size or dependency): EX-35 (atelier page loops), EX-54 (browser print), AN-17 (deepsee), DT-02, DT-04 (Atelier work and terminal routes).
 
 Backing class for each custom row without a harvest (from the catalog's API-backing column):
 
 | ID | Backing class |
 |---|---|
-| SH-26 | custom(%session.EscalateLogin) |
 | SH-27 | custom(%CSP.Portal.Utils.%SetCustomResource) |
-| SH-28 | custom(SMTP send) |
 | CP-34 | custom(new provider-side path) |
 | CP-40 | custom |
 | WA-15 | custom(Security.Applications.Export/Import) |
-| WA-16 | custom(backing class not inventoried) |
 | PM-23 | custom($$GenerateQRCode^%SYS.SECURITY) |
 | PM-24 | custom(Security.Resources export/import) |
 | SS-37 | custom(%SYS.PhoneProviders) |
 | SS-38 | custom(Security.System) |
 | TM-17 | custom(file read) |
 | TM-18 | custom(backing not inventoried) |
-| TM-19 | custom(%SYS.Task DiagnosticReport) |
 | OS-24 | custom(%SYSTEM.SQL.CancelQuery) |
 | OS-25 | custom(SYS.Process:VariableByPid) |
 | OS-27 | custom(SYS.Metrics.SystemMonitorStatus, ^IRIS.Temp.SysMetrics) |
@@ -918,10 +920,14 @@ Backing class for each custom row without a harvest (from the catalog's API-back
 | AN-15 | custom(%DeepSee.UserPortal.Utils settings API) |
 | AN-16 | custom(not read) |
 
-### Stage 5 — 38 rows
+### Stage 5 — 42 rows
 
 | ID | Name | Custom part | Backing class | Note |
 |---|---|---|---|---|
+| SH-26 | Security escalation | whole row | custom(%session.EscalateLogin) | Excluded: not planned. |
+| SH-28 | Contact / open WRC issue form | whole row | custom(SMTP send) | Excluded: not planned. |
+| WA-16 | Web Gateway Management | whole row | custom(backing class not inventoried) | Excluded: not planned. |
+| TM-19 | Diagnostic Reports | whole row | custom(%SYS.Task DiagnosticReport) | Excluded: not planned. |
 | SA-45 | Create a mirror | whole row | custom(SYS.Mirror, SYS.MirrorConfiguration) | Excluded: license-gated (mirroring). |
 | SA-46 | Edit mirror | whole row | custom(Config.Mirrors, Config.MirrorMember, SYS.Mirror) | Excluded: license-gated (mirroring). |
 | SA-47 | Edit async member | whole row | custom(Config.MapMirrors, SYS.Mirror) | Excluded: license-gated (mirroring). |
@@ -970,11 +976,11 @@ The 19 P4 rows with backing `none` (no server call or nothing found) and the 7 w
 | 1 — The rest of the hidden `/api/admin` service (P2) | 59 | 20 / 31 / 8 | 5 | admin-v2 write payloads observed; async-result polling (TM-16); SH-24 allow-list; /api/admin support stance |
 | 2 — System Explorer over the Atelier API, grid harvested from iris-table-editor (P2) | 36 | 17 / 15 / 4 | 1 | action/query DML guard (EX-15); Atelier v7 for xml routes; ETag on PUT; table-editor harvest; %Service_DocDB |
 | 3 — Interoperability over the interop-editors v7 API with the three vendor editors embedded (P2), plus the Analytics rider | 41 | 10 / 25 / 6 | 6 | SH-23 JWT/cookie hand-off to /ui/interop; SH-25 namespace gating; UpdateProduction action vocabulary; DeepSee-enabled namespace for the rider |
-| 4 — Custom-REST parity harvested from the MCP suite's handlers (P3) | 157 | 59 / 78 / 20 | 152 | OcuPilot REST router (PK-12); MCP-suite handler harvest; legacy CSP source pulled from the container |
-| 5 — The long tail, as demand shows (P4) | 64 | 12 / 30 / 22 | 38 | Demand plus the per-group gate (license, edition, platform, deprecation decision) |
+| 4 — Custom-REST parity harvested from the MCP suite's handlers (P3) | 153 | 59 / 74 / 20 | 148 | OcuPilot REST router (PK-12); MCP-suite handler harvest; legacy CSP source pulled from the container |
+| 5 — The long tail, as demand shows (P4) | 68 | 12 / 34 / 22 | 42 | Demand plus the per-group gate (license, edition, platform, deprecation decision) |
 | **All five** | **357** | **118 / 179 / 60** | **202** | — |
 
-Custom-endpoint counts include agent-internal rows (Stage 1: CP-39, CP-41; Stage 2: CP-36; Stage 3: CP-37, CP-38; Stage 4: CP-34, CP-40 and IO-91..IO-118). Excluding those, the counts of new REST endpoints are Stage 1: 3, Stage 2: 0, Stage 3: 4 (all partial: the action or write half of IO-11, IO-12, IO-14, IO-28), Stage 4: 122, Stage 5: 38.
+Custom-endpoint counts include agent-internal rows (Stage 1: CP-39, CP-41; Stage 2: CP-36; Stage 3: CP-37, CP-38; Stage 4: CP-34, CP-40 and IO-91..IO-118). Excluding those, the counts of new REST endpoints are Stage 1: 3, Stage 2: 0, Stage 3: 4 (all partial: the action or write half of IO-11, IO-12, IO-14, IO-28), Stage 4: 118, Stage 5: 42.
 
 ## 5. Cross-cutting items in the catalog (undo, streaming, multistep, theming, dark mode, mobile, accessibility, localization, performance)
 
