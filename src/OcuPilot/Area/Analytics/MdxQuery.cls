@@ -80,7 +80,9 @@ ClassMethod Admit(Output pNamespace As %String, Output pRequest As %List, Output
             Quit
         }
         Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        Set tCheckSC = ..Check(tNamespace, tStatement, tConfirmed, .tAnswer, .tHttp, .tFault, .tRS)
+        Set tRS = ""
+        Set tCheckSC = ..Resolve(tNamespace, tStatement, .tText, .tHttp, .tFault)
+        If $$$ISOK(tCheckSC) Set tCheckSC = ..Check(tNamespace, tText, tConfirmed, .tAnswer, .tHttp, .tFault, .tRS)
         Set tListing = ($ClassMethod(..PortClass(), "MdxKind", $Get(tRS)) = "DRILLTHROUGH")
         Do $ClassMethod(..PortClass(), "MdxRelease", tNamespace, .tRS)
         If $$$ISERR(tCheckSC) {
@@ -139,8 +141,35 @@ ClassMethod Check(pNamespace As %String, pStatement As %String, pConfirmed As %B
     Quit $$$OK
 }
 
+/// <p>The body key that carries the run's text: the statement here, the saved pivot's name in <class>OcuPilot.Area.Analytics.PivotRun</class>.</p>
+Parameter TEXTKEY = "statement";
+
+/// <p>Whether <var>pText</var>, the string the body carries under <parameter>TEXTKEY</parameter>, is acceptable: not blank, and at most
+/// <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXSTATEMENT</parameter> characters.</p>
+ClassMethod TextValid(pText As %String) As %Boolean
+{
+    Set tPort = "OcuPilot.Port.AnalyticsPort"
+    Quit '$ClassMethod(tPort, "MdxBlank", pText) && ($Length(pText) <= $Parameter(tPort, "MDXMAXSTATEMENT"))
+}
+
+/// <p>The statement to check and run for the request's text <var>pText</var> in <var>pNamespace</var>, the start's and the job's alike. Here it is
+/// <var>pText</var> itself; <class>OcuPilot.Area.Analytics.PivotRun</class> composes it from a saved pivot. A refusal is an error status with
+/// <var>pHttp</var> and <var>pFault</var>.</p>
+ClassMethod Resolve(pNamespace As %String, pText As %String, Output pStatement As %String, Output pHttp As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pStatement = pText
+    Set pHttp = 0
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Add to the run's answer <var>pAnswer</var> what the kind reports beside the cells, given the statement <var>pStatement</var> that ran. Nothing here.</p>
+ClassMethod Annotate(pStatement As %String, pAnswer As %DynamicObject)
+{
+}
+
 /// <p>Read <var>pBody</var> into the statement, the drill's cell and the confirmation, answering 0 for any key but the three, a value of
-/// the wrong shape, a statement that is blank or too long, a drill that is not two positive whole positions within the caps, or a
+/// the wrong shape, a text <method>TextValid</method> refuses, a drill that is not two positive whole positions within the caps, or a
 /// <code>confirmed</code> that is not <code>true</code>.</p>
 ClassMethod Body(pBody As %DynamicObject, Output pStatement As %String, Output pRow As %String, Output pColumn As %String, Output pConfirmed As %Boolean) As %Boolean [ Private ]
 {
@@ -152,12 +181,12 @@ ClassMethod Body(pBody As %DynamicObject, Output pStatement As %String, Output p
     Set tStray = 0
     Set tIterator = pBody.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
-        If '$ListFind($ListBuild("statement", "drill", "confirmed"), tKey) Set tStray = 1
+        If '$ListFind($ListBuild(..#TEXTKEY, "drill", "confirmed"), tKey) Set tStray = 1
     }
     If tStray Quit 0
-    If pBody.%GetTypeOf("statement") '= "string" Quit 0
-    Set pStatement = pBody.%Get("statement")
-    If $ClassMethod(tPort, "MdxBlank", pStatement) || ($Length(pStatement) > $Parameter(tPort, "MDXMAXSTATEMENT")) Quit 0
+    If pBody.%GetTypeOf(..#TEXTKEY) '= "string" Quit 0
+    Set pStatement = pBody.%Get(..#TEXTKEY)
+    If '..TextValid(pStatement) Quit 0
     Set tType = pBody.%GetTypeOf("drill")
     If tType = "object" {
         Set tDrill = pBody.%Get("drill")
@@ -258,7 +287,8 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
     Set tColumn = $ListGet(pRequest, 3)
     Set tConfirmed = +$ListGet(pRequest, 4)
     Set tEnded = $Parameter(..#STORECLASS, "STATEENDED")
-    Set tSC = ..Check(pNamespace, tStatement, tConfirmed, .tAnswer, .tHttp, .tFault, .pRS)
+    Set tSC = ..Resolve(pNamespace, tStatement, .tText, .tHttp, .tFault)
+    If $$$ISOK(tSC) Set tSC = ..Check(pNamespace, tText, tConfirmed, .tAnswer, .tHttp, .tFault, .pRS)
     If $$$ISERR(tSC) {
         Do ..FinishRefused(pKey, tSC, $Get(tFault))
         Quit
@@ -267,6 +297,7 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
         If tAnswer.%Get("outcome") = ..#OUTCOMECONFIRM {
             Do ..FinishUnconfirmed(pKey)
         } Else {
+            Do ..Annotate(tText, tAnswer)
             Do ..Finish(pKey, tEnded, tAnswer.%ToJSON())
         }
         Quit
@@ -280,6 +311,7 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
         Do ..Finish(pKey, tEnded, "")
         Quit
     }
+    Do ..Annotate(tText, tResult)
     Do ..Finish(pKey, tEnded, tResult.%ToJSON())
 }
 

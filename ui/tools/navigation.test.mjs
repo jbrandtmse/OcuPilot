@@ -462,6 +462,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
       'analytics/cubes/relationships',
+      // Story 24.14: a folder item's Widgets and Definition (the first tab of the pair), unlisted, sort with them by class name.
+      'analytics/folder-items/widgets',
+      'analytics/folder-items/document',
       // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
       'analytics/listing-groups/listings',
       // Story 24.12: a quality measure's Documentation and Groups and elements (the first tab of the pair), unlisted, sort with them by class name.

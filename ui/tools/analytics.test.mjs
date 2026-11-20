@@ -22,6 +22,7 @@ const ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls');
 const MDX_CODE = [
   PORT,
   join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'MdxQuery.cls'),
+  join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PivotRun.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'RowFetch.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls'),
@@ -89,7 +90,7 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('SETTINGSPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(
     parameter('ENDPOINTS'),
-    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons'
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets'
   );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
@@ -414,6 +415,7 @@ const FOLDER_ITEM_SENTENCES = [
   ['REASONFOLDERITEMIMPORTSHAPE', 'analyticsRefusalFolderItemImportShape'],
   ['REASONFOLDERITEMTOOLARGE', 'analyticsRefusalTermListTooLarge'],
   ['REASONFOLDERITEMIMPORTCHANGED', 'analyticsRefusalTermListImportChanged'],
+  ['REASONPIVOTCUBE', 'analyticsRefusalPivotCube'],
 ];
 
 const FOLDER_ITEM_TOOLS = ['AnalyticsFolderItemExport', 'AnalyticsFolderItemImport', 'AnalyticsFolderItemDelete'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
@@ -753,7 +755,30 @@ test('Story 24.10: the three folder manager tools declare write, the analytics p
   // Story 24.12: an XML reader reads only text the port composed, which it checks before saving it (never a file, stream or URL).
   assert.equal([...code.matchAll(/\.OpenString\(/g)].length, [...code.matchAll(/##class\(%XML\.Reader\)/g)].length, 'every XML reader the port makes opens a string');
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.UserLibrary\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
-  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import'], 'and only those Utils calls');
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import', '%OpenFolderItem'], 'and only those Utils calls');
   const imports = [...code.matchAll(/\.%Import\(([^)]*)\)/g)].map((match) => match[1]);
   assert.deepEqual(imports, ['tBytes, 0, 0, 0, "", .tLoaded'], 'the one vendor import replaces nothing and kills nothing');
+});
+
+test('Story 24.14: a saved pivot is composed only by the one seam, and the viewer and its run name none of the calls its Never list forbids', () => {
+  // Mutation (Rule 19): call %GetBaseMDX from ReadFolderItem or any method of AnalyticsPort.cls but VendorPivotMdx, or %RegisterRecentItem, %CreateResultSet or
+  // %ExecuteMDX from the port, PivotRun.cls or AnalyticsMdxRead.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  assert.equal([...code.matchAll(/%GetBaseMDX\(/g)].length, 1, '%GetBaseMDX is called once in the port');
+  const seam = /ClassMethod VendorPivotMdx\([\s\S]*?\n\}\n/.exec(code);
+  assert.notEqual(seam, null, 'the port declares VendorPivotMdx');
+  assert.ok(seam[0].includes('%GetBaseMDX('), 'and the one call sits in that seam');
+  for (const file of [PORT, join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PivotRun.cls'), join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls')]) {
+    const source = codeOf(readFileSync(file, 'utf8'), false);
+    for (const never of [/%RegisterRecentItem/, /%CreateResultSet/, /%DrawKPITable/, /%OnLoadKPI/, /%ExecuteMDX/, /%ExecuteSQL/, /%GetKPIValueArray/, /%DeepSee\.UserPortal\.DashboardViewer/, /\blastAccessed\b/, /\btimeModified\s*=/]) {
+      assert.ok(!never.test(source), `${file} never names ${never}`);
+    }
+  }
+  assert.ok(!/%GetBaseMDX/.test(codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls'), 'utf8'), false)), 'the agent\'s tool composes through the port');
+  const strings = readFileSync(STRINGS_SOURCE, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const key of ['agentDefinitionFormLabel', 'analyticsTabWidgets', 'analyticsColumnDataSource', 'analyticsFolderItemDefinitionEmpty', 'analyticsDashboardWidgetsEmpty']) {
+    assert.ok(strings.includes(`${key}:`), `strings.ts holds ${key}`);
+    assert.ok(experience.includes(`"${stringValue(key)}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
 });

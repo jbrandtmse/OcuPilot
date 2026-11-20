@@ -171,6 +171,11 @@ Parameter FOLDERITEMABSENT = "ANALYTICS.FOLDERITEM.ABSENT";
 
 Parameter REASONFOLDERITEMABSENT = "This folder item no longer exists.";
 
+/// <p>409: the folder item is not a pivot on a cube this namespace holds, so its MDX cannot be composed and run here (Story 24.14).</p>
+Parameter PIVOTCUBE = "ANALYTICS.PIVOT.CUBE";
+
+Parameter REASONPIVOTCUBE = "This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.";
+
 /// <p>409: a delete of a locked folder item.</p>
 Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
 
@@ -430,6 +435,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TERMLISTIMPORTCHANGED Quit ..#REASONTERMLISTIMPORTCHANGED
     If pCode = ..#FOLDERITEMTAKEN Quit ..#REASONFOLDERITEMTAKEN
     If pCode = ..#FOLDERITEMABSENT Quit ..#REASONFOLDERITEMABSENT
+    If pCode = ..#PIVOTCUBE Quit ..#REASONPIVOTCUBE
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
@@ -508,10 +514,10 @@ ClassMethod TermListCodes() As %List
     Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED, ..#TERMLISTTOOLARGE, ..#TERMLISTIMPORTSHAPE, ..#TERMLISTIMPORTCHANGED)
 }
 
-/// <p>The folder item transfers' and delete's eight refusal codes (Story 24.10), as a <class>%List</class>.</p>
+/// <p>The folder item transfers' and delete's eight refusal codes (Story 24.10), then the viewer's pivot refusal (Story 24.14), as a <class>%List</class>.</p>
 ClassMethod FolderItemCodes() As %List
 {
-    Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED)
+    Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
 }
 
 /// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>

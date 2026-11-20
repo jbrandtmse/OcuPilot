@@ -997,6 +997,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   assert.deepEqual(members, [
     // Story 20.11: a cube's three tabs, a parent-scoped group whose head is unlisted.
     ['analytics/cubes/document', 'analytics/cubes/document', 1, 0],
+    // Story 24.14: a folder item's Definition and Widgets, a parent-scoped group whose head is unlisted.
+    ['analytics/folder-items/document', 'analytics/folder-items/document', 1, 0],
     // Story 24.12: a quality measure's Groups and elements and Documentation, a parent-scoped group whose head is unlisted.
     ['analytics/quality-measures/document', 'analytics/quality-measures/document', 1, 0],
     // Story 24.13: the analytics settings' four tabs, a listed group whose head is its first tab.
@@ -1017,6 +1019,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['analytics/cubes/dimensions', 'analytics/cubes/document', 2, 0],
+    ['analytics/folder-items/widgets', 'analytics/folder-items/document', 2, 0],
     ['analytics/quality-measures/documentation', 'analytics/quality-measures/document', 2, 0],
     ['analytics/settings/worklists', 'analytics/settings', 2, 0],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
@@ -1567,6 +1570,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
@@ -2763,6 +2768,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
+      'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
@@ -3571,6 +3578,8 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsWorklistList', 'Worklists'],
     ['AnalyticsRuntimeVariableList', 'RuntimeVariables'],
     ['AnalyticsUserIconList', 'UserIcons'],
+    ['AnalyticsFolderItemDefinitionTab', 'FolderItemDefinition'],
+    ['AnalyticsDashboardWidgetsTab', 'DashboardWidgets'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

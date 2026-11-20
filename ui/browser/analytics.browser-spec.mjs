@@ -1226,3 +1226,56 @@ test('Story 24.12: a person opens a quality measure to its two tabs, adds an ele
     probe('QMPCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
   }
 });
+
+/** The grid MDX query's run view draws, as `C=<column labels>;R=<row label>:<cells>;...` -- the shape `OcuPilot.Test.AnalyticsMdx.VendorCells` answers for the vendor's own result set. */
+function drawnGrid(page) {
+  return page.evaluate(() => {
+    const grid = document.querySelector('[data-ocu-mdx="grid"]');
+    if (grid === null) return 'no grid';
+    const head = Array.from(grid.querySelectorAll('.ocu-data-table-header-label')).filter((label) => label.getAttribute('data-ocu-mdx') !== 'row-header-column');
+    const rows = Array.from(grid.querySelectorAll('.ocu-data-table-body [role="row"]')).map((row) => {
+      const label = row.querySelector('[data-ocu-mdx="row-header"]')?.textContent.trim() ?? '';
+      return `;R=${label}:${Array.from(row.querySelectorAll('[data-ocu-mdx="drill-cell"]')).map((cell) => cell.textContent.trim()).join(',')}`;
+    });
+    return `C=${head.map((label) => label.textContent.trim()).join('|')}${rows.join('')}`;
+  });
+}
+
+// Story 24.14 AC5. Mutation (Rule 19): make `AnalyticsPort.WidgetNotPivot` answer 0 for every data source -> the KPI and linked rows draw links and the one-link leg goes red; send the
+// `statement` key from `folder-item-definition.page.ts` through the MDX route (rebuild and redeploy first) -> the run answers a refusal and the grid leg goes red.
+test('Story 24.14: a person opens a dashboard from Folder items, sees its three widgets with only the pivot linked, opens that pivot and runs it, and the grid shows the vendor\'s own cells', async () => {
+  const made = probe('VWMADE', `$System.Status.IsOK(##class(${PROBE}).CreateViewerItems())`);
+  assert.equal(made.value, '1', `the viewer's pivots and dashboard are saved: ${made.output}`);
+  const board = 'OcuPilotProbe/ViewBoard.dashboard';
+  const pivot = 'OcuPilotProbe/ViewRun.pivot';
+  const { context, page } = await signedInAt(browser, config, url(FOLDER_ITEMS), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await clickRowCentre(page, { text: board, link: true });
+    await pathHolds(page, `/${FOLDER_ITEMS}/document/${encodeEntityId(board)}`);
+    await answered(page);
+    assert.deepEqual(await stripLabels(page), [STRINGS.agentDefinitionFormLabel, STRINGS.analyticsTabWidgets], 'the strip reads Definition and Widgets');
+    const definition = (await allRows(page))[0];
+    assert.deepEqual([definition[0], definition[1]], [board, 'Dashboard'], 'the Definition tab reads the dashboard: its name and its type');
+    assert.equal(await page.$('[data-ocu-pivot="run-panel"]'), null, 'a dashboard offers no Run');
+
+    await openTab(page, `${FOLDER_ITEMS}/widgets`);
+    const widgets = await allRows(page);
+    assert.deepEqual(widgets.map((row) => [row[0], row[1], row[2], row[3]]), [['1', 'Sales by place', 'pivot', pivot], ['2', 'A KPI', 'kpi', 'OcuPilotProbe/Score.kpi'], ['3', 'Follows the first', 'pivot', STRINGS.tableEmptyValue]], 'Widgets lists the three widgets in the stored order');
+    assert.equal(widgets[2][4], 'Sales', 'the third widget keeps the widget it takes its data from');
+    const links = await page.$$eval(`${ROW_SELECTOR} .ocu-data-table-link`, (anchors) => anchors.map((anchor) => anchor.textContent.trim()));
+    assert.deepEqual(links, [pivot], 'only the pivot widget\'s data source links');
+
+    await clickRowCentre(page, { text: '1', link: true });
+    await pathHolds(page, `/${FOLDER_ITEMS}/document/${encodeEntityId(pivot)}`);
+    await answered(page);
+    assert.equal((await allRows(page))[0][1], 'Pivot', 'the pivot\'s Definition tab opens');
+    await (await page.waitForSelector('[data-ocu-pivot="run"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('[data-ocu-mdx="grid"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const vendor = probe('VWVENDOR', `##class(OcuPilot.Test.AnalyticsMdx).VendorCells(##class(OcuPilot.Test.AnalyticsPivotRun).BaseMdx("${pivot}"))`);
+    assert.match(vendor.value, /^C=Amount;R=Category 1:/, `the vendor answers the pivot's cells: ${vendor.output}`);
+    assert.equal(await drawnGrid(page), vendor.value, 'the grid shows the cells the vendor\'s own result set answers for the pivot\'s MDX');
+  } finally {
+    await context.close();
+  }
+});

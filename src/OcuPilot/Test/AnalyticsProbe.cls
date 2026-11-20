@@ -247,6 +247,23 @@ Parameter DASHBOARD = "OcuPilotProbe/Board.dashboard";
 
 Parameter GUARDEDDASHBOARD = "OcuPilotProbe/Guarded.dashboard";
 
+/// <p>The viewer's fixtures (Story 24.14), made by <method>CreateViewerItems</method> through the vendor's own classes: a pivot with a row level, a column level, a measure, a filter, a calculated member
+/// and a SQL restriction; a pivot over the Visits cube with a row level and a measure only, which runs; a pivot in manual mode; a pivot over a KPI; and a dashboard of three widgets.</p>
+Parameter VIEWPIVOT = "OcuPilotProbe/ViewMatrix.pivot";
+
+Parameter VIEWRUN = "OcuPilotProbe/ViewRun.pivot";
+
+Parameter VIEWMANUAL = "OcuPilotProbe/ViewManual.pivot";
+
+Parameter VIEWKPI = "OcuPilotProbe/ViewKpi.pivot";
+
+Parameter VIEWBOARD = "OcuPilotProbe/ViewBoard.dashboard";
+
+/// <p>The manual pivot's own MDX, and the data source of the KPI pivot's cube.</p>
+Parameter VIEWMDX = "SELECT FROM [OcuPilotProbeVisits]";
+
+Parameter VIEWKPICUBE = "OcuPilotProbeNoSuch.kpi";
+
 /// <p>A favorite that names no folder item.</p>
 Parameter DANGLING = "OcuPilotProbe/Gone.pivot";
 
@@ -1137,6 +1154,81 @@ ClassMethod CreateFolderItems() As %Status [ Private ]
     Quit tGuarded.%Save()
 }
 
+/// <p>Create, in <code>USER</code>, the viewer's fixtures (Story 24.14): <parameter>VIEWPIVOT</parameter>, <parameter>VIEWRUN</parameter>, <parameter>VIEWMANUAL</parameter>, <parameter>VIEWKPI</parameter>
+/// and <parameter>VIEWBOARD</parameter>. <method>Remove</method> deletes them and <method>Left</method> names any that remain. Each pivot is saved through <code>%DeepSee.Dashboard.Pivot</code> and the dashboard
+/// through <code>%DeepSee.Dashboard.Definition</code>, so a test compares what a read answers with what those classes hold.</p>
+ClassMethod CreateViewerItems() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPivot = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tPivot.fullName = ..#VIEWPIVOT
+        Set tPivot.cubeName = ..#VISITS
+        Set tPivot.title = "OcuPilot viewer matrix"
+        Set tPivot.description = "A pivot with every part the viewer reads."
+        Set tPivot.owner = "_SYSTEM"
+        For tPart = $ListBuild("rowLevels", "[Place].[H1].[Category].Members"), $ListBuild("rowLevels", "[Seen].[H1].[Year].Members"), $ListBuild("columnLevels", "[Seen].[H1].[Month].Members"), $ListBuild("measures", "[Measures].[Amount]"), $ListBuild("filters", "[Place].[H1].[Category].&[Category 1]") {
+            Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+            Set tLevel.spec = $List(tPart, 2)
+            Set tCollection = $Property(tPivot, $List(tPart, 1))
+            Do tCollection.Insert(tLevel)
+        }
+        Set tMember = ##class(%DeepSee.Dashboard.CalculatedMember).%New()
+        Set tMember.dimension = "Measures"
+        Set tMember.memberName = ..#CALCULATED
+        Set tMember.valueExpression = "[Measures].[Amount]*2"
+        Do tPivot.calculatedMembers.Insert(tMember)
+        Set tPivot.sqlRestriction = "Amount > 0"
+        Set tSC = tPivot.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tRun = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tRun.fullName = ..#VIEWRUN
+        Set tRun.cubeName = ..#VISITS
+        Set tRun.title = "OcuPilot viewer run"
+        Set tRun.owner = "_SYSTEM"
+        Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+        Set tLevel.spec = "[Place].[H1].[Category].Members"
+        Do tRun.rowLevels.Insert(tLevel)
+        Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+        Set tLevel.spec = "[Measures].[Amount]"
+        Do tRun.measures.Insert(tLevel)
+        Set tSC = tRun.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tManual = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tManual.fullName = ..#VIEWMANUAL
+        Set tManual.cubeName = ..#VISITS
+        Set tManual.manualMode = 1
+        Set tManual.userMDX = ..#VIEWMDX
+        Set tSC = tManual.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tKpi = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tKpi.fullName = ..#VIEWKPI
+        Set tKpi.cubeName = ..#VIEWKPICUBE
+        Set tSC = tKpi.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tBoard = ##class(%DeepSee.Dashboard.Definition).%New()
+        Set tBoard.fullName = ..#VIEWBOARD
+        Set tBoard.title = "OcuPilot viewer board"
+        Set tBoard.owner = "_SYSTEM"
+        For tPart = $ListBuild("Sales", "pivot", "Sales by place", ..#VIEWRUN, ""), $ListBuild("Score", "kpi", "A KPI", "OcuPilotProbe/Score.kpi", ""), $ListBuild("Follow", "pivot", "Follows the first", "", "Sales") {
+            Set tWidget = ##class(%DeepSee.Dashboard.Widget).%New()
+            Set tWidget.name = $List(tPart, 1)
+            Set tWidget.type = $List(tPart, 2)
+            Set tWidget.title = $List(tPart, 3)
+            Set tWidget.dataSource = $List(tPart, 4)
+            Set tWidget.dataLink = $List(tPart, 5)
+            Do tBoard.widgets.Insert(tWidget)
+        }
+        Set tSC = tBoard.%Save()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>How many result sets' local caches <code>USER</code> holds: the entries of <code>^DeepSee.Cache.LocalResults</code> other than the vendor's session
 /// counter, and the entries of <code>^DeepSee.Cache.LocalAxis</code>. A result set closed in the namespace it was made in clears its own, so a count
 /// that grows across a run says a result set was released elsewhere. Reads <code>USER</code> whatever namespace the caller is in.</p>
@@ -1220,7 +1312,7 @@ ClassMethod Remove() As %Status
         }
         Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLIST)
         Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLISTTWO)
-        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
+        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD, ..#VIEWPIVOT, ..#VIEWRUN, ..#VIEWMANUAL, ..#VIEWKPI, ..#VIEWBOARD {
             Do ##class(%DeepSee.UserLibrary.Utils).%DeleteFolderItem(tItem)
         }
         Set tFolder = ##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)
@@ -1511,7 +1603,7 @@ ClassMethod Left() As %String
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"
-        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
+        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD, ..#VIEWPIVOT, ..#VIEWRUN, ..#VIEWMANUAL, ..#VIEWKPI, ..#VIEWBOARD {
             If ##class(%DeepSee.UserLibrary.Utils).%FolderItemExists(tItem) Set tLeft = tLeft _ ",folder item " _ tItem
         }
         If $IsObject(##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)) Set tLeft = tLeft _ ",folder"

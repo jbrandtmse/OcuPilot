@@ -16,9 +16,9 @@ ClassMethod Unhide()
     Kill ^||OcuPilotFolderItemHidden
 }
 
-ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException, pDetail As %Boolean = 0)
 {
-    Do ##super(pNamespace, pName, .pData, .pCaught)
+    Do ##super(pNamespace, pName, .pData, .pCaught, pDetail)
     If ($Get(^||OcuPilotFolderItemHidden) '= "") && ($ZConvert(pName, "U") = ^||OcuPilotFolderItemHidden) && ((+$Get(pData("code")) = 1) || (+$Get(pData("code")) = 3)) {
         Kill pData
         Set pData("code") = 2

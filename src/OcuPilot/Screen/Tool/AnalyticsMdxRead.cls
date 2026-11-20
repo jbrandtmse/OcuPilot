@@ -15,6 +15,10 @@
 /// refused after a prepare, which executes nothing, and is never run. Only SELECT with at most two axes,
 /// and DRILLTHROUGH, run; no pivot variable is handed to the prepare in production
 /// (<method>Variables</method>).</p>
+/// <p><b>A saved pivot</b> (Story 24.14) is run by naming it in <code>pivot</code> in place of <code>statement</code>; exactly one of the two is required. The port composes
+/// the pivot's statement (<method>OcuPilot.Port.AnalyticsPort.PivotStatement</method>, which makes the gate's own namespace checks and the folder item refusals first), and
+/// everything above then applies to that statement unchanged, so a pivot whose stored restriction runs SQL is refused 422 <code>ANALYTICS.MDX.SQL</code>. The result also
+/// carries <code>statement</code>.</p>
 /// <p><b>It runs in the turn job</b> through <method>OcuPilot.Port.AnalyticsPort.MdxRun</method>, under
 /// the port's <code>MDX*</code> caps, and reserves no background run. The run polls the vendor and
 /// <method>MdxStopRequested</method>, which reads the turn's stop and abandon signals and its lease, and
@@ -33,7 +37,7 @@ Parameter TOOLNAME = "analytics.mdxquery.read";
 
 Parameter KIND = "read";
 
-Parameter DESCRIPTION = "Run one MDX query in the namespace this turn is scoped to, as the signed-in user, and read its cells, or with drill, one cell's listing. Send one SELECT (columns and rows at most) or DRILLTHROUGH; find cubes with analytics.cubes.read. Text that runs server-side code or SQL (%SEARCH, %SQLRESTRICT, RETURN, %ORDER, %PARM), or that cannot be read as MDX, is refused: ask the person to run it on MDX query. Listing columns named like a credential read [redacted].";
+Parameter DESCRIPTION = "Run one MDX query in the namespace this turn is scoped to, as the signed-in user, and read its cells, or with drill, one cell's listing. Send one SELECT (columns and rows at most) or DRILLTHROUGH; find cubes with analytics.cubes.read. To run a saved pivot instead, send pivot, its full name from analytics.folderitems.read, in place of the statement. Text that runs server-side code or SQL (%SEARCH, %SQLRESTRICT, RETURN, %ORDER, %PARM), or that cannot be read as MDX, is refused: ask the person to run it on MDX query. Listing columns named like a credential read [redacted].";
 
 /// <p>The screen whose pairs this tool requires and whose context lists it.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AnalyticsMdxQuery";
@@ -52,8 +56,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tPort = ..#PORTCLASS
     Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
     Set tProperties = tSchema.%Get("properties")
-    Do tProperties.%Set("statement", {"type": "string", "maxLength": ($Parameter(tPort, "MDXMAXSTATEMENT")), "description": "One MDX statement, a SELECT with at most two axes or a DRILLTHROUGH, up to 100,000 characters."})
-    Do tSchema.%Get("required").%Push("statement")
+    Do tProperties.%Set("statement", {"type": "string", "maxLength": ($Parameter(tPort, "MDXMAXSTATEMENT")), "description": "One MDX statement, a SELECT with at most two axes or a DRILLTHROUGH, up to 100,000 characters. Send this or pivot, never both."})
+    Do tProperties.%Set("pivot", {"type": "string", "description": "Instead of a statement, the full name of one saved pivot, folder and extension included, exactly as analytics.folderitems.read answers its Name. The instance composes the pivot's own MDX and runs it, and the answer names that statement. A pivot whose stored restriction runs SQL is refused. Send this or statement, never both."})
     Do tProperties.%Set("drill", {"type": "object", "description": ("Read the listing behind one cell of the SELECT's answer instead of its cells: an object with exactly two whole numbers, row (1 to " _ $Parameter(tPort, "MDXMAXROWS") _ ", counted in the answer's rows) and column (1 to " _ $Parameter(tPort, "MDXMAXCOLUMNS") _ ", counted among the column labels after the empty label column). Not for a DRILLTHROUGH statement.")})
     Quit tSchema
 }
@@ -123,6 +127,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "message": {"type": "string", "description": "The instance's message, for an error outcome."},
             "seconds": {"type": "number", "description": "The seconds the statement ran before it was stopped, for a stopped outcome."},
             "redactedColumns": {"type": "array", "items": {"type": "string"}, "description": "The listing columns whose cells read [redacted] because their names look like credentials."},
+            "statement": {"type": "string", "description": "For a pivot, the MDX the instance composed from it and ran, cut at a bound."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
             "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
         },
@@ -166,6 +171,12 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
                 Quit
             }
         }
+        Set tPivot = $Select(tArgs.%GetTypeOf("pivot") = "string": tArgs.%Get("pivot"), 1: "")
+        Set tIsPivot = (tArgs.%GetTypeOf("pivot") = "string")
+        If tIsPivot = (tArgs.%GetTypeOf("statement") = "string") {
+            Set tSC = ..ArgumentsRefusal("exactly one of 'statement' and 'pivot' is required", .pHttpStatus, .pFault)
+            Quit
+        }
         Set tStatement = tArgs.%Get("statement")
         Set tFailedPair = ""
         If '##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) {
@@ -177,7 +188,12 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         }
 
         Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        Set tAdmitSC = $ClassMethod(tPort, "MdxAdmit", tNamespace, .pHttpStatus, .pFault)
+        If tIsPivot {
+            ; The port admits the namespace first, then opens the item and composes its statement.
+            Set tAdmitSC = $ClassMethod(tPort, "PivotStatement", tNamespace, tPivot, .tStatement, .pHttpStatus, .pFault)
+        } Else {
+            Set tAdmitSC = $ClassMethod(tPort, "MdxAdmit", tNamespace, .pHttpStatus, .pFault)
+        }
         If $$$ISERR(tAdmitSC) {
             Set tSC = tAdmitSC
             Quit
@@ -194,6 +210,7 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         }
         If $IsObject($Get(tAnswer)) {
             Set pResult = ..Projected(tNamespace, tAnswer)
+            If tIsPivot Do pResult.%Set("statement", $ClassMethod(tPort, "Cut", tStatement), "string")
             Set pHttpStatus = 200
             Set pFault = ""
             Quit
@@ -219,6 +236,7 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
             Quit
         }
         Set pResult = ..Projected(tNamespace, tRunAnswer)
+        If tIsPivot Do pResult.%Set("statement", $ClassMethod(tPort, "Cut", tStatement), "string")
         Set pHttpStatus = 200
         Set pFault = ""
     } Catch ex {

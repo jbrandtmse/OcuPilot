@@ -299,6 +299,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.13 Batch 3: Run-time variables and User-defined icons, with their Add and Change dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
+  // Story 24.14: a folder item's Definition tab, the detail page with a saved pivot's Run beneath it.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab': () => import('../areas/analytics/folder-item-definition.page').then((m) => m.FolderItemDefinitionPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };

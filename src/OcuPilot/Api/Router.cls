@@ -248,6 +248,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/mdx/background/:id/cancel" Method="POST" Call="AnalyticsMdxBackgroundCancel"/>
   <Route Url="/analytics/mdx/background/:id" Method="GET" Call="AnalyticsMdxBackgroundPoll"/>
   <Route Url="/analytics/mdx/background" Method="POST" Call="AnalyticsMdxBackgroundStart"/>
+  <Route Url="/analytics/pivot/background/:id/cancel" Method="POST" Call="AnalyticsPivotBackgroundCancel"/>
+  <Route Url="/analytics/pivot/background/:id" Method="GET" Call="AnalyticsPivotBackgroundPoll"/>
+  <Route Url="/analytics/pivot/background" Method="POST" Call="AnalyticsPivotBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
@@ -1881,6 +1884,28 @@ ClassMethod AnalyticsMdxBackgroundPoll(pId As %String) As %Status
 ClassMethod AnalyticsMdxBackgroundStart() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pivot/background/:id/cancel</code> (Story
+/// 24.14): a saved pivot's run cancel, delegating to <class>OcuPilot.Area.Analytics.PivotRun</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/pivot/background</code>.</p>
+ClassMethod AnalyticsPivotBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/pivot/background/:id</code>: a saved pivot's run
+/// poll.</p>
+ClassMethod AnalyticsPivotBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pivot/background</code>: a saved pivot's run
+/// start.</p>
+ClassMethod AnalyticsPivotBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleStart()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
