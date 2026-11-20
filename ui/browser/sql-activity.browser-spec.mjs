@@ -157,6 +157,7 @@ test("AC1, AC4: the probe is a row under the declared headers, with its Process 
       STRINGS.explorerSqlColumnStatement,
       STRINGS.processColumnRoutine,
       STRINGS.taskHistoryColumnStarted,
+      STRINGS.commandBoxGroupActions,
     ]);
     const rows = await describeRows(page);
     const row = rows.find((candidate) => candidate.cells[0] === pid);
@@ -284,6 +285,73 @@ test('AC2: a caller lacking the %DB_IRISSYS:READ pair is refused the screen, nam
     assert.ok(!(await page.evaluate(() => document.body.textContent)).includes(LITERAL), 'the probe literal is nowhere on the page');
   } finally {
     await context.close();
+  }
+});
+
+/** Open the selected row's menu and click the entry labeled `label`. */
+async function rowAction(page, label) {
+  await page.click(`${ROW_SELECTOR}[aria-selected="true"] .ocu-data-table-trigger`);
+  await page.waitForSelector('[role="menu"]', { timeout: config.navigationTimeoutMs });
+  await page.evaluate((wanted) => {
+    const items = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
+    items.find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted).click();
+  }, label);
+}
+
+// Story 21.20, AC1. Mutation (Rule 19): drop `SCREENACTIONS` from `SqlActivityCancel.cls` -> Proceed sends a
+// request the route finds no tool for, the row stays and the row-gone wait goes red. The leg starts a probe of its own that
+// outlives its statement, cancels it from the screen and reads the instance for its process afterwards.
+test('Story 21.20 AC1: Cancel query warns first, and Proceed stops the probe statement: its row goes and its process still runs', async () => {
+  const stamp = Date.now();
+  const started = runIris(config.container, [
+    `Set tSC=##class(${PROBE}).Start("USER","OcuSeedBrowserCancel2120${stamp}","OcuSecretCancel2120${stamp}",.tPid,0,1) Write "OCU-SQLCANCEL-START:",$Select($System.Status.IsOK(tSC):tPid,1:"error "_$System.Status.GetErrorText(tSC)),":OCU-SQLCANCEL-END",!`,
+  ]);
+  const cancelPid = markerValue(started, 'SQLCANCEL');
+  assert.match(cancelPid ?? '', /^[0-9]+$/, `the cancel probe starts: ${started.slice(-400)}`);
+  try {
+    const { context, page } = await atSqlActivity();
+    try {
+      const posts = [];
+      page.on('request', (request) => {
+        if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/screens/osmgmt.sqlactivity/action')) posts.push(request.postData() ?? '');
+      });
+      // The first cell is the Process ID, whose link opens Process details, so the row is selected by its Namespace cell.
+      await clickRowCentre(page, { text: cancelPid, cell: 2 });
+      await page.waitForFunction((rowSelector) => document.querySelector(rowSelector)?.getAttribute('aria-selected') === 'true', { timeout: config.navigationTimeoutMs }, `${ROW_SELECTOR}[aria-selected="true"]`);
+      await rowAction(page, STRINGS.sqlActivityCancelAction);
+      await page.waitForSelector('app-warning-dialog', { timeout: config.navigationTimeoutMs });
+      const opened = await page.evaluate(() => {
+        const surface = document.querySelector('[role="dialog"]');
+        return {
+          title: (surface.querySelector('.ocu-dialog-title')?.textContent ?? '').trim(),
+          body: (surface.querySelector('.ocu-warning-consequence')?.textContent ?? '').trim(),
+          destructive: surface.querySelector('.ocu-button-destructive') !== null,
+        };
+      });
+      assert.equal(opened.title, STRINGS.sqlActivityCancelAction, 'the warning is titled with the verb');
+      assert.equal(opened.body, STRINGS.sqlActivityCancelConsequence, 'and states the published consequence');
+      assert.equal(opened.destructive, false, 'never a destructive one');
+      assert.equal(posts.length, 0, 'nothing is sent before Proceed');
+      await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
+      await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+      await page.waitForFunction(
+        (rowSelector, wanted) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim() === wanted),
+        { timeout: config.navigationTimeoutMs },
+        ROW_SELECTOR,
+        cancelPid
+      );
+      assert.equal(posts.length, 1, 'Proceed sent one request');
+      assert.equal(JSON.parse(posts[0]).action, 'cancel', 'the cancel action');
+      const alive = runIris(config.container, [`Write "OCU-SQLALIVE-START:",$Data(^$JOB(${cancelPid})),":OCU-SQLALIVE-END",!`]);
+      assert.ok(Number(markerValue(alive, 'SQLALIVE')) > 0, `the canceled statement's process still runs: ${alive.slice(-200)}`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const stopped = runIris(config.container, [
+      `Set tSC=##class(${PROBE}).Stop(${cancelPid}) Write "OCU-SQLCANCELSTOP-START:",$Select($System.Status.IsOK(tSC):"ok",1:$System.Status.GetErrorText(tSC)),":OCU-SQLCANCELSTOP-END",!`,
+    ]);
+    assert.equal(markerValue(stopped, 'SQLCANCELSTOP'), 'ok', `the cancel probe is stopped: ${stopped.slice(-400)}`);
   }
 });
 

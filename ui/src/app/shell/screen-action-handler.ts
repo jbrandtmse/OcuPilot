@@ -105,6 +105,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.JournalList',
   // Story 18.6: License servers, whose Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList',
+  // Story 21.20: Devices, whose Delete types the device's name; SQL activity, whose Cancel query warns first; System alerts, whose Reset alerts warns first.
+  'OcuPilot.Screen.Descriptor.DeviceList',
+  'OcuPilot.Screen.Descriptor.SqlActivityList',
+  'OcuPilot.Screen.Descriptor.SystemAlertsList',
   // Story 18.20: ECP data servers, whose Delete types the server's name and states its impact, and
   // whose Change status its own page runs.
   'OcuPilot.Screen.Descriptor.EcpDataServerList',
@@ -771,6 +775,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [REMOTE_DATABASE_LIST]: { delete: STRINGS.remoteDatabaseDeleteConsequence },
   // Story 18.6: the license server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
+  // Story 21.20: the device's Delete types the device's name.
+  'OcuPilot.Screen.Descriptor.DeviceList': { delete: STRINGS.deviceDeleteConsequence },
   // Story 18.20: the ECP data server's Delete types the server's name.
   [ECP_DATA_SERVER_LIST]: { delete: STRINGS.ecpDataServerDeleteConsequence },
   // Story 18.21: an SSL/TLS authorization's Delete types the SSL computer name.
@@ -959,6 +965,9 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
   // Story 16.5: a canceled background task cannot be resumed.
   'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
+  // Story 21.20: a canceled statement ends where it is and its process keeps running; a reset keeps alerts.log whole.
+  'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelConsequence },
+  'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetConsequence },
   // Story 16.10: a stop is the vendor's hard shutdown.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { stop: STRINGS.languageServerStopConsequence },
   // Story 18.4: each disk operation is disruptive, and none removes data, so each warns.

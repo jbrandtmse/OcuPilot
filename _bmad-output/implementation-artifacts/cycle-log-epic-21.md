@@ -778,3 +778,30 @@
 2026-11-20T09:27:28Z	Story 21.19	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-20T09:27:28Z	Story 21.19	ledger	resolved=DW-2372,DW-2471 by=21-19
 2026-11-20T09:27:28Z	Story 21.19	story_complete	head=bc5a2e37f run=44691109965 ci=success fresh=pass sweep=20/20 smoke=50/50 veto=U-121 split=TM-17+mail_password->21.36
+2026-11-20T09:28:09Z	Story 21.10	tracker_repair	found=in-progress expected=done(story_green_2026-11-19T23:48Z;spec_done) cause=status_write_missed_after_rework1 action=set_done
+2026-11-20T09:28:50Z	Story 21.20	story_started	spec=validated(veto_U-66) baseline=b7aaccb16 doctrine=3d11cec9 policy=b9ff703e hold=none
+2026-11-20T09:28:50Z	Story 21.20	stage_spawned	stage=implement scope=all_batches spawn_at=2026-11-20T09:28:50Z model=sonnet agent_name=21-20-implement cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T09:31:36Z	Story 21.20	integrated_forward	feature=837fcf2fa(21.19_merge;deps_hash+timings) merge=2a8804226 conflicts=0 files=bookkeeping_only verified=ci.test.mjs_104/104 note=stage_in_flight;index_was_clean;spec_untouched_by_merge
+2026-11-20T09:31:50Z	Story 21.20	lead_slip	what=bookkeeping_commit_2d3d743fa_used_bk_not_bkl_while_the_stage_runs;swept_3_lines_of_the_stage's_spec_edit effect=none_on_the_tree(the_stage's_own_edit,already_in_its_working_copy) fix=bkl_only_while_a_stage_is_in_flight
+2026-11-20T10:07:50Z	Story 21.20	stage_halted	stage=implement status=blocked condition=intent_gap(Task0(a):CancelQuery_needs_SQL_admin_privilege_%CANCEL_QUERY,not_a_resource_pair) task0b=Clear()_needs_%Admin_Manage:USE+%DB_IRISSYS:READ task0c=transactions_row_after_43s,PAIRS_reads code=none
+2026-11-20T10:08:42Z	Story 21.20	ruling	question=Task0(a)_%CANCEL_QUERY via=orchestrator choice=option1(gate_PAIRS;-99->403_SQLACTIVITY.NOPRIVILEGE;string_accepted;veto=U-124) task0b=WRITEPAIRS_%Admin_Manage:USE+%DB_IRISSYS:READ(in-spec) task0c=as_planned
+2026-11-20T10:08:42Z	Story 21.20	stage_spawned	stage=implement scope=all_batches(after_Task0) spawn_at=2026-11-20T10:08:42Z model=sonnet agent_name=21-20-implement-2 cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T10:44:20Z	Story 21.20	bash_edit_scan	agent=ae45c6d5e hits=2 verdict=no_tracked_edit(empty_python_heredoc_then_grep;sed_-i_on_/dev/null) action=none
+2026-11-20T11:57:40Z	Story 21.20	dev_complete	scope=all_batches build_sha=35af0290b model=sonnet followup_review_recommended=true new_strings=sqlActivityEmptyAgent,systemAlertsEmptyAgent(escalated) positions=38,39 armed_class=SystemAlertsWrite(OCUPILOT_ALLOW_ALERT_RESET)
+2026-11-20T11:57:40Z	Story 21.20	code_head_pushed	sha=35af0290b run=44731774131 missing=none
+2026-11-20T11:58:29Z	Story 21.20	ruling	question=empty_agent_strings via=orchestrator choice=accepted_verbatim veto=U-126
+2026-11-20T11:58:29Z	Story 21.20	stage_spawned	stage=code-review spawn_at=2026-11-20T11:58:29Z model=opus agent_name=21-20-code-review cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T13:02:17Z	Story 21.20	review_complete	model=opus tier=full-opus entries=high1,med7,low4 patched=11 deferred=DW-2803(owner_burndown) commit=13c966c3b(local) build_deferred_closed=2
+2026-11-20T13:02:17Z	Story 21.20	ci_red_classified	run=44731774131 sha=35af0290b defects=ScreenGrounding,ProposalConfirm(rosters) flake=a11y-structural-invariants(DW-1822,routed_21-23)
+2026-11-20T13:02:17Z	Story 21.20	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ScreenGrounding,ProposalConfirm scope_baseline=13c966c3b note=13c966c3b_not_pushed;pushed_with_the_rework_head
+2026-11-20T13:02:22Z	Story 21.20	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T13:02:22Z model=sonnet agent_name=21-20-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a5ef2ff1e)
+2026-11-20T13:23:34Z	Story 21.20	dev_complete	scope=rework1(test_shapes:ScreenGrounding,ProposalConfirm;no_product_change) build_sha=bdee5d94e followup_review_recommended=false cycle_iteration=2
+2026-11-20T13:23:34Z	Story 21.20	code_head_pushed	sha=bdee5d94e run=44743879162 missing=none includes=13c966c3b(review_patches)
+2026-11-20T13:23:34Z	Story 21.20	gate_step	step=fresh_check+full_sweep+smoke head=bdee5d94e started=2026-11-20T13:23:34Z dir=e21u/21-20/gate
+2026-11-20T14:35:54Z	Story 21.20	ci_red_classified	run=44743879162 sha=bdee5d94e flake=users.browser-spec_AC2(DW-2720,routed_21-23) action=rerun_--failed
+2026-11-20T15:59:53Z	Story 21.20	ci_resolved	story=21.20 sha=bdee5d94e runs=44743879162 result=success flake_rerun=browser_shard_3(DW-2720)
+2026-11-20T15:59:53Z	Story 21.20	fresh_check	env=recipe(ci-throwaway_rebuild) tests=25_classes+4_specs result=pass order=forward,reverse(specs) head=bdee5d94e note=SeamSqlActivityActionFixture_is_a_fixture(0_methods),not_a_red
+2026-11-20T15:59:53Z	Story 21.20	sweep	shards=20/20_green head=bdee5d94e
+2026-11-20T15:59:53Z	Story 21.20	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T15:59:53Z	Story 21.20	ledger	resolved=DW-1562,DW-2479 by=21-20 new=DW-2803(owner_burndown,decision-pending)
+2026-11-20T15:59:53Z	Story 21.20	story_complete	head=bdee5d94e run=44743879162 ci=success fresh=pass sweep=20/20 smoke=50/50 vetoes=U-124,U-126

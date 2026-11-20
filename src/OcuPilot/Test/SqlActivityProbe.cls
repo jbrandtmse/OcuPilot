@@ -36,12 +36,12 @@ ClassMethod ProbeText(pLiteral As %String) As %String
 /// <var>pValue</var>, in <var>pNamespace</var>, inside <var>pLevel</var> open transactions, and wait
 /// until the instance lists its statement; <var>pPid</var> is the job's pid. A job that is not listed in
 /// time is stopped and refused.</p>
-ClassMethod Start(pNamespace As %String, pLiteral As %String, pValue As %String, Output pPid As %Integer, pLevel As %Integer = 0) As %Status
+ClassMethod Start(pNamespace As %String, pLiteral As %String, pValue As %String, Output pPid As %Integer, pLevel As %Integer = 0, pKeepAlive As %Boolean = 0) As %Status
 {
     Set pPid = ""
     Set tSC = $$$OK
     Try {
-        Job ##class(OcuPilot.Test.SqlActivityProbe).Run(pNamespace, ..ProbeText(pLiteral), pValue, ..#BOUNDSECONDS, +pLevel)::10
+        Job ##class(OcuPilot.Test.SqlActivityProbe).Run(pNamespace, ..ProbeText(pLiteral), pValue, ..#BOUNDSECONDS, +pLevel, +pKeepAlive)::10
         If '$Test {
             Set tSC = $$$ERROR($$$GeneralError, "the probe job did not start")
             Quit
@@ -69,7 +69,7 @@ ClassMethod Start(pNamespace As %String, pLiteral As %String, pValue As %String,
 /// <p>The probe job's body: run <var>pText</var> bound to <var>pValue</var> in <var>pNamespace</var>,
 /// inside <var>pLevel</var> open transactions that write nothing, until it ends or <var>pBound</var>
 /// seconds pass. It calls no class of its own once switched.</p>
-ClassMethod Run(pNamespace As %String, pText As %String, pValue As %String, pBound As %Integer, pLevel As %Integer = 0)
+ClassMethod Run(pNamespace As %String, pText As %String, pValue As %String, pBound As %Integer, pLevel As %Integer = 0, pKeepAlive As %Boolean = 0)
 {
     Try {
         Set $NAMESPACE = pNamespace
@@ -83,9 +83,89 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValue As %String, pBou
             Do tRS.%Next()
         }
         Do $System.Alarm.Clear()
+        ; With pKeepAlive the job outlives its statement, until stopped or pBound seconds pass.
+        If pKeepAlive {
+            Set tEnd = $ZHorolog + pBound
+            While $ZHorolog < tEnd {
+                Hang 1
+            }
+        }
     } Catch {
     }
     If $TLevel > 0 TROLLBACK
+}
+
+/// <p>The child process <class>OcuPilot.Test.SqlActivityCancelPrivilege</class> starts: log in as
+/// <var>pUsername</var>, cancel the statement <var>pId</var> names through
+/// <class>OcuPilot.Port.SqlActivityPort</class>, and signal process <var>pParent</var> <code>{loggedIn, http,
+/// code, reason}</code>, or <code>{error}</code> when something raised. It runs in its own process so the login never
+/// touches the test's own identity.</p>
+ClassMethod CancelAs(pParent As %Integer, pUsername As %String, pId As %String)
+{
+    Set tOut = {}
+    Try {
+        Set tSC = ..Armed()
+        If $$$ISERR(tSC) {
+            Do tOut.%Set("error", $System.Status.GetErrorText(tSC))
+            Quit
+        }
+        Do tOut.%Set("loggedIn", ''$SYSTEM.Security.Login(pUsername), "boolean")
+        Kill tQuery
+        Set tQuery("id") = pId
+        Set tHttp = 0
+        Set tFault = ""
+        Set tSC = ##class(OcuPilot.Port.SqlActivityPort).Invoke("CurrentStatements", "CANCEL", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do tOut.%Set("http", +tHttp, "number")
+        If $IsObject(tFault) {
+            Do tOut.%Set("code", tFault.%Get("code"))
+            Do tOut.%Set("reason", tFault.%Get("reason"))
+        }
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do $System.Event.Signal(pParent, tOut.%ToJSON())
+}
+
+/// <p>The child process <class>OcuPilot.Test.SqlActivityCancelPrivilege</class> starts for the own-statement leg: log in as
+/// <var>pUsername</var>, start a probe statement that outlives it in <var>pNamespace</var> as that user, cancel it through
+/// <class>OcuPilot.Port.SqlActivityPort</class>, and signal process <var>pParent</var> <code>{loggedIn, pid, http, code}</code>, or
+/// <code>{error}</code> when something raised. The probe job is left for the parent's <method>StopAll</method>.</p>
+ClassMethod OwnCancelAs(pParent As %Integer, pUsername As %String, pNamespace As %String)
+{
+    Set tOut = {}
+    Try {
+        Set tSC = ..Armed()
+        If $$$ISERR(tSC) {
+            Do tOut.%Set("error", $System.Status.GetErrorText(tSC))
+            Quit
+        }
+        Do tOut.%Set("loggedIn", ''$SYSTEM.Security.Login(pUsername), "boolean")
+        Set tSC = ..Start(pNamespace, "OcuSeedOwn2120" _ (10000000 + $Random(90000000)), "OcuSecretOwn2120" _ (10000000 + $Random(90000000)), .tPid, 0, 1)
+        If $$$ISERR(tSC) {
+            Do tOut.%Set("error", $System.Status.GetErrorText(tSC))
+            Quit
+        }
+        Do tOut.%Set("pid", +tPid, "number")
+        Kill tQuery
+        Set tSC = ##class(OcuPilot.Port.SqlActivityPort).Invoke("CurrentStatements", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+        Set tId = ""
+        If $IsObject($Get(tRows)) {
+            Set tIterator = tRows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If tRow.%Get("ProcessID") = tPid Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tRow.%Get("Server"), tRow.%Get("ProcessID"), tRow.%Get("StatementHash")))
+            }
+        }
+        Kill tQuery
+        Set tQuery("id") = tId
+        Set tHttp = 0
+        Set tFault = ""
+        Set tSC = ##class(OcuPilot.Port.SqlActivityPort).Invoke("CurrentStatements", "CANCEL", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do tOut.%Set("http", +tHttp, "number")
+        If $IsObject(tFault) Do tOut.%Set("code", tFault.%Get("code"))
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do $System.Event.Signal(pParent, tOut.%ToJSON())
 }
 
 /// <p>Whether the instance lists a statement of process <var>pPid</var> that has run for at least

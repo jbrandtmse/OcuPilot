@@ -239,6 +239,8 @@ XData Coverage
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="MetricsList" class="OcuPilot.Test.MetricsDescriptor" method="TestTheDescriptorShape"/>
+<screen name="TransactionList" class="OcuPilot.Test.TransactionsRead" method="TestTheDescriptorShape"/>
+<screen name="SystemAlertsList" class="OcuPilot.Test.SystemAlertsRead" method="TestTheDescriptorShape"/>
 <screen name="InteropUsageTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropUsageVolumeTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropUsageImpactTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
@@ -280,6 +282,8 @@ XData Coverage
 <screen name="BackupHistoryList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
 <screen name="BackupDatabaseList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
 <tool name="osmgmt.backuptasks.run" class="OcuPilot.Test.BackupWrite" method="TestARunStartsTheTaskOnBothCallers"/>
+<tool name="osmgmt.sqlactivity.cancel" class="OcuPilot.Test.SqlActivityCancel" method="TestBothCallersCancelTheStatementAndTheProcessSurvives"/>
+<tool name="osmgmt.systemalerts.reset" class="OcuPilot.Test.SystemAlertsWrite" method="TestBothCallersResetTheAlerts"/>
 <tool name="osmgmt.backuptasks.freeze" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
 <tool name="osmgmt.backuptasks.thaw" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
 <tool name="osmgmt.backupdatabases.add" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>

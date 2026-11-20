@@ -491,7 +491,7 @@ classes are red by design on `ocupilot` or a slot instance. The variables are
 `OCUPILOT_ALLOW_AUDIT_PURGE`, `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`,
 `OCUPILOT_ALLOW_NAMESPACE_CONFIG`, `OCUPILOT_ALLOW_DATABASE_CONFIG`, `OCUPILOT_ALLOW_JOURNAL`,
 `OCUPILOT_ALLOW_LICENSE_CONFIG`, `OCUPILOT_ALLOW_ECP_CONFIG`,
-`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, `OCUPILOT_ALLOW_BACKUP_CONTROL`, and `OCUPILOT_ALLOW_CONFIG_SETTINGS`. The `# classes:` comment above each one in
+`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, `OCUPILOT_ALLOW_BACKUP_CONTROL`, `OCUPILOT_ALLOW_CONFIG_SETTINGS`, and `OCUPILOT_ALLOW_ALERT_RESET`. The `# classes:` comment above each one in
 `scripts/ci-throwaway.sh` lists the classes it arms, and `ui/tools/ci.test.mjs` holds each list
 equal to the classes that read the variable.
 

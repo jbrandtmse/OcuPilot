@@ -35,9 +35,9 @@
 /// does not refresh -- Devices is not among AD-43's seven auto-refreshing screens.</p>
 /// <p><b>Its primary action is Create</b>: it opens <class>OcuPilot.Screen.Descriptor.DeviceForm</class>
 /// at <code>os-management/devices/edit</code>, and a row's name cell opens the same form for that
-/// device. Both save through the device tools (AD-55); the agent's
-/// <code>osmgmt.devices.delete</code> is the delete. It declares no row action, and its empty state
-/// invites the agent.</p>
+/// device. Both save through the device tools (AD-55). Its one row action, Delete, is the screen's
+/// caller of <class>OcuPilot.Screen.Tool.DeviceDelete</class>, which the agent reaches through a
+/// proposal (AD-53); its empty state invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.DeviceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -59,7 +59,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "PhysicalDevice", "Type", "SubType", "Description", "Alias"], "secretFields": []},
   "emptyStateKey": "deviceListEmpty",
   "commandAliases": ["devices", "device settings"],

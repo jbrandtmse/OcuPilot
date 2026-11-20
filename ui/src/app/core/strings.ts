@@ -6432,6 +6432,44 @@ export const STRINGS = {
   /** EXPERIENCE.md:603 */
   sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
   /** EXPERIENCE.md:603 */
+  sqlActivityCancelAction: 'Cancel query',
+  /** EXPERIENCE.md:603 */
+  systemAlertsResetAction: 'Reset alerts',
+  /** EXPERIENCE.md:603 */
+  sqlActivityCancelConsequence: 'Canceling stops this statement where it is. The process that ran it keeps running.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityRemoteReason: 'This statement runs on another server and can be canceled only there.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEndedReason: 'This statement is no longer running.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityNoPrivilegeReason: 'Canceling another user\'s query needs the SQL privilege %CANCEL_QUERY.',
+  /** EXPERIENCE.md:603 */
+  systemAlertsResetConsequence: 'Resetting sets the alert count to 0 and the system state to OK. alerts.log keeps every entry.',
+  /** EXPERIENCE.md:603 */
+  deviceDeleteConsequence: 'Deleting this device removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:603 */
+  transactionsLabel: 'Transactions',
+  /** EXPERIENCE.md:603 */
+  transactionsColumnSeconds: 'Seconds open',
+  /** EXPERIENCE.md:603 */
+  transactionsEmpty: 'There are no open transactions.',
+  /** EXPERIENCE.md:603 */
+  transactionsNotRunning: 'Transaction data is not available because the System Monitor is not running.',
+  /** EXPERIENCE.md:603 */
+  transactionsPrompt1: 'Which process has held a transaction open longest?',
+  /** EXPERIENCE.md:603 */
+  systemAlertsLabel: 'System alerts',
+  /** EXPERIENCE.md:603 */
+  systemAlertsColumnAlerts: 'Alerts',
+  /** EXPERIENCE.md:603 */
+  systemAlertsColumnLast: 'Last alert',
+  /** EXPERIENCE.md:603 */
+  systemAlertsPrompt1: 'Why is the system state not OK?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEmptyAgent: 'cancel a running SQL statement',
+  /** EXPERIENCE.md:603 */
+  systemAlertsEmptyAgent: 'reset the system alerts',
+  /** EXPERIENCE.md:603 */
   metricsLabel: 'Prometheus metrics',
   /** EXPERIENCE.md:603 */
   metricsColumnMetric: 'Metric',
