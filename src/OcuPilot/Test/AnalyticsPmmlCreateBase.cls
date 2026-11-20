@@ -114,7 +114,7 @@ ClassMethod ListedModels(pClass As %String) As %String
     Quit tNames
 }
 
-/// <p>Every class under <code>ProbePmml.</code> with the length and a SHA-1 checksum of its text, as one string, so two calls compare equal when nothing was saved, changed or deleted between them.</p>
+/// <p>Every class under <code>ProbePmml.</code> with the length and a SHA-1 checksum of its text, as one string, so two calls compare equal when nothing was saved, changed or deleted between them; a lookup that fails answers a value that differs per call.</p>
 ClassMethod Snapshot() As %String
 {
     Set tOrigNS = $NAMESPACE
@@ -122,7 +122,8 @@ ClassMethod Snapshot() As %String
     Try {
         Set $NAMESPACE = ..#NAMESPACE
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ? ORDER BY Name", "PROBEPMML.")
-        While tRS.%Next() {
+        If tRS.%SQLCODE < 0 Set tOut = "unreadable " _ $ZHorolog
+        While (tRS.%SQLCODE >= 0) && tRS.%Next() {
             Set tText = ..TextOf(tRS.%GetData(1))
             Set tOut = tOut _ tRS.%GetData(1) _ "=" _ $Length(tText) _ ":" _ $System.Encryption.Base64Encode($System.Encryption.SHA1Hash($ZConvert(tText, "O", "UTF8"))) _ ";"
         }

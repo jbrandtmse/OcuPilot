@@ -4,7 +4,7 @@
 /// <p><b>Its id is the composite <code>[Class, Model]</code></b>, the vendor's <code>Class||Model</code>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its name cell opens the model's Test screen
 /// (<code>analytics/pmml-models/test</code>). A row's <code>Type</code> is the vendor's model type, <code>Target</code> and <code>TargetType</code> the predicted field and its operational type
 /// (<code>categorical</code>, <code>ordinal</code> or <code>continuous</code>), <code>DataSources</code> the definition's data sources, one per line, and <code>Verification</code> whether the model carries verification records.</p>
-/// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Model Tester admits <code>%Development</code> alone, and a pair set is an AND (AD-8, AD-65). It
+/// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Model Tester admits <code>%Development</code> alone, and a pair set is an AND (AD-8, AD-65).
 /// <b>It writes</b> (Story 24.14, Batch 3): its primary action, New PMML definition, is the tool <code>analytics.pmmlmodels.add</code>, which makes a class from PMML text. The class is named by its own type,
 /// <code>pmml-definition</code>, which the audit row carries. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList Extends OcuPilot.Screen.Descriptor.Base

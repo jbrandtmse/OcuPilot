@@ -10,7 +10,9 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-11-listing-groups.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'low: the mint absence read (PMMLDEFINITION with action ADD, ChangesPmmlDefinition) is write-gated but no test arms the database seam on it; the confirm write is gated and pinned, so only the early mint refusal is unpinned'
+  - 'low: Rule 2 near-copies left as found: PmmlDefinitionProblem beside ListingGroupProblem and QualityMeasureProblem, the copy-the-body-and-set-Class lines (four sites), and the dialog FileReader block copied from x509-form.page.ts'
 ---
 
 <intent-contract>
@@ -223,6 +225,49 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `4aeeab5a
   - `[false]` `reject` The free checks are SQL over `%Dictionary` only — the class catalog is what a class and its package are; a delete removes the compiled remnants with the class.
   - `[false]` `reject` The new test classes need an arming roster line — they inherit the declaring class's variable, which the roster lists; `ci.test.mjs` passes.
 
+### 2026-11-20 — Follow-up review (Batch 3 implement + QA; four layers)
+
+- verdicts: 38 findings after folding duplicate sightings across layers — high 0, medium 3, low 35; patch 13, defer 2, reject 23, intent_gap 0
+- findings:
+  - `[medium]` `patch` A text in the last ~200 characters of the bound passed the guard and failed the save 400 `EXPLORER.SAVE.TOOLARGE` — `PlanPmmlDefinition` refuses a class text over `MAXIMPORTCHARACTERS` as 422 TEXT with the ruled sentence, before any lookup, for every caller; Gap pins the exact bound; mutation recorded.
+  - `[low]` `reject` The ruled TEXT sentence and the tool description say "at most 3,000,000" though the class text's wrapper makes the last ~200 characters refused — orchestrator ruling: reuse the ruled sentence; a precise one is a new string.
+  - `[low]` `patch` `PerformPmmlDefinition`'s doc and Measured 5's heading said a refused compile generates nothing — both now say deleting `<C>` removes what any compile generated (Gap's two-model test).
+  - `[low]` `patch` The script's free-name lookup read a failed query as free — it starts at held and reads the count only on `%SQLCODE` 0; mutation recorded.
+  - `[low]` `patch` A long text dense with control characters raised `<MAXSTRING>` composing the script, failing the copy-out draft — a text over `SNIPPETMAXCHARACTERS` answers no step first; mutation recorded.
+  - `[medium]` `patch` Every held-class leg also held a package, so the class test was unpinned and the doc's case mutation could not redden — Edge adds a class held alone and its case variant; mutation recorded.
+  - `[medium]` `patch` The own and malformed names were outside `Snapshot` — Edge asserts `Free` for each.
+  - `[low]` `patch` `Snapshot` read a failed query as empty — it answers a per-call value.
+  - `[low]` `patch` The gate's "before any lookup" used a free name only — the legs repeat on a held class.
+  - `[low]` `defer` The mint's write-gated absence read has no database-seam test (frontmatter).
+  - `[low]` `reject` The oversized text skips the route — the bound test posts a 3,000,000-character text through the route and the mint.
+  - `[low]` `patch` Gap's carriage-return precondition could not fail — it counts pairs and a lone carriage return.
+  - `[low]` `patch` Gap's two mutation notes disagreed with `## Verification` — aligned.
+  - `[low]` `patch` The tool's doc said its fresh read carries no action — it states `PortQuery`'s two reads.
+  - `[low]` `patch` The descriptor's doc read "It It writes" — fixed.
+  - `[low]` `patch` The EXPERIENCE.md row said an OcuPilot name gets the CLASS sentence — it gets the own-code refusal; the row says so.
+  - `[low]` `reject` `pmml-model` targets carry a one-part id against a composite key, and the predicate covers later `pmml-model` writes — Decided in-stage 1; the add is the only such write.
+  - `[low]` `reject` The store's change event is `pmml-definition` while the proposal's is `pmml-model` — the list follows both; the audit entity is one.
+  - `[low]` `defer` Rule 2 near-copies (Problem methods, body-copy lines, FileReader block) — `TextNormalized` now reuses `PmmlLineFeeds`; the rest in frontmatter.
+  - `[low]` `reject` The mint answers `TOOL.ARGUMENTS` — ruled in the first pass.
+  - `[low]` `reject` The route answers TAKEN before TEXT for a held name with a bad text — the route's absence read is the save's fresh read (Decided in-stage 2).
+  - `[low]` `reject` AC1's models are compared with `CREATEDMODELS` — the read leg asserts `%GetModels`' count of 2.
+  - `[low]` `reject` A package held after the mint is untested — the confirm closes any non-404 re-read (inference); the class leg pins the branch.
+  - `[low]` `reject` Teardown misses classes only a mutation could make — the new `Free` legs report them.
+  - `[low]` `reject` No text with an XML declaration — the text is kept verbatim as classic does; measured: the vendor's own `CreateFromStream` refuses a UTF-8-declared text with a non-ASCII character too.
+  - `[low]` `reject` `^oddDEF` routines-versus-globals measured only in USER (inference) — the shared class-write path of 24.11 and 24.12.
+  - `[low]` `reject` The Auto Run Result predates QA, and Decided in-stage numbering is out of order — oversized spec; QA's record is under Verification.
+  - `[low]` `reject` The spec is done while Batch 2's cancel run was red — out of scope (Batch 2 rework).
+  - `[low]` `reject` A class created inside another definition's generated package — the generator replaces only names it generates; theoretical.
+  - `[low]` `reject` A package mapped to another database is gated on the wrong one — the save still refuses with its own code; shared path.
+  - `[low]` `reject` `restorefailed` answers COMPILE — the siblings' form, logged for an operator.
+  - `[low]` `reject` A held class whose XData passes the maximum string answers 500 — theoretical.
+  - `[low]` `reject` A whitespace-only text answers COMPILE, not TEXT — the spec refuses an empty text; the compile refuses and restores.
+  - `[low]` `reject` Concurrent case-variant or nested creates — the vendor refuses a case variant 409 (Measured 6); nested is theoretical.
+  - `[low]` `reject` A throw in the plan reads as no problem at the mint — the siblings' form; the confirm re-plans.
+  - `[low]` `reject` A schema without `Class` or `PMML` — the fields are declared; theoretical.
+  - `[low]` `reject` The dialog's FileReader has no error handler — the sibling's form; a message would be a new string.
+  - `[low]` `reject` The predicate is used at a fourth site — the Code Map's `PermittedCreateFields` line; the word-diff shows only the three appended terms in conditions.
+
 ## Design Notes
 
 **Questions for the runner (intent gap; veto item U-120 continues).**
@@ -273,7 +318,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `4aeeab5a
 2. **An unbalanced `{`** (`{` at a line's end, with no `}`) adds no member: the class is not parsable, the XData is not kept (xdatas 0) and the compile is refused (`ERROR #5559`). A `{` inside a quoted attribute changes nothing.
 3. **Generated classes after a valid two-model compile** (`ProbePmml.NewT2`): `<C>.Data`, and for each model `<C>.<model>`, `<C>.<model>Input` and `<C>.<model>Output`, seven in all, every one in package `<C>.`.
 4. **Deleting `<C>`** (`SourceDocument.Remove`) deleted all seven generated classes; the namespace's class list then differed from the start only by an SQL cached-query class the probe's own query made.
-5. **A refused compile leaves only `<C>`.** An unknown field (`Nope`), an unexpected tag (`<Bogus/>`), and a second model that fails after a valid first each left only the saved class, and `RestoreClass`'s delete removed it; a package sweep of `<C>.` afterwards found nothing. No sweep is needed.
+5. **Deleting `<C>` after a refused compile leaves nothing.** An unknown field (`Nope`), an unexpected tag (`<Bogus/>`), and a second model that fails after a valid first each left only the saved class, and `RestoreClass`'s delete removed it; a package sweep of `<C>.` afterwards found nothing. No sweep is needed.
 6. **A case variant of an existing class**, saved as a create: 409 `EXPLORER.DOCUMENT.CONFLICT`, nothing saved, the original intact.
 7. **`DestinationDatabase("USER", "^oddDEF")`** answers resource `%DB_USER`, read-write, mounted; `Config.Namespaces` names USER's routines database `USER`. The same call for `^DeepSee.ListingGroups` and `^DeepSee.QMsrs` names `%DB_USER`.
 8. **With auditing enabled** (`Security.System` `AuditEnabled` 1), a save, a compile and a delete wrote no `%SYS.Audit` row after the mark.
@@ -327,6 +372,16 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `4aeeab5a
 - `mutation: PMML_DEFINITION_PATH is the listing groups' route -> pmml-model-list.page.spec.ts red (the path and body legs) and, with the bundle rebuilt and redeployed, the Batch 3 browser test red (timeout waiting for the new class's rows)` (AC6).
 - `mutation: one word of REASONPMMLCOMPILE changed -> analytics.test.mjs red naming the pair` (the sentences on both surfaces).
 - The nine roster rows (SurfaceCoverage, EndpointCoverage, ToolRoundTrip, AnalyticsDescriptor, Descriptor, MappingDescriptor, ClassicPageGate, ReadTool, Prohibited) were each observed red before the row was added; SaveHoldCoverage's held leg is new.
+- `mutation: Gate.Decide answers allowed for every tool -> AnalyticsPmmlCreateGap.TestTheAgentsAddIsRefusedWithItsKeyOffAndThePersonsIsNot red (the refusal, free-name, snapshot and audit legs)` (AC5, the key off).
+- `mutation: PmmlDefinitionSnippet ignores the plan's refusal -> TestTheScriptFormRefusesWhatTheWriteRefusesAndRunsNoOtherPath raises on the first refusal leg` (AC3, AD-59).
+- `mutation: AnalyticsPmmlModelAdd.TextNormalized answers its arguments unchanged -> TestAPastedTextIsStoredAsSentByEveryCaller red (the person's and the agent's read-back verdict legs)` (AC1, AD-58).
+- `mutation: PmmlTextRefused refuses a text over 2,000,000 characters -> TestALargeLegalTextIsStoredWhole red (create, length, equality and models legs)` (AC1).
+- `mutation: RestoreClass quits at its first line -> TestACompileRefusedAfterItsClassesWereGeneratedLeavesNone red (the port, person, agent and snapshot legs)` (AC4).
+- `mutation: PlanPmmlDefinition without the own-code test -> TestOwnNamesInOtherCasesAndWithAPrefixAreRefused red (every name's port leg and the prefix name's free leg) and the script test's own-code leg red` (AC2).
+- Decided in QA: the large legal text is 2,999,000 characters, below the bound by what the class text adds; the bound itself is the class text's (code review), pinned below.
+- `mutation: PlanPmmlDefinition without the class-text length test -> AnalyticsPmmlCreateGap.TestATextIsBoundedByItsClassTextAndRefusedAsText red (port, route, mint and sentence legs of both the one-over and the 3,000,000-character texts); the test compared with >= -> the same test red (the exact-bound stored legs)` (AC3, the exact bound).
+- `mutation: PmmlDefinitionSnippet starts its lookup answer at free -> TestTheScriptFormFailsClosedAndAnswersNoStepForALongText red (failed-lookup and saves-nothing legs); without its length test -> the same test red (the long-text leg, MAXSTRING)` (AD-59).
+- `mutation: PlanPmmlDefinition refuses only a held package -> AnalyticsPmmlCreateEdge.TestAHeldClassOrPackageIsRefusedAndNothingIsTouched red (the class held alone and its case variant, port legs)` (AC2).
 
 **Shared surfaces:** PMML models' actions and empty state, the entity-type vocabulary, the write-tool, coverage, endpoint and route rosters, the governance baseline, the prohibited set's covered types, `screen-mirror.test.mjs`, the `analytics.test.mjs` guard and the arming roster.
 

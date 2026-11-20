@@ -5,8 +5,9 @@
 /// too long, or holds a document type declaration or a <code>}</code>, each by its own code before anything is saved; the vendor parses the text, in the compile, and nothing else of OcuPilot's reads it as code
 /// (AD-11, AD-60). Its fields are declared here (<method>FieldRows</method>, AD-3), and its read-back compares each (<parameter>READBACKFIELDS</parameter>, AD-58).</p>
 /// <p>It extends <class>OcuPilot.Screen.Tool.AnalyticsListingGroupAction</class> as the quality measure tools do, with the definition's own destination global
-/// (<code>^oddDEF</code>, the database that holds class definitions), classic page, read and port rules. Its fresh read is the port's plain <code>PMMLDEFINITION</code>, which carries no write
-/// action: a held class reads as a row and a free name as 404.</p>
+/// (<code>^oddDEF</code>, the database that holds class definitions), classic page, read and port rules. Its fresh read is the port's <code>PMMLDEFINITION</code>: read from the arguments, it
+/// carries the add's action and answers a held class or package 409 and a free name 404 (<method>PortQuery</method>); the composed payload's read, the confirm's re-read and the read-back carry none and
+/// read a held class as its row.</p>
 Class OcuPilot.Screen.Tool.AnalyticsPmmlModelAdd Extends OcuPilot.Screen.Tool.AnalyticsListingGroupAction
 {
 
@@ -107,7 +108,7 @@ ClassMethod TextNormalized(pArgs As %DynamicObject) As %DynamicObject
 {
     If '$IsObject(pArgs) || 'pArgs.%IsA("%Library.DynamicObject") Quit pArgs
     Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
-    If tArgs.%GetTypeOf("PMML") = "string" Do tArgs.%Set("PMML", $Replace($Replace(tArgs.%Get("PMML"), $Char(13, 10), $Char(10)), $Char(13), $Char(10)), "string")
+    If tArgs.%GetTypeOf("PMML") = "string" Do tArgs.%Set("PMML", ##class(OcuPilot.Port.AnalyticsPort).PmmlLineFeeds(tArgs.%Get("PMML")), "string")
     Quit tArgs
 }
 

@@ -7277,6 +7277,12 @@ ClassMethod PmmlClassText(pClass As %String, pText As %String) As %String
     Quit "Class " _ pClass _ " Extends %DeepSee.PMML.Definition [ ProcedureBlock ]" _ tNL _ "{" _ tNL _ tNL _ "XData " _ ..#PMMLXDATANAME _ " [ XMLNamespace = """ _ ..#PMMLXMLNAMESPACE _ """ ]" _ tNL _ "{" _ tNL _ pText _ tNL _ "}" _ tNL _ tNL _ "}" _ tNL
 }
 
+/// <p>The PMML text <var>pText</var> with a line feed for each carriage return and line feed pair and for each lone carriage return: the text the definition class stores. Pure.</p>
+ClassMethod PmmlLineFeeds(pText As %String) As %String
+{
+    Quit $Replace($Replace(pText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
+}
+
 /// <p>Read the definition class <var>pClass</var> of <var>pNamespace</var>, and whether its package holds any class, without regard to case (<var>pData</var>): <code>class</code> is the stored name of the held
 /// class (<code>""</code> for none), <code>packageHeld</code> whether a class of the package <code>pClass.</code> exists, <code>pmml</code> the <code>PMML</code> XData of the held class with its carriage
 /// returns removed (<code>""</code> when it has none) and <code>models</code> the count <code>%GetModels</code> reports for a compiled definition class. A failure is <var>pCaught</var>.
@@ -7386,8 +7392,8 @@ ClassMethod InvokePmmlDefinition(pNamespace As %String, pType As %String, ByRef 
 
 /// <p>Judge the PMML definition create with the members <var>pBody</var> (<code>Class</code> and <code>PMML</code>) before anything is written (Story 24.14, Batch 3). In order, each refusal before any save: the
 /// shape violations (<method>PmmlDefinitionViolations</method>, 422); a class of OcuPilot's own (403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); a class name that
-/// <method>ListingClassShaped</method> refuses, which includes a <code>%</code> name (422 <code>ANALYTICS.PMML.CLASS</code>); a text <method>PmmlTextRefused</method> refuses (422
-/// <code>ANALYTICS.PMML.TEXT</code>); and a name that is held, as the class or as a package, without regard to case (409 <code>ANALYTICS.PMML.TAKEN</code>), because the vendor's compile replaces the classes it
+/// <method>ListingClassShaped</method> refuses, which includes a <code>%</code> name (422 <code>ANALYTICS.PMML.CLASS</code>); a text <method>PmmlTextRefused</method> refuses, or one whose class text
+/// would be longer than <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>, the save's own bound (422 <code>ANALYTICS.PMML.TEXT</code>); and a name that is held, as the class or as a package, without regard to case (409 <code>ANALYTICS.PMML.TAKEN</code>), because the vendor's compile replaces the classes it
 /// generates there. <var>pPlan</var> holds <code>class</code>, <code>text</code> (the class text), <code>prior</code> and <code>version</code> (empty, a create has neither) and <code>compiled</code> (0).
 /// Nothing is written.</p>
 ClassMethod PlanPmmlDefinition(pNamespace As %String, pType As %String, pBody As %DynamicObject, Output pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -7401,13 +7407,13 @@ ClassMethod PlanPmmlDefinition(pNamespace As %String, pType As %String, pBody As
     Set tText = $Select(pBody.%GetTypeOf("PMML") = "string": pBody.%Get("PMML"), 1: "")
     If ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
     If '..ListingClassShaped(tClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLCLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCLASS, .pHttpStatus, .pFault)
-    If ..PmmlTextRefused(tText) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLTEXT, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTEXT, .pHttpStatus, .pFault)
+    If ..PmmlTextRefused(tText) || ($Length(..PmmlClassText(tClass, ..PmmlLineFeeds(tText))) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLTEXT, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTEXT, .pHttpStatus, .pFault)
     Set tSC = ..PmmlDefinitionFacts(pNamespace, tClass, .tData, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If (tData("class") '= "") || tData("packageHeld") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLTAKEN, .pHttpStatus, .pFault)
     Set pPlan("class") = tClass
     Set pPlan("name") = tClass
-    Set pPlan("text") = ..PmmlClassText(tClass, $Replace($Replace(tText, $Char(13, 10), $Char(10)), $Char(13), $Char(10)))
+    Set pPlan("text") = ..PmmlClassText(tClass, ..PmmlLineFeeds(tText))
     Set pPlan("prior") = ""
     Set pPlan("version") = ""
     Set pPlan("compiled") = 0
@@ -7434,8 +7440,8 @@ ClassMethod PmmlDefinitionProblem(pNamespace As %String, pType As %String, pClas
 }
 
 /// <p>Make the PMML definition create (Story 24.14, Batch 3; AD-65): <method>PlanPmmlDefinition</method>, then the class saved and compiled through <method>WriteClass</method> as <parameter>TYPEADD</parameter>. A compile the
-/// instance refuses (its own text is logged, never sent) deletes the class and answers 422 <code>ANALYTICS.PMML.COMPILE</code>; the vendor's compile makes its classes in the class's package only on success, and deleting
-/// the class deletes them. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), a restored one with its outcome. The answer is the class's row
+/// instance refuses (its own text is logged, never sent) deletes the class and answers 422 <code>ANALYTICS.PMML.COMPILE</code>; deleting the class deletes the classes its compile generated in the
+/// class's package, whether or not that compile succeeded. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), a restored one with its outcome. The answer is the class's row
 /// (<method>PmmlDefinitionRow</method>), read after the write.</p>
 ClassMethod PerformPmmlDefinition(pNamespace As %String, pBody As %DynamicObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -7459,7 +7465,8 @@ ClassMethod PerformPmmlDefinition(pNamespace As %String, pBody As %DynamicObject
 
 /// <p>The lines <method>Snippet</method> adds for the PMML definition create of the class <var>pId</var> with the members <var>pBody</var> (Story 24.14, Batch 3; AD-59): the class
 /// the write would save, compiled, and, as the write does, deleted when the compile is refused (<method>ClassWriteSnippet</method>). A create <method>PlanPmmlDefinition</method> refuses is a script that only sets the
-/// refusal's sentence. The steps are gated on one line by a free-name check that applies the create's own rule: neither the class nor a class of its package is held, without regard to case.</p>
+/// refusal's sentence. The steps are gated on one line by a free-name check that applies the create's own rule: neither the class nor a class of its package is held, without regard to case, and a lookup
+/// that fails reads as held. A text longer than <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter>, whose script could only be longer, answers no step.</p>
 ClassMethod PmmlDefinitionSnippet(pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
 {
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
@@ -7470,8 +7477,9 @@ ClassMethod PmmlDefinitionSnippet(pId As %String, pBody As %DynamicAbstractObjec
     }
     Set tSC = ..PlanPmmlDefinition(tNamespace, ..#TYPEADD, pBody, .tPlan, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit $Char(10) _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    If $Length(tPlan("text")) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
     Set tUpper = ..Literal($ZConvert(tPlan("class"), "U"))
-    Set tPrelude = $Char(10) _ " Set tHeld = 0, tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ?"", " _ tUpper _ ", " _ tUpper _ "_""."") If tRS.%Next() Set tHeld = tRS.%GetData(1)"
+    Set tPrelude = $Char(10) _ " Set tHeld = 1, tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ?"", " _ tUpper _ ", " _ tUpper _ "_""."") If (tRS.%SQLCODE = 0) && tRS.%Next() Set tHeld = tRS.%GetData(1)"
     Quit ..ClassWriteSnippet(..#TYPEADD, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, "'tHeld", ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN)
 }
 

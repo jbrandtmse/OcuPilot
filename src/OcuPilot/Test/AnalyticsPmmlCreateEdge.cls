@@ -23,14 +23,16 @@ Method TestAnOwnClassAndAMalformedNameAreRefused()
         Set tStatus = ..Post(..#SCREENROUTE, {"Class": (tName), "PMML": (tText)}, .tAnswer)
         Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "422 ANALYTICS.PMML.CLASS", tName _ ": the person's route refuses it")
         Do ..MintRefused(..#ADDTOOL, {"Class": (tName), "PMML": (tText)}, "TOOL.ARGUMENTS")
+        Do $$$AssertEquals(..Free(tName), 1, tName _ ": neither the class nor its package exists")
     }
+    Do $$$AssertEquals(..Free("OcuPilot.ProbePmmlNew"), 1, "nor does the class of OcuPilot's own")
     Do $$$AssertEquals(..Snapshot(), tBefore, "nothing was saved")
 }
 
-/// <p>AC2: a held class, a class whose package is held and a case variant of either are each refused 409 <code>ANALYTICS.PMML.TAKEN</code> by the port, the person's route and the agent's mint, and the held
+/// <p>AC2: a held definition, a class held alone, a class whose package is held and a case variant of each are each refused 409 <code>ANALYTICS.PMML.TAKEN</code> by the port, the person's route and the agent's mint, and the held
 /// class, its generated classes and the held package are as they were; the definition's read answers a held class's row, 409 for a held package alone and 404 for a free name.</p>
 /// <p>Mutation (Rule 19): drop the package test from <method>OcuPilot.Port.AnalyticsPort.PlanPmmlDefinition</method> -- the held-package legs go red; compare the class name case-sensitively in
-/// <method>OcuPilot.Port.AnalyticsPort.ReadPmmlDefinitionData</method> -- the case-variant legs go red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.ReadPmmlDefinitionData</method> -- the class held alone's case-variant legs go red; drop the class test -- its legs go red.</p>
 Method TestAHeldClassOrPackageIsRefusedAndNothingIsTouched()
 {
     Set tText = ..Text()
@@ -38,12 +40,15 @@ Method TestAHeldClassOrPackageIsRefusedAndNothingIsTouched()
     Do $$$AssertEquals(..Add(tHeld, tText, .tRes), "200 ", "a definition is created")
     Set tPackage = ..Name("Package")
     Do $$$AssertStatusOK(##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tPackage _ ".Inside", "Class " _ tPackage _ ".Inside Extends %RegisteredObject" _ $Char(13, 10) _ "{" _ $Char(13, 10) _ "}" _ $Char(13, 10)), "a class is saved in a package whose own name no class holds")
+    Set tPlain = ..Name("Plain")
+    Do $$$AssertStatusOK(##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tPlain, "Class " _ tPlain _ " Extends %RegisteredObject" _ $Char(13, 10) _ "{" _ $Char(13, 10) _ "}" _ $Char(13, 10)), "a class is saved whose package holds no class")
     Set tBefore = ..Snapshot()
     Do $$$AssertTrue(tBefore [ (tHeld _ ".Data="), "the held definition's compile generated classes in its package: " _ tBefore)
     Do $$$AssertEquals(..ClassHeld(tHeld) _ "|" _ ..PackageHeld(tHeld) _ "|" _ ..Free(tHeld), "1|1|0", "the lookups read a held class and its generated package")
     Do $$$AssertEquals(..ClassHeld(tPackage) _ "|" _ ..PackageHeld(tPackage) _ "|" _ ..Free(tPackage), "0|1|0", "and a package held alone")
+    Do $$$AssertEquals(..ClassHeld(tPlain) _ "|" _ ..PackageHeld(tPlain) _ "|" _ ..Free(tPlain), "1|0|0", "and a class held alone")
     Do $$$AssertEquals(..Free(..Name("Free")), 1, "and a free name")
-    For tName = tHeld, $ZConvert(tHeld, "L"), $ZConvert(tHeld, "U"), tPackage, $ZConvert(tPackage, "L") {
+    For tName = tHeld, $ZConvert(tHeld, "L"), $ZConvert(tHeld, "U"), tPackage, $ZConvert(tPackage, "L"), tPlain, $ZConvert(tPlain, "U") {
         Do $$$AssertEquals(..Add(tName, tText, .tRes), "409 ANALYTICS.PMML.TAKEN", tName _ ": the port refuses it as taken")
         Set tStatus = ..Post(..#SCREENROUTE, {"Class": (tName), "PMML": (tText)}, .tAnswer)
         Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ "|" _ tAnswer.%Get("reason"), 1: ""), "409 ANALYTICS.PMML.TAKEN|" _ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN, tName _ ": the person's route refuses it, with the published sentence")
@@ -176,22 +181,27 @@ Method TestADatabaseThatIsReadOnlyOrNotMountedRefusesTheCreate()
 }
 
 /// <p>AC5: in process, through the gate seam, the create is refused before any lookup for a caller without <code>%Development:USE</code> (403 naming it), without the portal pair, and without WRITE on
-/// the routines database that holds class definitions; the definition's read needs the pairs of the screen and not the write database; a namespace without analytics is refused 409 <code>ANALYTICS.NAMESPACE</code>.</p>
+/// the routines database that holds class definitions, for a free name and for a held one alike; the definition's read needs the pairs of the screen and not the write database; a namespace without analytics is refused 409 <code>ANALYTICS.NAMESPACE</code>.</p>
 /// <p>Mutation (Rule 19): drop <code>%Development:USE</code> from <parameter>OcuPilot.Port.AnalyticsPort.PMMLPAIRS</parameter> -- the <code>%Development:USE</code> leg goes red; make
 /// <method>OcuPilot.Port.AnalyticsPort.AdmitPmmlDefinition</method> admit every caller -- the routines database leg goes red.</p>
 Method TestTheCreateIsRefusedWithoutItsPairsOrItsDatabase()
 {
     Set tText = ..Text()
     Set tClass = ..Name("Gate")
+    Set tHeld = ..Name("GateHeld")
+    Do $$$AssertStatusOK(##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tHeld, "Class " _ tHeld _ " Extends %RegisteredObject" _ $Char(13, 10) _ "{" _ $Char(13, 10) _ "}" _ $Char(13, 10)), "a held class is saved, so a lookup made before the gate would answer it as taken")
     Set tBefore = ..Snapshot()
-    For tExcept = "%DeepSee_Portal:USE", "%Development:USE" {
-        Do ..HoldEverythingBut(tExcept)
-        Set tResult = ..Seamed(..#WRITEENDPOINT, "ADD", tClass, {"Class": (tClass), "PMML": (tText)}, .tRes)
-        Do $$$AssertEquals(tResult, "403 AUTH.NOPRIVILEGE|" _ tExcept, "the create without " _ tExcept _ " is refused naming it: " _ tResult)
+    Do $$$AssertTrue(tBefore [ (tHeld _ "="), "the snapshot reads the held class: " _ tBefore)
+    For tName = tClass, tHeld {
+        For tExcept = "%DeepSee_Portal:USE", "%Development:USE" {
+            Do ..HoldEverythingBut(tExcept)
+            Set tResult = ..Seamed(..#WRITEENDPOINT, "ADD", tName, {"Class": (tName), "PMML": (tText)}, .tRes)
+            Do $$$AssertEquals(tResult, "403 AUTH.NOPRIVILEGE|" _ tExcept, tName _ ": the create without " _ tExcept _ " is refused naming it: " _ tResult)
+        }
+        Do ..HoldEverythingBut("%DB_USER:WRITE")
+        Set tResult = ..Seamed(..#WRITEENDPOINT, "ADD", tName, {"Class": (tName), "PMML": (tText)}, .tRes)
+        Do $$$AssertEquals(tResult, "403 AUTH.NOPRIVILEGE|%DB_USER:WRITE", tName _ ": the create without WRITE on the routines database is refused naming it: " _ tResult)
     }
-    Do ..HoldEverythingBut("%DB_USER:WRITE")
-    Set tResult = ..Seamed(..#WRITEENDPOINT, "ADD", tClass, {"Class": (tClass), "PMML": (tText)}, .tRes)
-    Do $$$AssertEquals(tResult, "403 AUTH.NOPRIVILEGE|%DB_USER:WRITE", "the create without WRITE on the routines database is refused naming it: " _ tResult)
     Do $$$AssertEquals(..Snapshot(), tBefore, "nothing was written")
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
