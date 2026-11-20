@@ -89,10 +89,61 @@ ClassMethod Columns(pEndpoint As %String) As %String
     Quit ..UsageColumns(pEndpoint)
 }
 
+/// <p>Answer <method>MonitorRunning</method> with <var>pRunning</var> instead of the real status.</p>
+ClassMethod SetRunning(pRunning As %Boolean)
+{
+    Set ^||OcuPilotMonitorPortFixture("running") = pRunning
+}
+
+/// <p>Answer <method>TransactionNodes</method> for <var>pKind</var> with the node value <var>pStatus</var> and the rows
+/// <var>pJson</var> holds, a JSON array of <code>{ProcessID, Seconds}</code>, instead of reading the global.</p>
+ClassMethod SetNodes(pKind As %String, pStatus As %String, pJson As %String)
+{
+    Set ^||OcuPilotMonitorPortFixture("nodes", pKind) = pStatus
+    Set ^||OcuPilotMonitorPortFixture("nodes", pKind, "rows") = pJson
+}
+
+/// <p>Answer <method>HarvestCall</method> for <var>pMethod</var> with the object <var>pJson</var> holds, without running the
+/// harvested body.</p>
+ClassMethod SetHarvest(pMethod As %String, pJson As %String)
+{
+    Set ^||OcuPilotMonitorPortFixture("harvest", pMethod) = pJson
+}
+
+/// <p>How many times <method>HarvestCall</method> ran <var>pMethod</var> since the last <method>Clear</method>.</p>
+ClassMethod HarvestCalls(pMethod As %String) As %Integer
+{
+    Quit +$Get(^||OcuPilotMonitorPortFixture("harvestCalls", pMethod))
+}
+
 /// <p>Forget every override and count.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotMonitorPortFixture
+}
+
+ClassMethod MonitorRunning() As %Boolean
+{
+    If $Data(^||OcuPilotMonitorPortFixture("running"), tRunning) Quit ''tRunning
+    Quit ##super()
+}
+
+ClassMethod TransactionNodes(pKind As %String, Output pNodeStatus As %String, Output pNodes As %DynamicArray) As %Status
+{
+    If '$Data(^||OcuPilotMonitorPortFixture("nodes", pKind)) Quit ##super(pKind, .pNodeStatus, .pNodes)
+    Set pNodeStatus = ^||OcuPilotMonitorPortFixture("nodes", pKind)
+    Set pNodes = ##class(%DynamicArray).%FromJSON(^||OcuPilotMonitorPortFixture("nodes", pKind, "rows"))
+    Quit $$$OK
+}
+
+ClassMethod HarvestCall(pMethod As %String, pSpec As %String, pBody As %DynamicAbstractObject = "", Output pAnswer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Do $Increment(^||OcuPilotMonitorPortFixture("harvestCalls", pMethod))
+    If '$Data(^||OcuPilotMonitorPortFixture("harvest", pMethod), tJson) Quit ##super(pMethod, pSpec, pBody, .pAnswer, .pHttpStatus, .pFault)
+    Set pAnswer = ##class(%DynamicObject).%FromJSON(tJson)
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
 }
 
 ClassMethod GateClass() As %String

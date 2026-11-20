@@ -19,9 +19,10 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { markerValue, runIris } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -86,15 +87,16 @@ test('AC7: the list reads once under the declared six headers, in order, with on
       STRINGS.deviceColumnSubtype,
       STRINGS.tableColumnDescription,
       STRINGS.x509ColumnAlias,
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Physical device', 'Type', 'Subtype', 'Description', 'Alias']);
+    assert.deepEqual(headers, ['Name', 'Physical device', 'Type', 'Subtype', 'Description', 'Alias', 'Actions']);
 
     const total = await viewCount(page);
     assert.ok(total >= 1, `the instance configures at least one device: ${total}`);
 
     const rows = await describeRows(page);
     for (const cells of rows) {
-      assert.equal(cells.length, 6, `every row carries six cells: ${JSON.stringify(cells)}`);
+      assert.equal(cells.length, 7, `every row carries six cells and the actions menu's trigger: ${JSON.stringify(cells)}`);
       assert.notEqual(cells[0], '', 'Name is never blank');
     }
 
@@ -102,6 +104,50 @@ test('AC7: the list reads once under the declared six headers, in order, with on
     assert.equal(new URL(reads[0]).pathname, READ_PATH);
   } finally {
     await context.close();
+  }
+});
+
+// Story 21.20, AC2 (DW-1562). Mutation (Rule 19): drop `SCREENACTIONS` from `DeviceDelete.cls` -> the list draws no Delete and the
+// menu wait goes red. The leg creates one probe device of its own, deletes it from the list by typing its name, and removes the
+// device itself if the screen's delete did not.
+test('Story 21.20 AC2: Delete on a row states the consequence, releases on the typed name, and removes the device', async () => {
+  assert.match(config.container, /-ci$/, `this leg creates and deletes a probe device, so it runs only in a throwaway; ${config.container} is not one`);
+  const name = `OcuPilotProbe88Br${Date.now()}`;
+  const created = runIris(config.container, [
+    `Set tSC=##class(OcuPilot.Test.DeviceProbe).Add("${name}") Write "OCU-DEVADD-START:",$Select($System.Status.IsOK(tSC):"ok",1:$System.Status.GetErrorText(tSC)),":OCU-DEVADD-END",!`,
+  ]);
+  assert.equal(markerValue(created, 'DEVADD'), 'ok', `the probe device is created: ${created.slice(-400)}`);
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const total = await viewCount(page);
+    await filterToSubset(page, { text: name, expectRow: name, total, timeoutMs: config.navigationTimeoutMs });
+    // The first cell is the name, whose link opens the editor, so the row is selected by its Type cell.
+    await clickRowCentre(page, { index: 0, cell: 2 });
+    await page.waitForFunction((selector) => document.querySelector(selector) !== null, { timeout: config.navigationTimeoutMs }, `${ROW_SELECTOR}[aria-selected="true"]`);
+    await page.click(`${ROW_SELECTOR}[aria-selected="true"] .ocu-data-table-trigger`);
+    await page.waitForSelector('[role="menu"]', { timeout: config.navigationTimeoutMs });
+    await page.evaluate((wanted) => {
+      const items = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
+      items.find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted).click();
+    }, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-field', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.deviceDeleteConsequence, 'the dialog states the published consequence');
+    await page.type('.ocu-typed-name-field', name);
+    await page.waitForFunction(() => document.querySelector('.ocu-button-destructive')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+    await page.click('.ocu-button-destructive');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(
+      (rowSelector, wanted) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      name
+    );
+    const held = runIris(config.container, [`Write "OCU-DEVHELD-START:",##class(OcuPilot.Test.DeviceProbe).Holds("${name}"),":OCU-DEVHELD-END",!`]);
+    assert.equal(markerValue(held, 'DEVHELD'), '0', `the configuration no longer holds the device: ${held.slice(-200)}`);
+  } finally {
+    await context.close();
+    runIris(config.container, [`Do ##class(OcuPilot.Test.DeviceProbe).Remove("${name}")`]);
   }
 });
 

@@ -8,8 +8,10 @@
 /// which OS management's set covers, so it declares no own pair.</p>
 /// <p>The Process ID cell opens Process details by <code>ProcessID</code>, unless <code>Remote</code>
 /// reads true: a statement running on another instance has no local process to open (AD-5). A
-/// statement whose text the port withholds reads "Not shown". It declares no action: canceling a
-/// query is a later catalog row.</p>
+/// statement whose text the port withholds reads "Not shown".</p>
+/// <p><b>Its one row action is Cancel query</b>, the screen's caller of
+/// <class>OcuPilot.Screen.Tool.SqlActivityCancel</class> (AD-53). A row whose <code>Remote</code> reads true
+/// is drawn refused (<code>sql-statement-remote</code>), and the port refuses it for both callers.</p>
 /// <p>It joins auto-refresh, default off, as its classic page refreshes (AD-43). The classic page is
 /// <code>%CSP.UI.Portal.SQL.CurrentStatements</code>, as <code>NormalizePage</code> answers it; as a
 /// list archetype it links out to nothing (AD-44).</p>
@@ -34,7 +36,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Server", "ProcessID", "StatementHash"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "cancel", "selfProtection": "sql-statement-remote"}],
   "context": {"fields": ["Server", "ProcessID", "UserName", "Namespace", "RunType", "Elapsed", "Started", "StatementId", "StatementHash", "Statement", "Routine", "CachedQuery", "Workers", "TransactionLevel", "Remote"], "secretFields": []},
   "emptyStateKey": "sqlActivityEmpty",
   "commandAliases": ["sql activity", "running queries", "current statements"],
@@ -66,8 +68,8 @@ XData Declaration
       {"field": "Routine", "labelKey": "processColumnRoutine", "kind": "identifier"},
       {"field": "Started", "labelKey": "taskHistoryColumnStarted", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "sqlActivityEmptyAgent"
   },
   "rowTarget": {"route": "os-management/processes/details", "field": "ProcessID", "unless": "Remote"},
   "toolIdentifier": "osmgmt.sqlactivity"

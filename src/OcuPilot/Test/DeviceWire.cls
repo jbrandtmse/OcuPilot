@@ -199,6 +199,27 @@ Method TestACreateShowsOnTheListAndAnEditUpdatesIt()
     Do $$$AssertTrue($Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: "") [ ##class(OcuPilot.Api.Error).#DEVICENAMETAKEN, "as taken")
 }
 
+/// <p>AC2 (Story 21.20, DW-1562): the Devices list's Delete row action removes a device the test created. The screen's action route
+/// answers 200, the list no longer holds the name and the instance no longer stores it; a second delete of the name is 404.</p>
+/// <p>Mutation (Rule 19): drop <code>SCREENACTIONS</code> from <class>OcuPilot.Screen.Tool.DeviceDelete</class> -- the route finds no tool
+/// for the action and this goes red.</p>
+Method TestTheListsDeleteRowActionRemovesADevice()
+{
+    Set tName = ..Name("RowDel")
+    Set tRequest = {"Name": (tName), "PhysicalDevice": "/tmp/p88rowdel.txt", "Type": "OTH", "SubType": "P-DEC"}
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 201, "the create answers 201")
+    Do $$$AssertTrue(..ListRow(tName) '= "", "the list holds the device")
+    Set tAction = {"action": "delete"}
+    Do tAction.%Set("id", tName, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/osmgmt.devices/action", .tStatus, .tBody, tAction.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the Delete row action answers 200: " _ $Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(..ListRow(tName), "", "the list no longer holds the device")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and the configuration no longer stores it")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/osmgmt.devices/action", .tStatus, .tBody, tAction.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 404, "a second delete of the name is 404")
+}
+
 /// <p>AC4: the vendor's <code>PUT</code> is an upsert -- sent for a name deleted a moment earlier,
 /// the raw port answers 201 and the device is back. Both callers refuse first: the screen's edit of
 /// the deleted name answers 404 over the wire and the agent's confirm 409, and neither re-creates

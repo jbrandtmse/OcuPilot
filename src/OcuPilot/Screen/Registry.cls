@@ -3249,7 +3249,10 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <p><code>allowed-directory-fallback</code> is the allow-list's unrestricted fallback row (Story 18.46): a row whose
 /// <code>Restricted</code> reads false, explained by <class>OcuPilot.Api.AllowListError</class>'s <code>REASONFALLBACK</code>
 /// and refused for a change or a remove by the allow-list port.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback,protected-global,locale-table,locale-loadable";
+/// <p><code>sql-statement-remote</code> is a running SQL statement that belongs to another server (Story 21.20): a row whose
+/// <code>Remote</code> reads true, explained by <class>OcuPilot.Api.SqlActivityError</class>'s <code>REASONREMOTE</code> and
+/// refused for a cancel by the SQL activity port before any vendor call.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback,protected-global,locale-table,locale-loadable,sql-statement-remote";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

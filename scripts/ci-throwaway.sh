@@ -478,6 +478,9 @@ services:
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The SQL activity cancel's privilege class signs in as a probe principal holding exactly the port's pairs, cancels its own and
+      # another account's probe statement as it, and grants and revokes the SQL privilege %CANCEL_QUERY on the principal's role (Story 21.20).
+      # classes: SqlActivityCancelPrivilege
       # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
       # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
       # classes: MetricsGate
@@ -956,6 +959,10 @@ services:
       # ResourceTransferWrite creates, exports, deletes and imports one probe resource and writes files under the first allowed directory, removing each (Story 21.19).
       # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
+      # Sets the instance's system state to Alert and resets its system alerts, through the shipped screen-action and confirm paths, and
+      # reads alerts.log to show that no line is lost (Story 21.20). The reset is not undoable; the throwaway's own monitor raises the state again.
+      # classes: SystemAlertsWrite
+      OCUPILOT_ALLOW_ALERT_RESET: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

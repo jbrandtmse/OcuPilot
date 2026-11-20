@@ -620,6 +620,26 @@ test('Story 23.4: the started write\'s sentence is one sentence on both surfaces
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "REASONSTARTED's sentence is published in EXPERIENCE.md's Fixed strings");
 });
 
+/** Story 21.20's two error classes: `[file, parameter, strings.ts key]`. */
+const SQL_ACTIVITY_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'SqlActivityError.cls');
+const MONITOR_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'MonitorError.cls');
+const STORY_21_20_REFUSALS = [
+  [SQL_ACTIVITY_ERROR, 'REASONREMOTE', 'sqlActivityRemoteReason'],
+  [SQL_ACTIVITY_ERROR, 'REASONENDED', 'sqlActivityEndedReason'],
+  [SQL_ACTIVITY_ERROR, 'REASONNOPRIVILEGE', 'sqlActivityNoPrivilegeReason'],
+  [MONITOR_ERROR, 'REASONNOTRUNNING', 'transactionsNotRunning'],
+];
+
+test('Story 21.20: each SQL activity and monitor refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONENDED in SqlActivityError.cls -> this goes red naming both.
+  for (const [file, parameter, key] of STORY_21_20_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
+});
+
 /** Story 18.15's enable tool, which declares the refusal of %SYS and %ALL. */
 const ENABLE_INTEROP_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'NamespaceEnableInterop.cls');
 
@@ -1129,6 +1149,19 @@ test("Story 21.5: protected-global answers the sentence for a name beginning wit
   for (const name of ['ZZProbe', 'oddDEF', '%ocupilot', '']) assert.equal(selfProtectionReason(PROTECTED_GLOBAL_RULE, name), '', `'${name}' is not protected by name`);
   const registry = readFileSync(REGISTRY, 'utf8');
   assert.ok(parseSelfProtectionRules(registry)?.includes('protected-global'), 'the instance declares the rule in SELFPROTECTIONRULES');
+});
+
+test('Story 21.20: sql-statement-remote answers the sentence for a row on another server and nothing for a local one', async () => {
+  // Mutation (Rule 19): drop the `Remote` read in `selfProtectionReason` -> the remote leg goes red.
+  const { selfProtectionReason, SQL_STATEMENT_REMOTE_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(SQL_STATEMENT_REMOTE_RULE, 'sql-statement-remote');
+  const key = 'host:1972\u000142\u0001abc';
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', { Remote: true }), STRINGS.sqlActivityRemoteReason);
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', { Remote: false }), '');
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', null), '');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('sql-statement-remote'), 'the instance declares sql-statement-remote');
 });
 
 test('Story 21.16: locale-table answers a row that is no table, else the refusal the row carries, and locale-loadable a row that is not loadable', async () => {

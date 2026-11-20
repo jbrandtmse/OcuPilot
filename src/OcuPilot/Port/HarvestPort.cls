@@ -217,14 +217,15 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer [ Private ]
     Quit 500
 }
 
-/// <p><code>""</code>: no harvested body this port runs is a write, so no request type has a
-/// script form (AD-59).</p>
+/// <p><code>""</code>: this port runs a body for its caller and carries no write of its own, so no
+/// request type has a script form here. A harvested body may be a write when its caller's tool is
+/// one; that tool's own port carries the write's script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     Quit ""
 }
 
-/// <p>No step: no harvested body this port runs is a write (AD-59).</p>
+/// <p>No step: this port carries no write of its own (AD-59).</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     Quit []
