@@ -14217,3 +14217,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
 - 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision
+
+### DW-2804: An install or update run by an administrator without %All stops at EnsureSqlPrivileges (SQLCODE -99) unless the account first holds SELECT on %Dictionary.CompiledClass and the OcuPilot_Kernel_State schema privileges WITH GRANT OPTION; the latter then draws the installer's foreign-grant warning, and the README does not say any of it
+- source: 1.0.18 upgrade check (prompts/upgrade-1018-prompt.md, 1.0.13 leg) | severity: med | fix-risk: med | footprint: cross-story
+- evidence: Measured on ocupilot-c-ci 2026-11-20: as OcuUpgAdmin (no %All) -99 at EnsureSqlPrivileges; schema grant alone -99; plus CompiledClass SELECT OK; revoking schema grant -112; Installer.cls identical 1dd513578..bdee5d94e, so pre-existing (the 1.0.17 check pre-granted both)
+- 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression
