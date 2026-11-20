@@ -48,7 +48,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterOneTest() As %Status
 {
-    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotDatabaseProhibited, ^||OcuPilotDatabaseOwnProbe, ^||OcuPilotDatabaseOwnFail
+    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotDatabaseProhibited, ^||OcuPilotDatabaseOwnProbe, ^||OcuPilotDatabaseOwnFail, ^||OcuPilotDatabaseOwnPort
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
     Do $ClassMethod(..#ACCEPT, "Clear")
     Merge tRows = ..PreparedPolicy
@@ -162,6 +162,41 @@ Method TestAnOwnProbeAndAFailedOwnSetReadAreRefused()
     }
     Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", "no write reached the port")
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tDirectory, "Mounted"), "true", "and the database is still mounted")
+}
+
+/// <p>The protected set without the admin API (AC2, DW-1850): with the recording port answering a failure
+/// for <code>Namespace.Namespace</code> <code>GET</code> and <code>Database.ConfigCRUD</code>
+/// <code>LIST</code>, the dismount of OcuPilot's own database, the install namespace's routines database
+/// and <code>IRISSYS</code> is still refused <code>PROHIBITED.OCUPILOTDATABASE</code> on both callers, a
+/// probe database's dismount is permitted on both, and neither route was called.</p>
+/// <p>Mutation (Rule 19): the dismount arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Database</method>
+/// passes 0 for <code>pFromConfig</code> -> every dismount is refused for the failed admin read, the probe's
+/// is no write, and this goes red.</p>
+Method TestTheDismountJudgesTheSetWithoutTheAdminRoutes()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DatabaseActions).Enable(..#DISMOUNTKEY), "the agent's dismount key is enabled, so only the prohibited set stands in the way")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", ..#NAME), "a probe database is created")
+    Set tProbe = $ClassMethod(..#PROBE, "DirectoryOf", ..#NAME)
+    Set ^||OcuPilotDatabaseWritePort = ..#ACCEPT
+    Set ^||OcuPilotDatabaseProhibited = "OcuPilot.Test.DatabaseProhibitedFixture"
+    Set ^||OcuPilotDatabaseOwnPort = ..#ACCEPT
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.DatabaseProhibitedFixture")
+    Set tRoutines = ##class(OcuPilot.Test.DatabaseWrite).InstallRoutines()
+    Set tFailed = "Namespace.Namespace/GET,Database.ConfigCRUD/LIST"
+    For tName = "OCUPILOT", tRoutines, "IRISSYS" {
+        Set tDirectory = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored(tName, "Directory")
+        Do $ClassMethod(..#ACCEPT, "Clear")
+        Do $ClassMethod(..#ACCEPT, "FailOn", tFailed)
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("dismount", tDirectory), "403 " _ ..#OWNCODE, tName _ ": the screen's dismount is refused with the admin routes failing")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Agent(..#DISMOUNTTOOL, tDirectory, {}), "403 " _ ..#OWNCODE, tName _ ": and the agent's")
+        Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", tName _ ": no write reached the port")
+    }
+    Do $ClassMethod(..#ACCEPT, "Clear")
+    Do $ClassMethod(..#ACCEPT, "FailOn", tFailed)
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("dismount", tProbe), "200 ", "a probe database's dismount is permitted on the screen")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Agent(..#DISMOUNTTOOL, tProbe, {}), "200 ", "and on the agent's confirm")
+    Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "Database.Actions/DISMOUNT,Database.Actions/DISMOUNT", "each reached the port's dismount")
+    Do $$$AssertTrue(('$ListFind($ListFromString($ClassMethod(..#ACCEPT, "CallTypes")), "Namespace.Namespace/GET")) && ('$ListFind($ListFromString($ClassMethod(..#ACCEPT, "CallTypes")), "Database.ConfigCRUD/LIST")), "and neither admin route was called")
 }
 
 /// <p>The dismount's impact for the database in <var>pDirectory</var>, as the screen's dialog asks it

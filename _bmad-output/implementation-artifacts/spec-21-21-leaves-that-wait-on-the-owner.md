@@ -2,7 +2,8 @@
 title: 'Story 21.21: Leaves that wait on the owner'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'd576e032e0da8e01cee1e7ef942f1fbb1830140b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -134,6 +135,17 @@ deferred: []
 
 ## Design Notes
 
+**Pass scope (runner, 2026-11-20):** the current pass builds Task 0, Batches 1 to 4 and nothing of Batch 5 (its ACs and strings are drafted by the lead afterward). The lead commits each batch at its boundary; a subagent never commits. The step now handed to a subagent is named in the line below.
+
+Current step: Batch 1 only (DW-1850), with its shared-surface updates and the Batch 1 `(loop)` classes and browser spec from `## Verification`, and its Rule 19 mutation (AC1, AC2) recorded in `## Verification` as `mutation:` lines. Task 0 is done (below): Batch 3 is not built. Nothing of Batches 2 to 5.
+
+**Task 0 results (2026-11-20, `ocupilot-ci`, bundle md5 `5e3a2fd1` as deployed):**
+
+- (a) Measured with throwaway principals holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` (no Manage), and `%Admin_Operate:USE` alone, logged in a child process, over the probe database `OCUPROBE184ZA` in its own directory. As the first principal: `Config.Namespaces.Get("HSCUSTOM")` answered `Globals=HSCUSTOM`, `Routines=HSCUSTOM`; `Config.Databases.Get` answered `Directory=/durable/iris/mgr/HSCUSTOM/` for both and `/durable/iris/mgr/` for `IRISSYS`; `DatabasePort` `Database.Actions` `DISMOUNT` answered `sc=1 http=200` and the database read `Mounted false`. The same principal through `AdminPort.Invoke` was refused `PORT.ACCESSDENIED` (403) on `Namespace.Namespace` `GET` (with and without a name) and on `Database.ConfigCRUD` `LIST`. As the second principal (no `%DB_IRISSYS:READ`): the switch to `%SYS` raised `<PROTECT> 206 ... /durable/iris/mgr/`, so the `Config.*` reads are refused. No pair beyond those two was needed. The probe database was remounted, then the database, both users, both roles and the probe class were removed (read back: all absent).
+- (b) Baseline, no header: a tab opened by a real click in the Rule editor frame (`window.open(<editor url>, '_blank')`) had an opener and held `ocupilot.token-pair` (and `ocupilot.tab-nonce`); the editor in it signed itself in. This reproduces Story 20.13's Q1, with the configuration diagram frame opening a rule editor tab and a classic portal tab the same way. With `Cross-Origin-Opener-Policy: same-origin` on the shell document (a scratch edit to `ServeIndex`, since reverted and reloaded; the header was absent from a hashed asset): the opener was `null` in all three cases and every tab still loaded and signed itself in (the diagram's rule editor tab and the classic portal tab loaded), but `ocupilot.token-pair` was still in each tab's session storage, read again after load. The header removes the opener and not the copy. The three browser specs were not run with the header, since the decision rule is already failed.
+- Reverted with Edit; `git status --short` shows no change under `src/` and the bundle was not redeployed.
+- Verdict: (a) PASS. (b) FAIL (do not build Batch 3): the check "the tab holds no `ocupilot.token-pair`" fails with the header on (pair present, opener null). DW-2348 closes `wontfix-accepted` with a `reopen_if` naming that check.
+
 **Governing ADs:** AD-10 (the database arm, unchanged), AD-27 (the named case below), AD-29, AD-16, AD-8, AD-44 and AD-64 (SH-27), AD-52 and AD-53 (one operation, two callers), AD-39 and AD-12 (one envelope; the fault's sentence), AD-40 (confirm is not a tool), AD-28, AD-47 and AD-63 (storage copy, editor frame), AD-22 (dismount's key stays `false`).
 
 **AD-27 amendment for the spec gate** (the runner writes it, citing "owner answer U-65"; proposed text):
@@ -203,6 +215,11 @@ Every test added or changed passes on a fresh environment, in either order. Muta
 - AC3: `RenderRefusal` ignores `pReason` → `ProposalConfirm` and `ConfirmRoute` go red.
 - AC4: drop the header line → `Static` and the new editor-frame test go red.
 - AC5: remove one register row → `exclusion-register.test.mjs` goes red.
+
+Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal) and the reverted source reloaded:
+
+- mutation: AC1, `OWNSETRESOURCE` and its `PrivilegePairs` override restored on `DatabaseDismount` -> `DatabaseActionsGate` red (`TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet` and `TestExactlyTheDeclaredPairsWriteOnBothCallers`).
+- mutation: AC2, the dismount branch of `Prohibited.Database` passes `pFromConfig` 0 -> `DatabaseActionsProhibited.TestTheDismountJudgesTheSetWithoutTheAdminRoutes` red.
 
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):
 

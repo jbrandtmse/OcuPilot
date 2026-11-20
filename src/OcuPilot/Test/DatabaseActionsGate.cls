@@ -26,7 +26,7 @@ Parameter PROBE = "OcuPilot.Test.DatabaseActionProbe";
 Parameter TARGETRESOURCE = "%DB_OCUGATE184";
 
 /// <p>The principals, each <code>user:role:grants</code> beyond the install namespace's code read.</p>
-Parameter PRINCIPALS = "OcuProbe184GateOperate:OcuProbe184GateOperateRole:%Admin_Operate:U;%DB_IRISSYS:R,OcuProbe184GateMount:OcuProbe184GateMountRole:%Admin_Operate:U;%DB_IRISSYS:R;%Admin_Secure:U,OcuProbe184GateNoTarget:OcuProbe184GateNoTargetRole:%Admin_Operate:U;%DB_IRISSYS:RW,OcuProbe184GateCompact:OcuProbe184GateCompactRole:%Admin_Operate:U;%DB_IRISSYS:RW;%DB_OCUGATE184:R,OcuProbe184GateManage:OcuProbe184GateManageRole:%Admin_Manage:U;%DB_IRISSYS:R,OcuProbe184GateLocal:OcuProbe184GateLocalRole:%Admin_Manage:U;%DB_IRISSYS:R;%Admin_Operate:U,OcuProbe184GateIntegrity:OcuProbe184GateIntegrityRole:%Admin_Manage:U;%DB_IRISSYS:RW;%Admin_Operate:U,OcuProbe184GateDismount:OcuProbe184GateDismountRole:%Admin_Operate:U;%DB_IRISSYS:R;%Admin_Manage:U";
+Parameter PRINCIPALS = "OcuProbe184GateOperate:OcuProbe184GateOperateRole:%Admin_Operate:U;%DB_IRISSYS:R,OcuProbe184GateMount:OcuProbe184GateMountRole:%Admin_Operate:U;%DB_IRISSYS:R;%Admin_Secure:U,OcuProbe184GateNoTarget:OcuProbe184GateNoTargetRole:%Admin_Operate:U;%DB_IRISSYS:RW,OcuProbe184GateCompact:OcuProbe184GateCompactRole:%Admin_Operate:U;%DB_IRISSYS:RW;%DB_OCUGATE184:R,OcuProbe184GateManage:OcuProbe184GateManageRole:%Admin_Manage:U;%DB_IRISSYS:R,OcuProbe184GateLocal:OcuProbe184GateLocalRole:%Admin_Manage:U;%DB_IRISSYS:R;%Admin_Operate:U,OcuProbe184GateIntegrity:OcuProbe184GateIntegrityRole:%Admin_Manage:U;%DB_IRISSYS:RW;%Admin_Operate:U,OcuProbe184GateDismount:OcuProbe184GateDismountRole:%Admin_Operate:U;%DB_IRISSYS:R";
 
 Property PreparedPassword As %String;
 
@@ -92,8 +92,7 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Each extra pair, missing (AC9): the mount without <code>%Admin_Secure:USE</code>, the dismount
-/// without <code>%Admin_Manage:USE</code> (its prohibited set's own-database read), the compact and
+/// <p>Each extra pair, missing (AC9): the mount without <code>%Admin_Secure:USE</code>, the compact and
 /// defragment without <code>%DB_IRISSYS:WRITE</code>, the compact and defragment without read on the
 /// target's own resource, the size grow, Add a volume and the integrity check without
 /// <code>%Admin_Operate:USE</code>, and the integrity check without <code>%DB_IRISSYS:WRITE</code> are
@@ -108,11 +107,9 @@ Method TestEachMissingPairIsRefusedBeforeAnyPortCall()
 {
     Do ..Seed()
     Set tA = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GA")
-    Set tB = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GB")
     Set tC = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GC")
     Do $$$AssertStatusOK(..Mount(tA, "DISMOUNT"), "the mount's target is dismounted")
     Set tCases = $ListBuild($ListBuild(1, "%Admin_Secure:USE", "mount", tA, "OcuPilot.Screen.Tool.DatabaseMount", {"ReadOnly": "false"}.%ToJSON()))
-    Set tCases = tCases _ $ListBuild($ListBuild(1, "%Admin_Manage:USE", "dismount", tB, "OcuPilot.Screen.Tool.DatabaseDismount", ""))
     Set tCases = tCases _ $ListBuild($ListBuild(1, "%DB_IRISSYS:WRITE", "compact", tC, "OcuPilot.Screen.Tool.DatabaseCompact", {"TargetFreeSpace": "0"}.%ToJSON()))
     Set tCases = tCases _ $ListBuild($ListBuild(3, ..#TARGETRESOURCE _ ":READ", "compact", tC, "OcuPilot.Screen.Tool.DatabaseCompact", {"TargetFreeSpace": "0"}.%ToJSON()))
     Set tCases = tCases _ $ListBuild($ListBuild(1, "%DB_IRISSYS:WRITE", "defragment", tC, "OcuPilot.Screen.Tool.DatabaseDefragment", ""))
@@ -135,44 +132,38 @@ Method TestEachMissingPairIsRefusedBeforeAnyPortCall()
     Do $$$AssertTrue($IsObject(tProposal), "the agent's size grow is minted for " _ ..User(5))
     Set tRun = ..RunAs(..User(5), [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}])
     Do $$$AssertEquals(..LegText(tRun, 1), "403 AUTH.NOPRIVILEGE %Admin_Operate:USE calls=0 types=", "and its agent confirm without %Admin_Operate:USE is refused naming it")
-    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tA, "Mounted") _ ##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "falsetrue", "the mount's target is still dismounted, and the dismount's still mounted")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tA, "Mounted"), "false", "the mount's target is still dismounted")
 }
 
-/// <p>DW-1847 (AD-8 as amended 2026-09-29): a holder of Database details' pairs without
-/// <code>%Admin_Manage:USE</code> is refused a dismount 403 naming <code>%Admin_Manage:USE</code> on the
-/// agent's tool call, the screen's action and the agent's confirm, the last two with the recording port
-/// asked nothing, and never <code>PROHIBITED.OCUPILOTDATABASE</code>, which the prohibited set's
-/// own-database read would answer such a holder; the database stays mounted.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.DatabaseDismount.PrivilegePairs</method> answers
-/// the base class's pairs alone -> the tool call is admitted, the screen and the confirm are refused
-/// <code>PROHIBITED.OCUPILOTDATABASE</code> after a port read, and this goes red.</p>
-Method TestAnOperateOnlyDismountIsRefusedForItsPairNeverProhibited()
+/// <p>DW-1850 (AD-27's named case): a holder of <code>%Admin_Operate:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> without <code>%Admin_Manage:USE</code> dismounts a probe database on the
+/// screen's action and the agent's confirm, each reaching the port's dismount, and mounts it back; the same
+/// principal is refused <code>PROHIBITED.OCUPILOTDATABASE</code> on <code>IRISSYS</code>'s directory on both
+/// callers, which the protected set judges from the configuration classes and not the admin API routes.</p>
+/// <p>Mutation (Rule 19): restore <code>OWNSETRESOURCE</code> and its <code>PrivilegePairs</code> override on
+/// <class>OcuPilot.Screen.Tool.DatabaseDismount</class> -> the principal is refused for
+/// <code>%Admin_Manage:USE</code> and this goes red.</p>
+Method TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet()
 {
     Do ..Seed()
+    Set tA = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GA")
     Set tB = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GB")
-    Set tUser = ..User(1)
-    Set tWanted = "403 AUTH.NOPRIVILEGE %Admin_Manage:USE"
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
-    Do $$$AssertStatusOK(tSC, "a running turn is seeded for " _ tUser)
-    Set tInput = {}
-    Do tInput.%Set("Directory", tB, "string")
-    Set tRun = ..RunAs(tUser, [{"kind": "dispatch", "turnKey": (tTurnKey), "tool": "osmgmt.databasedetails.dismount", "input": (tInput)}])
-    Set tLeg = ..Leg(tRun, 1)
-    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent"), tWanted, "the agent's tool call is refused naming the pair")
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "the ledger rows the call wrote are removed")
-    Set tRun = ..Legs(tUser, "dismount", tB, "OcuPilot.Screen.Tool.DatabaseDismount", "")
+    Set tSystem = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored("IRISSYS", "Directory")
+    Do $$$AssertTrue(tSystem '= "", "the system database's directory is read (" _ tSystem _ ")")
+    Set tUser = ..User(8)
+    Do ..Both(8, "dismount", tA, tB, "OcuPilot.Screen.Tool.DatabaseDismount", "", "Database.Actions/DISMOUNT")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tA, "Mounted") _ ##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "falsefalse", "both probe databases are dismounted")
+    Do $$$AssertStatusOK(..Mount(tA, "MOUNT"), "the first is mounted back")
+    Do $$$AssertStatusOK(..Mount(tB, "MOUNT"), "and the second")
+    Set tRun = ..Legs(tUser, "dismount", tSystem, "OcuPilot.Screen.Tool.DatabaseDismount", "")
     For tLeg = 1, 2 {
         Set tOne = ..Leg(tRun, tLeg)
-        Set tWhich = $Select(tLeg = 1: "the screen's action", 1: "the agent's confirm")
-        Do $$$AssertEquals(..LegText(tRun, tLeg), tWanted _ " calls=0 types=", tWhich _ " is refused naming the pair, the port asked nothing")
-        Do $$$AssertTrue($IsObject(tOne) && (tOne.%Get("code") '= "PROHIBITED.OCUPILOTDATABASE"), tWhich _ " is never the prohibited set's refusal")
+        Do $$$AssertEquals($Select($IsObject(tOne): tOne.%Get("http") _ " " _ tOne.%Get("code"), 1: "absent"), "403 PROHIBITED.OCUPILOTDATABASE", $Select(tLeg = 1: "the screen's action", 1: "the agent's confirm") _ " on IRISSYS is refused by the protected set, never for a pair")
     }
-    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "true", "and the database stays mounted")
 }
 
 /// <p>Exactly the declared pairs (AC9): a principal holding each tool's declared set writes on both
-/// callers -- truncate with Database details' pairs alone, dismount with <code>%Admin_Manage:USE</code>
-/// beside them, the mount with
+/// callers -- truncate and dismount with Database details' pairs alone, the mount with
 /// <code>%Admin_Secure:USE</code> beside them, the compact and defragment with the system database's
 /// write and the target's read, the size grow and Add a volume with Local databases' pairs and
 /// <code>%Admin_Operate:USE</code>, the integrity check with the Databases list's, that and the system
