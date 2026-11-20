@@ -757,3 +757,5 @@
 2026-11-20T04:28:15Z	Story 21.19	dev_complete	scope=finalize_after_split(B1-3+PM-24) spawn_at=2026-11-20T03:40Z model=sonnet build_sha=f3e05e79f followup_review_recommended=true deferred=1(DW-2788) cycle_iteration=1
 2026-11-20T04:28:15Z	Story 21.19	code_head_pushed	sha=6bbbb3d67(feature_bookkeeping_merge_over_f3e05e79f) run=44674547477 missing=none
 2026-11-20T04:28:15Z	Story 21.19	stage_spawned	stage=code-review spawn_at=2026-11-20T04:28:15Z model=opus agent_name=21-19-code-review-1 cycle_iteration=1 baseline=f6e5cc741 prior_lines_ended=verified
+2026-11-20T05:34:40Z	Story 21.19	cr_complete	spawn_at=2026-11-20T04:30Z model=opus high=0 med=10(8_patched;DW-2793_escalated,DW-2794_routed;burndown) low=24 rows=42 unresolved_high_med=2(owned_burndown) new=DW-2793..2801 final=done commit=5ac55f02d strings=PM-24_ten_kept_as_written closing_sections_present=true
+2026-11-20T05:34:40Z	Story 21.19	ci_red_classified	run=44674547477 head=6bbbb3d67 class=defect tests=PermissionsLists(ResourceList_row_actions),BackgroundTasksLive(tasks_holder_screens) action=collect_with_fresh_gate,one_rework

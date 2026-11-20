@@ -121,6 +121,31 @@ warnings: ['multiple-goals', 'oversized']
 - AC5 (DW-2471). Given a list screen whose read answers 200 with a body that is not a read's shape, when it renders, then it shows its refusal with Retry, not a blank table and no banner.
 - AC6. Given the default baseline, when the agent proposes any new write, then it mints and confirms; with its key `false`, the governance gate refuses it.
 
+### Review Findings
+
+Code review 2026-11-20 (four layers, full-opus; 42 rows, 34 entries). Measured on `ocupilot-ci`; every roster class green before and after the patches.
+
+- [x] [Review][Patch] The advisor shows the vendor's second `_PUBLIC` roles line as its raw code `PUBLICRolesList1` and never names the roles (medium) [src/OcuPilot/Port/AdvisorPort.cls `Listed`, `PublicRoles`]
+- [x] [Review][Patch] The port's own `RESOURCEFILE.CHANGED` refusal was never driven (medium) [src/OcuPilot/Test/ResourceTransferRead.cls `TestAnImportIsRefusedWhenItsFileIsNotTheOneReviewed`]
+- [x] [Review][Patch] The kernel's route of a resource import to `ResourceImport` was unpinned; the port's own check hid it (medium) [src/OcuPilot/Test/ResourceTransferWrite.cls]
+- [x] [Review][Patch] An import's server file outside the allowed directories had no refusal test (medium) [src/OcuPilot/Test/ResourceTransferRead.cls]
+- [x] [Review][Patch] `UseSTARTTLS` and the two messages had no set and read-back against the vendor (DW-2788; medium) [src/OcuPilot/Test/TaskMailSettingWrite.cls `TestTheStartTlsFlagAndTheMessagesRoundTripThroughTheVendor`]
+- [x] [Review][Patch] The mail write's screen leg set a fixed `587` and asserted an audit row the vendor skips when the port already reads 587 (medium, Rule 19) [src/OcuPilot/Test/TaskMailSettingWrite.cls]
+- [x] [Review][Patch] A Save pressed again during the editor hand-off posted the create twice [ui/src/app/areas/web-applications/create-form.page.ts, user-create-form.page.ts, role-create-form.page.ts `onSave`]
+- [x] [Review][Patch] The advisor's changed-after-mint leg asserted only "not ok" [src/OcuPilot/Test/AdvisorWrite.cls]
+- [x] [Review][Patch] `warmEditPage`'s unknown-descriptor test named a mutation that cannot redden it [ui/src/app/shell/screen-outlet.spec.ts]
+- [x] [Review][Patch] The 2,000-resource bound was pinned above only [src/OcuPilot/Test/ResourceTransferRead.cls]
+- [x] [Review][Patch] The CHANGED sentence's doc and the import header claimed the port compares the replaced count; `REPLACESPARAM` was never read [src/OcuPilot/Api/ResourceFileError.cls, ResourceTransferPort.cls, Screen/Tool/ResourceImport.cls]
+- [x] [Review][Patch] The ignore tools' `type` enum repeated `ADVISORAREAS` [src/OcuPilot/Screen/Tool/SecurityAdvisorIgnore.cls]
+- [x] [Review][Patch] PM-24's tests cited AC1-AC4, which are other features' criteria; the export's root refusal asserted only its status [src/OcuPilot/Test/ResourceTransferRead.cls, ResourceTransferWrite.cls]
+- [x] [Review][Defer] A resource import that opens an administrative resource is not named as a privilege grant on its card [src/OcuPilot/Kernel/Proposal/Prohibited.cls `GrantsPrivilegeByEffect`] — deferred: DW-2793 escalated (contended file)
+- [x] [Review][Defer] The Resources list's transfer glue is the eighth copy of the transfer-dialog glue [ui/src/app/areas/permissions/resource-list.page.ts] — deferred: DW-2794 routed burndown; the port's copy of LocalePort's file helpers is an occurrence on DW-2763
+- [x] [Review][Defer] Closed at emission: DW-2795 (`tasks.mail.set` stricter than measured), DW-2796 (`ReadMail` public, contended file), DW-2797 (person's import has no typed confirm, by design), DW-2798 (failed export over an existing file), DW-2799 (digest-only read-back, as LocaleImport), DW-2800 and DW-2801 (theoretical)
+
+**Strings (PM-24, orchestrator ruling).** All ten pass EXPERIENCE.md's plain-words, sentence-case and no-internal-id rules and are kept as written: the two refusals match the term-list and locale precedents, and the two lines an applied transfer leaves stay count-neutral ("Resources imported: <count>.", "Resources exported to <path>: <count>."), since the sentence form reads "Imported 1 resources." for the single-resource export the browser spec drives. ClassicPageGate's 158 `OWNPAIRS` names equal the instance's registry roster (run 1168).
+
+**Rejected:** a >3,000,000-character text is "more than 2,000 resources" (`false`: each entry is bounded by the vendor's MAXLENs, so no real export of 2,000 or fewer exceeds the cap); export of several selected resources (`false`: the list is single-select); PM-24 has no AC (its fix edits the spec; the orchestrator ruled it into the story); Copy from on a 200 of the wrong shape, an unknown transport fault in the transfer dialog, the Copy from cap of 1,000 (low, unlikely, matched by siblings); AC5 has no browser leg (Rule 3 is met by the story's browser specs, and the shared read runs in real components); the local-import browser refusal and the agent's export-all (pinned by the ObjectScript legs).
+
 ## Spec Change Log
 
 - 2026-11-20, orchestrator rulings on the implement halt: (1) PM-24's ten strings are accepted under the orchestrator's grant (U-118 precedent), style-checked at review, and listed verbatim in a veto item; EXPERIENCE.md stays add-only. (2) TM-17 (a task's output file) and TM-18's mail password move to Story 21.36 (split, Rule 5; owner answer U-70 carries); this story closes with Batches 1 to 3 and PM-24, and Batch 4's TM-17 and mail-password bullets and their acceptance clauses are out of scope here. The AD-35 audit mask for the mail password's ConfigurationChange row is already in feature (Story 21.24, `b706fb831`, `AuditPort.VENDORCONFIGSECRETS`, pinned by `OcuPilot.Test.TaskMailAuditMask`).
@@ -238,14 +263,20 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - AC6: the key fallback. mutation: the `security.advisor.unignore` line removed from `Baseline.cls` (an absent key reads disabled) -> `AdvisorWrite` 2 of 4 red (the agent's mint and the baseline leg; run 905), reverted and reloaded.
 - AC1 (cap): mutation: the advisor branch of `Read.Execute` asks the port for `tMax` rows in place of `tMax + 1` -> `AdvisorRead` 1 of 8 red (the cut is never reported; run 1156), reverted and reloaded.
 - AC1 (grammar): mutation: `Registry.ReadProblem`'s advisor arm drops its `type` check -> `AdvisorRead` 1 of 8 red (run 1158), reverted and reloaded.
-- AC1 (agent, row gone): mutation: `AdvisorPort.Find` answers an unlisted recommendation as found -> `AdvisorWrite.TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone` red with two others (run 1162), reverted and reloaded. The changed-after-mint leg is guarded twice (the port's 409 and the fingerprint), so no single mutation of either reddens it alone.
-- AC4 (hand-off tolerance): mutation: the `try`/`catch` removed from `warmEditPage` -> `screen-outlet.spec.ts` 1 of 33 red, reverted (the file's diff from the baseline read as before).
+- AC1 (agent, row gone): mutation: `AdvisorPort.Find` answers an unlisted recommendation as found -> `AdvisorWrite.TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone` red with two others (run 1162), reverted and reloaded. The changed-after-mint leg now asserts `409 PROPOSAL.TARGETCHANGED`. mutation: `SecurityAdvisorIgnore.FINGERPRINTSUBJECT` set to `Code` -> that test red with three others (run 1224), reverted, 5 of 5 green (run 1225).
+- AC1 (`_PUBLIC` roles line): mutation: `Listed` skips `PublicRoles` -> `AdvisorRead.TestThePublicRolesLineReadsTheRolesPublicHolds` 1 of 9 red (run 1222), reverted and reloaded.
+- AC2 (`UseSTARTTLS` and messages, DW-2788): mutation: `ConfigPort.SendNode` sends no `EmailSet` -> `TaskMailSettingWrite.TestTheStartTlsFlagAndTheMessagesRoundTripThroughTheVendor` red with two others (run 1232), reverted (diff empty), 5 of 5 green (run 1233).
+- AC4 (second Save during the hand-off): mutation: the `handingOff()` check dropped from the web application create page's `onSave` guard -> `create-form.page.spec.ts` 1 of 6 red (two creates sent), reverted.
+- AC4 (hand-off tolerance): mutation: the `try`/`catch` removed from `warmEditPage` -> `screen-outlet.spec.ts` 1 of 33 red, reverted (the file's diff from the baseline read as before). The unknown-descriptor case reddens only with the `Object.hasOwn` guard and the `try`/`catch` both removed (2 of 33 red at review), reverted.
 - PM-24 (consequence card): mutation: the `CONSEQUENCE_RESOURCEFILEIMPORT` branch dropped from `consequenceSentence` -> `proposal-view.test.mjs` 1 red, restored.
 - PM-24 (import writes): mutation: `ResourceTransferPort.SendImport` passing `Flags` 1 -> `ResourceTransferWrite` 1 of 2 red (the screen's and the agent's imports; run 1021), reverted (shasum equal) and reloaded.
 - PM-24 (review): mutation: `Review` adding 0 in place of 1 for a resource the instance holds -> `ResourceTransferRead` 1 of 7 red (the replaced count; run 1022), reverted (shasum equal).
 - PM-24 (export directory): mutation: `ExportFile` with its directory check made unreachable -> `ResourceTransferRead` 1 of 7 red (a name whose directory is absent; run 1023), reverted (shasum equal).
 - PM-24 (gate): mutation: `Invoke` with its `Gate` check made unreachable -> `ResourceTransferRead` 1 of 7 red (the denial test; run 1024), reverted (shasum equal).
 - PM-24 (own resources): mutation: `Prohibited.ImportedResources` stopping after the first entry -> `ResourceTransferRead` 1 of 7 red (every second-entry row and the port's refusal; run 1025), reverted (shasum equal) and reloaded.
+- PM-24 (changed since review, import outside the allowed directories): mutations applied together, each in its own method: `Import` without its reviewed-values comparison, and `ImportText` reading the server file without `Locate` -> `ResourceTransferRead` 2 of 8 red, the two targeted methods (run 1227; the vendor import armed to fail, `T21Pm24Rd1` absent afterwards), reverted (diff empty).
+- PM-24 (the 2,000 bound): mutation: `Review` refusing at `>=` the cap -> `ResourceTransferRead` 1 of 8 red (run 1236), reverted and reloaded.
+- PM-24 (kernel route): mutation: `Prohibited.Prohibits` not calling `ResourceImport` for a resource import -> `ResourceTransferWrite` 1 of 2 red, on the kernel's own row only (run 1229), reverted (diff empty), 2 of 2 green (run 1230).
 - PM-24 (client): mutation: `resource-list.page.ts` sending `export` for the all target -> `resource-transfer.spec.ts` 1 of 6 red (the body assertion), reverted (shasum equal). Browser: the `export` registration dropped, rebuilt and redeployed -> `resources-transfer.browser-spec.mjs` 1 of 2 red (no export dialog opens), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.

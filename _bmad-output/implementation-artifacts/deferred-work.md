@@ -14030,6 +14030,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-15-locale-and-table-import.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LocalePort.ImportText vs InteropPort (Rule 31 copy)
 - 2026-11-19T09:18:39Z status=routed owner=burndown by=harvest note=dedupe
+- 2026-11-20T05:08:50Z occurrence=21-19-shell-advisor-permission-and-task-leaves
 
 ### DW-2764: The vendor's ImportAll deletes an existing custom locale before reading its replacement, so a record it then fails to import leaves the locale gone
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-epic
@@ -14128,3 +14129,49 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 21.19 finalize review deferral (unverified)
 - 2026-11-20T04:27:30Z status=routed owner=21-19-shell-advisor-permission-and-task-leaves by=harvest note=for_review
+- 2026-11-20T05:34:40Z status=resolved-by:21-19-shell-advisor-permission-and-task-leaves owner=21-19-shell-advisor-permission-and-task-leaves by=adjudication note=STARTTLS_on/off,two-line_MessageSuccess,32000-char_MessageFailure_round-trip_EmailGet(TaskMailSettingWrite)
+
+### DW-2793: A resource import whose file adds a public letter to an administrative resource is not named as a privilege grant on its card, as the same change through the resource edit is
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Mint calls Prohibited.GrantsPrivilegeByEffect on the payload, which for an import holds no PublicPermission, and the fresh read's Entries are never read; ResourceImport.Consequence ignores pPrivileged; Prohibited.cls is contended with Epic 24
+- 2026-11-20T05:08:46Z status=escalated owner=burndown by=cr note=fix reads the fresh read's Entries in GrantsPrivilegeByEffect and lets ResourceImport.Consequence honour pPrivileged
+
+### DW-2794: The Resources list page's export and import glue is the eighth near-copy of the transfer-dialog glue on the locale, lookup table, code, term list, folder item and task schedule pages
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: resource-list.page.ts openTransfer/beginSend/endSend/onImport repeat locale-list.page.ts:250-296 with no stated reason (Rule 2); one shared transfer controller would serve all eight pages
+- 2026-11-20T05:08:49Z status=routed owner=burndown by=cr note=Rule 2 copy; Epic 24's analytics pages are contended
+
+### DW-2795: tasks.mail.set requires %DB_IRISSYS:WRITE through ConfigSettingSet's WRITERESOURCE although EmailSet needs only ConfigPort's pairs
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskMailSettingSet inherits WRITERESOURCE %DB_IRISSYS / WRITE; Task 0 (b) measured EmailSet with ConfigPort.PAIRS alone; ClassicPageGate OWNPAIRS pins the pair
+- 2026-11-20T05:08:53Z status=wontfix-accepted owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=reopen_if=a person holding the screen's pairs but not %DB_IRISSYS:WRITE needs to set Task Manager email; stricter than measured is allowed
+
+### DW-2796: ConfigPort.ReadMail is a public seam that calls the vendor outside the port's gate
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ConfigPort.cls ReadMail lacks [ Private ] unlike ReadEntry and SendNode; it reads only roster names and EmailGet checks %Admin_Manage:USE itself; ConfigPort.cls is contended with Epic 24
+- 2026-11-20T05:08:56Z status=wontfix-accepted owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=reopen_if=any class other than ConfigPort and its test seam calls ReadMail
+
+### DW-2797: A person's resource import has no typed-name confirm and no review of the names it replaces
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Batch 4 builds PM-24 on TaskImport's shape, whose person path is the import dialog with its consequence note, as LocaleImport's is; the agent's card lists the names
+- 2026-11-20T05:08:58Z status=by-design owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=spec-bound: Batch 4 names TaskImport/TaskExport's shape
+
+### DW-2798: A failed resource export over an existing file leaves that file overwritten or truncated
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ResourceTransferPort.Export deletes only a file it created; EXPORTOVERWRITES is 1 by declaration, so an existing file is the vendor's to overwrite
+- 2026-11-20T05:09:00Z status=wontfix-accepted owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=reopen_if=a failed export is reported while the file at its name was a valid earlier export
+
+### DW-2799: A resource import's read-back compares the file's digest, not the resources the import wrote
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ResourceImport READBACKFIELDS is Digest, as LocaleImport's; the port refuses a vendor count other than the reviewed one and any reviewed name not held after the import
+- 2026-11-20T05:09:03Z status=wontfix-accepted owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=reopen_if=an import reads back matches while an imported resource's public permission or description differs from the file
+
+### DW-2800: A create page whose navigation to the editor is cancelled after a successful create, or whose editor chunk never settles, shows no Saved
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the web-app, user and role create pages keep handingOff set after await warmEditPage and a void navigateByUrl; the editor routes carry no guard that cancels and a chunk request fails rather than hangs
+- 2026-11-20T05:09:06Z status=wontfix-theoretical owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=real if an editor route gains a guard that can cancel, or a chunk request can hang unfailed
+
+### DW-2801: A resource import's text is written to its temporary file in 30,000-character chunks, so a character outside the BMP split at a boundary, or a non-UTF-8 XML declaration, would change what the vendor reads
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ResourceTransferPort.WriteTransferFile and TextDigest chunk by  and write UTF-8; the vendor's own export declares UTF-8 and resource names and descriptions are rarely outside the BMP
+- 2026-11-20T05:09:09Z status=wontfix-theoretical owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=real if a resource file from another tool declares another encoding or holds a character outside the BMP
