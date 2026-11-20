@@ -33,6 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { holdChunks, saveWithChunksHeld } from './chunk-hold.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -44,7 +45,10 @@ const LIST_URL = '/ocupilot/permissions/roles?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/permissions/roles/edit?ns=HSCUSTOM';
 
 /** Every role this spec creates, removed by exact name in `before` and `after`. */
-const NAMES = ['OcuPilotProbeRoleCreate', 'OcuPilotProbeRolePrivileged'];
+const NAMES = ['OcuPilotProbeRoleCreate', 'OcuPilotProbeRolePrivileged', 'OcuPilotProbeRoleHeld'];
+
+/** The held-chunk leg's role. */
+const HELD_NAME = NAMES[2];
 
 const PROBE_DESCRIPTION = 'OcuPilot probe role';
 
@@ -446,6 +450,28 @@ test('AC1: the Roles list offers Create, and it opens the create form', async ()
       { timeout: config.navigationTimeoutMs }
     );
     await page.waitForSelector('#ocu-role-Name', { visible: true, timeout: config.navigationTimeoutMs });
+  } finally {
+    await context.close();
+  }
+});
+
+// AC4, DW-2372. Mutation (Rule 19): drop the `handingOff` check from the create page's `showSaved`, rebuild and redeploy ->
+// the no-Saved assertion goes red (the form's own Saved shows while the chunk is held). Navigating before the warm resolves is
+// pinned in `role-create-form.page.spec.ts`, where the held loader is the page's own.
+test("AC4: no Saved shows while the editor's page code is held, then the editor's own Saved shows", async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    const control = await holdChunks(page);
+    await page.waitForSelector('#ocu-role-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-role-Name', HELD_NAME);
+    const held = await saveWithChunksHeld(page, control, config, async () => (await saveButton(page)).click(), '/roles');
+    assert.ok(held > 0, 'at least one chunk request was held');
+    await page.waitForFunction(
+      (sentence) => document.querySelector('app-role-editor-page .ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSaved
+    );
+    assert.ok(storedRole(HELD_NAME) !== null, 'the instance holds the role the form created');
   } finally {
     await context.close();
   }

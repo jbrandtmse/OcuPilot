@@ -16,7 +16,7 @@
  * `node --test`.
  */
 
-import type { ApiService, JsonResult } from './api';
+import type { ApiService } from './api';
 import { classifyFault, type Fault } from './fault.ts';
 import type { RefreshRead, RefreshReadResult } from './refresh';
 import type { ReadDeclaration, ScreenDeclaration } from './screens.generated';
@@ -194,8 +194,9 @@ export function screenReadPath(
 
 /**
  * The `RefreshRead` for `declaration`: one request per call, under the API service's own scope,
- * answering the rows and `truncated`, or a classified fault. A body that is not the read's shape
- * is a server fault. Refused, by throwing, for a screen that declares no read.
+ * answering the rows and `truncated`, or a classified fault. A success answer whose body is not the
+ * read's shape is a `rejected` fault with the status it came with. Refused, by throwing, for a
+ * screen that declares no read.
  *
  * `criteria` is read **at call time**, not at bind time, so a screen whose criteria form the user
  * is still editing sends what the form holds when Search is pressed rather than what it held when
@@ -227,11 +228,12 @@ export function createScreenRead(
         bannerRequires: typeof body.bannerRequires === 'string' ? body.bannerRequires : '',
       };
     }
-    // An answer that arrived but is not the read's shape falls through the taxonomy's last branch,
-    // a server fault, carrying the status it came with.
-    const failed: JsonResult<unknown> =
-      result.kind === 'ok' ? { kind: 'error', status: result.status, code: null, reason: null, detail: null } : result;
-    return { kind: 'fault', fault: classifyFault(failed, path) as Fault };
+    // An answer that arrived but is not the read's shape is a refused read, not a server fault: it
+    // raised no connectivity fault, so a banner kind would draw no alert on the screen itself.
+    if (result.kind === 'ok') {
+      return { kind: 'fault', fault: { kind: 'rejected', status: result.status, code: null, path } };
+    }
+    return { kind: 'fault', fault: classifyFault(result, path) as Fault };
   };
 }
 

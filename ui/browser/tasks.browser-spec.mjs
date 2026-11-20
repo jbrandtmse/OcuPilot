@@ -1205,14 +1205,14 @@ async function assertRefreshAlone(page) {
   await page.keyboard.press('Escape');
 }
 
-test('Story 6.5/6.6/16.5 AC1: the Tasks side bar reads Task schedule, On-demand tasks, Upcoming tasks, Task history, Background tasks, and each entry opens its screen', async () => {
+test('Story 6.5/6.6/16.5 AC1: the Tasks side bar reads Task schedule, On-demand tasks, Upcoming tasks, Task history, Background tasks, Task Manager email, and each entry opens its screen', async () => {
   const { context, page } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
-    const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel, STRINGS.taskHistoryLabel, STRINGS.backgroundTaskListLabel];
+    const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel, STRINGS.taskHistoryLabel, STRINGS.backgroundTaskListLabel, STRINGS.taskMailSettingsLabel];
     const sideBar = await sideBarOf(page);
     assert.deepEqual(sideBar.entries, sideBarLabels('tasks'), 'the entries in their declared order');
-    const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming', '/ocupilot/tasks/history', '/ocupilot/tasks/background'];
+    const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming', '/ocupilot/tasks/history', '/ocupilot/tasks/background', '/ocupilot/tasks/email'];
     for (let index = 0; index < wanted.length; index += 1) {
       await page.evaluate((label) => {
         const items = Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item'));

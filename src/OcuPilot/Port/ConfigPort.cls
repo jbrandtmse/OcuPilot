@@ -46,9 +46,12 @@
 /// roster names through the vendor's <code>Modify</code>, the one named key at its new value and every other settable name as the read
 /// answered it (AD-4); a name the roster marks shown and never changed is refused before any vendor call. The endpoint's gate adds
 /// <parameter>SECURITYPAIRS</parameter>.</p>
+/// <p><b>The Task Manager email settings</b> (<code>TaskMail</code>, Story 21.19) are twelve roster rows read through
+/// <code>%SYS.Task.Config.EmailGet</code> and set through <code>EmailSet</code> (<parameter>TASKMAILROSTER</parameter>); the mail password
+/// is never a row, and no read or write names it (AD-35).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
-/// <method>CreateEntry</method>, <method>DeleteEntry</method>,
+/// <method>CreateEntry</method>, <method>DeleteEntry</method>, <method>ReadMail</method>,
 /// <method>SendNode</method>, <method>SendNlsNode</method>, <method>SendTsql</method>, <method>StoredDialect</method>,
 /// <method>PurgeCachedQueries</method> and <method>ReloadLocale</method>. Production overrides none of them.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
@@ -78,7 +81,7 @@ Parameter SECURITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security,TaskMail";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -101,6 +104,8 @@ Parameter USERDDLENDPOINT = "UserDDL";
 Parameter NLSENDPOINT = "NLSDefaults";
 
 Parameter SECURITYENDPOINT = "Security";
+
+Parameter TASKMAILENDPOINT = "TaskMail";
 
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
@@ -154,6 +159,14 @@ Parameter TSQLROSTER = "DIALECT|choice|MSSQL,Sybase||1;ANSI_NULLS|choice|OFF,ON|
 Parameter TSQLSETTERS = "DIALECT=SetDialect,ANSI_NULLS=SetAnsiNulls,CASEINSCOMPARE=SetCaseInsCompare,QUOTED_IDENTIFIER=SetQuotedIdentifier";
 
 Parameter TSQLDEFAULTDIALECT = "Sybase";
+
+/// <p>The Task Manager email settings <code>%SYS.Task.Config.EmailGet</code> and <code>EmailSet</code> take, in <parameter>SHELLROSTER</parameter>'s
+/// grammar. The mail password, which the same two methods also take, is not a name of this roster. The port's rules judge the port number
+/// (<code>Port</code> is at most five characters) and the substitution fields of each subject and message.</p>
+Parameter TASKMAILROSTER = "Server|text|||1;Port|text|5||1;Sender|text|||1;ReplyTo|text|||1;TimeZone|text|||1;AuthUser|text|||1;SSLConfiguration|text|||1;UseSTARTTLS|boolean|||1;SubjectSuccess|text|||1;SubjectFailure|text|||1;MessageSuccess|text|32000||1;MessageFailure|text|32000||1";
+
+/// <p>The vendor class whose <code>EmailGet</code> and <code>EmailSet</code> the <code>TaskMail</code> endpoint calls.</p>
+Parameter TASKMAILCLASS = "%SYS.Task.Config";
 
 /// <p>What a <code>%SYSTEM.TSQL</code> setter's answer starts with when it refused the value.</p>
 Parameter TSQLREFUSAL = "Invalid";
@@ -310,11 +323,11 @@ ClassMethod IsNamed(pEndpoint As %String) As %Boolean
     Quit (pEndpoint = ..#SYSTEMDDLENDPOINT) || (pEndpoint = ..#USERDDLENDPOINT)
 }
 
-/// <p>Whether <var>pEndpoint</var> has no backing class and is listed from a fixed roster: the SQL Shell, TSQL and ISQL
-/// settings.</p>
+/// <p>Whether <var>pEndpoint</var> has no backing class and is listed from a fixed roster: the SQL Shell, TSQL, ISQL and Task Manager
+/// email settings.</p>
 ClassMethod IsRoster(pEndpoint As %String) As %Boolean
 {
-    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT)
+    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT) || (pEndpoint = ..#TASKMAILENDPOINT)
 }
 
 /// <p>Whether <var>pEndpoint</var> lists the NLS configured defaults and the locale-format switch.</p>
@@ -869,7 +882,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
 /// <code>""</code> for an endpoint that has none.</p>
 ClassMethod RosterOf(pEndpoint As %String) As %List
 {
-    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, : "")
+    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, ..#TASKMAILENDPOINT: ..#TASKMAILROSTER, : "")
     Set tRoster = ""
     For tI = 1:1:$Length(tSpec, ";") {
         Set tEntry = $Piece(tSpec, ";", tI)
@@ -940,14 +953,44 @@ ClassMethod ShownFor(pEntry As %List, pStored As %String) As %String
 /// <code>%SYS</code>.</p>
 ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) As %Status [ Private ]
 {
+    Set tSC = $$$OK
     Set tRoster = ..RosterOf(pEndpoint)
     For tI = 1:1:$ListLength(tRoster) {
         Set tEntry = $List(tRoster, tI)
         Set tKey = $List(tEntry, 1)
         If (pName '= "") && (tKey '= pName) Continue
+        If pEndpoint = ..#TASKMAILENDPOINT {
+            Set tSC = ..ReadMail(tKey, .tMail)
+            If $$$ISERR(tSC) Quit
+            Set pData(tKey) = $ListBuild(tMail, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
+            Continue
+        }
         Set pData(tKey) = $ListBuild(..RosterValue(pEndpoint, tEntry), ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
     }
-    Quit $$$OK
+    Quit tSC
+}
+
+/// <p>The Task Manager email setting <var>pName</var> as <code>%SYS.Task.Config.EmailGet</code> answers it, in <var>pValue</var>, in
+/// <code>%SYS</code> by save and restore. A name the roster does not hold is an error status and nothing is read. Overridable so a fixture can
+/// feed a value or a vendor refusal; production never overrides it.</p>
+ClassMethod ReadMail(pName As %String, Output pValue As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If ..RosterEntry(..#TASKMAILENDPOINT, pName) = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the Task Manager email setting " _ pName _ " is not one this port reads")
+            Quit
+        }
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(..#TASKMAILCLASS, "EmailGet", pName, .tValue)
+        If $$$ISOK(tSC) Set pValue = $Get(tValue)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The value the roster entry <var>pEntry</var> reads now: a TSQL setting's getter answer, otherwise the node as stored, or
@@ -996,8 +1039,10 @@ ClassMethod StoredDialect() As %String
     Quit tDialect
 }
 
-/// <p>The one call that changes a SQL Shell or ISQL node: <var>pName</var>'s node of <var>pEndpoint</var> set to the stored code
-/// <var>pStored</var>, in <code>%SYS</code> by save and restore. The name is a roster name the rules have already admitted.
+/// <p>The one call that changes a SQL Shell or ISQL node, or a Task Manager email setting: <var>pName</var>'s node of <var>pEndpoint</var>
+/// set to the stored code <var>pStored</var>, or the setting through <code>%SYS.Task.Config.EmailSet</code>, in <code>%SYS</code> by save and
+/// restore. <code>EmailSet</code> answers OK when its own store failed, so a caller reads the value back. The name is a roster name the rules
+/// have already admitted.
 /// Overridable so a fixture can record the write; production never overrides it.</p>
 ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String) As %Status [ Private ]
 {
@@ -1009,6 +1054,8 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
             Set ^%SYS("sql", "shell", pName) = pStored
         } ElseIf pEndpoint = ..#ISQLENDPOINT {
             Set ^%SYS("xsql", "informix", pName) = pStored
+        } ElseIf pEndpoint = ..#TASKMAILENDPOINT {
+            Set tSC = $ClassMethod(..#TASKMAILCLASS, "EmailSet", pName, pStored)
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no node is written for " _ pEndpoint)
         }
@@ -1444,6 +1491,7 @@ ClassMethod RosterLine(pEndpoint As %String, pEntry As %List, pValue As %String)
         Set tDialect = ..StoredDialect()
         Quit "Set tPrevious = ##class(%SYSTEM.TSQL)." _ tSetter _ "(" _ $ClassMethod(tAdmin, "Literal", $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect)) _ ", " _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"
     }
+    If pEndpoint = ..#TASKMAILENDPOINT Quit "Set tSC = ##class(" _ ..#TASKMAILCLASS _ ").EmailSet(" _ $ClassMethod(tAdmin, "Literal", tName) _ ", " _ $ClassMethod(tAdmin, "Literal", pValue) _ ")"
     Set tRoot = $Select(pEndpoint = ..#SHELLENDPOINT: """sql"", ""shell""", 1: """xsql"", ""informix""")
     Quit "Set ^%SYS(" _ tRoot _ ", " _ $ClassMethod(tAdmin, "Literal", tName) _ ") = " _ $ClassMethod(tAdmin, "Literal", ..StoredFor(pEntry, pValue))
 }

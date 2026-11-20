@@ -7,6 +7,8 @@
 /// (<method>SendNlsNode</method>, <method>ReloadLocale</method>; <method>ReloadFails</method> makes the reload answer an error), the stored TSQL dialect a flag set passes on is the one
 /// <method>HoldDialect</method> names, and <method>PurgeFails</method> makes the purge answer an error. <method>WriteThrough</method> makes
 /// <method>SendProperties</method> make its call after recording it; the DDL mapping entry calls (<method>SendEntry</method>, <method>CreateEntry</method>, <method>DeleteEntry</method>) are recorded and made through alike, and <method>HoldEntry</method> makes a named entry read as held. Nothing else differs from the shipped port.</p>
+/// <p>A Task Manager email set is recorded as a node write (<method>SendNode</method>) and sent nowhere, and <method>MailReadFails</method> makes
+/// the email read answer an error.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ConfigGateSeam Extends OcuPilot.Port.ConfigPort
 {
@@ -20,7 +22,22 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough, ^||OcuPilotConfigReloads, ^||OcuPilotConfigReloadFails
+    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough, ^||OcuPilotConfigReloads, ^||OcuPilotConfigReloadFails, ^||OcuPilotConfigMailFails
+}
+
+/// <p>Answer an error from <method>ReadMail</method> until <method>Reset</method>.</p>
+ClassMethod MailReadFails()
+{
+    Set ^||OcuPilotConfigMailFails = 1
+}
+
+ClassMethod ReadMail(pName As %String, Output pValue As %String) As %Status
+{
+    If $Get(^||OcuPilotConfigMailFails) {
+        Set pValue = ""
+        Quit $$$ERROR($$$GeneralError, "a Task Manager email read failure fed by the test")
+    }
+    Quit ##super(pName, .pValue)
 }
 
 /// <p>The number of reloads <method>ReloadLocale</method> recorded.</p>

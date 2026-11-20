@@ -46,6 +46,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { waitForRows } from './list-spec.mjs';
+import { holdChunks, saveWithChunksHeld } from './chunk-hold.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -59,7 +60,15 @@ const FORM_URL = '/ocupilot/web-applications/list/edit?ns=HSCUSTOM';
 /** Every application this spec creates lives under this prefix and is removed in `after`. */
 const PREFIX = '/csp/ocupilotbrowserprobe';
 
-const NAMES = [`${PREFIX}create`, `${PREFIX}refusal`, `${PREFIX}geometry`, `${PREFIX}roles`];
+const NAMES = [`${PREFIX}create`, `${PREFIX}refusal`, `${PREFIX}geometry`, `${PREFIX}roles`, `${PREFIX}copysource`, `${PREFIX}copytarget`, `${PREFIX}held`];
+
+/** The Copy from leg's source application, created through the API, and the copy the form creates. */
+const COPY_SOURCE = NAMES[4];
+const COPY_TARGET = NAMES[5];
+const COPY_DESCRIPTION = 'OcuPilot browser copy source';
+
+/** The held-chunk leg's application. */
+const HELD_NAME = NAMES[6];
 
 /** A value far longer than the field it is typed into, for the geometry leg. */
 const LONG_VALUE = 'a-very-long-web-application-description-'.padEnd(220, 'x');
@@ -78,6 +87,8 @@ before(async () => {
 after(async () => {
   await removeProbeApplications();
   if (browser !== null) await browser.close();
+  const left = NAMES.filter((name) => applicationExists(name));
+  assert.deepEqual(left, [], 'no application this spec created remains on the throwaway');
 });
 
 function credentials() {
@@ -201,6 +212,7 @@ test('AC1: the form captures the classic field set in order, and the type contro
     assert.deepEqual(
       labels,
       [
+        STRINGS.userCopyFrom,
         STRINGS.tableColumnName,
         STRINGS.tableColumnDescription,
         STRINGS.headerNamespaceLabel,
@@ -613,6 +625,95 @@ test('AC7: a privileged application role states its consequence, one line with U
       STRINGS.formSaved
     );
     assert.equal(storedMatchRoles(NAMES[3]), ':%All', 'the Save grants %All as the application role');
+  } finally {
+    await context.close();
+  }
+});
+
+/** The Basic header the shipped routes accept for this run's own credentials. */
+function authHeader() {
+  return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
+}
+
+/** Create `name` through the shipped create route, with the instance's own default authentication method. */
+async function createThroughApi(name, extra) {
+  const form = await (await fetch(`${config.origin}/api/ocupilot/web-applications/form`, { headers: { Authorization: authHeader() } })).json();
+  const answer = await fetch(`${config.origin}/api/ocupilot/web-applications`, {
+    method: 'POST',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Name: name, NameSpace: 'HSCUSTOM', Enabled: true, Recurse: true, AutheEnabled: form.defaultMethod, ...extra }),
+  });
+  assert.ok(answer.ok, `the source application was created through the API (HTTP ${answer.status}): ${await answer.text()}`);
+}
+
+// AC3, WA-15. Mutation (Rule 19): copy `Path` too -- `fill` in `create-form.store.ts` also sets `next['Path']` ->
+// the store spec's skipped-fields assertion goes red (this leg cannot see a field the form does not draw); drop the
+// `MatchRoles` read from `fill`, rebuild and redeploy -> the stored application roles assertion goes red.
+test('AC3: Copy from an application fills the form except the name, and Save creates the copy with its roles', async () => {
+  await createThroughApi(COPY_SOURCE, {
+    Description: COPY_DESCRIPTION,
+    Recurse: false,
+    MatchRoles: [{ MatchRole: '', TargetRoles: ['%Developer'] }],
+  });
+  assert.equal(storedMatchRoles(COPY_SOURCE), ':%Developer', 'the source holds one application role');
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-web-app-CopyFrom', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(
+      (name) => [...document.querySelectorAll('#ocu-web-app-CopyFrom option')].some((option) => option.value === name),
+      { timeout: config.navigationTimeoutMs },
+      COPY_SOURCE
+    );
+    const first = await page.$eval('#ocu-web-app-CopyFrom option', (node) => ({ value: node.value, text: node.textContent.trim() }));
+    assert.deepEqual(first, { value: '', text: STRINGS.sslVerifyPeerNone }, 'the empty choice is None');
+
+    await page.select('#ocu-web-app-CopyFrom', COPY_SOURCE);
+    await page.waitForFunction(
+      (description) => document.querySelector('#ocu-web-app-Description')?.value === description,
+      { timeout: config.navigationTimeoutMs },
+      COPY_DESCRIPTION
+    );
+    assert.equal(await page.$eval('#ocu-web-app-Name', (node) => node.value), '', 'the name stays empty');
+    assert.equal(await page.$eval('#ocu-web-app-NameSpace', (node) => node.value), 'HSCUSTOM');
+    assert.equal(await page.$eval('#ocu-web-app-Recurse', (node) => node.checked), false, "the source's own setting is copied, not the form's default");
+    assert.equal(
+      await page.evaluate(() => document.getElementById('ocu-web-app-MatchRoles-%Developer')?.checked),
+      true,
+      'and its application role is ticked'
+    );
+
+    await fill(page, 'ocu-web-app-Name', COPY_TARGET);
+    await (await saveButton(page)).click();
+    await page.waitForFunction(
+      (name) => document.querySelector('#ocu-web-app-edit-Description')?.value !== undefined && document.querySelector('#ocu-web-app-edit-Name')?.value === name,
+      { timeout: config.navigationTimeoutMs },
+      COPY_TARGET
+    );
+    assert.equal(await page.$eval('#ocu-web-app-edit-Description', (node) => node.value), COPY_DESCRIPTION, 'the editor shows the copied description');
+    assert.equal(await page.$eval('#ocu-web-app-edit-Recurse', (node) => node.checked), false, 'and the copied setting');
+    assert.ok(applicationExists(COPY_TARGET), 'the instance holds the copy');
+    assert.equal(storedMatchRoles(COPY_TARGET), ':%Developer', "with the source's application role");
+  } finally {
+    await context.close();
+  }
+});
+
+// AC4, DW-2372. Mutation (Rule 19): drop the `handingOff` check from the create page's `showSaved`, rebuild and redeploy ->
+// the no-Saved assertion goes red (the form's own Saved shows while the chunk is held). Navigating before the warm resolves is
+// pinned in `create-form.page.spec.ts`, where the held loader is the page's own.
+test("AC4: no Saved shows while the editor's page code is held, then the editor's own Saved shows", async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    const control = await holdChunks(page);
+    await fillMinimal(page, HELD_NAME);
+    const held = await saveWithChunksHeld(page, control, config, async () => (await saveButton(page)).click(), '/web-applications');
+    assert.ok(held > 0, 'at least one chunk request was held');
+    await page.waitForFunction(
+      (sentence) => document.querySelector('app-web-app-editor-page .ocu-form-bar-status')?.textContent?.trim() === sentence,
+      { timeout: config.navigationTimeoutMs },
+      [STRINGS.formSaved, STRINGS.readBackMatches].join(` ${String.fromCharCode(0xb7)} `)
+    );
+    assert.ok(applicationExists(HELD_NAME), 'the instance holds the application the form created');
   } finally {
     await context.close();
   }

@@ -15,6 +15,12 @@ export const WEB_APPLICATIONS_FORM_PATH = `${WEB_APPLICATIONS_PATH}/form`;
 /** The blur check: whether a name is already taken. A read of the instance, not a validation. */
 export const WEB_APPLICATIONS_NAME_PATH = `${WEB_APPLICATIONS_PATH}/name`;
 
+/** The Web applications list's declared read, which the copy's source picker is drawn from (AD-5). */
+export const WEB_APPLICATIONS_LIST_READ_PATH = '/api/ocupilot/screens/webapp.list/read?maxRows=1000';
+
+/** The field the copy names its source by. */
+export const COPY_FROM_FIELD = 'CopyFrom';
+
 /** The entity type and scope every change this form publishes carries (AD-13, AD-14). */
 export const WEB_APPLICATION_ENTITY = 'web-application';
 
@@ -60,6 +66,12 @@ const PYTHON_FIELDS: readonly string[] = [
   'WSGIAppLocation',
   'WSGIType',
 ];
+
+/**
+ * The fields a copy never takes from its source: the name is the new application's own, and the
+ * Python directory is a directory name the new application names itself (AD-21).
+ */
+const COPY_SKIPPED_FIELDS: readonly string[] = ['Name', 'WSGIAppLocation'];
 
 /** One authentication method the instance offers, as `GET /web-applications/form` projects it. */
 export interface AutheMethod {
@@ -124,6 +136,11 @@ function textAt(source: unknown, key: string): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
   return '';
+}
+
+/** A flag as the instance's read spells it: a JSON boolean, or the vendor's 1 and `'1'`. */
+function isTrue(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 function arrayAt(source: unknown, key: string): readonly unknown[] {
@@ -216,6 +233,14 @@ export class WebAppCreateForm {
   private readBackValue: ReadBack | null = null;
 
   private createdIdValue = '';
+
+  /** The application the picker names, or `''` for a create from nothing. */
+  private copyFromValue = '';
+
+  /** The application whose values the form now holds, which a refused choice falls back to. */
+  private copiedValue = '';
+
+  private applicationsValue: readonly string[] = [];
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -328,6 +353,16 @@ export class WebAppCreateForm {
     return this.formDirty.dirty();
   }
 
+  /** The application this form copies from, or `''` for a create from nothing. */
+  copyFrom(): string {
+    return this.copyFromValue;
+  }
+
+  /** The application names the source picker offers, from the Web applications list's declared read. */
+  applications(): readonly string[] {
+    return this.applicationsValue;
+  }
+
   /**
    * Whether `field` is one the chosen type sends at all.
    *
@@ -368,6 +403,9 @@ export class WebAppCreateForm {
     this.typeValue = TYPE_CSP;
     this.autheBits = [];
     this.matchRolesValue = [];
+    this.copyFromValue = '';
+    this.copiedValue = '';
+    this.applicationsValue = [];
     this.loadedValue = false;
     this.savingValue = false;
     this.violationList = [];
@@ -399,6 +437,97 @@ export class WebAppCreateForm {
     }
     this.loadedValue = true;
     this.notify();
+    void this.loadApplications(generation);
+  }
+
+  /** Read the Web applications list's names for the source picker. A read that fails leaves the picker empty. */
+  private async loadApplications(generation: number): Promise<void> {
+    const result = await this.api().requestJson<unknown>(WEB_APPLICATIONS_LIST_READ_PATH);
+    if (generation !== this.generation || result.kind !== 'ok') return;
+    const rows = arrayAt(result.body, 'rows');
+    this.applicationsValue = rows.map((row) => textAt(row, 'Name')).filter((name) => name !== '');
+    this.notify();
+  }
+
+  /**
+   * Choose the application to copy from, or `''` to create from nothing.
+   *
+   * A choice reads the source through the edit form's own read (`GET /web-applications/form?name=`)
+   * and fills what this form carries from it -- every settable field the answer holds but the name
+   * and the Python directory, the type those fields describe, the authentication methods the
+   * instance offers and the source's application roles. The name a person typed stays. Nothing else
+   * is copied: no namespace-default flag and no `%`-class access, which the classic page's copy
+   * leaves behind too. A refused read leaves the form as it was and shows the refusal as the
+   * editor's own read does; clearing the choice restores the blank form.
+   */
+  async setCopyFrom(name: string): Promise<void> {
+    this.copyFromValue = name;
+    this.clearRefusal();
+    this.clearFieldViolation(COPY_FROM_FIELD);
+    if (name === '') {
+      this.copiedValue = '';
+      this.fill(null);
+      this.markDirty();
+      this.notify();
+      return;
+    }
+    this.notify();
+    const generation = this.generation;
+    const result = await this.api().requestJson<unknown>(`${WEB_APPLICATIONS_FORM_PATH}?name=${encodeURIComponent(name)}`);
+    if (generation !== this.generation || this.copyFromValue !== name) return;
+    const body = result.kind === 'ok' ? result.body : null;
+    const application = body !== null && typeof body === 'object' ? (body as Record<string, unknown>)['application'] : null;
+    if (result.kind !== 'ok' || application === null || typeof application !== 'object') {
+      this.copyFromValue = this.copiedValue;
+      if (result.kind !== 'ok') {
+        this.envelopeReason = result.kind === 'error' ? (result.reason ?? '') : '';
+        this.rememberRefusal(result, {});
+      }
+      this.notify();
+      return;
+    }
+    this.copiedValue = name;
+    this.fill(application as Record<string, unknown>);
+    this.markDirty();
+    this.notify();
+  }
+
+  /**
+   * Put the form on `source`'s values, or on the blank form for `null`. The typed name stays, and
+   * so does a refusal on it; a refusal on any other field stood over a value this replaces.
+   */
+  private fill(source: Record<string, unknown> | null): void {
+    const next: EditBuffer = { ...emptyBuffer(), Name: this.value('Name') };
+    let type = TYPE_CSP;
+    let authe: readonly number[] = this.rulesValue.defaultMethod > 0 ? [this.rulesValue.defaultMethod] : [];
+    let roles: readonly string[] = [];
+    if (source !== null) {
+      for (const field of WRITABLE_FIELDS) {
+        if (COPY_SKIPPED_FIELDS.includes(field) || field === 'AutheEnabled') continue;
+        if (!Object.hasOwn(source, field)) continue;
+        next[field] = BOOLEAN_FIELDS.includes(field) ? isTrue(source[field]) : textAt(source, field);
+      }
+      if (textAt(source, 'DispatchClass') !== '') type = TYPE_REST;
+      else if (textAt(source, 'WSGIAppName') !== '') type = TYPE_PYTHON;
+      if (type === TYPE_PYTHON && next['WSGIType'] === '') next['WSGIType'] = this.rulesValue.wsgiTypes[0] ?? '';
+      if (Object.hasOwn(source, 'AutheEnabled')) {
+        const mask = Number(source['AutheEnabled']);
+        authe = this.rulesValue.authenticationMethods
+          .filter((method) => Number.isFinite(mask) && (mask & method.bit) !== 0)
+          .map((method) => method.bit);
+      }
+      const granted = new Set<string>();
+      for (const entry of arrayAt(source, MATCH_ROLES_FIELD)) {
+        if (textAt(entry, 'MatchRole') !== '') continue;
+        for (const role of stringsAt(entry, 'TargetRoles')) granted.add(role.toLowerCase());
+      }
+      roles = this.rulesValue.roles.map((role) => role.name).filter((role) => granted.has(role.toLowerCase()));
+    }
+    this.buffer = next;
+    this.typeValue = type;
+    this.autheBits = authe;
+    this.matchRolesValue = roles;
+    this.violationList = this.violationList.filter((entry) => entry.field === 'Name');
   }
 
   setValue(field: string, value: string): void {

@@ -177,6 +177,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.10: System-wide security, on the same page.
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.19: Task Manager email, on the same page.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.13: System and User DDL mappings, on the same page, which adds New mapping to the user list.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': CONFIG_SETTINGS_PAGE,
@@ -333,6 +335,20 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 18.3: the local database form's id route is the properties editor beside the wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': () => import('../areas/os-management/database-editor.page').then((m) => m.DatabaseEditorPage),
 };
+
+/**
+ * Loads the id-route editor page the descriptor registers in `DESCRIPTOR_EDIT_PAGES`, so a create
+ * form hands off to an editor whose code is already in memory. Best effort: a descriptor with no
+ * editor, or a chunk that does not load, resolves anyway and leaves the navigation to report it.
+ */
+export async function warmEditPage(descriptor: string): Promise<void> {
+  if (!Object.hasOwn(DESCRIPTOR_EDIT_PAGES, descriptor)) return;
+  try {
+    await DESCRIPTOR_EDIT_PAGES[descriptor]();
+  } catch {
+    // The navigation that follows loads the page again and draws its own failure.
+  }
+}
 
 /**
  * The guard `page` applies before indexing either map -- exported as a pure function so it can be

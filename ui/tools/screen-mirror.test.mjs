@@ -61,6 +61,7 @@ import {
   timelineMemberProblem,
   READ_SOURCE_PORTS,
   monitorEndpoints,
+  configEndpoints,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -2844,7 +2845,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
       'OcuPilot.Screen.Descriptor.OAuthServerForm',
       'OcuPilot.Screen.Descriptor.OAuthServerTab',
+      'OcuPilot.Screen.Descriptor.SecurityAdvisorList',
       'OcuPilot.Screen.Descriptor.SystemSecuritySettingList',
+      'OcuPilot.Screen.Descriptor.TaskMailSettingList',
       'OcuPilot.Screen.Descriptor.WalletCollectionList',
       'OcuPilot.Screen.Descriptor.WalletSecretForm',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
@@ -3192,7 +3195,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3608,4 +3611,22 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
   const untabbed = structuredClone(screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab').declaration);
   delete untabbed.tab;
   assert.equal(rowTargetProblem(untabbed), "rowTarget is declared on a 'detail' archetype, and a row target is a list's own row link (AD-5)", 'a detail screen that is no tab may not');
+});
+
+// Story 21.19: the config source names the Task Manager email endpoint the port's own ENDPOINTS parameter declares, and the mirror
+// follows that parameter rather than a list of its own, so the Task Manager email screen's read passes and an endpoint the port
+// does not declare is refused naming the whole list.
+// Mutation (Rule 19): drop `TaskMail` from `ConfigPort.ENDPOINTS` -> the endpoint assertion and the screen's read go red.
+test('Story 21.19: the config source admits the Task Manager email endpoint the port declares, in the Tasks area at position 6', () => {
+  assert.ok(configEndpoints().includes('TaskMail'), "the config port declares 'TaskMail'");
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskMailSettingList');
+  assert.ok(screen !== undefined, 'the Task Manager email screen is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'config', endpoint: 'TaskMail', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(`${screen.declaration.area}|${screen.declaration.sideBarPosition}|${screen.declaration.route}`, 'tasks|6|tasks/email', 'it is the sixth Tasks entry');
+  assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_Manage', permission: 'USE' }], "the port's own pair is its own, which keeps the other Tasks screens open to the area's two");
+  const other = structuredClone(screen.declaration);
+  other.read.source.endpoint = 'Mail';
+  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'\)/, 'an endpoint the port does not declare is refused');
 });

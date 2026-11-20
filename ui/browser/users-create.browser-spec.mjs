@@ -37,6 +37,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { waitForRows } from './list-spec.mjs';
+import { holdChunks, saveWithChunksHeld } from './chunk-hold.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -48,7 +49,10 @@ const LIST_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/permissions/users/edit?ns=HSCUSTOM';
 
 /** Every account this spec creates, removed by exact name in `before` and `after`. */
-const NAMES = ['OcuPilotProbeUserCreate', 'OcuPilotProbeUserNoEcho', 'OcuPilotProbeCopySource', 'OcuPilotProbeCopied', 'OcuPilotProbeCopyPlain'];
+const NAMES = ['OcuPilotProbeUserCreate', 'OcuPilotProbeUserNoEcho', 'OcuPilotProbeCopySource', 'OcuPilotProbeCopied', 'OcuPilotProbeCopyPlain', 'OcuPilotProbeUserHeld'];
+
+/** The held-chunk leg's account. */
+const HELD_NAME = NAMES[5];
 
 /** The copy source: a local account whose escalation role grants %All, so its copy is privileged. */
 const COPY_SOURCE = NAMES[2];
@@ -448,6 +452,30 @@ test('AC1: the Users list offers Create, and it opens the create form', async ()
       { timeout: config.navigationTimeoutMs }
     );
     await page.waitForSelector('#ocu-user-Name', { visible: true, timeout: config.navigationTimeoutMs });
+  } finally {
+    await context.close();
+  }
+});
+
+// AC4, DW-2372. Mutation (Rule 19): drop the `handingOff` check from the create page's `showSaved`, rebuild and redeploy ->
+// the no-Saved assertion goes red (the form's own Saved shows while the chunk is held). Navigating before the warm resolves is
+// pinned in `user-create-form.page.spec.ts`, where the held loader is the page's own.
+test("AC4: no Saved shows while the editor's page code is held, then the editor's own Saved shows", async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    const control = await holdChunks(page);
+    await page.waitForSelector('#ocu-user-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-user-Name', HELD_NAME);
+    await fill(page, 'ocu-user-Password', PROBE_PASSWORD);
+    const held = await saveWithChunksHeld(page, control, config, async () => (await saveButton(page)).click(), '/users');
+    assert.ok(held > 0, 'at least one chunk request was held');
+    await waitForSaved(page);
+    await page.waitForFunction(
+      (sentence) => document.querySelector('app-user-editor-page .ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSaved
+    );
+    assert.ok(storedUser(HELD_NAME) !== null, 'the instance holds the account the form created');
   } finally {
     await context.close();
   }

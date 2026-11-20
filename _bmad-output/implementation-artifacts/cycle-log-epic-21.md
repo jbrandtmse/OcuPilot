@@ -743,3 +743,38 @@
 2026-11-19T23:48:15Z	Story 21.10	gate_step	step=sweep result=green shards=20/20 head=e4866902a
 2026-11-19T23:48:15Z	Story 21.10	smoke_complete	method=cli(smoke.sh_ocupilot-ci) result=pass iterations=1 defects_caught=0 evidence=executed=50_passed=50 model=claude-opus-5-5
 2026-11-19T23:48:15Z	Story 21.10	story_green	code_head=e4866902a ci=44618534578(success) gates=fresh+sweep20/20+smoke50/50 status=done vetoes=U-118,U-119(owner_kept)
+2026-11-19T23:48:36Z	Story 21.19	spec_validated	owned_ledger=DW-2372,DW-2471 addressed=2(Batch_3) owner_answer=U-70(spine_written)
+2026-11-19T23:48:36Z	Story 21.19	stage_spawned	stage=implement scope=batches1-4 spawn_at=2026-11-19T23:48:36Z model=sonnet agent_name=21-19-implement-1 cycle_iteration=1 story_base=3206c9bab prior_lines_ended=verified
+2026-11-20T02:54:06Z	Story 21.19	stage_stopped	stage=implement agent=abf27ae2a0d45b2db build=a84ed00f91d346500 child=a39b61e3fa3479556 reason=Bash_sed_-i.bak_on_Test/ClassicPageGate.cls_at_02:38:01Z(one_assertion_message) stopped_by=main
+2026-11-20T02:54:06Z	Story 21.19	ruling	question=discard_or_keep_batches_1-3 via=orchestrator choice=keep_tree(the_one_shell_edit_is_known,one_line,inspected);checkpoint=/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/21-19/checkpoint-20261120T0245Z.{patch,untracked.txt,untracked.tgz};respawn_build_for_the_rest_of_Batch_4_from_the_current_tree(inventory_first;re-derive_ClassicPageGate_count);review_covers_the_whole_story_from_f6e5cc741
+2026-11-20T02:54:25Z	Story 21.19	stage_spawned	stage=implement scope=batch4_remainder(kept_tree) spawn_at=2026-11-20T02:54:25Z model=sonnet agent_name=21-19-implement-2 cycle_iteration=1 prior_line=stopped_by_main
+2026-11-20T03:24:48Z	Story 21.19	stage_returned	stage=implement scope=batch4_remainder status=blocked spawn_at=2026-11-20T02:58Z model=sonnet built=PM-24(ResourceTransferRead_7/7,ResourceTransferWrite_2/2,browser_2/2;roster_sweep_76_green;ClassicPageGate_OWNPAIRS_158_re-derived) not_built=TM-17,TM-18_password reason=unruled_strings(10_PM-24_already_written;TM-17_and_TM-18_password_need_new_labels)+TM-17_needs_a_task-output_viewer
+2026-11-20T03:24:48Z	Story 21.19	escalated	question=strings+scope(PM-24_10_strings;TM-17,TM-18_password) to=orchestrator
+2026-11-20T03:27:12Z	Story 21.19	ruling	question=PM-24_strings;TM-17+TM-18_password_scope via=orchestrator choice=strings_(a)_accepted(veto_item_after_review_style_check);split_TM-17+mail_password_to_new_Story_21.36(Rule5;U-70_carries);AD-35_mail-password_audit_mask_already_in_feature(21.24_b706fb831,TaskMailAuditMask)
+2026-11-20T03:27:12Z	Story 21.36	story_split	from=21.19 epics.md=heading+body_added;21.19_text_trimmed;tracker=21-36-task-output-and-mail-password:backlog(generate) test:tools=2350/2350
+2026-11-20T03:27:12Z	Epic 21	deps_hash_rerecorded	reason=split story=21.36 note=orchestrator_records_the_hash
+2026-11-20T03:27:38Z	Story 21.19	stage_spawned	stage=implement scope=finalize_after_split spawn_at=2026-11-20T03:27:38Z model=sonnet agent_name=21-19-implement-3 cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T04:28:15Z	Story 21.19	dev_complete	scope=finalize_after_split(B1-3+PM-24) spawn_at=2026-11-20T03:40Z model=sonnet build_sha=f3e05e79f followup_review_recommended=true deferred=1(DW-2788) cycle_iteration=1
+2026-11-20T04:28:15Z	Story 21.19	code_head_pushed	sha=6bbbb3d67(feature_bookkeeping_merge_over_f3e05e79f) run=44674547477 missing=none
+2026-11-20T04:28:15Z	Story 21.19	stage_spawned	stage=code-review spawn_at=2026-11-20T04:28:15Z model=opus agent_name=21-19-code-review-1 cycle_iteration=1 baseline=f6e5cc741 prior_lines_ended=verified
+2026-11-20T05:34:40Z	Story 21.19	cr_complete	spawn_at=2026-11-20T04:30Z model=opus high=0 med=10(8_patched;DW-2793_escalated,DW-2794_routed;burndown) low=24 rows=42 unresolved_high_med=2(owned_burndown) new=DW-2793..2801 final=done commit=5ac55f02d strings=PM-24_ten_kept_as_written closing_sections_present=true
+2026-11-20T05:34:40Z	Story 21.19	ci_red_classified	run=44674547477 head=6bbbb3d67 class=defect tests=PermissionsLists(ResourceList_row_actions),BackgroundTasksLive(tasks_holder_screens) action=collect_with_fresh_gate,one_rework
+2026-11-20T05:39:01Z	Story 21.19	integrated_forward	feature=afaa03091(24.13_B3) merge=2b4f70c03 conflicts=9(Kernel/Proposal/Prohibited.cls:COVEREDTYPES_union+21.19_branches_before_24.13's_reworded_comment(comment_only;no_condition_rewritten);ReadTool_553+writes_317;ToolWrite_144;Prohibited_test_95_types(both_wrote_93);rosters_unions;sprint-status_timestamp) verified=screen-mirror_ok,test:tools_2352,LOADERRORS=0,7_roster_classes_green
+2026-11-20T05:39:01Z	Story 21.19	code_head_pushed	sha=2b4f70c03 run=44682408366 missing=none note=known_reds_PermissionsLists,BackgroundTasksLive_expected;gate_collects_all_reds_before_one_rework
+2026-11-20T05:40:10Z	Story 21.19	gate_step	step=fresh_check+full_sweep+smoke head=2b4f70c03 started=2026-11-20T05:40:10Z dir=e21u/21-19/gate purpose=collect_all_reds
+2026-11-20T05:40:22Z	Story 21.19	ruling	question=PM-24_strings via=orchestrator choice=accepted;veto=U-121(final_wording_verbatim;review_kept_all_ten)
+2026-11-20T06:23:58Z	Story 21.19	ci_red_classified	runs=44674547477,44682408366 class=defect tests=PermissionsLists,BackgroundTasksLive note=CI_instance_shards_covered_every_class:only_these_two;runner_stopped_its_own_sweep(gate_aborted)
+2026-11-20T06:23:59Z	Story 21.19	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=PermissionsLists,BackgroundTasksLive scope_baseline=2b4f70c03
+2026-11-20T06:23:59Z	Story 21.19	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T06:23:59Z model=sonnet agent_name=21-19-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified
+2026-11-20T06:50:58Z	Story 21.19	dev_complete	scope=rework1(test_shapes:PermissionsLists,BackgroundTasksLive;no_product_change) spawn_at=2026-11-20T06:20Z model=sonnet build_sha=73c4c2fe6 followup_review_recommended=false cycle_iteration=2
+2026-11-20T06:50:58Z	Story 21.19	ruling	question=re-review_for_test-only_rework choice=none(precedent_accepted_on_21.10) via=runner category=decide policy=b9ff703e
+2026-11-20T06:50:58Z	Story 21.19	code_head_pushed	sha=73c4c2fe6 run=44690683966 missing=none
+2026-11-20T06:50:58Z	Story 21.19	gate_step	step=fresh_check+full_sweep+smoke head=73c4c2fe6 started=2026-11-20T06:50:58Z dir=e21u/21-19/gate attempt=2
+2026-11-20T06:54:40Z	Story 21.19	integrated_forward	feature=dfc986c41(24.14_B1) merge=bc5a2e37f conflicts=5(EntityType_union;Descriptor_108;ReadTool_555;ToolRoundTrip_union;screens.generated.ts_regenerated) verified=screen-mirror,test:tools_2353,LOADERRORS=0,ReadTool,Descriptor,ToolRoundTrip,Navigation_green
+2026-11-20T06:54:40Z	Story 21.19	code_head_pushed	sha=bc5a2e37f run=44691109965 missing=none note=supersedes_73c4c2fe6
+2026-11-20T07:39:57Z	Story 21.19	ci_resolved	story=21.19 sha=bc5a2e37f runs=44691109965 result=success failed=none via=none
+2026-11-20T07:39:57Z	Story 21.19	fresh_check	env=recipe(ci-throwaway_rebuild) tests=33_classes+7_specs result=pass order=forward,reverse(specs) head=bc5a2e37f
+2026-11-20T09:27:28Z	Story 21.19	sweep	shards=20/20_green head=bc5a2e37f
+2026-11-20T09:27:28Z	Story 21.19	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T09:27:28Z	Story 21.19	ledger	resolved=DW-2372,DW-2471 by=21-19
+2026-11-20T09:27:28Z	Story 21.19	story_complete	head=bc5a2e37f run=44691109965 ci=success fresh=pass sweep=20/20 smoke=50/50 veto=U-121 split=TM-17+mail_password->21.36

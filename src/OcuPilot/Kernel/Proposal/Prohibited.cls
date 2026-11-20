@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -890,6 +890,14 @@ Parameter TYPESYSTEMSECURITYSETTING = "system-security-setting";
 /// effect on one, and OcuPilot owns none.</p>
 Parameter TYPEPHONEPROVIDER = "phone-provider";
 
+/// <p>A security advisor recommendation (Story 21.19), whose ignore and stop-ignoring set no field: AD-10 names no effect on one, so a
+/// write passes the reviewed-few sweep over an empty permitted list and nothing else.</p>
+Parameter TYPESECURITYRECOMMENDATION = "security-recommendation";
+
+/// <p>A Task Manager email setting (Story 21.19), whose set moves one value and no other field: AD-10 names no effect on one, so a write passes
+/// the reviewed-few sweep and nothing else.</p>
+Parameter TYPETASKMAILSETTING = "task-mail-setting";
+
 Parameter TYPELOCALE = "locale";
 
 /// <p>One property, table or input/output table of a custom locale (Story 21.16): the same reasoning as <parameter>TYPELOCALE</parameter>, so a
@@ -1403,7 +1411,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEANALYTICSRUNTIMEVARIABLE Quit $ListBuild("Value", "Comment", "Context")
     If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Path")
     If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
-    If pType = ..#TYPESYSTEMSECURITYSETTING Quit $ListBuild("Value")
+    If (pType = ..#TYPESYSTEMSECURITYSETTING) || (pType = ..#TYPETASKMAILSETTING) Quit $ListBuild("Value")
     If pType = ..#TYPEPHONEPROVIDER Quit $ListBuild("SMSGateway")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1673,7 +1681,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && '..IsAnalyticsSettingType(tType) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && '..IsAnalyticsSettingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1820,6 +1828,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; Story 21.15: a locale import names its file by the literal import id, and AD-10 names no effect on a locale, so the arm reads no
         ; target; the port refuses a file that is not an export, holds no custom record or would replace the current locale before any write.
         If (tType = ..#TYPELOCALE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) && ($ZConvert(tId, "L") = ..#IMPORTTARGET) Quit
+        ; Story 21.19: a resource export only reads and is not judged, and an import is judged by each resource its file holds, read again
+        ; through the tool's port with the stored payload, by the one predicate the other resource writes use.
+        If tType = ..#TYPERESOURCE {
+            Set tResourceWrite = ..WriteTypeOf(..ToolClassNamed(pToolName))
+            If tResourceWrite = ..#EXPORTWRITETYPE Quit
+            If (tResourceWrite = ..#LOOKUPIMPORTWRITETYPE) && ($ZConvert(tId, "L") = ..#IMPORTTARGET) {
+                Set tSC = ..ResourceImport(pToolName, tId, pPayload, .pProhibits, .pCode)
+                Quit
+            }
+        }
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
@@ -2129,6 +2147,17 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; A mobile phone provider (Story 21.10): AD-10 names no effect on one, so a write passes the reviewed-few sweep and nothing else.
         If tType = ..#TYPEPHONEPROVIDER {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A security advisor recommendation (Story 21.19): AD-10 names no effect on one, so its ignore and stop-ignoring pass the reviewed-few
+        ; sweep and nothing else.
+        If tType = ..#TYPESECURITYRECOMMENDATION {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A Task Manager email setting (Story 21.19): AD-10 names no effect on one, so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPETASKMAILSETTING {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -2802,6 +2831,67 @@ ClassMethod AddsPublicLetter(pPayload As %DynamicObject, pTarget As %DynamicObje
         If '(tHeld [ $Extract(tWanted, tI)) Set tAdds = 1 Quit
     }
     Quit tAdds
+}
+
+/// <p>Whether a resource import is prohibited: the file the stored payload <var>pPayload</var> names, read again through the tool's port,
+/// answers each resource as <code>{Name, PublicPermission, Held}</code>, judged by <method>ImportedResources</method>. A read the port
+/// refuses is not prohibited here: the fingerprint re-read and the port's own write refuse it.</p>
+ClassMethod ResourceImport(pToolName As %String, pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tClass = ..ToolClassNamed(pToolName)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pId, pPayload, .tQuery)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), $ClassMethod(tClass, "Endpoint"), .tQuery, pId, .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) {
+            If (+$Get(tHttp) >= 400) && (+$Get(tHttp) < 500) Quit
+            Set tSC = tReadSC
+            Quit
+        }
+        If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set read the resource import and was answered no object")
+            Quit
+        }
+        Set tSC = ..ImportedResources(tRead.%Get("Entries"), .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether importing the resources <var>pEntries</var> -- an array of <code>{Name, PublicPermission, Held}</code>, the letters the file gives
+/// and the letters the instance holds, <code>null</code> when it holds none -- is prohibited, in <var>pProhibits</var>, with
+/// <parameter>OCUPILOTRESOURCE</parameter> in <var>pCode</var>. Each entry is judged as a resource change is: one of OcuPilot's own resources
+/// (<method>OcuPilotResources</method>) that the file gives a public-permission letter it does not hold is refused, which covers a definition
+/// of one the instance lacks. An import that leaves an own resource's letters as they are is not refused.</p>
+ClassMethod ImportedResources(pEntries As %DynamicArray, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = ..OcuPilotResources(.tOwn)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pEntries) Quit $$$OK
+    Set tIterator = pEntries.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If '$ListFind(tOwn, ..NormalizedResource(tEntry.%Get("Name"))) Continue
+        Set tWanted = {}
+        Do tWanted.%Set(..#FIELDPUBLICPERMISSION, tEntry.%Get("PublicPermission"), "string")
+        Set tHeld = {}
+        Do tHeld.%Set(..#FIELDPUBLICPERMISSION, tEntry.%Get("Held"), "string")
+        If ..AddsPublicLetter(tWanted, tHeld) {
+            Do ..Refuse(..#OCUPILOTRESOURCE, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>The class of the registered tool named <var>pToolName</var>, resolved as

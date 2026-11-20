@@ -57,7 +57,7 @@ Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
 /// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit";
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses
@@ -298,6 +298,8 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
     Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
     If tType = "pct-class-access" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#PCTTARGETID))
+    ; A security recommendation's id is its type, its element and its code, which the advisor port renders no script for unless it splits into three (Story 21.19).
+    If tType = "security-recommendation" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Roles", " ", "AuditCount"))
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }
