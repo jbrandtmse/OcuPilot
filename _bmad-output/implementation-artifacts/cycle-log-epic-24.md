@@ -548,3 +548,7 @@
 2026-11-20T05:46:35Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T05:46:35Z model=opus agent_name=epic-24-context-prewarm-12 cycle_iteration=2 reason=planning_artifact_newer(EXPERIENCE.md_rows_21.10+24.14)
 2026-11-20T05:48:49Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
 2026-11-20T05:48:49Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-20T05:48:49Z model=opus agent_name=24-14-plan-batch2 cycle_iteration=2 scope=batch2_pmml_tester
+2026-11-20T06:02:48Z	Story 24.14	story_created	spawn_at=2026-11-20T05:49:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md build_status=ready-for-dev epic_context=reused scope=batch2_pmml_tester cycle_iteration=2
+2026-11-20T06:02:48Z	Story 24.14	ruling	question=models_list,PmmlTest_run_always_drop,stored_SQL_query_check,pairs,strings,AD-7/65/41_lines choice=keep category=veto inbox=U-122 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T06:02:48Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) scope=batch2
+2026-11-20T06:02:48Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T06:02:48Z model=sonnet agent_name=24-14-implement-batch2 cycle_iteration=2 story_base=cb997d156 scope=batch2
