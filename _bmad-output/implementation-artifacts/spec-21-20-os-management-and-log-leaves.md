@@ -2,7 +2,7 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
+status: 'blocked'
 baseline_revision: '57f19f9f8eef7d0b941614c3379901309447be1b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -218,6 +218,12 @@ deferred: []
 
 **Runner ruling at the spec gate (2026-11-15):** DW-1856 is declined here and set decision-pending for the owner (an AD-21 change). The escalated strings and the in-stage choices are kept (veto U-66).
 
+**Task 0, measured on `ocupilot-ci`** (each principal held exactly the grants named, plus READ on the code database):
+
+- (a) A caller holding `SqlActivityPort.PAIRS` cancels another user's probe statement only with the SQL admin privilege `%CANCEL_QUERY` granted to its role. Without it `CancelQuery` answers `#5521 ... SQLCODE=-99 ... does not have the SQL Admin Privilege %CANCEL_QUERY required to cancel a query executed by another user`, and still does so with `%Admin_Manage:USE`, `%Admin_Secure:USE`, `%Development:USE` and `%DB_USER:WRITE` added. With it: the answer is OK, the statement ends with SQLCODE -456 "SQL query execution interrupted by user", its row is gone within 1 s, and the probe's process stays alive (state `HANG`). The warning's second sentence holds.
+- (b) `Clear()` is refused `<PROTECT>` with `%Admin_Operate:USE` plus `%DB_IRISSYS:READ` or `:WRITE`. `%Admin_Manage:USE` alone clears (State 2 to 0, Alerts to 0); the harvested body's switch to `%SYS` also needs `%DB_IRISSYS:READ` (without it `<PROTECT>` on the namespace). `alerts.log` kept its size, and `smoke.sh` read 50/50 afterwards.
+- (c) A local probe job holding `TSTART` plus a journaled set appeared in `^IRIS.Temp.SysMetrics("Transactions")` after 43 s as row 1 (`pid` the job, `secs` 30, node `OK`). A caller holding `MonitorPort.PAIRS` read the node, `SystemMonitorStatus()` (`OK`, from `%SYS`) and the row.
+
 ## Verification
 
 Shared surfaces (each is in the `(loop)` set; the implement stage greps `ui/browser`, `ui/tools`, `ui/src` specs and `src/OcuPilot/Test` for the old shape):
@@ -253,5 +259,7 @@ Every test added or changed passes on a fresh environment, in either order. Each
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- Task 0 (a): canceling another user's statement needs the SQL admin privilege `%CANCEL_QUERY`, which is not a resource:permission pair, so `SqlActivityPort.PAIRS` and `WRITEPAIRS` cannot express it (measured on `ocupilot-ci`, Design Notes). The vendor answers #5521 / SQLCODE -99 with every pair tried. Needs an owner ruling: gate on `PAIRS` and map -99 to a 403 `SQLACTIVITY.*` code with a new ruled reason string (recommended, inference), or another approach; granting `%CANCEL_QUERY` to a role is a privilege grant. Also for Batch 2: `Clear()` needs `%Admin_Manage:USE` (+ `%DB_IRISSYS:READ`), a pair beyond `PAIRS`.
+
+Work done: Task 0 (a), (b), (c) measured and recorded under Design Notes. No code written; Batches 1 to 3 not started.
