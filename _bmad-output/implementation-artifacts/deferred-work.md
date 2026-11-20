@@ -13305,6 +13305,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: grep '165 rows\|56 excluded' epics.md after bcdac6676
 - 2026-11-16T00:43:15Z status=open owner=burndown by=spec_gate note=re-derive at close; contended with Epic 24 register rows
+- 2026-11-20T17:59:12Z occurrence=21-21-leaves-that-wait-on-the-owner
 
 ### DW-2620: SA-43 and SA-44, the mirror database writes, stay P3 Stage 4 rows with no story after U-39 moved the other mirroring writes to the register
 - source: spec-21-12-mirroring.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -14218,3 +14219,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
 - 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision
+
+### DW-2805: AD-8's Story 18.4 sentence and its memlog line still say dismount declares %Admin_Manage:USE, which AD-27's Story 21.21 case and the code now contradict
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:282 (dismount %Admin_Manage:USE because the check reads Namespace.Namespace GET and Database.ConfigCRUD LIST) vs :754 and DatabaseDismount.cls; .memlog.md:276 the same
+- 2026-11-20T17:59:16Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=cr note=spine edit is the runner's (Rule 20; spec Never: no AD edit in-story): correct AD-8 at adjudication, citing the AD-27 case
+
+### DW-2806: The exclusion register's WA-16 row says no IRIS class backs Web Gateway management, but %CSP.Mgr.GatewayMgr reads and sets the gateway's configuration
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: irislib/%CSP/Mgr/GatewayMgr.cls: 'an API used to control a Gateway from ObjectScript code' (Get/SetDefaultParams, Get/SetServerParams, GetSystemStatus); the row's own clear-probe ('cite the class') is met; exclusion-register.test.mjs pins the false reason
+- 2026-11-20T17:59:20Z status=decision-pending owner=burndown by=cr note=public register text was ruled (U-73): owner picks a true reason for not planned, or returns WA-16 to P3
+
+### DW-2807: No test pins the Globals half of DatabasePort.ProtectedNamespaceDatabases, because no namespace on the test instance has separate globals and routines databases
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci: every namespace reads Globals = Routines (HSCUSTOM, USER, %SYS, HSLIB, HSSYS); dropping Globals from the field loop leaves every test green (code read correct)
+- 2026-11-20T17:59:25Z status=wontfix-accepted owner=21-21-leaves-that-wait-on-the-owner by=cr note=reopen_if=a probe namespace with separate globals and routines databases exists in the suite, or the field loop changes

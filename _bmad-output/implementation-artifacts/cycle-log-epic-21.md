@@ -816,3 +816,5 @@
 2026-11-20T17:31:04Z	Story 21.21	ruling	question=batch5 via=orchestrator choice=A(split_SH-27_to_21.37;U-74_carries) strings=ruled_for_21.37(2_changes;veto=U-128) epics=21.21_amended_note+21.37_added(add-only) tracker=21-37-page-resources:backlog test_tools=2356
 2026-11-20T17:31:04Z	Story 21.21	dev_complete	scope=B1,B2,B4(B3_not_built_by_rule;B5_split_to_21.37) build_sha=bd4ff1ed0 run=44783633783 followup_review_recommended=n/a
 2026-11-20T17:31:38Z	Story 21.21	stage_spawned	stage=code-review spawn_at=2026-11-20T17:31:38Z model=opus agent_name=21-21-code-review cycle_iteration=1 prior_lines_ended=verified(afc545ef8)
+2026-11-20T18:12:23Z	Story 21.21	review_complete	model=opus tier=full-opus entries=high0,med5,low9 patched=7 deferred=DW-2805(spine_AD-8_sentence,routed_21-21),DW-2806(WA-16_reason,owner),DW-2807(wontfix) commit=83e75a7f8
+2026-11-20T18:12:23Z	Story 21.21	code_head_pushed	sha=83e75a7f8 run=44790510586 missing=none note=supersedes_bd4ff1ed0(run_44783633783_cancelled_in_progress)
