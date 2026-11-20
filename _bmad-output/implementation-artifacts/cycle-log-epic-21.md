@@ -848,3 +848,4 @@
 2026-11-20T23:31:32Z	Story 21.36	spec_validated	integration_ac=present(agent_tool_shares_the_descriptor_read) adr_constrained_acs=AD-21,AD-35,AD-59,AD-22,AD-29 owned_ledger=none escalated=strings(12)+AD-21_note model=claude-opus-5-5 note=awaiting_orchestrator_on_strings_and_AD-21_note
 2026-11-20T23:32:20Z	Story 21.36	ad_amended	ad=AD-21 marker=[AMENDED_2026-11-20,Story_21.36_plan,Rule_20] commit=fbc419892 lint_spine=ok(pre-existing_{id}) memlog=appended
 2026-11-20T23:32:38Z	Story 21.36	ruling	question=strings+AD-21_note+5_design_points via=orchestrator choice=AD-21_applied(fbc419892);strings_ruled(4_changed;veto=U-131);mail_password_enabled_on_tasks.mail.set_pairs;no_path_echo;line-boundary_tail;8-bit_as_stored;REST_HALT_stands
+2026-11-20T23:33:02Z	Story 21.36	stage_spawned	stage=implement scope=task0(REST)+batches1-2 spawn_at=2026-11-20T23:33:02Z model=sonnet agent_name=21-36-implement cycle_iteration=1 prior_lines_ended=verified(ab51b4a36)
