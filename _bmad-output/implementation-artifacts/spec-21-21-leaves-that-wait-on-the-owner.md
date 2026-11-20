@@ -137,7 +137,7 @@ deferred: []
 
 **Pass scope (runner, 2026-11-20):** the current pass builds Task 0, Batches 1 to 4 and nothing of Batch 5 (its ACs and strings are drafted by the lead afterward). The lead commits each batch at its boundary; a subagent never commits. The step now handed to a subagent is named in the line below.
 
-Current step: Batch 1 only (DW-1850), with its shared-surface updates and the Batch 1 `(loop)` classes and browser spec from `## Verification`, and its Rule 19 mutation (AC1, AC2) recorded in `## Verification` as `mutation:` lines. Task 0 is done (below): Batch 3 is not built. Nothing of Batches 2 to 5.
+Current step: Batch 2 only (DW-1280), with its shared-surface updates, the Batch 2 `(loop)` classes (`ProposalConfirm`, `ConfirmRoute` and every other class that calls `Confirm`/`Transition` or asserts the confirm envelope, found by grep), and its Rule 19 mutation (AC3) recorded in `## Verification` as a `mutation:` line. Batch 1 is committed and Task 0 is done (below): Batch 3 is not built. Nothing of Batches 3 to 5.
 
 **Task 0 results (2026-11-20, `ocupilot-ci`, bundle md5 `5e3a2fd1` as deployed):**
 
@@ -169,6 +169,7 @@ Measured on `ocupilot`, read-only: `NormalizePage("%CSP.Portal.ResourceDialog.cl
 
 - DW-1850 uses one extended reader with a mode, not a second copy (Rule 31). The config and key arms keep the admin API because their callers already hold Manage, and the key arm's port is not `DatabasePort`. Moving those arms is a risk this story does not need.
 - DW-1280 reuses the fault's own sentence rather than writing a new one. It is the sentence the screen's action shows for the same failure (AD-53), so the agent's caller and the person's caller agree. `REASONTOOLUNAVAILABLE` stays the fallback for a tool code.
+- DW-1280's wire test could not live in `ConfirmRoute`: the process-private proposal fixture is invisible to a request run over HTTP, and no real post-claim write failure maps to a named fault (the vendor's 500s map to `INTERNAL`). The sentence is pinned in `ProposalConfirm` through `Test/ConfirmRenderProbe` (an `Api.Confirm` subclass that reaches the shipped `RenderRefusal`), and `ReadBackRoute` pins the unnamed-failure case over HTTP. The tool-call card already renders the envelope's `reason` (`turn.ts`, `panel.ts`, `tool-call-card.ts`), so there is no client change.
 - COOP uses `same-origin` because the item asks for the stricter policy, and `same-origin-allow-popups` would keep the opener for the frame's popups (inference). Browsers ignore COOP on a non-secure origin other than `localhost`, so a plain-HTTP instance keeps today's behavior (inference).
 - The four rows go to a new last group, because none of the nine groups fits their reasons. Gate kinds: SH-26, SH-28 and TM-19 `not-applicable`; WA-16 `dependency`.
 
@@ -220,6 +221,7 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 
 - mutation: AC1, `OWNSETRESOURCE` and its `PrivilegePairs` override restored on `DatabaseDismount` -> `DatabaseActionsGate` red (`TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet` and `TestExactlyTheDeclaredPairsWriteOnBothCallers`).
 - mutation: AC2, the dismount branch of `Prohibited.Database` passes `pFromConfig` 0 -> `DatabaseActionsProhibited.TestTheDismountJudgesTheSetWithoutTheAdminRoutes` red.
+- mutation: AC3 (Batch 2), `Api.Confirm.RenderRefusal` ignores `pReason` -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (`ConfirmRoute` stays green: it cannot arm the fixture); and `Kernel.Proposal.Confirm.Transition`'s write-failure branch drops its `pReason` assignment -> `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned` and the same test red. Both reverted with Edit (`git diff` shows only the intended change) and the source reloaded.
 
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):
 

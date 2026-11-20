@@ -36,6 +36,7 @@ Parameter PROBEROLE = "OcuPilotProbeReadBackRole";
 
 Parameter ROLETOOL = "OcuPilot.Screen.Tool.RoleUpdate";
 
+Parameter WEBAPPTOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -250,6 +251,30 @@ Method TestAConfirmedRoleUpdateReadsBackAReorderedListAsMatching()
     Set tWire = $Select($IsObject($Get(tRows)) && (tRows.%Size() > 0): tRows.%Get(0).%Get("readBack"), 1: "")
     Do $$$AssertTrue($IsObject(tWire), "the proposal's wire row carries the read-back")
     If $IsObject(tWire) Do $$$AssertEquals(tWire.%ToJSON(), tReadBack.%ToJSON(), "the same one the confirm answered")
+}
+
+/// <p>A confirmed web application update that passes every gate and the claim, then fails at the
+/// vendor (it sets a timeout beyond the maximum the instance allows), answers over the wire with
+/// the generic internal envelope, because the vendor's failure maps to no named fault, and the
+/// proposal stays confirmed and burned. A named fault's sentence is
+/// <class>OcuPilot.Test.ProposalConfirm</class>'s.</p>
+Method TestAnUnnamedVendorFailureAfterTheClaimStaysGenericOverTheWire()
+{
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurn), "a completed turn is seeded")
+    Set tTool = ..#WEBAPPTOOL
+    Set tArgs = {"Name": (..#PROBEAPP), "Timeout": 99999999999999}
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), tUser, "", tTurn, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), ..#PROBEAPP, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusOK(tSC, "the update is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tKey = tProposal.%Get("proposalId")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/proposal/" _ tKey _ "/confirm", tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tText, .tHeaders, "", "application/json")
+    Set tEnvelope = ##class(%DynamicAbstractObject).%FromJSON(tText)
+    Do $$$AssertEquals(tStatus, 500, "the confirm answers the vendor's own status: " _ $Extract(tText, 1, 300))
+    Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#INTERNAL, "under the internal code")
+    Do $$$AssertEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, "with the generic sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "confirmed", "and the row stays confirmed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 1, "and burned")
 }
 
 /// <p><var>pBody</var>'s <code>readBack</code>, or an empty object when it carries none.</p>

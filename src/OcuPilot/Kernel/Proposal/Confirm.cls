@@ -123,7 +123,8 @@ ClassMethod ProhibitedClassName() As %String
 /// error, <var>pCode</var> is the machine code, <var>pHttpStatus</var> the HTTP status it is
 /// rendered at, and <var>pDetail</var> carries the structured detail that code owns
 /// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>. <var>pReason</var> is the
-/// prohibited set's sentence when it refused, <code>""</code> otherwise.</p>
+/// prohibited set's sentence when it refused, the port fault's own sentence when the write failed
+/// after the claim, <code>""</code> otherwise.</p>
 /// <p><b>Caller contract:</b> <var>pUser</var> is the authenticated caller, read by the handler as
 /// <code>$Username</code> and never taken from the body. <var>pSuppliedSecrets</var> is the parsed
 /// body -- a flat object, or <code>""</code> for none. Every refusal before the claim leaves the
@@ -468,7 +469,10 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Set pHttpStatus = +$Get(tWriteHttp)
             If pHttpStatus = 0 Set pHttpStatus = 500
             Set pCode = ##class(OcuPilot.Api.Error).#INTERNAL
-            If $IsObject($Get(tWriteFault)) && (tWriteFault.%Get("code") '= "") Set pCode = tWriteFault.%Get("code")
+            If $IsObject($Get(tWriteFault)) && (tWriteFault.%Get("code") '= "") {
+                Set pCode = tWriteFault.%Get("code")
+                Set pReason = tWriteFault.%Get("reason")
+            }
             ; The row closed even though the write did not, so the caller is told its new state --
             ; the same detail the other two closing refusals carry. Without it a card would fall
             ; back to the state its last poll saw and offer Confirm again on a spent token.
