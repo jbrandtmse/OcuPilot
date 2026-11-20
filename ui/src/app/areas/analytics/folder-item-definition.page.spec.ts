@@ -19,7 +19,7 @@ import { MDX_BACKGROUND_PATH, PIVOT_BACKGROUND_PATH } from './mdx-query.store';
  * A folder item's Definition tab over stubs of what the instance supplies (Story 24.14): the shared detail page is replaced by an empty stand-in and the store holds the tab's one
  * row, so what runs is the page's own wiring and the real MDX run view. A pivot's row offers Run and a dashboard's does not; Run sends the item's name to the pivot run's own route
  * and never a statement, polls the run to its grid, and draws the confirmation only on the instance's `confirm` answer, Proceed re-sending the name with `confirmed`; a refusal is
- * an alert; another item starts with a run of its own.
+ * an alert; a live run offers Cancel and takes no second Run; another item starts with a run of its own.
  */
 
 @Component({ selector: 'app-detail-page', template: '' })
@@ -170,6 +170,25 @@ describe('a folder item\'s Definition tab', () => {
     await settle(fixture);
     await flush(fixture, scheduled);
     expect(posts[1].body).toEqual({ item: PIVOT, confirmed: true });
+  });
+
+  it('offers Cancel while a run is live, sends nothing on a second Run, and cancels the run on the pivot run\'s own route', async () => {
+    // Mutation (Rule 19): make `onCancelRun` send nothing -> the cancel route assertion goes red. A second Run is held by the run state's own busy guard as well as by `blocked`.
+    const { fixture, host, posts, routes, scheduled } = mount(row(PIVOT, 'Visits'));
+    const running = { ok: { id: RUN_ID, status: 'running', startedAt: 'a', endedAt: '', cancelRequested: false } };
+    routes.set(PIVOT_BACKGROUND_PATH, [{ ok: { id: RUN_ID, status: 'running' } }, { ok: { id: RUN_ID, status: 'running' } }]);
+    routes.set(POLL_PATH, [running, running, running]);
+    routes.set(runPath(PIVOT_BACKGROUND_PATH, RUN_ID, true), [{ ok: { id: RUN_ID, status: 'running', startedAt: 'a', endedAt: '', cancelRequested: true } }]);
+    slot(host, 'run')!.click();
+    await settle(fixture);
+    await flush(fixture, scheduled);
+    slot(host, 'run')!.click();
+    await settle(fixture);
+    expect(posts.filter((post) => post.path === PIVOT_BACKGROUND_PATH)).toHaveLength(1);
+    expect(slot(host, 'cancel')?.textContent?.trim()).toBe(STRINGS.actionCancel);
+    slot(host, 'cancel')!.click();
+    await settle(fixture);
+    expect(posts.at(-1)).toMatchObject({ path: runPath(PIVOT_BACKGROUND_PATH, RUN_ID, true), method: 'POST' });
   });
 
   it('shows a refusal as an alert in the instance\'s own sentence', async () => {

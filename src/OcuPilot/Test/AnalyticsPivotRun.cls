@@ -34,9 +34,35 @@ Parameter CANCEL = "/api/ocupilot/analytics/pivot/background/:id/cancel";
 Parameter MDXPOLL = "/api/ocupilot/analytics/mdx/background/:id";
 
 /// <p>The principal that may reach the API, holds <code>%DeepSee_Portal</code> and write on the database of the run's cache but not <code>%Development</code>, so only the developer pair refuses it.</p>
-Parameter PRINCIPALS = "OcuP2414NoDev:%Ens_Portal:U,%DeepSee_Portal:U,%DB_USER:RW";
+/// <p>Two more principals hold both of the viewer's pairs and reach the API: <code>OcuP2414Reader</code> with write on the database of the run's cache, and <code>OcuP2414NoWrite</code> with read only.
+/// Neither holds <code>%DeepSee_Admin</code>, the resource the guarded fixtures carry.</p>
+Parameter PRINCIPALS = "OcuP2414NoDev:%Ens_Portal:U,%DeepSee_Portal:U,%DB_USER:RW;OcuP2414Reader:%Ens_Portal:U,%DeepSee_Portal:U,%Development:U,%DB_USER:RW;OcuP2414NoWrite:%Ens_Portal:U,%DeepSee_Portal:U,%Development:U,%DB_USER:R";
 
 Parameter NODEV = "OcuP2414NoDev";
+
+Parameter READER = "OcuP2414Reader";
+
+Parameter NOWRITE = "OcuP2414NoWrite";
+
+/// <p>The pivots a test saves and removes itself, beside the probe's.</p>
+Parameter CODEPIVOT = "OcuPilotProbe/QaCode.pivot";
+
+Parameter GUARDEDPIVOT = "OcuPilotProbe/QaGuarded.pivot";
+
+Parameter LOCKEDPIVOT = "OcuPilotProbe/QaLocked.pivot";
+
+Parameter VISITS = {##class(OcuPilot.Test.AnalyticsProbe).#VISITS};
+
+/// <p>The viewer's two screens.</p>
+Parameter DEFINITION = "analytics.folderitemdefinition";
+
+Parameter WIDGETS = "analytics.dashboardwidgets";
+
+/// <p>The resource the guarded pivots carry.</p>
+Parameter GUARD = "%DeepSee_Admin";
+
+/// <p>The subscript of the node the code-bearing pivot's braces would increment.</p>
+Parameter NODE = 360;
 
 Parameter NAMESPACE = "USER";
 
@@ -89,19 +115,23 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $ClassMethod(..#HIDDEN, "Unhide")
+    Do ..DeletePivots()
     Quit ..Settle()
 }
 
 Method OnAfterAllTests() As %Status
 {
+    Do ..DeletePivots()
     Set tSC = ..Settle()
     Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PROBE, "Remove"))
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If ##class(Security.Users).Exists(..#NODEV) Do ##class(Security.Users).Delete(..#NODEV)
-        If ##class(Security.Roles).Exists(..#NODEV _ "Role") Do ##class(Security.Roles).Delete(..#NODEV _ "Role")
-        If ##class(Security.Users).Exists(..#NODEV) || ##class(Security.Roles).Exists(..#NODEV _ "Role") Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsPivotRun left the principal or role of " _ ..#NODEV))
+        For tName = ..#NODEV, ..#READER, ..#NOWRITE {
+            If ##class(Security.Users).Exists(tName) Do ##class(Security.Users).Delete(tName)
+            If ##class(Security.Roles).Exists(tName _ "Role") Do ##class(Security.Roles).Delete(tName _ "Role")
+            If ##class(Security.Users).Exists(tName) || ##class(Security.Roles).Exists(tName _ "Role") Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsPivotRun left the principal or role of " _ tName))
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -114,7 +144,7 @@ Method OnAfterAllTests() As %Status
 /// <p>Stop every live run of this class's two accounts, wait up to 20 seconds for each to end, then remove every row of theirs; an error when a run is still live.</p>
 Method Settle() As %Status
 {
-    Set tOwners = $ListBuild(##class(OcuPilot.Test.Http).GetTestUsername(), ..#NODEV)
+    Set tOwners = $ListBuild(##class(OcuPilot.Test.Http).GetTestUsername(), ..#NODEV, ..#READER, ..#NOWRITE)
     Set tDeadline = $ZHorolog + 20
     For {
         Set tLive = 0
@@ -135,6 +165,68 @@ Method Settle() As %Status
     Quit $$$OK
 }
 
+/// <p>Save, in <code>USER</code>, the pivot <var>pName</var> on the Visits cube through the vendor's own class: guarded by <var>pResource</var> when it is given, locked when
+/// <var>pLocked</var>, and in manual mode with <var>pMdx</var> as its MDX when that is given.</p>
+ClassMethod SavePivot(pName As %String, pResource As %String = "", pLocked As %Boolean = 0, pMdx As %String = "") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPivot = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tPivot.fullName = pName
+        Set tPivot.cubeName = ..#VISITS
+        Set tPivot.owner = "_SYSTEM"
+        Set tPivot.resource = pResource
+        Set tPivot.locked = pLocked
+        If pMdx '= "" {
+            Set tPivot.manualMode = 1
+            Set tPivot.userMDX = pMdx
+        }
+        For tPart = $ListBuild("rowLevels", "[Place].[H1].[Category].Members"), $ListBuild("measures", "[Measures].[Amount]") {
+            Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+            Set tLevel.spec = $List(tPart, 2)
+            Set tCollection = $Property(tPivot, $List(tPart, 1))
+            Do tCollection.Insert(tLevel)
+        }
+        Set tSC = tPivot.%Save()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the pivots <method>SavePivot</method> saved for a test, whether or not it ran to its end, unlocking a locked one first.</p>
+ClassMethod DeletePivots() As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    For tName = ..#CODEPIVOT, ..#GUARDEDPIVOT, ..#LOCKEDPIVOT {
+        Try {
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tItem = ##class(%DeepSee.UserLibrary.Utils).%OpenFolderItem(tName)
+            If $IsObject(tItem) && tItem.locked {
+                Set tItem.locked = 0
+                Do tItem.%Save()
+            }
+            Set tItem = ""
+            Do ##class(%DeepSee.UserLibrary.Utils).%DeleteFolderItem(tName)
+        } Catch {
+        }
+        Set $NAMESPACE = tOrigNS
+    }
+    Kill ^|"USER"|OcuPilotProbeMdxSplice(..#NODE)
+    Quit $$$OK
+}
+
+/// <p>The viewer's read of <var>pItem</var> on the screen <var>pScreen</var> as <var>pUser</var>: the status in <var>pStatus</var>, the answer in <var>pAnswer</var>, and how many rows it
+/// holds, or -1 when it holds none.</p>
+Method ScreenRead(pScreen As %String, pItem As %String, pUser As %String, Output pStatus As %Integer, Output pAnswer) As %Integer
+{
+    Do ..Send("GET", "/api/ocupilot/screens/" _ pScreen _ "/read?maxRows=100&item=" _ $ZConvert(pItem, "O", "URL"), pUser, .pStatus, .pAnswer)
+    Quit $Select($IsObject(pAnswer) && $IsObject(pAnswer.%Get("rows")): pAnswer.rows.%Size(), 1: -1)
+}
+
 /// <p>The password of <var>pUser</var>.</p>
 Method PasswordOf(pUser As %String) As %String
 {
@@ -146,7 +238,7 @@ Method PasswordOf(pUser As %String) As %String
 Method Send(pMethod As %String, pPath As %String, pUser As %String, Output pStatus As %Integer, Output pAnswer, pBody = "", pNamespace As %String = {..#NAMESPACE})
 {
     Set tText = $Select($IsObject(pBody): pBody.%ToJSON(), 1: pBody)
-    Do ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, pPath _ "?ns=" _ pNamespace, pUser, ..PasswordOf(pUser), .pStatus, .tRaw, .tHeaders, tText, "application/json")
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, pPath _ $Select(pPath [ "?": "&", 1: "?") _ "ns=" _ pNamespace, pUser, ..PasswordOf(pUser), .pStatus, .tRaw, .tHeaders, tText, "application/json")
     Set ..PreparedType = $Piece($Get(tHeaders("CONTENT-TYPE")), ";", 1)
     Set pAnswer = ""
     Try {
@@ -295,6 +387,7 @@ Method TestARestrictionAsksFirstAndTheAgentIsRefused()
     Set tView = ..RunToEnd({"item": (..#VIEWPIVOT), "confirmed": true}, .tStart, .tKey)
     Do $$$AssertEquals(tStart _ " " _ $Select($IsObject(tView): tView.%Get("outcome"), 1: ""), "200 error", "confirmed, it is not asked again and reaches the vendor: " _ $Select($IsObject(tView): $Extract(tView.%ToJSON(), 1, 300), 1: tView))
     Do $$$AssertTrue($IsObject(tView) && (tView.%Get("message") [ "%SQLRESTRICT"), "the vendor's own error names the restriction dimension")
+    Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("statement"), 1: ""), ..BaseMdx(..#VIEWPIVOT), "and the start's own error answer names the composed statement")
     Set tSC = ..Agent({"pivot": (..#VIEWPIVOT)}, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "422 ANALYTICS.MDX.SQL", "the agent's read of it is refused")
 }
@@ -354,6 +447,64 @@ Method TestTheGateRefusesBeforeAnyLookup()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "409 ANALYTICS.NAMESPACE", "and so is the agent's read")
     Do $$$AssertEquals(..Rows(), 0, "no run was reserved")
+}
+
+/// <p>A pivot whose stored MDX carries text that runs server-side code (a manual pivot whose statement names <code>%SEARCH</code> with braces that would increment a node) is asked first on the
+/// screen, answering <code>confirm</code> with <code>%SEARCH</code> named and nothing reserved, and refused to the agent as 422 <code>ANALYTICS.MDX.SQL</code>; the node its braces would define
+/// stays undefined on both.</p>
+/// <p>Mutation (Rule 19): skip the detection in <method>OcuPilot.Area.Analytics.MdxQuery.Check</method> and in <method>OcuPilot.Screen.Tool.AnalyticsMdxRead.View</method> -- both legs go red.</p>
+Method TestAPivotWhoseStoredMdxRunsCodeAsksFirstAndTheAgentIsRefused()
+{
+    Set tNode = ..#NODE
+    Kill ^|"USER"|OcuPilotProbeMdxSplice(tNode)
+    Set tMdx = "SELECT {[Measures].[Amount]} ON 0 FROM [OcuPilotProbeVisits] WHERE %SEARCH.&[ID > {$Increment(^OcuPilotProbeMdxSplice(" _ tNode _ "))}]"
+    Do $$$AssertStatusOK(..SavePivot(..#CODEPIVOT, "", 0, tMdx), "the manual pivot is saved")
+    Do $$$AssertEquals(..BaseMdx(..#CODEPIVOT), tMdx, "the vendor composes the stored text unchanged")
+    Do ..Send("POST", ..#START, ##class(OcuPilot.Test.Http).GetTestUsername(), .tStatus, .tAnswer, {"item": (..#CODEPIVOT)})
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("outcome") _ " " _ tAnswer.constructs.%ToJSON(), 1: tAnswer), "200 confirm [""%SEARCH""]", "the screen asks first, naming the construct")
+    Do $$$AssertEquals(..Rows(), 0, "and reserves nothing")
+    Set tSC = ..Agent({"pivot": (..#CODEPIVOT)}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "422 ANALYTICS.MDX.SQL", "the agent's read is refused")
+    Do $$$AssertEquals($Data(^|"USER"|OcuPilotProbeMdxSplice(tNode)), 0, "the node the braces would increment is undefined")
+}
+
+/// <p>A pivot guarded by a resource the caller lacks, and a locked one the same resource guards (which the vendor opens without that check), are absent to a principal that holds both of the viewer's
+/// pairs and lacks the resource: the Definition read answers no row and the run's start is 404 <code>ANALYTICS.FOLDERITEM.ABSENT</code>. The account that holds the resource reads each, and the principal
+/// reads an unguarded pivot and starts its run, which is the control.</p>
+/// <p>Mutation (Rule 19): drop the <code>%CheckResource</code> test from <method>OcuPilot.Port.AnalyticsPort.ReadFolderItem</method> -- the locked leg goes red (the vendor's own existence check refuses the guarded one alone).</p>
+Method TestAGuardedOrLockedPivotIsAbsentToAPrincipalWhoLacksItsResource()
+{
+    Do $$$AssertStatusOK(..SavePivot(..#GUARDEDPIVOT, ..#GUARD), "the guarded pivot is saved")
+    Do $$$AssertStatusOK(..SavePivot(..#LOCKEDPIVOT, ..#GUARD, 1), "the locked guarded pivot is saved")
+    Set tSuite = ##class(OcuPilot.Test.Http).GetTestUsername()
+    For tName = ..#GUARDEDPIVOT, ..#LOCKEDPIVOT {
+        Set tRows = ..ScreenRead(..#DEFINITION, tName, tSuite, .tStatus, .tAnswer)
+        Do $$$AssertEquals(tStatus _ "|" _ tRows, "200|1", tName _ ": the account that holds the resource reads it")
+        Set tRows = ..ScreenRead(..#DEFINITION, tName, ..#READER, .tStatus, .tAnswer)
+        Do $$$AssertEquals(tStatus _ "|" _ tRows, "200|0", tName _ ": the principal that lacks it reads no row")
+        Do ..Send("POST", ..#START, ..#READER, .tStatus, .tAnswer, {"item": (tName)})
+        Do $$$AssertEquals(..Code(tStatus, tAnswer), "404 ANALYTICS.FOLDERITEM.ABSENT", tName _ ": and its run is refused as absent")
+    }
+    Set tRows = ..ScreenRead(..#DEFINITION, ..#VIEWRUN, ..#READER, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ tRows, "200|1", "control: the same principal reads an unguarded pivot")
+    Do ..Send("POST", ..#START, ..#READER, .tStatus, .tAnswer, {"item": (..#VIEWRUN)})
+    Do $$$AssertEquals(tStatus, 202, "and starts its run")
+    If $IsObject(tAnswer) && (tAnswer.%Get("id") '= "") Do ..Send("POST", $Replace(..#CANCEL, ":id", tAnswer.%Get("id")), ..#READER, .tStatus, .tCancel)
+}
+
+/// <p>The run needs write on the database of the MDX cache, and the reads do not: a principal holding both pairs and read on that database reads the Definition and Widgets tabs as the
+/// account does, and its run's start is refused 403 before the item is looked for.</p>
+/// <p>Mutation (Rule 19): drop the destination check from <method>OcuPilot.Port.AnalyticsPort.MdxAdmit</method> -- the start answers 202 and this goes red.</p>
+Method TestTheRunNeedsWriteOnTheCacheDatabaseAndTheReadsDoNot()
+{
+    Set tRows = ..ScreenRead(..#DEFINITION, ..#VIEWRUN, ..#NOWRITE, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ tRows, "200|1", "the Definition tab reads for a principal with read only")
+    Set tRows = ..ScreenRead(..#WIDGETS, ..#VIEWBOARD, ..#NOWRITE, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ tRows, "200|3", "and so does the Widgets tab")
+    Do ..Send("POST", ..#START, ..#NOWRITE, .tStatus, .tAnswer, {"item": (..#VIEWRUN)})
+    Do $$$AssertEquals(..Code(tStatus, tAnswer), "403 AUTH.NOPRIVILEGE", "the run's start is refused")
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("failedPair"), 1: ""), "%DB_USER:WRITE", "naming the write on the cache's database")
+    Do $$$AssertEquals(..Rows(), 0, "and nothing is reserved")
 }
 
 }

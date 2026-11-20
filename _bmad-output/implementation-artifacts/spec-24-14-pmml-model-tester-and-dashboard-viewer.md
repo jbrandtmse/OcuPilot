@@ -10,7 +10,23 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-13-analytics-settings.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-13-analytics-settings-3.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: 'Definition shows each level''s spec only: a filter''s chosen members (key, value), nested childLevels, disabled levels, calculated members'' expressions, and a userMDX stored with manualMode 0 (which the vendor''s composition still runs) are not shown'
+    evidence: 'ReadFolderItem reads PivotLevel.spec and memberName only; %DeepSee.Component.pivotTable.SynthesizeMDX reads key, childLevels and a non-empty userMDX whatever manualMode says (:12922). The field contents are the spec''s, so widening them is a spec change'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls ReadFolderItem (detail block), FolderItemDefinitionRow'
+    severity: med
+  - summary: 'A pivot run''s confirmation is bound to the item''s name, not to the composed text: the confirmed start, its job and a confirmed drill each compose again, so an edit of the pivot after the confirm answer runs text the person did not confirm; the confirm answer and the screen never show the composed statement'
+    evidence: 'MdxQuery.Admit and Process each call PivotRun.Resolve; the client re-sends {item, confirmed: true}; mdx-answer.ts does not read statement. Needs a concurrent edit by a holder of write on the item. Binding needs a body or answer shape the spec does not have (inference: a digest of the statement)'
+    location: 'src/OcuPilot/Area/Analytics/MdxQuery.cls Admit, Process; src/OcuPilot/Area/Analytics/PivotRun.cls Resolve; ui/src/app/areas/analytics/mdx-query.store.ts confirm'
+    severity: med
+  - summary: 'Widgets rows carry no widget name, so LinkedTo (a widget name) cannot be matched to a row, and the [Dashboard, Position] id shifts when widgets are reordered'
+    evidence: 'dataLink holds the source widget''s name (fixture: "Sales"); the row has Title, Position and no Name. The field list is the spec''s'
+    location: 'src/OcuPilot/Port/AnalyticsPort.cls ReadFolderItemView; src/OcuPilot/Screen/Descriptor/AnalyticsDashboardWidgetsTab.cls'
+    severity: low
+  - summary: 'The KPI-backed pivot refusal (409 ANALYTICS.PIVOT.CUBE) is pinned only with a KPI name nothing defines; no test pivots over a compiled KPI'
+    evidence: 'VIEWKPICUBE is OcuPilotProbeNoSuch.kpi and src/OcuPilot defines no %DeepSee.KPI subclass; %CubeExists reads the cube registry only (inference: it refuses a real KPI too)'
+    location: 'src/OcuPilot/Test/AnalyticsPivotRun.cls TestAbsentAndNonPivotItemsAreRefusedBeforeAnythingRuns; src/OcuPilot/Test/AnalyticsProbe.cls CreateViewerItems'
+    severity: low
 ---
 
 <intent-contract>
@@ -149,6 +165,33 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
   - `[low]` `[reject]` The browser spec covers the dashboard-to-grid walk only — it is AC5; confirmation and refusals are pinned by the server classes and the page spec.
   - `[false]` `[reject]` The mutation line naming `FOLDERPAIRS` applies to the pivot start's gate — it does not, so the line now names the descriptor's privileges as well (corrected in `## Verification`).
 
+### 2026-11-20 — Follow-up review pass (full-opus, four layers)
+
+- verdicts: 22 findings — high 0, medium 4, low 17, false 1; 5 patched, 4 deferred, 13 rejected, no intent gap
+- findings:
+  - `[medium]` `[patch]` The agent's `pivot` read checked MDX query's pairs only, so an adjustment or a classic custom resource on the Definition tab did not reach it — `AnalyticsMdxRead.View` also evaluates `PIVOTDESCRIPTORCLASS`; `AnalyticsMdxReadGate.TestAPivotReadFollowsTheDefinitionTabsPairs`; mutation red.
+  - `[medium]` `[patch]` "No row for an item that is neither a pivot nor a dashboard" had no test, and the test header claimed a mutation that stays green — a link fixture and its two legs in `TestAbsentHiddenAndOtherItemsReadNoRow`, header corrected; mutation red.
+  - `[medium]` `[defer]` Definition omits filter selections, nested and disabled levels, calculated expressions and a userMDX stored without manual mode — spec-bound field contents (frontmatter `deferred:`).
+  - `[medium]` `[defer]` A pivot run's confirmation is bound to the name, not to the composed text — needs a body or answer shape the spec does not have (frontmatter `deferred:`).
+  - `[low]` `[patch]` The start's own error answer lacked `statement` — `MdxQuery.Admit` annotates every immediate answer but a confirm; asserted in `TestARestrictionAsksFirstAndTheAgentIsRefused`; mutation red.
+  - `[low]` `[patch]` The Definition tab's Cancel was untested — a page spec case; mutation red.
+  - `[low]` `[patch]` The arming comment in `scripts/ci-throwaway.sh` said one probe principal — three.
+  - `[low]` `[defer]` Widgets rows carry no widget name, so LinkedTo cannot be matched to a row — spec-bound fields (frontmatter `deferred:`).
+  - `[low]` `[defer]` The KPI-pivot refusal is pinned with a KPI nothing defines — a compiled probe KPI is outside this batch's fixtures (frontmatter `deferred:`).
+  - `[low]` `[reject]` Every folder item's name opens the viewer, and a pivot's Widgets tab is empty — by design (Decided in-stage (plan) 1; the tabs' empty states).
+  - `[low]` `[reject]` The pivot path reuses MDX query's input and SQL refusal sentences — the spec reuses the codes, and a new sentence would be a new string.
+  - `[low]` `[reject]` An item deleted between `ReadFolderItem` and `VendorPivotMdx` composes `""` — the window is two opens in one call, and the answer is the vendor's own error outcome.
+  - `[low]` `[reject]` `pivot` carries no `maxLength` — an over-long name is the explicit 404 absent refusal.
+  - `[low]` `[reject]` The `Stored()` oracle's NotPivot knows `kpi` only — no fixture widget uses another extension, and `WidgetNotPivot` has its own test over seven names.
+  - `[low]` `[reject]` `AnalyticsPivotRun`'s `Code`, `PasswordOf`, `Send`, `RunToEnd` and `Settle` resemble `AnalyticsMdxRoutes`' — test-only helpers that differ in kind filter, owners and type capture; a shared base would couple two classes' principals.
+  - `[low]` `[reject]` Each run kind has its own busy slot — `BackgroundRun` reserves by `RUNKIND` for every kind, and `MaxRunning` caps them together; "the same caps" are MDX query's row, cell and time bounds.
+  - `[low]` `[reject]` AC3's journal scan does not cover the screen's HTTP reads — the screen and the tool reach the same port read, which is scanned in process; `Touched()` covers the HTTP legs.
+  - `[low]` `[reject]` The "601 characters" case is 607 — a name over the bound is also a name no item holds, so the bound is not observable at this surface.
+  - `[low]` `[reject]` AD-65 does not describe the `pivot` kind — the line is proposed for the owner's attended update (Design Notes, Residual).
+  - `[low]` `[reject]` Composing at the start also writes the session counter — the spec has the start and the job each compose; both are inside the run and `MdxAdmit` requires WRITE there.
+  - `[low]` `[reject]` `AnalyticsPivotRun.cls` (510 lines) and `AnalyticsFolderItemView.cls` (517) exceed the 500-line guide — a split class declares the arming variable and needs a new roster line in `scripts/ci-throwaway.sh` and `ui/tools/ci.test.mjs`.
+  - `[false]` `[reject]` Attaching to another pivot's busy run shows its cells under this item — `settle` clears `attempt` on a busy refusal and `adopt` requires one, so no grid is adopted and no drill can be sent.
+
 ## Design Notes
 
 **Questions for the runner (intent gap).**
@@ -246,6 +289,16 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `42b21cde
 - mutation: AC1 `AnalyticsPort.WidgetNotPivot` drops `metric` -> `TestAWidgetsDataSourceIsAPivotUnlessItsExtensionSaysOtherwise` red alone (`AnalyticsFolderItemView` run 75).
 - mutation: AC2 `MdxQuery.Process` drops the drill's row -> `TestADrillOfAPivotsCellAnswersThatCellsListing` red alone (`AnalyticsPivotRun` run 76); the Definition page's drill sends `statement` in place of `item` -> its drill spec red.
 - mutation: AC4 the gate: `%Development:USE` dropped from `MDXPAIRS` and from the Definition tab's privileges -> `TestTheGateRefusesBeforeAnyLookup` red alone (`AnalyticsPivotRun` run 73; dropping `FOLDERPAIRS` and `MDXPAIRS` alone stays green because the descriptor's privileges also refuse).
+- mutation: QA AC1 `AnalyticsPort.ReadFolderItemView` without its `pMax` test -> `TestTheWidgetsReadIsCutAtTheCapAndSaysSo` red alone on its port leg (`AnalyticsFolderItemView` run 19).
+- mutation: QA AC4 `AnalyticsPort.PivotStatement` without its `FolderItemVisible` test -> `TestAWidgetOnAMissingPivotReadsAsStoredAndItsLinkEndsInTheAbsentRefusal` red alone (run 20).
+- mutation: QA AD-60 `Sanitize.Neutralize` answers its text unchanged -> `TestStoredTextReachesTheModelOnlyThroughTheSanitizer` red alone, on both tools' delimiter and value legs (run 21).
+- mutation: QA AC4 `MdxQuery.Check` and `AnalyticsMdxRead.View` skip both construct detections -> `TestAPivotWhoseStoredMdxRunsCodeAsksFirstAndTheAgentIsRefused` red, with the restriction test (`AnalyticsPivotRun` run 22).
+- mutation: QA AC4 `AnalyticsPort.ReadFolderItem` without its `%CheckResource` test for a locked item -> `TestAGuardedOrLockedPivotIsAbsentToAPrincipalWhoLacksItsResource` red alone on the locked leg (run 23).
+- mutation: QA AC4 `AnalyticsPort.MdxAdmit` without its destination check -> `TestTheRunNeedsWriteOnTheCacheDatabaseAndTheReadsDoNot` red alone (run 24). Each QA mutation was made on the throwaway's copy, loaded with its subclasses recompiled, and reverted by copying the tree's file back (`diff -rq` of the tree and the copy empty afterward).
+- mutation: review AC2 `MdxQuery.Admit` without its `Annotate` of an immediate answer -> `TestARestrictionAsksFirstAndTheAgentIsRefused` red alone on the start's error answer (`AnalyticsPivotRun` run 30).
+- mutation: review AC1 `AnalyticsPort.ReadFolderItemView` without its test of the item's kind -> `TestAbsentHiddenAndOtherItemsReadNoRow` red alone on the link leg (`AnalyticsFolderItemView` run 31); without its `FolderItemVisible` test it stays green (run 33), since a hidden item reads no kind.
+- mutation: review gate `AnalyticsMdxRead.View` without its evaluation of `PIVOTDESCRIPTORCLASS` -> `TestAPivotReadFollowsTheDefinitionTabsPairs` red alone (`AnalyticsMdxReadGate` run 32).
+- mutation: review client `FolderItemDefinitionPage.onCancelRun` sends nothing -> the page spec's Cancel case red alone; dropping `state.busy()` from `blocked` stays green, since the run state refuses a second start itself. The server mutations of runs 30 to 32 were made on the throwaway's copy together and run 33's alone, each with the port's, the run's and the tool's subclasses recompiled, and reverted by `rsync` of the tree (`diff -rq` empty); the client one with `shasum` equal before and after.
 - Not run against a mutation: AC6's fresh-instance clause (`ci-runner` has no order option; each new class was green on its first run on `ocupilot-b-ci`, which held no probe state, and left `Gone()` true); the component spec's `Mutation (Rule 19)` lines name their changes in its comments.
 
 ## Auto Run Result

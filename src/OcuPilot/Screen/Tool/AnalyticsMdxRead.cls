@@ -15,7 +15,8 @@
 /// refused after a prepare, which executes nothing, and is never run. Only SELECT with at most two axes,
 /// and DRILLTHROUGH, run; no pivot variable is handed to the prepare in production
 /// (<method>Variables</method>).</p>
-/// <p><b>A saved pivot</b> (Story 24.14) is run by naming it in <code>pivot</code> in place of <code>statement</code>; exactly one of the two is required. The port composes
+/// <p><b>A saved pivot</b> (Story 24.14) is run by naming it in <code>pivot</code> in place of <code>statement</code>; exactly one of the two is required. Its read also
+/// requires the pairs of the screen the person runs it from (<parameter>PIVOTDESCRIPTORCLASS</parameter>), an adjustment and the classic page's custom resource included. The port composes
 /// the pivot's statement (<method>OcuPilot.Port.AnalyticsPort.PivotStatement</method>, which makes the gate's own namespace checks and the folder item refusals first), and
 /// everything above then applies to that statement unchanged, so a pivot whose stored restriction runs SQL is refused 422 <code>ANALYTICS.MDX.SQL</code>. The result also
 /// carries <code>statement</code>.</p>
@@ -41,6 +42,9 @@ Parameter DESCRIPTION = "Run one MDX query in the namespace this turn is scoped 
 
 /// <p>The screen whose pairs this tool requires and whose context lists it.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AnalyticsMdxQuery";
+
+/// <p>The screen a saved pivot is run from, whose pairs a <code>pivot</code> read also requires: the Definition tab, the one the person's run answers for.</p>
+Parameter PIVOTDESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab";
 
 /// <p>The port that detects, prepares and runs the statement. Overridable so a fixture can observe what
 /// reaches it; production never overrides it.</p>
@@ -179,7 +183,9 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         }
         Set tStatement = tArgs.%Get("statement")
         Set tFailedPair = ""
-        If '##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) {
+        Set tAdmitted = ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair)
+        If tAdmitted && tIsPivot Set tAdmitted = ##class(OcuPilot.Screen.Gate).Evaluate(..#PIVOTDESCRIPTORCLASS, .tFailedPair)
+        If 'tAdmitted {
             Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
             Do pFault.%Set("detail", ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair))

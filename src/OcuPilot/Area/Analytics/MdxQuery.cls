@@ -90,6 +90,7 @@ ClassMethod Admit(Output pNamespace As %String, Output pRequest As %List, Output
             Quit
         }
         If $IsObject($Get(tAnswer)) {
+            If tAnswer.%Get("outcome") '= ..#OUTCOMECONFIRM Do ..Annotate(tText, tAnswer)
             Set tSC = ..Reply(200, tAnswer)
             Quit
         }

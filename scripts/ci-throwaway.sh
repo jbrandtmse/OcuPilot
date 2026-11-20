@@ -652,7 +652,7 @@ services:
       # reads at the port, over HTTP and as the agent's tools.
       # classes: AnalyticsSettingsRead
       # The folder item viewer classes (Story 24.14) turn analytics on in USER and save pivots and a dashboard there through the vendor's classes: the view class reads the two tabs at the port,
-      # over HTTP and as the agent's tools, and the pivot run class runs a saved pivot over the three routes and as the agent's read, with one probe principal.
+      # over HTTP and as the agent's tools, and the pivot run class runs a saved pivot over the three routes and as the agent's read, with three probe principals.
       # classes: AnalyticsFolderItemView, AnalyticsPivotRun
       # The settings edge class (Story 24.13) rewrites the same three globals from its own snapshot, and drives the agent's four read tools at their caps and in a namespace without analytics.
       # classes: AnalyticsSettingsEdge
