@@ -438,9 +438,6 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
             ; application pair its cascade reaches (AD-8), after the write's own.
             If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
-            ; Story 18.4: the dismount declares the pair its prohibited set's own-database read needs,
-            ; after the write's own (AD-8, AD-10).
-            If $Parameter(tTool.class, "OWNSETRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "OWNSETRESOURCE"), "USE"))
             ; Story 16.11: the Task Manager's start declares %Admin_Secure:USE after the write's own,
             ; without which the vendor's start runs it as the caller (AD-8 as amended 2026-09-30).
             If $Parameter(tTool.class, "STARTRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "STARTRESOURCE"), $Parameter(tTool.class, "STARTPERMISSION")))

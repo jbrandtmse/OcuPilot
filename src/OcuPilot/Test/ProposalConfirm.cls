@@ -720,11 +720,12 @@ Method TestAFailedWriteLeavesTheProposalBurned()
     Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#BURNED, "as already decided")
 }
 
-/// <p>The same failed write, rendered by the confirm handler's own refusal renderer
+/// <p>The same failed write, answered by the shipped <method>OcuPilot.Api.Confirm.HandleConfirm</method>
 /// (<class>OcuPilot.Test.ConfirmRenderProbe</class>): the envelope carries the port's status and
 /// code, the fault's own sentence as its reason, and the row's state in its detail.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Api.Confirm.RenderRefusal</method> ignore
-/// <var>pReason</var> -- the reason falls to the generic tool sentence and this goes red.</p>
+/// <var>pReason</var>, or drop <var>tReason</var> from <method>HandleConfirm</method>'s call to it -- the
+/// reason falls to the generic tool sentence and this goes red.</p>
 Method TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence()
 {
     Set tKey = ..Seed()

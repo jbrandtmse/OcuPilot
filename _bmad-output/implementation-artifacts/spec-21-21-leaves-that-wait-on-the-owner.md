@@ -142,6 +142,26 @@ deferred: []
 - AC16 (rosters): Given the new screen, tools, entity type and port, when `SurfaceCoverage`, `EndpointCoverage`, `PortGate`, `Descriptor`, `ScreenGrounding`, `ClassicPageGate` and `navigation.test.mjs` run, then each names them, each count derived from the registry (Rule 30).
 - AC17 (browser, the outermost surface): Given the deployed bundle, when `page-resources.browser-spec.mjs` signs in as a `%Admin_Secure` holder, assigns a resource to a probe-safe page, sees its row, changes it, clears it, and tries a page a Home screen declares, then each step shows the screen's own answer, and the refusal shows the existing sentence.
 
+### Review Findings
+
+Code review 2026-11-20 (Batches 1, 2 and 4; full-opus, four layers; 33 rows, 14 entries: 0 high, 5 med, 9 low). Patches applied, uncommitted.
+
+- [x] [Review][Patch] MED: a write that fails after the claim with an unnamed fault rendered `INTERNAL` without `detail.state`, so the card offered Confirm on a spent token [src/OcuPilot/Api/Confirm.cls RenderRefusal; Api/Error.cls RenderInternal gains an optional detail] -- pinned in `ReadBackRoute`.
+- [x] [Review][Patch] MED: `ConfirmRenderProbe` copied `HandleConfirm`, so dropping `tReason` at the shipped call stayed green [Api/Confirm.cls `KernelConfirmClass` seam; Test/ConfirmRenderProbe.cls now runs `HandleConfirm`].
+- [x] [Review][Patch] MED: the AC1 gate test sent the IRISSYS legs through the real port, so a regressed set would dismount IRISSYS [Test/DatabaseActionsGate.cls `Legs` accept flag; Test/DatabaseActionsGateProbe.cls] -- the legs now write through `DatabaseAcceptPort` and assert no dismount was sent.
+- [x] [Review][Defer] MED: AD-8's Story 18.4 sentence (spine :282) and `.memlog.md:276` still say dismount declares `%Admin_Manage:USE` -- deferred: DW-2805 routed to this story for the runner's Rule 20 correction (no AD edit in-stage).
+- [x] [Review][Defer] MED: WA-16's register reason "No IRIS class backs it" is false (`%CSP.Mgr.GatewayMgr` reads and sets the gateway's configuration) [docs/exclusion-register.md] -- deferred: DW-2806 decision-pending (ruled public text).
+- [x] [Review][Patch] LOW: the two `DatabasePort` configuration reads had no direct test (the 420 skip never ran) [Test/DatabaseActionsProhibited.cls `TestTheConfigurationReadsSkipAMissingNameAndRestoreTheNamespace`].
+- [x] [Review][Defer] LOW: the Globals half of `ProtectedNamespaceDatabases` is unpinned (no namespace on the instance separates globals and routines) -- deferred: DW-2807 wontfix-accepted.
+- [x] [Review][Defer] LOW: stale planning counts beside the edit (`epics.md` :964, :973, :9812; `research.md` :440, :442) -- deferred: occurrence on DW-2619.
+- [x] [Review][Patch] LOW: `ToolEmit` still read the removed `OWNSETRESOURCE`; dead, and Epic 24 has no unmerged edit there now [Test/ToolEmit.cls].
+- [x] [Review][Patch] LOW: `ReadBackRoute`'s new test lacked a mutation line, a status check and a blank line, and called 500 "the vendor's own status" [Test/ReadBackRoute.cls].
+- [x] [Review][Patch] LOW: `Transition`'s doc said `pReason` is set on every post-claim failure; it is set when the fault names its code [Kernel/Proposal/Confirm.cls].
+- [x] [Review][Patch] LOW: `DatabaseProhibitedFixture`'s header said `PortClassOf` reroutes only the own-set reads; it reroutes every arm [Test/DatabaseProhibitedFixture.cls].
+- LOW by-design: TM-19's reason names the mail half only, and Story 22.1's line reads "...; and not planned" after an earlier "and" -- both are ruled text (U-73, spec gate).
+
+Rejected: the INTERNAL branch reaching `REASONTOOLUNAVAILABLE` (false: `RenderRefusal` renders `RenderInternal` before `ReasonFor`); `%FromJSON` erroring on an empty body (false: an error is red); an empty probe directory passing vacuously and a multi-code 420 status (low, unreachable here, fails closed); the removed tool-call leg (low: the pairs are pinned by `DatabaseDescriptor` and `ToolEmit`); `ReadBackRoute` counted as AC3 wire evidence and the stale "Pass scope" line and unrun full sweep (spec edits; CI's instance shards run the sweep); no client test for a closed-row refusal card (low: the reason flows the same way).
+
 ## Spec Change Log
 
 - 2026-11-20, orchestrator ruling on the Batch 5 halt: SH-27 (Batch 5, AC6 to AC17) is split to Story 21.37 (epics.md, add-only, with an amended note on this story); owner answer U-74 carries to it. This story closes with Batches 1, 2 and 4; Batch 3 is not built under Task 0 (b)'s decision rule and DW-2348 is closed `wontfix-accepted` with its `reopen_if`. Batch 5's strings are ruled for 21.37 (veto item) with two changes: the screen-replaces line reads "<screen> follows this page's resource and will require it from the next request.", and the clear warning reads "After this, the page needs no custom resource."
@@ -267,6 +287,8 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 - mutation: AC1, `OWNSETRESOURCE` and its `PrivilegePairs` override restored on `DatabaseDismount` -> `DatabaseActionsGate` red (`TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet` and `TestExactlyTheDeclaredPairsWriteOnBothCallers`).
 - mutation: AC2, the dismount branch of `Prohibited.Database` passes `pFromConfig` 0 -> `DatabaseActionsProhibited.TestTheDismountJudgesTheSetWithoutTheAdminRoutes` red.
 - mutation: AC3 (Batch 2), `Api.Confirm.RenderRefusal` ignores `pReason` -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (`ConfirmRoute` stays green: it cannot arm the fixture); and `Kernel.Proposal.Confirm.Transition`'s write-failure branch drops its `pReason` assignment -> `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned` and the same test red. Both reverted with Edit (`git diff` shows only the intended change) and the source reloaded.
+- mutation (code review): AC3, `Api.Confirm.HandleConfirm` drops `tReason` from its `RenderRefusal` call -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (run 917); and `RenderRefusal`'s internal branch drops `pDetail` -> `ReadBackRoute.TestAnUnnamedVendorFailureAfterTheClaimStaysGenericOverTheWire` red (run 918). Reverted (`cmp` identical) and reloaded.
+- mutation (code review): AC2, `DatabasePort.ConfigDirectories` refuses on a missing name -> `DatabaseActionsProhibited.TestTheConfigurationReadsSkipAMissingNameAndRestoreTheNamespace` red alone (run 919). Reverted (`cmp` identical) and reloaded.
 - mutation: AC5 (Batch 4), the SH-28 row removed from the register -> `exclusion-register.test.mjs` red (the catalog-P4 test, the extract-position test and the new not-planned test; 15 pass, 3 fail); restored with Edit, `cmp` against the pre-mutation copy identical, 18 pass.
 
 **Commands** (one per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message):

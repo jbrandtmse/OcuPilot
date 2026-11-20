@@ -18,6 +18,12 @@ ClassMethod CallerUsername() As %String
     Quit $Username
 }
 
+/// <p>The kernel class <method>HandleConfirm</method> delegates the confirm to.</p>
+ClassMethod KernelConfirmClass() As %String [ Private ]
+{
+    Quit "OcuPilot.Kernel.Proposal.Confirm"
+}
+
 /// <p>Answer <code>POST /proposal/:id/confirm</code>: claim proposal <var>pId</var> for the caller
 /// and issue the stored write. 200 with <code>{proposalId, state, closedReason, confirmedAt}</code>
 /// on success; one refusal envelope otherwise, carrying the kernel's own code.</p>
@@ -40,7 +46,7 @@ ClassMethod HandleConfirm(pId As %String) As %Status
             Set tSC = ..RenderBadBody()
             Quit
         }
-        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail, .tReason)
+        Set tConfirmSC = $ClassMethod(..KernelConfirmClass(), "Confirm", pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail, .tReason)
         If $$$ISERR(tConfirmSC) {
             Set tSC = ..RenderRefusal(tConfirmSC, tHttpStatus, tCode, tDetail, tReason)
             Quit
@@ -112,7 +118,8 @@ ClassMethod RequestOrigin() As %String
 /// <p>A stale-save refusal from OcuPilot's own state is
 /// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter>, the answer every other handler gives it;
 /// a code the kernel did not name at all is an internal error, never an envelope with an empty
-/// <code>code</code>. A non-empty <var>pReason</var> is the sentence rendered in place of
+/// <code>code</code>, and still carries <var>pDetail</var>, so a write that failed after the claim
+/// tells the caller the row closed. A non-empty <var>pReason</var> is the sentence rendered in place of
 /// <method>ReasonFor</method>'s.</p>
 ClassMethod RenderRefusal(pStatus As %Status, pHttpStatus As %Integer, pCode As %String, pDetail As %DynamicObject = "", pReason As %String = "") As %Status [ Private ]
 {
@@ -120,7 +127,7 @@ ClassMethod RenderRefusal(pStatus As %Status, pHttpStatus As %Integer, pCode As 
         Quit ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
     }
     If (pCode = "") || (pCode = ##class(OcuPilot.Api.Error).#INTERNAL) {
-        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pStatus))
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pStatus), pDetail)
     }
     Set tHttp = +pHttpStatus
     If tHttp < 400 Set tHttp = 500

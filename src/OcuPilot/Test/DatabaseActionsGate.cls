@@ -155,10 +155,11 @@ Method TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet()
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tA, "Mounted") _ ##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "falsefalse", "both probe databases are dismounted")
     Do $$$AssertStatusOK(..Mount(tA, "MOUNT"), "the first is mounted back")
     Do $$$AssertStatusOK(..Mount(tB, "MOUNT"), "and the second")
-    Set tRun = ..Legs(tUser, "dismount", tSystem, "OcuPilot.Screen.Tool.DatabaseDismount", "")
+    Set tRun = ..Legs(tUser, "dismount", tSystem, "OcuPilot.Screen.Tool.DatabaseDismount", "", "", 1)
     For tLeg = 1, 2 {
         Set tOne = ..Leg(tRun, tLeg)
         Do $$$AssertEquals($Select($IsObject(tOne): tOne.%Get("http") _ " " _ tOne.%Get("code"), 1: "absent"), "403 PROHIBITED.OCUPILOTDATABASE", $Select(tLeg = 1: "the screen's action", 1: "the agent's confirm") _ " on IRISSYS is refused by the protected set, never for a pair")
+        Do $$$AssertTrue($IsObject(tOne) && '$ListFind($ListFromString(tOne.%Get("types")), "Database.Actions/DISMOUNT"), $Select(tLeg = 1: "the screen's action", 1: "the agent's confirm") _ " sent no dismount")
     }
 }
 
@@ -217,8 +218,9 @@ Method Both(pIndex As %Integer, pAction As %String, pScreenId As %String, pAgent
 /// <p>Mint <var>pToolClass</var>'s proposal against <var>pAgentId</var> (<var>pScreenId</var> when
 /// empty) for <var>pUser</var>, then run as <var>pUser</var> the screen's <var>pAction</var> against
 /// <var>pScreenId</var> with <var>pValues</var> and the confirm, answering what the child
-/// signalled.</p>
-Method Legs(pUser As %String, pAction As %String, pScreenId As %String, pToolClass As %String, pValues As %DynamicObject, pAgentId As %String = "") As %DynamicObject
+/// signalled. With <var>pAccept</var> 1 both legs write through a port that sends no write, for a target
+/// that must never be written.</p>
+Method Legs(pUser As %String, pAction As %String, pScreenId As %String, pToolClass As %String, pValues As %DynamicObject, pAgentId As %String = "", pAccept As %Boolean = 0) As %DynamicObject
 {
     Set tAgentId = $Select(pAgentId = "": pScreenId, 1: pAgentId)
     Set tArgs = {}
@@ -242,9 +244,11 @@ Method Legs(pUser As %String, pAction As %String, pScreenId As %String, pToolCla
     Do tStep.%Set("action", pAction, "string")
     Do tStep.%Set("id", pScreenId, "string")
     If $IsObject(pValues) Do tStep.%Set("values", pValues)
+    Set tConfirm = {"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}
+    If pAccept Do tStep.%Set("accept", 1, "boolean"), tConfirm.%Set("accept", 1, "boolean")
     Set tPlan = []
     Do tPlan.%Push(tStep)
-    Do tPlan.%Push({"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))})
+    Do tPlan.%Push(tConfirm)
     Set tRun = ..RunAs(pUser, tPlan)
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWriteGate).Ran(tRun), pUser _ " 1", "the child process ran as " _ pUser)
     Quit tRun

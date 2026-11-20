@@ -1,6 +1,6 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with three replaced seams
-/// (Story 18.3): <method>PortClassOf</method> answers the port a test names, so the arm's admin API reads
-/// can be failed; <method>OwnDatabaseNames</method> answers the shipped set plus the probe database a
+/// (Story 18.3): <method>PortClassOf</method> answers, for every arm, the port a test names, so the arm's
+/// admin API reads can be failed; <method>OwnDatabaseNames</method> answers the shipped set plus the probe database a
 /// test names in <code>^||OcuPilotDatabaseOwnProbe</code>, so the directory arm is driven against a
 /// probe database's file and never a real protected one; and <method>OwnDatabaseNames</method> or
 /// <method>OwnDatabaseDirectories</method> answers an error status when a test names it,
@@ -9,7 +9,7 @@
 Class OcuPilot.Test.DatabaseProhibitedFixture Extends OcuPilot.Kernel.Proposal.Prohibited
 {
 
-/// <p>The port the own-set reads go through when a test names one in <code>^||OcuPilotDatabaseOwnPort</code>,
+/// <p>The port every arm's reads go through when a test names one in <code>^||OcuPilotDatabaseOwnPort</code>,
 /// and the tool's own otherwise.</p>
 ClassMethod PortClassOf(pToolClass As %String) As %String [ Private ]
 {

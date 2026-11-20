@@ -124,7 +124,7 @@ ClassMethod ProhibitedClassName() As %String
 /// rendered at, and <var>pDetail</var> carries the structured detail that code owns
 /// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>. <var>pReason</var> is the
 /// prohibited set's sentence when it refused, the port fault's own sentence when the write failed
-/// after the claim, <code>""</code> otherwise.</p>
+/// after the claim with a fault that names its code, <code>""</code> otherwise.</p>
 /// <p><b>Caller contract:</b> <var>pUser</var> is the authenticated caller, read by the handler as
 /// <code>$Username</code> and never taken from the body. <var>pSuppliedSecrets</var> is the parsed
 /// body -- a flat object, or <code>""</code> for none. Every refusal before the claim leaves the

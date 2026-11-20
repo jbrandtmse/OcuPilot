@@ -37,6 +37,7 @@ Parameter PROBEROLE = "OcuPilotProbeReadBackRole";
 Parameter ROLETOOL = "OcuPilot.Screen.Tool.RoleUpdate";
 
 Parameter WEBAPPTOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -255,9 +256,11 @@ Method TestAConfirmedRoleUpdateReadsBackAReorderedListAsMatching()
 
 /// <p>A confirmed web application update that passes every gate and the claim, then fails at the
 /// vendor (it sets a timeout beyond the maximum the instance allows), answers over the wire with
-/// the generic internal envelope, because the vendor's failure maps to no named fault, and the
-/// proposal stays confirmed and burned. A named fault's sentence is
+/// the generic internal envelope, because the vendor's failure maps to no named fault, with the row's
+/// state in its detail, and the proposal stays confirmed and burned. A named fault's sentence is
 /// <class>OcuPilot.Test.ProposalConfirm</class>'s.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Api.Confirm.RenderRefusal</method>'s internal branch drops
+/// <var>pDetail</var> -- the envelope carries no state and this goes red.</p>
 Method TestAnUnnamedVendorFailureAfterTheClaimStaysGenericOverTheWire()
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
@@ -269,10 +272,12 @@ Method TestAnUnnamedVendorFailureAfterTheClaimStaysGenericOverTheWire()
     If $$$ISERR(tSC) Quit
     Set tKey = tProposal.%Get("proposalId")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/proposal/" _ tKey _ "/confirm", tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tText, .tHeaders, "", "application/json")
+    Do $$$AssertStatusOK(tSC, "the confirm request is answered")
     Set tEnvelope = ##class(%DynamicAbstractObject).%FromJSON(tText)
-    Do $$$AssertEquals(tStatus, 500, "the confirm answers the vendor's own status: " _ $Extract(tText, 1, 300))
+    Do $$$AssertEquals(tStatus, 500, "the confirm answers 500: " _ $Extract(tText, 1, 300))
     Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#INTERNAL, "under the internal code")
     Do $$$AssertEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, "with the generic sentence")
+    Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("state"), 1: ""), "confirmed", "with the row's state in its detail, so the card does not offer Confirm again")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "confirmed", "and the row stays confirmed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 1, "and burned")
 }
