@@ -130,7 +130,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Set pProblem = ""
     Set tSC = $$$OK
     Try {
-        If '$IsObject(pFresh) || (pFresh.%GetTypeOf(..#PRECONDITIONFIELD) = "unassigned") {
+        If '$IsObject(pFresh) || (pFresh.%Get(..#PRECONDITIONFIELD) = "") {
             Set pProblem = "this instance did not report that statement's id, and a statement it cannot identify is not one to cancel"
             Quit
         }

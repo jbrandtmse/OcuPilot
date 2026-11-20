@@ -3,7 +3,8 @@
 /// each running the harvested body for real. After a reset the alert count reads 0 and the state OK, and <code>alerts.log</code>
 /// holds every line it held before; with the key disabled the governance gate refuses the agent's call.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and <parameter>ARMINGVARIABLE</parameter> reading
-/// <code>1</code>, because the class sets the instance's system state and resets its alerts. The state a test found is not put
+/// <code>1</code>, because the class sets the instance's system state, posts a severity-2 entry to <code>messages.log</code> and
+/// resets its alerts. The state a test found is not put
 /// back: a reset is not undoable, and the throwaway's own monitor raises it again.</p>
 Class OcuPilot.Test.SystemAlertsWrite Extends %UnitTest.TestCase
 {
@@ -67,6 +68,14 @@ ClassMethod Arrange(pState As %Integer = 2)
     Set $NAMESPACE = "%SYS"
     Do $SYSTEM.Monitor.SetState(pState)
     Set $NAMESPACE = tOrigNS
+}
+
+/// <p>Raise the instance's alert count by one: a severity-2 entry in <code>messages.log</code>, which
+/// <code>$SYSTEM.Monitor.Alerts()</code> counts at once (measured on <code>ocupilot-ci</code>). The entry's text is new each time,
+/// because a repeat of the previous entry was not counted (measured).</p>
+ClassMethod RaiseCount()
+{
+    Do ##class(%SYS.System).WriteToConsoleLog("OcuPilot.Test.SystemAlertsWrite raises the alert count before a reset, " _ $ZTimeStamp _ "-" _ $Random(1000000), 0, 2)
 }
 
 /// <p>How many agent-write markers the audit database holds since <var>pSince</var>, whichever proposal they name.</p>
@@ -138,16 +147,19 @@ ClassMethod Dispatched(pName As %String, Output pProposalId As %String, Output p
     Quit $Select(pProposalId '= "": "minted", 1: "refused")
 }
 
-/// <p><b>AC4.</b> The screen's Reset alerts and the agent's confirmed reset each run the harvested body once: the state then reads
-/// OK and the count 0, and <code>alerts.log</code> holds every line it held. The agent's confirm records one marker and a read-back.</p>
+/// <p><b>AC4.</b> From an alert state with a count above 0, the screen's Reset alerts and the agent's confirmed reset each run the
+/// harvested body once: the state then reads OK and the count 0, and <code>alerts.log</code> holds every line it held. The agent's
+/// confirm records one marker and a read-back.</p>
 /// <p>Mutation (Rule 19): skip <code>$SYSTEM.Monitor.Clear()</code> in <method>OcuPilot.Port.Harvest.Alerts.AlertsManage</method> -- the
-/// state legs go red.</p>
+/// state legs go red; <code>SetState(0)</code> in its place -- the count legs go red.</p>
 Method TestBothCallersResetTheAlerts()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tLinesBefore = ..LogLines()
     Do ..Arrange()
-    Do $$$AssertEquals($Piece(..State(), "|", 1), 2, "the instance reads an alert state")
+    Do ..RaiseCount()
+    Set tBefore = ..State()
+    Do $$$AssertTrue(($Piece(tBefore, "|", 1) = 2) && ($Piece(tBefore, "|", 2) > 0), "the instance reads an alert state and a count above 0: " _ tBefore)
     Set tStatus = ..Act(.tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer), "200|nothingSent", "the screen's Reset alerts answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Set tAfter = ..State()
@@ -156,7 +168,9 @@ Method TestBothCallersResetTheAlerts()
     Do $$$AssertEquals(..AgentMarkers(tSince), 0, "the person's reset records no agent-write marker (AD-53)")
 
     Do ..Arrange()
-    Do $$$AssertEquals($Piece(..State(), "|", 1), 2, "the instance reads an alert state again")
+    Do ..RaiseCount()
+    Set tAgain = ..State()
+    Do $$$AssertTrue(($Piece(tAgain, "|", 1) = 2) && ($Piece(tAgain, "|", 2) > 0), "the instance reads an alert state and a count above 0 again: " _ tAgain)
     Do $$$AssertEquals(..Dispatched("SYSTEM", .tProposalId, .tTurnKey, .tContent), "minted", "the agent's call mints a proposal: " _ tContent)
     Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tProposalId, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $Get(tCode) _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tResult), "1||nothingSent", "its confirm resets the alerts, with a read-back: " _ $Get(tCode))

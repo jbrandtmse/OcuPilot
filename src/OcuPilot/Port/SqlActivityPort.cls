@@ -218,8 +218,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
 /// <p>The one statement the composite id <var>pId</var> names, read fresh: <parameter>TYPEROW</parameter>
 /// answers its row in <var>pResult</var>; <parameter>TYPECANCEL</parameter> refuses a remote row, then
-/// cancels it and answers <code>{}</code>. A malformed id and a statement no longer running are 404
-/// <code>PORT.NOTFOUND</code>.</p>
+/// cancels it and answers <code>{}</code>. A malformed id, a statement no longer running and, for a cancel, a
+/// statement listed with no statement id are 404 <code>PORT.NOTFOUND</code>.</p>
 ClassMethod Statement(pId As %String, pType As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -248,6 +248,11 @@ ClassMethod Statement(pId As %String, pType As %String, Output pResult, Output p
         Quit $$$OK
     }
     If tRow.%Get("Remote") Quit ..Refused(##class(OcuPilot.Api.SqlActivityError).#REMOTE, .pHttpStatus, .pFault)
+    ; The vendor cancels whatever the process runs when it is given no statement id.
+    If tRow.%Get("StatementId") = "" {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tMapped, .tVendorText)
+        Quit ..Refuse(404, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault)
+    }
     Set tCancelSC = ..Cancel(tRow.%Get("ProcessID"), tRow.%Get("StatementId"))
     If $$$ISOK(tCancelSC) {
         Set pResult = {}
@@ -421,9 +426,10 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     Quit ""
 }
 
-/// <p>The cancel as a script (AD-59): the statement is found by its process and statement hash, as
+/// <p>The cancel as a script (AD-59): the statement is found by its server, process and statement hash, as
 /// <method>Statement</method> reads it, and <code>$SYSTEM.SQL.CancelQuery</code> is called with its
-/// statement id and <parameter>CANCELSECONDS</parameter>. A value is a string literal or a whole number,
+/// statement id and <parameter>CANCELSECONDS</parameter> only when that statement is still listed with an id,
+/// because the vendor cancels whatever the process runs when it is given no id. A value is a string literal or a whole number,
 /// so nothing the query carries runs as code. A statement of another server renders one
 /// <code>comment</code> step carrying the refusal's sentence and no call.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
@@ -434,9 +440,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If $ListLength(tParts) '= 3 Quit []
     If ..IsRemote($List(tParts, 1)) Quit [($ClassMethod(tAdmin, "Step", "comment", ##class(OcuPilot.Api.SqlActivityError).#REASONREMOTE))]
     Set tPid = +$List(tParts, 2)
-    Set tLines = $ListBuild("Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT SQLStatementID FROM INFORMATION_SCHEMA.CURRENT_STATEMENTS WHERE ProcessID = ? AND StatementIndexHash = ?"", " _ tPid _ ", " _ $ClassMethod(tAdmin, "Literal", $List(tParts, 3)) _ ")")
-    Set tLines = tLines _ $ListBuild("Do tRS.%Next()")
-    Set tLines = tLines _ $ListBuild("Set tSC = $SYSTEM.SQL.CancelQuery(" _ tPid _ ", tRS.%GetData(1), " _ ..#CANCELSECONDS _ ")")
+    Set tLines = $ListBuild("Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT SQLStatementID FROM INFORMATION_SCHEMA.CURRENT_STATEMENTS WHERE Server = ? AND ProcessID = ? AND StatementIndexHash = ?"", " _ $ClassMethod(tAdmin, "Literal", $List(tParts, 1)) _ ", " _ tPid _ ", " _ $ClassMethod(tAdmin, "Literal", $List(tParts, 3)) _ ")")
+    Set tLines = tLines _ $ListBuild("If tRS.%Next() && (tRS.%GetData(1) '= """") Set tSC = $SYSTEM.SQL.CancelQuery(" _ tPid _ ", tRS.%GetData(1), " _ ..#CANCELSECONDS _ ")")
     Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
 }
 

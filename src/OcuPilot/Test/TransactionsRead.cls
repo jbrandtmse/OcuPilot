@@ -3,9 +3,11 @@
 /// with the status the classic page maps; the 409 <code>MONITOR.NOTRUNNING</code> answer with its sentence while the System
 /// Monitor is not running; a caller missing a pair refused naming it before any node is read; and the live read, which
 /// equals the monitor's own global at that read, for the screen's read and the read tool alike; and the port's real node
-/// reader over rows written under node names of its own.</p>
-/// <p><b>What it needs from the environment:</b> the compiled registries. Live-safe: it writes only process-private globals and
-/// two <code>^IRIS.Temp.SysMetrics</code> nodes named for it, which it kills after each test.</p>
+/// reader over rows written under node names of its own; and a transaction a job of its own holds open, read through the
+/// shipped node names once the System Monitor records it.</p>
+/// <p><b>What it needs from the environment:</b> the compiled registries and a <code>USER</code> namespace. Live-safe: it writes
+/// process-private globals, two <code>^IRIS.Temp.SysMetrics</code> nodes named for it, which it kills after each test, and one
+/// node in <code>USER</code> inside a transaction its job rolls back.</p>
 Class OcuPilot.Test.TransactionsRead Extends %UnitTest.TestCase
 {
 
@@ -21,6 +23,14 @@ Parameter NODEPROBE = "OcuPilot.Test.TransactionsNodeProbe";
 
 Parameter TOOLFIXTURE = "OcuPilot.Test.Read.ToolFixture";
 
+/// <p>The namespace the held transaction's journaled set is made in, and the seconds the job holds it at most.</p>
+Parameter HOLDNAMESPACE = "USER";
+
+Parameter HOLDSECONDS As INTEGER = 300;
+
+/// <p>The seconds the open-transaction leg waits for the System Monitor to record the transaction (about 43 measured).</p>
+Parameter WAITSECONDS As INTEGER = 150;
+
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PORTFIXTURE, "Clear")
@@ -32,6 +42,19 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#PORTFIXTURE, "Clear")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Kill ^IRIS.Temp.SysMetrics($Parameter(..#NODEPROBE, "TRANSACTIONSNODE")), ^IRIS.Temp.SysMetrics($Parameter(..#NODEPROBE, "REMOTETRANSACTIONSNODE"))
+    ; Release every holding job this class started; each rolls its transaction back and ends.
+    Set tPid = ""
+    For {
+        Set tPid = $Order(^IRIS.Temp.OcuPilotTransactionsHold(tPid))
+        If tPid = "" Quit
+        Set ^IRIS.Temp.OcuPilotTransactionsHold(tPid) = "release"
+        Set tEnd = $ZHorolog + 10
+        While $Data(^$JOB(tPid)) && ($ZHorolog < tEnd) {
+            Hang 0.5
+        }
+        Do $$$AssertTrue('$Data(^$JOB(tPid)), "the holding job " _ tPid _ " has ended")
+        Kill ^IRIS.Temp.OcuPilotTransactionsHold(tPid)
+    }
     Quit $$$OK
 }
 
@@ -227,6 +250,57 @@ Method TestTheMonitorOffReadToolAnswersItsSentence()
 Method TestTheScriptForms()
 {
     Do $$$AssertEquals($ClassMethod(..#PORT, "SnippetForm", "Transactions", "LIST"), "", "no script form for the Transactions read")
+}
+
+/// <p>A transaction a job of the test holds open, with one journaled set, reaches the shipped port through the monitor's own
+/// nodes: the screen's read lists it as a Local row of that job's process id once the System Monitor records it. While the
+/// System Monitor is not running the read answers 409 instead.</p>
+/// <p>Mutation (Rule 19): <code>TRANSACTIONSNODE</code> <code>"Transaction"</code> in <class>OcuPilot.Port.MonitorPort</class> -- the held
+/// transaction's row never appears and this goes red.</p>
+Method TestAnOpenTransactionIsReadThroughTheShippedNodes()
+{
+    If '$ClassMethod(..#PORT, "MonitorRunning") {
+        Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#DESCRIPTOR, "", .tScreen, .tHttp, .tFault)
+        Do $$$AssertEquals($Get(tHttp), 409, "with the System Monitor off the screen's read is 409")
+        Quit
+    }
+    Job ##class(OcuPilot.Test.TransactionsRead).HoldTransaction(..#HOLDNAMESPACE, ..#HOLDSECONDS)::10
+    Set tStarted = $Test
+    Do $$$AssertTrue(tStarted, "a job holding an open transaction started")
+    If 'tStarted Quit
+    Set tPid = $ZChild
+    Set ^IRIS.Temp.OcuPilotTransactionsHold(tPid) = ""
+    Set tRow = ""
+    Set tDeadline = $ZHorolog + ..#WAITSECONDS
+    While (tRow = "") && ($ZHorolog < tDeadline) {
+        Hang 2
+        Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#DESCRIPTOR, "", .tScreen, .tHttp, .tFault)
+        If '$IsObject($Get(tScreen)) Continue
+        Set tIterator = tScreen.rows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tCandidate) {
+            If (tCandidate.%Get("Kind") = "Local") && (tCandidate.%Get("ProcessID") = tPid) Set tRow = tCandidate
+        }
+    }
+    Do $$$AssertTrue($IsObject(tRow), "the held transaction's process " _ tPid _ " is listed as a Local row within " _ ..#WAITSECONDS _ " seconds")
+    If $IsObject(tRow) Do $$$AssertTrue((tRow.%Get("Seconds") > 0) && (tRow.%Get("Remote") = 0) && (tRow.%Get("Status") '= ""), "with its seconds open, its status and no remote flag: " _ tRow.%ToJSON())
+}
+
+/// <p>The job <method>TestAnOpenTransactionIsReadThroughTheShippedNodes</method> starts: in <var>pNamespace</var>, open a transaction
+/// and set one journaled node in it, hold it until <code>^IRIS.Temp.OcuPilotTransactionsHold</code> reads <code>release</code> for
+/// this process or <var>pBound</var> seconds pass, then roll it back, so nothing it set is kept.</p>
+ClassMethod HoldTransaction(pNamespace As %String, pBound As %Integer)
+{
+    Try {
+        Set $NAMESPACE = pNamespace
+        TSTART
+        Set ^OcuP2120TransactionsHold($Job) = $ZTimeStamp
+        Set tEnd = $ZHorolog + pBound
+        While ($ZHorolog < tEnd) && ($Get(^IRIS.Temp.OcuPilotTransactionsHold($Job)) '= "release") {
+            Hang 1
+        }
+    } Catch {
+    }
+    If $TLevel > 0 TROLLBACK
 }
 
 }

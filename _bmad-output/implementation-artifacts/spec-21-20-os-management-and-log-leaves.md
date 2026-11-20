@@ -171,6 +171,24 @@ deferred:
 - AC5. Given the default baseline, when the agent proposes either new write, then it mints and confirms. With its key `false`, the governance gate refuses it.
 - AC6 (DW-2479). Given the probe's +2 h offset, when `LocalFromUtc` converts a UTC instant, then the result is two hours later; swapping the direction turns the test red.
 
+### Review Findings
+
+Code review 2026-11-20 (four layers, full-opus; measured on `ocupilot-ci`). 42 raw rows, 12 entries (high 1, med 7, low 4); the rest rejected below.
+
+- [x] [Review][Patch] HIGH (AD-59): the cancel's script ran `CancelQuery(pid, tRS.%GetData(1))` after an unchecked `%Next()`, and the vendor cancels the process's first query when given no id, so a script run after the statement ended canceled another one. Now one guarded line, also filtered by `Server` [src/OcuPilot/Port/SqlActivityPort.cls Snippet]
+- [x] [Review][Patch] MED: a row listed with an empty `StatementId` reached `CancelQuery` (column not `Required`), and `SqlActivityCancel.StateDiff`'s guard tested `unassigned`, which never occurs. The port answers 404 before the vendor; the guard tests `""` [SqlActivityPort.cls Statement, Screen/Tool/SqlActivityCancel.cls]
+- [x] [Review][Patch] MED: the shipped `LogSourcePort.OffsetAtUtc` was unfalsifiable on UTC (closes the build's first `deferred:` item). A `ZoneSession` child leg reads `LedgerClock`'s US Eastern instants through the shipped port [Test/LogSourceClock.cls]
+- [x] [Review][Patch] MED: the reset tests never held `AlertCount` above 0 (closes the build's second `deferred:` item). A severity-2 `messages.log` entry raises it at once (measured; a repeated text is not counted), asserted above 0 before each reset [Test/SystemAlertsWrite.cls, ui/browser/system-alerts.browser-spec.mjs]
+- [x] [Review][Patch] MED: the shipped Transactions node names were pinned only empty-to-empty. A job holding a `TSTART` plus a journaled set in `USER` is read as a Local row through the shipped port (48 s measured) [Test/TransactionsRead.cls]
+- [x] [Review][Patch] MED (Rule 2): `SqlActivityMint` copied `BackgroundTaskMint`. It now extends it, overriding a new `CompositeParts` hook [Screen/Tool/BackgroundTaskMint.cls, SqlActivityMint.cls]
+- [x] [Review][Patch] MED (Rule 19): `SqlActivityCancel` held a pair without resetting the gate first; `OnBeforeOneTest` resets it [Test/SqlActivityCancel.cls]
+- [x] [Review][Defer] MED: the cancel can reach a statement of another OcuPilot process (turn job, API worker); the spec declined an arm without an AD-10 amendment -- DW-2803 decision-pending owner=burndown
+- [x] [Review][Patch] LOW: a refused cancel's write row is now asserted `error` with its code and `not-marking` on both refusals [Test/SqlActivityCancel.cls]
+- [x] [Review][Patch] LOW: `MonitorPort.TransactionNodes` read a failed global read as "no transactions"; it returns the status (500) [Port/MonitorPort.cls]
+- [x] [Review][Patch] LOW: `MonitorPort`'s `ENDPOINTS` and `Invoke` docs did not name the new endpoints or `WRITEPAIRS` [Port/MonitorPort.cls]
+- [x] [Review][Patch] LOW: the script's lookup had no `Server` filter (folded into the HIGH's line)
+- Rejected: the 1000-row lookup cap (as before); `Clear()`'s discarded return and `GetAlerts`' whole-file read and swallowed status (harvested bodies, AD-23; a `<PROTECT>` raises); the reset's screen id (one singleton); `TransactionsRead`'s expected builder (false: it appends `Remote`); non-atomic live comparisons (no observed flake); the person's cancel of a re-run of the same hash (no person action checks freshness); the seam leg's untouched-state check and `alerts.log` absent (low); browser-only mutation lines (AC1/AC2/AC4 pin elsewhere); stale positions (spec text); screen sort and column order, cell-value wording, `nothingSent` read-back (AD-58 permits), the harvested "Utils" comment; ruled empty states; Transactions auto-refresh (AD-43's roster needs an amendment); `LocalFromUtc`'s arithmetic (the seam the spec asks for).
+
 ## Spec Change Log
 
 - 2026-11-20, orchestrator rulings on the Task 0 halt:
@@ -309,6 +327,7 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - AC3 (`TransactionsRead`): mutation: skip the gate refusal for the Transactions endpoint in `MonitorPort.Invoke` -> `TestAMissingPairIsRefusedByName` red; read `secs` in place of `pid` in `MonitorPort.TransactionNodes` -> `TestTheRealNodeReaderReadsTheRowsTheGlobalHolds` red; drop the `MONITOR.` branch of `Error.ReasonForToolCode` -> `TestTheMonitorOffReadToolAnswersItsSentence` red (each observed, reverted, reloaded).
 - AC3 (browser): mutation: the `Seconds` column's label key pointed at another key in the mirror -> `transactions.browser-spec.mjs` leg 2 red and leg 1 green (observed against a rebuilt bundle, reverted, rebuilt, redeployed).
 - AC6: mutation: subtract in place of add in `LogSourcePort.LocalFromUtc` -> `LogSourceClock.TestAUtcInstantReadsTwoHoursLaterOnTheLocalClock` red (observed, reverted, reloaded).
+- Code review (each observed on `ocupilot-ci`, reverted, reloaded): unguarded `Do tRS.%Next()` in `SqlActivityPort.Snippet` -> `SqlActivityCancel.TestTheScriptFormIsTheVendorCallForTheRowsOwnProcessAndStatement` red; the empty-`StatementId` refusal in `Statement` skipped -> `TestTheVendorsAnswersMapToTheirCodes` red; `LogSourcePort.OffsetAtUtc` answering 0 -> `LogSourceClock.TestTheShippedPortReadsTheZonesLocalClock` red, and only it; `SetState(0)` in place of `Clear()` in `Harvest.Alerts.AlertsManage` -> `SystemAlertsWrite.TestBothCallersResetTheAlerts`'s count legs red (armed); `TRANSACTIONSNODE` `"Transaction"` -> `TransactionsRead.TestAnOpenTransactionIsReadThroughTheShippedNodes` red.
 - Client: `self-protection.test.mjs` pins `sql-statement-remote` and the four refusal sentences against EXPERIENCE.md; the browser specs (`sql-activity`, `devices`, `transactions`, `system-alerts`) carry their own `mutation:` comments.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.

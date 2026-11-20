@@ -3,8 +3,8 @@
  * instance's alert state. The row reads the instance's own state text, alert count and last alert; and Reset alerts warns first
  * with the published sentence, after which Proceed sends one request and the row reads OK and 0.
  *
- * The reset leg first puts the instance in an alert state (`$SYSTEM.Monitor.SetState(2)` in `%SYS`), so the row has something to
- * reset, and resets it from the screen; the throwaway's own monitor raises the state again afterwards. It signs in and resets the
+ * Each leg first raises the alert count with a severity-2 `messages.log` entry, and the reset leg also puts the instance in an
+ * alert state (`$SYSTEM.Monitor.SetState(2)` in `%SYS`), so the row has something to reset, and resets it from the screen; the throwaway's own monitor raises the state again afterwards. It signs in and resets the
  * account's remembered state, so it runs on a throwaway only.
  *
  * Run: `node --test --test-concurrency=1 browser/system-alerts.browser-spec.mjs` (after `npm run build`, the bundle copied into
@@ -55,9 +55,18 @@ function instanceState() {
   return markerValue(output, 'ALERTSTATE');
 }
 
+/**
+ * Raise the instance's alert count by one: a severity-2 `messages.log` entry, which `$SYSTEM.Monitor.Alerts()` counts at once.
+ * The entry's text is new each time, because a repeat of the previous entry is not counted.
+ */
+function raiseCount() {
+  runIris(config.container, [`Do ##class(%SYS.System).WriteToConsoleLog("system-alerts.browser-spec raises the alert count, ${Date.now()}",0,2)`]);
+}
+
 // AC4. Mutation (Rule 19): swap the `StateText` and `AlertCount` columns' fields in `SystemAlertsList.cls` and regenerate the
 // mirror -> the row leg goes red.
 test("AC4: the screen is one row, under the declared headers, of the instance's own state and alert count", async () => {
+  raiseCount();
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -67,6 +76,7 @@ test("AC4: the screen is one row, under the declared headers, of the instance's 
     assert.equal(rows.length, 1, `one row: ${JSON.stringify(rows)}`);
     const [state, count] = (instanceState() ?? '').split('|');
     assert.ok(['OK', 'Warning', 'Alert', 'Hung'].includes(rows[0][0]), `the state reads one of the instance's words: ${rows[0][0]}`);
+    assert.notEqual(count, '0', `the leg raised the instance's alert count above 0 (${state} state)`);
     assert.equal(rows[0][1], count, `and the alert count is the instance's (${state} state)`);
   } finally {
     await context.close();
@@ -77,11 +87,13 @@ test("AC4: the screen is one row, under the declared headers, of the instance's 
 // alert state and the row wait goes red.
 test('AC4: Reset alerts warns with the published sentence, and Proceed leaves the row reading OK and 0', async () => {
   runIris(config.container, ['Set $NAMESPACE="%SYS" Do $SYSTEM.Monitor.SetState(2)']);
+  raiseCount();
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const before = (await describeRows(page))[0];
     assert.equal(before[0], 'Alert', `the row reads the alert state the leg set: ${JSON.stringify(before)}`);
+    assert.notEqual(before[1], '0', `and a count above 0: ${JSON.stringify(before)}`);
     const posts = [];
     page.on('request', (request) => {
       if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/screens/osmgmt.systemalerts/action')) posts.push(request.postData() ?? '');

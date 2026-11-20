@@ -69,9 +69,10 @@ Parameter PARTMETRICS = "cpuUsage:cpu_usage";
 /// <p>The endpoint answering every sample of one collection (AD-36).</p>
 Parameter ENDPOINT = "Metrics";
 
-/// <p>The endpoints a declared <code>monitor</code> read names (AD-36): <parameter>ENDPOINT</parameter>
-/// and the three interoperability usage lists, <parameter>ENDPOINTINTERFACES</parameter>,
-/// <parameter>ENDPOINTMESSAGEVOLUME</parameter> and <parameter>ENDPOINTDATABASEIMPACT</parameter>.</p>
+/// <p>The endpoints a declared <code>monitor</code> read names (AD-36): <parameter>ENDPOINT</parameter>,
+/// the three interoperability usage lists, <parameter>ENDPOINTINTERFACES</parameter>,
+/// <parameter>ENDPOINTMESSAGEVOLUME</parameter> and <parameter>ENDPOINTDATABASEIMPACT</parameter>, and
+/// <parameter>ENDPOINTTRANSACTIONS</parameter> and <parameter>ENDPOINTALERTS</parameter>.</p>
 Parameter ENDPOINTS = "Metrics,Interfaces,MessageVolume,DatabaseImpact,Transactions,Alerts";
 
 /// <p>The endpoint answering the open transactions the System Monitor records (Story 21.20).</p>
@@ -221,15 +222,20 @@ ClassMethod Performance(Output pValues As %DynamicObject, Output pHttpStatus As 
 /// with <method>OcuPilot.Port.AdminPort.Invoke</method>'s signature so the read issues either
 /// through either port the same way. <var>pBody</var> is accepted and unused, and so is
 /// <var>pQuery</var> except for <parameter>MAXROWSKEY</parameter>.</p>
-/// <p>First <parameter>PAIRS</parameter> is evaluated in the calling process: a caller lacking
-/// either pair is answered 403 <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>
-/// and no sensor call is made. Then:</p>
+/// <p>First <parameter>PAIRS</parameter>, or <parameter>WRITEPAIRS</parameter> for
+/// <parameter>ENDPOINTALERTS</parameter> with <parameter>TYPERESET</parameter>, is evaluated in the calling
+/// process: a caller lacking a pair is answered 403 <code>AUTH.NOPRIVILEGE</code> with
+/// <code>detail.failedPair</code> and no sensor call is made. Then:</p>
 /// <ul>
+/// <li><parameter>ENDPOINTALERTS</parameter> with <parameter>TYPEGET</parameter> or <parameter>TYPERESET</parameter>,
+/// and with <parameter>TYPELIST</parameter>, is <method>Alerts</method>; <parameter>ENDPOINTTRANSACTIONS</parameter>
+/// with <parameter>TYPELIST</parameter> is <method>Transactions</method>, 409 <code>MONITOR.NOTRUNNING</code>
+/// while the System Monitor is not running.</li>
 /// <li><parameter>ENDPOINT</parameter> with <parameter>TYPELIST</parameter> takes one collection
 /// and answers <method>Samples</method>' rows, at most <parameter>MAXROWSKEY</parameter> of them
 /// (<parameter>DEFAULTMAXROWS</parameter> when absent); a cap that is not a whole number above zero
 /// is 400 <code>PORT.VALIDATION</code>, before any collection.</li>
-/// <li>Each other member of <parameter>ENDPOINTS</parameter> with <parameter>TYPELIST</parameter>
+/// <li>Each interoperability usage list with <parameter>TYPELIST</parameter>
 /// answers <method>Usage</method>'s rows under the same cap and the same refusal, taking no
 /// collection.</li>
 /// <li><parameter>SENSORSENDPOINT</parameter> with <parameter>SENSORSTYPE</parameter> takes one
@@ -788,6 +794,7 @@ ClassMethod TransactionNodes(pKind As %String, Output pNodeStatus As %String, Ou
     Set pNodeStatus = ""
     Set tName = $Case(pKind, "Local": ..#TRANSACTIONSNODE, "Remote": ..#REMOTETRANSACTIONSNODE, : "")
     If tName = "" Quit $$$ERROR($$$GeneralError, "the monitor port reads no " _ pKind _ " transactions")
+    Set tSC = $$$OK
     Try {
         Set pNodeStatus = $Get(^IRIS.Temp.SysMetrics(tName))
         Set tRow = $Order(^IRIS.Temp.SysMetrics(tName, ""))
@@ -800,9 +807,9 @@ ClassMethod TransactionNodes(pKind As %String, Output pNodeStatus As %String, Ou
         }
     } Catch ex {
         Set pNodes = []
-        Quit
+        Set tSC = ex.AsStatus()
     }
-    Quit $$$OK
+    Quit tSC
 }
 
 /// <p>The system alert state, through the harvested <code>SystemAlerts</code> body: <var>pType</var>

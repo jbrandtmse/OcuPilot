@@ -41,6 +41,7 @@ Method OnBeforeOneTest() As %Status
     Kill ..PreparedPolicy
     Merge ..PreparedPolicy = tRows
     Set ..PreparedPolicyTaken = 1
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
@@ -95,6 +96,13 @@ ClassMethod Act(pId As %String, Output pAnswer As %DynamicObject, pFixture As %S
 ClassMethod AgentMarkers(pSince As %String) As %Integer
 {
     Quit ##class(OcuPilot.Test.AuditMarker).MarkerRows(pSince, """proposalId"":""", .tData)
+}
+
+/// <p>The write-kind ledger rows of turn <var>pTurnKey</var>: <code>count|Status|Code|AuditMarked</code>, the last row's.</p>
+ClassMethod WriteOutcome(pTurnKey As %String) As %String
+{
+    Set tCount = ##class(OcuPilot.Test.AuditMarker).WriteRow(pTurnKey, .tRow)
+    Quit tCount _ "|" _ $Get(tRow("Status")) _ "|" _ $Get(tRow("Code")) _ "|" _ $Get(tRow("AuditMarked"))
 }
 
 /// <p>The list's row of probe job <var>pPid</var> as a one-row JSON array, with the members of <var>pOverride</var> set over it.</p>
@@ -248,6 +256,9 @@ Method TestTheVendorsAnswersMapToTheirCodes()
     Do $$$AssertEquals($Piece(..Ask(..#SEAM, "CANCEL", ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("x", 1, "y")), .tFault), "|", 1), 404, "a statement the list does not report is 404")
     Do $$$AssertEquals($Piece(..Ask(..#SEAM, "CANCEL", "malformed", .tFault), "|", 1), 404, "and so is an id that is no composite")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Count", "cancel"), 3, "and neither reached the vendor")
+    Do $ClassMethod(..#SEAM, "Arm", "rowsJson", $Replace(..LocalRowJson(.tId), """sid-local""", """"""))
+    Do $$$AssertEquals($Piece(..Ask(..#SEAM, "CANCEL", tId, .tFault), "|", 1), 404, "a statement listed with no statement id is 404, because the vendor would cancel the process's first statement")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Count", "cancel"), 3, "and it never reached the vendor")
 }
 
 /// <p><b>AC1.</b> A caller missing a pair is refused 403 naming it, before any read or vendor call.</p>
@@ -319,6 +330,7 @@ Method TestARemoteRowAndAMissingPrivilegeAreRefusedOnBothCallers()
     Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ $Get(tHttp) _ "|" _ $Get(tCode), "1|409|" _ $Parameter(tError, "REMOTE"), "its confirm of the remote row is refused 409 with the code")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Count", "cancel"), 0, "and the vendor is still never called")
     Do $$$AssertEquals(..AgentMarkers(tSince), 0, "a refused cancel leaves no agent-write marker")
+    Do $$$AssertEquals(..WriteOutcome(tTurnKey), "1|error|" _ $Parameter(tError, "REMOTE") _ "|" _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE"), "and its one write row records the refusal, not a cancel")
 
     Do $ClassMethod(..#SEAM, "Clear")
     Do $ClassMethod(..#SEAM, "Arm", "rowsJson", ..RowJsonOf(tPid))
@@ -332,6 +344,7 @@ Method TestARemoteRowAndAMissingPrivilegeAreRefusedOnBothCallers()
     Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ $Get(tHttp2) _ "|" _ $Get(tCode2), "1|403|" _ $Parameter(tError, "NOPRIVILEGE"), "the agent's confirm without it is refused 403 with the code")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Count", "cancel"), 2, "each reached the vendor once")
     Do $$$AssertEquals(..AgentMarkers(tSince), 0, "and the refused confirm still leaves no agent-write marker")
+    Do $$$AssertEquals(..WriteOutcome(tSecondTurnKey), "1|error|" _ $Parameter(tError, "NOPRIVILEGE") _ "|" _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE"), "and its one write row records the refusal, not a cancel")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Listed", tPid), 1, "the probe's statement keeps running")
 }
 
@@ -374,8 +387,8 @@ Method TestTheScriptFormIsTheVendorCallForTheRowsOwnProcessAndStatement()
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "CurrentStatements", "CANCEL", .tQuery)
     Do $$$AssertEquals(tSteps.%Size() _ "|" _ tSteps.%Get(0).kind, "1|objectscript", "a local row renders one objectscript step")
     Set tText = tSteps.%Get(0).text
-    Do $$$AssertTrue(tText [ "WHERE ProcessID = ? AND StatementIndexHash = ?"", 4243, ""hashLocal"")", "which finds the statement by the row's process id and statement hash: " _ tText)
-    Do $$$AssertTrue(tText [ ("$SYSTEM.SQL.CancelQuery(4243, tRS.%GetData(1), " _ $Parameter(..#PORT, "CANCELSECONDS") _ ")"), "and cancels it with the vendor call: " _ tText)
+    Do $$$AssertTrue(tText [ ("WHERE Server = ? AND ProcessID = ? AND StatementIndexHash = ?"", """ _ $ClassMethod(..#PORT, "LocalServer") _ """, 4243, ""hashLocal"")"), "which finds the statement by the row's server, process id and statement hash: " _ tText)
+    Do $$$AssertTrue(tText [ ("If tRS.%Next() && (tRS.%GetData(1) '= """") Set tSC = $SYSTEM.SQL.CancelQuery(4243, tRS.%GetData(1), " _ $Parameter(..#PORT, "CANCELSECONDS") _ ")"), "and cancels it with the vendor call only while it is listed with an id, which the vendor would otherwise read as the process's first statement: " _ tText)
     Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("otherhost:1972", 4242, "hashRemote"))
     Set tRemote = $ClassMethod(..#PORT, "Snippet", "CurrentStatements", "CANCEL", .tQuery)
     Do $$$AssertEquals(tRemote.%Size() _ "|" _ tRemote.%Get(0).kind _ "|" _ tRemote.%Get(0).text, "1|comment|" _ $Parameter("OcuPilot.Api.SqlActivityError", "REASONREMOTE"), "a remote row renders one comment step with the refusal's sentence and no call")
