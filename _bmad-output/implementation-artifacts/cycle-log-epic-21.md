@@ -754,3 +754,6 @@
 2026-11-20T03:27:12Z	Story 21.36	story_split	from=21.19 epics.md=heading+body_added;21.19_text_trimmed;tracker=21-36-task-output-and-mail-password:backlog(generate) test:tools=2350/2350
 2026-11-20T03:27:12Z	Epic 21	deps_hash_rerecorded	reason=split story=21.36 note=orchestrator_records_the_hash
 2026-11-20T03:27:38Z	Story 21.19	stage_spawned	stage=implement scope=finalize_after_split spawn_at=2026-11-20T03:27:38Z model=sonnet agent_name=21-19-implement-3 cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T04:28:15Z	Story 21.19	dev_complete	scope=finalize_after_split(B1-3+PM-24) spawn_at=2026-11-20T03:40Z model=sonnet build_sha=f3e05e79f followup_review_recommended=true deferred=1(DW-2788) cycle_iteration=1
+2026-11-20T04:28:15Z	Story 21.19	code_head_pushed	sha=6bbbb3d67(feature_bookkeeping_merge_over_f3e05e79f) run=44674547477 missing=none
+2026-11-20T04:28:15Z	Story 21.19	stage_spawned	stage=code-review spawn_at=2026-11-20T04:28:15Z model=opus agent_name=21-19-code-review-1 cycle_iteration=1 baseline=f6e5cc741 prior_lines_ended=verified

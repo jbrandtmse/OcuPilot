@@ -14123,3 +14123,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-19: the marker of a confirmed security.systemsecurity.set of InactiveLimit carried fields including Purges, from the shared ConfigSettingSet shape (inference); the reviewed-few sweep holds the tools' advertised fields, so narrowing them is not a one-line change.
 - 2026-11-19T19:15:45Z status=wontfix-accepted owner=21-10-the-remaining-leaves-across-the-six-areas by=cr note=reopen_if=an audit reader or a test reads Purges on a security parameter marker as a changed field
+
+### DW-2788: Task Manager email settings: UseSTARTTLS and the message values have no real set-and-read-back leg against the vendor's EmailSet/EmailGet
+- source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 21.19 finalize review deferral (unverified)
+- 2026-11-20T04:27:30Z status=routed owner=21-19-shell-advisor-permission-and-task-leaves by=harvest note=for_review
