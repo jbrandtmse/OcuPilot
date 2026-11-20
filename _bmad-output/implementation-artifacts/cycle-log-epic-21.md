@@ -781,3 +781,4 @@
 2026-11-20T09:28:09Z	Story 21.10	tracker_repair	found=in-progress expected=done(story_green_2026-11-19T23:48Z;spec_done) cause=status_write_missed_after_rework1 action=set_done
 2026-11-20T09:28:50Z	Story 21.20	story_started	spec=validated(veto_U-66) baseline=b7aaccb16 doctrine=3d11cec9 policy=b9ff703e hold=none
 2026-11-20T09:28:50Z	Story 21.20	stage_spawned	stage=implement scope=all_batches spawn_at=2026-11-20T09:28:50Z model=sonnet agent_name=21-20-implement cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T09:31:36Z	Story 21.20	integrated_forward	feature=837fcf2fa(21.19_merge;deps_hash+timings) merge=2a8804226 conflicts=0 files=bookkeeping_only verified=ci.test.mjs_104/104 note=stage_in_flight;index_was_clean;spec_untouched_by_merge

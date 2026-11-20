@@ -2,7 +2,8 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '57f19f9f8eef7d0b941614c3379901309447be1b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
