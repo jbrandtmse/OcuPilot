@@ -11629,6 +11629,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T12:33:20Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-12 Q1 (A), option B not chartered; untested, and it may break the editors' own window.open flows
 - 2026-11-14T00:50:17Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T17:29:03Z status=wontfix-accepted owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=Task0(b)_measured_on_ocupilot-ci:COOP_same-origin_nulls_the_opener_and_breaks_nothing,but_the_opened_tab_still_holds_ocupilot.token-pair_in_sessionStorage;decision_rule:Batch3_not_built.reopen_if:a_header_or_browser_change_leaves_an_editor-opened_tab_without_ocupilot.token-pair(spec-21-21_Task0(b))
 
 ### DW-2349: AD-28 still says the token pair is never within an embedded frame's reach and AD-47 that an embedded vendor page is inert, while AD-63's unsandboxed editor frame can read the pair, and AD-63 calls itself a named case of both
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: low | footprint: in-story

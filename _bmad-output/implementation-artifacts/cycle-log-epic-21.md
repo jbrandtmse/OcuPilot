@@ -808,3 +808,8 @@
 2026-11-20T16:01:33Z	Story 21.21	integrated_forward	feature=71ede15f2(Epic_17_done) conflicts=0 files=sprint-status_only
 2026-11-20T16:01:33Z	Story 21.21	story_started	spec=validated(veto_U-73;U-74_batch5_unheld) baseline=b477b4593 doctrine=3d11cec9 policy=b9ff703e hold=none note=batch5_strings_and_ACs_unwritten:stage_drafts_them_after_batch4_and_halts
 2026-11-20T16:01:33Z	Story 21.21	stage_spawned	stage=implement scope=task0+batches1-4+batch5_drafts spawn_at=2026-11-20T16:01:33Z model=sonnet agent_name=21-21-implement cycle_iteration=1 prior_lines_ended=verified(aa86594de)
+2026-11-20T16:03:30Z	Story 21.21	ruling	question=batch5_sequencing via=orchestrator choice=approved(no_split) condition=lead_spec_gates_the_drafted_ACs(Rule5_amendment,validated)_before_batch5_respawn;strings+AC_list_in_one_message;split_to_21.37_if_over_budget_or_new_AD
+2026-11-20T16:56:28Z	Story 21.21	bash_edit_scan	agent=ae6ff74fd hits=1 verdict=no_tracked_edit(python_heredoc_read_the_class_and_wrote_a_scratch_copy;tracked_edits_via_Edit) action=none
+2026-11-20T17:29:09Z	Story 21.21	stage_halted	stage=implement status=blocked condition=intent_gap(batch5_strings) committed=db22ccb70(B1),d0b4d7101(B2),e7f4b799d(B4),bd4ff1ed0(halt) task0a=pass task0b=fail(token_pair_survives_COOP) batch3=not_built(decision_rule) drafted=AC6-AC17+strings
+2026-11-20T17:29:09Z	Story 21.21	code_head_pushed	sha=bd4ff1ed0 run=44783633783 missing=none note=partial(B1,B2,B4)
+2026-11-20T17:29:09Z	Story 21.21	ledger	DW-2348=wontfix-accepted(reopen_if_token_pair_check) by=21-21
