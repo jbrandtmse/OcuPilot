@@ -41,7 +41,7 @@ const HANDLER_FOLDERS = ['Area/', 'Kernel/'];
  * The callers that answer an unusable body with their own domain refusal (`RenderInput`), not the
  * field refusal, as paths from `SOURCE_ROOT`.
  */
-const OWN_REFUSAL = new Set(['Area/Explorer/SqlConsole.cls', 'Area/Explorer/SqlData.cls', 'Area/Analytics/MdxQuery.cls']);
+const OWN_REFUSAL = new Set(['Area/Explorer/SqlConsole.cls', 'Area/Explorer/SqlData.cls', 'Area/Analytics/MdxQuery.cls', 'Area/Analytics/PmmlTest.cls']);
 
 /** A call of the reader; group 1 is the field output, when it is taken. */
 const READER_CALL = /ReadRequestBody\(\.\w+, \.\w+(?:, \.(\w+))?\)/;

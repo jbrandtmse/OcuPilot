@@ -240,16 +240,6 @@ ClassMethod ConfirmAnswer(pFound As %List) As %DynamicObject [ Private ]
     Quit tAnswer
 }
 
-/// <p>Render the port's refusal <var>pFault</var> with the status <var>pHttp</var>, or the generic internal envelope when the port gave
-/// none.</p>
-ClassMethod RenderPortFault(pSC As %Status, pHttp As %Integer, pFault) As %Status [ Private ]
-{
-    If '$IsObject(pFault) || (pFault.%Get("code") = "") {
-        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
-    }
-    Quit ..Render(pFault, $Select(+pHttp: +pHttp, 1: 500))
-}
-
 /// <p>The 400 <code>ANALYTICS.MDX.INPUT</code> envelope.</p>
 ClassMethod RenderInput() As %Status [ Private ]
 {
@@ -316,13 +306,11 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
     Do ..Finish(pKey, tEnded, tResult.%ToJSON())
 }
 
-/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer. It is the stop
+/// <p>Whether run <var>pKey</var>'s owner has asked it to stop (<method>OcuPilot.Kernel.Shell.BackgroundRun.StopRequested</method>). It is the stop
 /// hook <method>OcuPilot.Port.AnalyticsPort.MdxRun</method> asks.</p>
 ClassMethod MdxStopRequested(pKey As %String) As %Boolean
 {
-    Set tRequested = 0
-    Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
-    Quit $$$ISOK(tSC) && tRequested
+    Quit ..StopRequested(pKey)
 }
 
 /// <p>End run <var>pKey</var> <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>'s envelope: the statement, or its

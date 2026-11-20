@@ -265,6 +265,9 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/analytics/pivot/background/:id/cancel" path="/api/ocupilot/analytics/pivot/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/analytics/pivot/background/:id" path="/api/ocupilot/analytics/pivot/background/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/analytics/pivot/background" path="/api/ocupilot/analytics/pivot/background" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/pmml/background/:id/cancel" path="/api/ocupilot/analytics/pmml/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/pmml/background/:id" path="/api/ocupilot/analytics/pmml/background/ocupilot-coverage-probe" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/analytics/pmml/background" path="/api/ocupilot/analytics/pmml/background" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ecp-settings/form" path="/api/ocupilot/ecp-settings/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/ecp-settings" path="/api/ocupilot/ecp-settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/data" path="/api/ocupilot/explorer/sql/data" disposition="envelope" refusal="1"/>

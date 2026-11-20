@@ -158,6 +158,8 @@ XData Elsewhere
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsDashboardWidgetsTab"/>
 <screen name="AnalyticsFolderItemDefinitionTab"/>
+<screen name="AnalyticsPmmlModelList"/>
+<screen name="AnalyticsPmmlModelTest"/>
 <screen name="AnalyticsFolderItemList"/>
 <screen name="AnalyticsListingGroupList"/>
 <screen name="AnalyticsListingGroupListingList"/>

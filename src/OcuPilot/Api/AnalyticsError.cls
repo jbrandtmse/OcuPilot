@@ -176,6 +176,40 @@ Parameter PIVOTCUBE = "ANALYTICS.PIVOT.CUBE";
 
 Parameter REASONPIVOTCUBE = "This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.";
 
+/// <p>The PMML model tester's refusals (Story 24.14): 400, the body or the data source is not one this model offers; 404, the model is not there; 422, the SQL data source is not a query; 409, a cube
+/// data source's cube is not one the caller may read, and the caller's own run is still going; 503, the instance's runs are all busy, and a run that ended without an answer; 404, no run of the caller has the id.</p>
+Parameter PMMLINPUT = "ANALYTICS.PMML.INPUT";
+
+Parameter REASONPMMLINPUT = "Choose one of this model's data sources; a custom data source is one SQL query.";
+
+Parameter PMMLABSENT = "ANALYTICS.PMML.ABSENT";
+
+Parameter REASONPMMLABSENT = "This PMML model no longer exists.";
+
+Parameter PMMLQUERYONLY = "ANALYTICS.PMML.QUERYONLY";
+
+Parameter REASONPMMLQUERYONLY = "A model is tested here only against an SQL query; this data source is not one.";
+
+Parameter PMMLCUBE = "ANALYTICS.PMML.CUBE";
+
+Parameter REASONPMMLCUBE = "This data source's cube is not one this namespace holds, or you cannot read it.";
+
+Parameter PMMLBUSY = "ANALYTICS.PMML.BUSY";
+
+Parameter REASONPMMLBUSY = "A PMML test you started is still running; cancel it or wait for it to end.";
+
+Parameter PMMLFULL = "ANALYTICS.PMML.FULL";
+
+Parameter REASONPMMLFULL = "As many background runs as this instance allows are running; try again when one ends.";
+
+Parameter PMMLNOTFOUND = "ANALYTICS.PMML.NOTFOUND";
+
+Parameter REASONPMMLNOTFOUND = "No PMML test of yours has this id; an ended run is kept for 15 minutes.";
+
+Parameter PMMLLOST = "ANALYTICS.PMML.LOST";
+
+Parameter REASONPMMLLOST = "The PMML test ended without an answer; run it again.";
+
 /// <p>409: a delete of a locked folder item.</p>
 Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
 
@@ -436,6 +470,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#FOLDERITEMTAKEN Quit ..#REASONFOLDERITEMTAKEN
     If pCode = ..#FOLDERITEMABSENT Quit ..#REASONFOLDERITEMABSENT
     If pCode = ..#PIVOTCUBE Quit ..#REASONPIVOTCUBE
+    If pCode = ..#PMMLINPUT Quit ..#REASONPMMLINPUT
+    If pCode = ..#PMMLABSENT Quit ..#REASONPMMLABSENT
+    If pCode = ..#PMMLQUERYONLY Quit ..#REASONPMMLQUERYONLY
+    If pCode = ..#PMMLCUBE Quit ..#REASONPMMLCUBE
+    If pCode = ..#PMMLBUSY Quit ..#REASONPMMLBUSY
+    If pCode = ..#PMMLFULL Quit ..#REASONPMMLFULL
+    If pCode = ..#PMMLNOTFOUND Quit ..#REASONPMMLNOTFOUND
+    If pCode = ..#PMMLLOST Quit ..#REASONPMMLLOST
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
@@ -518,6 +560,12 @@ ClassMethod TermListCodes() As %List
 ClassMethod FolderItemCodes() As %List
 {
     Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
+}
+
+/// <p>The PMML model tester's eight refusal codes (Story 24.14), as a <class>%List</class>.</p>
+ClassMethod PmmlCodes() As %List
+{
+    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST)
 }
 
 /// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>

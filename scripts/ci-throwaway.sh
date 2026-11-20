@@ -654,6 +654,9 @@ services:
       # The folder item viewer classes (Story 24.14) turn analytics on in USER and save pivots and a dashboard there through the vendor's classes: the view class reads the two tabs at the port,
       # over HTTP and as the agent's tools, and the pivot run class runs a saved pivot over the three routes and as the agent's read, with three probe principals.
       # classes: AnalyticsFolderItemView, AnalyticsPivotRun
+      # The PMML model tester classes (Story 24.14 Batch 2) turn analytics on in USER and compile a PMML definition and a source table there: the model class reads the two screens at the port, over HTTP and as the
+      # agent's tools, the run class runs each model against each source over the three routes, and the edge class refuses, bounds, cancels and compares owners, with two probe principals.
+      # classes: AnalyticsPmmlModels, AnalyticsPmmlRun, AnalyticsPmmlRunEdge
       # The settings edge class (Story 24.13) rewrites the same three globals from its own snapshot, and drives the agent's four read tools at their caps and in a namespace without analytics.
       # classes: AnalyticsSettingsEdge
       # The settings write classes (Story 24.13 Batch 2) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent, and the edge class takes the namespace's

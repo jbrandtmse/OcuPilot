@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:662 */
+  /** EXPERIENCE.md:663 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8438,6 +8438,74 @@ export const STRINGS = {
   analyticsDashboardWidgetsPrompt2: 'Which widgets show a pivot, and which a KPI?',
   /** EXPERIENCE.md:620 */
   analyticsDashboardWidgetsPrompt3: 'Which widget takes its data from another widget?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsLabel: 'PMML models',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlTargetType: 'Target type',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlDataSources: 'Data sources',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlVerification: 'Verification records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRecords: 'Records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRecall: 'Recall',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlFMeasure: 'F-measure',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlMicro: 'Micro',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlActualValue: 'Actual value',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlPredictedValue: 'Predicted value',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlProbability: 'Probability',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlCorrect: 'Correct',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlIncorrect: 'Incorrect',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSigma: 'Sigma',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRSE: 'RSE',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRSquared: 'R\u00B2',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSql: 'SQL',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSourceVerification: 'Model verification records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSourceCustom: 'Custom data source (SQL)',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsEmpty: 'No PMML models are defined in this namespace.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelGone: 'This PMML model no longer exists.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlInput: 'Choose one of this model\'s data sources; a custom data source is one SQL query.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlQueryOnly: 'A model is tested here only against an SQL query; this data source is not one.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlCube: 'This data source\'s cube is not one this namespace holds, or you cannot read it.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlBusy: 'A PMML test you started is still running; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlFull: 'As many background runs as this instance allows are running; try again when one ends.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlNotFound: 'No PMML test of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlLost: 'The PMML test ended without an answer; run it again.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt1: 'Which PMML models does this namespace hold?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt2: 'What does each model predict?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt3: 'Which models carry verification records?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt1: 'Explain what this model predicts.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt2: 'Which data sources can I test this model against?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt3: 'How do I read precision and recall?',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
