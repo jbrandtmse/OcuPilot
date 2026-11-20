@@ -1,12 +1,9 @@
-/// <p>Test helper for Story 24.14's cancel suites: reads what a PMML test run leaves (its processes, its lock, its event resource, its record and its result rows) and holds a web process busy so
-/// that a later request is served by another one. It extends no test class and changes nothing a run owns. <method>Hold</method> is a job's entry point.</p>
+/// <p>Test helper for Story 24.14's cancel suites: reads what a PMML test run leaves (its processes, its lock, its event resource, its record and its result rows) and sends a run's cancel from a process
+/// of its own. It extends no test class and changes nothing a run owns. <method>CancelAs</method> is a job's entry point.</p>
 Class OcuPilot.Test.PmmlRunWatch Extends %RegisteredObject
 {
 
 Parameter PMML = "OcuPilot.Test.PmmlProbe";
-
-/// <p>The seconds <method>Hold</method> tries to reach a web process for.</p>
-Parameter HOLDTRYSECONDS = 0.5;
 
 /// <p>What <method>Residue</method> reads when a run has left nothing.</p>
 Parameter CLEAN = "child:0 sup:0 rows:0 records:0 lock:0 event:0";
@@ -84,50 +81,45 @@ ClassMethod AwaitRows(pId As %Integer) As %Boolean
     Quit ($ClassMethod(..#PMML, "RowsOf", pId) > 0)
 }
 
-/// <p>A job's entry point: send <var>pPath</var><code>?pid=&lt;pPid&gt;&amp;s=&lt;pSeconds&gt;</code> as <var>pUser</var> until <class>OcuPilot.Test.PmmlHoldRouter</class>'s hold route answers that the web
-/// process <var>pPid</var> served it, for up to <parameter>HOLDTRYSECONDS</parameter> or until <method>ReleaseProcess</method> is called, and record the answer in
-/// <code>^IRIS.Temp.OcuPilotPmmlHoldDone(pPid)</code> once the hold has ended. While the hold lasts, <code>^IRIS.Temp.OcuPilotPmmlHold(pPid)</code> is set, and a request sent meanwhile is served by another
-/// web process. The web server does not send a request to a process chosen by the caller: a request reaches <var>pPid</var> only when that process is the one the server picks, so the answer may be that it
-/// was not held, and then the requests meanwhile were served by the process the server did pick.</p>
-ClassMethod Hold(pPid As %String, pSeconds As %Numeric, pPath As %String, pUser As %String, pPassword As %String)
+/// <p>A job's entry point: the cancel of run <var>pKey</var> as its owner <var>pUser</var> through <var>pClass</var>'s <code>Cancel</code>, the entry the cancel route calls, then the run as <var>pClass</var>'s
+/// <code>View</code> reads it, recorded in <code>^IRIS.Temp.OcuPilotPmmlCancelAs(pKey)</code> as <code>$ListBuild(process id, accepted, status, cancelRequested, seconds)</code>. The job's process id
+/// differs from every live process's by construction. The job runs as the process that started it, and the run's owner is named to the store.</p>
+ClassMethod CancelAs(pKey As %String, pUser As %String, pClass As %String)
 {
-    Set tHeld = 0
-    Set tDeadline = $ZHorolog + ..#HOLDTRYSECONDS
-    While 'tHeld && ($ZHorolog < tDeadline) && '$Data(^IRIS.Temp.OcuPilotPmmlHoldRelease(pPid)) {
-        Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", pPath _ "?pid=" _ pPid _ "&s=" _ pSeconds _ "&ns=USER", pUser, pPassword, .tStatus, .tBody)
-        Try {
-            Set tHeld = ''##class(%DynamicObject).%FromJSON(tBody).held
-        } Catch {
-            Set tHeld = 0
+    Set tAccepted = 0
+    Set tStatus = ""
+    Set tRequested = ""
+    Set tStart = $ZHorolog
+    Try {
+        Set tSC = $ClassMethod(pClass, "Cancel", pKey, pUser, .tFound)
+        Set tAccepted = $$$ISOK(tSC) && tFound
+        Set tSeconds = $ZHorolog - tStart
+        Set tView = ""
+        Do $ClassMethod(pClass, "View", pKey, pUser, .tViewFound, .tView)
+        If $IsObject(tView) {
+            Set tStatus = tView.%Get("status")
+            Set tRequested = tView.%Get("cancelRequested")
         }
-        If 'tHeld Hang 0.02
+    } Catch ex {
+        Set tStatus = "threw " _ ex.Name
     }
-    Set ^IRIS.Temp.OcuPilotPmmlHoldDone(pPid) = tHeld
+    Set ^IRIS.Temp.OcuPilotPmmlCancelAs(pKey) = $ListBuild($Job, tAccepted, tStatus, tRequested, $ZHorolog - tStart)
 }
 
-/// <p>Start <method>Hold</method> in a job and wait up to <parameter>HOLDTRYSECONDS</parameter> and a half second for web process <var>pPid</var> to be held: 1 when it is. A caller that gets 0 calls
-/// <method>ReleaseProcess</method>, which stops the job.</p>
-ClassMethod HoldProcess(pPid As %String, pSeconds As %Numeric, pPath As %String, pUser As %String, pPassword As %String) As %Boolean
+/// <p>Run <method>CancelAs</method> in a job and wait up to 15 seconds for its record: the record, <code>$ListBuild(process id, accepted, status, cancelRequested, seconds)</code>, which it removes; <code>""</code>
+/// when the job was not accepted or did not answer.</p>
+ClassMethod CancelFromJob(pKey As %String, pUser As %String, pClass As %String) As %List
 {
-    Kill ^IRIS.Temp.OcuPilotPmmlHold(pPid), ^IRIS.Temp.OcuPilotPmmlHoldDone(pPid), ^IRIS.Temp.OcuPilotPmmlHoldRelease(pPid)
-    Job ##class(OcuPilot.Test.PmmlRunWatch).Hold(pPid, pSeconds, pPath, pUser, pPassword)::5
-    If '$Test Quit 0
-    Set tDeadline = $ZHorolog + ..#HOLDTRYSECONDS + 0.5
-    While ('$Data(^IRIS.Temp.OcuPilotPmmlHold(pPid))) && ($ZHorolog < tDeadline) && ('$Data(^IRIS.Temp.OcuPilotPmmlHoldDone(pPid))) {
+    Kill ^IRIS.Temp.OcuPilotPmmlCancelAs(pKey)
+    Job ##class(OcuPilot.Test.PmmlRunWatch).CancelAs(pKey, pUser, pClass)::5
+    If '$Test Quit ""
+    Set tDeadline = $ZHorolog + 15
+    While '$Data(^IRIS.Temp.OcuPilotPmmlCancelAs(pKey)) && ($ZHorolog < tDeadline) {
         Hang 0.01
     }
-    Quit ''$Data(^IRIS.Temp.OcuPilotPmmlHold(pPid))
-}
-
-/// <p>End the hold of web process <var>pPid</var>, wait up to <var>pSeconds</var> for it to end, then remove its nodes.</p>
-ClassMethod ReleaseProcess(pPid As %String, pSeconds As %Numeric)
-{
-    Set ^IRIS.Temp.OcuPilotPmmlHoldRelease(pPid) = 1
-    Set tDeadline = $ZHorolog + pSeconds
-    While ('$Data(^IRIS.Temp.OcuPilotPmmlHoldDone(pPid))) && ($ZHorolog < tDeadline) {
-        Hang 0.05
-    }
-    Kill ^IRIS.Temp.OcuPilotPmmlHold(pPid), ^IRIS.Temp.OcuPilotPmmlHoldDone(pPid), ^IRIS.Temp.OcuPilotPmmlHoldRelease(pPid)
+    Set tRecord = $Get(^IRIS.Temp.OcuPilotPmmlCancelAs(pKey))
+    Kill ^IRIS.Temp.OcuPilotPmmlCancelAs(pKey)
+    Quit tRecord
 }
 
 }

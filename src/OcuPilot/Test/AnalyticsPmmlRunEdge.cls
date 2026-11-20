@@ -2,7 +2,7 @@
 /// a custom statement or a declared data source, is refused with SQL query's own classification and self-protection check, and an SQL the instance cannot prepare is answered at once, before anything is
 /// reserved or spawned; a class or model that is absent, a data source the definition does not declare, verification records a model does not carry and a cube a principal may not read are refused by their codes
 /// before the vendor runs; a body of any other shape, a caller without the developer pair and a namespace without analytics are refused; a run past its bound ends <code>stopped</code>; a cancel by a run's owner,
-/// served by a web process other than the one that started the run, answers <code>canceled</code> within two seconds over a statement that scans for a long time, a fast cross join and a child in no statement,
+/// sent from a process other than the web process that started the run, answers <code>canceled</code> within two seconds over a statement that scans for a long time, a fast cross join and a child in no statement,
 /// ends the run's own child and no other process, and leaves no result row, no run record, no event resource, no held run lock and no live process; a wake without the stop flag is ignored, a deleted event is
 /// created again, a hung child is ended at the bound plus the grace, and a stale row ends no process; and another user's poll and cancel are 404 and change nothing, and a second start of the owner's is 409 busy.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates and removes IRIS users and roles and a web application, and, through the probes,
@@ -559,21 +559,22 @@ Method TestARunPastItsBoundIsStoppedAndLeavesNoRow()
     Do $$$AssertEquals(..Counter() - tBefore _ "|" _ $ClassMethod(..#PMML, "RowsOf", ..Counter()) _ "|" _ $ClassMethod(..#PMML, "Rows"), "1|0|0", "the run allocated its id, and the rows it wrote are gone")
 }
 
-/// <p>AC1 (the target): a least-privileged owner's cancel of a run that has written a result row, over a statement the child scans for a long time and over a fast cross join, served by a web process other than the
-/// one that served the start, answers <code>canceled</code> within two seconds, and the run's child and supervisor are gone, with nothing left: no row for the test id, no run record, no event resource, no held run
-/// lock. The start's web process is held busy while the cancel is sent where the web server lets a request reach it (<class>OcuPilot.Test.PmmlRunWatch</class>); where it does not, the server's
-/// own pick serves the cancel. Either way the test asserts that the two requests were served by two processes.</p>
-/// <p>Mutation (Rule 19): skip the supervisor's <code>Terminate</code> in <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method> -- both legs go red on the status, the live child and the time. Skip
-/// <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method>'s hand-off of the test id to the stop class, or <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method>'s drop of the record's rows -- both legs go red on the rows left.</p>
-Method TestACancelFromAnotherWebProcessEndsARunOverEitherStatement()
+/// <p>AC1 (the target): a run of a least-privileged owner that has written a result row, over a statement the child scans for a long time and over a fast cross join, is started over HTTP and canceled from a
+/// process other than the web process that served the start: a job the test starts (<method>OcuPilot.Test.PmmlRunWatch.CancelFromJob</method>) that calls the entry the cancel route calls, naming the owner, so
+/// the two processes differ by construction. The run reads <code>canceled</code> within two seconds, and its child and supervisor are gone, with nothing left: no row for the test id, no run record, no event
+/// resource, no held run lock. A third leg sends the owner's own HTTP cancel, which the web server routes to a process of its own choice.</p>
+/// <p>Mutation (Rule 19): skip the supervisor's <code>Terminate</code> in <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method> -- every leg goes red on the status, the live child and the time. Skip
+/// <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method>'s hand-off of the test id to the stop class, or <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method>'s drop of the record's rows -- every leg goes red on the rows left.</p>
+Method TestACancelFromAnotherProcessEndsARunOverEitherStatement()
 {
-    Do ..CancelAcross("a slow scan", ..#SLOWSCAN)
-    Do ..CancelAcross("a fast cross join", ..#SIXWAY)
+    Do ..CancelAcross("a slow scan", ..#SLOWSCAN, 1)
+    Do ..CancelAcross("a fast cross join", ..#SIXWAY, 1)
+    Do ..CancelAcross("a slow scan canceled over HTTP", ..#SLOWSCAN, 0)
 }
 
-/// <p>One leg of AC1: <var>pName</var>'s run over <var>pSQL</var> is started through the hold application as <parameter>READER</parameter>, and cancels once it has written a row, from a web process other than
-/// the one that served the start.</p>
-Method CancelAcross(pName As %String, pSQL As %String)
+/// <p>One leg of AC1: <var>pName</var>'s run over <var>pSQL</var> is started through the hold application as <parameter>READER</parameter>, and canceled once it has written a row, by a job of the test when
+/// <var>pViaJob</var> is set and over HTTP as <parameter>READER</parameter> when it is not.</p>
+Method CancelAcross(pName As %String, pSQL As %String, pViaJob As %Boolean)
 {
     Set tBefore = ..Counter()
     Set tBody = {"model": (..#DEFINITION _ "||Colors"), "source": "custom", "sql": (pSQL)}
@@ -585,19 +586,20 @@ Method CancelAcross(pName As %String, pSQL As %String)
     Set tSup = $ClassMethod(..#WATCH, "JobOf", tKey)
     Set tChild = $ClassMethod(..#WATCH, "ChildOf", tKey)
     Do $$$AssertTrue($ClassMethod(..#WATCH, "Alive", tSup) && $ClassMethod(..#WATCH, "Alive", tChild) && (tSup '= tChild), pName _ ": a supervisor and a child are alive: " _ tSup _ " " _ tChild)
-    Set tHeld = $ClassMethod(..#WATCH, "HoldProcess", tStartPid, 10, ..#HOLDAPP _ "/hold", ..#READER, ..PreparedPassword)
-    If 'tHeld {
-        Do $ClassMethod(..#WATCH, "ReleaseProcess", tStartPid, 5)
-        Hang 0.2
+    If pViaJob {
+        Set tRecord = $ClassMethod(..#WATCH, "CancelFromJob", tKey, ..#READER, "OcuPilot.Area.Analytics.PmmlTest")
+        Set tCancelPid = $Select(tRecord = "": "", 1: $List(tRecord, 1))
+        Set tSeconds = $Select(tRecord = "": 99, 1: $List(tRecord, 5))
+        Do $$$AssertTrue((tCancelPid '= "") && (tCancelPid '= tStartPid), pName _ ": a process other than the start's web process sent the cancel: " _ tStartPid _ " then " _ tCancelPid)
+        Do $$$AssertEquals($Select(tRecord = "": "", 1: $List(tRecord, 2) _ " " _ $List(tRecord, 3) _ " " _ $List(tRecord, 4)), "1 canceled 1", pName _ ": the cancel's own answer reads canceled")
+    } Else {
+        Set tAsked = $ZHorolog
+        Do ..Send("POST", ..#HOLDAPP _ "/analytics/pmml/background/" _ tKey _ "/cancel", ..#READER, .tCancelStatus, .tCancelAnswer)
+        Set tSeconds = $ZHorolog - tAsked
+        Do $$$AssertEquals(tCancelStatus _ " " _ $Select($IsObject(tCancelAnswer): tCancelAnswer.%Get("status") _ " " _ tCancelAnswer.%Get("cancelRequested"), 1: ""), "200 canceled 1", pName _ ": the owner's own HTTP cancel answers canceled")
     }
-    Set tAsked = $ZHorolog
-    Do ..Send("POST", ..#HOLDAPP _ "/analytics/pmml/background/" _ tKey _ "/cancel", ..#READER, .tCancelStatus, .tCancelAnswer, , , .tCancelPid)
-    Set tSeconds = $ZHorolog - tAsked
-    Do $$$AssertTrue((tCancelPid '= "") && (tCancelPid '= tStartPid), pName _ ": another web process served the cancel: " _ tStartPid _ " then " _ tCancelPid)
-    Do $$$AssertEquals(tCancelStatus _ " " _ $Select($IsObject(tCancelAnswer): tCancelAnswer.%Get("status") _ " " _ tCancelAnswer.%Get("cancelRequested"), 1: ""), "200 canceled 1", pName _ ": the cancel's own answer reads canceled")
     Do $$$AssertTrue(tSeconds < 2, pName _ ": within two seconds: " _ tSeconds)
     Do $$$AssertEquals($ClassMethod(..#WATCH, "Residue", tKey, tBefore + 1, tChild, tSup), $Parameter(..#WATCH, "CLEAN"), pName _ ": no child, no supervisor, no row for the test id, no record, no held run lock, no event")
-    Do $ClassMethod(..#WATCH, "ReleaseProcess", tStartPid, 5)
     Do ..Send("GET", $Replace(..#POLL, ":id", tKey), ..#READER, .tStatus, .tAnswer)
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("status"), 1: ""), "canceled", pName _ ": and a poll reads it the same")
 }
