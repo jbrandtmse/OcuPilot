@@ -6721,6 +6721,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-05T18:41:40Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story that owns the Devices leaf
 - 2026-11-15T22:56:33Z status=routed owner=21-20-os-management-and-log-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-20-os-management-and-log-leaves
+- 2026-11-20T15:59:53Z status=resolved-by:21-20-os-management-and-log-leaves owner=21-20-os-management-and-log-leaves by=21-20 note=Devices_delete_row_action_with_typed-name_dialog_(AC2);35af0290b
 
 ### DW-1571: The agent's osmgmt.devices.update cannot clear a device's alias or prompt: the mint's merge refuses an empty value against the fresh read's number
 - source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -8476,6 +8477,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T20:06:00Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_1:a_stalled_walk_pass_reruns_once_on_a_relaunched_browser(stalled_one_closed_under_CLOSEDEADLINE_via_protocol-retry.closeOrAbandon),retryOnce_awaits_reset,failed_walk_error_carries_retried_lines;pins_ui/tools/structural-walk.test.mjs+protocol-retry.test.mjs(fakes);a11y_real_13/13_on_ocupilot-ci;code_69eaecb3+QA/review_commit;reopen_if=a_CI_a11y_rerun_after_a_relaunch_stalls_again
 - 2026-11-18T18:00:33Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:the_DW-1822_retry_ran_and_failed_again:1280px_light_settle_/agent/governance_abandoned_by_withDeadline_60000ms_after_'structural_walk_retried';run44328339684(ead5f1f95)browser_1/5_and_run44357940400(5e1672bb3)browser_1/5;both_reruns_pending/green;was_filed_as_DW-2742
 - 2026-11-20T13:24:53Z occurrence=24-14-pmml-model-tester-and-dashboard-viewer note=CI run 44736623307 (fa07e9126) browser shard 1/5: a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance
+- 2026-11-20T13:02:17Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44731774131_browser_shard_1:1280px_light_settle_/agent/governance_timed_out_after_60s
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -12452,6 +12454,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-21T07:40:07Z status=routed owner=burndown by=spec_gate note=23.7's DW-1783 technique (overridable offset helpers plus a probe) applies; filed, not absorbed (Rule 27 cap)
 - 2026-11-14T00:50:21Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:33Z status=routed owner=21-20-os-management-and-log-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-20-os-management-and-log-leaves
+- 2026-11-20T15:59:53Z status=resolved-by:21-20-os-management-and-log-leaves owner=21-20-os-management-and-log-leaves by=21-20 note=LocalFromUtc_seam;direction_and_zone_legs_pinned_(AC6);35af0290b,13c966c3b
 
 ### DW-2485: Test/AnalyticsPort's Snapshot joins every ^DeepSee.Cache* node into one string, so cache residue over about 3.6 MB raises MAXSTRING and TestTheReadsWriteNothing reddens on state it did not make
 - source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: low | footprint: in-epic
@@ -13817,6 +13820,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
 - 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
+- 2026-11-20T14:35:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44743879162_browser_shard_3:cleared_filter_waited_30s_(aria-rowcount_14);rerun_--failed
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -14226,3 +14230,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Review of 24.14 Batch 3; each copy is a few lines and differs in its target.
 - 2026-11-20T17:59:41Z status=routed owner=burndown by=harvest note=share_the_three_helpers
+### DW-2803: The SQL activity cancel can reach a statement running in another OcuPilot process (a turn job or an API worker); AD-10 has no statement arm
+- source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
+- 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision
+
+### DW-2804: An install or update run by an administrator without %All stops at EnsureSqlPrivileges (SQLCODE -99) unless the account first holds SELECT on %Dictionary.CompiledClass and the OcuPilot_Kernel_State schema privileges WITH GRANT OPTION; the latter then draws the installer's foreign-grant warning, and the README does not say any of it
+- source: 1.0.18 upgrade check (prompts/upgrade-1018-prompt.md, 1.0.13 leg) | severity: med | fix-risk: med | footprint: cross-story
+- evidence: Measured on ocupilot-c-ci 2026-11-20: as OcuUpgAdmin (no %All) -99 at EnsureSqlPrivileges; schema grant alone -99; plus CompiledClass SELECT OK; revoking schema grant -112; Installer.cls identical 1dd513578..bdee5d94e, so pre-existing (the 1.0.17 check pre-granted both)
+- 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression

@@ -23,15 +23,27 @@
 /// </ul>
 /// <p>Any other vendor error fails the whole read 500 <code>INTERNAL</code>; the vendor's text goes to
 /// <method>LogFault</method> and nowhere else (AD-39).</p>
+/// <p><b>One write: <parameter>TYPECANCEL</parameter></b> (Story 21.20) cancels one local statement through
+/// <code>$SYSTEM.SQL.CancelQuery</code>, after <parameter>WRITEPAIRS</parameter>. The statement is named by
+/// the composite id the query's <parameter>IDPARAM</parameter> carries and is read fresh first
+/// (<parameter>TYPEROW</parameter> answers the same row). A row of another server is refused 409
+/// <code>SQLACTIVITY.REMOTE</code> before the vendor is called; the vendor's answer that the statement is
+/// not running is 409 <code>SQLACTIVITY.ENDED</code>, and its answer that the caller lacks the SQL privilege
+/// <code>%CANCEL_QUERY</code>, which canceling another user's statement needs and no resource pair grants, is
+/// 403 <code>SQLACTIVITY.NOPRIVILEGE</code>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LocalServer</method>,
-/// <method>Resources</method>, <method>Rows</method>, <method>Text</method> and
+/// <method>Resources</method>, <method>Rows</method>, <method>Text</method>, <method>Cancel</method> and
 /// <method>LogFault</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.SqlActivityPort Extends %RegisteredObject
 {
 
-/// <p>The pair set every call requires, comma-separated as <code>resource:permission</code>, in the
+/// <p>The pair set every read requires, comma-separated as <code>resource:permission</code>, in the
 /// order the gate reports in (AD-8, AD-29).</p>
 Parameter PAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
+
+/// <p>The pair set a cancel requires: the read's, which the classic page's Cancel needs too. The SQL
+/// privilege <code>%CANCEL_QUERY</code> is the vendor's own check and not a pair.</p>
+Parameter WRITEPAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
 
 /// <p>The class the pair sets are evaluated through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
@@ -41,6 +53,25 @@ Parameter ENDPOINT = "CurrentStatements";
 
 /// <p>The running statements as rows.</p>
 Parameter TYPELIST = "LIST";
+
+/// <p>The one row the query's <parameter>IDPARAM</parameter> names, as a <code>LIST</code> row.</p>
+Parameter TYPEROW = "ROW";
+
+/// <p>The cancel of the one statement the query's <parameter>IDPARAM</parameter> names.</p>
+Parameter TYPECANCEL = "CANCEL";
+
+/// <p>The query key carrying a statement's composite id: <code>Server</code>, <code>ProcessID</code> and
+/// <code>StatementHash</code>.</p>
+Parameter IDPARAM = "id";
+
+/// <p>How long a cancel waits for the statement to stop, in seconds, as the classic page waits.</p>
+Parameter CANCELSECONDS As INTEGER = 2;
+
+/// <p>The vendor's answer for a statement or process that is not running.</p>
+Parameter CODENOTRUNNING = 6164;
+
+/// <p>The vendor's answer for a caller without the SQL privilege <code>%CANCEL_QUERY</code>.</p>
+Parameter CODENOPRIVILEGE = 5521;
 
 /// <p>The query key bounding a list's rows.</p>
 Parameter MAXROWSKEY = "maxRows";
@@ -78,11 +109,11 @@ ClassMethod GateClass() As %String
     Quit ..#GATECLASS
 }
 
-/// <p><parameter>PAIRS</parameter> as the <code>%List</code> of two-element <code>%List</code>s the
-/// gate evaluates.</p>
-ClassMethod Pairs() As %List
+/// <p><var>pSpec</var>, <parameter>PAIRS</parameter> by default, as the <code>%List</code> of two-element
+/// <code>%List</code>s the gate evaluates.</p>
+ClassMethod Pairs(pSpec As %String = {..#PAIRS}) As %List
 {
-    Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#PAIRS)
+    Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(pSpec)
 }
 
 /// <p>This instance's own <code>Server</code> value: the host name and the superserver port, as the
@@ -111,7 +142,10 @@ ClassMethod Shape(pText As %String) As %String
 }
 
 /// <p>Serve <parameter>ENDPOINT</parameter> for request type <parameter>TYPELIST</parameter>, after
-/// <parameter>PAIRS</parameter>.</p>
+/// <parameter>PAIRS</parameter>. <parameter>TYPEROW</parameter> answers the one row the query's
+/// <parameter>IDPARAM</parameter> names, 404 <code>PORT.NOTFOUND</code> when none runs, and
+/// <parameter>TYPECANCEL</parameter> cancels it after <parameter>WRITEPAIRS</parameter>, answering
+/// <code>{}</code> at 200 (<method>Statement</method>).</p>
 /// <p><var>pQuery</var> may carry <parameter>MAXROWSKEY</parameter>, a whole number above zero;
 /// <parameter>DEFAULTMAXROWS</parameter> when absent. <var>pBody</var> must be empty.</p>
 /// <p>On success, at 200, <var>pResult</var> is an array of at most that many rows, slowest first, each
@@ -134,7 +168,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Try {
         Set tFailedPair = ""
         ; EvaluateRequired, not EvaluatePairs: a PAIRS parameter mis-edited to empty fails closed.
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(), .tFailedPair) {
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs($Select(pType = ..#TYPECANCEL: ..#WRITEPAIRS, 1: ..#PAIRS)), .tFailedPair) {
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
@@ -142,8 +176,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Fail(pEndpoint _ " " _ pType _ " was given a caller body, and it takes none", $$$ERROR($$$GeneralError, "a SQL activity read takes no body"), .pHttpStatus, .pFault)
             Quit
         }
-        If (pEndpoint '= ..#ENDPOINT) || (pType '= ..#TYPELIST) {
+        If (pEndpoint '= ..#ENDPOINT) || ((pType '= ..#TYPELIST) && (pType '= ..#TYPEROW) && (pType '= ..#TYPECANCEL)) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType '= ..#TYPELIST {
+            Set tSC = ..Statement($Get(pQuery(..#IDPARAM)), pType, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
@@ -176,6 +214,69 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The one statement the composite id <var>pId</var> names, read fresh: <parameter>TYPEROW</parameter>
+/// answers its row in <var>pResult</var>; <parameter>TYPECANCEL</parameter> refuses a remote row, then
+/// cancels it and answers <code>{}</code>. A malformed id, a statement no longer running and, for a cancel, a
+/// statement listed with no statement id are 404 <code>PORT.NOTFOUND</code>.</p>
+ClassMethod Statement(pId As %String, pType As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tRow = ""
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) = 3 {
+        Set tRowsSC = ..Rows(..#DEFAULTMAXROWS, .tRows)
+        If $$$ISERR(tRowsSC) Quit ..Fail("the running statements could not be read", tRowsSC, .pHttpStatus, .pFault)
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tCandidate) {
+            If ($ZConvert(tCandidate.%Get("Server"), "U") '= $ZConvert($List(tParts, 1), "U")) || (tCandidate.%Get("ProcessID") '= +$List(tParts, 2)) || (tCandidate.%Get("StatementHash") '= $List(tParts, 3)) Continue
+            Set tRow = tCandidate
+            Quit
+        }
+    }
+    If '$IsObject(tRow) {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tMapped, .tVendorText)
+        Quit ..Refuse(404, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault)
+    }
+    If pType = ..#TYPEROW {
+        Set tTextSC = ..StatementText(tRow.%Get("Namespace"), tRow.%Get("StatementHash"), .tAllowed, .tText)
+        If $$$ISERR(tTextSC) Quit ..Fail("a running statement's text could not be read", tTextSC, .pHttpStatus, .pFault)
+        Do tRow.%Set("Statement", tText, "string")
+        Set pResult = tRow
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    If tRow.%Get("Remote") Quit ..Refused(##class(OcuPilot.Api.SqlActivityError).#REMOTE, .pHttpStatus, .pFault)
+    ; The vendor cancels whatever the process runs when it is given no statement id.
+    If tRow.%Get("StatementId") = "" {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tMapped, .tVendorText)
+        Quit ..Refuse(404, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault)
+    }
+    Set tCancelSC = ..Cancel(tRow.%Get("ProcessID"), tRow.%Get("StatementId"))
+    If $$$ISOK(tCancelSC) {
+        Set pResult = {}
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tCodes = "," _ $System.Status.GetErrorCodes(tCancelSC) _ ","
+    If tCodes [ ("," _ ..#CODENOPRIVILEGE _ ",") Quit ..Refused(##class(OcuPilot.Api.SqlActivityError).#NOPRIVILEGE, .pHttpStatus, .pFault)
+    If tCodes [ ("," _ ..#CODENOTRUNNING _ ",") Quit ..Refused(##class(OcuPilot.Api.SqlActivityError).#ENDED, .pHttpStatus, .pFault)
+    Quit ..Fail("the statement could not be canceled", tCancelSC, .pHttpStatus, .pFault)
+}
+
+/// <p>The vendor's cancel of the statement <var>pStatementId</var> running in process <var>pPid</var>,
+/// waiting <parameter>CANCELSECONDS</parameter> for it to stop.</p>
+ClassMethod Cancel(pPid As %Integer, pStatementId As %String) As %Status [ Private ]
+{
+    Quit $SYSTEM.SQL.CancelQuery(pPid, pStatementId, ..#CANCELSECONDS)
+}
+
+/// <p>The refusal <var>pCode</var> of <class>OcuPilot.Api.SqlActivityError</class>, on the status and slug that
+/// class names and with its sentence. Nothing is logged: a refusal is an answer, not a fault.</p>
+ClassMethod Refused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(##class(OcuPilot.Api.SqlActivityError).HttpStatusFor(pCode), ##class(OcuPilot.Api.SqlActivityError).SlugFor(pCode), pCode, ##class(OcuPilot.Api.SqlActivityError).ReasonFor(pCode), .pHttpStatus, .pFault)
 }
 
 /// <p>The running statements, slowest first and at most <var>pMax</var> of them, through
@@ -317,16 +418,31 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p>No script form: this port carries no write (AD-59).</p>
+/// <p><code>objectscript</code> for the cancel; <code>""</code> for every read, which has no script form
+/// (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If (pEndpoint = ..#ENDPOINT) && (pType = ..#TYPECANCEL) Quit "objectscript"
     Quit ""
 }
 
-/// <p>No script steps: this port carries no write (AD-59).</p>
+/// <p>The cancel as a script (AD-59): the statement is found by its server, process and statement hash, as
+/// <method>Statement</method> reads it, and <code>$SYSTEM.SQL.CancelQuery</code> is called with its
+/// statement id and <parameter>CANCELSECONDS</parameter> only when that statement is still listed with an id,
+/// because the vendor cancels whatever the process runs when it is given no id. A value is a string literal or a whole number,
+/// so nothing the query carries runs as code. A statement of another server renders one
+/// <code>comment</code> step carrying the refusal's sentence and no call.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    Set tAdmin = "OcuPilot.Port.AdminPort"
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDPARAM)))
+    If $ListLength(tParts) '= 3 Quit []
+    If ..IsRemote($List(tParts, 1)) Quit [($ClassMethod(tAdmin, "Step", "comment", ##class(OcuPilot.Api.SqlActivityError).#REASONREMOTE))]
+    Set tPid = +$List(tParts, 2)
+    Set tLines = $ListBuild("Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT SQLStatementID FROM INFORMATION_SCHEMA.CURRENT_STATEMENTS WHERE Server = ? AND ProcessID = ? AND StatementIndexHash = ?"", " _ $ClassMethod(tAdmin, "Literal", $List(tParts, 1)) _ ", " _ tPid _ ", " _ $ClassMethod(tAdmin, "Literal", $List(tParts, 3)) _ ")")
+    Set tLines = tLines _ $ListBuild("If tRS.%Next() && (tRS.%GetData(1) '= """") Set tSC = $SYSTEM.SQL.CancelQuery(" _ tPid _ ", tRS.%GetData(1), " _ ..#CANCELSECONDS _ ")")
+    Quit [($ClassMethod(tAdmin, "ObjectScriptStep", tLines))]
 }
 
 }

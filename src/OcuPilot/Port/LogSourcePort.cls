@@ -78,8 +78,8 @@
 /// <method>ErrorLevels</method>, <method>QueryClass</method>,
 /// <method>DetailQuery</method>, <method>NamespaceResolver</method>, <method>OpenQuery</method>,
 /// <method>RecordsClass</method>, <method>TailSources</method>, <method>TailBoundSeconds</method>,
-/// <method>TailCheckSeconds</method> and <method>TailBeatSeconds</method>. Production overrides none of
-/// them.</p>
+/// <method>TailCheckSeconds</method>, <method>TailBeatSeconds</method> and <method>OffsetAtUtc</method>.
+/// Production overrides none of them.</p>
 Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 {
 
@@ -1875,12 +1875,23 @@ ClassMethod LocalFromUtc(pUtc As %String) As %String
     Set tFraction = $Extract($Piece(tValue, ".", 2) _ "000", 1, 3)
     Set tLocal = ""
     Try {
-        Set tLocal = $ZDateTime($ZDateTimeH($ZDateTimeH($Extract(tValue, 1, 19), 3), -3), 3, 1)
+        Set tUtcH = $ZDateTimeH($Extract(tValue, 1, 19), 3)
+        Set tLocalSeconds = ##class(OcuPilot.Kernel.State.Turn).NowSeconds(tUtcH) + ..OffsetAtUtc(tUtcH)
+        Set tLocal = $ZDateTime((tLocalSeconds \ 86400) _ "," _ (tLocalSeconds # 86400), 3, 1)
     } Catch {
         Set tLocal = ""
     }
     If tLocal = "" Quit ""
     Quit $Extract(tLocal, 1, 10) _ "T" _ $Extract(tLocal, 12, 19) _ "." _ tFraction
+}
+
+/// <p>The seconds east of UTC that the instance applies at the UTC instant <var>pUtcH</var>
+/// (<code>days,seconds</code>), which <method>LocalFromUtc</method> adds. It is the ledger's own
+/// (<method>OcuPilot.Kernel.Audit.Ledger.OffsetAtUtc</method>), so a subclass that fixes it fixes the
+/// conversion's direction and size.</p>
+ClassMethod OffsetAtUtc(pUtcH As %String) As %Integer
+{
+    Quit ##class(OcuPilot.Kernel.Audit.Ledger).OffsetAtUtc(pUtcH)
 }
 
 /// <p>The <var>pCount</var> entries held as <code>pHeld(recency) = $ListBuild(time, pid, severity,

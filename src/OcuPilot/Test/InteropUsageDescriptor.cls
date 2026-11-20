@@ -58,8 +58,8 @@ XData Cases
     {"name": "the message volume endpoint is sound", "check": "read", "source": {"port": "monitor", "endpoint": "MessageVolume", "type": "LIST"}, "expected": null},
     {"name": "the database impact endpoint is sound", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST"}, "expected": null},
-    {"name": "the sensors endpoint a part names", "check": "read", "source": {"port": "monitor", "endpoint": "Sensors", "type": "LIST"}, "expected": "read.source.endpoint 'Sensors' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
-    {"name": "an endpoint in another letter case", "check": "read", "source": {"port": "monitor", "endpoint": "interfaces", "type": "LIST"}, "expected": "read.source.endpoint 'interfaces' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
+    {"name": "the sensors endpoint a part names", "check": "read", "source": {"port": "monitor", "endpoint": "Sensors", "type": "LIST"}, "expected": "read.source.endpoint 'Sensors' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact', 'Transactions', 'Alerts') (AD-29)"},
+    {"name": "an endpoint in another letter case", "check": "read", "source": {"port": "monitor", "endpoint": "interfaces", "type": "LIST"}, "expected": "read.source.endpoint 'interfaces' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact', 'Transactions', 'Alerts') (AD-29)"},
     {"name": "a single-object type", "check": "read", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)"},
     {"name": "a per-row detail call", "check": "read", "source": {"port": "monitor", "endpoint": "MessageVolume", "type": "LIST", "rowGet": {"key": "Namespace", "param": "name", "fields": ["Volume"], "derived": []}}, "expected": "read.source.rowGet is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "a parent list", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST", "forEach": {"endpoint": "DatabaseImpact", "key": "Database", "param": "name", "fields": []}}, "expected": "read.source.forEach is declared on a monitor source, which answers its list whole (AD-36)"},
@@ -127,7 +127,7 @@ Method TestTheMonitorSourceAdmitsItsFourEndpointsAndRefusesTheRest()
     }
     Do $$$AssertEquals(tSound, 4, "the four endpoints are sound")
     Do $$$AssertTrue(tRefusals >= 8, "the corpus refuses its shapes: " _ tRefusals)
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Port.MonitorPort).Endpoints()), "Metrics,Interfaces,MessageVolume,DatabaseImpact", "and they are the port's own list")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Port.MonitorPort).Endpoints()), "Metrics,Interfaces,MessageVolume,DatabaseImpact,Transactions,Alerts", "and they are the port's own list, which Transactions and System alerts joined in Story 21.20")
 }
 
 /// <p>The three declarations pass the read and tab grammar and form one group: Interfaces is the side

@@ -42,8 +42,8 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter PASSWORDUSER = "OcuPilotProbeUserConfirmChannel";
 
 /// <p>Write tools whose verb is a screen's own Cancel row action on an instance object, comma-separated:
-/// Background tasks' cancel (Story 16.5).</p>
-Parameter CANCELROWACTIONS = "tasks.background.cancel";
+/// Background tasks' cancel (Story 16.5) and SQL activity's cancel.</p>
+Parameter CANCELROWACTIONS = "tasks.background.cancel,osmgmt.sqlactivity.cancel";
 
 /// <p>The target the fixture answers for. Nothing on the instance carries this path, and nothing
 /// here would reach it if it did: the port is the fixture.</p>

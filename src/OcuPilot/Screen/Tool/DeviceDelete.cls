@@ -30,6 +30,9 @@ Parameter SENDSBODY As BOOLEAN = 0;
 
 Parameter CHANGEACTION = "deleted";
 
+/// <p>The row action the Devices list's Delete carries out (AD-53).</p>
+Parameter SCREENACTIONS = "delete";
+
 /// <p>Declared: a deleted device is gone from the instance's configuration, and OcuPilot keeps no
 /// copy to restore it from.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;

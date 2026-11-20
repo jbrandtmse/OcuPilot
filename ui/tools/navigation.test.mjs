@@ -265,6 +265,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 21.14: NLS configured defaults and Locale definitions, the thirty-sixth and thirty-seventh.
       'os-management/nls-defaults',
       'os-management/locales',
+      // Story 21.20: Transactions and System alerts, the thirty-eighth and thirty-ninth.
+      'os-management/transactions',
+      'os-management/system-alerts',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -594,6 +597,9 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       // Story 21.14: the thirty-sixth and thirty-seventh.
       'os-management/nls-defaults',
       'os-management/locales',
+      // Story 21.20: the thirty-eighth and thirty-ninth.
+      'os-management/transactions',
+      'os-management/system-alerts',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.

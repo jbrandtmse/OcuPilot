@@ -323,6 +323,8 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.backuptasks.thaw": false,
   "osmgmt.backupdatabases.add": false,
   "osmgmt.backupdatabases.remove": false,
+  "osmgmt.sqlactivity.cancel": true,
+  "osmgmt.systemalerts.reset": true,
   "osmgmt.startupsettings.set": true,
   "osmgmt.memorysettings.set": true,
   "osmgmt.compatibilitysettings.set": true,

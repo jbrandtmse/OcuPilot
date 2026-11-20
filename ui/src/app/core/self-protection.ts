@@ -119,6 +119,9 @@ export const PROTECTED_GLOBAL_RULE = 'protected-global';
 export const LOCALE_TABLE_RULE = 'locale-table';
 export const LOCALE_LOADABLE_RULE = 'locale-loadable';
 
+/** The rule that explains a SQL statement running on another server (Story 21.20): a row whose `Remote` reads true cannot be canceled here. */
+export const SQL_STATEMENT_REMOTE_RULE = 'sql-statement-remote';
+
 /**
  * The sentence the code a Locale properties row's `Refusal` carries is answered with, or `''` for a row the locale admits a change to.
  * Pinned equal to `LocaleError`'s sentences.
@@ -218,6 +221,10 @@ export function selfProtectionReason(
     return localeEditRefusal(row['Refusal']);
   }
   if (rule === LOCALE_LOADABLE_RULE) return row !== null && row['Loadable'] === false ? STRINGS.localeRefusalTableNotLoadable : '';
+  if (rule === SQL_STATEMENT_REMOTE_RULE) {
+    const remote = row?.['Remote'];
+    return remote === true || remote === 'true' || remote === 1 || remote === '1' ? STRINGS.sqlActivityRemoteReason : '';
+  }
   if (rule === PROTECTED_GLOBAL_RULE) return rowKey.trimStart().replace(/^\^/, '').toLowerCase().startsWith(PROTECTED_GLOBAL_STEM) ? STRINGS.globalRefusalProtected : '';
   if (rule === SYSTEM_ROLE_RULE) return rowKey.trimStart().startsWith('%') ? STRINGS.roleRefusalSystem : '';
   if (rule === SYSTEM_RESOURCE_RULE) {
