@@ -563,3 +563,5 @@
 2026-11-20T10:49:42Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T10:49:42Z model=opus agent_name=24-14-code-review-batch2 cycle_iteration=2 baseline=8fd5f4960
 2026-11-20T11:16:08Z	Story 24.14	review_complete	spawn_at=2026-11-20T10:50:00Z model=opus layers=4(full-opus,follow-up) findings=28(high0,med2,low24,false2) patched=15 deferred=0 rejected=13 intent_gap=0 commit=54430d672 scope=batch2
 2026-11-20T11:16:08Z	Story 24.14	ledger_adjudicated	routed_burndown=DW-2802 scope=batch2 model=claude-opus-5-5
+2026-11-20T11:20:39Z	Story 24.14	integrated_feature	feature=837fcf2fa(21.19) merge=5fd4364a1 conflicts=6(ReadTool557+317_writes,vocabulary109,unions,mirror+Titles_regenerated) prohibited=auto(equal_to_feature) test_tools=2354 check_objectscript=0 scope=batch2
+2026-11-20T11:20:39Z	Story 24.14	fresh_check_started	throwaway=ocupilot-b-ci tree=5fd4364a1
