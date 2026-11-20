@@ -11760,6 +11760,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T06:52:56Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: warm the editor's loader before the create-form hand-off navigates; Saved only after the editor opened; test holds the chunk
 - 2026-11-14T00:50:19Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:32Z status=routed owner=21-19-shell-advisor-permission-and-task-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-19-shell-advisor-permission-and-task-leaves
+- 2026-11-20T09:27:38Z status=resolved-by:21-19-shell-advisor-permission-and-task-leaves owner=21-19-shell-advisor-permission-and-task-leaves by=21-19 note=warmEditPage before navigate (AC4); f3e05e79f
 
 ### DW-2373: AD-5's on-demand-pages bullet says each child's loadComponent is the loader ScreenOutlet's maps name; since the 20.29 CI rework it is rememberedPage(that loader)
 - source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: low | fix-risk: low | footprint: in-story
@@ -12399,6 +12400,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-21T00:46:32Z status=escalated owner=burndown by=cr note=decision sheet: map a success-status unreadable answer to rejected in the shared read, or keep server-fault
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-15T22:56:32Z status=routed owner=21-19-shell-advisor-permission-and-task-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-19-shell-advisor-permission-and-task-leaves
+- 2026-11-20T09:27:38Z status=resolved-by:21-19-shell-advisor-permission-and-task-leaves owner=21-19-shell-advisor-permission-and-task-leaves by=21-19 note=unreadable ok answer maps to rejected in screen-read.ts (AC5); f3e05e79f
 
 ### DW-2472: audit-copy-purge.browser-spec.mjs AC2 reads today before the dialog does, so a run that crosses local midnight between the two is red
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
