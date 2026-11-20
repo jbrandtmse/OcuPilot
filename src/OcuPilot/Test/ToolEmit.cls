@@ -285,6 +285,17 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tOwnAt = 1:1:$ListLength(tOwnPairs) {
                 If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsPmmlModelAdd") {
+            ; Story 24.14 Batch 3: the PMML definition create declares WRITE on the database ^oddDEF maps to and READ on the routines database of the request's namespace, here this one's,
+            ; then its own edit pairs, the source code API's own pairs and its write pairs for the namespace, after its screen's pairs, each once (AD-8, AD-61, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#PMMLDEFINITIONGLOBAL, .tDefinitionResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's class definition database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild(tDefinitionResource, "WRITE"), $ListBuild(tRoutineResource, "READ")) _ ##class(OcuPilot.Screen.Gate).ParsePairSpec(##class(OcuPilot.Port.AnalyticsPort).#PMMLPAIRS) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs($Namespace)
+            For tOwnAt = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsListingGroupAction") {
             ; Story 24.11: the listing group editor's seven writes declare WRITE on the database ^DeepSee.ListingGroups maps to and READ on the routines
             ; database of the request's namespace, here this one's, then the edit pair, the source code API's own pairs and its write pairs for the

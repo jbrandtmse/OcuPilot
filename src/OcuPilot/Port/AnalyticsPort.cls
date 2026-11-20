@@ -120,7 +120,13 @@
 /// <code>USERICON</code>, by the exact name under <parameter>IDKEY</parameter>, and the writes <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code> (<method>InvokeSetting</method>), through
 /// <code>%DeepSee.UserPortal.Utils</code>' own setters only, under the same lock, each gated on WRITE to the database of its own global (<method>SettingsGlobal</method>). A variable's expression is
 /// checked for syntax (<method>VariableExpressionHolds</method>) and never run.</p>
-/// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
+/// <p><b>The PMML definition create (Story 24.14, Batch 3, AD-65).</b> The <code>PmmlModels</code> endpoint also serves the single-object read <code>PMMLDEFINITION</code> of one class and the write
+/// <code>ADD</code> (<method>InvokePmmlDefinition</method>). The write saves and compiles a class extending <code>%DeepSee.PMML.Definition</code> from PMML text through <method>WriteClass</method>, as the
+/// listing group writes do, gated by <parameter>PMMLPAIRS</parameter> and by <method>AdmitClassWrite</method> over the database <parameter>PMMLDEFINITIONGLOBAL</parameter> maps to
+/// (<method>AdmitPmmlDefinition</method>). Its refusals come before any save, in this order: a class of OcuPilot's own, a malformed name, a text the guard refuses
+/// (<method>PmmlTextRefused</method>, which keeps a <code>}</code> and a document type declaration out of the class and out of the vendor's parse) and a held class or package, the vendor's compile
+/// replacing every class of its package. A compile the instance refuses deletes the class and its generated classes.</p>
+/// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>ReadPmmlDefinitionData</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, <method>PmmlLookup</method>, <method>PmmlVendor</method>, <method>PmmlAnswer</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
@@ -426,6 +432,21 @@ Parameter ENDPOINTPMMLMODEL = "PmmlModel";
 /// <p>The shape of a PMML definition class name: the vendor's, so a value that is not one names no class.</p>
 Parameter PMMLCLASSPATTERN = "^[A-Za-z%][A-Za-z0-9%.]*$";
 
+/// <p>The PMML definition create (Story 24.14, Batch 3): the read of one definition class, which is 404 when neither the class nor a class of its package is held, and the audit's entity and verb.</p>
+Parameter TYPEPMMLDEFINITION = "PMMLDEFINITION";
+
+Parameter ENTITYPMMLDEFINITION = "pmml-definition";
+
+Parameter VERBPMMLDEFINITIONADD = "analytics.pmmlmodels.add";
+
+/// <p>The global whose database a class definition is stored in: the PMML definition create needs WRITE on it.</p>
+Parameter PMMLDEFINITIONGLOBAL = "^oddDEF";
+
+/// <p>The XML namespace of a definition class's <code>PMML</code> XData, and the XData's name.</p>
+Parameter PMMLXMLNAMESPACE = "http://www.intersystems.com/deepsee/pmml";
+
+Parameter PMMLXDATANAME = "PMML";
+
 /// <p>The three sources a PMML test runs against.</p>
 Parameter PMMLSOURCEDATASET = "dataset";
 
@@ -727,6 +748,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTTERMLISTS Quit (pType = ..#TYPETERMLIST) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || ..IsTermListTransfer(pType)
     If pEndpoint = ..#ENDPOINTTERMLISTENTRIES Quit (pType = ..#TYPETERMLISTENTRY) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..IsFolderItemType(pType)
+    If pEndpoint = ..#ENDPOINTPMMLMODELS Quit (pType = ..#TYPEPMMLDEFINITION) || (pType = ..#TYPEADD)
     If pEndpoint = ..#ENDPOINTLISTINGGROUPS Quit (pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPECOPYTARGET) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY)
     If pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS Quit (pType = ..#TYPELISTING) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
     If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET) || ..IsQualityMeasureWrite(pType)
@@ -889,7 +911,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY)), pEndpoint), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY)), pEndpoint), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), pEndpoint = ..#ENDPOINTPMMLMODELS: ..ChangesPmmlDefinition(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
         Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
@@ -903,6 +925,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If ..IsQualityMeasureEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokeQualityMeasure(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTPMMLMODELS) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokePmmlDefinition(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If ..IsSettingsEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
@@ -1001,6 +1027,7 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If ..IsListingGroupEndpoint(pEndpoint) Quit ..AdmitListingGroup(pNamespace, .pHttpStatus, .pFault)
     If ..IsSettingsEndpoint(pEndpoint) Quit ..AdmitDestination(pNamespace, ..SettingsGlobal(pEndpoint), ##class(OcuPilot.Api.AnalyticsError).#SETTINGREADONLY, .pHttpStatus, .pFault)
     If ..IsQualityMeasureEndpoint(pEndpoint) Quit ..AdmitClassWrite(pNamespace, "", ..#QUALITYMEASUREGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREREADONLY, .pHttpStatus, .pFault)
+    If pEndpoint = ..#ENDPOINTPMMLMODELS Quit ..AdmitPmmlDefinition(pNamespace, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
 
@@ -3296,6 +3323,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
     If ..IsListingGroupEndpoint(pEndpoint) && ..IsListingGroupWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If ..IsQualityMeasureEndpoint(pEndpoint) && (..IsQualityMeasureWrite(pType) || ..IsQualityMeasurePartWrite(pType)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTPMMLMODELS) && (pType = ..#TYPEADD) Quit "objectscript"
     If ..IsSettingsEndpoint(pEndpoint) && ..IsSettingsWrite(pType, pEndpoint) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
@@ -3310,7 +3338,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsSettingsEndpoint(pEndpoint): ..SettingSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
+        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), pEndpoint = ..#ENDPOINTPMMLMODELS: ..PmmlDefinitionSnippet($Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsSettingsEndpoint(pEndpoint): ..SettingSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
@@ -7199,6 +7227,260 @@ ClassMethod QualityMeasureSnippet(pEndpoint As %String, pType As %String, pId As
     Set tPrelude = $Char(10) _ " Kill tList Set tListed = 0, tAt = """" Do ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList) For { Set tAt = $Order(tList(tAt)) Quit:tAt=""""  Set:($ZConvert($List(tList(tAt), 1), ""U"") = " _ tNameU _ ") tListed = 1 }"
     Set tFree = "'tListed, '$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
     Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a PMML definition and so needs the class-write gate
+/// (<method>AdmitPmmlDefinition</method>): the add, and the definition's read composed for it. Pure.</p>
+ClassMethod ChangesPmmlDefinition(pType As %String, pAction As %String = "") As %Boolean
+{
+    If pType = ..#TYPEADD Quit 1
+    Quit (pAction '= "") && (pType = ..#TYPEPMMLDEFINITION)
+}
+
+/// <p>The PMML definition create's gate (Story 24.14, Batch 3; AD-8, AD-29, AD-61, AD-65), after the namespace gate: <method>AdmitClassWrite</method> with <parameter>PMMLPAIRS</parameter>, the
+/// database <parameter>PMMLDEFINITIONGLOBAL</parameter> maps to and the PMML read-only code.</p>
+ClassMethod AdmitPmmlDefinition(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AdmitClassWrite(pNamespace, ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#PMMLPAIRS), ..#PMMLDEFINITIONGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#PMMLREADONLY, .pHttpStatus, .pFault)
+}
+
+/// <p>The shape violations of the PMML definition create <var>pType</var> with the members <var>pBody</var> (<code>Class</code> and <code>PMML</code>), in the form of
+/// <method>ListingGroupViolations</method>: a <code>Class</code> that is not a string, and a <code>PMML</code> that is present and not a string. An empty or oversized text is
+/// <code>ANALYTICS.PMML.TEXT</code>, which <method>PmmlTextProblem</method> says. Pure.</p>
+ClassMethod PmmlDefinitionViolations(pType As %String, pClass As %String, pListing As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    If (pType = ..#TYPEADD) && ((pBody.%GetTypeOf("Class") '= "string") || (pBody.%Get("Class") = "")) Set pViolations($Increment(pViolations)) = $ListBuild("Class", tShape)
+    If (pType = ..#TYPEADD) && (pBody.%GetTypeOf("PMML") '= "unassigned") && (pBody.%GetTypeOf("PMML") '= "string") Set pViolations($Increment(pViolations)) = $ListBuild("PMML", tShape)
+    Quit $$$OK
+}
+
+/// <p>Whether the PMML text <var>pText</var> is refused (<code>ANALYTICS.PMML.TEXT</code>): it is empty, it is longer than
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>, it holds a document type declaration or an entity declaration (compared without case), or it holds a <code>}</code> anywhere, which would end the
+/// class's XData block and let what follows be read as class members. Pure.</p>
+ClassMethod PmmlTextRefused(pText As %String) As %Boolean
+{
+    If pText = "" Quit 1
+    If $Length(pText) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS Quit 1
+    If pText [ "}" Quit 1
+    Set tUpper = $ZConvert(pText, "U")
+    Quit (tUpper [ "<!DOCTYPE") || (tUpper [ "<!ENTITY")
+}
+
+/// <p>The text of the new definition class <var>pClass</var>: a class extending <code>%DeepSee.PMML.Definition</code> whose <code>PMML</code> XData holds <var>pText</var>, the shape the vendor's own
+/// class-creating utility makes. Line endings are line feeds. Pure.</p>
+ClassMethod PmmlClassText(pClass As %String, pText As %String) As %String
+{
+    Set tNL = $Char(10)
+    Quit "Class " _ pClass _ " Extends %DeepSee.PMML.Definition [ ProcedureBlock ]" _ tNL _ "{" _ tNL _ tNL _ "XData " _ ..#PMMLXDATANAME _ " [ XMLNamespace = """ _ ..#PMMLXMLNAMESPACE _ """ ]" _ tNL _ "{" _ tNL _ pText _ tNL _ "}" _ tNL _ tNL _ "}" _ tNL
+}
+
+/// <p>The PMML text <var>pText</var> with a line feed for each carriage return and line feed pair and for each lone carriage return: the text the definition class stores. Pure.</p>
+ClassMethod PmmlLineFeeds(pText As %String) As %String
+{
+    Quit $Replace($Replace(pText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
+}
+
+/// <p>Read the definition class <var>pClass</var> of <var>pNamespace</var>, and whether its package holds any class, without regard to case (<var>pData</var>): <code>class</code> is the stored name of the held
+/// class (<code>""</code> for none), <code>packageHeld</code> whether a class of the package <code>pClass.</code> exists, <code>pmml</code> the <code>PMML</code> XData of the held class with its carriage
+/// returns removed (<code>""</code> when it has none) and <code>models</code> the count <code>%GetModels</code> reports for a compiled definition class. A failure is <var>pCaught</var>.
+/// Overridable so a fixture can fail the read; production never overrides it.</p>
+ClassMethod ReadPmmlDefinitionData(pNamespace As %String, pClass As %String, Output pData, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("class") = ""
+    Set pData("packageHeld") = 0
+    Set pData("pmml") = ""
+    Set pData("models") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tUpper = $ZConvert(pClass, "U")
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT TOP 1 Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ?")
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        Set tResult = tStatement.%Execute(tUpper)
+        If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "SQLCODE " _ tResult.%SQLCODE))
+        If tResult.%Next() Set pData("class") = tResult.%GetData(1)
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT TOP 1 Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?")
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        Set tResult = tStatement.%Execute(tUpper _ ".")
+        If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "SQLCODE " _ tResult.%SQLCODE))
+        Set pData("packageHeld") = ''tResult.%Next()
+        If pData("class") '= "" {
+            Set tXData = ##class(%Dictionary.XDataDefinition).%OpenId(pData("class") _ "||" _ ..#PMMLXDATANAME)
+            If $IsObject(tXData) && $IsObject(tXData.Data) {
+                Do tXData.Data.Rewind()
+                Set tText = ""
+                While 'tXData.Data.AtEnd {
+                    Set tText = tText _ tXData.Data.Read(32000)
+                }
+                Set pData("pmml") = $Translate(tText, $Char(13))
+            }
+            Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(pData("class"))
+            If $IsObject(tCompiled) && (tCompiled.PrimarySuper [ "~%DeepSee.PMML.Definition~") {
+                Set tSC = $ClassMethod(pData("class"), "%GetModels", .tModels)
+                If $$$ISOK(tSC) Set pData("models") = +$Get(tModels)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p><method>ReadPmmlDefinitionData</method> of <var>pClass</var>, a name that cannot be a new definition's answering none, with a fault as the answer's error status.</p>
+ClassMethod PmmlDefinitionFacts(pNamespace As %String, pClass As %String, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pData("class") = ""
+    Set pData("packageHeld") = 0
+    Set pData("pmml") = ""
+    Set pData("models") = 0
+    If '..ListingClassShaped(pClass) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadPmmlDefinitionData(pNamespace, pClass, .pData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the PMML definition could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The definition class <var>pData</var> describes as a row: <code>{Class, PMML, Models, Namespace}</code>. Pure.</p>
+ClassMethod PmmlDefinitionRow(pNamespace As %String, ByRef pData) As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Class", pData("class"), "string")
+    Do tRow.%Set("PMML", pData("pmml"), "string")
+    Do tRow.%Set("Models", pData("models"), "number")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>Serve the PMML models endpoint's definition calls after <method>Invoke</method>'s gate (Story 24.14, Batch 3): the read <code>PMMLDEFINITION</code> of the class named under
+/// <parameter>IDKEY</parameter>, kept exactly (AD-13), and the add (<method>PerformPmmlDefinition</method>). The read answers the class's row when it is held, 409
+/// <code>ANALYTICS.PMML.TAKEN</code> when only its package is held and 404 when both are free; a read carrying <parameter>ACTIONKEY</parameter> <code>ADD</code> is the create's absence question, which
+/// answers 409 for a held class too; a name that cannot be a new definition's is 404, and a class of OcuPilot's own is refused 403 and never read.</p>
+ClassMethod InvokePmmlDefinition(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tClass = $Get(pQuery(..#IDKEY))
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEADD {
+        ; The class is the id's, which the body of a confirmed add does not repeat.
+        If tClass '= "" {
+            Set pBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+            Do pBody.%Set("Class", tClass, "string")
+        }
+        Quit ..PerformPmmlDefinition(pNamespace, pBody, .pResult, .pHttpStatus, .pFault)
+    }
+    If ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    Set tSC = ..PmmlDefinitionFacts(pNamespace, tClass, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    ; Composed for the add, the read asks the create's own question: a held class or package is 409 and a free name 404.
+    If ($Get(pQuery(..#ACTIONKEY)) '= ..#TYPEADD) && (tData("class") '= "") {
+        Set pResult = ..PmmlDefinitionRow(pNamespace, .tData)
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    If (tData("class") '= "") || tData("packageHeld") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLTAKEN, .pHttpStatus, .pFault)
+    Quit ..Absent(.pHttpStatus, .pFault)
+}
+
+/// <p>Judge the PMML definition create with the members <var>pBody</var> (<code>Class</code> and <code>PMML</code>) before anything is written (Story 24.14, Batch 3). In order, each refusal before any save: the
+/// shape violations (<method>PmmlDefinitionViolations</method>, 422); a class of OcuPilot's own (403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); a class name that
+/// <method>ListingClassShaped</method> refuses, which includes a <code>%</code> name (422 <code>ANALYTICS.PMML.CLASS</code>); a text <method>PmmlTextRefused</method> refuses, or one whose class text
+/// would be longer than <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>, the save's own bound (422 <code>ANALYTICS.PMML.TEXT</code>); and a name that is held, as the class or as a package, without regard to case (409 <code>ANALYTICS.PMML.TAKEN</code>), because the vendor's compile replaces the classes it
+/// generates there. <var>pPlan</var> holds <code>class</code>, <code>text</code> (the class text), <code>prior</code> and <code>version</code> (empty, a create has neither) and <code>compiled</code> (0).
+/// Nothing is written.</p>
+ClassMethod PlanPmmlDefinition(pNamespace As %String, pType As %String, pBody As %DynamicObject, Output pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pPlan
+    Kill tViolations
+    Set tSC = ..PmmlDefinitionViolations(pType, "", "", pBody, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    Set tClass = pBody.%Get("Class")
+    Set tText = $Select(pBody.%GetTypeOf("PMML") = "string": pBody.%Get("PMML"), 1: "")
+    If ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If '..ListingClassShaped(tClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLCLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCLASS, .pHttpStatus, .pFault)
+    If ..PmmlTextRefused(tText) || ($Length(..PmmlClassText(tClass, ..PmmlLineFeeds(tText))) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLTEXT, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTEXT, .pHttpStatus, .pFault)
+    Set tSC = ..PmmlDefinitionFacts(pNamespace, tClass, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If (tData("class") '= "") || tData("packageHeld") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLTAKEN, .pHttpStatus, .pFault)
+    Set pPlan("class") = tClass
+    Set pPlan("name") = tClass
+    Set pPlan("text") = ..PmmlClassText(tClass, ..PmmlLineFeeds(tText))
+    Set pPlan("prior") = ""
+    Set pPlan("version") = ""
+    Set pPlan("compiled") = 0
+    Quit $$$OK
+}
+
+/// <p>The refusal sentence of the PMML definition create <var>pType</var> with the members <var>pBody</var>, <code>""</code> when nothing refuses it: <method>PlanPmmlDefinition</method>'s, with nothing
+/// written. <var>pClass</var>, when given, is the class the body names. The mint and a screen's save ask it, so the agent and the person are refused what the write would refuse.</p>
+ClassMethod PmmlDefinitionProblem(pNamespace As %String, pType As %String, pClass As %String, pListing As %String, ByRef pQuery, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        If pClass '= "" {
+            Set pBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+            Do pBody.%Set("Class", pClass, "string")
+        }
+        Set tSC = ..PlanPmmlDefinition(pNamespace, pType, pBody, .tPlan, .tHttp, .tFault)
+        If $$$ISERR(tSC) && $IsObject($Get(tFault)) Set tProblem = tFault.%Get("reason")
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p>Make the PMML definition create (Story 24.14, Batch 3; AD-65): <method>PlanPmmlDefinition</method>, then the class saved and compiled through <method>WriteClass</method> as <parameter>TYPEADD</parameter>. A compile the
+/// instance refuses (its own text is logged, never sent) deletes the class and answers 422 <code>ANALYTICS.PMML.COMPILE</code>; deleting the class deletes the classes its compile generated in the
+/// class's package, whether or not that compile succeeded. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), a restored one with its outcome. The answer is the class's row
+/// (<method>PmmlDefinitionRow</method>), read after the write.</p>
+ClassMethod PerformPmmlDefinition(pNamespace As %String, pBody As %DynamicObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..PlanPmmlDefinition(pNamespace, ..#TYPEADD, pBody, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..WriteClass(pNamespace, ..#TYPEADD, tPlan("class"), .tPlan, "PMML definition", .tOutcome, .tRefused, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("class", tPlan("class"), "string")
+    Do tEffects.%Set("outcome", tOutcome, "string")
+    Do ..AuditWrite(..#VERBPMMLDEFINITIONADD, tPlan("class"), tEffects, ..#ENTITYPMMLDEFINITION)
+    If tRefused Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLCOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCOMPILE, .pHttpStatus, .pFault)
+    Do ..PmmlDefinitionFacts(pNamespace, tPlan("class"), .tAfter, .tAfterHttp, .tAfterFault)
+    If tAfter("class") = "" Set tAfter("class") = tPlan("class")
+    Set pResult = ..PmmlDefinitionRow(pNamespace, .tAfter)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the PMML definition create of the class <var>pId</var> with the members <var>pBody</var> (Story 24.14, Batch 3; AD-59): the class
+/// the write would save, compiled, and, as the write does, deleted when the compile is refused (<method>ClassWriteSnippet</method>). A create <method>PlanPmmlDefinition</method> refuses is a script that only sets the
+/// refusal's sentence. The steps are gated on one line by a free-name check that applies the create's own rule: neither the class nor a class of its package is held, without regard to case, and a lookup
+/// that fails reads as held. A text longer than <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter>, whose script could only be longer, answers no step.</p>
+ClassMethod PmmlDefinitionSnippet(pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If pId '= "" {
+        Set pBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+        Do pBody.%Set("Class", pId, "string")
+    }
+    Set tSC = ..PlanPmmlDefinition(tNamespace, ..#TYPEADD, pBody, .tPlan, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit $Char(10) _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    If $Length(tPlan("text")) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
+    Set tUpper = ..Literal($ZConvert(tPlan("class"), "U"))
+    Set tPrelude = $Char(10) _ " Set tHeld = 1, tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ?"", " _ tUpper _ ", " _ tUpper _ "_""."") If (tRS.%SQLCODE = 0) && tRS.%Next() Set tHeld = tRS.%GetData(1)"
+    Quit ..ClassWriteSnippet(..#TYPEADD, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, "'tHeld", ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN)
 }
 
 /// <p>The fifteen settings of the classic Settings page's General tab, in the page's order, as a <class>%List</class> of <class>%List</class>s:

@@ -210,6 +210,31 @@ Parameter PMMLLOST = "ANALYTICS.PMML.LOST";
 
 Parameter REASONPMMLLOST = "The PMML test ended without an answer; run it again.";
 
+/// <p>The PMML definition create's refusals (Story 24.14, Batch 3): 422, the class name is not one a definition can take; 409, the class or a class of its package is held; 422, the text is empty, too long, or holds
+/// a document type declaration or a <code>}</code>; 422, the instance refused to compile the definition; 409, the database that holds the namespace's classes is read-only. <code>PMMLSAVE</code> is the create's
+/// consequence code.</p>
+Parameter PMMLCLASS = "ANALYTICS.PMML.CLASS";
+
+Parameter REASONPMMLCLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+Parameter PMMLTAKEN = "ANALYTICS.PMML.TAKEN";
+
+Parameter REASONPMMLTAKEN = "This namespace already holds this class, or classes in its package.";
+
+Parameter PMMLTEXT = "ANALYTICS.PMML.TEXT";
+
+Parameter REASONPMMLTEXT = "Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.";
+
+Parameter PMMLCOMPILE = "ANALYTICS.PMML.COMPILE";
+
+Parameter REASONPMMLCOMPILE = "The instance refused to compile the PMML definition, so nothing was changed.";
+
+Parameter PMMLREADONLY = "ANALYTICS.PMML.READONLY";
+
+Parameter REASONPMMLREADONLY = "The database that holds this namespace's classes is read-only.";
+
+Parameter PMMLSAVE = "ANALYTICS.PMML.SAVE";
+
 /// <p>409: a delete of a locked folder item.</p>
 Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
 
@@ -478,6 +503,11 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PMMLFULL Quit ..#REASONPMMLFULL
     If pCode = ..#PMMLNOTFOUND Quit ..#REASONPMMLNOTFOUND
     If pCode = ..#PMMLLOST Quit ..#REASONPMMLLOST
+    If pCode = ..#PMMLCLASS Quit ..#REASONPMMLCLASS
+    If pCode = ..#PMMLTAKEN Quit ..#REASONPMMLTAKEN
+    If pCode = ..#PMMLTEXT Quit ..#REASONPMMLTEXT
+    If pCode = ..#PMMLCOMPILE Quit ..#REASONPMMLCOMPILE
+    If pCode = ..#PMMLREADONLY Quit ..#REASONPMMLREADONLY
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
@@ -562,10 +592,16 @@ ClassMethod FolderItemCodes() As %List
     Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
 }
 
-/// <p>The PMML model tester's eight refusal codes (Story 24.14), as a <class>%List</class>.</p>
+/// <p>The PMML model tester's eight refusal codes (Story 24.14), then the five of the definition create (Batch 3), as a <class>%List</class>.</p>
 ClassMethod PmmlCodes() As %List
 {
-    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST)
+    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST, ..#PMMLCLASS, ..#PMMLTAKEN, ..#PMMLTEXT, ..#PMMLCOMPILE, ..#PMMLREADONLY)
+}
+
+/// <p>The consequence code of the PMML definition create (Story 24.14, Batch 3), as a <class>%List</class>.</p>
+ClassMethod PmmlConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#PMMLSAVE)
 }
 
 /// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>

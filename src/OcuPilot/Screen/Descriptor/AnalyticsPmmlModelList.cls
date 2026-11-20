@@ -4,8 +4,9 @@
 /// <p><b>Its id is the composite <code>[Class, Model]</code></b>, the vendor's <code>Class||Model</code>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. Its name cell opens the model's Test screen
 /// (<code>analytics/pmml-models/test</code>). A row's <code>Type</code> is the vendor's model type, <code>Target</code> and <code>TargetType</code> the predicted field and its operational type
 /// (<code>categorical</code>, <code>ordinal</code> or <code>continuous</code>), <code>DataSources</code> the definition's data sources, one per line, and <code>Verification</code> whether the model carries verification records.</p>
-/// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Model Tester admits <code>%Development</code> alone, and a pair set is an AND (AD-8, AD-65). It
-/// offers no action and does not refresh (AD-43).</p>
+/// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Model Tester admits <code>%Development</code> alone, and a pair set is an AND (AD-8, AD-65).
+/// <b>It writes</b> (Story 24.14, Batch 3): its primary action, New PMML definition, is the tool <code>analytics.pmmlmodels.add</code>, which makes a class from PMML text. The class is named by its own type,
+/// <code>pmml-definition</code>, which the audit row carries. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -23,11 +24,11 @@ XData Declaration
   "privileges": [{"resource": "%DeepSee_Portal", "permission": "USE"}, {"resource": "%Development", "permission": "USE"}],
   "ownPrivileges": [{"resource": "%Development", "permission": "USE"}],
   "entityType": "pmml-model",
-  "secondaryEntityTypes": [],
+  "secondaryEntityTypes": ["pmml-definition"],
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Class", "Model"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "add", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Class", "Model", "Type", "Target", "TargetType", "DataSources", "Verification"], "secretFields": []},
   "emptyStateKey": "analyticsPmmlModelsEmpty",
@@ -57,8 +58,8 @@ XData Declaration
       {"field": "DataSources", "labelKey": "analyticsPmmlDataSources", "kind": "text", "long": true},
       {"field": "Verification", "labelKey": "analyticsPmmlVerification", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsPmmlModelsEmptyAgent"
   },
   "toolIdentifier": "analytics.pmmlmodels"
 }

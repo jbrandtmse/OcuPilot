@@ -2482,6 +2482,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Observed once here: node --test browser/*.browser-spec.mjs failed at ssl.browser-spec.mjs:131 'a description substring leaves one row', 2 !== 1; the same file alone passed 4 of 4, and the next full run passed 69 of 69. The throwaway's corpus holds four SSL configurations and only OcuPilotDemoTLS carries 'demo fixture' in its description, so the filter text does isolate one row and the count is being read before the filter has settled. Story 2.7 owns this spec; nothing in Story 3.5 touches the SSL list.
 - 2026-09-16T00:44:59Z status=routed owner=burndown by=cr note=flaky, order-dependent; filterToSubset appears to read the count before the filtered render lands
 - 2026-09-16T00:46:40Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=root cause is not order dependence: page.type enters the filter one character at a time and the view re-filters on each keystroke, so waitForFunction returned on the first intermediate prefix satisfying its predicate - 'demo fixture' passing through 'd', which keeps a larger subset that still holds the expected row. filterToSubset now requires the field to hold the whole text and the count to have stopped moving before it answers. Fixed out of footprint deliberately: it is a shared helper every list spec's exact-count assertion depends on, and a flake there costs a CI rerun on every remaining push of the epic
+- 2026-11-20T13:24:54Z occurrence=24-14-pmml-model-tester-and-dashboard-viewer note=CI run 44736623307 (fa07e9126) browser shard 5/5: ssl.browser-spec.mjs AC2 'filtering on OcuPilotDemoTLS left 1 of 1 row(s)' (the leg's instance held only the demo TLS row)
 
 ### DW-375: EXPERIENCE.md's own (:nnn) back-references have drifted: rows appended to the Fixed strings table in Stories 3.5 and 3.6 shifted every line below it, so the references now point at the wrong rows and nothing checks them
 - source: ux-3-6 | severity: med | fix-risk: low | footprint: cross-epic
@@ -8476,8 +8477,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T08:59:21Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=reopened: reopen_if met after the 23.9 fix (c98a0877, 74a6348f); staging 64e58441 run 43379465200 attempt 1, AC5 720 px light settle on /agent/governance timed out via protocol-retry.mjs:48, attempt 2 green; CI flake, first priority (Rule 27)
 - 2026-11-13T20:06:00Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_1:a_stalled_walk_pass_reruns_once_on_a_relaunched_browser(stalled_one_closed_under_CLOSEDEADLINE_via_protocol-retry.closeOrAbandon),retryOnce_awaits_reset,failed_walk_error_carries_retried_lines;pins_ui/tools/structural-walk.test.mjs+protocol-retry.test.mjs(fakes);a11y_real_13/13_on_ocupilot-ci;code_69eaecb3+QA/review_commit;reopen_if=a_CI_a11y_rerun_after_a_relaunch_stalls_again
 - 2026-11-18T18:00:33Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:the_DW-1822_retry_ran_and_failed_again:1280px_light_settle_/agent/governance_abandoned_by_withDeadline_60000ms_after_'structural_walk_retried';run44328339684(ead5f1f95)browser_1/5_and_run44357940400(5e1672bb3)browser_1/5;both_reruns_pending/green;was_filed_as_DW-2742
+- 2026-11-20T13:24:53Z occurrence=24-14-pmml-model-tester-and-dashboard-viewer note=CI run 44736623307 (fa07e9126) browser shard 1/5: a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance
 - 2026-11-20T13:02:17Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44731774131_browser_shard_1:1280px_light_settle_/agent/governance_timed_out_after_60s
 - 2026-11-20T19:33:26Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=three governance-settle reds 2026-11-20 (runs 44743879162, 44736623307, 44794079238); must-fix in 21.23; candidate cause the governance screen's settle time at 329 baseline keys (inference); 21.23 measures the settle time at 720px and 1280px, light and dark, and fixes the screen or the walker, never the deadline
+- 2026-11-20T19:29:15Z by=epic-24-runner note=occurrence: CI run 44794079238 (24.14 Batch 2 integrate head b70aa5d69), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance (720px light, 60 s); every instance shard and the other browser shards green; third settle red at /agent/governance today (21.20's run, fa07e9126's run, this one); the governance screen lists 329 keys, so a real settle-time regression is possible (inference); orchestrator routes DW-1822 to 21-23 as must-fix
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -14226,10 +14229,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Shared BackgroundRun behavior that MDX query has too (24.14 Batch 2 implement review); fixing it touches the shared client store.
 - 2026-11-20T11:16:08Z status=routed owner=burndown by=harvest note=attach_only_the_same_target's_run
+
+### DW-2808: PMML New: the mint's absence read is write-gated but no test arms the database seam on it (the confirm's write is gated and pinned)
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Review of 24.14 Batch 3: the read-only seam is exercised at the confirm only.
+- 2026-11-20T17:59:41Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a mint is seen passing on a read-only database
+
+### DW-2809: PMML New: near-copies left as found (PmmlDefinitionProblem beside its two siblings; the copy-the-body-and-set-Class lines at four sites; the dialog's FileReader block) (Rule 2)
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Review of 24.14 Batch 3; each copy is a few lines and differs in its target.
+- 2026-11-20T17:59:41Z status=routed owner=burndown by=harvest note=share_the_three_helpers
 ### DW-2803: The SQL activity cancel can reach a statement running in another OcuPilot process (a turn job or an API worker); AD-10 has no statement arm
 - source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
 - 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision
+- 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Ship, fix at cleanup (Recommended)": 1.0.18 ships as built; at Epic 21 burn-down add an add-only AD-10 rule refusing to cancel OcuPilot own processes, plus the guard
 
 ### DW-2805: AD-8's Story 18.4 sentence and its memlog line still say dismount declares %Admin_Manage:USE, which AD-27's Story 21.21 case and the code now contradict
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
@@ -14251,3 +14265,5 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.18 upgrade check (prompts/upgrade-1018-prompt.md, 1.0.13 leg) | severity: med | fix-risk: med | footprint: cross-story
 - evidence: Measured on ocupilot-c-ci 2026-11-20: as OcuUpgAdmin (no %All) -99 at EnsureSqlPrivileges; schema grant alone -99; plus CompiledClass SELECT OK; revoking schema grant -112; Installer.cls identical 1dd513578..bdee5d94e, so pre-existing (the 1.0.17 check pre-granted both)
 - 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression
+- 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Document now, fix later (Recommended)": README half on the 1.0.18 release branch by the Planner (closes against the release commit when sent); installer-needs-less half routed to a later story
+- 2026-11-20T20:40:08Z status=routed owner=burndown by=orchestrator note=documentation half closed by release/1.0.18 7d53e3312 (README IPM install: %Admin_Task:USE, SELECT on %Dictionary.CompiledClass, schema OcuPilot_Kernel_State privileges WITH GRANT OPTION, foreign-grant warning expected); installer-needs-less half stays routed to a later story

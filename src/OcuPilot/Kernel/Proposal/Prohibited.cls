@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -814,6 +814,12 @@ Parameter TYPEQUALITYMEASUREELEMENT = "quality-measure-element";
 
 Parameter TYPEQUALITYMEASUREMETA = "quality-measure-meta";
 
+/// <p>A PMML definition class, created by the PMML models screen's New PMML definition (AD-65, Story 24.14 Batch 3). AD-10's one effect, a class of OcuPilot's own, is
+/// <class>OcuPilot.Port.AnalyticsPort</class>'s to refuse, so a write passes the reviewed-few sweep and nothing else. The create's target is named by the screen's own type, <code>pmml-model</code>, whose id is the class.</p>
+Parameter TYPEPMMLDEFINITION = "pmml-definition";
+
+Parameter TYPEPMMLMODEL = "pmml-model";
+
 /// <p>An analytics General setting and a Worklists option (Story 24.13). AD-10 names no effect on either: OcuPilot stores nothing in <code>^DeepSee.UserPortalSettings</code>, so a write
 /// passes the reviewed-few sweep -- a setting moves its value (or its key), an option whether it is shown -- and nothing else.</p>
 Parameter TYPEANALYTICSSETTING = "analytics-setting";
@@ -1301,6 +1307,12 @@ ClassMethod IsQualityMeasureType(pType As %String) As %Boolean
     Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPEQUALITYMEASUREELEMENT) || (pType = ..#TYPEQUALITYMEASUREMETA)
 }
 
+/// <p>Whether <var>pType</var> is the PMML definition create's (Story 24.14, Batch 3): the definition class the add creates, or the PMML model screen's own type, which names the create's target. Pure.</p>
+ClassMethod IsPmmlDefinitionType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPMMLDEFINITION) || (pType = ..#TYPEPMMLMODEL)
+}
+
 /// <p>Whether <var>pType</var> is an analytics General setting, a Worklists option, a run-time variable or a user-defined icon (Story 24.13). Pure.</p>
 ClassMethod IsAnalyticsSettingType(pType As %String) As %Boolean
 {
@@ -1598,6 +1610,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELISTINGGROUPLISTING Quit $ListFromString("Name,DisplayName,Type,Fields,OrderBy,Joins,Formats,Source,Resource,SelectMode,Disabled,Description,SQL")
     ; Story 24.12: a quality measure add sets its name, class and header.
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Name,Class,Caption,Description,SubjectArea")
+    ; Story 24.14 Batch 3: a PMML definition add sets its class and PMML text.
+    If ..IsPmmlDefinitionType(pType) Quit $ListFromString("Class,PMML")
     If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Name,Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
     If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Name,Caption,Content,Disabled")
     ; Story 24.13 Batch 3: a run-time variable add sets its name, expression, comment and context; an icon add its name and path.
@@ -1689,7 +1703,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && '..IsAnalyticsSettingType(tType) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1893,7 +1907,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Quit
             }
             ; Story 24.12: a quality measure add carries the namespace it was composed in beside its fields, as a listing group add does.
-            If ..IsQualityMeasureType(tType) {
+            If ..IsQualityMeasureType(tType) || ..IsPmmlDefinitionType(tType) {
                 Set tEntryPayload = ..ParsedObject(pPayload)
                 If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
@@ -2121,7 +2135,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         ; A quality measure (Story 24.12): AD-10's one effect, a class of OcuPilot's own, is AnalyticsPort's to refuse, so a write passes the reviewed-few sweep and nothing else.
-        If ..IsQualityMeasureType(tType) {
+        If ..IsQualityMeasureType(tType) || ..IsPmmlDefinitionType(tType) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }

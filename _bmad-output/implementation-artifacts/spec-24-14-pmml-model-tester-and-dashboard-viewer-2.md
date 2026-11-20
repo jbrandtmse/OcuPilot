@@ -43,7 +43,7 @@ deferred:
     3. An SQL source, the custom text or a declared `X-SQLDataSource`'s SQL, passes SQL query's own `SqlConsole.Check` (classification and self-protection) and must classify as `query`.
     4. A cube source's cube must be one `%CubeExists` holds and `%CheckPrivilege` admits.
   - A prepare error answers `{outcome: error, message}` at once, and nothing is spawned.
-  - The job allocates the test id with `TempResult.GetNewTestId()`. It calls `%RunModel`, `%RunModelFromPMMLRows` or `%RunModelFromSQL` with `pTracking` 0, under an alarm of `MDXSECONDS`, which stops a statement that is slow to start; a run that returns at or past the bound is answered `stopped`, its answer discarded, and Cancel interrupts a run in progress (the vendor's model loop does not take the alarm). It reads the answer, then drops the id's rows with an embedded `DELETE` bound to the id on every path: answered, error, stopped, canceled or fault.
+  - The job allocates the test id with `TempResult.GetNewTestId()`. It calls `%RunModel`, `%RunModelFromPMMLRows` or `%RunModelFromSQL` with `pTracking` 0, under an alarm of `MDXSECONDS`, which stops a statement that is slow to start; a run that returns at or past the bound is answered `stopped`, its answer discarded (the vendor's model loop does not take the alarm), and Cancel ends the run's own job, the process its run row records while that process holds the run's lock, then drops that test id's rows itself (Batch 2b, spec `-4`). It reads the answer, then drops the id's rows with an embedded `DELETE` bound to the id on every path: answered, error, stopped, canceled or fault.
 - **The answer.** It is one of these:
   - `{outcome: ran, mode, records, values[], rows[], truncated}`;
   - `{outcome: error, message}`, where the message is `ErrorAnswer`'s and cut at `MDXMAXCELL`;
@@ -189,6 +189,8 @@ The implement stage re-runs the `git log` check before editing.
   - **Then** `PmmlProbe.Gone()` is true.
 
 ## Spec Change Log
+
+- 2026-11-20, Batch 2b plan (orchestrator ruling on U-123): Boundaries' "Cancel interrupts a run in progress" replaced, since a cancel reached the job only while it was inside the SQL engine (about 2% of a fast join, measured); the Cancel now ends the run's own job and drops its rows (spec `-4`, Design Notes › Measured).
 
 - 2026-11-20, CI: re-opened for rework iteration 1 (one [CI] item: the cancel test did not land on CI's runner).
 

@@ -1,6 +1,7 @@
 /// <p><class>OcuPilot.Test.AnalyticsGateSeam</class> whose answer for the database the listing groups' global maps to is set by a test, so
 /// <class>OcuPilot.Test.AnalyticsListingGroupDatabase</class> drives the write gate's destination half in process. <method>Arm</method> <code>lgdatabase</code> with
 /// <code>readonly</code> reports that database mounted read-only and with <code>unmounted</code> reports it not mounted; <code>lgresource</code> names the resource that guards it.
+/// <code>pmmldatabase</code> with the same two values does the same for the database the PMML definition create writes to (<class>OcuPilot.Test.AnalyticsPmmlCreateEdge</class>).
 /// An unarmed seam answers what the instance does.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.AnalyticsListingGroupDatabaseSeam Extends OcuPilot.Test.AnalyticsGateSeam
@@ -14,6 +15,10 @@ ClassMethod DestinationDatabase(pNamespace As %String, pGlobal As %String, Outpu
         If $Get(^||OcuPilotAnalyticsSeam("lgdatabase")) = "readonly" Set pReadOnly = 1
         If $Get(^||OcuPilotAnalyticsSeam("lgdatabase")) = "unmounted" Set pMounted = 0
         If $Get(^||OcuPilotAnalyticsSeam("lgresource")) '= "" Set pResource = ^||OcuPilotAnalyticsSeam("lgresource")
+    }
+    If pGlobal = ..#PMMLDEFINITIONGLOBAL {
+        If $Get(^||OcuPilotAnalyticsSeam("pmmldatabase")) = "readonly" Set pReadOnly = 1
+        If $Get(^||OcuPilotAnalyticsSeam("pmmldatabase")) = "unmounted" Set pMounted = 0
     }
     Quit tResolved
 }

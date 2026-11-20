@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:663 */
+  /** EXPERIENCE.md:664 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8544,6 +8544,22 @@ export const STRINGS = {
   analyticsPmmlModelTestPrompt2: 'Which data sources can I test this model against?',
   /** EXPERIENCE.md:621 */
   analyticsPmmlModelTestPrompt3: 'How do I read precision and recall?',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlNewAction: 'New PMML definition',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlTextLabel: 'PMML',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlSaveConsequence: 'The class is saved and compiled, and the classes it generates are made in its package.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlTaken: 'This namespace already holds this class, or classes in its package.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlText: 'Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlCompile: 'The instance refused to compile the PMML definition, so nothing was changed.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlReadonly: 'The database that holds this namespace\'s classes is read-only.',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlModelsEmptyAgent: 'create a PMML definition',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

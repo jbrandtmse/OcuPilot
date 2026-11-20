@@ -824,3 +824,48 @@ test('Story 24.14 Batch 2: each PMML refusal is one sentence on both surfaces, a
   const drops = [...code.matchAll(/DELETE FROM %DeepSee_PMML_Utils\.TempResult/g)].length;
   assert.equal(drops, 1, 'the one drop of the vendor\'s result rows is an embedded DELETE in PmmlDrop');
 });
+
+/** The refusals of the PMML definition create (Story 24.14, Batch 3), each pinned to its `strings.ts` key; the class sentence is the listing groups'. */
+const PMML_CREATE_SENTENCES = [
+  ['REASONPMMLCLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONPMMLTAKEN', 'analyticsRefusalPmmlTaken'],
+  ['REASONPMMLTEXT', 'analyticsRefusalPmmlText'],
+  ['REASONPMMLCOMPILE', 'analyticsRefusalPmmlCompile'],
+  ['REASONPMMLREADONLY', 'analyticsRefusalPmmlReadonly'],
+];
+
+test('Story 24.14 Batch 3: each PMML create refusal and its consequence is one sentence on both surfaces, the text guard refuses a brace, and the create saves only through the source code port', () => {
+  // Mutation (Rule 19): change one word of REASONPMMLCOMPILE in AnalyticsError.cls (or of analyticsRefusalPmmlCompile in strings.ts) -> the first half goes red naming the pair; drop the `}` test from
+  // PmmlTextRefused in AnalyticsPort.cls -> the guard assertion goes red; call a CreateFrom* utility from AnalyticsPort.cls -> the vendor-call assertion goes red naming it.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_CREATE_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(
+    values.analyticsRefusalPmmlText,
+    'Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.',
+    'the text sentence is the ruled one'
+  );
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSPMMLSAVE = 'ANALYTICS.PMML.SAVE'"), 'proposal-view.ts holds the create\'s consequence code');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSPMMLSAVE) return STRINGS.analyticsPmmlSaveConsequence;'), 'and maps it to its sentence');
+  assert.ok(experience.includes(`"${values.analyticsPmmlSaveConsequence}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
+  const tool = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsPmmlModelAdd.cls');
+  assert.equal(classParameter(tool, 'CONSEQUENCECODE'), 'ANALYTICS.PMML.SAVE', 'the create names its consequence code');
+  assert.equal(classParameter(tool, 'DESTINATIONGLOBAL'), '^oddDEF', 'and the database that holds class definitions');
+  assert.ok(readFileSync(tool, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsListingGroupAction'), 'the create extends the class-write tool base');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/CreateFromFile/, /CreateFromStream/, /CreateFromString/, /%OnSubmit/, /%Dictionary\.ClassDefinition\)\.%Save/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const guard = /ClassMethod PmmlTextRefused\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(guard, null, 'the port declares PmmlTextRefused');
+  for (const needle of ['pText [ "}"', '"<!DOCTYPE"', '"<!ENTITY"', '#MAXIMPORTCHARACTERS']) {
+    assert.ok(guard[0].includes(needle), `the text guard holds ${needle}`);
+  }
+});
