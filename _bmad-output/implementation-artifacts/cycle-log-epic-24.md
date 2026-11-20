@@ -570,3 +570,7 @@
 2026-11-20T11:39:53Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T11:39:53Z model=opus agent_name=epic-24-context-prewarm-13 cycle_iteration=3 reason=planning_artifact_newer(EXPERIENCE.md_rows)
 2026-11-20T11:42:06Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
 2026-11-20T11:42:06Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-20T11:42:06Z model=opus agent_name=24-14-plan-batch3 cycle_iteration=3 scope=batch3_pmml_new_export
+2026-11-20T11:52:40Z	Story 24.14	story_created	spawn_at=2026-11-20T11:43:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md build_status=blocked(intent_gap_ruled) epic_context=reused scope=batch3_pmml_new cycle_iteration=3
+2026-11-20T11:52:40Z	Story 24.14	ruling	question=split_New(B3)/Export(B4),key_true,stricter_refusals,strings,AD-65/22_lines choice=keep_recommendations category=veto inbox=U-125 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T11:52:40Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) prohibited=widen_IsQualityMeasureType_body(no_condition_term,reported) scope=batch3
+2026-11-20T11:52:40Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T11:52:40Z model=sonnet agent_name=24-14-implement-batch3 cycle_iteration=3 story_base=4aeeab5a4 scope=batch3
