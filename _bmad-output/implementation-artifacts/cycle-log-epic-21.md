@@ -766,3 +766,7 @@
 2026-11-20T06:23:58Z	Story 21.19	ci_red_classified	runs=44674547477,44682408366 class=defect tests=PermissionsLists,BackgroundTasksLive note=CI_instance_shards_covered_every_class:only_these_two;runner_stopped_its_own_sweep(gate_aborted)
 2026-11-20T06:23:59Z	Story 21.19	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=PermissionsLists,BackgroundTasksLive scope_baseline=2b4f70c03
 2026-11-20T06:23:59Z	Story 21.19	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T06:23:59Z model=sonnet agent_name=21-19-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified
+2026-11-20T06:50:58Z	Story 21.19	dev_complete	scope=rework1(test_shapes:PermissionsLists,BackgroundTasksLive;no_product_change) spawn_at=2026-11-20T06:20Z model=sonnet build_sha=73c4c2fe6 followup_review_recommended=false cycle_iteration=2
+2026-11-20T06:50:58Z	Story 21.19	ruling	question=re-review_for_test-only_rework choice=none(precedent_accepted_on_21.10) via=runner category=decide policy=b9ff703e
+2026-11-20T06:50:58Z	Story 21.19	code_head_pushed	sha=73c4c2fe6 run=44690683966 missing=none
+2026-11-20T06:50:58Z	Story 21.19	gate_step	step=fresh_check+full_sweep+smoke head=73c4c2fe6 started=2026-11-20T06:50:58Z dir=e21u/21-19/gate attempt=2
