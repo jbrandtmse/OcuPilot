@@ -14156,3 +14156,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A real KPI fixture would need a compiled KPI class in USER.
 - 2026-11-20T04:31:09Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a pivot over a real KPI runs
+
+### DW-2802: Background runs: pressing Run while another model's (or query's) run is live answers BUSY and attaches that run, so its answer shows under the current item; the busy banner stays after the attached run ends
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Shared BackgroundRun behavior that MDX query has too (24.14 Batch 2 implement review); fixing it touches the shared client store.
+- 2026-11-20T11:16:08Z status=routed owner=burndown by=harvest note=attach_only_the_same_target's_run

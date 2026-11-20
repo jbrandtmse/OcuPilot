@@ -561,3 +561,5 @@
 2026-11-20T10:25:11Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T10:25:11Z model=sonnet agent_name=24-14-qa-batch2 cycle_iteration=2
 2026-11-20T10:49:42Z	Story 24.14	qa_complete	spawn_at=2026-11-20T10:26:00Z model=sonnet tests_added=6(+fixtures_PmmlTestIdle,PmmlRunSeam) mutations_demonstrated=8 first_run_failures=0 product_defects=0 scope=batch2
 2026-11-20T10:49:42Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T10:49:42Z model=opus agent_name=24-14-code-review-batch2 cycle_iteration=2 baseline=8fd5f4960
+2026-11-20T11:16:08Z	Story 24.14	review_complete	spawn_at=2026-11-20T10:50:00Z model=opus layers=4(full-opus,follow-up) findings=28(high0,med2,low24,false2) patched=15 deferred=0 rejected=13 intent_gap=0 commit=54430d672 scope=batch2
+2026-11-20T11:16:08Z	Story 24.14	ledger_adjudicated	routed_burndown=DW-2802 scope=batch2 model=claude-opus-5-5
