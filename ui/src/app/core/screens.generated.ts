@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -568,6 +568,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "analytics-user-icon",
   "dashboard-widget",
   "pmml-model",
+  "pmml-definition",
   "backup-task",
   "backup-database",
   "startup-setting",
@@ -3774,7 +3775,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "pmml-model",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "pmml-definition"
+    ],
     "scope": "namespace",
     "parentScope": "",
     "id": {
@@ -3785,7 +3788,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
     "rowActions": [],
@@ -3903,8 +3906,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsPmmlModelsEmptyAgent"
     },
     "toolIdentifier": "analytics.pmmlmodels",
     "refreshDefault": 0,

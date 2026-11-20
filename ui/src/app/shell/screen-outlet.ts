@@ -302,6 +302,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': () => import('../areas/analytics/quality-measure-list.page').then((m) => m.QualityMeasureListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': () => import('../areas/analytics/quality-measure-element-list.page').then((m) => m.QualityMeasureElementListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': () => import('../areas/analytics/quality-measure-meta-list.page').then((m) => m.QualityMeasureMetaListPage),
+  // Story 24.14 Batch 3: PMML models with their New PMML definition dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList': () => import('../areas/analytics/pmml-model-list.page').then((m) => m.PmmlModelListPage),
   // Story 24.13 Batch 3: Run-time variables and User-defined icons, with their Add and Change dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),

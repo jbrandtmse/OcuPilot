@@ -30,6 +30,9 @@
  * Story 24.14 Batch 2 adds one test: PMML models lists the probe definition's three models, a model's name opens its Test screen, and a run against the model's verification records answers the
  * count and the metrics the vendor's own run computes; the list and the Test screen with its answer pass the structural and contrast checks.
  *
+ * Story 24.14 Batch 3 adds one test: New PMML definition loads a PMML file into its text field, a class name and a confirm make the class, and PMML models lists the file's two models; the screen passes
+ * the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -1345,5 +1348,70 @@ test('Story 24.14 Batch 2: a person opens PMML models, opens a model and runs it
   } finally {
     const gone = probe('PMMLGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_##class(${PMML_PROBE}).Gone()`);
     assert.equal(gone.value, '11', `the PMML probe is removed: ${gone.output}`);
+  }
+});
+
+const PMML_NEW_CLASS = 'ProbePmml.NewBrowse';
+
+/** A two-model PMML document the New PMML definition dialog loads from a file: a tree `Hue` and a regression `Span`, which compile with no table behind them. */
+const PMML_NEW_TEXT = [
+  "<PMML version='4.1' xmlns='http://www.intersystems.com/deepsee/pmml'>",
+  "<Header description='Made in a browser'/>",
+  '<DataDictionary>',
+  "<DataField name='X' optype='continuous' dataType='double'/>",
+  "<DataField name='Color' optype='categorical' dataType='string'><Value value='low'/><Value value='high'/></DataField>",
+  "<DataField name='Y' optype='continuous' dataType='double'/>",
+  '</DataDictionary>',
+  "<TreeModel modelName='Hue' functionName='classification' splitCharacteristic='binarySplit'>",
+  "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Color' usageType='predicted'/></MiningSchema>",
+  "<Node score='low'><True/><Node score='low'><SimplePredicate field='X' operator='lessOrEqual' value='4.5'/></Node><Node score='high'><True/></Node></Node>",
+  '</TreeModel>',
+  "<RegressionModel modelName='Span' functionName='regression'>",
+  "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Y' usageType='predicted'/></MiningSchema>",
+  "<RegressionTable intercept='1'><NumericPredictor name='X' coefficient='2'/></RegressionTable>",
+  '</RegressionModel>',
+  '</PMML>',
+  '',
+].join('\n');
+
+// Story 24.14 Batch 3 AC6. Mutation (Rule 19): post the dialog's text to the listing groups' route from `pmml-model.store.ts` (rebuild and redeploy first) -> the class never appears and the first
+// leg goes red; read the picked file into the class field in `pmml-definition-dialog.ts` -> the confirm stays disabled and the click leg goes red.
+test('Story 24.14 Batch 3: a person opens New PMML definition, loads a PMML file, names the class and confirms, and the list shows the file\'s two models', async () => {
+  const left = probe('PMMLNEWPRE', `##class(${PMML_PROBE}).Left()`);
+  assert.equal(left.value, '', `no PMML probe class is left before the test: ${left.output}`);
+  const directory = mkdtempSync(join(tmpdir(), 'ocupilot-pmml-new-'));
+  const file = join(directory, 'browser-model.pmml');
+  writeFileSync(file, PMML_NEW_TEXT);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(PMML_MODELS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-definition-dialog [data-pmml-definition-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsPmmlNewAction, 'the primary action opens New PMML definition');
+      await page.type('[data-pmml-definition-class]', PMML_NEW_CLASS);
+      assert.equal(await page.$eval('[data-pmml-definition-confirm]', (node) => node.getAttribute('aria-disabled')), 'true', 'the action waits for the text');
+      await (await page.$('[data-pmml-definition-file]')).uploadFile(file);
+      await page.waitForFunction((wanted) => document.querySelector('[data-pmml-definition-text]')?.value === wanted, { timeout: config.navigationTimeoutMs }, PMML_NEW_TEXT);
+      await page.click('[data-pmml-definition-confirm]');
+      await page.waitForFunction(() => document.querySelector('app-pmml-definition-dialog') === null, { timeout: config.navigationTimeoutMs });
+      await page.waitForFunction(
+        (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)),
+        { timeout: config.navigationTimeoutMs },
+        ROW_SELECTOR,
+        PMML_NEW_CLASS
+      );
+      const mine = (await allRows(page)).filter((row) => row[1] === PMML_NEW_CLASS);
+      assert.deepEqual(mine.map((row) => row[0]).sort(), ['Hue', 'Span'], 'PMML models lists the file\'s two models under the new class');
+      const stored = inUser('PMMLNEWXDATA', [`Set out=##class(%Dictionary.CompiledClass).%ExistsId("${PMML_NEW_CLASS}")`]);
+      assert.equal(stored.value, '1', `and the instance holds the compiled class: ${stored.output}`);
+      assert.deepEqual(await structural(page, PMML_MODELS), [], `${PMML_MODELS}: no violation beyond the baseline's entries, with the new rows`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    const removed = probe('PMMLNEWGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).RemoveNew("${PMML_NEW_CLASS}"))_(##class(${PMML_PROBE}).Left()="")`);
+    assert.equal(removed.value, '11', `the new classes are removed: ${removed.output}`);
   }
 });

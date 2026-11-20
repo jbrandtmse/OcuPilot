@@ -45,6 +45,13 @@ Parameter CUBESOURCE = "Guarded";
 /// <p>The source table's row count.</p>
 Parameter ROWS = 12;
 
+/// <p>The prefix of the classes the create tests make (<method>CreatedText</method>'s definitions), outside the <code>OcuPilot</code> names. A test removes each with
+/// <method>RemoveNew</method>, and <method>Left</method> reports any that remains.</p>
+Parameter NEWPREFIX = "ProbePmml.New";
+
+/// <p>The two models of <method>CreatedText</method>.</p>
+Parameter CREATEDMODELS = "Hue,Span";
+
 /// <p>The text of class <var>pName</var> of the package, in the class definition language.</p>
 /// <p>The definition's cube source names the guarded cube of the analytics probe, which must already be compiled.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
@@ -99,6 +106,47 @@ ClassMethod PmmlText() As %String [ Private ]
         "<RegressionTable intercept='0'><NumericPredictor name='X' coefficient='3'/></RegressionTable>" _
         "</RegressionModel>" _
         "</PMML>"
+}
+
+/// <p>A PMML document of two models, <code>Hue</code> (a tree over <code>X</code> predicting <code>Color</code>) and <code>Span</code> (a regression of <code>Y</code> on <code>X</code>), that
+/// compiles with no table or cube behind it. It spans several lines, with tabs, a trailing blank line and a non-ASCII character (<code>$Char(233)</code>), so a round trip of its text is a real one.</p>
+ClassMethod CreatedText() As %String
+{
+    Set tNL = $Char(10)
+    Quit "<PMML version='4.1' xmlns='http://www.intersystems.com/deepsee/pmml'>" _ tNL _
+        $Char(9) _ "<Header description='Cr" _ $Char(233) _ "ated by a test'/>" _ tNL _
+        $Char(9) _ "<DataDictionary>" _ tNL _
+        $Char(9, 9) _ "<DataField name='X' optype='continuous' dataType='double'/>" _ tNL _
+        $Char(9, 9) _ "<DataField name='Color' optype='categorical' dataType='string'><Value value='low'/><Value value='high'/></DataField>" _ tNL _
+        $Char(9, 9) _ "<DataField name='Y' optype='continuous' dataType='double'/>" _ tNL _
+        $Char(9) _ "</DataDictionary>" _ tNL _
+        $Char(9) _ "<TreeModel modelName='Hue' functionName='classification' splitCharacteristic='binarySplit'>" _ tNL _
+        $Char(9, 9) _ "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Color' usageType='predicted'/></MiningSchema>" _ tNL _
+        $Char(9, 9) _ "<Node score='low'><True/><Node score='low'><SimplePredicate field='X' operator='lessOrEqual' value='4.5'/></Node><Node score='high'><True/></Node></Node>" _ tNL _
+        $Char(9) _ "</TreeModel>" _ tNL _
+        $Char(9) _ "<RegressionModel modelName='Span' functionName='regression'>" _ tNL _
+        $Char(9, 9) _ "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Y' usageType='predicted'/></MiningSchema>" _ tNL _
+        $Char(9, 9) _ "<RegressionTable intercept='1'><NumericPredictor name='X' coefficient='2'/></RegressionTable>" _ tNL _
+        $Char(9) _ "</RegressionModel>" _ tNL _
+        "</PMML>" _ tNL
+}
+
+/// <p>Delete the class <var>pClass</var> and every class in its package <code>pClass.</code>, in <code>USER</code>, whatever the vendor's compile generated. A name outside
+/// <parameter>NEWPREFIX</parameter> is left alone.</p>
+ClassMethod RemoveNew(pClass As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If $Extract(pClass, 1, $Length(..#NEWPREFIX)) '= ..#NEWPREFIX Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(pClass) Set tSC = $System.OBJ.Delete(pClass, "-d")
+        Set tSC = $$$ADDSC(tSC, $System.OBJ.DeletePackage(pClass, "-d"))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>Save and compile the source table and the definition in <code>USER</code>, and write the source rows. A suite that died leaves its classes behind, so an existing
@@ -189,8 +237,11 @@ ClassMethod Left() As %String
         Set $NAMESPACE = ..#NAMESPACE
         Set tPrefix = ..#PACKAGE _ ".%"
         Set tSourcePrefix = ..#SOURCEPACKAGE _ ".%"
-        &sql(SELECT COUNT(*) INTO :tClasses FROM %Dictionary.ClassDefinition WHERE Name LIKE :tPrefix OR Name LIKE :tSourcePrefix)
+        Set tNewPrefix = ..#NEWPREFIX _ "%"
+        &sql(SELECT COUNT(*) INTO :tClasses FROM %Dictionary.ClassDefinition WHERE (Name LIKE :tPrefix OR Name LIKE :tSourcePrefix) AND Name NOT LIKE :tNewPrefix)
         If +$Get(tClasses) Set tLeft = tLeft _ ",classes:" _ tClasses
+        &sql(SELECT COUNT(*) INTO :tNew FROM %Dictionary.ClassDefinition WHERE Name LIKE :tNewPrefix)
+        If +$Get(tNew) Set tLeft = tLeft _ ",new:" _ tNew
         Set tRows = ..Rows()
         If tRows Set tLeft = tLeft _ ",results:" _ tRows
     } Catch ex {

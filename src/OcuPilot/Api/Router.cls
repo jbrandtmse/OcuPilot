@@ -290,6 +290,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
   <Route Url="/analytics/quality-measures/form" Method="GET" Call="AnalyticsQualityMeasureForm"/>
   <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
+  <Route Url="/analytics/pmml-models" Method="POST" Call="AnalyticsPmmlDefinitionCreate"/>
   <Route Url="/analytics/quality-measure-elements" Method="POST" Call="AnalyticsQualityMeasureElementCreate"/>
   <Route Url="/analytics/quality-measure-metas" Method="POST" Call="AnalyticsQualityMeasureMetaCreate"/>
   <Route Url="/analytics/runtime-variables" Method="POST" Call="AnalyticsRuntimeVariableCreate"/>
@@ -2066,6 +2067,13 @@ ClassMethod AnalyticsQualityMeasureForm() As %Status
 ClassMethod AnalyticsQualityMeasureCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.QualityMeasureSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml-models</code> (Story 24.14, Batch 3): PMML models' New PMML definition, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsPmmlDefinitionCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlDefinitionSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-elements</code> (Story 24.12): the Groups and elements screen's Add element, resolved through the one tool the agent's
