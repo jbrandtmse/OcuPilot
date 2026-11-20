@@ -829,3 +829,6 @@
 2026-11-20T19:33:26Z	Story 21.21	dev_complete	scope=rework1(ClaimReach:KernelConfirm_##class_seam;no_quoted_name) build_sha=02855fa44 followup_review_recommended=false cycle_iteration=2
 2026-11-20T19:33:26Z	Story 21.21	code_head_pushed	sha=02855fa44 run=44803204811 missing=none
 2026-11-20T19:33:26Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=02855fa44 started=2026-11-20T19:33:26Z dir=e21u/21-21/gate attempt=2
+2026-11-20T20:19:58Z	Story 21.21	integrated_forward	feature=6ea518d17(24.14_B2+21.20_merge) merge=389656dcf conflicts=0 verified=screen-mirror(259_descriptors,110_types),test:tools_2357,check-objectscript_0,LOADERRORS=0,ClaimReach,ProposalConfirm,ReadTool,Descriptor,ToolRoundTrip,ToolEmit,DatabaseActionsGate,Navigation_green note=runner_sweep_on_02855fa44_stopped_at_shard_5(all_green)
+2026-11-20T20:19:58Z	Story 21.21	code_head_pushed	sha=389656dcf run=44810355489 missing=none note=supersedes_02855fa44(run_44803204811)
+2026-11-20T20:19:58Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=389656dcf started=2026-11-20T20:19:58Z dir=e21u/21-21/gate attempt=3
