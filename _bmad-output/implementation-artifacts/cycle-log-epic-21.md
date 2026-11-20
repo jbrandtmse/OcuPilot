@@ -818,3 +818,6 @@
 2026-11-20T17:31:38Z	Story 21.21	stage_spawned	stage=code-review spawn_at=2026-11-20T17:31:38Z model=opus agent_name=21-21-code-review cycle_iteration=1 prior_lines_ended=verified(afc545ef8)
 2026-11-20T18:12:23Z	Story 21.21	review_complete	model=opus tier=full-opus entries=high0,med5,low9 patched=7 deferred=DW-2805(spine_AD-8_sentence,routed_21-21),DW-2806(WA-16_reason,owner),DW-2807(wontfix) commit=83e75a7f8
 2026-11-20T18:12:23Z	Story 21.21	code_head_pushed	sha=83e75a7f8 run=44790510586 missing=none note=supersedes_bd4ff1ed0(run_44783633783_cancelled_in_progress)
+2026-11-20T18:12:36Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=83e75a7f8 started=2026-11-20T18:12:36Z dir=e21u/21-21/gate
+2026-11-20T18:13:57Z	Story 21.21	ad_amended	ad=AD-8 marker=[AMENDED_2026-11-20,Story_21.21,DW-1850,Rule_20] commit=aff694cd9 lint_spine=ok(pre-existing_{id}_only) memlog=appended ledger=DW-2805_resolved
+2026-11-20T18:13:57Z	Story 21.21	ruling	question=DW-2806(WA-16) via=orchestrator choice=to_owner_via_Planner(decision-pending,owner=burndown;register_text_unchanged)

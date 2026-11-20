@@ -14224,6 +14224,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ARCHITECTURE-SPINE.md:282 (dismount %Admin_Manage:USE because the check reads Namespace.Namespace GET and Database.ConfigCRUD LIST) vs :754 and DatabaseDismount.cls; .memlog.md:276 the same
 - 2026-11-20T17:59:16Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=cr note=spine edit is the runner's (Rule 20; spec Never: no AD edit in-story): correct AD-8 at adjudication, citing the AD-27 case
+- 2026-11-20T18:13:57Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=runner note=AD-8_amended_add-only(spine+memlog)_in_aff694cd9;orchestrator_ruling
 
 ### DW-2806: The exclusion register's WA-16 row says no IRIS class backs Web Gateway management, but %CSP.Mgr.GatewayMgr reads and sets the gateway's configuration
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
