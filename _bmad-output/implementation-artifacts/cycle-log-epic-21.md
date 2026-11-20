@@ -844,3 +844,5 @@
 2026-11-20T22:54:29Z	Story 21.21	code_head_pushed	sha=b19395a16 run=44832705882 missing=none note=integrate-only_M_for_the_merge_gate
 2026-11-20T22:55:17Z	Story 21.36	story_started	base=M=b19395a16 doctrine=3d11cec9 policy=b9ff703e hold=none
 2026-11-20T22:55:17Z	Story 21.36	stage_spawned	stage=plan spawn_at=2026-11-20T22:55:17Z model=opus agent_name=21-36-plan cycle_iteration=1 prior_lines_ended=verified(a7596ce52)
+2026-11-20T23:31:32Z	Story 21.36	story_created	spawn_at=plan model=opus path=/Users/jbrandt/git/OcuPilot/.worktrees/epic-21/_bmad-output/implementation-artifacts/spec-21-36-task-output-and-mail-password.md build_status=ready-for-dev batches=2(~17,~14_files) task0_open=REST_process_read_of_the_output_file(stop_rule_HALT)
+2026-11-20T23:31:32Z	Story 21.36	spec_validated	integration_ac=present(agent_tool_shares_the_descriptor_read) adr_constrained_acs=AD-21,AD-35,AD-59,AD-22,AD-29 owned_ledger=none escalated=strings(12)+AD-21_note model=claude-opus-5-5 note=awaiting_orchestrator_on_strings_and_AD-21_note
