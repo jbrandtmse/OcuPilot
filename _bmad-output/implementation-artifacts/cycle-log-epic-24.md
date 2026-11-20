@@ -616,3 +616,7 @@
 2026-11-20T21:57:08Z	Story 24.14	note	feature=178ed176a(README_1.0.18) integrate_target=178ed176a README_todo=Analytics_paragraph_lacks_PMML
 2026-11-20T23:36:25Z	Story 24.14	stage_completed	stage=implement scope=batch2b_supervisor commit=b726c7a87 status=done timings_cross_process=slow20/20_max0.020,six20/20_max0.022(pids2015/2018) sweep=17/17_844cls_6408tests test_tools=2358 sed_hunk_survives=yes(reviewed_line_by_line) protocol_notes=read_coordination_once(grep),handoff_chained_two_test_classes,stray_wip_commit_soft_reset_before_finalize
 2026-11-20T23:36:25Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T23:36:25Z model=sonnet agent_name=24-14-qa-batch2b cycle_iteration=4 scope=batch2b
+2026-11-20T23:37:23Z	Story 24.14	coordinator_conditions_relayed	scope=batch2b to=qa ruling=cross_process_leg_deterministic(JOBbed_canceller_calls_product_cancel_entry;assert_pids_differ;no_weakening) review_checklist=U-130_conditions+7_named_tests
+2026-11-20T23:46:24Z	Story 24.14	note	feature=09b30317b(21.21) integrate_target=09b30317b stop_on_real_conflict=yes
+2026-11-20T23:58:17Z	Story 24.14	stage_completed	stage=qa scope=batch2b commit=488daf4b3 tests_added=AnalyticsPmmlRunCancel(5) cross_process_leg=JOBbed_canceller(pids_differ_by_construction)+owner_HTTP_leg fresh=first_run_green_fwd+rev,Edge3x qa_findings=none ci-throwaway=add-only_roster_comment
+2026-11-20T23:58:17Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T23:58:17Z model=opus agent_name=24-14-review-batch2b cycle_iteration=4 scope=batch2b range=851f3a63b..488daf4b3
