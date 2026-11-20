@@ -3,13 +3,13 @@
 /// <code>AUTH.NOPRIVILEGE</code> naming <code>%DB_USER:WRITE</code> before the vendor is called; the one holding WRITE reads cells, and its cell drill
 /// answers the vendor's own SQLCODE -99 as an <code>error</code> outcome because it holds no SELECT on the probe's source table; the one without
 /// <code>%Development:USE</code> is refused naming it; and an adjustment of the screen's pairs (AD-64) reaches the read, which a port's own check
-/// of MDX query's pairs cannot show.</p>
+/// of MDX query's pairs cannot show; a read of a saved pivot follows an adjustment of the viewer's Definition tab as well (Story 24.14).</p>
 /// <p>The read runs in a child process (<method>Probe</method>) that logs in as the principal after the scope is set to <code>USER</code>, so this
 /// process never changes identity.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates and deletes
 /// the users and roles <class>OcuPilot.Test.AnalyticsMdxGate</class> names and, through <class>OcuPilot.Test.AnalyticsProbe</class>, turns
-/// analytics on for <code>USER</code> and writes cubes there. The principals, the adjustment and the probe are removed after the last test.</p>
-Class OcuPilot.Test.AnalyticsMdxReadGate Extends %UnitTest.TestCase
+/// analytics on for <code>USER</code> and writes cubes and the viewer's folder items there. The principals, the adjustments and the probe are removed after the last test.</p>
+Class OcuPilot.Test.AnalyticsMdxReadGate Extends %UnitTest.TestCase [ DependsOn = OcuPilot.Test.AnalyticsProbe ]
 {
 
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
@@ -27,6 +27,12 @@ Parameter SCREEN = "analytics.mdxquery";
 
 /// <p>The pairs the adjustment replaces the screen's with: its own and one the writer lacks.</p>
 Parameter ADJUSTED = "%DeepSee_Portal:USE,%Development:USE,%Admin_Secure:USE";
+
+/// <p>The viewer's Definition tab's tool identifier, the key of the adjustment a <code>pivot</code> read follows (Story 24.14).</p>
+Parameter PIVOTSCREEN = "analytics.folderitemdefinition";
+
+/// <p>The saved pivot the <code>pivot</code> leg runs.</p>
+Parameter VIEWRUN = {##class(OcuPilot.Test.AnalyticsProbe).#VIEWRUN};
 
 Parameter NAMESPACE = "USER";
 
@@ -52,6 +58,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Enable")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Create", $Parameter(..#GATE, "WRITER"))
+    If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "CreateViewerItems")
     If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.InteropTestGate).CreatePrincipals($Parameter(..#GATE, "PRINCIPALS"), ..PreparedPassword, "OcuPilot.Test.AnalyticsMdxReadGate")
     If $$$ISOK(tSC) Set tSC = ..ReadBack()
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
@@ -109,11 +116,15 @@ Method Adjust() As %Status
     Quit $ClassMethod(..#ACCESS, "GuardedPut", ..#SCREEN, ..#ADJUSTED, 0, $Username)
 }
 
-/// <p>Remove MDX query's adjustment, if it holds one.</p>
+/// <p>Remove MDX query's adjustment and the Definition tab's, where either holds one.</p>
 Method Unadjust() As %Status
 {
-    Set tSC = $ClassMethod(..#ACCESS, "GuardedGet", ..#SCREEN, .tPairs, .tVersion, .tFound)
-    If $$$ISOK(tSC) && tFound Set tSC = $ClassMethod(..#ACCESS, "GuardedRemove", ..#SCREEN, tVersion)
+    Set tSC = $$$OK
+    For tScreen = ..#SCREEN, ..#PIVOTSCREEN {
+        Set tGetSC = $ClassMethod(..#ACCESS, "GuardedGet", tScreen, .tPairs, .tVersion, .tFound)
+        If $$$ISOK(tGetSC) && tFound Set tGetSC = $ClassMethod(..#ACCESS, "GuardedRemove", tScreen, tVersion)
+        Set tSC = $$$ADDSC(tSC, tGetSC)
+    }
     Quit tSC
 }
 
@@ -158,6 +169,7 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
         Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
         Do tOut.%Set("cells", ..Leg({"statement": (..#CROSSJOIN)}))
         Do tOut.%Set("drill", ..Leg({"statement": (..#CROSSJOIN), "drill": {"row": 2, "column": 1}}))
+        Do tOut.%Set("pivot", ..Leg({"pivot": (..#VIEWRUN)}))
     } Catch ex {
         Do tOut.%Set("error", ex.DisplayString())
     }
@@ -221,6 +233,20 @@ Method TestAnAdjustmentOfTheScreensPairsReachesTheRead()
     Do $$$AssertStatusOK(..Unadjust(), "the adjustment is removed")
     Set tProbe = ..ProbeAs($Parameter(..#GATE, "WRITER"))
     Do $$$AssertEquals(tProbe.%Get("cells"), "200||cells|0", "and the writer reads again")
+}
+
+/// <p>Story 24.14, AD-64: a <code>pivot</code> read follows the Definition tab's pairs as well as MDX query's. With the tab's pairs adjusted to add
+/// <code>%Admin_Secure:USE</code>, the writer's pivot read is refused naming it while its statement read still runs; unadjusted, the pivot read runs.</p>
+/// <p>Mutation (Rule 19): skip the evaluation of <parameter>OcuPilot.Screen.Tool.AnalyticsMdxRead.PIVOTDESCRIPTORCLASS</parameter> in
+/// <method>OcuPilot.Screen.Tool.AnalyticsMdxRead.View</method> -- the adjusted pivot read runs and this goes red.</p>
+Method TestAPivotReadFollowsTheDefinitionTabsPairs()
+{
+    Set tProbe = ..ProbeAs($Parameter(..#GATE, "WRITER"))
+    Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("pivot"), "|200||cells|0", "the writer's pivot read runs: " _ tProbe.%ToJSON())
+    Do $$$AssertStatusOK($ClassMethod(..#ACCESS, "GuardedPut", ..#PIVOTSCREEN, ..#ADJUSTED, 0, $Username), "the Definition tab's pairs are adjusted")
+    Set tProbe = ..ProbeAs($Parameter(..#GATE, "WRITER"))
+    Do $$$AssertEquals(tProbe.%Get("pivot"), "403|AUTH.NOPRIVILEGE|%Admin_Secure:USE||", "the adjusted pivot read is refused naming the added pair")
+    Do $$$AssertEquals(tProbe.%Get("cells"), "200||cells|0", "while the statement read still runs")
 }
 
 }

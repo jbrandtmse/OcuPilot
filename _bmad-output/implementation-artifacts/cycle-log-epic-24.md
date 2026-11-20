@@ -527,3 +527,28 @@
 2026-11-19T23:49:31Z	Story 24.14	ruling	question=batches3(PMML_New_Export_kept_as_Batch3),pairs,agent_pivot_run,reads_no_key,Batch2_read-kind_run,strings,AD-65_line choice=keep_recommendations(scope_kept) category=veto inbox=U-120 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-19T23:49:31Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) scope=batch1
 2026-11-19T23:49:31Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-19T23:49:31Z model=sonnet agent_name=24-14-implement-batch1 cycle_iteration=1 story_base=42b21cde2 scope=batch1
+2026-11-20T03:45:29Z	Story 24.14	dev_complete	spawn_at=2026-11-19T23:53:00Z model=sonnet build_sha=475cf04e4 baseline_revision=36722b87e followup_review_recommended=true deferred=0 sweep=17/17_green scope=batch1 amendment=tab_group_route_analytics/folder-items/document
+2026-11-20T03:45:29Z	Epic 24	integrated_feature	feature=3bd54835a(21.10) integrate_only_head=4fd03cd10(parents_36722b87e+3bd54835a) run=44669283267 conflicts=Prohibited.cls2(additive),rosters(ReadTool546,ToolWrite143,covered_types93) checks=22_classes_green_one_per_call orchestrator_plan=approved
+2026-11-20T03:45:29Z	Story 24.14	integrated_feature	merge=045c9aca4(S_475cf04e4+M_4fd03cd10) conflicts=5(ReadTool548,vocabulary106,unions,mirror_regenerated) test_tools=2342 check_objectscript=0
+2026-11-20T03:50:33Z	Story 24.13	ci_resolved	story=24.13 sha=d2b0259cc runs=44638724058 result=success failed=InteropItemRun(flake,rerun_once_green) via=rerun_failed_once ledger=DW-2787 carried_by=4fd03cd10
+2026-11-20T03:50:33Z	Story 24.14	fresh_check_passed	tree=045c9aca4 own_classes_first_run=2/2_green reverse+rosters=14/14_classes_155_tests scope=batch1_on_new_base
+2026-11-20T03:50:33Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T03:50:33Z model=sonnet agent_name=24-14-qa-batch1 cycle_iteration=1
+2026-11-20T04:02:57Z	Story 24.14	qa_complete	spawn_at=2026-11-20T03:52:00Z model=sonnet tests=AnalyticsFolderItemView(+3),AnalyticsPivotRun(+3) tests_added=6 mutations_demonstrated=6 first_run_failures=0 product_defects=0 scope=batch1
+2026-11-20T04:02:57Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T04:02:57Z model=opus agent_name=24-14-code-review-batch1 cycle_iteration=1 baseline=36722b87e
+2026-11-20T04:32:50Z	Epic 24	ci_resolved	sha=4fd03cd10(integrate-only_M) runs=44669283267 result=success
+2026-11-20T04:32:50Z	Story 24.14	review_complete	spawn_at=2026-11-20T04:03:00Z model=opus layers=4(full-opus) findings=22(high0,med4,low17,false1) patched=5(agent_pivot_read_gate) deferred=4 rejected=13 intent_gap=0 commit=8e9b269c4 scope=batch1
+2026-11-20T04:32:50Z	Story 24.14	ledger_adjudicated	routed_burndown=DW-2789,DW-2790,DW-2791 born_terminal=DW-2792 scope=batch1 model=claude-opus-5-5
+2026-11-20T04:33:09Z	Story 24.14	fresh_check_started	throwaway=ocupilot-b-ci tree=8e9b269c4
+2026-11-20T05:05:27Z	Story 24.14	fresh_check_failed	tree=d45900450 classes=forward5/5+reverse14/14_green browser=analytics17/17,analytics-mdx11/11,links+a11y18/19(a11y_AC5_unresolved_folder-items_routes)
+2026-11-20T05:05:27Z	Story 24.14	rework_opened	iteration=1 items=1([Smoke]) baseline=d459004502a425e9ee31dfdaecc078854d490613
+2026-11-20T05:05:27Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-20T05:05:27Z model=sonnet agent_name=24-14-rework-1 cycle_iteration=1
+2026-11-20T05:45:56Z	Story 24.14	rework_built	iteration=1 sha=171365989 fix=structural-walk_SKIP+24.14_browser_structural_checks review=lead_read(17-line_test_harness) mutation=SKIP_row_removed_AC5_red
+2026-11-20T05:45:56Z	Story 24.14	fresh_check_passed	tree=171365989 classes=forward5+reverse14(162_tests) browser=analytics17/17,analytics-mdx11/11,a11y13/13,links smoke=50/50 bundle=2.18MB scope=batch1
+2026-11-20T05:46:21Z	Story 24.14	code_head_pushed	sha=171365989 run=44683199382 missing=none scope=batch1
+2026-11-20T05:46:35Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T05:46:35Z model=opus agent_name=epic-24-context-prewarm-12 cycle_iteration=2 reason=planning_artifact_newer(EXPERIENCE.md_rows_21.10+24.14)
+2026-11-20T05:48:49Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
+2026-11-20T05:48:49Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-20T05:48:49Z model=opus agent_name=24-14-plan-batch2 cycle_iteration=2 scope=batch2_pmml_tester
+2026-11-20T06:02:48Z	Story 24.14	story_created	spawn_at=2026-11-20T05:49:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md build_status=ready-for-dev epic_context=reused scope=batch2_pmml_tester cycle_iteration=2
+2026-11-20T06:02:48Z	Story 24.14	ruling	question=models_list,PmmlTest_run_always_drop,stored_SQL_query_check,pairs,strings,AD-7/65/41_lines choice=keep category=veto inbox=U-122 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T06:02:48Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) scope=batch2
+2026-11-20T06:02:48Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T06:02:48Z model=sonnet agent_name=24-14-implement-batch2 cycle_iteration=2 story_base=cb997d156 scope=batch2

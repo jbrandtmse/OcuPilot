@@ -158,6 +158,8 @@ XData Elsewhere
 <screen name="StartupSettingList"/>
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
+<screen name="AnalyticsDashboardWidgetsTab"/>
+<screen name="AnalyticsFolderItemDefinitionTab"/>
 <screen name="AnalyticsFolderItemList"/>
 <screen name="AnalyticsListingGroupList"/>
 <screen name="AnalyticsListingGroupListingList"/>

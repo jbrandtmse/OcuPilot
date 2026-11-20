@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -566,6 +566,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "analytics-worklist",
   "analytics-runtime-variable",
   "analytics-user-icon",
+  "dashboard-widget",
   "backup-task",
   "backup-database",
   "startup-setting",
@@ -2721,6 +2722,410 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "analytics.cuberelationships",
     "refreshDefault": 0,
     "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab",
+    "route": "analytics/folder-items/widgets",
+    "area": "analytics",
+    "labelKey": "analyticsTabWidgets",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "dashboard-widget",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/folder-items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Dashboard",
+        "Position"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Dashboard",
+        "Position",
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo",
+        "NotPivot"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsDashboardWidgetsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsDashboardWidgetsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsDashboardWidgetsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsDashboardWidgetsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UserPortal.DashboardViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "dashboard widget",
+      "source": {
+        "port": "analytics",
+        "endpoint": "DashboardWidgets",
+        "type": "LIST"
+      },
+      "fields": [
+        "Dashboard",
+        "Position",
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo",
+        "NotPivot"
+      ],
+      "filter": [
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo"
+      ],
+      "sort": {
+        "fields": [
+          "Position",
+          "Title",
+          "Type",
+          "DataSource"
+        ],
+        "default": "Position",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "dashboardLabel",
+            "kind": "text",
+            "maxLength": 600,
+            "hint": "One saved dashboard, spelled as analytics.folderitems.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Position",
+          "labelKey": "analyticsColumnPosition",
+          "kind": "number"
+        },
+        {
+          "field": "Title",
+          "labelKey": "interopPartnerFieldTitle",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "DataSource",
+          "labelKey": "analyticsColumnDataSource",
+          "kind": "name"
+        },
+        {
+          "field": "LinkedTo",
+          "labelKey": "analyticsQualityMeasureLinkedToLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "analytics/folder-items/document",
+      "field": "DataSource",
+      "unless": "NotPivot"
+    },
+    "tab": {
+      "group": "analytics/folder-items/document",
+      "position": 2,
+      "labelKey": "analyticsTabWidgets"
+    },
+    "toolIdentifier": "analytics.dashboardwidgets",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab",
+    "route": "analytics/folder-items/document",
+    "area": "analytics",
+    "labelKey": "agentDefinitionFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "folder-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/folder-items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Title",
+        "Description",
+        "Owner",
+        "Modified",
+        "Cube",
+        "Rows",
+        "Columns",
+        "Measures",
+        "Filters",
+        "Calculated",
+        "MDX",
+        "Restriction"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsFolderItemDefinitionEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemDefinitionPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemDefinitionPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsFolderItemDefinitionPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UserPortal.DashboardViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "pivot or dashboard definition",
+      "source": {
+        "port": "analytics",
+        "endpoint": "FolderItemDefinition",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Title",
+        "Description",
+        "Owner",
+        "Modified",
+        "Cube",
+        "Rows",
+        "Columns",
+        "Measures",
+        "Filters",
+        "Calculated",
+        "MDX",
+        "Restriction"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Title",
+        "Cube"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Title",
+          "Owner",
+          "Modified",
+          "Cube"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 600,
+            "hint": "One saved pivot or dashboard, spelled as analytics.folderitems.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Title",
+          "labelKey": "interopPartnerFieldTitle",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "analyticsColumnModified",
+          "kind": "text"
+        },
+        {
+          "field": "Cube",
+          "labelKey": "analyticsCubeCriterion",
+          "kind": "text"
+        },
+        {
+          "field": "Rows",
+          "labelKey": "explorerSqlColumnRows",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Columns",
+          "labelKey": "explorerSqlColumnColumns",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Measures",
+          "labelKey": "analyticsTabMeasures",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Filters",
+          "labelKey": "analyticsColumnFilters",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Calculated",
+          "labelKey": "analyticsColumnCalculated",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "MDX",
+          "labelKey": "analyticsColumnMdx",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Restriction",
+          "labelKey": "analyticsColumnRestriction",
+          "kind": "text",
+          "long": true
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "analytics/folder-items/document",
+      "position": 1,
+      "labelKey": "agentDefinitionFormLabel"
+    },
+    "toolIdentifier": "analytics.folderitemdefinition",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

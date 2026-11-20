@@ -44,6 +44,7 @@ XData Titles
 "analyticsTabDimensions": "Dimensions",
 "analyticsTabMeasures": "Measures",
 "analyticsTabRelationships": "Relationships",
+"analyticsTabWidgets": "Widgets",
 "analyticsTermListEntriesLabel": "Term list entries",
 "analyticsTermListsLabel": "Term lists",
 "analyticsUserIconsLabel": "User-defined icons",

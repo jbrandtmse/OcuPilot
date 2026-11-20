@@ -12770,6 +12770,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
 - 2026-11-13T16:40:28Z owner=20-25-item-runtime-and-configuration-actions by=orchestrator note=fix_after_20.40
 - 2026-11-13T21:07:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=InteropItemControl.StartProduction waits for the ScheduleHandler startup update (6d08b6ce), pinned by TestTheStartHelperWaitsForTheProductionsOwnUpdate (b38aa6b8); shard 8/8 order on a fresh ocupilot-b-ci green (InteropItemRun 9/9 at run 26)
+- 2026-11-20T03:50:33Z owner=burndown by=runner note=routed together with DW-2787 (same class InteropItemRun, production timing); a second red of either is a defect, not a flake (orchestrator)
+- 2026-11-20T03:50:41Z status=routed owner=burndown by=runner note=reopened with sibling DW-2787 (same class, production start timing on CI) per orchestrator; a second red of either is a defect
 
 ### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
 - source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
@@ -14180,3 +14182,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-19-shell-advisor-permission-and-task-leaves.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ResourceTransferPort.WriteTransferFile and TextDigest chunk by  and write UTF-8; the vendor's own export declares UTF-8 and resource names and descriptions are rarely outside the BMP
 - 2026-11-20T05:09:09Z status=wontfix-theoretical owner=21-19-shell-advisor-permission-and-task-leaves by=cr note=real if a resource file from another tool declares another encoding or holds a character outside the BMP
+### DW-2787: Flake: InteropItemRun.TestEachRefusalIsMadeByNameBeforeAnyVendorCall's probe production start held no operation job (CI run 44638724058, instance shard 5/8); sibling of DW-2535 (same class, timing dependence on shard 8/8)
+- source: cycle-log-epic-24 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AssertStatusOK: the probe runs, with a disabled item and a pool-size-0 process stored => ERROR #5001: the probe production's operation holds no job after the start; passed on the one rerun of failed jobs; the change under test touched analytics only (inference: start timing).
+- 2026-11-20T03:50:33Z status=routed owner=burndown by=runner note=flake_policy:a_second_red_of_this_or_DW-2535_is_a_defect_not_a_flake;route_with_DW-2535
+
+### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The field contents come from the spec's rows; the classic analyzer shows them; a person reading Definition cannot see everything the run will execute.
+- 2026-11-20T04:31:09Z status=routed owner=burndown by=harvest note=fuller_definition_rows
+
+### DW-2790: Pivot run: confirming a restricted pivot's run is tied to the pivot's name, not to the MDX that runs, so an edit after the confirm prompt runs text the person never confirmed
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: The confirmed start, its job and a drill each rebuild the statement from the stored pivot; binding the confirm to the composed MDX needs a request or answer shape the spec does not have.
+- 2026-11-20T04:31:09Z status=routed owner=burndown by=harvest note=bind_confirm_to_composed_mdx_digest
+
+### DW-2791: Pivot viewer: dashboard widget rows carry no widget name, so LinkedTo cannot be matched to a row
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The Widgets read lists type, title and data source; the vendor's widget name is not a column.
+- 2026-11-20T04:31:09Z status=routed owner=burndown by=harvest note=add_widget_name_column
+
+### DW-2792: Pivot run: the KPI-pivot refusal is tested only with a KPI name that does not exist
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A real KPI fixture would need a compiled KPI class in USER.
+- 2026-11-20T04:31:09Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a pivot over a real KPI runs

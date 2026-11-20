@@ -130,7 +130,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -181,6 +181,12 @@ Parameter ENDPOINTRUNTIMEVARIABLES = "RuntimeVariables";
 
 /// <p>The user-defined icons of the namespace, each a name and a path shown as text.</p>
 Parameter ENDPOINTUSERICONS = "UserIcons";
+
+/// <p>One saved pivot's or dashboard's definition, under the criterion <parameter>FOLDERITEMKEY</parameter> (Story 24.14).</p>
+Parameter ENDPOINTFOLDERITEMDEFINITION = "FolderItemDefinition";
+
+/// <p>One dashboard's widgets, under the criterion <parameter>FOLDERITEMKEY</parameter>.</p>
+Parameter ENDPOINTDASHBOARDWIDGETS = "DashboardWidgets";
 
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
@@ -400,6 +406,9 @@ Parameter LISTINGGROUPKEY = "listinggroup";
 
 /// <p>The query key naming a quality measure, for its elements and its documentation.</p>
 Parameter QUALITYMEASUREKEY = "qualitymeasure";
+
+/// <p>The query key naming a folder item by its full name, for the viewer's two reads.</p>
+Parameter FOLDERITEMKEY = "item";
 
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
@@ -662,7 +671,7 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#MANAGERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTTERMLISTS, ..#ENDPOINTTERMLISTENTRIES), pEndpoint) {
         Set tSpec = ..#TERMLISTPAIRS
-    } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTFOLDERITEMS, ..#ENDPOINTFOLDERITEMDEFINITION, ..#ENDPOINTDASHBOARDWIDGETS), pEndpoint) {
         Set tSpec = ..#FOLDERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
         Set tSpec = ..#LISTINGGROUPPAIRS
@@ -812,6 +821,9 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// <li>Worklists: <code>{Page, Panel, Worklist, Class, Shown}</code>, sixteen rows: the pages <code>Home</code> and <code>DashboardViewer</code>, their panels 1 and 2 and the four worklist classes.</li>
 /// <li>RuntimeVariables: <code>{Name, Value, Comment, Context}</code>, <code>Value</code> the stored expression as text.</li>
 /// <li>UserIcons: <code>{Name, Path}</code>.</li>
+/// <li>FolderItemDefinition: <code>{Name, Type, Title, Description, Owner, Modified, Cube, Rows, Columns, Measures, Filters, Calculated, MDX, Restriction}</code>, one row for the
+/// saved pivot or dashboard the criterion <parameter>FOLDERITEMKEY</parameter> names (<method>ReadFolderItemView</method>).</li>
+/// <li>DashboardWidgets: <code>{Dashboard, Position, Title, Type, DataSource, LinkedTo, NotPivot}</code>, one row for each widget of that dashboard in its stored order.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -877,6 +889,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tMax = $Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText)
 
+        If $ListFind($ListBuild(..#ENDPOINTFOLDERITEMDEFINITION, ..#ENDPOINTDASHBOARDWIDGETS), pEndpoint) {
+            Set tSC = ..ReadFolderItemView(tNamespace, pEndpoint, $Get(pQuery(..#FOLDERITEMKEY)), tMax, .pResult, .pHttpStatus, .pFault)
+            If $$$ISOK(tSC) Set pHttpStatus = 200
+            Quit
+        }
         Set tCriterion = ""
         If $ListFind($ListBuild(..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
             Set tCriterion = $Get(pQuery(..#CUBEKEY))
@@ -2302,7 +2319,7 @@ ClassMethod ErrorAnswer(pStatus As %Status) As %DynamicObject
 }
 
 /// <p><var>pText</var> cut at <parameter>MDXMAXCELL</parameter> characters with an ellipsis.</p>
-ClassMethod Cut(pText As %String) As %String [ Private ]
+ClassMethod Cut(pText As %String) As %String
 {
     If $Length(pText) > ..#MDXMAXCELL Quit $Extract(pText, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
     Quit pText
@@ -4318,7 +4335,12 @@ ClassMethod FolderItemAbsent(Output pHttpStatus As %Integer, Output pFault As %D
 /// and 3 the item's <code>name</code> as stored, <code>type</code>, <code>owner</code>, <code>modified</code> (the vendor's UTC stamp) and
 /// <code>locked</code>. A locked item the caller's resources hide reads 2, since the vendor answers 3 before it checks them. An exception is
 /// <var>pCaught</var>. A seam: a fixture overrides it to observe the call.</p>
-ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+/// <p>With <var>pDetail</var> 1 a pivot or a dashboard is read further (Story 24.14, property reads only): <code>kind</code> is <code>pivot</code> or <code>dashboard</code> (nothing for
+/// any other item), <code>title</code> and <code>description</code>; for a pivot <code>cube</code>, <code>cubeExists</code>, <code>rows</code>, <code>columns</code>,
+/// <code>measures</code> and <code>filters</code> (each level's spec, one per line), <code>calculated</code> (each member's name, one per line), <code>mdx</code>
+/// (<code>userMDX</code> when <code>manualMode</code> is set, else empty) and <code>restriction</code>; for a dashboard <code>widgets</code> and, for each,
+/// <code>widgets(n)</code> as <code>$ListBuild(title, type, dataSource, dataLink)</code>.</p>
+ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException, pDetail As %Boolean = 0)
 {
     Kill pData
     Set pData("code") = 0
@@ -4339,6 +4361,38 @@ ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData
                 Set pData("owner") = tItem.owner
                 Set pData("modified") = tItem.timeModified
                 Set pData("locked") = ''tItem.locked
+                If pDetail {
+                    Set pData("title") = tItem.title
+                    Set pData("description") = tItem.description
+                    If tItem.%IsA("%DeepSee.Dashboard.Pivot") {
+                        Set pData("kind") = "pivot"
+                        Set pData("cube") = tItem.cubeName
+                        Set pData("cubeExists") = $Select(tItem.cubeName = "": 0, 1: ''##class(%DeepSee.Utils).%CubeExists(tItem.cubeName))
+                        For tPart = $ListBuild("rows", "rowLevels"), $ListBuild("columns", "columnLevels"), $ListBuild("measures", "measures"), $ListBuild("filters", "filters") {
+                            Set tLevels = $Property(tItem, $List(tPart, 2))
+                            Set tText = ""
+                            For tAt = 1:1:tLevels.Count() {
+                                Set tText = tText _ $Select(tAt = 1: "", 1: $Char(10)) _ tLevels.GetAt(tAt).spec
+                            }
+                            Set pData($List(tPart, 1)) = tText
+                        }
+                        Set tText = ""
+                        For tAt = 1:1:tItem.calculatedMembers.Count() {
+                            Set tText = tText _ $Select(tAt = 1: "", 1: $Char(10)) _ tItem.calculatedMembers.GetAt(tAt).memberName
+                        }
+                        Set pData("calculated") = tText
+                        Set pData("mdx") = $Select(tItem.manualMode: tItem.userMDX, 1: "")
+                        Set pData("restriction") = tItem.sqlRestriction
+                    } ElseIf tItem.%IsA("%DeepSee.Dashboard.Definition") {
+                        Set pData("kind") = "dashboard"
+                        Set pData("widgets") = tItem.widgets.Count()
+                        For tAt = 1:1:pData("widgets") {
+                            Set tWidget = tItem.widgets.GetAt(tAt)
+                            Set pData("widgets", tAt) = $ListBuild(tWidget.title, tWidget.type, tWidget.dataSource, tWidget.dataLink)
+                        }
+                        Set tWidget = ""
+                    }
+                }
             }
             Set tItem = ""
         }
@@ -4375,6 +4429,106 @@ ClassMethod FolderItemRow(pNamespace As %String, ByRef pData) As %DynamicObject
     Do tRow.%Set("Locked", ''pData("locked"), "boolean")
     Do tRow.%Set("Namespace", pNamespace, "string")
     Quit tRow
+}
+
+/// <p>The viewer's two reads on <var>pEndpoint</var> (Story 24.14), <code>FolderItemDefinition</code> or <code>DashboardWidgets</code>, of the folder item <var>pName</var>, as
+/// <var>pRows</var>, at most <var>pMax</var> of them when that is above zero. A name that cannot be a folder item, an item that is absent or hidden from the caller, an item that
+/// is neither a pivot nor a dashboard, and a dashboard's widgets read of a pivot answer no rows. Property reads only: nothing composes a pivot's MDX here. An exception is a fault.</p>
+ClassMethod ReadFolderItemView(pNamespace As %String, pEndpoint As %String, pName As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = []
+    If '..FolderItemShaped(pName) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadFolderItem(pNamespace, pName, .tData, .tCaught, 1)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    If '..FolderItemVisible(tData("code")) || ($Get(tData("kind")) = "") Quit $$$OK
+    If pEndpoint = ..#ENDPOINTFOLDERITEMDEFINITION {
+        Do pRows.%Push(..FolderItemDefinitionRow(.tData))
+        Quit $$$OK
+    }
+    If tData("kind") '= "dashboard" Quit $$$OK
+    For tAt = 1:1:tData("widgets") {
+        If (pMax > 0) && (tAt > pMax) Quit
+        Set tWidget = tData("widgets", tAt)
+        Set tRow = {}
+        Do tRow.%Set("Dashboard", tData("name"), "string")
+        Do tRow.%Set("Position", tAt, "number")
+        Do tRow.%Set("Title", $List(tWidget, 1), "string")
+        Do tRow.%Set("Type", $List(tWidget, 2), "string")
+        Do tRow.%Set("DataSource", $List(tWidget, 3), "string")
+        Do tRow.%Set("LinkedTo", $List(tWidget, 4), "string")
+        Do tRow.%Set("NotPivot", ..WidgetNotPivot($List(tWidget, 3)), "boolean")
+        Do pRows.%Push(tRow)
+    }
+    Quit $$$OK
+}
+
+/// <p>The Definition row of the pivot or dashboard read into <var>pData</var> by <method>ReadFolderItem</method> with its detail: <code>{Name, Type, Title, Description,
+/// Owner, Modified, Cube, Rows, Columns, Measures, Filters, Calculated, MDX, Restriction}</code>, the last eight empty for a dashboard, <code>Modified</code> the instance's
+/// local <code>YYYY-MM-DD HH:MM:SS</code>. Pure.</p>
+ClassMethod FolderItemDefinitionRow(ByRef pData) As %DynamicObject
+{
+    Set tOut = {}
+    Do tOut.%Set("Name", pData("name"), "string")
+    Do tOut.%Set("Type", pData("type"), "string")
+    Do tOut.%Set("Title", pData("title"), "string")
+    Do tOut.%Set("Description", pData("description"), "string")
+    Do tOut.%Set("Owner", pData("owner"), "string")
+    Do tOut.%Set("Modified", ..LocalStamp(pData("modified")), "string")
+    For tPart = $ListBuild("Cube", "cube"), $ListBuild("Rows", "rows"), $ListBuild("Columns", "columns"), $ListBuild("Measures", "measures"), $ListBuild("Filters", "filters"), $ListBuild("Calculated", "calculated"), $ListBuild("MDX", "mdx"), $ListBuild("Restriction", "restriction") {
+        Do tOut.%Set($List(tPart, 1), $Get(pData($List(tPart, 2))), "string")
+    }
+    Quit tOut
+}
+
+/// <p>Whether a widget's data source <var>pDataSource</var> is not a saved pivot: empty, or a KPI, a metric or a worksheet by its extension, as the classic pivot widget decides
+/// (<code>%DeepSee.Component.Widget.pivot</code>). Pure.</p>
+ClassMethod WidgetNotPivot(pDataSource As %String) As %Boolean
+{
+    If pDataSource = "" Quit 1
+    Quit ''$ListFind($ListBuild("kpi", "metric", "worksheet"), $Piece(pDataSource, ".", $Length(pDataSource, ".")))
+}
+
+/// <p>The MDX statement of the saved pivot <var>pName</var> in <var>pNamespace</var>, composed for a run (Story 24.14, AD-7, AD-29, AD-65), into <var>pStatement</var>. In this
+/// order: the MDX gate (<method>MdxAdmit</method>), so no vendor call is made for a caller or a namespace it refuses; the name's shape; the item opened by
+/// <method>ReadFolderItem</method> (a missing item, a name that cannot be one, an item the caller's resources hide and a locked item they hide each 404
+/// <code>ANALYTICS.FOLDERITEM.ABSENT</code>); an item that is not a pivot, or a pivot whose cube this namespace does not hold (a KPI-backed pivot), 409
+/// <code>ANALYTICS.PIVOT.CUBE</code> before anything is composed; then <method>VendorPivotMdx</method>. The composed text longer than <parameter>MDXMAXSTATEMENT</parameter>
+/// is 400 <code>ANALYTICS.MDX.INPUT</code>. The composition writes the vendor's local result counter, which is why it belongs to a run and never to a read.</p>
+ClassMethod PivotStatement(pNamespace As %String, pName As %String, Output pStatement As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pStatement = ""
+    Set tSC = ..MdxAdmit(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemShaped(pName) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    Set tCaught = ""
+    Do ..ReadFolderItem(pNamespace, pName, .tData, .tCaught, 1)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the pivot could not be read", .pHttpStatus, .pFault)
+    If '..FolderItemVisible(tData("code")) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    If ($Get(tData("kind")) '= "pivot") || '$Get(tData("cubeExists")) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PIVOTCUBE, .pHttpStatus, .pFault)
+    Do ..VendorPivotMdx(pNamespace, tData("name"), .pStatement, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the pivot's MDX could not be composed", .pHttpStatus, .pFault)
+    If $Length(pStatement) > ..#MDXMAXSTATEMENT Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#MDXINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The vendor's own composition of the saved pivot <var>pName</var>'s MDX (<code>%GetBaseMDX</code>), switched by explicit save and restore (AD-16), into
+/// <var>pStatement</var>; an exception is <var>pCaught</var>. The one call to <code>%GetBaseMDX</code> in this port. A seam: a fixture overrides it to observe the call.</p>
+ClassMethod VendorPivotMdx(pNamespace As %String, pName As %String, Output pStatement As %String, Output pCaught As %Exception.AbstractException)
+{
+    Set pStatement = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tItem = ##class(%DeepSee.UserLibrary.Utils).%OpenFolderItem(pName, .tOpened)
+        If $IsObject(tItem) && tItem.%IsA("%DeepSee.Dashboard.Pivot") Set pStatement = tItem.%GetBaseMDX()
+        Set tItem = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
 }
 
 /// <p>The folder item classes of <var>pNamespace</var> as the vendor lists them (<code>%GetFolderItemClasses</code>), switched by explicit save and

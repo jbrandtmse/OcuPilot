@@ -133,7 +133,7 @@ const FORMER_SELF_LINKS = [
   ['tasks/background', null],
   ['system-explorer/docdb', null],
   ['interoperability/business-partners', null],
-  ['analytics/folder-items', null],
+  ['analytics/folder-items', 'analytics/folder-items/document'],
   ['agent/screenpermissions', null],
 ];
 

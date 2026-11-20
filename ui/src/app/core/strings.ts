@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:661 */
+  /** EXPERIENCE.md:662 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8410,6 +8410,34 @@ export const STRINGS = {
   analyticsRuntimeVariablesEmptyAgent: 'add a run-time variable',
   /** EXPERIENCE.md:619 */
   analyticsUserIconsEmptyAgent: 'add a user-defined icon',
+  /** EXPERIENCE.md:620 */
+  analyticsTabWidgets: 'Widgets',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnDataSource: 'Data source',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnFilters: 'Filters',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnCalculated: 'Calculated members',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnRestriction: 'SQL restriction',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionEmpty: 'This folder item is not a pivot or a dashboard, or it no longer exists.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsEmpty: 'This folder item is not a dashboard, or it has no widgets.',
+  /** EXPERIENCE.md:620 */
+  analyticsRefusalPivotCube: 'This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt1: 'Explain what this pivot shows.',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt2: 'Which cube and filters does this pivot use?',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt3: 'Run this pivot and summarize its answer.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt1: 'Summarize the widgets on this dashboard.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt2: 'Which widgets show a pivot, and which a KPI?',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt3: 'Which widget takes its data from another widget?',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
