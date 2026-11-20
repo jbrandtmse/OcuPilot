@@ -6720,6 +6720,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-05T18:41:40Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story that owns the Devices leaf
 - 2026-11-15T22:56:33Z status=routed owner=21-20-os-management-and-log-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-20-os-management-and-log-leaves
+- 2026-11-20T15:59:53Z status=resolved-by:21-20-os-management-and-log-leaves owner=21-20-os-management-and-log-leaves by=21-20 note=Devices_delete_row_action_with_typed-name_dialog_(AC2);35af0290b
 
 ### DW-1571: The agent's osmgmt.devices.update cannot clear a device's alias or prompt: the mint's merge refuses an empty value against the fresh read's number
 - source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -12451,6 +12452,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-21T07:40:07Z status=routed owner=burndown by=spec_gate note=23.7's DW-1783 technique (overridable offset helpers plus a probe) applies; filed, not absorbed (Rule 27 cap)
 - 2026-11-14T00:50:21Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:33Z status=routed owner=21-20-os-management-and-log-leaves by=spec_gate note=21.10 split (unattended ruling): assigned to 21-20-os-management-and-log-leaves
+- 2026-11-20T15:59:53Z status=resolved-by:21-20-os-management-and-log-leaves owner=21-20-os-management-and-log-leaves by=21-20 note=LocalFromUtc_seam;direction_and_zone_legs_pinned_(AC6);35af0290b,13c966c3b
 
 ### DW-2485: Test/AnalyticsPort's Snapshot joins every ^DeepSee.Cache* node into one string, so cache residue over about 3.6 MB raises MAXSTRING and TestTheReadsWriteNothing reddens on state it did not make
 - source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: low | footprint: in-epic
@@ -13816,6 +13818,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-17T23:23:50Z status=routed owner=21-22-ci-flake-hardening by=harvest note=CI flake at the 21.14 build head
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
 - 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
+- 2026-11-20T14:35:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44743879162_browser_shard_3:cleared_filter_waited_30s_(aria-rowcount_14);rerun_--failed
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story

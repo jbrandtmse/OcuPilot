@@ -798,3 +798,10 @@
 2026-11-20T13:23:34Z	Story 21.20	dev_complete	scope=rework1(test_shapes:ScreenGrounding,ProposalConfirm;no_product_change) build_sha=bdee5d94e followup_review_recommended=false cycle_iteration=2
 2026-11-20T13:23:34Z	Story 21.20	code_head_pushed	sha=bdee5d94e run=44743879162 missing=none includes=13c966c3b(review_patches)
 2026-11-20T13:23:34Z	Story 21.20	gate_step	step=fresh_check+full_sweep+smoke head=bdee5d94e started=2026-11-20T13:23:34Z dir=e21u/21-20/gate
+2026-11-20T14:35:54Z	Story 21.20	ci_red_classified	run=44743879162 sha=bdee5d94e flake=users.browser-spec_AC2(DW-2720,routed_21-23) action=rerun_--failed
+2026-11-20T15:59:53Z	Story 21.20	ci_resolved	story=21.20 sha=bdee5d94e runs=44743879162 result=success flake_rerun=browser_shard_3(DW-2720)
+2026-11-20T15:59:53Z	Story 21.20	fresh_check	env=recipe(ci-throwaway_rebuild) tests=25_classes+4_specs result=pass order=forward,reverse(specs) head=bdee5d94e note=SeamSqlActivityActionFixture_is_a_fixture(0_methods),not_a_red
+2026-11-20T15:59:53Z	Story 21.20	sweep	shards=20/20_green head=bdee5d94e
+2026-11-20T15:59:53Z	Story 21.20	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T15:59:53Z	Story 21.20	ledger	resolved=DW-1562,DW-2479 by=21-20 new=DW-2803(owner_burndown,decision-pending)
+2026-11-20T15:59:53Z	Story 21.20	story_complete	head=bdee5d94e run=44743879162 ci=success fresh=pass sweep=20/20 smoke=50/50 vetoes=U-124,U-126
