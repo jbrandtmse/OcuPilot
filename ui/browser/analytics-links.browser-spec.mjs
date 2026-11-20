@@ -211,16 +211,16 @@ after(async () => {
 // AC1. Mutation (Rule 19): drop the external branch from `open()` in `side-bar.ts` -> a click routes onto the page and no tab opens, the
 // side-bar leg times out waiting for its target; drop `noopener,noreferrer` from `openInNewTab` in `new-tab.ts` -> the tab has an opener and
 // a copy of the pair and the opener and pair clauses go red; drop the branch from `choose()` in `command-box.ts` -> the command-box
-// clause times out; rebuild and redeploy first.
+// clause times out; give `AnalyticsPmmlModelList` no side-bar position -> the side-bar list leg goes red; rebuild and redeploy first.
 test('AC1: the side bar lists the three links after Folder items, and each, with the command box\'s "analyzer", opens the instance\'s address in a new tab with no opener and no token pair', async () => {
   const { context, page } = await signedInAt(browser, config, url('analytics/cubes'), VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await analyticsSideBar(page);
     const labels = await sideBarLabels(page);
     assert.deepEqual(
-      labels.slice(-8),
-      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel, STRINGS.analyticsMdxQueryLabel, STRINGS.analyticsCubeManagerLabel, STRINGS.analyticsListingGroupsLabel, STRINGS.analyticsQualityMeasuresLabel, STRINGS.interopItemTabSettings],
-      'the Analytics side bar ends with Architect, Analyzer and User Portal, then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12) and Settings (Story 24.13)'
+      labels.slice(-9),
+      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel, STRINGS.analyticsMdxQueryLabel, STRINGS.analyticsCubeManagerLabel, STRINGS.analyticsListingGroupsLabel, STRINGS.analyticsQualityMeasuresLabel, STRINGS.interopItemTabSettings, STRINGS.analyticsPmmlModelsLabel],
+      'the Analytics side bar ends with Architect, Analyzer and User Portal, then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12), Settings (Story 24.13) and PMML models (Story 24.14)'
     );
     const shellUrl = page.url();
     for (const link of LINKS) {
