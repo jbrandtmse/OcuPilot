@@ -2,10 +2,10 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: '698a53cffd9dc1b9a3f5a00f0998cf5b037d040a'
+status: 'done'
+baseline_revision: 'e8e90459a0f35f702c23a7d63bedc2ed055557f4'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-10-the-remaining-leaves-across-the-six-areas.md'
@@ -173,7 +173,7 @@ deferred:
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI run 44731774131 (on `35af0290b`): two roster tests this story's new surface broke. (1) `OcuPilot.Test.ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly`: "the device list's read and its create" and "and so is delete" — the Devices list now declares delete as a row action (DW-1562), so its grounded tools include the delete tool. (2) `OcuPilot.Test.ProposalConfirm.TestTheConfirmPathIsNotInTheToolRegistry`: "no entry of the registry names the confirm or cancel path" — the new SQL activity cancel tool's name holds "cancel" and is a screen's own Cancel row action, like `tasks.background.cancel` in `CANCELROWACTIONS`. Update each test to the new shape, with tool names read from the instance (never recalled), keep each test's intent (a primary action still names its create tool; a confirm or cancel path is still absent from the registry), say which you did, and write a `mutation:` line for each changed assertion. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `ScreenGrounding`, `Proposal`, `Device` or `SqlActivity`, one per call. The same run's browser shard 1 failed on `a11y-structural-invariants` (the governance settle timeout, DW-1822, owned by Story 21.23): not this pass's work. [src/OcuPilot/Test/ScreenGrounding.cls, src/OcuPilot/Test/ProposalConfirm.cls]
+- [x] [Review][HIGH] CI run 44731774131 (on `35af0290b`): two roster tests this story's new surface broke. (1) `OcuPilot.Test.ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly`: "the device list's read and its create" and "and so is delete" — the Devices list now declares delete as a row action (DW-1562), so its grounded tools include the delete tool. (2) `OcuPilot.Test.ProposalConfirm.TestTheConfirmPathIsNotInTheToolRegistry`: "no entry of the registry names the confirm or cancel path" — the new SQL activity cancel tool's name holds "cancel" and is a screen's own Cancel row action, like `tasks.background.cancel` in `CANCELROWACTIONS`. Update each test to the new shape, with tool names read from the instance (never recalled), keep each test's intent (a primary action still names its create tool; a confirm or cancel path is still absent from the registry), say which you did, and write a `mutation:` line for each changed assertion. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `ScreenGrounding`, `Proposal`, `Device` or `SqlActivity`, one per call. The same run's browser shard 1 failed on `a11y-structural-invariants` (the governance settle timeout, DW-1822, owned by Story 21.23): not this pass's work. [src/OcuPilot/Test/ScreenGrounding.cls, src/OcuPilot/Test/ProposalConfirm.cls]
 
 Code review 2026-11-20 (four layers, full-opus; measured on `ocupilot-ci`). 42 raw rows, 12 entries (high 1, med 7, low 4); the rest rejected below.
 
@@ -227,6 +227,14 @@ Code review 2026-11-20 (four layers, full-opus; measured on `ocupilot-ci`). 42 r
   - `[low]` `reject` auditor: remote, ended and no-privilege refusals are port-seam only — same root cause as P2, closed there.
   - `[low]` `reject` auditor: "confirm: changed or absent" for an ended statement untested — same root cause as P4, closed there.
   - `[low]` `reject` auditor: the alerts.log check reads equality — same root cause as P11, closed there.
+
+### 2026-11-20 — Review pass (rework 1: roster shapes)
+
+- verdicts: 3 findings — high 0, medium 0, low 1, false 2, maybe-false 0
+- findings:
+  - `[false]` `reject` gap layer: the `ScreenGrounding` method name and comment still say create only — the comment says a primary action names its create tool and that a write tool behind no declared action is not named, both still true; delete is behind a declared row action.
+  - `[low]` `reject` gap layer: `CANCELROWACTIONS` is a hand-kept name list with no check that each entry is a row action — the list predates this pass and fixing it adds a guard branch; the tool's own `SCREENACTIONS` is pinned in `SqlActivityCancel`.
+  - `[false]` `reject` auditor divergence 4 and 5: restates the method-name point above and a doc-comment wording note; no behavior is wrong. Divergences 1-3 describe where other tests pin the story (descriptive, no defect).
 
 ## Design Notes
 
@@ -330,6 +338,7 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - AC3 (browser): mutation: the `Seconds` column's label key pointed at another key in the mirror -> `transactions.browser-spec.mjs` leg 2 red and leg 1 green (observed against a rebuilt bundle, reverted, rebuilt, redeployed).
 - AC6: mutation: subtract in place of add in `LogSourcePort.LocalFromUtc` -> `LogSourceClock.TestAUtcInstantReadsTwoHoursLaterOnTheLocalClock` red (observed, reverted, reloaded).
 - Code review (each observed on `ocupilot-ci`, reverted, reloaded): unguarded `Do tRS.%Next()` in `SqlActivityPort.Snippet` -> `SqlActivityCancel.TestTheScriptFormIsTheVendorCallForTheRowsOwnProcessAndStatement` red; the empty-`StatementId` refusal in `Statement` skipped -> `TestTheVendorsAnswersMapToTheirCodes` red; `LogSourcePort.OffsetAtUtc` answering 0 -> `LogSourceClock.TestTheShippedPortReadsTheZonesLocalClock` red, and only it; `SetState(0)` in place of `Clear()` in `Harvest.Alerts.AlertsManage` -> `SystemAlertsWrite.TestBothCallersResetTheAlerts`'s count legs red (armed); `TRANSACTIONSNODE` `"Transaction"` -> `TransactionsRead.TestAnOpenTransactionIsReadThroughTheShippedNodes` red.
+- Roster shapes (CI red on `35af0290b`): mutation: `SCREENACTIONS ""` on `Screen/Tool/DeviceDelete.cls` -> `ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly` red; remove `osmgmt.sqlactivity.cancel` from `ProposalConfirm.CANCELROWACTIONS` -> `ProposalConfirm.TestTheConfirmPathIsNotInTheToolRegistry` red (each observed on `ocupilot-ci`, reverted, reloaded).
 - Client: `self-protection.test.mjs` pins `sql-statement-remote` and the four refusal sentences against EXPERIENCE.md; the browser specs (`sql-activity`, `devices`, `transactions`, `system-alerts`) carry their own `mutation:` comments.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
@@ -347,17 +356,13 @@ Every test added or changed passes on a fresh environment, in either order. Each
 Status: done
 Blocking condition: none
 
-**Change (this pass, all three batches under the 2026-11-20 rulings).**
+**Rework 1 (this pass only).** CI run 44731774131 had two roster tests red; both are updated to the new shape, with tool names read from `ocupilot-ci`'s registry.
 
-- Batch 1: SQL activity cancel (`SqlActivityPort` `ROW`/`CANCEL`, `SqlActivityError` with `REMOTE`, `ENDED`, `NOPRIVILEGE`, `osmgmt.sqlactivity.cancel`, the `sql-statement-remote` self-protection rule) and the Devices delete row action.
-- Batch 2: Transactions and System alerts screens, `MonitorPort` `Transactions`/`Alerts` (`LIST`, `GET`, `RESET`), `Harvest.Alerts`, `osmgmt.systemalerts.reset`, the `system-alerts` entity type, `OCUPILOT_ALLOW_ALERT_RESET`.
-- Batch 3: `LogSourcePort.OffsetAtUtc` seam with `LogSourceClockProbe` and `LogSourceClock`.
-- New test classes: `SqlActivityCancel`, `SqlActivityCancelPrivilege` (armed), `TransactionsRead`, `SystemAlertsRead`, `SystemAlertsWrite` (armed), `LogSourceClock`; fixtures `TransactionsNodeProbe`, `SeamSqlActivityCancel`, `SeamSqlActivityActionFixture`. Browser specs: `sql-activity` and `devices` legs, new `transactions` and `system-alerts`.
+- `src/OcuPilot/Test/ScreenGrounding.cls`: the Devices list's grounded tools are now read, create, delete (the delete row action, DW-1562); the "delete is not named" assertion is gone and "update is not named" stays.
+- `src/OcuPilot/Test/ProposalConfirm.cls`: `CANCELROWACTIONS` also lists `osmgmt.sqlactivity.cancel`, a screen's own Cancel row action; the assertion that no registry entry is the confirm or cancel path is unchanged.
+- Review: 3 findings, none above low, all rejected (Review Triage Log). Patched 0, deferred 0.
+- Verification: `LOADERRORS=0`; `ScreenGrounding` 16/16 and `ProposalConfirm` 24/24 as full classes, then every `Device*`, `Proposal*` and `SqlActivity*` test class one per call, all green (`SqlActivityCancelPrivilege` 2/2 included). Both `mutation:` lines observed red, reverted, reloaded.
 
-**Review.** 23 findings: 8 medium, 14 low, 1 false. Patched: 7 mediums (P1-P6, P8) and the low `mutation:`/flake rows (P9-P12), with the extra mutations observed red and reverted. Deferred: 2 (the shipped `OffsetAtUtc` delegation on a UTC instance; no alert count above 0 before the reset). Rejected with reasons: see the Review Triage Log.
-
-**Verification.** `LOADERRORS=0`; every shared-surface class and the story's classes green one at a time on `ocupilot-ci` (the implement pass's list; after the review patches `SqlActivityCancel` 9/9, `TransactionsRead` 9/9, `SystemAlertsWrite` 3/3 armed, `SystemAlertsRead` 6/6, `SqlActivityCancelPrivilege` 2/2 before its mutation); `transactions` browser spec 2/2; `npm run build` within budget (initial 2.19 MB); `test:tools` 2355/2355; `test:components` 3709/3709 (implement pass); `check-objectscript` 0 problems; `lint-docs` exit 0; `smoke.sh` 50/50. The full ObjectScript sweep and the full browser suite are the runner's and CI's.
-
-**Follow-up review recommended: true.** Seven medium patches landed, all in tests; the unverified risk is the reset's count: nothing raises `AlertCount` above 0 on the throwaway, so "count cleared" is shown only as 0 after the reset (deferred).
+**Follow-up review recommended: false.** The follow-up pass patched no high; the work has converged.
 
 **For the owner's veto window.** Two Fixed strings the spec's list lacks, required by the mirror's write-capable empty state: `sqlActivityEmptyAgent` "cancel a running SQL statement" and `systemAlertsEmptyAgent` "reset the system alerts", in `strings.ts` and the EXPERIENCE.md Fixed strings row. Positions are 38 and 39, not 33 and 34 (33 to 37 were taken). A subagent of the implement pass ran one empty-heredoc `python3 -` and one `sed` on `/dev/null`; neither wrote a file.

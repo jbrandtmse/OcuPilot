@@ -794,3 +794,4 @@
 2026-11-20T13:02:17Z	Story 21.20	review_complete	model=opus tier=full-opus entries=high1,med7,low4 patched=11 deferred=DW-2803(owner_burndown) commit=13c966c3b(local) build_deferred_closed=2
 2026-11-20T13:02:17Z	Story 21.20	ci_red_classified	run=44731774131 sha=35af0290b defects=ScreenGrounding,ProposalConfirm(rosters) flake=a11y-structural-invariants(DW-1822,routed_21-23)
 2026-11-20T13:02:17Z	Story 21.20	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ScreenGrounding,ProposalConfirm scope_baseline=13c966c3b note=13c966c3b_not_pushed;pushed_with_the_rework_head
+2026-11-20T13:02:22Z	Story 21.20	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T13:02:22Z model=sonnet agent_name=21-20-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a5ef2ff1e)
