@@ -545,3 +545,4 @@
 2026-11-20T05:45:56Z	Story 24.14	rework_built	iteration=1 sha=171365989 fix=structural-walk_SKIP+24.14_browser_structural_checks review=lead_read(17-line_test_harness) mutation=SKIP_row_removed_AC5_red
 2026-11-20T05:45:56Z	Story 24.14	fresh_check_passed	tree=171365989 classes=forward5+reverse14(162_tests) browser=analytics17/17,analytics-mdx11/11,a11y13/13,links smoke=50/50 bundle=2.18MB scope=batch1
 2026-11-20T05:46:21Z	Story 24.14	code_head_pushed	sha=171365989 run=44683199382 missing=none scope=batch1
+2026-11-20T05:46:35Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T05:46:35Z model=opus agent_name=epic-24-context-prewarm-12 cycle_iteration=2 reason=planning_artifact_newer(EXPERIENCE.md_rows_21.10+24.14)
