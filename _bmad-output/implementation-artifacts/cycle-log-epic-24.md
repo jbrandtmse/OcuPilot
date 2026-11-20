@@ -579,3 +579,4 @@
 2026-11-20T12:07:32Z	Story 24.14	stage_spawned	stage=implement-resume spawn_at=2026-11-20T12:07:32Z model=sonnet agent_name=24-14-implement-batch3-resume cycle_iteration=3
 2026-11-20T12:32:57Z	Story 24.14	ci_red	sha=5fd4364a1 run=44729361774 failed=browser_shard1:analytics-links.browser-spec.mjs:AC1(stale_side_bar_list,deterministic) cause=fresh_check_spec_selection_by_area_not_label
 2026-11-20T12:32:57Z	Story 24.14	fix_pushed	sha=fa07e9126 run=44736623307 change=analytics-links_AC1_expects_PMML_models method=plumbing_commit(stage_holds_tree;hook_scans_working_tree) scope=batch2
+2026-11-20T13:24:54Z	Story 24.14	ci_red	sha=fa07e9126 run=44736623307 failed=instance3:AnalyticsPmmlRunEdge.TestACancelEndsARunAndLeavesNoRow(defect,cancel_did_not_land_70s),browser1:a11y_settle(DW-1822),browser5:ssl_AC2(DW-374) analytics-links_fix=green
