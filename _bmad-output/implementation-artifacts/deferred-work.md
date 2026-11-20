@@ -13828,6 +13828,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
 - 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
 - 2026-11-20T14:35:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44743879162_browser_shard_3:cleared_filter_waited_30s_(aria-rowcount_14);rerun_--failed
+- 2026-11-20T23:54:27Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=must-fix in 21.23 beside DW-1822: red again on README-only feature head 178ed176a (run 44824652605, browser 3/5; cleared filter rowcount 14 vs 5)
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story

@@ -849,3 +849,6 @@
 2026-11-20T23:32:20Z	Story 21.36	ad_amended	ad=AD-21 marker=[AMENDED_2026-11-20,Story_21.36_plan,Rule_20] commit=fbc419892 lint_spine=ok(pre-existing_{id}) memlog=appended
 2026-11-20T23:32:38Z	Story 21.36	ruling	question=strings+AD-21_note+5_design_points via=orchestrator choice=AD-21_applied(fbc419892);strings_ruled(4_changed;veto=U-131);mail_password_enabled_on_tasks.mail.set_pairs;no_path_echo;line-boundary_tail;8-bit_as_stored;REST_HALT_stands
 2026-11-20T23:33:02Z	Story 21.36	stage_spawned	stage=implement scope=task0(REST)+batches1-2 spawn_at=2026-11-20T23:33:02Z model=sonnet agent_name=21-36-implement cycle_iteration=1 prior_lines_ended=verified(ab51b4a36)
+2026-11-20T23:54:27Z	Story 21.21	merged	feature=09b30317b(ff_to_M_b19395a16+orchestrator_bookkeeping:deps_hash_split_21.37,timings) run=44832705882(green_first_attempt) via=orchestrator
+2026-11-20T23:54:27Z	Story 21.36	bash_edit_scan	agent=a12b2eca7 hits=1 verdict=no_tracked_edit(python_heredoc_prints_only) action=none
+2026-11-20T23:54:27Z	Epic 21	ruling	question=DW-2720 via=orchestrator choice=must-fix_in_21.23_beside_DW-1822
