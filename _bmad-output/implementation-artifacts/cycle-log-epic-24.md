@@ -535,3 +535,6 @@
 2026-11-20T03:50:33Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-20T03:50:33Z model=sonnet agent_name=24-14-qa-batch1 cycle_iteration=1
 2026-11-20T04:02:57Z	Story 24.14	qa_complete	spawn_at=2026-11-20T03:52:00Z model=sonnet tests=AnalyticsFolderItemView(+3),AnalyticsPivotRun(+3) tests_added=6 mutations_demonstrated=6 first_run_failures=0 product_defects=0 scope=batch1
 2026-11-20T04:02:57Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T04:02:57Z model=opus agent_name=24-14-code-review-batch1 cycle_iteration=1 baseline=36722b87e
+2026-11-20T04:32:50Z	Epic 24	ci_resolved	sha=4fd03cd10(integrate-only_M) runs=44669283267 result=success
+2026-11-20T04:32:50Z	Story 24.14	review_complete	spawn_at=2026-11-20T04:03:00Z model=opus layers=4(full-opus) findings=22(high0,med4,low17,false1) patched=5(agent_pivot_read_gate) deferred=4 rejected=13 intent_gap=0 commit=8e9b269c4 scope=batch1
+2026-11-20T04:32:50Z	Story 24.14	ledger_adjudicated	routed_burndown=DW-2789,DW-2790,DW-2791 born_terminal=DW-2792 scope=batch1 model=claude-opus-5-5
