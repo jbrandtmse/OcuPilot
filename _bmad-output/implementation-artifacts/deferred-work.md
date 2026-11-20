@@ -8474,6 +8474,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T08:59:21Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=reopened: reopen_if met after the 23.9 fix (c98a0877, 74a6348f); staging 64e58441 run 43379465200 attempt 1, AC5 720 px light settle on /agent/governance timed out via protocol-retry.mjs:48, attempt 2 green; CI flake, first priority (Rule 27)
 - 2026-11-13T20:06:00Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_1:a_stalled_walk_pass_reruns_once_on_a_relaunched_browser(stalled_one_closed_under_CLOSEDEADLINE_via_protocol-retry.closeOrAbandon),retryOnce_awaits_reset,failed_walk_error_carries_retried_lines;pins_ui/tools/structural-walk.test.mjs+protocol-retry.test.mjs(fakes);a11y_real_13/13_on_ocupilot-ci;code_69eaecb3+QA/review_commit;reopen_if=a_CI_a11y_rerun_after_a_relaunch_stalls_again
 - 2026-11-18T18:00:33Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:the_DW-1822_retry_ran_and_failed_again:1280px_light_settle_/agent/governance_abandoned_by_withDeadline_60000ms_after_'structural_walk_retried';run44328339684(ead5f1f95)browser_1/5_and_run44357940400(5e1672bb3)browser_1/5;both_reruns_pending/green;was_filed_as_DW-2742
+- 2026-11-20T13:02:17Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44731774131_browser_shard_1:1280px_light_settle_/agent/governance_timed_out_after_60s
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -14208,3 +14209,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A real KPI fixture would need a compiled KPI class in USER.
 - 2026-11-20T04:31:09Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a pivot over a real KPI runs
+
+### DW-2803: The SQL activity cancel can reach a statement running in another OcuPilot process (a turn job or an API worker); AD-10 has no statement arm
+- source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
+- 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision

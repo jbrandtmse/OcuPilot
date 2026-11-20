@@ -2,7 +2,7 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '698a53cffd9dc1b9a3f5a00f0998cf5b037d040a'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -172,6 +172,8 @@ deferred:
 - AC6 (DW-2479). Given the probe's +2 h offset, when `LocalFromUtc` converts a UTC instant, then the result is two hours later; swapping the direction turns the test red.
 
 ### Review Findings
+
+- [ ] [Review][HIGH] CI run 44731774131 (on `35af0290b`): two roster tests this story's new surface broke. (1) `OcuPilot.Test.ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly`: "the device list's read and its create" and "and so is delete" — the Devices list now declares delete as a row action (DW-1562), so its grounded tools include the delete tool. (2) `OcuPilot.Test.ProposalConfirm.TestTheConfirmPathIsNotInTheToolRegistry`: "no entry of the registry names the confirm or cancel path" — the new SQL activity cancel tool's name holds "cancel" and is a screen's own Cancel row action, like `tasks.background.cancel` in `CANCELROWACTIONS`. Update each test to the new shape, with tool names read from the instance (never recalled), keep each test's intent (a primary action still names its create tool; a confirm or cancel path is still absent from the registry), say which you did, and write a `mutation:` line for each changed assertion. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `ScreenGrounding`, `Proposal`, `Device` or `SqlActivity`, one per call. The same run's browser shard 1 failed on `a11y-structural-invariants` (the governance settle timeout, DW-1822, owned by Story 21.23): not this pass's work. [src/OcuPilot/Test/ScreenGrounding.cls, src/OcuPilot/Test/ProposalConfirm.cls]
 
 Code review 2026-11-20 (four layers, full-opus; measured on `ocupilot-ci`). 42 raw rows, 12 entries (high 1, med 7, low 4); the rest rejected below.
 

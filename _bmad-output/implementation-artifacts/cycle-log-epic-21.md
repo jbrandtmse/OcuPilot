@@ -791,3 +791,6 @@
 2026-11-20T11:57:40Z	Story 21.20	code_head_pushed	sha=35af0290b run=44731774131 missing=none
 2026-11-20T11:58:29Z	Story 21.20	ruling	question=empty_agent_strings via=orchestrator choice=accepted_verbatim veto=U-126
 2026-11-20T11:58:29Z	Story 21.20	stage_spawned	stage=code-review spawn_at=2026-11-20T11:58:29Z model=opus agent_name=21-20-code-review cycle_iteration=1 prior_lines_ended=verified
+2026-11-20T13:02:17Z	Story 21.20	review_complete	model=opus tier=full-opus entries=high1,med7,low4 patched=11 deferred=DW-2803(owner_burndown) commit=13c966c3b(local) build_deferred_closed=2
+2026-11-20T13:02:17Z	Story 21.20	ci_red_classified	run=44731774131 sha=35af0290b defects=ScreenGrounding,ProposalConfirm(rosters) flake=a11y-structural-invariants(DW-1822,routed_21-23)
+2026-11-20T13:02:17Z	Story 21.20	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ScreenGrounding,ProposalConfirm scope_baseline=13c966c3b note=13c966c3b_not_pushed;pushed_with_the_rework_head
