@@ -1429,8 +1429,8 @@ ClassMethod JournalMark() As %String
 
 /// <p>The global writes the calling process made since <var>pMark</var> (a <method>JournalMark</method> answer), one entry of <var>pWrites</var> for each
 /// set or kill record of this process (every record type whose name holds <code>SET</code> or <code>KILL</code>, the bit, vector, remote and mirror forms included), as <code>type global node</code>. Answers their count, or -1 when the journal rolled to another file in between,
-/// which the scan cannot span. Writes to a database that is not journaled are not seen.</p>
-ClassMethod JournalWrites(pMark As %String, Output pWrites) As %Integer
+/// which the scan cannot span. Writes to a database that is not journaled are not seen. With <var>pAnyProcess</var> 1 the writes of every process count, for a scan of what a request served by another process wrote.</p>
+ClassMethod JournalWrites(pMark As %String, Output pWrites, pAnyProcess As %Boolean = 0) As %Integer
 {
     Kill pWrites
     Do ##class(%SYS.Journal.System).Sync()
@@ -1442,7 +1442,7 @@ ClassMethod JournalWrites(pMark As %String, Output pWrites) As %Integer
     Set tCount = 0
     Set tRecord = tFile.LastRecord
     While $IsObject(tRecord) && (tRecord.Address >= tFrom) {
-        If (tRecord.ProcessID = $Job) && ((tRecord.TypeName [ "SET") || (tRecord.TypeName [ "KILL")) {
+        If (pAnyProcess || (tRecord.ProcessID = $Job)) && ((tRecord.TypeName [ "SET") || (tRecord.TypeName [ "KILL")) {
             Set tCount = tCount + 1
             Set pWrites(tCount) = tRecord.TypeName _ " " _ tRecord.GlobalReference
         }

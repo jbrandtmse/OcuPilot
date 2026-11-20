@@ -186,6 +186,17 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.13 Batch 2: Analytics' General settings' Set value, which opens the page's dialog (the key's own action is sent from it), and Worklists' Show and Hide.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': { set: STRINGS.interopItemSettingSetAction, setkey: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.AnalyticsWorklistList': { show: STRINGS.oauthRegisteredClientShow, hide: STRINGS.oauthRegisteredClientHide },
+  // Story 24.13 Batch 3: Run-time variables' Add, Change and Remove, and User-defined icons', each also the title of its dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': {
+    add: STRINGS.analyticsRuntimeVariableAddAction,
+    set: STRINGS.analyticsRuntimeVariableChangeAction,
+    remove: STRINGS.analyticsRuntimeVariableRemoveAction,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': {
+    add: STRINGS.analyticsUserIconAddAction,
+    set: STRINGS.analyticsUserIconChangeAction,
+    remove: STRINGS.analyticsUserIconRemoveAction,
+  },
   // Story 21.3: the three settings screens' Set value, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.StartupSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.MemorySettingList': { set: STRINGS.interopItemSettingSetAction },

@@ -14074,6 +14074,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-13-analytics-settings-2.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: AnalyticsPort's set, setkey, show and hide run under one lock per namespace; the AD-59 script forms a person pastes into a terminal write the same nodes without it.
 - 2026-11-19T17:01:28Z status=open owner=24-13-analytics-settings by=harvest note=Batch_3_touches_the_same_script_forms
+- 2026-11-19T23:06:53Z status=resolved-by:24-13-analytics-settings by=adjudication note=Batch 3 70a9dc14c: all ten settings script forms take the namespace lock
 
 ### DW-2776: Analytics settings: AnalyticsPort.WritePairs and ActionQuery copy AnalyticsAction.PrivilegePairs and PortQuery (Rule 2)
 - source: spec-24-13-analytics-settings-2.md | severity: med | fix-risk: med | footprint: in-epic
@@ -14100,6 +14101,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The stale-target check is the shared confirm's and is pinned elsewhere; this tool's leg is not.
 - 2026-11-19T17:01:29Z status=wontfix-accepted owner=24-13-analytics-settings by=harvest note=reopen_if=a show or hide confirm is seen applying over a changed option
 
+### DW-2786: Proposals: a confirm refused 409 WRITE.TARGETBUSY closes (burns) the proposal, so the agent must re-propose; two proposals for one target also burn each other
+- source: spec-24-13-analytics-settings-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Observed on the analytics settings writes (24.13 Batch 3 QA); the busy refusal is the shared confirm's, so the behavior is kernel-wide. Whether a busy refusal should leave the proposal open is an owner call.
+- 2026-11-19T23:06:53Z status=decision-pending owner=burndown by=harvest note=owner_call(decision_sheet)
 ### DW-2781: An audit export of every record ends in the vendor's ILLEGAL VALUE error when the log holds OcuPilot audit rows whose text has a character above U+00FF
 - source: spec-21-10-the-remaining-leaves-across-the-six-areas.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-19: of 232,396 rows exactly 6 hold a character above U+00FF, all OcuPilot ConfigChange/AgentWrite markers naming a test target; any range holding them ends <ILLEGAL VALUE>zXMLExportInternal+75^%SYS.Audit.1, ranges excluding them export (224,569 items). A non-empty OcuPilot export (begin always empty) is unproven on this throwaway, since every non-empty range from the log's start holds those rows.

@@ -302,6 +302,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': () => import('../areas/analytics/quality-measure-list.page').then((m) => m.QualityMeasureListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': () => import('../areas/analytics/quality-measure-element-list.page').then((m) => m.QualityMeasureElementListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': () => import('../areas/analytics/quality-measure-meta-list.page').then((m) => m.QualityMeasureMetaListPage),
+  // Story 24.13 Batch 3: Run-time variables and User-defined icons, with their Add and Change dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };

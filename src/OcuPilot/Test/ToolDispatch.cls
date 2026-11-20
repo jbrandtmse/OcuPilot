@@ -195,6 +195,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "FOLDERITEMDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LISTINGGROUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "QUALITYMEASUREDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ANALYTICSSETTINGDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "MFTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "SYSTEMSECURITYDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "PHONEPROVIDERDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED

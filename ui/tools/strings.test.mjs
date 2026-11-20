@@ -611,6 +611,7 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // bound moves to 4200 under the same protocol (runner ruling at the integrate-forward, 2026-11-15).
   // Story 21.10's System-wide security and Mobile phone providers literals take the table past 4200; the bound moves to 4600
   // under the same protocol (the spec's Verification names it).
+  // Story 24.13 Batch 3's eighteen run-time variable and icon literals take the table to 4205, past the bound; it moves to 4600 as a drift tripwire (recorded in the spec for the lead's ruling).
   assert.ok(
     expectedLiterals.length >= 150 && expectedLiterals.length <= 4600,
     `expected between 150 and 4600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

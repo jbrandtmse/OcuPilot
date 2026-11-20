@@ -18,6 +18,9 @@ Parameter QUEUES = "OcuPilot.Test.InteropQueueActions";
 
 Parameter NAMESPACE = "USER";
 
+/// <p>The port whose script lock line gives up at once, and which holds the namespace's settings lock from another process (<class>OcuPilot.Test.AnalyticsSettingsLockSeam</class>).</p>
+Parameter LOCKSEAM = "OcuPilot.Test.AnalyticsSettingsLockSeam";
+
 Parameter SETTOOL = "OcuPilot.Screen.Tool.AnalyticsSettingSet";
 
 Parameter KEYTOOL = "OcuPilot.Screen.Tool.AnalyticsSettingKey";
@@ -69,6 +72,7 @@ Method OnBeforeOneTest() As %Status
 /// <p>The proposals and turns this test seeded are removed and the settings emptied, whether the test passed or failed.</p>
 Method OnAfterOneTest() As %Status
 {
+    Do $ClassMethod(..#LOCKSEAM, "Release", ..#NAMESPACE)
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
@@ -433,17 +437,17 @@ Method TestAGeneralSetKeepsTheOtherRows()
 
 /// <p>Run the script form of the write <var>pType</var> on <var>pEndpoint</var> for <var>pId</var> with <var>pBody</var>, one line at a time, in the namespace it names, and assert that its final
 /// status is OK, or, when <var>pExpectOK</var> is 0, that it is not. The variables the scripts use are killed first, and <var>pPrelude</var>, when given, is run after that, as a terminal the script is
-/// pasted into might already hold something.</p>
-Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, pExpectOK As %Boolean = 1, pPrelude As %String = "")
+/// pasted into might already hold something. A refusal from <var>pPort</var> <class>OcuPilot.Test.AnalyticsSettingsLockSeam</class> is a held lock, and its error text is asserted to be the busy sentence.</p>
+Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, pExpectOK As %Boolean = 1, pPrelude As %String = "", pPort As %String = "OcuPilot.Port.AnalyticsPort")
 {
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = pId
-    Set tSteps = ##class(OcuPilot.Port.AnalyticsPort).Snippet(pEndpoint, pType, .tQuery, pBody)
+    Set tSteps = $ClassMethod(pPort, "Snippet", pEndpoint, pType, .tQuery, pBody)
     Do $$$AssertTrue($IsObject(tSteps) && (tSteps.%Size() = 1), pType _ " renders one script step")
     If '$IsObject(tSteps) || (tSteps.%Size() '= 1) Quit
     Set tOrigNS = $NAMESPACE
-    XECUTE "Kill tSC,tOptions,tOption,tData,tMessage,tPage,tPanel,tNumber,tClass,tAt"
+    XECUTE "Kill tSC,tOptions,tOption,tData,tMessage,tPage,tPanel,tNumber,tClass,tAt,tLocked"
     If pPrelude '= "" XECUTE pPrelude
     Try {
         For tI = 1:1:$Length(tSteps.%Get(0).text, $Char(10)) {
@@ -456,6 +460,7 @@ Method RunScript(pEndpoint As %String, pType As %String, pId As %String, pBody, 
     Set $NAMESPACE = tOrigNS
     Set tScriptStatus = $Get(@"tSC")
     Do $$$AssertEquals(''$System.Status.IsOK(tScriptStatus), ''pExpectOK, pType _ " script ends with its status " _ $Select(pExpectOK: "OK", 1: "refused") _ ": " _ $System.Status.GetErrorText(tScriptStatus))
+    If 'pExpectOK && (pPort = ..#LOCKSEAM) Do $$$AssertTrue($System.Status.GetErrorText(tScriptStatus) [ ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, pType _ " script's refusal is the busy sentence: " _ $System.Status.GetErrorText(tScriptStatus))
 }
 
 /// <p>AC2 (AD-59): each write's script form, run line by line in <code>USER</code>, makes the change the write makes: a General set (the rows the person set before it, the key among them, kept), the key's
@@ -483,6 +488,24 @@ Method TestEachWritesScriptFormMakesTheSameChange()
     Do $$$AssertEquals($Piece(..Node("Worklist,Home,2,3"), "|", 1), 0, "and sets no option the terminal held from before")
     Do ..RunScript("Worklists", "WORKLISTHIDE", tId, {}, 0)
     Do $$$AssertEquals(..Node("Worklist,Home,1,2"), "1|" _ ..#RECENT, "a hide while the worklists are not customized is refused and changes nothing")
+    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "1"})
+    Set tFree = $ClassMethod(..#PROBE, "SettingsDigest")
+    Do $$$AssertTrue($ClassMethod(..#LOCKSEAM, "Hold", ..#NAMESPACE), "another process took the namespace's settings lock")
+    Do ..RunScript("Settings", "SETTINGSET", "CompanyImage", {"Value": "OcuProbe2413 busy"}, 0, "", ..#LOCKSEAM)
+    Do ..RunScript("Settings", "SETTINGKEY", "GoogleMapsKey", {"GoogleMapsKey": ""}, 0, "", ..#LOCKSEAM)
+    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "0"}, 0, "", ..#LOCKSEAM)
+    Do ..RunScript("Worklists", "WORKLISTSHOW", tId, {}, 0, "", ..#LOCKSEAM)
+    Do ..RunScript("Worklists", "WORKLISTHIDE", tId, {}, 0, "", ..#LOCKSEAM)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "SettingsDigest"), tFree, "with the namespace's lock held by another process none of the four scripts wrote anything, each ending with the busy sentence")
+    Do $ClassMethod(..#LOCKSEAM, "Release", ..#NAMESPACE)
+    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "0"})
+    Do $$$AssertEquals($Piece(..Node("Worklist"), "|", 1), 0, "the worklists are not customized")
+    Do $$$AssertTrue($ClassMethod(..#LOCKSEAM, "Hold", ..#NAMESPACE), "another process took the lock again")
+    Do ..RunScript("Settings", "SETTINGSET", "Worklist", {"Value": "1"}, 0, "", ..#LOCKSEAM)
+    Do $$$AssertEquals($Piece(..Node("Worklist"), "|", 1), 0, "with the lock held the customize script is refused with the busy sentence and the flag stays off")
+    Do $ClassMethod(..#LOCKSEAM, "Release", ..#NAMESPACE)
+    Do ..RunScript("Settings", "SETTINGSET", "CompanyImage", {"Value": "OcuProbe2413 free"}, 1, "", ..#LOCKSEAM)
+    Do $$$AssertEquals(..Node("CompanyImage"), "1|OcuProbe2413 free", "once the lock is released the same script applies")
 }
 
 /// <p>AC5: the agent's card for the key and for a General set says the save stores every general setting while a row is unstored, and the card for <code>Worklist</code>, which is its own call,

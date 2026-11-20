@@ -170,6 +170,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.13 Batch 2: Analytics' General settings, whose Set value the settings page's dialog sends, and Worklists, whose Show and Hide are sent at once.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
   'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
+  // Story 24.13 Batch 3: Run-time variables and User-defined icons, whose removals type the name and whose Add and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList',
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -583,6 +586,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // Story 24.12 Batch 3: the Groups and elements' page registers Change element and Remove group itself, and the Documentation's page Change documentation item.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['set', 'remove-group'],
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': ['set'],
+  // Story 24.13 Batch 3: the Run-time variables' and the User-defined icons' page registers Change itself, whose dialog sends the members.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': ['set'],
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': ['set'],
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
   // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
@@ -815,6 +821,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.12 Batch 3: a removed group takes its elements, and nothing a removal takes can be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence, 'remove-group': STRINGS.analyticsQualityMeasureRemoveConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence },
+  // Story 24.13 Batch 3: a removed run-time variable leaves the dashboards that use it an empty value, and a removed icon cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': { remove: STRINGS.analyticsVariableRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': { remove: STRINGS.analyticsIconRemoveConsequence },
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
@@ -921,6 +930,9 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.12 Batch 3: a removal types the element's or the documentation item's name; a group's, which has no element name, types the group's.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { name: 'Name', fallback: 'Group', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.13 Batch 3: a removal types the variable's or the icon's name, which the tab's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };

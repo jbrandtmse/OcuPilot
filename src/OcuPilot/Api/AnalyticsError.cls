@@ -342,6 +342,52 @@ Parameter WORKLISTABSENT = "ANALYTICS.WORKLIST.ABSENT";
 
 Parameter REASONWORKLISTABSENT = "There is no worklist with that page, panel and class.";
 
+/// <p>409: the namespace already holds a run-time variable, or a user-defined icon, with the name an add names (Story 24.13, Batch 3).</p>
+Parameter VARIABLETAKEN = "ANALYTICS.VARIABLE.TAKEN";
+
+Parameter REASONVARIABLETAKEN = "This namespace already holds a run-time variable with that name.";
+
+Parameter ICONTAKEN = "ANALYTICS.ICON.TAKEN";
+
+Parameter REASONICONTAKEN = "This namespace already holds a user-defined icon with that name.";
+
+/// <p>404: the run-time variable, or the user-defined icon, a change or a removal names is not there.</p>
+Parameter VARIABLEABSENT = "ANALYTICS.VARIABLE.ABSENT";
+
+Parameter REASONVARIABLEABSENT = "This run-time variable no longer exists.";
+
+Parameter ICONABSENT = "ANALYTICS.ICON.ABSENT";
+
+Parameter REASONICONABSENT = "This user-defined icon no longer exists.";
+
+/// <p>400: a name is not 1 to 255 characters with no control character, or is longer than the instance can store.</p>
+Parameter SETTINGNAME = "ANALYTICS.SETTING.NAME";
+
+Parameter REASONSETTINGNAME = "A name is 1 to 255 characters with no control character, within the length the instance can store.";
+
+/// <p>400: an expression, comment, context or path is not text of at most 2,000 characters with no control character.</p>
+Parameter SETTINGTEXT = "ANALYTICS.SETTING.TEXT";
+
+Parameter REASONSETTINGTEXT = "An expression, comment, context or path is at most 2,000 characters with no control character.";
+
+/// <p>400: a run-time variable's expression does not pass the syntax check. The check never runs it.</p>
+Parameter VARIABLEEXPRESSION = "ANALYTICS.VARIABLE.EXPRESSION";
+
+Parameter REASONVARIABLEEXPRESSION = "This expression is not valid ObjectScript. It was checked, not run, and nothing was saved.";
+
+/// <p>The consequence codes of a run-time variable that stores an expression, which is code, and of the removal of a run-time variable and of an icon (Story 24.13, Batch 3).</p>
+Parameter VARIABLECODE = "ANALYTICS.VARIABLE.CODE";
+
+Parameter REASONVARIABLECODE = "This expression is code. It runs with the rights of whoever opens a dashboard that uses it.";
+
+Parameter VARIABLEREMOVE = "ANALYTICS.VARIABLE.REMOVE";
+
+Parameter REASONVARIABLEREMOVE = "Removing this run-time variable cannot be undone from OcuPilot. A dashboard that uses it then gets an empty value.";
+
+Parameter ICONREMOVE = "ANALYTICS.ICON.REMOVE";
+
+Parameter REASONICONREMOVE = "Removing this icon cannot be undone from OcuPilot.";
+
 /// <p>The consequence code of the folder item delete.</p>
 Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
 
@@ -414,19 +460,26 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGSECRET Quit ..#REASONSETTINGSECRET
     If pCode = ..#WORKLISTNOTCUSTOMIZED Quit ..#REASONWORKLISTNOTCUSTOMIZED
     If pCode = ..#WORKLISTABSENT Quit ..#REASONWORKLISTABSENT
+    If pCode = ..#VARIABLETAKEN Quit ..#REASONVARIABLETAKEN
+    If pCode = ..#ICONTAKEN Quit ..#REASONICONTAKEN
+    If pCode = ..#VARIABLEABSENT Quit ..#REASONVARIABLEABSENT
+    If pCode = ..#ICONABSENT Quit ..#REASONICONABSENT
+    If pCode = ..#SETTINGNAME Quit ..#REASONSETTINGNAME
+    If pCode = ..#SETTINGTEXT Quit ..#REASONSETTINGTEXT
+    If pCode = ..#VARIABLEEXPRESSION Quit ..#REASONVARIABLEEXPRESSION
     Quit ""
 }
 
-/// <p>The analytics settings writes' four refusal codes (Story 24.13), as a <class>%List</class>.</p>
+/// <p>The analytics settings writes' four refusal codes (Story 24.13), then the seven of the run-time variable and icon writes (Batch 3), as a <class>%List</class>.</p>
 ClassMethod SettingCodes() As %List
 {
-    Quit $ListBuild(..#SETTINGREADONLY, ..#SETTINGSECRET, ..#WORKLISTNOTCUSTOMIZED, ..#WORKLISTABSENT)
+    Quit $ListBuild(..#SETTINGREADONLY, ..#SETTINGSECRET, ..#WORKLISTNOTCUSTOMIZED, ..#WORKLISTABSENT, ..#VARIABLETAKEN, ..#ICONTAKEN, ..#VARIABLEABSENT, ..#ICONABSENT, ..#SETTINGNAME, ..#SETTINGTEXT, ..#VARIABLEEXPRESSION)
 }
 
-/// <p>The consequence code of the analytics settings writes (Story 24.13), as a <class>%List</class>.</p>
+/// <p>The consequence codes of the analytics settings writes (Story 24.13), as a <class>%List</class>: the General save, and the code a variable's expression is and the two removals (Batch 3).</p>
 ClassMethod SettingConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#SETTINGSAVE)
+    Quit $ListBuild(..#SETTINGSAVE, ..#VARIABLECODE, ..#VARIABLEREMOVE, ..#ICONREMOVE)
 }
 
 /// <p>The cube manager's codes (Story 20.34), as a <class>%List</class>: the five refusals of a build or synchronize.</p>

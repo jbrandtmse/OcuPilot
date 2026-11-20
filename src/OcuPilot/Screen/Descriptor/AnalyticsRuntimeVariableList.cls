@@ -3,7 +3,8 @@
 /// <code>table</code> (AD-5, AD-29, AD-36, AD-44, AD-65, Story 24.13).</p>
 /// <p><b>An expression is text.</b> It is shown and sent to the model as stored (AD-60) and is never evaluated, rendered or run (AD-11): the vendor call that evaluates a variable is never made.</p>
 /// <p><b>It is the third tab of the group <code>analytics/settings</code> and never listed</b> (<code>sideBarPosition</code> 0). Its pairs are the first tab's. <b>Its id is the variable's name</b>, kept
-/// exactly (AD-13), and its scope is <code>namespace</code>. It offers no action and does not refresh (AD-43).</p>
+/// exactly (AD-13), and its scope is <code>namespace</code>. It writes (Story 24.13, Batch 3): its primary action Add run-time variable and its row actions Change run-time variable and Remove run-time variable
+/// are the tools <code>analytics.runtimevariables.add</code>, <code>.set</code> and <code>.remove</code>. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -25,8 +26,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["Name", "Value", "Comment", "Context"], "secretFields": []},
   "emptyStateKey": "analyticsRuntimeVariablesEmpty",
   "commandAliases": ["run-time variables", "runtime variables"],
@@ -52,8 +53,8 @@ XData Declaration
       {"field": "Comment", "labelKey": "userFieldComment", "kind": "text"},
       {"field": "Context", "labelKey": "analyticsColumnContext", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsRuntimeVariablesEmptyAgent"
   },
   "tab": {"group": "analytics/settings", "position": 3, "labelKey": "analyticsRuntimeVariablesLabel"},
   "toolIdentifier": "analytics.runtimevariables"

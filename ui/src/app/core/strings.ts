@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:660 */
+  /** EXPERIENCE.md:661 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8374,6 +8374,42 @@ export const STRINGS = {
   analyticsRefusalWorklistNotCustomized: 'Worklists are not customized in this namespace, so the portal shows its default worklists. Set Worklist to 1 on the General tab first.',
   /** EXPERIENCE.md:618 */
   analyticsRefusalWorklistAbsent: 'There is no worklist with that page, panel and class.',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableAddAction: 'Add run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableChangeAction: 'Change run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableRemoveAction: 'Remove run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconAddAction: 'Add icon',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconChangeAction: 'Change icon',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconRemoveAction: 'Remove icon',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableTaken: 'This namespace already holds a run-time variable with that name.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalIconTaken: 'This namespace already holds a user-defined icon with that name.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableAbsent: 'This run-time variable no longer exists.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalIconAbsent: 'This user-defined icon no longer exists.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalSettingName: 'A name is 1 to 255 characters with no control character, within the length the instance can store.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalSettingText: 'An expression, comment, context or path is at most 2,000 characters with no control character.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableExpression: 'This expression is not valid ObjectScript. It was checked, not run, and nothing was saved.',
+  /** EXPERIENCE.md:619 */
+  analyticsVariableCodeConsequence: 'This expression is code. It runs with the rights of whoever opens a dashboard that uses it.',
+  /** EXPERIENCE.md:619 */
+  analyticsVariableRemoveConsequence: 'Removing this run-time variable cannot be undone from OcuPilot. A dashboard that uses it then gets an empty value.',
+  /** EXPERIENCE.md:619 */
+  analyticsIconRemoveConsequence: 'Removing this icon cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariablesEmptyAgent: 'add a run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconsEmptyAgent: 'add a user-defined icon',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
