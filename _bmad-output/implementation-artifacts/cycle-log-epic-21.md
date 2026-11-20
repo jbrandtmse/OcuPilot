@@ -832,3 +832,4 @@
 2026-11-20T20:19:58Z	Story 21.21	integrated_forward	feature=6ea518d17(24.14_B2+21.20_merge) merge=389656dcf conflicts=0 verified=screen-mirror(259_descriptors,110_types),test:tools_2357,check-objectscript_0,LOADERRORS=0,ClaimReach,ProposalConfirm,ReadTool,Descriptor,ToolRoundTrip,ToolEmit,DatabaseActionsGate,Navigation_green note=runner_sweep_on_02855fa44_stopped_at_shard_5(all_green)
 2026-11-20T20:19:58Z	Story 21.21	code_head_pushed	sha=389656dcf run=44810355489 missing=none note=supersedes_02855fa44(run_44803204811)
 2026-11-20T20:19:58Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=389656dcf started=2026-11-20T20:19:58Z dir=e21u/21-21/gate attempt=3
+2026-11-20T20:56:10Z	Epic 21	owner_decisions	vetoes_kept=U-121,U-124,U-126,U-128 DW-2803=burndown(at_Epic_21_burn-down:add-only_AD-10_rule_refusing_cancel_of_OcuPilot's_own_processes+guard) DW-2806=burndown(WA-16_buildable_leaf_later_story;register_text_unchanged) via=Planner/orchestrator

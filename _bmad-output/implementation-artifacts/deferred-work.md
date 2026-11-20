@@ -14239,6 +14239,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: irislib/%CSP/Mgr/GatewayMgr.cls: 'an API used to control a Gateway from ObjectScript code' (Get/SetDefaultParams, Get/SetServerParams, GetSystemStatus); the row's own clear-probe ('cite the class') is met; exclusion-register.test.mjs pins the false reason
 - 2026-11-20T17:59:20Z status=decision-pending owner=burndown by=cr note=public register text was ruled (U-73): owner picks a true reason for not planned, or returns WA-16 to P3
+- 2026-11-20T20:56:10Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Plan it for a later story (Recommended)": WA-16 returns to the plan as a buildable leaf via %CSP.Mgr.GatewayMgr in a later story, which also removes the register sentence
 
 ### DW-2807: No test pins the Globals half of DatabasePort.ProtectedNamespaceDatabases, because no namespace on the test instance has separate globals and routines databases
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: low | fix-risk: med | footprint: in-story
