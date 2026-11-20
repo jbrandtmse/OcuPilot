@@ -2,8 +2,8 @@
 title: 'Story 21.21: Leaves that wait on the owner'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: 'd576e032e0da8e01cee1e7ef942f1fbb1830140b'
+status: 'done'
+baseline_revision: '979aec3a0facfdb156c2084419607845872d3ae7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -144,7 +144,7 @@ deferred: []
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI run 44790510586 (on `83e75a7f8`): `OcuPilot.Test.ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` is red: "the shipped classes naming <"OcuPilot.Kernel.Proposal.Confirm"> are exactly the expected ones" -- the review's `KernelConfirmClass` seam in `src/OcuPilot/Api/Confirm.cls` (:24) returns the confirm class's name as a quoted string, which is the dynamic route to the claim that `ClaimReach` exists to forbid. Fix the product, not the test: keep `ClaimReach`'s rows unchanged, remove the quoted name from every shipped class, and keep AC3's proof running the shipped `HandleConfirm` (for example, a seam whose default refers to the class by `##class()` and which only a test subclass overrides; read how `ClaimReach` and `AsTheUser.SitesNaming` scan before choosing). Run `ClaimReach`, `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `ProhibitedRoute`, `Envelope` and every class whose name starts with `Confirm`, one per call, and write a `mutation:` line for the changed assertion. [src/OcuPilot/Api/Confirm.cls, src/OcuPilot/Test/ConfirmRenderProbe.cls]
+- [x] [Review][HIGH] CI run 44790510586 (on `83e75a7f8`): `OcuPilot.Test.ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` is red: "the shipped classes naming <"OcuPilot.Kernel.Proposal.Confirm"> are exactly the expected ones" -- the review's `KernelConfirmClass` seam in `src/OcuPilot/Api/Confirm.cls` (:24) returns the confirm class's name as a quoted string, which is the dynamic route to the claim that `ClaimReach` exists to forbid. Fix the product, not the test: keep `ClaimReach`'s rows unchanged, remove the quoted name from every shipped class, and keep AC3's proof running the shipped `HandleConfirm` (for example, a seam whose default refers to the class by `##class()` and which only a test subclass overrides; read how `ClaimReach` and `AsTheUser.SitesNaming` scan before choosing). Run `ClaimReach`, `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `ProhibitedRoute`, `Envelope` and every class whose name starts with `Confirm`, one per call, and write a `mutation:` line for the changed assertion. [src/OcuPilot/Api/Confirm.cls, src/OcuPilot/Test/ConfirmRenderProbe.cls]
 
 Code review 2026-11-20 (Batches 1, 2 and 4; full-opus, four layers; 33 rows, 14 entries: 0 high, 5 med, 9 low). Patches applied, uncommitted.
 
@@ -169,6 +169,12 @@ Rejected: the INTERNAL branch reaching `REASONTOOLUNAVAILABLE` (false: `RenderRe
 - 2026-11-20, orchestrator ruling on the Batch 5 halt: SH-27 (Batch 5, AC6 to AC17) is split to Story 21.37 (epics.md, add-only, with an amended note on this story); owner answer U-74 carries to it. This story closes with Batches 1, 2 and 4; Batch 3 is not built under Task 0 (b)'s decision rule and DW-2348 is closed `wontfix-accepted` with its `reopen_if`. Batch 5's strings are ruled for 21.37 (veto item) with two changes: the screen-replaces line reads "<screen> follows this page's resource and will require it from the next request.", and the clear warning reads "After this, the page needs no custom resource."
 
 ## Review Triage Log
+
+### 2026-11-20 — Review pass (rework 1, the `KernelConfirm` seam)
+
+- verdicts: 0 findings — high 0, medium 0, low 0, false 0, maybe-false 0
+- findings:
+  - (none) verification-gap reported no gaps; intent-alignment described the diff as removing the quoted name with a static-call seam (`ClaimReach` rows untouched, the proof still through `HandleConfirm`) and filed no divergence.
 
 ## Design Notes
 
@@ -289,6 +295,7 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 - mutation: AC1, `OWNSETRESOURCE` and its `PrivilegePairs` override restored on `DatabaseDismount` -> `DatabaseActionsGate` red (`TestAnOperateOnlyDismountWritesAndAProtectedOneIsRefusedBySet` and `TestExactlyTheDeclaredPairsWriteOnBothCallers`).
 - mutation: AC2, the dismount branch of `Prohibited.Database` passes `pFromConfig` 0 -> `DatabaseActionsProhibited.TestTheDismountJudgesTheSetWithoutTheAdminRoutes` red.
 - mutation: AC3 (Batch 2), `Api.Confirm.RenderRefusal` ignores `pReason` -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (`ConfirmRoute` stays green: it cannot arm the fixture); and `Kernel.Proposal.Confirm.Transition`'s write-failure branch drops its `pReason` assignment -> `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned` and the same test red. Both reverted with Edit (`git diff` shows only the intended change) and the source reloaded.
+- mutation (rework 1): AC3, `Api.Confirm.HandleConfirm` drops `tReason` from its `RenderRefusal` call -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (run 314), through the `KernelConfirm` seam that `ConfirmRenderProbe` overrides; and `Api.Confirm.KernelConfirm` calls the confirm class by a quoted name -> `ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` red (run 315). Reverted with Edit (`cmp` identical) and reloaded.
 - mutation (code review): AC3, `Api.Confirm.HandleConfirm` drops `tReason` from its `RenderRefusal` call -> `ProposalConfirm.TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence` red (run 917); and `RenderRefusal`'s internal branch drops `pDetail` -> `ReadBackRoute.TestAnUnnamedVendorFailureAfterTheClaimStaysGenericOverTheWire` red (run 918). Reverted (`cmp` identical) and reloaded.
 - mutation (code review): AC2, `DatabasePort.ConfigDirectories` refuses on a missing name -> `DatabaseActionsProhibited.TestTheConfigurationReadsSkipAMissingNameAndRestoreTheNamespace` red alone (run 919). Reverted (`cmp` identical) and reloaded.
 - mutation: AC5 (Batch 4), the SH-28 row removed from the register -> `exclusion-register.test.mjs` red (the catalog-P4 test, the extract-position test and the new not-planned test; 15 pass, 3 fail); restored with Edit, `cmp` against the pre-mutation copy identical, 18 pass.
@@ -312,4 +319,6 @@ Mutations run (Batch 1, `ocupilot-ci`), each reverted with Edit (checksums equal
 Status: done
 Blocking condition: none (lead, 2026-11-20: Batch 5 split to Story 21.37 by the orchestrator's ruling; this story's scope is Batches 1, 2 and 4, built below)
 
-This pass (2026-11-20, baseline d576e032e): Task 0 measured on `ocupilot-ci`, (a) PASS and (b) FAIL (see "Task 0 results"). Committed: Batch 1 `db22ccb70` (DW-1850, AC1 and AC2), Batch 2 `d0b4d7101` (DW-1280, AC3), Batch 4 `e7f4b799d` (AC5). Batch 3 (DW-2348, AC4) is not built: the header removed the opener but not the stored token pair, so DW-2348 closes `wontfix-accepted` with a `reopen_if` naming the pair check. Batch 5 (AC6 to AC17) and its strings are written above and not built. Verification run on the committed tree: every Database test class (11), `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `Static`, `ScreenGrounding`, `DraftRegistry`, `Prohibited`, `PortGate` green; `exclusion-register.test.mjs`, `npm run test:tools`, `check-objectscript.py` and `lint-docs.sh` clean. Not run: the full ObjectScript sweep and the code-review layers, which follow Batch 5.
+Rework 1 (2026-11-20, baseline 979aec3a0): the CI red on `ClaimReach` is closed. `Api.Confirm.KernelConfirmClass` (a quoted class name) is replaced by a private `KernelConfirm` that calls `##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(...)`; `Test.ConfirmRenderProbe` overrides `KernelConfirm` to call `ConfirmFixture`, so AC3's proof still runs the shipped `HandleConfirm`. `ClaimReach` is unchanged. Verified on `ocupilot-ci`, one class per call: `ClaimReach` 2/2, `ProposalConfirm` 25/25, `ConfirmRoute` 7/7, `ReadBackRoute` 6/6, `ProhibitedRoute` 24/24, `Envelope` 17/17; `check-objectscript.py` clean; two mutations observed red and reverted (see `## Verification`). Review: verification-gap and intent-alignment filed nothing, so no patches and no deferrals; follow-up review recommendation `false` (nothing patched).
+
+First pass (2026-11-20, baseline d576e032e): Task 0 measured on `ocupilot-ci`, (a) PASS and (b) FAIL (see "Task 0 results"). Committed: Batch 1 `db22ccb70` (DW-1850, AC1 and AC2), Batch 2 `d0b4d7101` (DW-1280, AC3), Batch 4 `e7f4b799d` (AC5). Batch 3 (DW-2348, AC4) is not built: the header removed the opener but not the stored token pair, so DW-2348 closes `wontfix-accepted` with a `reopen_if` naming the pair check. Batch 5 (AC6 to AC17) and its strings are written above and not built. Verification run on the committed tree: every Database test class (11), `ProposalConfirm`, `ConfirmRoute`, `ReadBackRoute`, `Static`, `ScreenGrounding`, `DraftRegistry`, `Prohibited`, `PortGate` green; `exclusion-register.test.mjs`, `npm run test:tools`, `check-objectscript.py` and `lint-docs.sh` clean. Not run: the full ObjectScript sweep and the code-review layers, which follow Batch 5.

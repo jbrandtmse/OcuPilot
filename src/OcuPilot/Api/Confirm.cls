@@ -18,10 +18,11 @@ ClassMethod CallerUsername() As %String
     Quit $Username
 }
 
-/// <p>The kernel class <method>HandleConfirm</method> delegates the confirm to.</p>
-ClassMethod KernelConfirmClass() As %String [ Private ]
+/// <p>The call <method>HandleConfirm</method> delegates the confirm to:
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Confirm</method>, with its arguments and answers.</p>
+ClassMethod KernelConfirm(pId As %String, pBody As %DynamicObject, pUser As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject, Output pReason As %String) As %Status [ Private ]
 {
-    Quit "OcuPilot.Kernel.Proposal.Confirm"
+    Quit ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(pId, pBody, pUser, .pResult, .pHttpStatus, .pCode, .pDetail, .pReason)
 }
 
 /// <p>Answer <code>POST /proposal/:id/confirm</code>: claim proposal <var>pId</var> for the caller
@@ -46,7 +47,7 @@ ClassMethod HandleConfirm(pId As %String) As %Status
             Set tSC = ..RenderBadBody()
             Quit
         }
-        Set tConfirmSC = $ClassMethod(..KernelConfirmClass(), "Confirm", pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail, .tReason)
+        Set tConfirmSC = ..KernelConfirm(pId, tBody, ..CallerUsername(), .tResult, .tHttpStatus, .tCode, .tDetail, .tReason)
         If $$$ISERR(tConfirmSC) {
             Set tSC = ..RenderRefusal(tConfirmSC, tHttpStatus, tCode, tDetail, tReason)
             Quit

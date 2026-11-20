@@ -8,9 +8,9 @@
 Class OcuPilot.Test.ConfirmRenderProbe Extends OcuPilot.Api.Confirm
 {
 
-ClassMethod KernelConfirmClass() As %String [ Private ]
+ClassMethod KernelConfirm(pId As %String, pBody As %DynamicObject, pUser As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject, Output pReason As %String) As %Status [ Private ]
 {
-    Quit "OcuPilot.Test.ConfirmFixture"
+    Quit ##class(OcuPilot.Test.ConfirmFixture).Confirm(pId, pBody, pUser, .pResult, .pHttpStatus, .pCode, .pDetail, .pReason)
 }
 
 ClassMethod DispatchRequest(pUrl As %String, pMethod As %String) As %Status
