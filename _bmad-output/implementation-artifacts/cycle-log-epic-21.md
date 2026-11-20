@@ -795,3 +795,6 @@
 2026-11-20T13:02:17Z	Story 21.20	ci_red_classified	run=44731774131 sha=35af0290b defects=ScreenGrounding,ProposalConfirm(rosters) flake=a11y-structural-invariants(DW-1822,routed_21-23)
 2026-11-20T13:02:17Z	Story 21.20	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ScreenGrounding,ProposalConfirm scope_baseline=13c966c3b note=13c966c3b_not_pushed;pushed_with_the_rework_head
 2026-11-20T13:02:22Z	Story 21.20	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T13:02:22Z model=sonnet agent_name=21-20-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a5ef2ff1e)
+2026-11-20T13:23:34Z	Story 21.20	dev_complete	scope=rework1(test_shapes:ScreenGrounding,ProposalConfirm;no_product_change) build_sha=bdee5d94e followup_review_recommended=false cycle_iteration=2
+2026-11-20T13:23:34Z	Story 21.20	code_head_pushed	sha=bdee5d94e run=44743879162 missing=none includes=13c966c3b(review_patches)
+2026-11-20T13:23:34Z	Story 21.20	gate_step	step=fresh_check+full_sweep+smoke head=bdee5d94e started=2026-11-20T13:23:34Z dir=e21u/21-20/gate
