@@ -538,3 +538,4 @@
 2026-11-20T04:32:50Z	Epic 24	ci_resolved	sha=4fd03cd10(integrate-only_M) runs=44669283267 result=success
 2026-11-20T04:32:50Z	Story 24.14	review_complete	spawn_at=2026-11-20T04:03:00Z model=opus layers=4(full-opus) findings=22(high0,med4,low17,false1) patched=5(agent_pivot_read_gate) deferred=4 rejected=13 intent_gap=0 commit=8e9b269c4 scope=batch1
 2026-11-20T04:32:50Z	Story 24.14	ledger_adjudicated	routed_burndown=DW-2789,DW-2790,DW-2791 born_terminal=DW-2792 scope=batch1 model=claude-opus-5-5
+2026-11-20T04:33:09Z	Story 24.14	fresh_check_started	throwaway=ocupilot-b-ci tree=8e9b269c4
