@@ -789,3 +789,5 @@
 2026-11-20T10:44:20Z	Story 21.20	bash_edit_scan	agent=ae45c6d5e hits=2 verdict=no_tracked_edit(empty_python_heredoc_then_grep;sed_-i_on_/dev/null) action=none
 2026-11-20T11:57:40Z	Story 21.20	dev_complete	scope=all_batches build_sha=35af0290b model=sonnet followup_review_recommended=true new_strings=sqlActivityEmptyAgent,systemAlertsEmptyAgent(escalated) positions=38,39 armed_class=SystemAlertsWrite(OCUPILOT_ALLOW_ALERT_RESET)
 2026-11-20T11:57:40Z	Story 21.20	code_head_pushed	sha=35af0290b run=44731774131 missing=none
+2026-11-20T11:58:29Z	Story 21.20	ruling	question=empty_agent_strings via=orchestrator choice=accepted_verbatim veto=U-126
+2026-11-20T11:58:29Z	Story 21.20	stage_spawned	stage=code-review spawn_at=2026-11-20T11:58:29Z model=opus agent_name=21-20-code-review cycle_iteration=1 prior_lines_ended=verified
