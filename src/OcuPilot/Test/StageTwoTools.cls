@@ -298,6 +298,8 @@ XData Elsewhere
 <screen name="ServiceForm"/>
 <screen name="ServiceList"/>
 <screen name="SqlActivityList"/>
+<screen name="SystemAlertsList"/>
+<screen name="TransactionList"/>
 <screen name="SslConfigList"/>
 <screen name="SslForm"/>
 <screen name="SystemUsage"/>

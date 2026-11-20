@@ -344,6 +344,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['interop-message', 'integerset'],
     // Story 21.2: a database on the backup list is named without regard to case.
     ['backup-database', 'foldcase'],
+    // Story 21.20: the instance's system alert state is one object.
+    ['system-alerts', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -3366,7 +3368,7 @@ test('Story 18.11: Prometheus metrics reads through the monitor port, the fourte
 // instance's registry gives it there.
 // Mutation (Rule 19): let the monitor arm of `readProblem` admit any endpoint -> the endpoint cases go red.
 test('Story 18.37: the monitor source admits its four endpoints and refuses another endpoint, type and key, and the corpus agrees', () => {
-  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact'], 'the port declares its four endpoints');
+  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact', 'Transactions', 'Alerts'], 'the port declares its six endpoints (Transactions and Alerts joined in Story 21.20)');
   const corpus = testCorpus(['Test', 'InteropUsageDescriptor.cls'], 'Cases');
   let refusals = 0;
   let sound = 0;

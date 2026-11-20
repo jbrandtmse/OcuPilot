@@ -183,6 +183,9 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
+  'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
+  'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },
   // Story 24.13 Batch 2: Analytics' General settings' Set value, which opens the page's dialog (the key's own action is sent from it), and Worklists' Show and Hide.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': { set: STRINGS.interopItemSettingSetAction, setkey: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.AnalyticsWorklistList': { show: STRINGS.oauthRegisteredClientShow, hide: STRINGS.oauthRegisteredClientHide },

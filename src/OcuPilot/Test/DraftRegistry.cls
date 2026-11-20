@@ -300,6 +300,8 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     If tType = "pct-class-access" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#PCTTARGETID))
     ; A security recommendation's id is its type, its element and its code, which the advisor port renders no script for unless it splits into three (Story 21.19).
     If tType = "security-recommendation" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Roles", " ", "AuditCount"))
+    ; A running SQL statement's id is its server, its process and its statement hash, which the SQL activity port renders no script for unless it splits into three (Story 21.20).
+    If tType = "sql-statement" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild($ClassMethod("OcuPilot.Port.SqlActivityPort", "LocalServer"), 4242, "OcuPilotDraftHash"))
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }

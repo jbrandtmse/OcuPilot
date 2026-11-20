@@ -2,15 +2,29 @@
 title: 'Story 21.20: OS management and log leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'in-progress'
-baseline_revision: '57f19f9f8eef7d0b941614c3379901309447be1b'
+status: 'done'
+baseline_revision: '698a53cffd9dc1b9a3f5a00f0998cf5b037d040a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-10-the-remaining-leaves-across-the-six-areas.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      LogSourcePort.OffsetAtUtc delegation to the ledger is unfalsifiable on a UTC instance; a Quit 0 body passes the corpus equality.
+    evidence: |-
+      LogSourceClock compares the shipped offset to Ledger.OffsetAtUtc, both 0 on a UTC throwaway. Closing it needs an overridable seam on the ledger, outside this story. AC6's direction test through the probe is met.
+    location: >-
+      src/OcuPilot/Port/LogSourcePort.cls, src/OcuPilot/Test/LogSourceClock.cls
+    severity: low
+  - summary: >-
+      The alerts reset tests never hold AlertCount above 0 beforehand, so a cleared count is shown only as 0 after the reset.
+    evidence: |-
+      SetState(2) raises the state but not the count (measured by the implementation pass). Would be settled by a way to raise the count on ocupilot-ci, then asserting count above 0 before the reset.
+    location: >-
+      src/OcuPilot/Test/SystemAlertsWrite.cls, ui/browser/system-alerts.browser-spec.mjs
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -166,6 +180,34 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-20 — Review pass
+
+- verdicts: 23 findings — high 0, medium 8, low 14, false 1, maybe-false 0
+- findings:
+  - `[medium]` `patch` P1 real `TransactionNodes`/`MonitorRunning` bodies never run with data (fixture overrides both; live leg compares empty to empty) — add a subclass overriding the node parameters with private subscripts and assert the real rows.
+  - `[medium]` `patch` P2 `Error.ReasonForToolCode` lines for `SQLACTIVITY.`/`MONITOR.` and the refusal codes unpinned through a caller — add the `ReasonForToolCode` loop, a remote-row and a NOPRIVILEGE leg through the screen action and the confirm, a refused cancel leaves no marker, and a monitor-off tool read.
+  - `[medium]` `patch` P3 AC1 "the person's records none" not asserted for cancel or reset — assert the agent marker count is 0 around the screen action in both classes.
+  - `[medium]` `patch` P4 mint-then-confirm drift legs (cancel: statement ended; reset: state or count moved) untested — add one leg each; assert refusal and no vendor call.
+  - `[medium]` `patch` P5 cancel script form pinned for existence only — assert the pid and hash literals, `CancelQuery(`, and the remote id's single comment step.
+  - `[medium]` `patch` P6 transactions browser leg 1 cannot detect its named mutation (header assertion only in the rows branch) — assert the headers in leg 2.
+  - `[medium]` `patch` P8 `TestTheKeyGovernsTheCancel` separator leg asserts no code and its `Gone` assertion cannot fail — assert the refusal code and drop or fix the vacuous assertion.
+  - `[low]` `defer` `LogSourcePort.OffsetAtUtc` delegation unfalsifiable on a UTC instance (a `Quit 0` body passes) — closing it needs an overridable seam on `Ledger.OffsetAtUtc`, a ledger edit outside this story; AC6's direction test is met.
+  - `[low]` `patch` P9/P10/P12 `## Verification` lacks observed mutations for `SqlActivityCancelPrivilege`, the reset key at `false`, and the monitor port's gate — observe each, revert, write the lines.
+  - `[low]` `patch` P11 live non-atomic comparisons (`alerts.log` equality, `State() = "0|0"` straight after reset) can flake — compare `>=` for the log and read state and count from the same read.
+  - `[low]` `reject` `TransactionNodes` swallows a failed global read as an empty list — the classic page reads the same node with no error path; a failure shows the empty state, not wrong data.
+  - `[low]` `reject` `SqlActivityPort.Statement` looks among the first 1000 rows — the list read has the same cap and reports it; the classic page lists the same set.
+  - `[false]` `reject` `MonitorPort.Transactions` stops at `pMax` without reporting a cut — the read layer sets `truncated` (asserted as 1 in `TestTheReadAnswersLocalThenRemote...`).
+  - `[low]` `reject` auditor: reset row action drawn for an Operate-only user whom the port then refuses — the 2026-11-20 ruling sets the reset's `WRITEPAIRS`; the refusal names the pair.
+  - `[low]` `reject` auditor: `SQLACTIVITY.NOPRIVILEGE` is not in the intent — added by the 2026-11-20 ruling, sentence accepted verbatim.
+  - `[low]` `reject` auditor: Transactions rows carry an extra boolean `Remote` and a mapped `Status` — the client's `rowTarget.unless` reads a true field; recorded under Decided in-stage.
+  - `[medium]` `defer` auditor: the reset legs never hold `AlertCount > 0` beforehand (`SetState(2)` raises the state only), so "count cleared" is shown only as 0 after (unverified; settle by finding a way to raise the count on `ocupilot-ci`).
+  - `[low]` `reject` auditor: "no Cancel drawn" for a remote row is pinned by the descriptor rule and a unit test, with no rendered remote row — a remote row cannot be made on a throwaway; a stubbed leg would assert the stub.
+  - `[low]` `reject` auditor: the Local ProcessID link is checked as present, never clicked — Process details is pinned by its own screen's specs.
+  - `[low]` `reject` auditor: the live Transactions leg compares empty to empty — same root cause as P1, closed there.
+  - `[low]` `reject` auditor: remote, ended and no-privilege refusals are port-seam only — same root cause as P2, closed there.
+  - `[low]` `reject` auditor: "confirm: changed or absent" for an ended statement untested — same root cause as P4, closed there.
+  - `[low]` `reject` auditor: the alerts.log check reads equality — same root cause as P11, closed there.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, AD-8, AD-10, AD-12/AD-39, AD-14, AD-15, AD-21 (DW-1856 below), AD-23, AD-29, AD-36, AD-44, AD-51, AD-52, AD-53, AD-58.
@@ -195,6 +237,16 @@ deferred: []
 - Positions 33 and 34. `classicPage ""` for System alerts.
 - The epic context is reused as the runner instructed, although `epics.md` and the spine are newer by modification time.
 - Contention: `stage-common.md` names Epic 22, but neither `origin/OCU-1-epic22` nor its worktree exists. Epic 24 is the concurrent epic. Its worktree holds uncommitted `InteropPort.cls` and `scripts/ci-throwaway.sh` edits, so `InteropPort` is untouched and the script is add-only.
+
+**Decided in-stage (implement pass, 2026-11-20):**
+
+- Positions 38 and 39, the next free: 33 to 37 are taken.
+- `SqlActivityCancel` declares `CHANGEACTION` `deleted` (the vocabulary is created, updated, deleted, and the read-back is the row's absence); its fingerprint subject also covers the card's rows (`UserName`, `Namespace`, `Statement`), and `SystemAlertsReset`'s also covers `StateText`, so the prohibited sweep reads no card row as a change.
+- `MonitorPort.Alerts` answers `GET` (the one row as an object) for the reset's fresh read, beside `LIST`. A Transactions row also carries a boolean `Remote`, which the client's `rowTarget.unless` reads; `unless` cannot test a `Kind` string.
+- Both new screens carry the generic page's Actions column; System alerts reuses `explorerSqlDataNoRows` as its empty state, and takes two reused prompts to reach the three the registry requires.
+- Two strings the spec's list lacks, which the mirror's write-capable empty state needs: `sqlActivityEmptyAgent` "cancel a running SQL statement" and `systemAlertsEmptyAgent` "reset the system alerts", on the pattern of the sibling screens' lines. They are Fixed strings rows and await a ruling.
+- The armed class `SqlActivityCancelPrivilege` joins `OCUPILOT_ALLOW_PRINCIPALS`'s class list; `SystemAlertsWrite` takes `OCUPILOT_ALLOW_ALERT_RESET`.
+- `SetState(2)` raises the state with no alert count, so the reset's tests arrange the state and read the count back as 0.
 
 **Declined DW-1856:** setting the four language-server paths changes AD-21's clause "shown, never set". It also needs a reworded caption, a choice for clearing a value, and a choice for overwriting `LogFile`. Each of those is an AD amendment or a new string, which no owner answer covers in this unattended run. Recommend the runner escalate it, with a re-own to 21.21 at the owner's word.
 
@@ -245,12 +297,19 @@ Shared surfaces (each is in the `(loop)` set; the implement stage greps `ui/brow
 
 Every test added or changed passes on a fresh environment, in either order. Each pinning test records `mutation:` lines here:
 
-- AC1: drop the `Remote` refusal.
-- AC2: drop `SCREENACTIONS`.
-- AC3: swap the `Kind` mapping.
-- AC4: skip `Clear()`.
-- AC5: the key fallback.
-- AC6: the offset's sign.
+- AC1: mutation: drop the `Remote` refusal in `SqlActivityPort.Statement` -> `SqlActivityCancel.TestARemoteRowIsRefusedBeforeTheVendor` red (observed, reverted, reloaded). The no-privilege and own-statement legs are `SqlActivityCancelPrivilege` (armed).
+- AC1 (`SqlActivityCancelPrivilege`, armed): mutation: map #5521 to 500 in `SqlActivityPort.Statement` -> `TestAnotherUsersStatementNeedsThePrivilege` red (observed on `ocupilot-ci`, reverted, reloaded).
+- AC1 (new legs in `SqlActivityCancel`): mutation: drop the `SQLACTIVITY.` branch of `Error.ReasonForToolCode` -> `TestEachRefusalCodeResolvesToItsSentence` red; drop `StatementId` from the cancel's `FINGERPRINTSUBJECT` and make `Started` its `PRECONDITIONFIELD` -> `TestAConfirmAfterTheStatementEndedOrMovedIsRefusedBeforeTheVendor` red; skip the `IsRemote` branch of `SqlActivityPort.Snippet` -> `TestTheScriptFormIsTheVendorCallForTheRowsOwnProcessAndStatement` red (each observed, reverted, reloaded).
+- AC2: mutation: `SCREENACTIONS ""` on `DeviceDelete` -> `DeviceWire.TestTheListsDeleteRowActionRemovesADevice` red (observed, reverted, reloaded).
+- AC3: mutation: swap the `Local`/`Remote` loop order in `MonitorPort.Transactions` -> `TransactionsRead.TestTheReadAnswersLocalThenRemoteWithTheMappedStatus` red (observed, reverted, reloaded).
+- AC4: mutation: skip `Do $SYSTEM.Monitor.Clear()` in `Harvest.Alerts.AlertsManage` -> `SystemAlertsWrite.TestBothCallersResetTheAlerts` red (observed on `ocupilot-ci` with `OCUPILOT_ALLOW_ALERT_RESET` set through `docker exec -e`, reverted, reloaded).
+- AC5: mutation: `osmgmt.sqlactivity.cancel` `false` in `Baseline.cls` -> `SqlActivityCancel.TestTheKeyGovernsTheCancel` and the both-callers leg red (observed, reverted, reloaded).
+- AC5 (reset): mutation: `osmgmt.systemalerts.reset` `false` in `Baseline.cls` -> `SystemAlertsWrite.TestTheKeyGovernsTheReset`, `TestBothCallersResetTheAlerts` and `TestAConfirmAfterTheStateMovedIsRefusedAndResetsNothing` red (observed on `ocupilot-ci` with `OCUPILOT_ALLOW_ALERT_RESET` set through `docker exec -e`, reverted, reloaded).
+- AC4 (drift): mutation: skip the fingerprint comparison in `Kernel.Proposal.Confirm.FingerprintMatches` -> `SystemAlertsWrite.TestAConfirmAfterTheStateMovedIsRefusedAndResetsNothing` red (observed, reverted, reloaded).
+- AC3 (`TransactionsRead`): mutation: skip the gate refusal for the Transactions endpoint in `MonitorPort.Invoke` -> `TestAMissingPairIsRefusedByName` red; read `secs` in place of `pid` in `MonitorPort.TransactionNodes` -> `TestTheRealNodeReaderReadsTheRowsTheGlobalHolds` red; drop the `MONITOR.` branch of `Error.ReasonForToolCode` -> `TestTheMonitorOffReadToolAnswersItsSentence` red (each observed, reverted, reloaded).
+- AC3 (browser): mutation: the `Seconds` column's label key pointed at another key in the mirror -> `transactions.browser-spec.mjs` leg 2 red and leg 1 green (observed against a rebuilt bundle, reverted, rebuilt, redeployed).
+- AC6: mutation: subtract in place of add in `LogSourcePort.LocalFromUtc` -> `LogSourceClock.TestAUtcInstantReadsTwoHoursLaterOnTheLocalClock` red (observed, reverted, reloaded).
+- Client: `self-protection.test.mjs` pins `sql-statement-remote` and the four refusal sentences against EXPERIENCE.md; the browser specs (`sql-activity`, `devices`, `transactions`, `system-alerts`) carry their own `mutation:` comments.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
@@ -264,7 +323,20 @@ Every test added or changed passes on a fresh environment, in either order. Each
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- Task 0 (a): canceling another user's statement needs the SQL admin privilege `%CANCEL_QUERY`, which is not a resource:permission pair, so `SqlActivityPort.PAIRS` and `WRITEPAIRS` cannot express it (measured on `ocupilot-ci`, Design Notes). The vendor answers #5521 / SQLCODE -99 with every pair tried. Needs an owner ruling: gate on `PAIRS` and map -99 to a 403 `SQLACTIVITY.*` code with a new ruled reason string (recommended, inference), or another approach; granting `%CANCEL_QUERY` to a role is a privilege grant. Also for Batch 2: `Clear()` needs `%Admin_Manage:USE` (+ `%DB_IRISSYS:READ`), a pair beyond `PAIRS`.
+Status: done
+Blocking condition: none
 
-Work done: Task 0 (a), (b), (c) measured and recorded under Design Notes. No code written; Batches 1 to 3 not started.
+**Change (this pass, all three batches under the 2026-11-20 rulings).**
+
+- Batch 1: SQL activity cancel (`SqlActivityPort` `ROW`/`CANCEL`, `SqlActivityError` with `REMOTE`, `ENDED`, `NOPRIVILEGE`, `osmgmt.sqlactivity.cancel`, the `sql-statement-remote` self-protection rule) and the Devices delete row action.
+- Batch 2: Transactions and System alerts screens, `MonitorPort` `Transactions`/`Alerts` (`LIST`, `GET`, `RESET`), `Harvest.Alerts`, `osmgmt.systemalerts.reset`, the `system-alerts` entity type, `OCUPILOT_ALLOW_ALERT_RESET`.
+- Batch 3: `LogSourcePort.OffsetAtUtc` seam with `LogSourceClockProbe` and `LogSourceClock`.
+- New test classes: `SqlActivityCancel`, `SqlActivityCancelPrivilege` (armed), `TransactionsRead`, `SystemAlertsRead`, `SystemAlertsWrite` (armed), `LogSourceClock`; fixtures `TransactionsNodeProbe`, `SeamSqlActivityCancel`, `SeamSqlActivityActionFixture`. Browser specs: `sql-activity` and `devices` legs, new `transactions` and `system-alerts`.
+
+**Review.** 23 findings: 8 medium, 14 low, 1 false. Patched: 7 mediums (P1-P6, P8) and the low `mutation:`/flake rows (P9-P12), with the extra mutations observed red and reverted. Deferred: 2 (the shipped `OffsetAtUtc` delegation on a UTC instance; no alert count above 0 before the reset). Rejected with reasons: see the Review Triage Log.
+
+**Verification.** `LOADERRORS=0`; every shared-surface class and the story's classes green one at a time on `ocupilot-ci` (the implement pass's list; after the review patches `SqlActivityCancel` 9/9, `TransactionsRead` 9/9, `SystemAlertsWrite` 3/3 armed, `SystemAlertsRead` 6/6, `SqlActivityCancelPrivilege` 2/2 before its mutation); `transactions` browser spec 2/2; `npm run build` within budget (initial 2.19 MB); `test:tools` 2355/2355; `test:components` 3709/3709 (implement pass); `check-objectscript` 0 problems; `lint-docs` exit 0; `smoke.sh` 50/50. The full ObjectScript sweep and the full browser suite are the runner's and CI's.
+
+**Follow-up review recommended: true.** Seven medium patches landed, all in tests; the unverified risk is the reset's count: nothing raises `AlertCount` above 0 on the throwaway, so "count cleared" is shown only as 0 after the reset (deferred).
+
+**For the owner's veto window.** Two Fixed strings the spec's list lacks, required by the mirror's write-capable empty state: `sqlActivityEmptyAgent` "cancel a running SQL statement" and `systemAlertsEmptyAgent` "reset the system alerts", in `strings.ts` and the EXPERIENCE.md Fixed strings row. Positions are 38 and 39, not 33 and 34 (33 to 37 were taken). A subagent of the implement pass ran one empty-heredoc `python3 -` and one `sed` on `/dev/null`; neither wrote a file.
