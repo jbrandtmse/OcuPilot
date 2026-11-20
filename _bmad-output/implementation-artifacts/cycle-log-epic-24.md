@@ -577,3 +577,5 @@
 2026-11-20T12:07:32Z	Story 24.14	dev_blocked	scope=batch3 condition=intent_gap(Task0:_unmatched_close_brace_injects_members_beyond_line-start_guard)
 2026-11-20T12:07:32Z	Story 24.14	ruling	question=PMML_text_guard_any_close_brace+TEXT_reason_string choice=refuse_any_close_brace category=veto inbox=U-127 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-20T12:07:32Z	Story 24.14	stage_spawned	stage=implement-resume spawn_at=2026-11-20T12:07:32Z model=sonnet agent_name=24-14-implement-batch3-resume cycle_iteration=3
+2026-11-20T12:32:57Z	Story 24.14	ci_red	sha=5fd4364a1 run=44729361774 failed=browser_shard1:analytics-links.browser-spec.mjs:AC1(stale_side_bar_list,deterministic) cause=fresh_check_spec_selection_by_area_not_label
+2026-11-20T12:32:57Z	Story 24.14	fix_pushed	sha=fa07e9126 run=44736623307 change=analytics-links_AC1_expects_PMML_models method=plumbing_commit(stage_holds_tree;hook_scans_working_tree) scope=batch2
