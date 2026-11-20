@@ -815,3 +815,4 @@
 2026-11-20T17:29:09Z	Story 21.21	ledger	DW-2348=wontfix-accepted(reopen_if_token_pair_check) by=21-21
 2026-11-20T17:31:04Z	Story 21.21	ruling	question=batch5 via=orchestrator choice=A(split_SH-27_to_21.37;U-74_carries) strings=ruled_for_21.37(2_changes;veto=U-128) epics=21.21_amended_note+21.37_added(add-only) tracker=21-37-page-resources:backlog test_tools=2356
 2026-11-20T17:31:04Z	Story 21.21	dev_complete	scope=B1,B2,B4(B3_not_built_by_rule;B5_split_to_21.37) build_sha=bd4ff1ed0 run=44783633783 followup_review_recommended=n/a
+2026-11-20T17:31:38Z	Story 21.21	stage_spawned	stage=code-review spawn_at=2026-11-20T17:31:38Z model=opus agent_name=21-21-code-review cycle_iteration=1 prior_lines_ended=verified(afc545ef8)
