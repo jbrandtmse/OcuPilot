@@ -598,3 +598,7 @@
 2026-11-20T18:36:03Z	Story 24.14	stage_spawned	stage=pre-warm spawn_at=2026-11-20T18:36:03Z model=opus agent_name=epic-24-context-prewarm-14 cycle_iteration=4 reason=planning_artifact_newer(EXPERIENCE.md_rows) scope=batch2b
 2026-11-20T18:38:12Z	Epic 24	epic_context_compiled	reason=planning_artifact_newer(EXPERIENCE.md_rows) model=claude-opus-5-5
 2026-11-20T18:38:12Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-20T18:38:12Z model=opus agent_name=24-14-plan-batch2b cycle_iteration=4 scope=batch2b_product_cancel
+2026-11-20T18:57:19Z	Story 24.14	story_created	spawn_at=2026-11-20T18:39:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-4.md build_status=ready-for-dev scope=batch2b_product_cancel measured=option_b_20/20_max0.109s(fast),0.010s(slowscan);option_a_20/20_max1.653s(luck)
+2026-11-20T18:57:19Z	Story 24.14	ruling	question=cancel_ends_own_recorded_job+drops_rows,temp_run_node,AD-7_wording choice=keep category=veto inbox=U-129 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T18:57:19Z	Story 24.14	spec_validated	scope=batch2b owned_ledger=none spec2_origin_fix=Cancel_sentence_replaced
+2026-11-20T18:57:19Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T18:57:19Z model=sonnet agent_name=24-14-implement-batch2b cycle_iteration=4 story_base=9fb5dca17 scope=batch2b
