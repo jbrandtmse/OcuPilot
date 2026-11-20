@@ -2,7 +2,7 @@
 title: 'Story 21.19: Shell, advisor, permission and task leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f6e5cc741b5cd175f4ea5311e442a64015a6734b'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -122,6 +122,8 @@ warnings: ['multiple-goals', 'oversized']
 - AC6. Given the default baseline, when the agent proposes any new write, then it mints and confirms; with its key `false`, the governance gate refuses it.
 
 ### Review Findings
+
+- [ ] [Review][HIGH] CI runs 44674547477 and 44682408366 (and the runner's fresh check): two tests this story's new screens broke. (1) `OcuPilot.Test.PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces`: "OcuPilot.Screen.Descriptor.ResourceList: and its one row action is Delete" — the Resources list now also declares export and import (PM-24). (2) `OcuPilot.Test.BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks`: "its other screens are open, and Background tasks is refused on its own pair" — a tasks-area screen this story added (the Task Manager email settings) changes what a tasks holder sees. Read each assertion and the story's change, update the test to the new shape (with names read from the instance, never recalled) or fix the product if the test caught a real defect, and say which. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `Permissions`, `BackgroundTasks`, `Tasks`, `Resource`, `Advisor` or `WebApp`, one per call. [src/OcuPilot/Test/PermissionsLists.cls, src/OcuPilot/Test/BackgroundTasksLive.cls]
 
 Code review 2026-11-20 (four layers, full-opus; 42 rows, 34 entries). Measured on `ocupilot-ci`; every roster class green before and after the patches.
 
