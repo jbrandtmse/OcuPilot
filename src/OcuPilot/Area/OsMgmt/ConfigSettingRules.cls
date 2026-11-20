@@ -20,6 +20,9 @@ Parameter DATATYPEPATTERN = "^%?[A-Za-z][A-Za-z0-9.]*(\(.*\))?$";
 /// <p>The longest whole number the rules read: a longer one is out of every range a setting declares.</p>
 Parameter MAXDIGITS As INTEGER = 15;
 
+/// <p>The highest port number the Task Manager email's <code>Port</code> takes.</p>
+Parameter MAXPORT As INTEGER = 65535;
+
 /// <p>The code of the refusal the set of the setting <var>pRow</var> describes to <var>pValue</var> meets, or
 /// <code>""</code> when it may run: a setting shown and never changed is <code>CONFIG.SETTING.READONLY</code>, a value
 /// its kind does not accept is <code>CONFIG.SETTING.VALUE</code>.</p>
@@ -27,10 +30,51 @@ ClassMethod Code(pEndpoint As %String, pRow As %DynamicObject, pValue As %String
 {
     If '$IsObject(pRow) || 'pRow.%IsA("%Library.DynamicObject") Quit ##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND
     If pRow.%Get("ReadOnly") Quit ##class(OcuPilot.Api.ConfigError).#SETTINGREADONLY
-    Set tLimits = ##class(OcuPilot.Port.ConfigPort).Limits(pEndpoint, pRow.%Get("Name"))
+    Set tLimits = ..Limits(pEndpoint, pRow.%Get("Name"), pRow)
     If tLimits = "" Quit ##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND
+    If pEndpoint = ##class(OcuPilot.Port.ConfigPort).#TASKMAILENDPOINT Quit ..TaskMailCode(pRow.%Get("Name"), tLimits, pValue)
     If '..ValueHolds(tLimits, pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
     Quit ""
+}
+
+/// <p>The code of the refusal the set of the Task Manager email setting <var>pName</var>, whose limits are <var>pLimits</var>, to
+/// <var>pValue</var> meets, or <code>""</code>: <code>Port</code> is empty or a whole number from 1 to
+/// <parameter>MAXPORT</parameter>; a subject and a message hold only text of the length the limits give, a subject no control character
+/// and a message none but a tab, a line feed or a carriage return, and only the <code>#(field)#</code> names the Task Manager substitutes
+/// (<code>CONFIG.SETTING.SUBSTITUTION</code>, judged by <code>%SYS.Task.Config.SubstitutionsValid</code>); any other name is judged by its
+/// kind.</p>
+ClassMethod TaskMailCode(pName As %String, pLimits As %List, pValue As %String) As %String
+{
+    If pName = "Port" {
+        If pValue = "" Quit ""
+        If ($ZStrip(pValue, "*C") '= pValue) || '$Match(pValue, "^[1-9][0-9]{0,4}$") || (+pValue > ..#MAXPORT) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+        Quit ""
+    }
+    Set tPrefix = $Extract(pName, 1, 7)
+    If (tPrefix '= "Subject") && (tPrefix '= "Message") {
+        If '..ValueHolds(pLimits, pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+        Quit ""
+    }
+    If $Length(pValue) > $ListGet(pLimits, 5) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+    Set tKeep = $Select(tPrefix = "Message": $Char(9, 10, 13), 1: "")
+    If $ZStrip(pValue, "*C", "", tKeep) '= pValue Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+    If '..SubstitutionsHold(pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGSUBSTITUTION
+    Quit ""
+}
+
+/// <p>Whether every <code>#(field)#</code> of <var>pText</var> is one the Task Manager substitutes, as <code>%SYS.Task.Config.SubstitutionsValid</code>
+/// judges it. Overridable so a fixture can show the rules ask the vendor; production never overrides it.</p>
+ClassMethod SubstitutionsHold(pText As %String) As %Boolean
+{
+    Set tBad = ""
+    Quit ''##class(%SYS.Task.Config).SubstitutionsValid(pText, .tBad)
+}
+
+/// <p>The limits of the setting <var>pName</var> of <var>pEndpoint</var> that <method>Code</method> judges a value by
+/// (<method>OcuPilot.Port.ConfigPort.Limits</method>); a rules class for another port overrides it, and may read the setting's row <var>pRow</var>.</p>
+ClassMethod Limits(pEndpoint As %String, pName As %String, pRow As %DynamicObject = "") As %List
+{
+    Quit ##class(OcuPilot.Port.ConfigPort).Limits(pEndpoint, pName)
 }
 
 /// <p>Whether <var>pValue</var> is one the limits <var>pLimits</var> (<method>OcuPilot.Port.ConfigPort.Limits</method>'s

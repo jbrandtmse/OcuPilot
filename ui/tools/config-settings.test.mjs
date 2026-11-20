@@ -25,6 +25,7 @@ const SENTENCES = [
   ['REASONSETTINGNOTFOUND', 'configRefusalNotFound'],
   ['REASONSETTINGREADONLY', 'configRefusalReadOnly'],
   ['REASONSETTINGVALUE', 'configRefusalValue'],
+  ['REASONSETTINGSUBSTITUTION', 'configRefusalSubstitution'],
   ['REASONSETTINGRESTART', 'encryptionStartupRestart'],
   ['REASONSETTINGPURGE', 'configSettingPurge'],
   ['ACCEPTSBOOLEAN', 'configAcceptsBoolean'],
@@ -38,6 +39,7 @@ const SENTENCES = [
   ['REASONMAPPINGTAKEN', 'configMappingTaken'],
   ['REASONMAPPINGNAME', 'configMappingName'],
   ['REASONMAPPINGDELETE', 'configMappingDelete'],
+  ['REASONNLSRELOAD', 'nlsDefaultReloadConsequence'],
 ];
 
 function stringValue(key) {

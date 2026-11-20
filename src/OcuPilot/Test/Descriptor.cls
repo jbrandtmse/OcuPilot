@@ -80,16 +80,34 @@ XData ReadShapes
 <screen name="StartupSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text,Restart:status"/>
 <screen name="MemorySettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text,Restart:status"/>
 <screen name="CompatibilitySettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text,Restart:status"/>
+<screen name="SystemSecuritySettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text,Restart:status"/>
+<screen name="PhoneProviderList" filter="Name,SMSGateway" sort="Name,SMSGateway" kinds="Name:name,SMSGateway:text"/>
+<screen name="SecurityAdvisorList" filter="Area,Element,Recommendation" sort="Area,Element,Recommendation,Ignored" kinds="Area:text,Element:name,Recommendation:text,Ignored:status"/>
+<screen name="TaskMailSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="SqlSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="SqlShellSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="TsqlSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="IsqlSettingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="DdlSystemMappingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
 <screen name="DdlUserMappingList" filter="Name,Value" sort="Name,Value" kinds="Name:name,Value:text"/>
+<screen name="NlsDefaultList" filter="Name,Value,Source" sort="Name,Value,Source" kinds="Name:name,Value:text,Source:status"/>
+<screen name="LocaleList" filter="Name,Description" sort="Name,Description" kinds="Name:name,Description:text,Current:status,Custom:status"/>
+<screen name="LocalePropertyList" filter="Group,Name,Value" sort="Group,Name,Value" kinds="Group:text,Name:name,Value:text"/>
 <screen name="MirrorMonitor" filter="MemberName,CurrentRole,CurrentStatus" sort="MemberName,CurrentRole,CurrentStatus" kinds="MemberName:name,CurrentRole:text,CurrentStatus:status,JournalLatency:text,DatabaseLatency:text"/>
 <screen name="AnalyticsCubeMeasuresTab" filter="Name,Caption,Type" sort="Name,Caption,Type,Hidden" kinds="Name:name,Caption:text,Type:text,Hidden:status"/>
 <screen name="AnalyticsCubeRelationshipsTab" filter="Name,RelatedCube" sort="Name,RelatedCube" kinds="Name:name,RelatedCube:text"/>
 <screen name="AnalyticsFolderItemList" filter="Name,Type,Owner" sort="Name,Type,Owner,Modified,Favorite" kinds="Name:name,Type:text,Owner:text,Modified:text,Favorite:status"/>
+<screen name="AnalyticsListingGroupList" filter="Name,Caption,Cubes,Class" sort="Name,Caption,Cubes,Class,Compiled,Listings" kinds="Name:name,Caption:text,Cubes:text,Compiled:status,Listings:number"/>
+<screen name="AnalyticsListingGroupListingList" filter="Name,DisplayName,Type,Fields,Source" sort="Name,DisplayName,Type,Source" kinds="Name:name,Type:text,Fields:text,Source:text,Description:text"/>
+<screen name="AnalyticsQualityMeasureList" filter="Name,Caption,SubjectArea,Class" sort="Name,Caption,SubjectArea,Published,Compiled,Groups" kinds="Name:name,Caption:text,SubjectArea:text,Published:status,Compiled:status"/>
+<screen name="AnalyticsQualityMeasureElementList" filter="Group,Name,Caption,MDX" sort="Group,Name,Caption" kinds="Group:name,Name:text,Caption:text,MDX:text"/>
+<screen name="AnalyticsQualityMeasureMetaList" filter="Name,Caption,Section,Content" sort="Name,Caption,Section" kinds="Name:name,Caption:text,Content:text"/>
+<screen name="AnalyticsSettingList" filter="Name,Value" sort="Name,Value,Stored" kinds="Name:name,Value:text,Stored:status"/>
+<screen name="AnalyticsWorklistList" filter="Page,Worklist,Class" sort="Page,Panel,Worklist,Shown" kinds="Page:name,Panel:number,Worklist:text,Shown:status"/>
+<screen name="AnalyticsRuntimeVariableList" filter="Name,Value,Comment,Context" sort="Name,Comment,Context" kinds="Name:name,Value:text,Comment:text,Context:text"/>
+<screen name="AnalyticsUserIconList" filter="Name,Path" sort="Name,Path" kinds="Name:name,Path:text"/>
+<screen name="AnalyticsFolderItemDefinitionTab" filter="Name,Type,Title,Cube" sort="Name,Type,Title,Owner,Modified,Cube" kinds="Name:name,Type:text,Title:text,Description:text,Owner:text,Modified:text,Cube:text,Rows:text,Columns:text,Measures:text,Filters:text,Calculated:text,MDX:text,Restriction:text"/>
+<screen name="AnalyticsDashboardWidgetsTab" filter="Title,Type,DataSource,LinkedTo" sort="Position,Title,Type,DataSource" kinds="Position:number,Title:text,Type:text,DataSource:name,LinkedTo:text"/>
 <screen name="AnalyticsTermListEntryList" filter="Key,Value,Fields" sort="Key,Value" kinds="Key:name,Value:text,Fields:text"/>
 <screen name="AnalyticsTermListList" filter="Name,Caption" sort="Name,Caption,Modified" kinds="Name:name,Caption:text,Modified:text"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
@@ -213,6 +231,7 @@ XData ReadShapes
 <screen name="SqlColumnPrivilegeList" filter="Column,Action,GrantedBy,GrantedVia" sort="Column,Action,GrantedBy,GrantedVia" kinds="Column:name,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlAdminPrivilegeList" filter="Privilege,GrantedVia" sort="Privilege,GrantedVia" kinds="Privilege:name,GrantOption:text,GrantedVia:text"/>
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
+<screen name="ExplorerGlobalList" filter="Name,Database" sort="Name,Database" kinds="Name:name,Database:identifier,Collation:text,Journal:text"/>
 <screen name="ExplorerCodeMetrics" filter="" sort="Documents,Lines" kinds="Documents:name,Lines:number,Code:number,CodePercent:number,SourceCode:number,TestCode:number,Comments:number,CommentPercent:number,Blank:number,BlankPercent:number"/>
 <screen name="ExplorerDocumentHashes" filter="Document,Hash" sort="Document,Modified" kinds="Document:name,Hash:text,Modified:text"/>
 <screen name="ExplorerNamespaceDiff" filter="Document,Change" sort="Document,Modified" kinds="Document:name,Change:text,Modified:text,OtherModified:text"/>
@@ -220,6 +239,8 @@ XData ReadShapes
 <screen name="ExplorerUnitTestRun" filter="Class,Method,Result" sort="Class,Method,Result,Duration" kinds="Class:identifier,Method:name,Result:status,Duration:number,Failure:text"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
+<screen name="TransactionList" filter="Kind,ProcessID,Status" sort="Kind,ProcessID,Seconds,Status" kinds="ProcessID:name,Kind:text,Seconds:number,Status:text"/>
+<screen name="SystemAlertsList" filter="StateText,LastAlert" sort="State,AlertCount" kinds="StateText:name,AlertCount:number,LastAlert:text"/>
 <screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>
 <screen name="InteropUsageVolumeTab" filter="Namespace,Type" sort="Namespace,Type,Volume" kinds="Namespace:name,Type:text,Volume:number"/>
 <screen name="InteropUsageImpactTab" filter="Database" sort="Database,DataCreated" kinds="Database:name,DataCreated:number"/>
@@ -505,7 +526,7 @@ Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTo
     Set tRead = $ClassMethod(tClass, "Read")
     Do $$$AssertTrue($IsObject(tRead), "the accessor answers its read")
     If $IsObject(tRead) Do $$$AssertEquals(tRead.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Security.Audit.Enabled"",""type"":""GET""}", "the single-object Security.Audit.Enabled GET")
-    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable,copy,purge", "its four row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable,copy,purge,export", "its five row actions")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "CommandAliases")), "auditing", "and its command alias")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/auditing"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.auditing"), tClass, "and so does the tool identifier its write tool's name opens with")
@@ -1836,7 +1857,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 89, "the closed vocabulary holds eighty-nine values -- mirror joined in Story 21.12, allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21, and encryption-key-file in Story 18.7, and database-encryption-keys and data-element-encryption-keys in Story 18.22, and encryption-startup in Story 18.23, and docdb-database in Story 19.17, and sql-statement in Story 19.10, and authentication-options in Story 18.8, and superserver in Story 18.25, and mft-connection in Story 18.26, and production in Story 20.2, and screen-permission in Story 20.15, and docdb-application in Story 18.30, and routine-application in Story 18.31, and production-item in Story 20.3, and production-item-setting in Story 20.22, and interop-queue, interop-message and interop-job in Story 20.4, and lookup-table, lookup-entry and business-partner in Story 20.5, and cube, term-list, term-list-entry and folder-item in Story 20.11; adding one is a deliberate edit here and in Kernel.EntityType, and backup-task and backup-database in Story 21.2, and startup-setting, memory-setting and compatibility-setting in Story 21.3, and sql-setting, sql-shell-setting, tsql-setting and isql-setting in Story 21.4, and system-ddl-mapping and user-ddl-mapping in Story 21.13")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 109, "the closed vocabulary holds one hundred and nine values -- system-alerts joined in Story 21.20 --task-mail-setting and security-recommendation joined in Story 21.19 --phone-provider and system-security-setting joined in Story 21.10 -- locale-property joined in Story 21.16 -- mirror joined in Story 21.12, allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21, and encryption-key-file in Story 18.7, and database-encryption-keys and data-element-encryption-keys in Story 18.22, and encryption-startup in Story 18.23, and docdb-database in Story 19.17, and sql-statement in Story 19.10, and authentication-options in Story 18.8, and superserver in Story 18.25, and mft-connection in Story 18.26, and production in Story 20.2, and screen-permission in Story 20.15, and docdb-application in Story 18.30, and routine-application in Story 18.31, and production-item in Story 20.3, and production-item-setting in Story 20.22, and interop-queue, interop-message and interop-job in Story 20.4, and lookup-table, lookup-entry and business-partner in Story 20.5, and cube, term-list, term-list-entry and folder-item in Story 20.11; adding one is a deliberate edit here and in Kernel.EntityType, and backup-task and backup-database in Story 21.2, and startup-setting, memory-setting and compatibility-setting in Story 21.3, and sql-setting, sql-shell-setting, tsql-setting and isql-setting in Story 21.4, and system-ddl-mapping and user-ddl-mapping in Story 21.13, and nls-default and locale in Story 21.14, and listing-group and listing-group-listing in Story 24.11, and global and global-node in Story 21.5, and quality-measure, quality-measure-element and quality-measure-meta in Story 24.12, and analytics-setting, analytics-worklist, analytics-runtime-variable and analytics-user-icon in Story 24.13, and dashboard-widget in Story 24.14")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -2012,11 +2033,12 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 /// red.</p>
 Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
 {
-    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess,EncryptionKeyFile|%Admin_FileSystemAccess,EncryptionKeyFileAdminList|%Admin_FileSystemAccess,EncryptionKeyFileForm|%Admin_FileSystemAccess"
+    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess,EncryptionKeyFile|%Admin_FileSystemAccess,EncryptionKeyFileAdminList|%Admin_FileSystemAccess,EncryptionKeyFileForm|%Admin_FileSystemAccess,SystemSecuritySettingList|%Admin_Manage,SecurityAdvisorList|%DB_IRISSYS:WRITE"
     Kill tExpect
     For tI = 1:1:$Length(tOwned, ",") {
         Set tEntry = $Piece(tOwned, ",", tI)
-        Set tExpect("OcuPilot.Screen.Descriptor." _ $Piece(tEntry, "|", 1)) = $Piece(tEntry, "|", 2) _ ":USE"
+        ; An entry that names its permission (the Security advisor's %DB_IRISSYS:WRITE) is taken as written; the others own the resource's USE pair.
+        Set tExpect("OcuPilot.Screen.Descriptor." _ $Piece(tEntry, "|", 1)) = $Piece(tEntry, "|", 2) _ $Select($Piece(tEntry, "|", 2) [ ":": "", 1: ":USE")
     }
     Set tAreaPairs = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Screen.Area).PrivilegePairs("security"), .tCut)
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tClasses)
@@ -2027,7 +2049,7 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
         Set tClass = $List(tClasses, tI)
         If $ClassMethod(tClass, "AreaKey") '= "security" Continue
         Set tOwn = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut)
-        Do $$$AssertEquals(tOwn, $Get(tExpect(tClass)), tClass _ ": owns exactly its wallet, OAuth 2.0 or file-system pair, or none")
+        Do $$$AssertEquals(tOwn, $Get(tExpect(tClass)), tClass _ ": owns exactly its wallet, OAuth 2.0, file-system or management pair, or none")
         If tOwn '= "" {
             Set tSeen = tSeen + 1
             Do $$$AssertTrue('(tAreaPairs [ tOwn), tClass _ ": an own pair the area does not declare (" _ tAreaPairs _ ")")
@@ -2037,7 +2059,7 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
         }
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": covered by the area, less its own pair")
     }
-    Do $$$AssertEquals(tSeen, 17, "seventeen screens own a pair")
+    Do $$$AssertEquals(tSeen, 19, "nineteen screens own a pair")
     Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 
@@ -2475,7 +2497,7 @@ Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
     ; so another screen's key would validate, mirror and ship.
     Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "deviceListEmpty", "its own empty state, not another list's")
 
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action: the agent's delete tool is the delete")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete", "one row action, Delete: the screen's caller of the agent's delete tool (Story 21.20)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", "and Create as its primary action, which opens the device editor")
     Do $$$AssertEquals(''$ClassMethod(tClass, "ClassicLinkExempt"), 0, "and no outbound classic link: a list archetype never links out (AD-44)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.DeviceList).RowTarget(), "", "and no rowTarget: no other screen names this entity type")

@@ -81,8 +81,47 @@
 /// loads or compiles a document and never replaces. A delete is <code>%DeleteFolderItem</code>, refused for a locked item. Each write is gated by
 /// <parameter>FOLDERPAIRS</parameter> and, beyond the read gate, by <method>AdmitFolderItem</method>; the vendor audits none of them, so each records
 /// OcuPilot's own <code>ConfigChange</code> row.</p>
-/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
-/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>DestinationDatabase</method>,
+/// <p><b>The listing groups (Story 24.11, AD-65).</b> The <code>ListingGroups</code> endpoint answers the listing groups of the namespace and the
+/// <code>ListingGroupListings</code> endpoint one group's listings, under the criterion <parameter>LISTINGGROUPKEY</parameter>; both are reads. The groups are the
+/// vendor's own saved list (<code>%DeepSee.ListingGroup.%GetListingGroups</code> with the compiled flag 0, which applies the vendor's filter on each group's
+/// <code>resource</code>), <code>Compiled</code> is whether the vendor's compiled list (flag 1) names the same class, and the counts and listings are read from
+/// the model <code>%GetModel</code> loads from the class. A group the vendor cannot read has no name and is not listed. A listing's SQL is answered only to a
+/// holder of <parameter>LISTINGGROUPSQLPAIRS</parameter> and is <code>""</code> to everyone else.</p>
+/// <p><b>The listing group writes (Story 24.11, AD-61, AD-65).</b> The same two endpoints also serve the single-object reads <code>LISTINGGROUP</code>, <code>LISTING</code> and
+/// <code>COPYTARGET</code> and seven writes (<method>InvokeListingGroup</method>): a group's add, update, copy and delete and a listing's add, change and remove. A write is gated by
+/// <parameter>LISTINGGROUPPAIRS</parameter> and, beyond the read gate, by <method>AdmitListingGroup</method> (the edit pair, the source code API's own pairs, <code>AtelierPort.WritePairs</code> and WRITE on the
+/// database <parameter>LISTINGGROUPGLOBAL</parameter> maps to). It composes the whole model from <code>%GetModel</code> read at the write, writes it with the vendor's own XML writer,
+/// and saves, compiles and deletes the group's class through <method>AtelierPortClass</method> (<class>OcuPilot.Kernel.SourceDocument</class>), never through the vendor's save and
+/// delete calls; a compile the instance refuses puts the class back as it was (<method>PerformListingGroup</method>). The vendor audits none of it, so each write records OcuPilot's
+/// own <code>ConfigChange</code> row.</p>
+/// <p><b>The quality measures (Story 24.12, AD-65).</b> The <code>QualityMeasures</code> endpoint answers one row per measure name the vendor's
+/// <code>%GetQualityMeasureList</code> lists, read through the class the vendor's registry names for it (<code>%GetQualityMeasureClass</code>) and the model
+/// <code>%GetModel</code> reads with its link followed; a measure listed with no name is not a row, and a name the registry does not hold is not either.
+/// <code>Compiled</code> is <code>$System.OBJ.IsUpToDate</code> of the registered class. The <code>QualityMeasureElements</code> and <code>QualityMeasureMetas</code>
+/// endpoints answer one measure's groups with their elements and its documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>; all three are reads.</p>
+/// <p><b>The quality measure writes (Story 24.12, AD-61, AD-65).</b> The <code>QualityMeasures</code> endpoint also serves the single-object reads <code>QUALITYMEASURE</code> and
+/// <code>COPYTARGET</code> and four writes (<method>InvokeQualityMeasure</method>): a measure's add, update, copy and delete. A write is gated by <parameter>QUALITYMEASUREPAIRS</parameter>
+/// and by <method>AdmitClassWrite</method> as the listing group writes are, composes the class's <code>QualityMeasure</code> XData from <code>%GetModel</code> without its link and saves,
+/// compiles and deletes the class through <method>WriteClass</method>; a compile the instance refuses puts the class back as it was.</p>
+/// <p><b>The element and documentation writes (Story 24.12, Batch 3).</b> The <code>QualityMeasureElements</code> and <code>QualityMeasureMetas</code> endpoints also serve the single-object reads
+/// <code>QUALITYMEASUREELEMENT</code> and <code>QUALITYMEASUREMETA</code> and the writes <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code>, on the targets
+/// <code>[QualityMeasure, Group, Name]</code> (an empty name is the group itself) and <code>[QualityMeasure, Name]</code> (<method>QualityMeasureTarget</method>). They compose the class from the
+/// measure's own model as the measure writes do (<method>ApplyQualityMeasurePart</method>), refuse a linked measure, and read the composed text back with <code>%XML.Reader</code> before saving it.</p>
+/// <p><b>The analytics settings (Story 24.13, AD-65).</b> The <code>Settings</code>, <code>Worklists</code>, <code>RuntimeVariables</code> and <code>UserIcons</code> endpoints are reads of the
+/// classic Settings page's four tabs, gated by <parameter>SETTINGSPAIRS</parameter>. <code>Settings</code> reads the page's own nodes of <code>^DeepSee.UserPortalSettings</code> by name,
+/// a stored Google Maps key as the credential mask and never as the key; <code>Worklists</code> reads which of the four worklist classes each panel shows; <code>RuntimeVariables</code> and
+/// <code>UserIcons</code> read the vendor's lists, a variable's expression as text that is never evaluated.</p>
+/// <p><b>The General and Worklists writes (Story 24.13).</b> The <code>Settings</code> endpoint also serves the single-row read <code>SETTING</code> and the writes <code>SETTINGSET</code> and <code>SETTINGKEY</code>
+/// (the Google Maps key, a secret), the <code>Worklists</code> endpoint <code>WORKLIST</code>, <code>WORKLISTSHOW</code> and <code>WORKLISTHIDE</code> (<method>InvokeSetting</method>). A write is gated by
+/// <parameter>SETTINGSPAIRS</parameter> and, beyond the read gate, WRITE on the database <parameter>SETTINGSGLOBAL</parameter> maps to, mounted read-write. It reaches the instance only through the classic page's own
+/// setters (<code>SaveToServer</code>, <code>SetCustom</code>, <code>SetOption</code>), under one lock per namespace, the whole General form composed in the namespace from the nodes as they stand
+/// (<method>SettingsSaveHere</method>). The vendor audits none of them, so each records OcuPilot's own <code>ConfigChange</code> row.</p>
+/// <p><b>The run-time variable and icon writes (Story 24.13, Batch 3).</b> The <code>RuntimeVariables</code> and <code>UserIcons</code> endpoints also serve the single-row reads <code>RUNTIMEVARIABLE</code> and
+/// <code>USERICON</code>, by the exact name under <parameter>IDKEY</parameter>, and the writes <code>ENTRYADD</code>, <code>ENTRYSET</code> and <code>ENTRYREMOVE</code> (<method>InvokeSetting</method>), through
+/// <code>%DeepSee.UserPortal.Utils</code>' own setters only, under the same lock, each gated on WRITE to the database of its own global (<method>SettingsGlobal</method>). A variable's expression is
+/// checked for syntax (<method>VariableExpressionHolds</method>) and never run.</p>
+/// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
+/// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
 /// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
@@ -91,7 +130,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -117,6 +156,38 @@ Parameter ENDPOINTFOLDERITEMS = "FolderItems";
 /// <p>The cube manager: the cubes with their build state, one cube's state, and the two writes (Story 20.34).</p>
 Parameter ENDPOINTCUBEMANAGER = "CubeManager";
 
+/// <p>The listing groups of the namespace the caller's resources admit, and one group's listings, under the criterion <parameter>LISTINGGROUPKEY</parameter> (Story 24.11).</p>
+Parameter ENDPOINTLISTINGGROUPS = "ListingGroups";
+
+Parameter ENDPOINTLISTINGGROUPLISTINGS = "ListingGroupListings";
+
+/// <p>The quality measures of the namespace (Story 24.12).</p>
+Parameter ENDPOINTQUALITYMEASURES = "QualityMeasures";
+
+/// <p>One quality measure's groups with their elements, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREELEMENTS = "QualityMeasureElements";
+
+/// <p>One quality measure's documentation items, under the criterion <parameter>QUALITYMEASUREKEY</parameter>.</p>
+Parameter ENDPOINTQUALITYMEASUREMETAS = "QualityMeasureMetas";
+
+/// <p>The analytics settings the classic Settings page's General tab holds, one name and value row per setting (Story 24.13).</p>
+Parameter ENDPOINTSETTINGS = "Settings";
+
+/// <p>The Worklists tab's options: which worklist each panel of the home and dashboard pages shows.</p>
+Parameter ENDPOINTWORKLISTS = "Worklists";
+
+/// <p>The run-time variables of the namespace, each an expression shown as text and never run.</p>
+Parameter ENDPOINTRUNTIMEVARIABLES = "RuntimeVariables";
+
+/// <p>The user-defined icons of the namespace, each a name and a path shown as text.</p>
+Parameter ENDPOINTUSERICONS = "UserIcons";
+
+/// <p>One saved pivot's or dashboard's definition, under the criterion <parameter>FOLDERITEMKEY</parameter> (Story 24.14).</p>
+Parameter ENDPOINTFOLDERITEMDEFINITION = "FolderItemDefinition";
+
+/// <p>One dashboard's widgets, under the criterion <parameter>FOLDERITEMKEY</parameter>.</p>
+Parameter ENDPOINTDASHBOARDWIDGETS = "DashboardWidgets";
+
 /// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
 /// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
 Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
@@ -130,6 +201,19 @@ Parameter TERMLISTPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
 /// <p>The classic Folder Manager's pairs, narrowed to the developer resource of its either-of list: the portal's, and
 /// <code>%Development:USE</code>.</p>
 Parameter FOLDERPAIRS = "%DeepSee_Portal:USE,%Development:USE";
+
+/// <p>The classic Listing Group Manager's pairs, narrowed to the view resource of its either-of list: the portal's, and <code>%DeepSee_ListingGroup:USE</code>.</p>
+Parameter LISTINGGROUPPAIRS = "%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE";
+
+/// <p>The classic Quality Measures Manager's pairs: the portal's, and <code>%DeepSee_PortalEdit:USE</code>, the <code>RESOURCE</code> of the classic page.</p>
+Parameter QUALITYMEASUREPAIRS = "%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE";
+
+/// <p>The pairs of the classic Settings page's four tabs (Story 24.13): the portal's, and <code>%Development:USE</code>, because a run-time variable is code. Stricter than the classic page,
+/// which admits <code>%DeepSee_Admin:USE</code> or <code>%Development:USE</code>.</p>
+Parameter SETTINGSPAIRS = "%DeepSee_Portal:USE,%Development:USE";
+
+/// <p>The pair a listing's SQL needs to be answered: the classic page's own check for showing the field (<code>CheckListingGroupSQLViewAccess</code>).</p>
+Parameter LISTINGGROUPSQLPAIRS = "%DeepSee_ListingGroupSQL:USE";
 
 /// <p>The permission a database read needs.</p>
 Parameter READPERMISSION = "READ";
@@ -317,6 +401,15 @@ Parameter CUBEKEY = "cube";
 /// <p>The query key naming a term list, for its entries.</p>
 Parameter TERMLISTKEY = "termlist";
 
+/// <p>The query key naming a listing group, for its listings.</p>
+Parameter LISTINGGROUPKEY = "listinggroup";
+
+/// <p>The query key naming a quality measure, for its elements and its documentation.</p>
+Parameter QUALITYMEASUREKEY = "qualitymeasure";
+
+/// <p>The query key naming a folder item by its full name, for the viewer's two reads.</p>
+Parameter FOLDERITEMKEY = "item";
+
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
 
@@ -393,6 +486,160 @@ Parameter REASONTERMLISTREQUIRED = "Name the term list.";
 
 Parameter REASONFOLDERITEMREQUIRED = "Name the folder item.";
 
+/// <p>The listing group editor's request types (Story 24.11): the single-object reads of a group and of one listing. Its writes reuse
+/// <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter>, <parameter>TYPEDELETE</parameter>, <parameter>TYPECOPY</parameter> and, for a listing,
+/// <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> and <parameter>TYPEENTRYREMOVE</parameter>; its copy read is <parameter>TYPECOPYTARGET</parameter>.</p>
+Parameter TYPELISTINGGROUP = "LISTINGGROUP";
+
+Parameter TYPELISTING = "LISTING";
+
+Parameter ENTITYLISTINGGROUP = "listing-group";
+
+Parameter ENTITYLISTING = "listing-group-listing";
+
+Parameter VERBLISTINGGROUPADD = "analytics.listinggroups.add";
+
+Parameter VERBLISTINGGROUPUPDATE = "analytics.listinggroups.update";
+
+Parameter VERBLISTINGGROUPCOPY = "analytics.listinggroups.copy";
+
+Parameter VERBLISTINGGROUPDELETE = "analytics.listinggroups.delete";
+
+Parameter VERBLISTINGADD = "analytics.listinggrouplistings.add";
+
+Parameter VERBLISTINGSET = "analytics.listinggrouplistings.set";
+
+Parameter VERBLISTINGREMOVE = "analytics.listinggrouplistings.remove";
+
+/// <p>The global whose database the listing group writes need WRITE on.</p>
+Parameter LISTINGGROUPGLOBAL = "^DeepSee.ListingGroups";
+
+/// <p>What a listing group write needs beyond the view pairs: the classic Listing Group Manager's edit resource.</p>
+Parameter LISTINGGROUPEDITPAIRS = "%DeepSee_ListingGroupEdit:USE";
+
+/// <p>The query keys of a copy: the new group's class and, optionally, its target cubes (its name is <parameter>NEWNAMEKEY</parameter>).</p>
+Parameter NEWCLASSKEY = "newClass";
+
+Parameter TARGETCUBESKEY = "targetCubes";
+
+/// <p>The longest listing group or listing name: the length of the vendor's entity name.</p>
+Parameter LISTINGNAMEMAX As INTEGER = 250;
+
+Parameter REASONLISTINGGROUPREQUIRED = "Name the listing group.";
+
+/// <p>The quality measure editor's single-object read (Story 24.12). Its writes reuse <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter>, <parameter>TYPEDELETE</parameter> and
+/// <parameter>TYPECOPY</parameter>; its copy read is <parameter>TYPECOPYTARGET</parameter>.</p>
+Parameter TYPEQUALITYMEASURE = "QUALITYMEASURE";
+
+Parameter ENTITYQUALITYMEASURE = "quality-measure";
+
+Parameter VERBQUALITYMEASUREADD = "analytics.qualitymeasures.add";
+
+Parameter VERBQUALITYMEASUREUPDATE = "analytics.qualitymeasures.update";
+
+Parameter VERBQUALITYMEASURECOPY = "analytics.qualitymeasures.copy";
+
+Parameter VERBQUALITYMEASUREDELETE = "analytics.qualitymeasures.delete";
+
+/// <p>The single-object reads of the two quality measure part endpoints (Story 24.12): one element or group of <parameter>ENDPOINTQUALITYMEASUREELEMENTS</parameter>, one documentation
+/// item of <parameter>ENDPOINTQUALITYMEASUREMETAS</parameter>. Their writes are <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> and <parameter>TYPEENTRYREMOVE</parameter>.</p>
+Parameter TYPEQUALITYMEASUREELEMENT = "QUALITYMEASUREELEMENT";
+
+/// <p>The character code that separates a composite id's parts: the value of <code>OcuPilot.Kernel.EntityId</code>'s <code>COMPOSITESEPARATOR</code>, held as a literal because the composing code
+/// runs in the analytics namespace, where this product's classes are not mapped and the class must compile without them. <class>OcuPilot.Test.AnalyticsQualityMeasurePartWriteEdge</class> pins the two equal.</p>
+Parameter PARTSEPARATOR = 1;
+
+Parameter TYPEQUALITYMEASUREMETA = "QUALITYMEASUREMETA";
+
+Parameter ENTITYQUALITYMEASUREELEMENT = "quality-measure-element";
+
+Parameter ENTITYQUALITYMEASUREMETA = "quality-measure-meta";
+
+Parameter VERBQUALITYMEASUREELEMENTADD = "analytics.qualitymeasureelements.add";
+
+Parameter VERBQUALITYMEASUREELEMENTSET = "analytics.qualitymeasureelements.set";
+
+Parameter VERBQUALITYMEASUREELEMENTREMOVE = "analytics.qualitymeasureelements.remove";
+
+Parameter VERBQUALITYMEASUREMETAADD = "analytics.qualitymeasuremetas.add";
+
+Parameter VERBQUALITYMEASUREMETASET = "analytics.qualitymeasuremetas.set";
+
+Parameter VERBQUALITYMEASUREMETAREMOVE = "analytics.qualitymeasuremetas.remove";
+
+/// <p>The global whose database the quality measure writes need WRITE on.</p>
+Parameter QUALITYMEASUREGLOBAL = "^DeepSee.QMsrs";
+
+/// <p>The longest caption, description, subject area, link or URL a quality measure write accepts: the model's limit for a description, subject area and link.</p>
+Parameter QUALITYMEASURETEXTMAX As INTEGER = 2000;
+
+/// <p>The analytics settings writes (Story 24.13): the two single-row reads, composed for a write when the query carries <parameter>ACTIONKEY</parameter>, and the four writes.
+/// <code>SETTINGSET</code> and <code>SETTINGKEY</code> are served by the <code>Settings</code> endpoint, the worklist three by <code>Worklists</code>.</p>
+Parameter TYPESETTING = "SETTING";
+
+Parameter TYPEWORKLIST = "WORKLIST";
+
+Parameter TYPESETTINGSET = "SETTINGSET";
+
+Parameter TYPESETTINGKEY = "SETTINGKEY";
+
+Parameter TYPEWORKLISTSHOW = "WORKLISTSHOW";
+
+Parameter TYPEWORKLISTHIDE = "WORKLISTHIDE";
+
+Parameter ENTITYSETTING = "analytics-setting";
+
+Parameter ENTITYWORKLIST = "analytics-worklist";
+
+Parameter VERBSETTINGSET = "analytics.settings.set";
+
+Parameter VERBSETTINGKEY = "analytics.settings.setkey";
+
+Parameter VERBWORKLISTSHOW = "analytics.worklists.show";
+
+Parameter VERBWORKLISTHIDE = "analytics.worklists.hide";
+
+/// <p>The global the classic Settings page keeps every General and Worklists setting in, which the writes need WRITE on the database of.</p>
+Parameter SETTINGSGLOBAL = "^DeepSee.UserPortalSettings";
+
+/// <p>The one setting that is a secret, and the one that turns the Worklists options on.</p>
+Parameter SETTINGSECRETNAME = "GoogleMapsKey";
+
+Parameter SETTINGCUSTOMNAME = "Worklist";
+
+/// <p>The longest text a General setting accepts. The classic page has no limit; this one is stricter.</p>
+Parameter SETTINGTEXTMAX As INTEGER = 2000;
+
+/// <p>How long a settings write waits for the namespace's settings lock before it answers 409 <code>WRITE.TARGETBUSY</code>.</p>
+Parameter SETTINGLOCKSECONDS As INTEGER = 5;
+
+/// <p>The run-time variable and user-defined icon writes (Story 24.13): the two single-row reads, composed for a write when the query carries <parameter>ACTIONKEY</parameter>. Each
+/// endpoint serves <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> and <parameter>TYPEENTRYREMOVE</parameter> as its three writes.</p>
+Parameter TYPERUNTIMEVARIABLE = "RUNTIMEVARIABLE";
+
+Parameter TYPEUSERICON = "USERICON";
+
+Parameter ENTITYRUNTIMEVARIABLE = "analytics-runtime-variable";
+
+Parameter ENTITYUSERICON = "analytics-user-icon";
+
+Parameter VERBRUNTIMEVARIABLEADD = "analytics.runtimevariables.add";
+
+Parameter VERBRUNTIMEVARIABLESET = "analytics.runtimevariables.set";
+
+Parameter VERBRUNTIMEVARIABLEREMOVE = "analytics.runtimevariables.remove";
+
+Parameter VERBUSERICONADD = "analytics.usericons.add";
+
+Parameter VERBUSERICONSET = "analytics.usericons.set";
+
+Parameter VERBUSERICONREMOVE = "analytics.usericons.remove";
+
+/// <p>The globals the run-time variables and the user-defined icons are kept in, which their writes need WRITE on the database of (<method>SettingsGlobal</method>).</p>
+Parameter VARIABLEGLOBAL = "^DeepSee.User.Settings";
+
+Parameter ICONGLOBAL = "^DeepSee.User.Icons";
+
 /// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
 /// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
@@ -415,7 +662,7 @@ ClassMethod Endpoints() As %List
 
 /// <p>The pair set <var>pEndpoint</var> requires, as the <code>%List</code> of two-element <code>%List</code>s the gate
 /// evaluates; <code>""</code> for an endpoint this port does not serve. The cubes and their three tabs take the Model Browser's
-/// pairs, the term lists and their entries the Term List Manager's, and the folder items the Folder Manager's.</p>
+/// pairs, the term lists and their entries the Term List Manager's, the folder items the Folder Manager's, the listing groups and their listings the Listing Group Manager's, the quality measures with their two tabs the Quality Measures Manager's and the four settings tabs <parameter>SETTINGSPAIRS</parameter>.</p>
 ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
@@ -424,8 +671,14 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#MANAGERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTTERMLISTS, ..#ENDPOINTTERMLISTENTRIES), pEndpoint) {
         Set tSpec = ..#TERMLISTPAIRS
-    } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTFOLDERITEMS, ..#ENDPOINTFOLDERITEMDEFINITION, ..#ENDPOINTDASHBOARDWIDGETS), pEndpoint) {
         Set tSpec = ..#FOLDERPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
+        Set tSpec = ..#LISTINGGROUPPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+        Set tSpec = ..#QUALITYMEASUREPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTSETTINGS, ..#ENDPOINTWORKLISTS, ..#ENDPOINTRUNTIMEVARIABLES, ..#ENDPOINTUSERICONS), pEndpoint) {
+        Set tSpec = ..#SETTINGSPAIRS
     } Else {
         Quit ""
     }
@@ -442,7 +695,62 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTTERMLISTS Quit (pType = ..#TYPETERMLIST) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || ..IsTermListTransfer(pType)
     If pEndpoint = ..#ENDPOINTTERMLISTENTRIES Quit (pType = ..#TYPETERMLISTENTRY) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..IsFolderItemType(pType)
+    If pEndpoint = ..#ENDPOINTLISTINGGROUPS Quit (pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPECOPYTARGET) || (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY)
+    If pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS Quit (pType = ..#TYPELISTING) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET) || ..IsQualityMeasureWrite(pType)
+    If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS Quit (pType = ..#TYPEQUALITYMEASUREELEMENT) || ..IsQualityMeasurePartWrite(pType)
+    If pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS Quit (pType = ..#TYPEQUALITYMEASUREMETA) || ..IsQualityMeasurePartWrite(pType)
+    If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY)
+    If pEndpoint = ..#ENDPOINTWORKLISTS Quit (pType = ..#TYPEWORKLIST) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
+    If pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES Quit (pType = ..#TYPERUNTIMEVARIABLE) || ..IsEntryWrite(pType)
+    If pEndpoint = ..#ENDPOINTUSERICONS Quit (pType = ..#TYPEUSERICON) || ..IsEntryWrite(pType)
     Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the four settings tabs' (Story 24.13), the ones the settings reads and writes are served on.</p>
+ClassMethod IsSettingsEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTWORKLISTS) || ..IsEntryEndpoint(pEndpoint)
+}
+
+/// <p>Whether <var>pEndpoint</var> is the Run-time variables or the User-defined icons tab's, the two whose rows are added, changed and removed by name. Pure.</p>
+ClassMethod IsEntryEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) || (pEndpoint = ..#ENDPOINTUSERICONS)
+}
+
+/// <p>Whether <var>pType</var> is one of the three writes of a run-time variable or an icon. Pure.</p>
+ClassMethod IsEntryWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+}
+
+/// <p>Whether <var>pType</var> is one of the settings writes of <var>pEndpoint</var> (Story 24.13): the four of the General and Worklists tabs, and the three entry writes of the Run-time variables
+/// and User-defined icons tabs, which <var>pEndpoint</var> must name. Pure.</p>
+ClassMethod IsSettingsWrite(pType As %String, pEndpoint As %String = "") As %Boolean
+{
+    If ..IsEntryEndpoint(pEndpoint) Quit ..IsEntryWrite(pType)
+    Quit (pType = ..#TYPESETTINGSET) || (pType = ..#TYPESETTINGKEY) || (pType = ..#TYPEWORKLISTSHOW) || (pType = ..#TYPEWORKLISTHIDE)
+}
+
+/// <p>The single-row read type of the Run-time variables or User-defined icons tab, <code>""</code> for any other endpoint. Pure.</p>
+ClassMethod EntryReadType(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTRUNTIMEVARIABLES: ..#TYPERUNTIMEVARIABLE, ..#ENDPOINTUSERICONS: ..#TYPEUSERICON, : "")
+}
+
+/// <p>The global the writes of <var>pEndpoint</var> need WRITE on the database of: the run-time variables' and the icons' own, else the page's settings global. Pure.</p>
+ClassMethod SettingsGlobal(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTRUNTIMEVARIABLES: ..#VARIABLEGLOBAL, ..#ENDPOINTUSERICONS: ..#ICONGLOBAL, : ..#SETTINGSGLOBAL)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a setting and so needs the destination's gate
+/// (<method>AdmitDestination</method>): a settings write of <var>pEndpoint</var>, and a single-row read composed for one. Pure.</p>
+ClassMethod ChangesSettings(pType As %String, pAction As %String = "", pEndpoint As %String = "") As %Boolean
+{
+    If ..IsSettingsWrite(pType, pEndpoint) Quit 1
+    Quit ((pType = ..#TYPESETTING) || (pType = ..#TYPEWORKLIST) || (pType = ..#TYPERUNTIMEVARIABLE) || (pType = ..#TYPEUSERICON)) && (pAction '= "")
 }
 
 /// <p>Whether <var>pType</var> is one of the term list editor's six writes (Story 24.2) or its three transfers' (Story 24.10).</p>
@@ -499,6 +807,23 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// <li>FolderItems: <code>{Name, Type, Owner, Modified, Favorite}</code>, <code>Name</code> the item's full name,
 /// <code>Modified</code> the instance's local <code>YYYY-MM-DD HH:MM:SS</code>, <code>Favorite</code> true for an item in the
 /// signed-in user's favorites.</li>
+/// <li>ListingGroups: <code>{Name, Caption, Cubes, Class, Compiled, Listings, Disabled, Description, Resource, DefaultResource}</code>, <code>Cubes</code> the
+/// model's target cubes as written, <code>Compiled</code> whether the vendor's compiled list names this group's class, <code>Listings</code> the number of listings the group holds.</li>
+/// <li>ListingGroupListings: <code>{ListingGroup, Name, DisplayName, Type, Fields, OrderBy, Joins, Formats, Source, Resource, SelectMode, Disabled, Description, SQL}</code>, the
+/// listings of the group the criterion <parameter>LISTINGGROUPKEY</parameter> names, <code>SQL</code> <code>""</code> unless the caller holds <parameter>LISTINGGROUPSQLPAIRS</parameter>.</li>
+/// <li>QualityMeasures: <code>{Name, Catalog, Set, Id, Caption, Description, SubjectArea, Expression, LinkedTo, Published, Format, Href, Class, Compiled, Groups}</code>, one row per
+/// measure name, <code>Class</code> the class the registry names for it, <code>Groups</code> the number of groups its model holds.</li>
+/// <li>QualityMeasureElements: <code>{QualityMeasure, Group, GroupCaption, GroupDescription, GroupDisabled, Name, Caption, MDX, Disabled}</code>, one row per element of the measure
+/// the criterion <parameter>QUALITYMEASUREKEY</parameter> names, a group with no element one row with empty element fields.</li>
+/// <li>QualityMeasureMetas: <code>{QualityMeasure, Name, Caption, Section, Content, Disabled}</code>, one row per documentation item of that measure.</li>
+/// <li>Settings: <code>{Name, Value, Stored}</code>, one row per node the classic page saves, <code>Value</code> the page's default for a node not stored and, for
+/// <code>GoogleMapsKey</code>, the credential mask when a key is stored and <code>""</code> otherwise.</li>
+/// <li>Worklists: <code>{Page, Panel, Worklist, Class, Shown}</code>, sixteen rows: the pages <code>Home</code> and <code>DashboardViewer</code>, their panels 1 and 2 and the four worklist classes.</li>
+/// <li>RuntimeVariables: <code>{Name, Value, Comment, Context}</code>, <code>Value</code> the stored expression as text.</li>
+/// <li>UserIcons: <code>{Name, Path}</code>.</li>
+/// <li>FolderItemDefinition: <code>{Name, Type, Title, Description, Owner, Modified, Cube, Rows, Columns, Measures, Filters, Calculated, MDX, Restriction}</code>, one row for the
+/// saved pivot or dashboard the criterion <parameter>FOLDERITEMKEY</parameter> names (<method>ReadFolderItemView</method>).</li>
+/// <li>DashboardWidgets: <code>{Dashboard, Position, Title, Type, DataSource, LinkedTo, NotPivot}</code>, one row for each widget of that dashboard in its stored order.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -528,12 +853,24 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
-        Set tChanges = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
+        Set tChanges = $Select(..IsSettingsEndpoint(pEndpoint): ..ChangesSettings(pType, $Get(pQuery(..#ACTIONKEY)), pEndpoint), pEndpoint = ..#ENDPOINTFOLDERITEMS: ..ChangesFolderItems(pType, $Get(pQuery(..#ACTIONKEY))), ..IsListingGroupEndpoint(pEndpoint): ..ChangesListingGroups(pType, $Get(pQuery(..#ACTIONKEY))), ..IsQualityMeasureEndpoint(pEndpoint): ..ChangesQualityMeasures(pType, $Get(pQuery(..#ACTIONKEY))), 1: ..ChangesTermLists(pType, $Get(pQuery(..#ACTIONKEY))))
         Set tWrite = ..IsWrite(pType) || tChanges || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
         Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokeFolderItem(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsListingGroupEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeListingGroup(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsQualityMeasureEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeQualityMeasure(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsSettingsEndpoint(pEndpoint) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeSetting(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If ..IsTermListType(pType) {
@@ -552,6 +889,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tMax = $Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText)
 
+        If $ListFind($ListBuild(..#ENDPOINTFOLDERITEMDEFINITION, ..#ENDPOINTDASHBOARDWIDGETS), pEndpoint) {
+            Set tSC = ..ReadFolderItemView(tNamespace, pEndpoint, $Get(pQuery(..#FOLDERITEMKEY)), tMax, .pResult, .pHttpStatus, .pFault)
+            If $$$ISOK(tSC) Set pHttpStatus = 200
+            Quit
+        }
         Set tCriterion = ""
         If $ListFind($ListBuild(..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
             Set tCriterion = $Get(pQuery(..#CUBEKEY))
@@ -565,7 +907,16 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTERMLISTREQUIRED, .pHttpStatus, .pFault)
                 Quit
             }
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
+            ; A criterion that names no group answers no rows, and an empty one names none.
+            Set tCriterion = $Get(pQuery(..#LISTINGGROUPKEY))
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; A criterion that names no measure answers no rows, and an empty one names none.
+            Set tCriterion = $Get(pQuery(..#QUALITYMEASUREKEY))
         }
+        ; A listing's SQL is answered to a holder of its own pair only; the pair is judged here, where the gate class is visible (AD-16).
+        Set tShowSQL = 0
+        If pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS Set tShowSQL = $ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPSQLPAIRS))
 
         Kill tData
         Set tVendorSC = $$$OK
@@ -579,7 +930,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Statused(tVendorSC, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
             Quit
         }
-        Set pResult = ..Rows(pEndpoint, .tData)
+        Set pResult = ..Rows(pEndpoint, .tData, tShowSQL)
         Set pHttpStatus = 200
     } Catch ex {
         While $TLevel > tLevel {
@@ -607,6 +958,9 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolea
     If $$$ISERR(tSC) || 'pWrite Quit tSC
     If (pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES) Quit ..AdmitTermList(pNamespace, .pHttpStatus, .pFault)
     If pEndpoint = ..#ENDPOINTFOLDERITEMS Quit ..AdmitFolderItem(pNamespace, .pHttpStatus, .pFault)
+    If ..IsListingGroupEndpoint(pEndpoint) Quit ..AdmitListingGroup(pNamespace, .pHttpStatus, .pFault)
+    If ..IsSettingsEndpoint(pEndpoint) Quit ..AdmitDestination(pNamespace, ..SettingsGlobal(pEndpoint), ##class(OcuPilot.Api.AnalyticsError).#SETTINGREADONLY, .pHttpStatus, .pFault)
+    If ..IsQualityMeasureEndpoint(pEndpoint) Quit ..AdmitClassWrite(pNamespace, "", ..#QUALITYMEASUREGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREREADONLY, .pHttpStatus, .pFault)
     Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
 }
 
@@ -660,7 +1014,7 @@ ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) 
 
 /// <p>Read <var>pEndpoint</var> from the vendor in <var>pNamespace</var> into <var>pData</var>: <code>pData</code> is the row count,
 /// and <code>pData(n)</code> row <code>n</code> as a <code>%List</code>, at most <var>pMax</var> rows when that is above zero.
-/// <var>pCriterion</var> is the cube or term list a tab names. A vendor status that is an error is <var>pVendorStatus</var>; an
+/// <var>pCriterion</var> is the cube or term list a tab names, the listing group whose listings are read, or the quality measure whose groups or documentation are read, matched without regard to case as the vendor keys it. A vendor status that is an error is <var>pVendorStatus</var>; an
 /// exception is <var>pCaught</var>.</p>
 /// <p><b>Everything between the switch and the restore is in this one method</b> and names only vendor and system classes, because
 /// an <code>OcuPilot.*</code> class is not visible in the target namespace (AD-16). The raw values are shaped into rows by
@@ -765,6 +1119,178 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     Set pData(pData) = $ListBuild(tObject.name, tKey, tObject.valueList.GetAt(tKey _ "^VALUE"), tFields)
                 }
             }
+        } ElseIf (pEndpoint = ..#ENDPOINTLISTINGGROUPS) || (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS) {
+            ; The vendor's saved list applies its own filter on each group's resource; its compiled list names the classes whose compile registered them.
+            ; %GetModel answers a model with no name for a class whose definition it cannot read, so such a group is not a row.
+            Set pVendorStatus = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tSaved, 0)
+            If $$$ISOK(pVendorStatus) Set pVendorStatus = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tCompiled, 1)
+            If (pEndpoint = ..#ENDPOINTLISTINGGROUPS) && $$$ISOK(pVendorStatus) {
+                Set tGroup = ""
+                For {
+                    Set tGroup = $Order(tSaved(tGroup))
+                    If tGroup = "" Quit
+                    Set tAt = ""
+                    For {
+                        Set tAt = $Order(tSaved(tGroup, tAt))
+                        If tAt = "" Quit
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tClass = $List(tSaved(tGroup, tAt), 5)
+                        Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(tClass)
+                        If '$IsObject(tModel) || (tModel.name = "") Continue
+                        Set tIsCompiled = $Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = tClass)
+                        Set pData = pData + 1
+                        Set pData(pData) = $ListBuild(tModel.name, $List(tSaved(tGroup, tAt), 3), tModel.targetCubes, tClass, ''tIsCompiled, tModel.listings.Count(), ''tModel.disabled, tModel.description, tModel.resource, tModel.defaultResource)
+                    }
+                    If (pMax > 0) && (pData >= pMax) Quit
+                }
+            } ElseIf (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS) && $$$ISOK(pVendorStatus) {
+                Set tGroup = $ZConvert(pCriterion, "U")
+                If (tGroup '= "") && $Data(tSaved(tGroup)) {
+                    ; Two classes can name one group; the compiled one answers, else the first saved.
+                    Set tClass = $List(tSaved(tGroup, 1), 5)
+                    Set tAt = ""
+                    For {
+                        Set tAt = $Order(tSaved(tGroup, tAt))
+                        If tAt = "" Quit
+                        If $Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = $List(tSaved(tGroup, tAt), 5)) {
+                            Set tClass = $List(tSaved(tGroup, tAt), 5)
+                            Quit
+                        }
+                    }
+                    Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(tClass)
+                    If $IsObject(tModel) && (tModel.name '= "") {
+                        For tAt = 1:1:tModel.listings.Count() {
+                            If (pMax > 0) && (pData >= pMax) Quit
+                            Set tListing = tModel.listings.GetAt(tAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tListing.name, tListing.displayName, tListing.listingType, tListing.fieldList, tListing.orderBy, tListing.joinInfo, tListing.formatList, tListing.sourceClass, tListing.resource, tListing.selectMode, ''tListing.disabled, tListing.description, tListing.sql)
+                        }
+                    }
+                }
+            }
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
+            ; The vendor's list names each measure once per class declaring it and gives a disabled measure no name; the registry answers one class per name.
+            Set pVendorStatus = $$$OK
+            If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                Set pVendorStatus = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)
+                Set tAt = ""
+                While $$$ISOK(pVendorStatus) {
+                    Set tAt = $Order(tList(tAt))
+                    If tAt = "" Quit
+                    Set tListed = $List(tList(tAt), 1)
+                    If (tListed = "") || $Data(tNameSeen($ZConvert(tListed, "U"))) Continue
+                    Set tNameSeen($ZConvert(tListed, "U")) = ""
+                    Set tNames($Increment(tNames)) = $ListBuild(tListed, $List(tList(tAt), 5))
+                }
+            } ElseIf pCriterion '= "" {
+                Set tNames = 1
+                Set tNames(1) = $ListBuild(pCriterion, "")
+            }
+            For tAt = 1:1:+$Get(tNames) {
+                If (pMax > 0) && (pData >= pMax) Quit
+                Set tName = $List(tNames(tAt), 1)
+                Set tClass = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(tName, .tFound)
+                If $$$ISERR(tFound) || (tClass = "") Continue
+                Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(tName, .tModelStatus, 1)
+                If pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+                    Set tIsCompiled = ''$System.OBJ.IsUpToDate(tClass)
+                    Set pData = pData + 1
+                    If $IsObject(tModel) {
+                        Set pData(pData) = $ListBuild(tName, tModel.catalog, tModel.set, tModel.id, tModel.caption, tModel.description, tModel.subjectArea, tModel.expression, tModel.linkedTo, ''tModel.published, tModel.format, tModel.href, tClass, tIsCompiled, tModel.groups.Count())
+                    } Else {
+                        Set pData(pData) = $ListBuild(tName, $Piece(tName, "/", 1), $Piece(tName, "/", 2), $Piece(tName, "/", 3), $List(tNames(tAt), 2), "", "", "", "", 0, "", "", tClass, tIsCompiled, 0)
+                    }
+                    Continue
+                }
+                ; A model the vendor cannot read, or one that is not the measure the criterion names, has no rows.
+                If '$IsObject(tModel) || ($ZConvert(tModel.name, "U") '= $ZConvert(pCriterion, "U")) Continue
+                If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+                    For tGroupAt = 1:1:tModel.groups.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tGroupObject = tModel.groups.GetAt(tGroupAt)
+                        If tGroupObject.elements.Count() = 0 {
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, "", "", "", 0)
+                            Continue
+                        }
+                        For tElementAt = 1:1:tGroupObject.elements.Count() {
+                            If (pMax > 0) && (pData >= pMax) Quit
+                            Set tElement = tGroupObject.elements.GetAt(tElementAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tModel.name, tGroupObject.name, tGroupObject.caption, tGroupObject.description, ''tGroupObject.disabled, tElement.name, tElement.caption, tElement.mdx, ''tElement.disabled)
+                        }
+                    }
+                } Else {
+                    For tMetaAt = 1:1:tModel.metas.Count() {
+                        If (pMax > 0) && (pData >= pMax) Quit
+                        Set tMeta = tModel.metas.GetAt(tMetaAt)
+                        Set pData = pData + 1
+                        Set pData(pData) = $ListBuild(tModel.name, tMeta.name, tMeta.caption, tMeta.section, tMeta.content, ''tMeta.disabled)
+                    }
+                }
+            }
+        } ElseIf $ListFind($ListBuild(..#ENDPOINTSETTINGS, ..#ENDPOINTWORKLISTS, ..#ENDPOINTRUNTIMEVARIABLES, ..#ENDPOINTUSERICONS), pEndpoint) {
+            ; The classic Settings page's own reads, which write nothing and run nothing: the page's nodes read by name, two lists the vendor answers from its settings
+            ; globals, and the worklist classes' names. A run-time variable's expression is data here and is never evaluated.
+            If pEndpoint = ..#ENDPOINTSETTINGS {
+                ; Each setting: its name, its node (a second subscript when it is nested), what the page shows when it is unset, whether it reads as a number and whether it is a secret.
+                Set tSettings = ..SettingRoster()
+                ; The names a scheme setting accepts, for the rows' Accepts and for the write's judgement.
+                Set pData("schemes") = ..SchemeNamesHere(0)
+                Set pData("series") = ..SchemeNamesHere(1)
+                For tAt = 1:1:$ListLength(tSettings) {
+                    If (pMax > 0) && (pData >= pMax) Quit
+                    Set tSetting = $List(tSettings, tAt)
+                    Set tNodeOne = $List(tSetting, 2)
+                    Set tNodeTwo = $List(tSetting, 3)
+                    If tNodeTwo = "" {
+                        Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne)) # 2
+                        Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne), $List(tSetting, 4))
+                    } Else {
+                        Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo)) # 2
+                        Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo), $List(tSetting, 4))
+                    }
+                    If $List(tSetting, 5) Set tValue = +tValue
+                    ; A secret never enters a row: only whether one is stored does.
+                    Set tMasked = 0
+                    If $List(tSetting, 6) {
+                        Set tMasked = ''(tStored && (tValue '= ""))
+                        Set tValue = ""
+                    }
+                    Set pData = pData + 1
+                    Set pData(pData) = $ListBuild($List(tSetting, 1), tValue, ''tStored, tMasked)
+                }
+            } ElseIf pEndpoint = ..#ENDPOINTWORKLISTS {
+                Set tClasses = $ListBuild("%DeepSee.UserPortal.FavoritesList", "%DeepSee.UserPortal.RecentList", "%DeepSee.UserPortal.AlertList", "%DeepSee.UserPortal.DetailsList")
+                Set tStop = 0
+                For tPage = "Home", "DashboardViewer" {
+                    For tPanel = 1, 2 {
+                        For tAt = 1:1:$ListLength(tClasses) {
+                            If (pMax > 0) && (pData >= pMax) Set tStop = 1
+                            If tStop Quit
+                            Set tClass = $List(tClasses, tAt)
+                            Set pData = pData + 1
+                            Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, "%GetName"), tClass, ''$Data(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tAt)), ''(+$Get(^DeepSee.UserPortalSettings("Worklist"))))
+                        }
+                        If tStop Quit
+                    }
+                    If tStop Quit
+                }
+            } Else {
+                If pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES {
+                    Set pVendorStatus = ##class(%DeepSee.UserPortal.Utils).%GetUserSettingsList(.tList, "")
+                } Else {
+                    Set pVendorStatus = ##class(%DeepSee.UserPortal.Utils).%GetUserIconList(.tList)
+                }
+                Set tAt = ""
+                While $$$ISOK(pVendorStatus) {
+                    Set tAt = $Order(tList(tAt))
+                    If tAt = "" Quit
+                    If (pMax > 0) && (pData >= pMax) Quit
+                    Set pData = pData + 1
+                    Set pData(pData) = tList(tAt)
+                }
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -790,8 +1316,8 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
 }
 
 /// <p>The rows of <var>pEndpoint</var> from the values <method>Collect</method> gathered in <var>pData</var>, as an array of
-/// objects. Text is typed as text, so a name that reads as a number stays a string.</p>
-ClassMethod Rows(pEndpoint As %String, ByRef pData) As %DynamicArray [ Private ]
+/// objects. Text is typed as text, so a name that reads as a number stays a string. A listing's <code>SQL</code> is shaped only when <var>pShowSQL</var> is true.</p>
+ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As %DynamicArray [ Private ]
 {
     Set tRows = []
     For tAt = 1:1:pData {
@@ -842,6 +1368,88 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData) As %DynamicArray [ Private ]
             Do tRow.%Set("Key", $List(tValues, 2), "string")
             Do tRow.%Set("Value", $List(tValues, 3), "string")
             Do tRow.%Set("Fields", $List(tValues, 4), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Caption", $List(tValues, 2), "string")
+            Do tRow.%Set("Cubes", $List(tValues, 3), "string")
+            Do tRow.%Set("Class", $List(tValues, 4), "string")
+            Do tRow.%Set("Compiled", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Listings", $List(tValues, 6), "number")
+            Do tRow.%Set("Disabled", $List(tValues, 7), "boolean")
+            Do tRow.%Set("Description", $List(tValues, 8), "string")
+            Do tRow.%Set("Resource", $List(tValues, 9), "string")
+            Do tRow.%Set("DefaultResource", $List(tValues, 10), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS {
+            Do tRow.%Set("ListingGroup", $List(tValues, 1), "string")
+            Do tRow.%Set("Name", $List(tValues, 2), "string")
+            Do tRow.%Set("DisplayName", $List(tValues, 3), "string")
+            Do tRow.%Set("Type", $List(tValues, 4), "string")
+            Do tRow.%Set("Fields", $List(tValues, 5), "string")
+            Do tRow.%Set("OrderBy", $List(tValues, 6), "string")
+            Do tRow.%Set("Joins", $List(tValues, 7), "string")
+            Do tRow.%Set("Formats", $List(tValues, 8), "string")
+            Do tRow.%Set("Source", $List(tValues, 9), "string")
+            Do tRow.%Set("Resource", $List(tValues, 10), "string")
+            Do tRow.%Set("SelectMode", $List(tValues, 11), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 12), "boolean")
+            Do tRow.%Set("Description", $List(tValues, 13), "string")
+            Do tRow.%Set("SQL", $Select(pShowSQL: $List(tValues, 14), 1: ""), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASURES {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Catalog", $List(tValues, 2), "string")
+            Do tRow.%Set("Set", $List(tValues, 3), "string")
+            Do tRow.%Set("Id", $List(tValues, 4), "string")
+            Do tRow.%Set("Caption", $List(tValues, 5), "string")
+            Do tRow.%Set("Description", $List(tValues, 6), "string")
+            Do tRow.%Set("SubjectArea", $List(tValues, 7), "string")
+            Do tRow.%Set("Expression", $List(tValues, 8), "string")
+            Do tRow.%Set("LinkedTo", $List(tValues, 9), "string")
+            Do tRow.%Set("Published", $List(tValues, 10), "boolean")
+            Do tRow.%Set("Format", $List(tValues, 11), "string")
+            Do tRow.%Set("Href", $List(tValues, 12), "string")
+            Do tRow.%Set("Class", $List(tValues, 13), "string")
+            Do tRow.%Set("Compiled", $List(tValues, 14), "boolean")
+            Do tRow.%Set("Groups", $List(tValues, 15), "number")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Group", $List(tValues, 2), "string")
+            Do tRow.%Set("GroupCaption", $List(tValues, 3), "string")
+            Do tRow.%Set("GroupDescription", $List(tValues, 4), "string")
+            Do tRow.%Set("GroupDisabled", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Name", $List(tValues, 6), "string")
+            Do tRow.%Set("Caption", $List(tValues, 7), "string")
+            Do tRow.%Set("MDX", $List(tValues, 8), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 9), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS {
+            Do tRow.%Set("QualityMeasure", $List(tValues, 1), "string")
+            Do tRow.%Set("Name", $List(tValues, 2), "string")
+            Do tRow.%Set("Caption", $List(tValues, 3), "string")
+            Do tRow.%Set("Section", $List(tValues, 4), "string")
+            Do tRow.%Set("Content", $List(tValues, 5), "string")
+            Do tRow.%Set("Disabled", $List(tValues, 6), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            ; A stored secret reads as the mask, so a person sees that one is stored and never what it is (Conventions, Secrets).
+            Do tRow.%Set("Value", $Select($List(tValues, 4): ##class(OcuPilot.Port.SqlPort).#CREDENTIALMASK, 1: $List(tValues, 2)), "string")
+            Do tRow.%Set("Stored", $List(tValues, 3), "boolean")
+            Set tLimits = ..LimitsFrom($List(tValues, 1), $Get(pData("schemes")), $Get(pData("series")))
+            Do tRow.%Set("Kind", $Select($List(tValues, 1) = ..#SETTINGSECRETNAME: "secret", 1: $ListGet(tLimits, 1)), "string")
+            Do tRow.%Set("Accepts", ..AcceptsFor(tLimits), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTWORKLISTS {
+            Do tRow.%Set("Page", $List(tValues, 1), "string")
+            Do tRow.%Set("Panel", $List(tValues, 2), "number")
+            Do tRow.%Set("Worklist", $List(tValues, 3), "string")
+            Do tRow.%Set("Class", $List(tValues, 4), "string")
+            Do tRow.%Set("Shown", $List(tValues, 5), "boolean")
+            Do tRow.%Set("Customized", $List(tValues, 6), "boolean")
+        } ElseIf pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Value", $List(tValues, 2), "string")
+            Do tRow.%Set("Comment", $List(tValues, 3), "string")
+            Do tRow.%Set("Context", $List(tValues, 4), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTUSERICONS {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Path", $List(tValues, 2), "string")
         } Else {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Type", $List(tValues, 2), "string")
@@ -1711,7 +2319,7 @@ ClassMethod ErrorAnswer(pStatus As %Status) As %DynamicObject
 }
 
 /// <p><var>pText</var> cut at <parameter>MDXMAXCELL</parameter> characters with an ellipsis.</p>
-ClassMethod Cut(pText As %String) As %String [ Private ]
+ClassMethod Cut(pText As %String) As %String
 {
     If $Length(pText) > ..#MDXMAXCELL Quit $Extract(pText, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
     Quit pText
@@ -1794,7 +2402,7 @@ ClassMethod CubeShownHere(pName As %String, ByRef pList) As %Boolean [ Private ]
 /// <method>CubeNodeHere</method> of cube <code>n</code>, the target first and then each dependent. A dependent the caller's resources
 /// hide is not on the vendor's list and is left out. A list the vendor fails to answer, or an exception, is <var>pCaught</var>.</p>
 /// <p>Everything between the switch and the restore is vendor and system classes and this class's own <code>Here</code> methods
-/// (AD-16); the row is shaped by <method>StateRow</method> after the restore.</p>
+/// (AD-16); the row is shaped by <method>StateRow</method> after the restore. A test seam overrides it and rewrites the eighth element of each row, whether the cube is being updated.</p>
 ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException) [ Private ]
 {
     Kill pData
@@ -1939,7 +2547,8 @@ ClassMethod ReadCube(pNamespace As %String, pName As %String, Output pRow As %Dy
 /// <parameter>OcuPilot.Api.AnalyticsError.CUBEBUSY</parameter> for the vendor's cube lock; 404 for a cube it does not know; 403
 /// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else, an exception the call raised included,
 /// 409 <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
-/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>).</p>
+/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>), and a failed one that had already updated a cube records it with
+/// <code>failed</code> true (<method>AuditFailedUpdate</method>).</p>
 /// <p>The answer is <code>{Name, Namespace, lines, errors}</code>: the output lines for the screen (<method>BuildLines</method>,
 /// <method>SyncLines</method>), and whether any cube built with errors.</p>
 ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %String, ByRef pNames, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -1952,11 +2561,12 @@ ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %Strin
     If pType = ..#TYPEBUILD {
         Set tVendorSC = ..VendorBuild(pNamespace, pName, .tStats, .tCaught, .tWritten)
     } Else {
-        Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten)
+        Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten, .tStats)
     }
     Set tMessage = "the cube " _ $ZConvert(pType, "L") _ " failed" _ $Select(tWritten = "": "", 1: "; the vendor wrote: " _ tWritten)
     If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
     Set tOutcome = ..VendorOutcome(tVendorSC)
+    If (tOutcome '= "ok") && (tOutcome '= "errors") Do ..AuditFailedUpdate(pType, pName, pNamespace, .tStats, .pNames)
     If tOutcome = "denied" Quit ..Statused(tVendorSC, tMessage, .pHttpStatus, .pFault)
     If tOutcome = "busy" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#CUBEBUSY, .pHttpStatus, .pFault)
     If tOutcome = "absent" Quit ..Absent(.pHttpStatus, .pFault)
@@ -2006,6 +2616,7 @@ ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, 
         Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
@@ -2014,11 +2625,13 @@ ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, 
 }
 
 /// <p>The vendor's synchronize of the cube <var>pCube</var> and every cube that depends on it, in <var>pNamespace</var>
-/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts)</code>), under the same switch and capture as <method>VendorBuild</method>.
-/// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count.</p>
-ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String) As %Status
+/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts, 1, 1, 0, .stats)</code>, the vendor's own defaults for the arguments between), under the same switch and capture as <method>VendorBuild</method>.
+/// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count. <var>pStats</var> is the vendor's synchronize
+/// statistics array, whose <code>("cubes", &lt;index&gt;, "status")</code> is each cube's own status.</p>
+ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String, Output pStats) As %Status
 {
     Kill pFacts
+    Kill pStats
     Set pCaught = ""
     Set pWritten = ""
     Set tSC = $$$OK
@@ -2028,10 +2641,14 @@ ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pF
     Try {
         Set $NAMESPACE = pNamespace
         Kill tFacts
-        Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(pCube, 0, .tFacts)
+        Kill tStats
+        Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(pCube, 0, .tFacts, 1, 1, 0, .tStats)
         Merge pFacts = tFacts
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Merge pFacts = tFacts
+        Merge pStats = tStats
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
@@ -2144,7 +2761,44 @@ ClassMethod SyncLines(ByRef pFacts, ByRef pNames, pLines As %DynamicArray, pCube
     }
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK (AD-15,
+/// <p>The logical names, in name order, of the cubes the vendor's statistics <var>pStats</var> report updated: those whose own
+/// <code>status</code> is OK or holds only #20006, a build that finished with failed rows. A cube with no status, or any other error, was not updated, and its
+/// counters are not read (a cube that fails to start carries the statistics of the one before it). <var>pNames</var> gives the logical name of an index. Pure.</p>
+ClassMethod UpdatedCubes(ByRef pStats, ByRef pNames) As %DynamicArray
+{
+    Set tCubes = []
+    Set tIndex = ""
+    For {
+        Set tIndex = $Order(pStats("cubes", tIndex))
+        If tIndex = "" Quit
+        If '$Data(pStats("cubes", tIndex, "status")) Continue
+        Set tStatus = pStats("cubes", tIndex, "status")
+        If $$$ISOK(tStatus) || ..OnlyCode(tStatus, ..#CODEBUILDERRORS) Set tByName($Get(pNames(tIndex), tIndex)) = ""
+    }
+    Set tName = ""
+    For {
+        Set tName = $Order(tByName(tName))
+        If tName = "" Quit
+        Do tCubes.%Push(tName, "string")
+    }
+    Quit tCubes
+}
+
+/// <p>Record the failed update of the cube <var>pName</var> that the vendor started and then failed, when it had already updated a cube (AD-15, Story 24.13): one
+/// <code>ConfigChange</code> row, the verb of <var>pType</var>, with <code>{namespace, cubes, failed: true}</code>, <code>cubes</code> being <method>UpdatedCubes</method>. No cube
+/// updated, no row. Called after the namespace is restored, and it never changes the answer.</p>
+ClassMethod AuditFailedUpdate(pType As %String, pName As %String, pNamespace As %String, ByRef pStats, ByRef pNames) [ Private ]
+{
+    Set tCubes = ..UpdatedCubes(.pStats, .pNames)
+    If tCubes.%Size() = 0 Quit
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("cubes", tCubes)
+    Do tEffects.%Set("failed", 1, "boolean")
+    Do ..AuditWrite($Select(pType = ..#TYPEBUILD: ..#VERBBUILD, 1: ..#VERBSYNCHRONIZE), pName, tEffects)
+}
+
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK, or that failed after updating a cube (AD-15,
 /// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
 /// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
 /// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>
@@ -2173,6 +2827,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ..IsWrite(pType) Quit "objectscript"
     If ((pEndpoint = ..#ENDPOINTTERMLISTS) || (pEndpoint = ..#ENDPOINTTERMLISTENTRIES)) && ..IsTermListWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTFOLDERITEMS) && ..IsFolderItemWrite(pType) Quit "objectscript"
+    If ..IsListingGroupEndpoint(pEndpoint) && ..IsListingGroupWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If ..IsQualityMeasureEndpoint(pEndpoint) && (..IsQualityMeasureWrite(pType) || ..IsQualityMeasurePartWrite(pType)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If ..IsSettingsEndpoint(pEndpoint) && ..IsSettingsWrite(pType, pEndpoint) && ..Serves(pEndpoint, pType) Quit "objectscript"
     Quit ""
 }
 
@@ -2186,7 +2843,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint '= ..#ENDPOINTCUBEMANAGER {
-        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
+        Set tPart = $Select(pEndpoint = ..#ENDPOINTFOLDERITEMS: ..FolderItemSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery), ..IsListingGroupEndpoint(pEndpoint): ..ListingGroupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsQualityMeasureEndpoint(pEndpoint): ..QualityMeasureSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), ..IsSettingsEndpoint(pEndpoint): ..SettingSnippet(pEndpoint, pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery), 1: ..TermListSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pType = ..#TYPEBUILD {
@@ -3678,7 +4335,12 @@ ClassMethod FolderItemAbsent(Output pHttpStatus As %Integer, Output pFault As %D
 /// and 3 the item's <code>name</code> as stored, <code>type</code>, <code>owner</code>, <code>modified</code> (the vendor's UTC stamp) and
 /// <code>locked</code>. A locked item the caller's resources hide reads 2, since the vendor answers 3 before it checks them. An exception is
 /// <var>pCaught</var>. A seam: a fixture overrides it to observe the call.</p>
-ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+/// <p>With <var>pDetail</var> 1 a pivot or a dashboard is read further (Story 24.14, property reads only): <code>kind</code> is <code>pivot</code> or <code>dashboard</code> (nothing for
+/// any other item), <code>title</code> and <code>description</code>; for a pivot <code>cube</code>, <code>cubeExists</code>, <code>rows</code>, <code>columns</code>,
+/// <code>measures</code> and <code>filters</code> (each level's spec, one per line), <code>calculated</code> (each member's name, one per line), <code>mdx</code>
+/// (<code>userMDX</code> when <code>manualMode</code> is set, else empty) and <code>restriction</code>; for a dashboard <code>widgets</code> and, for each,
+/// <code>widgets(n)</code> as <code>$ListBuild(title, type, dataSource, dataLink)</code>.</p>
+ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException, pDetail As %Boolean = 0)
 {
     Kill pData
     Set pData("code") = 0
@@ -3699,6 +4361,38 @@ ClassMethod ReadFolderItem(pNamespace As %String, pName As %String, Output pData
                 Set pData("owner") = tItem.owner
                 Set pData("modified") = tItem.timeModified
                 Set pData("locked") = ''tItem.locked
+                If pDetail {
+                    Set pData("title") = tItem.title
+                    Set pData("description") = tItem.description
+                    If tItem.%IsA("%DeepSee.Dashboard.Pivot") {
+                        Set pData("kind") = "pivot"
+                        Set pData("cube") = tItem.cubeName
+                        Set pData("cubeExists") = $Select(tItem.cubeName = "": 0, 1: ''##class(%DeepSee.Utils).%CubeExists(tItem.cubeName))
+                        For tPart = $ListBuild("rows", "rowLevels"), $ListBuild("columns", "columnLevels"), $ListBuild("measures", "measures"), $ListBuild("filters", "filters") {
+                            Set tLevels = $Property(tItem, $List(tPart, 2))
+                            Set tText = ""
+                            For tAt = 1:1:tLevels.Count() {
+                                Set tText = tText _ $Select(tAt = 1: "", 1: $Char(10)) _ tLevels.GetAt(tAt).spec
+                            }
+                            Set pData($List(tPart, 1)) = tText
+                        }
+                        Set tText = ""
+                        For tAt = 1:1:tItem.calculatedMembers.Count() {
+                            Set tText = tText _ $Select(tAt = 1: "", 1: $Char(10)) _ tItem.calculatedMembers.GetAt(tAt).memberName
+                        }
+                        Set pData("calculated") = tText
+                        Set pData("mdx") = $Select(tItem.manualMode: tItem.userMDX, 1: "")
+                        Set pData("restriction") = tItem.sqlRestriction
+                    } ElseIf tItem.%IsA("%DeepSee.Dashboard.Definition") {
+                        Set pData("kind") = "dashboard"
+                        Set pData("widgets") = tItem.widgets.Count()
+                        For tAt = 1:1:pData("widgets") {
+                            Set tWidget = tItem.widgets.GetAt(tAt)
+                            Set pData("widgets", tAt) = $ListBuild(tWidget.title, tWidget.type, tWidget.dataSource, tWidget.dataLink)
+                        }
+                        Set tWidget = ""
+                    }
+                }
             }
             Set tItem = ""
         }
@@ -3735,6 +4429,106 @@ ClassMethod FolderItemRow(pNamespace As %String, ByRef pData) As %DynamicObject
     Do tRow.%Set("Locked", ''pData("locked"), "boolean")
     Do tRow.%Set("Namespace", pNamespace, "string")
     Quit tRow
+}
+
+/// <p>The viewer's two reads on <var>pEndpoint</var> (Story 24.14), <code>FolderItemDefinition</code> or <code>DashboardWidgets</code>, of the folder item <var>pName</var>, as
+/// <var>pRows</var>, at most <var>pMax</var> of them when that is above zero. A name that cannot be a folder item, an item that is absent or hidden from the caller, an item that
+/// is neither a pivot nor a dashboard, and a dashboard's widgets read of a pivot answer no rows. Property reads only: nothing composes a pivot's MDX here. An exception is a fault.</p>
+ClassMethod ReadFolderItemView(pNamespace As %String, pEndpoint As %String, pName As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = []
+    If '..FolderItemShaped(pName) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadFolderItem(pNamespace, pName, .tData, .tCaught, 1)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    If '..FolderItemVisible(tData("code")) || ($Get(tData("kind")) = "") Quit $$$OK
+    If pEndpoint = ..#ENDPOINTFOLDERITEMDEFINITION {
+        Do pRows.%Push(..FolderItemDefinitionRow(.tData))
+        Quit $$$OK
+    }
+    If tData("kind") '= "dashboard" Quit $$$OK
+    For tAt = 1:1:tData("widgets") {
+        If (pMax > 0) && (tAt > pMax) Quit
+        Set tWidget = tData("widgets", tAt)
+        Set tRow = {}
+        Do tRow.%Set("Dashboard", tData("name"), "string")
+        Do tRow.%Set("Position", tAt, "number")
+        Do tRow.%Set("Title", $List(tWidget, 1), "string")
+        Do tRow.%Set("Type", $List(tWidget, 2), "string")
+        Do tRow.%Set("DataSource", $List(tWidget, 3), "string")
+        Do tRow.%Set("LinkedTo", $List(tWidget, 4), "string")
+        Do tRow.%Set("NotPivot", ..WidgetNotPivot($List(tWidget, 3)), "boolean")
+        Do pRows.%Push(tRow)
+    }
+    Quit $$$OK
+}
+
+/// <p>The Definition row of the pivot or dashboard read into <var>pData</var> by <method>ReadFolderItem</method> with its detail: <code>{Name, Type, Title, Description,
+/// Owner, Modified, Cube, Rows, Columns, Measures, Filters, Calculated, MDX, Restriction}</code>, the last eight empty for a dashboard, <code>Modified</code> the instance's
+/// local <code>YYYY-MM-DD HH:MM:SS</code>. Pure.</p>
+ClassMethod FolderItemDefinitionRow(ByRef pData) As %DynamicObject
+{
+    Set tOut = {}
+    Do tOut.%Set("Name", pData("name"), "string")
+    Do tOut.%Set("Type", pData("type"), "string")
+    Do tOut.%Set("Title", pData("title"), "string")
+    Do tOut.%Set("Description", pData("description"), "string")
+    Do tOut.%Set("Owner", pData("owner"), "string")
+    Do tOut.%Set("Modified", ..LocalStamp(pData("modified")), "string")
+    For tPart = $ListBuild("Cube", "cube"), $ListBuild("Rows", "rows"), $ListBuild("Columns", "columns"), $ListBuild("Measures", "measures"), $ListBuild("Filters", "filters"), $ListBuild("Calculated", "calculated"), $ListBuild("MDX", "mdx"), $ListBuild("Restriction", "restriction") {
+        Do tOut.%Set($List(tPart, 1), $Get(pData($List(tPart, 2))), "string")
+    }
+    Quit tOut
+}
+
+/// <p>Whether a widget's data source <var>pDataSource</var> is not a saved pivot: empty, or a KPI, a metric or a worksheet by its extension, as the classic pivot widget decides
+/// (<code>%DeepSee.Component.Widget.pivot</code>). Pure.</p>
+ClassMethod WidgetNotPivot(pDataSource As %String) As %Boolean
+{
+    If pDataSource = "" Quit 1
+    Quit ''$ListFind($ListBuild("kpi", "metric", "worksheet"), $Piece(pDataSource, ".", $Length(pDataSource, ".")))
+}
+
+/// <p>The MDX statement of the saved pivot <var>pName</var> in <var>pNamespace</var>, composed for a run (Story 24.14, AD-7, AD-29, AD-65), into <var>pStatement</var>. In this
+/// order: the MDX gate (<method>MdxAdmit</method>), so no vendor call is made for a caller or a namespace it refuses; the name's shape; the item opened by
+/// <method>ReadFolderItem</method> (a missing item, a name that cannot be one, an item the caller's resources hide and a locked item they hide each 404
+/// <code>ANALYTICS.FOLDERITEM.ABSENT</code>); an item that is not a pivot, or a pivot whose cube this namespace does not hold (a KPI-backed pivot), 409
+/// <code>ANALYTICS.PIVOT.CUBE</code> before anything is composed; then <method>VendorPivotMdx</method>. The composed text longer than <parameter>MDXMAXSTATEMENT</parameter>
+/// is 400 <code>ANALYTICS.MDX.INPUT</code>. The composition writes the vendor's local result counter, which is why it belongs to a run and never to a read.</p>
+ClassMethod PivotStatement(pNamespace As %String, pName As %String, Output pStatement As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pStatement = ""
+    Set tSC = ..MdxAdmit(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..FolderItemShaped(pName) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    Set tCaught = ""
+    Do ..ReadFolderItem(pNamespace, pName, .tData, .tCaught, 1)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the pivot could not be read", .pHttpStatus, .pFault)
+    If '..FolderItemVisible(tData("code")) Quit ..FolderItemAbsent(.pHttpStatus, .pFault)
+    If ($Get(tData("kind")) '= "pivot") || '$Get(tData("cubeExists")) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PIVOTCUBE, .pHttpStatus, .pFault)
+    Do ..VendorPivotMdx(pNamespace, tData("name"), .pStatement, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the pivot's MDX could not be composed", .pHttpStatus, .pFault)
+    If $Length(pStatement) > ..#MDXMAXSTATEMENT Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#MDXINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The vendor's own composition of the saved pivot <var>pName</var>'s MDX (<code>%GetBaseMDX</code>), switched by explicit save and restore (AD-16), into
+/// <var>pStatement</var>; an exception is <var>pCaught</var>. The one call to <code>%GetBaseMDX</code> in this port. A seam: a fixture overrides it to observe the call.</p>
+ClassMethod VendorPivotMdx(pNamespace As %String, pName As %String, Output pStatement As %String, Output pCaught As %Exception.AbstractException)
+{
+    Set pStatement = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tItem = ##class(%DeepSee.UserLibrary.Utils).%OpenFolderItem(pName, .tOpened)
+        If $IsObject(tItem) && tItem.%IsA("%DeepSee.Dashboard.Pivot") Set pStatement = tItem.%GetBaseMDX()
+        Set tItem = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
 }
 
 /// <p>The folder item classes of <var>pNamespace</var> as the vendor lists them (<code>%GetFolderItemClasses</code>), switched by explicit save and
@@ -4243,6 +5037,2388 @@ ClassMethod FolderItemSnippet(pType As %String, pId As %String, ByRef pQuery) As
     Set tSC = ..ExportFile($Get(pQuery(..#ROOTKEY)), tPath, .tResolved, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSource _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
     Quit tSource _ tNL _ tHeld _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tUtils _ ".%Export(" _ tName _ ", " _ ..Literal(tResolved) _ ", 0)"
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the listing group endpoints (Story 24.11).</p>
+ClassMethod IsListingGroupEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#ENDPOINTLISTINGGROUPS) || (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS)
+}
+
+/// <p>Whether <var>pType</var> is one of the listing group writes (Story 24.11): on <code>ListingGroups</code> the add, update, delete and copy, on
+/// <code>ListingGroupListings</code> the listing add, change and remove, which reuse <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter>
+/// and <parameter>TYPEENTRYREMOVE</parameter>.</p>
+ClassMethod IsListingGroupWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY) || (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a listing group and so needs
+/// the destination's gate (<method>AdmitListingGroup</method>): a write, and a single-object read composed for one. Pure.</p>
+ClassMethod ChangesListingGroups(pType As %String, pAction As %String = "") As %Boolean
+{
+    If ..IsListingGroupWrite(pType) Quit 1
+    Quit (pAction '= "") && ((pType = ..#TYPELISTINGGROUP) || (pType = ..#TYPELISTING) || (pType = ..#TYPECOPYTARGET))
+}
+
+/// <p>The listing group writes' gate (AD-29, AD-61, AD-65), after the namespace gate: <method>AdmitClassWrite</method> with <parameter>LISTINGGROUPEDITPAIRS</parameter>, the
+/// database <parameter>LISTINGGROUPGLOBAL</parameter> maps to and the listing groups' read-only code.</p>
+ClassMethod AdmitListingGroup(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AdmitClassWrite(pNamespace, ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPEDITPAIRS), ..#LISTINGGROUPGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPREADONLY, .pHttpStatus, .pFault)
+}
+
+/// <p>The gate of a write that saves, compiles and deletes a class (AD-29, AD-61, AD-65), after the namespace gate: <var>pExtraPairs</var> (a <code>%List</code> of pairs, <code>""</code>
+/// for none) and the source code API's own pairs (<code>%Development:USE</code>, <method>OcuPilot.Port.AtelierPort.Pairs</method>) and <method>OcuPilot.Port.AtelierPort.WritePairs</method> of the
+/// namespace (which adds WRITE on the routines database), then WRITE on the database <var>pGlobal</var> maps to, mounted read-write (409 <var>pReadOnlyCode</var>). 400
+/// <code>PORT.VALIDATION</code> when the instance cannot name the databases. Names no vendor class.</p>
+ClassMethod AdmitClassWrite(pNamespace As %String, pExtraPairs As %List, pGlobal As %String, pReadOnlyCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tWritePairs = ##class(OcuPilot.Port.AtelierPort).WritePairs(pNamespace)
+    If tWritePairs = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", pExtraPairs _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ tWritePairs, .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit ..AdmitDestination(pNamespace, pGlobal, pReadOnlyCode, .pHttpStatus, .pFault)
+}
+
+/// <p>The class every listing group and quality measure write is saved, compiled and deleted through. Overridable so a fixture can fail a call; production never overrides it.</p>
+ClassMethod AtelierPortClass() As %String
+{
+    Quit "OcuPilot.Port.AtelierPort"
+}
+
+/// <p>404 <code>ANALYTICS.LISTINGGROUP.ABSENT</code>: the listing group, or the listing, is not there.</p>
+ClassMethod ListingGroupAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>The listing group <var>pGroup</var> as the vendor reports it in <var>pNamespace</var>, switched by explicit save and restore (AD-16), into
+/// <var>pData</var>: <code>exists</code> (the saved list the caller may see names it); <code>classes</code>, how many classes declare the name; <code>class</code>, the
+/// compiled one else the first; <code>compiled</code>; the model's <code>name</code>, <code>displayName</code>, <code>description</code>, <code>disabled</code>,
+/// <code>targetCubes</code>, <code>resource</code> and <code>defaultResource</code>; and <code>count</code> listings, <code>l(n, member)</code> each with its
+/// <code>name</code>, <code>displayName</code>, <code>description</code>, <code>disabled</code>, <code>type</code>, <code>fields</code>, <code>formats</code>,
+/// <code>orderBy</code>, <code>joins</code>, <code>sql</code>, <code>source</code>, <code>resource</code> and <code>selectMode</code>. An exception is
+/// <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod ReadListingGroupData(pNamespace As %String, pGroup As %String, Output pData, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("classes") = 0
+    Set pData("count") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tGroup = $ZConvert(pGroup, "U")
+        Set tSC = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tSaved, 0)
+        If $$$ISOK(tSC) Set tSC = ##class(%DeepSee.ListingGroup).%GetListingGroups(.tCompiled, 1)
+        If $$$ISOK(tSC) && (tGroup '= "") && $Data(tSaved(tGroup)) {
+            Set tClass = $List(tSaved(tGroup, 1), 5)
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tSaved(tGroup, tAt))
+                If tAt = "" Quit
+                If $Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = $List(tSaved(tGroup, tAt), 5)) {
+                    Set tClass = $List(tSaved(tGroup, tAt), 5)
+                    Quit
+                }
+            }
+            Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(tClass)
+            If $IsObject(tModel) && (tModel.name '= "") {
+                Set pData("exists") = 1
+                Set pData("classes") = +$Get(tSaved(tGroup))
+                Set pData("class") = tClass
+                Set pData("compiled") = ''($Data(tCompiled(tGroup, 1)) && ($List(tCompiled(tGroup, 1), 5) = tClass))
+                Set pData("name") = tModel.name
+                Set pData("displayName") = tModel.displayName
+                Set pData("description") = tModel.description
+                Set pData("disabled") = ''tModel.disabled
+                Set pData("targetCubes") = tModel.targetCubes
+                Set pData("resource") = tModel.resource
+                Set pData("defaultResource") = tModel.defaultResource
+                Set pData("count") = tModel.listings.Count()
+                For tAt = 1:1:pData("count") {
+                    Set tListing = tModel.listings.GetAt(tAt)
+                    Set pData("l", tAt, "name") = tListing.name
+                    Set pData("l", tAt, "displayName") = tListing.displayName
+                    Set pData("l", tAt, "description") = tListing.description
+                    Set pData("l", tAt, "disabled") = ''tListing.disabled
+                    Set pData("l", tAt, "type") = tListing.listingType
+                    Set pData("l", tAt, "fields") = tListing.fieldList
+                    Set pData("l", tAt, "formats") = tListing.formatList
+                    Set pData("l", tAt, "orderBy") = tListing.orderBy
+                    Set pData("l", tAt, "joins") = tListing.joinInfo
+                    Set pData("l", tAt, "sql") = tListing.sql
+                    Set pData("l", tAt, "source") = tListing.sourceClass
+                    Set pData("l", tAt, "resource") = tListing.resource
+                    Set pData("l", tAt, "selectMode") = tListing.selectMode
+                }
+            }
+        }
+        If $$$ISERR(tSC) Set pCaught = ##class(%Exception.StatusException).CreateFromStatus(tSC)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p><method>ReadListingGroupData</method> of <var>pGroup</var>, a name that cannot be a listing group's answering none, with a fault as the answer's error
+/// status.</p>
+ClassMethod ListingGroupFacts(pNamespace As %String, pGroup As %String, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("classes") = 0
+    Set pData("count") = 0
+    If '..ListingNameShaped(pGroup) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadListingGroupData(pNamespace, pGroup, .pData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the listing group could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The cube names of the comma-separated <var>pText</var> as the write stores them: each stripped of surrounding whitespace, in order, an empty piece dropped. Pure.</p>
+ClassMethod CubeList(pText As %String) As %List
+{
+    Set tCubes = ""
+    For tPiece = 1:1:$Length(pText, ",") {
+        Set tCube = $ZStrip($Piece(pText, ",", tPiece), "<>W")
+        If tCube '= "" Set tCubes = tCubes _ $ListBuild(tCube)
+    }
+    Quit tCubes
+}
+
+/// <p>The target cubes <var>pText</var> as the write stores them (<method>CubeList</method> joined by a comma), the form a caller sends so the read-back finds the value it sent. Pure.</p>
+ClassMethod NormalizedCubes(pText As %String) As %String
+{
+    Quit $ListToString(..CubeList(pText), ",")
+}
+
+/// <p>Whether <var>pName</var> can be a listing group's or a listing's name: 1 to <parameter>LISTINGNAMEMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod ListingNameShaped(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#LISTINGNAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether <var>pClass</var> can be a new listing group's class: dotted letters and digits with at least one package, at most 200 characters, outside
+/// the <code>%</code> packages (which the pattern excludes) and outside an <code>OcuPilot</code> package, which holds this product's own classes (AD-10). Pure.</p>
+ClassMethod ListingClassShaped(pClass As %String) As %Boolean
+{
+    If '$Match(pClass, "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)+$") || ($Length(pClass) > 200) Quit 0
+    Quit $ZConvert($Piece(pClass, ".", 1), "U") '= "OCUPILOT"
+}
+
+/// <p>The listing group <var>pData</var> as a row: <code>{Name, Class, Caption, Description, TargetCubes, Resource, DefaultResource, Disabled, Compiled,
+/// Listings, Version, Namespace}</code>, <code>Caption</code> the model's own display name and <code>Version</code> the class's version, <code>""</code>
+/// when none was read. Pure.</p>
+ClassMethod ListingGroupRow(pNamespace As %String, ByRef pData, pVersion As %String = "") As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pData("name"), "string")
+    Do tRow.%Set("Class", pData("class"), "string")
+    Do tRow.%Set("Caption", pData("displayName"), "string")
+    Do tRow.%Set("Description", pData("description"), "string")
+    Do tRow.%Set("TargetCubes", pData("targetCubes"), "string")
+    Do tRow.%Set("Resource", pData("resource"), "string")
+    Do tRow.%Set("DefaultResource", pData("defaultResource"), "string")
+    Do tRow.%Set("Disabled", ''pData("disabled"), "boolean")
+    Do tRow.%Set("Compiled", ''pData("compiled"), "boolean")
+    Do tRow.%Set("Listings", pData("count"), "number")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The listing at position <var>pAt</var> of the group <var>pData</var> as a row: <code>{ListingGroup, Name, DisplayName, Type, Fields, OrderBy, Joins, Formats,
+/// Source, Resource, SelectMode, Disabled, Description, SQL, Version, Namespace}</code>, <code>SQL</code> only when <var>pShowSQL</var>. Pure.</p>
+ClassMethod ListingRow(pNamespace As %String, ByRef pData, pAt As %Integer, pShowSQL As %Boolean, pVersion As %String = "") As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("ListingGroup", pData("name"), "string")
+    Do tRow.%Set("Name", pData("l", pAt, "name"), "string")
+    Do tRow.%Set("DisplayName", pData("l", pAt, "displayName"), "string")
+    Do tRow.%Set("Type", pData("l", pAt, "type"), "string")
+    Do tRow.%Set("Fields", pData("l", pAt, "fields"), "string")
+    Do tRow.%Set("OrderBy", pData("l", pAt, "orderBy"), "string")
+    Do tRow.%Set("Joins", pData("l", pAt, "joins"), "string")
+    Do tRow.%Set("Formats", pData("l", pAt, "formats"), "string")
+    Do tRow.%Set("Source", pData("l", pAt, "source"), "string")
+    Do tRow.%Set("Resource", pData("l", pAt, "resource"), "string")
+    Do tRow.%Set("SelectMode", pData("l", pAt, "selectMode"), "string")
+    Do tRow.%Set("Disabled", ''pData("l", pAt, "disabled"), "boolean")
+    Do tRow.%Set("Description", pData("l", pAt, "description"), "string")
+    Do tRow.%Set("SQL", $Select(pShowSQL: pData("l", pAt, "sql"), 1: ""), "string")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The position of the listing named exactly <var>pName</var> in the group <var>pData</var>; 0 when it holds none. Pure.</p>
+ClassMethod ListingAt(ByRef pData, pName As %String) As %Integer
+{
+    Set tFound = 0
+    For tAt = 1:1:+$Get(pData("count")) {
+        If pData("l", tAt, "name") = pName {
+            Set tFound = tAt
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>The shape violations of a listing group write that need nothing from the instance, in <var>pViolations</var>
+/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>), every one <code>PORT.FIELD.SHAPE</code>: <var>pType</var> is the
+/// write, <var>pGroup</var> and <var>pListing</var> the names it acts on, <var>pBody</var> what the caller sends. A name is
+/// <method>ListingNameShaped</method>; a text member is a string within its length (a caption, resource, default resource, display name or source of at most
+/// 255 characters, a description and any other of at most 32,000); <code>Disabled</code> is true or false; a listing's <code>Type</code> is <code>table</code> or <code>map</code>
+/// and its <code>SelectMode</code> is <code>0</code>, <code>1</code> or <code>2</code>. Pure.</p>
+ClassMethod ListingGroupViolations(pType As %String, pGroup As %String, pListing As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    Set tListingWrite = (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    If (pType = ..#TYPEADD) && '..ListingNameShaped(pBody.%Get("Name")) Set pViolations($Increment(pViolations)) = $ListBuild("Name", tShape)
+    If tListingWrite && ((pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET)) && '..ListingNameShaped(pListing) Set pViolations($Increment(pViolations)) = $ListBuild("Name", tShape)
+    If (pType '= ..#TYPEADD) && (pType '= ..#TYPEUPDATE) && (pType '= ..#TYPEENTRYADD) && (pType '= ..#TYPEENTRYSET) Quit $$$OK
+    Set tShort = $Select(tListingWrite: "DisplayName,Resource,Source", 1: "Caption,Resource,DefaultResource")
+    Set tLong = $Select(tListingWrite: "Description,Fields,OrderBy,Joins,Formats,SQL", 1: "Description,TargetCubes")
+    For tMember = 1:1:$Length(tShort, ",") {
+        Set tName = $Piece(tShort, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tName)
+        If tMemberType = "unassigned" Continue
+        If (tMemberType '= "string") || ($Length(pBody.%Get(tName)) > ..#SHORTTEXTMAX) Set pViolations($Increment(pViolations)) = $ListBuild(tName, tShape)
+    }
+    For tMember = 1:1:$Length(tLong, ",") {
+        Set tName = $Piece(tLong, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tName)
+        If tMemberType = "unassigned" Continue
+        If (tMemberType '= "string") || ($Length(pBody.%Get(tName)) > ..#LONGTEXTMAX) Set pViolations($Increment(pViolations)) = $ListBuild(tName, tShape)
+    }
+    Set tDisabledType = pBody.%GetTypeOf("Disabled")
+    If (tDisabledType '= "unassigned") && (tDisabledType '= "boolean") Set pViolations($Increment(pViolations)) = $ListBuild("Disabled", tShape)
+    If tListingWrite {
+        If (pBody.%GetTypeOf("Type") '= "unassigned") && ((pBody.%GetTypeOf("Type") '= "string") || '$ListFind($ListBuild("table", "map"), pBody.%Get("Type"))) Set pViolations($Increment(pViolations)) = $ListBuild("Type", tShape)
+        If (pBody.%GetTypeOf("SelectMode") '= "unassigned") && ((pBody.%GetTypeOf("SelectMode") '= "string") || '$ListFind($ListBuild("0", "1", "2"), pBody.%Get("SelectMode"))) Set pViolations($Increment(pViolations)) = $ListBuild("SelectMode", tShape)
+    }
+    Quit $$$OK
+}
+
+/// <p>The class that holds a write's new text, the cube classes it depends on and its XML, composed from the vendor's own model in <var>pNamespace</var>,
+/// switched by explicit save and restore (AD-16): <var>pOp</var> is the write (<parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter>,
+/// <parameter>TYPECOPY</parameter>, <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> or <parameter>TYPEENTRYREMOVE</parameter>).
+/// A write but an add starts from <code>%GetModel</code> of <var>pClass</var>, read now, so what the caller cannot see is kept as stored; an add starts
+/// from a new model. <var>pBody</var> carries the members to set (<method>ListingGroupViolations</method> says which), <var>pListing</var> names the listing a
+/// listing write acts on, <var>pNewName</var> and <var>pTargetCubes</var> a copy's name and optional cubes, and <var>pHasSQL</var> whether the caller holds the SQL
+/// pair. <var>pXml</var> is the model written by <code>%XML.Writer</code>, as the vendor writes a class's <code>Listings</code>, and <var>pClasses</var> the
+/// comma-separated cube classes of its target cubes. <var>pCode</var> is the refusal, <code>""</code> for none: <code>ABSENT</code>, <code>TAKEN</code>
+/// (a group name or class already in use), <code>CUBE</code> (no cube, a missing one, or one that takes no listing groups), <code>LISTINGTAKEN</code> (a
+/// listing the group repeats, a cube defines, or another group registers), <code>LISTINGHELD</code> (a listing add of a name the group holds) or
+/// <code>SQLPAIR</code> (a SQL change without the pair). Nothing is written. An exception is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod VendorListingGroupCompose(pNamespace As %String, pOp As %String, pClass As %String, pListing As %String, pBody As %DynamicObject, pNewName As %String, pNewClass As %String, pTargetCubes As %String, pHasSQL As %Boolean, Output pXml As %String, Output pClasses As %String, Output pCode As %String, Output pCaught As %Exception.AbstractException) As %Status
+{
+    Set pXml = ""
+    Set pClasses = ""
+    Set pCode = ""
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pOp = "ADD" {
+            Set tModel = ##class(%DeepSee.Model.ListingGroup.listingGroup).%New()
+            Set tModel.name = pBody.%Get("Name")
+        } Else {
+            Set tModel = ##class(%DeepSee.ListingGroup).%GetModel(pClass)
+            If '$IsObject(tModel) || (tModel.name = "") Set pCode = "ABSENT"
+        }
+        If pCode = "" && ((pOp = "ADD") || (pOp = "UPDATE")) {
+            If pBody.%GetTypeOf("Caption") = "string" Set tModel.displayName = pBody.%Get("Caption")
+            If pBody.%GetTypeOf("Description") = "string" Set tModel.description = pBody.%Get("Description")
+            If pBody.%GetTypeOf("TargetCubes") = "string" Set tModel.targetCubes = pBody.%Get("TargetCubes")
+            If pBody.%GetTypeOf("Resource") = "string" Set tModel.resource = pBody.%Get("Resource")
+            If pBody.%GetTypeOf("DefaultResource") = "string" Set tModel.defaultResource = pBody.%Get("DefaultResource")
+            If pBody.%GetTypeOf("Disabled") = "boolean" Set tModel.disabled = pBody.%Get("Disabled")
+        }
+        If pCode = "" && (pOp = "COPY") {
+            Set tModel.name = pNewName
+            If pTargetCubes '= "" Set tModel.targetCubes = pTargetCubes
+        }
+        If pCode = "" && ((pOp = "ADD") || (pOp = "COPY")) {
+            ; A name or class in use, whoever may see it: the saved list omits a group another resource guards, so its registry node is read too.
+            Do ##class(%DeepSee.ListingGroup).%GetListingGroups(.tSaved, 0)
+            If $Data(tSaved($ZConvert(tModel.name, "U"))) || $Data(^DeepSee.ListingGroups("groups", $ZConvert(tModel.name, "U"))) || ##class(%Dictionary.ClassDefinition).%ExistsId($Select(pOp = "ADD": pBody.%Get("Class"), 1: pNewClass)) Set pCode = "TAKEN"
+        }
+        If pCode = "" && (pOp = "ENTRYADD") {
+            For tAt = 1:1:tModel.listings.Count() {
+                If tModel.listings.GetAt(tAt).name = pListing Set pCode = "LISTINGHELD"
+            }
+            If pCode = "" {
+                Set tListing = ##class(%DeepSee.Model.ListingGroup.listing).%New()
+                Set tListing.name = pListing
+                Do tModel.listings.Insert(tListing)
+            }
+        }
+        If pCode = "" && ((pOp = "ENTRYSET") || (pOp = "ENTRYREMOVE")) {
+            Set tIndex = 0
+            For tAt = 1:1:tModel.listings.Count() {
+                If tModel.listings.GetAt(tAt).name = pListing Set tIndex = tAt Quit
+            }
+            If 'tIndex {
+                Set pCode = "ABSENT"
+            } ElseIf pOp = "ENTRYREMOVE" {
+                Do tModel.listings.RemoveAt(tIndex)
+            } Else {
+                Set tListing = tModel.listings.GetAt(tIndex)
+            }
+        }
+        If pCode = "" && ((pOp = "ENTRYADD") || (pOp = "ENTRYSET")) {
+            If pBody.%GetTypeOf("DisplayName") = "string" Set tListing.displayName = pBody.%Get("DisplayName")
+            If pBody.%GetTypeOf("Description") = "string" Set tListing.description = pBody.%Get("Description")
+            If pBody.%GetTypeOf("Disabled") = "boolean" Set tListing.disabled = pBody.%Get("Disabled")
+            If pBody.%GetTypeOf("Type") = "string" Set tListing.listingType = pBody.%Get("Type")
+            If pBody.%GetTypeOf("Fields") = "string" Set tListing.fieldList = pBody.%Get("Fields")
+            If pBody.%GetTypeOf("Formats") = "string" Set tListing.formatList = pBody.%Get("Formats")
+            If pBody.%GetTypeOf("OrderBy") = "string" Set tListing.orderBy = pBody.%Get("OrderBy")
+            If pBody.%GetTypeOf("Joins") = "string" Set tListing.joinInfo = pBody.%Get("Joins")
+            If pBody.%GetTypeOf("Source") = "string" Set tListing.sourceClass = pBody.%Get("Source")
+            If pBody.%GetTypeOf("Resource") = "string" Set tListing.resource = pBody.%Get("Resource")
+            If pBody.%GetTypeOf("SelectMode") = "string" Set tListing.selectMode = pBody.%Get("SelectMode")
+            ; The SQL a caller without the pair cannot read is kept as stored; a change of it, or a new one, needs the pair.
+            If pBody.%GetTypeOf("SQL") = "string" && (pBody.%Get("SQL") '= tListing.sql) && (pHasSQL || (pBody.%Get("SQL") '= "")) {
+                If pHasSQL {
+                    Set tListing.sql = pBody.%Get("SQL")
+                } Else {
+                    Set pCode = "SQLPAIR"
+                }
+            }
+        }
+        If pCode = "" {
+            ; The checks the vendor's compile makes, in its order, so that a refusal is known before anything is saved. A disabled group is not checked.
+            Set tCubes = ..CubeList(tModel.targetCubes)
+            Set tModel.targetCubes = ..NormalizedCubes(tModel.targetCubes)
+            If 'tModel.disabled {
+                If tCubes = "" Set pCode = "CUBE"
+                For tPiece = 1:1:$ListLength(tCubes) {
+                    Set tCube = $List(tCubes, tPiece)
+                    If '##class(%DeepSee.Utils).%CubeExists(tCube) || $Get(^DeepSee.Cubes("cubes", $ZConvert(tCube, "U"), "disableListingGroups"), 0) {
+                        Set pCode = "CUBE"
+                        Quit
+                    }
+                    Set pClasses = pClasses _ $Select(pClasses = "": "", 1: ",") _ ##class(%DeepSee.Utils).%GetCubeClass(tCube)
+                }
+                Kill tNames
+                For tPiece = 1:1:$ListLength(tCubes) {
+                    If pCode '= "" Quit
+                    Set tCubeU = $ZConvert($List(tCubes, tPiece), "U")
+                    ; A removal leaves the relationship's keys with a gap, so the listings are walked by key.
+                    Set tKey = ""
+                    For {
+                        Set tListing = tModel.listings.GetNext(.tKey)
+                        If tKey = "" Quit
+                        Set tName = tListing.name
+                        If $Data(^DeepSee.Cubes("cubes", tCubeU, "listing", tName)) || ($Data(^DeepSee.ListingGroups("cubes", tCubeU, "listing", tName, "group")) && ($Get(^DeepSee.ListingGroups("cubes", tCubeU, "listing", tName, "group")) '= $ZConvert(tModel.name, "U"))) {
+                            Set pCode = "LISTINGTAKEN"
+                            Quit
+                        }
+                    }
+                }
+                Set tKey = ""
+                For {
+                    Set tListing = tModel.listings.GetNext(.tKey)
+                    If (tKey = "") || (pCode '= "") Quit
+                    If tListing.disabled Continue
+                    If $Data(tNames($ZConvert(tListing.name, "U"))) Set pCode = "LISTINGTAKEN"
+                    Set tNames($ZConvert(tListing.name, "U")) = ""
+                }
+            } Else {
+                For tPiece = 1:1:$ListLength(tCubes) {
+                    Set tCube = $List(tCubes, tPiece)
+                    If ##class(%DeepSee.Utils).%CubeExists(tCube) Set pClasses = pClasses _ $Select(pClasses = "": "", 1: ",") _ ##class(%DeepSee.Utils).%GetCubeClass(tCube)
+                }
+            }
+        }
+        If pCode = "" {
+            Set tWriter = ##class(%XML.Writer).%New()
+            Set tWriter.NoXMLDeclaration = 1
+            Set tWriter.Indent = 1
+            Set tStream = ##class(%Stream.TmpCharacter).%New()
+            Set tSC = tWriter.OutputToStream(tStream)
+            If $$$ISOK(tSC) Set tSC = tWriter.RootObject(tModel)
+            If $$$ISOK(tSC) {
+                Do tStream.Rewind()
+                Set pXml = tStream.Read(3000000)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The refusal for the code <var>pCode</var> <method>VendorListingGroupCompose</method> answered: <code>TAKEN</code> and <code>LISTINGTAKEN</code> 409, <code>LISTINGHELD</code>
+/// 409 <code>LISTINGTAKEN</code>, <code>CUBE</code> 422, <code>ABSENT</code> 404 and <code>SQLPAIR</code> 403 naming <parameter>LISTINGGROUPSQLPAIRS</parameter>.</p>
+ClassMethod ComposeRefusal(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If pCode = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPTAKEN, .pHttpStatus, .pFault)
+    If (pCode = "LISTINGTAKEN") || (pCode = "LISTINGHELD") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPLISTINGTAKEN, .pHttpStatus, .pFault)
+    If pCode = "CUBE" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPCUBE, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPCUBE, .pHttpStatus, .pFault)
+    If pCode = "SQLPAIR" Quit ..Deny(..#LISTINGGROUPSQLPAIRS, .pHttpStatus, .pFault)
+    Quit ..ListingGroupAbsent(.pHttpStatus, .pFault)
+}
+
+/// <p>Serve the listing group endpoints' typed calls after <method>Invoke</method>'s gate (Story 24.11): the reads <code>LISTINGGROUP</code>, <code>LISTING</code> and
+/// <code>COPYTARGET</code> (<method>ReadListingGroup</method>) and the seven writes (<method>PerformListingGroup</method>). The group is named under
+/// <parameter>IDKEY</parameter>, a listing by the composite <code>[ListingGroup, Name]</code>, each part kept exactly (AD-13). A read carrying
+/// <parameter>ACTIONKEY</parameter> is composed for that write: an add's read is 409 when the target is held and 404 when it is not, and the other writes' reads are 404
+/// <code>ANALYTICS.LISTINGGROUP.ABSENT</code> when the target is not there and 409 <code>AMBIGUOUS</code> when two classes declare the group.</p>
+ClassMethod InvokeListingGroup(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery(..#IDKEY))
+    Set tListings = (pEndpoint = ..#ENDPOINTLISTINGGROUPLISTINGS)
+    Set tParts = $Select(tListings: ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId), 1: $ListBuild(tId))
+    If tListings && (($ListLength(tParts) '= 2) || ($List(tParts, 2) = "")) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONLISTINGGROUPREQUIRED, .pHttpStatus, .pFault)
+    Set tGroup = $List(tParts, 1)
+    If tGroup = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONLISTINGGROUPREQUIRED, .pHttpStatus, .pFault)
+    Set tListing = $ListGet(tParts, 2)
+    Set tWrite = ..IsListingGroupWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsListingGroupWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEADD {
+        ; The group's name is the id's, which the body of a confirmed add does not repeat.
+        Set pBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+        Do pBody.%Set("Name", tGroup, "string")
+    }
+    If tWrite Quit ..PerformListingGroup(pNamespace, pType, tGroup, tListing, .pQuery, pBody, 0, .pResult, .pHttpStatus, .pFault)
+    Quit ..ReadListingGroup(pNamespace, pType, tGroup, tListing, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The single-object reads of the listing group endpoints: <code>LISTINGGROUP</code> (the group as <method>ListingGroupRow</method>), <code>LISTING</code> (one listing as
+/// <method>ListingRow</method>, its <code>SQL</code> only to a holder of <parameter>LISTINGGROUPSQLPAIRS</parameter>) and <code>COPYTARGET</code> (<code>{Name, Version,
+/// Listings, NewName, NewClass, NewCubes, Present, Namespace}</code>, the group with the copy's own name, class and cubes from the query). A group or listing that
+/// is not there is 404 <code>PORT.NOTFOUND</code> on a plain read and <code>ANALYTICS.LISTINGGROUP.ABSENT</code> with <var>pAction</var>. A read composed for a write
+/// carries the class's <code>Version</code>, which the proposal's fingerprint covers, and is refused as that write would be refused (<method>PlanListingGroup</method>).</p>
+ClassMethod ReadListingGroup(pNamespace As %String, pType As %String, pGroup As %String, pListing As %String, pAction As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ListingGroupFacts(pNamespace, pGroup, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tHeld = +tData("exists")
+    If (pAction = ..#TYPEADD) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(pQuery(..#NEWCLASSKEY))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If pAction = ..#TYPEADD Quit $Select(tHeld: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPTAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    If 'tHeld Quit ..AbsentFor(pAction, .pHttpStatus, .pFault)
+    If pAction '= "" {
+        If tData("classes") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pAction '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(tData("class"))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tData("class") _ ".cls", .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    } Else {
+        Set tVersion = ""
+    }
+    If pType = ..#TYPELISTINGGROUP {
+        Set pResult = ..ListingGroupRow(pNamespace, .tData, tVersion)
+    } ElseIf pType = ..#TYPELISTING {
+        Set tAt = ..ListingAt(.tData, pListing)
+        If pAction = ..#TYPEENTRYADD Quit $Select(tAt: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPLISTINGTAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+        If 'tAt Quit ..AbsentFor(pAction, .pHttpStatus, .pFault)
+        Set pResult = ..ListingRow(pNamespace, .tData, tAt, $ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPSQLPAIRS)), tVersion)
+    } Else {
+        Set tNew = $Get(pQuery(..#NEWNAMEKEY))
+        Set tNewClass = $Get(pQuery(..#NEWCLASSKEY))
+        Set tCubes = $Get(pQuery(..#TARGETCUBESKEY))
+        If pAction '= "" {
+            Set tSC = ..PlanListingGroup(pNamespace, ..#TYPECOPY, pGroup, "", .pQuery, {}, .tPlan, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit tSC
+        }
+        Set pResult = {}
+        Do pResult.%Set("Name", tData("name"), "string")
+        Do pResult.%Set("Version", tVersion, "string")
+        Do pResult.%Set("Listings", tData("count"), "number")
+        Do pResult.%Set("NewName", tNew, "string")
+        Do pResult.%Set("NewClass", tNewClass, "string")
+        Do pResult.%Set("NewCubes", tCubes, "string")
+        Do pResult.%Set("Present", 0, "boolean")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The refusal of a read of a group or listing that is not there: 404 <code>PORT.NOTFOUND</code> on a plain read, and with <var>pAction</var> (the read composed for a write)
+/// <code>ANALYTICS.LISTINGGROUP.ABSENT</code>.</p>
+ClassMethod AbsentFor(pAction As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..ListingGroupAbsent(.pHttpStatus, .pFault))
+}
+
+/// <p>The refusal of a write whose class is one of OcuPilot's own (AD-10): 403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter> with its published sentence.</p>
+ClassMethod OwnCodeRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTCODE
+    Quit ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), .pHttpStatus, .pFault)
+}
+
+/// <p>Whether the caller lacks WRITE on the resource <var>pResource</var>, which a group names as the one guarding it (the classic page's <code>canWrite</code>); a group
+/// that names none is writable. <var>pFailedPair</var> is the pair the caller lacks.</p>
+ClassMethod ResourceDenied(pResource As %String, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If pResource = "" Quit 0
+    Quit '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(pResource, ..#WRITEPERMISSION)), .pFailedPair)
+}
+
+/// <p>Judge the listing group write <var>pType</var> of <var>pGroup</var> (and of the listing <var>pListing</var>) before anything is written (Story 24.11). In order, each
+/// refusal before any save: the shape rules (<method>ListingGroupViolations</method>, 422); a class of OcuPilot's own (the new class of an add or copy, the group's class for the
+/// others, 403 <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); the new class's shape (<code>ANALYTICS.LISTINGGROUP.CLASS</code>, 422); the group read
+/// now (<method>ReadListingGroupData</method>): a group not there is 404 <code>ABSENT</code>, one two classes declare 409 <code>AMBIGUOUS</code>, a held name on an add 409
+/// <code>TAKEN</code>; WRITE on the group's resource; then the model composed from <code>%GetModel</code> read now (<method>VendorListingGroupCompose</method>), whose refusals
+/// are <method>ComposeRefusal</method>'s. <var>pPlan</var> holds what the write needs: <code>class</code> (the class it saves or deletes), <code>text</code> (its new text),
+/// <code>prior</code> (the text read, <code>""</code> for a create), <code>version</code>, <code>compiled</code> (whether the group was registered) and <code>name</code>
+/// (the group's name after the write). A delete has no text. Nothing is written.</p>
+ClassMethod PlanListingGroup(pNamespace As %String, pType As %String, pGroup As %String, pListing As %String, ByRef pQuery, pBody As %DynamicObject, Output pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pPlan
+    Set tNew = $Get(pQuery(..#NEWNAMEKEY))
+    Set tNewClass = $Select(pType = ..#TYPEADD: pBody.%Get("Class"), 1: $Get(pQuery(..#NEWCLASSKEY)))
+    Kill tViolations
+    Set tSC = ..ListingGroupViolations(pType, pGroup, pListing, pBody, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    If (pType = ..#TYPECOPY) && '..ListingNameShaped(tNew) Set tViolations($Increment(tViolations)) = $ListBuild("NewName", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    If ((pType = ..#TYPEADD) || (pType = ..#TYPECOPY)) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tNewClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If ((pType = ..#TYPEADD) || (pType = ..#TYPECOPY)) && '..ListingClassShaped(tNewClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPCLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPCLASS, .pHttpStatus, .pFault)
+    Set tSC = ..ListingGroupFacts(pNamespace, pGroup, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If pType = ..#TYPEADD {
+        If tData("exists") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPTAKEN, .pHttpStatus, .pFault)
+        If ..ResourceDenied(pBody.%Get("Resource"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    } Else {
+        If 'tData("exists") Quit ..ListingGroupAbsent(.pHttpStatus, .pFault)
+        If tData("classes") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pType '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(tData("class"))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+        If ..ResourceDenied(tData("resource"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    }
+    Set pPlan("class") = $Select(pType = ..#TYPEADD: tNewClass, pType = ..#TYPECOPY: tNewClass, 1: $Get(tData("class")))
+    Set pPlan("name") = $Select(pType = ..#TYPEADD: pGroup, pType = ..#TYPECOPY: tNew, 1: $Get(tData("name")))
+    Set pPlan("compiled") = ''$Get(tData("compiled"))
+    Set pPlan("text") = ""
+    Set pPlan("prior") = ""
+    Set pPlan("version") = ""
+    If pType = ..#TYPEDELETE Quit $$$OK
+    Set tHasSQL = $ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPSQLPAIRS))
+    If (pType '= ..#TYPEADD) && (pType '= ..#TYPECOPY) {
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Read(..AtelierPortClass(), pNamespace, pPlan("class") _ ".cls", .tPrior, .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pPlan("prior") = tPrior
+        Set pPlan("version") = tVersion
+    }
+    Set tCaught = ""
+    Set tCode = ""
+    Set tSC = ..VendorListingGroupCompose(pNamespace, pType, $Get(tData("class")), pListing, pBody, tNew, tNewClass, $Get(pQuery(..#TARGETCUBESKEY)), tHasSQL, .tXml, .tClasses, .tCode, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the listing group could not be composed", .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit ..Statused(tSC, "the listing group could not be composed", .pHttpStatus, .pFault)
+    If tCode '= "" Quit ..ComposeRefusal(tCode, .pHttpStatus, .pFault)
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
+        Set pPlan("text") = ##class(OcuPilot.Kernel.ListingGroupText).ClassText(pPlan("class"), tClasses, tXml)
+    } ElseIf '##class(OcuPilot.Kernel.ListingGroupText).Splice(pPlan("prior"), tClasses, tXml, .tSpliced) {
+        Quit ..ListingGroupAbsent(.pHttpStatus, .pFault)
+    } Else {
+        Set pPlan("text") = tSpliced
+    }
+    Quit $$$OK
+}
+
+/// <p>The refusal sentence of the write <var>pType</var> of <var>pGroup</var> (<var>pListing</var>) with the members <var>pBody</var>, <code>""</code> when nothing refuses
+/// it: <method>PlanListingGroup</method>'s, with nothing written. The mint and a screen's save ask it, so the agent and the person are refused what the write would refuse.</p>
+ClassMethod ListingGroupProblem(pNamespace As %String, pType As %String, pGroup As %String, pListing As %String, ByRef pQuery, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        Set tSC = ..PlanListingGroup(pNamespace, pType, pGroup, pListing, .pQuery, pBody, .tPlan, .tHttp, .tFault)
+        If $$$ISERR(tSC) && $IsObject($Get(tFault)) Set tProblem = tFault.%Get("reason")
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p>Make the listing group write <var>pType</var> (Story 24.11, AD-65): <method>PlanListingGroup</method>, then the class saved, compiled and deleted through
+/// <method>AtelierPortClass</method> (AD-61). A create (<code>ADD</code>, <code>COPY</code>) saves a new class and compiles it; the others save the class's text with the
+/// <code>Listings</code> XData and <code>DependsOn</code> replaced, against the version read, and compile it; a delete deletes the class. A compile the instance refuses
+/// (its own text is logged, never sent) undoes the write: a created class is deleted, and a changed one is saved back as it was and, when the group was registered,
+/// compiled again. The answer is 422 <code>ANALYTICS.LISTINGGROUP.COMPILE</code>. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row
+/// (<method>AuditWrite</method>), a restored one with its outcome. With <var>pDry</var> nothing is written and <var>pResult</var> stays empty.</p>
+ClassMethod PerformListingGroup(pNamespace As %String, pType As %String, pGroup As %String, pListing As %String, ByRef pQuery, pBody As %DynamicObject, pDry As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..PlanListingGroup(pNamespace, pType, pGroup, pListing, .pQuery, pBody, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || pDry Quit tSC
+    Set tClass = tPlan("class")
+    Set tSC = ..WriteClass(pNamespace, pType, tClass, .tPlan, "listing group", .tOutcome, .tRefused, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("listingGroup", tPlan("name"), "string")
+    Do tEffects.%Set("class", tClass, "string")
+    If pListing '= "" Do tEffects.%Set("listing", pListing, "string")
+    Do tEffects.%Set("outcome", tOutcome, "string")
+    Set tListings = (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    Do ..AuditWrite($Case(pType, ..#TYPEADD: ..#VERBLISTINGGROUPADD, ..#TYPEUPDATE: ..#VERBLISTINGGROUPUPDATE, ..#TYPECOPY: ..#VERBLISTINGGROUPCOPY, ..#TYPEDELETE: ..#VERBLISTINGGROUPDELETE, ..#TYPEENTRYADD: ..#VERBLISTINGADD, ..#TYPEENTRYSET: ..#VERBLISTINGSET, : ..#VERBLISTINGREMOVE), $Select(tListings: ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tPlan("name"), pListing)), 1: tPlan("name")), tEffects, $Select(tListings: ..#ENTITYLISTING, 1: ..#ENTITYLISTINGGROUP))
+    If tRefused Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#LISTINGGROUPCOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPCOMPILE, .pHttpStatus, .pFault)
+
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If pType = ..#TYPEDELETE {
+        Do pResult.%Set("Name", tPlan("name"), "string")
+    } ElseIf pType = ..#TYPEENTRYREMOVE {
+        Do pResult.%Set("ListingGroup", tPlan("name"), "string")
+        Do pResult.%Set("Name", pListing, "string")
+    } Else {
+        Do ..ListingGroupFacts(pNamespace, tPlan("name"), .tAfter, .tAfterHttp, .tAfterFault)
+        Set tAt = $Select(tListings: ..ListingAt(.tAfter, pListing), 1: 0)
+        Set tVersion = ""
+        If tAfter("exists") Do ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tAfter("class") _ ".cls", .tVersion, .tVersionHttp, .tVersionFault)
+        If tAfter("exists") && 'tListings {
+            Set pResult = ..ListingGroupRow(pNamespace, .tAfter, tVersion)
+        } ElseIf tAfter("exists") && tAt {
+            Set pResult = ..ListingRow(pNamespace, .tAfter, tAt, $ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#LISTINGGROUPSQLPAIRS)), tVersion)
+        } Else {
+            Do pResult.%Set($Select(tListings: "ListingGroup", 1: "Name"), tPlan("name"), "string")
+            If tListings Do pResult.%Set("Name", pListing, "string")
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Save, compile and delete the class <var>pClass</var> for the write <var>pType</var> of <var>pWhat</var> (<code>listing group</code> or <code>quality measure</code>), as
+/// <var>pPlan</var> plans it (<code>text</code>, <code>prior</code>, <code>version</code>, <code>compiled</code>): a create (<code>ADD</code>, <code>COPY</code>) saves a new class and
+/// compiles it; an update saves the text against the version read and compiles it; a delete deletes the class. A compile the instance refuses is logged, never sent, and undone
+/// (<method>RestoreClass</method>): <var>pRefused</var> is 1 and <var>pOutcome</var> is <code>restored</code> or <code>restorefailed</code>; otherwise <var>pOutcome</var> is <code>applied</code>.
+/// A call that fails is the error status with <var>pHttpStatus</var> and <var>pFault</var>.</p>
+ClassMethod WriteClass(pNamespace As %String, pType As %String, pClass As %String, ByRef pPlan, pWhat As %String, Output pOutcome As %String, Output pRefused As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pOutcome = "applied"
+    Set pRefused = 0
+    Set tName = pClass _ ".cls"
+    If pType = ..#TYPEDELETE {
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Remove(..AtelierPortClass(), pNamespace, tName, .tDeleted, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If 'tDeleted Quit ..Fail("the " _ pWhat _ "'s class was not deleted", $$$ERROR($$$GeneralError, tName), .pHttpStatus, .pFault)
+        Quit $$$OK
+    }
+    Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
+    Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Save(..AtelierPortClass(), pNamespace, tName, pPlan("text"), $Select(tCreates: "", 1: pPlan("version")), .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Compile(..AtelierPortClass(), pNamespace, tName, .tErrors, .tLines, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || tErrors {
+        Set pRefused = 1
+        If $$$ISOK(tSC) {
+            Set tJoined = ""
+            Set tIterator = tLines.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                Set tJoined = tJoined _ $Select(tJoined = "": "", 1: " | ") _ tLine
+            }
+            Do ..LogFault("the " _ pWhat _ "'s compile was refused: " _ tJoined, $$$ERROR($$$GeneralError, tName))
+        } Else {
+            Do ..LogFault("the " _ pWhat _ "'s compile call failed", tSC)
+        }
+        Set pOutcome = ..RestoreClass(pNamespace, tName, tCreates, pPlan("prior"), pPlan("compiled"), pWhat)
+    }
+    Quit $$$OK
+}
+
+/// <p>Undo a write whose compile the instance refused (Story 24.11, 24.12): delete the class a create saved, or save the text <var>pPrior</var> back over the changed class and,
+/// when it had been compiled (<var>pCompiled</var>), compile it again. Answers <code>restored</code> when each step reported success and <code>restorefailed</code> otherwise,
+/// which is logged: a class that could not be put back is for an operator. <var>pWhat</var> names the definition in the log.</p>
+ClassMethod RestoreClass(pNamespace As %String, pName As %String, pCreated As %Boolean, pPrior As %String, pCompiled As %Boolean, pWhat As %String) As %String [ Private ]
+{
+    Set tOutcome = "restored"
+    Try {
+        If pCreated {
+            Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Remove(..AtelierPortClass(), pNamespace, pName, .tDeleted, .tHttp, .tFault)
+            If $$$ISERR(tSC) || 'tDeleted Set tOutcome = "restorefailed"
+        } Else {
+            Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, pName, .tVersion, .tHttp, .tFault)
+            If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Save(..AtelierPortClass(), pNamespace, pName, pPrior, tVersion, .tHttp, .tFault)
+            If $$$ISOK(tSC) && pCompiled {
+                Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Compile(..AtelierPortClass(), pNamespace, pName, .tErrors, .tLines, .tHttp, .tFault)
+                If $$$ISOK(tSC) && tErrors Set tSC = $$$ERROR($$$GeneralError, "the restored class did not compile")
+            }
+            If $$$ISERR(tSC) Set tOutcome = "restorefailed"
+        }
+    } Catch ex {
+        Set tOutcome = "restorefailed"
+        Set tSC = ex.AsStatus()
+    }
+    If tOutcome = "restorefailed" Do ..LogFault("the " _ pWhat _ " could not be put back after a refused compile", $Get(tSC, $$$ERROR($$$GeneralError, pName)))
+    Quit tOutcome
+}
+
+/// <p>The lines a class write's script form holds (Story 24.11, 24.12, AD-59), for the write <var>pType</var> of the class <var>pClass</var> in <var>pNamespace</var>: the class text
+/// <var>pText</var> saved and compiled and, as the write does, put back as <var>pPrior</var> (compiled again when <var>pCompiled</var>) when the compile is refused; a delete is
+/// the class's deletion. A create's steps are each gated on one line by <var>pFreeCondition</var>, ObjectScript that is true when the name and class are free, after
+/// <var>pPrelude</var> (lines it needs, each starting with a line feed, or <code>""</code>), so a script run after another writer took the name changes and deletes nothing; a
+/// taken name sets <var>pTakenSentence</var>. A script longer than <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
+ClassMethod ClassWriteSnippet(pType As %String, pNamespace As %String, pClass As %String, pText As %String, pPrior As %String, pCompiled As %Boolean, pPrelude As %String, pFreeCondition As %String, pTakenSentence As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tClass = ..Literal(pClass)
+    Set tSpace = ..Literal(pNamespace)
+    If pType = ..#TYPEDELETE Quit tNL _ " Set tSC = $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
+    ; The vendor's text service takes a carriage return and a line feed between lines.
+    Set tSave = "##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(pText) _ ", $Char(10), $Char(13, 10)))"
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
+        Set tText = pPrelude
+        Set tText = tText _ tNL _ " Set tMade = 0, tSC = $System.Status.Error(5001, " _ ..Literal(pTakenSentence) _ ")"
+        Set tText = tText _ tNL _ " If " _ pFreeCondition _ " Set tMade = 1, tSC = " _ tSave
+        Set tText = tText _ tNL _ " If tMade, $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")"
+        Set tText = tText _ tNL _ " If tMade, '$System.Status.IsOK(tSC) Do $System.OBJ.Delete(" _ tClass _ ", ""-d"")"
+    } Else {
+        Set tUndo = " Do ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tClass _ ", $Replace(" _ ..Literal(pPrior) _ ", $Char(10), $Char(13, 10)))" _ $Select(pCompiled: " Do $System.OBJ.Compile(" _ tClass _ ", ""ck"")", 1: "")
+        Set tText = tNL _ " Set tSC = " _ tSave _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = $System.OBJ.Compile(" _ tClass _ ", ""ck"")" _ tNL _ " If '$System.Status.IsOK(tSC) {" _ tUndo _ " }"
+    }
+    If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""
+    Quit tText
+}
+
+/// <p>The lines <method>Snippet</method> adds for a listing group write <var>pType</var> of the group or listing the id <var>pId</var> names (Story 24.11, AD-59): the class
+/// the write would save, compiled, and, as the write does, put back when the compile is refused. A delete is the class's deletion. The text is
+/// <method>PlanListingGroup</method>'s, composed from the instance as it stands, and rendered as one string literal; a write that plan refuses is a script that only
+/// sets the refusal's sentence. An add's or a copy's steps are each gated on one line by a free-name check applying the port's taken-name rule (the group's name in the
+/// saved list or the registry, or its class defined), so a script run after another writer took the name changes and deletes nothing. A script longer than
+/// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answers no step.</p>
+ClassMethod ListingGroupSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tListings = (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+    Set tParts = $Select(tListings: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId), 1: $ListBuild(pId))
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    Set tSC = ..PlanListingGroup(tNamespace, pType, $List(tParts, 1), $ListGet(tParts, 2), .pQuery, pBody, .tPlan, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
+    Set tPrelude = tNL _ " Kill tGroups Do ##class(%DeepSee.ListingGroup).%GetListingGroups(.tGroups, 0)"
+    Set tFree = "'$Data(tGroups(" _ tNameU _ ")), '$Data(^DeepSee.ListingGroups(""groups"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
+    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONLISTINGGROUPTAKEN)
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the three quality measure endpoints (Story 24.12): the measures, their groups and elements, and their documentation items.</p>
+ClassMethod IsQualityMeasureEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) > 0
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the two quality measure part endpoints (Story 24.12): the groups and elements, or the documentation items.</p>
+ClassMethod IsQualityMeasurePartEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS) || (pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS)
+}
+
+/// <p>Whether <var>pType</var> is one of the quality measure writes (Story 24.12): add, update, delete and copy.</p>
+ClassMethod IsQualityMeasureWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADD) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPECOPY)
+}
+
+/// <p>Whether <var>pType</var> is one of the writes of a quality measure's part endpoints (Story 24.12): add, change and remove.</p>
+ClassMethod IsQualityMeasurePartWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEENTRYADD) || (pType = ..#TYPEENTRYSET) || (pType = ..#TYPEENTRYREMOVE)
+}
+
+/// <p>Whether <var>pType</var>, with <var>pAction</var> as the write it is composed for (<code>""</code> for a plain read), changes a quality measure and so needs
+/// the destination's gate (<method>AdmitClassWrite</method>): a write, and a single-object read composed for one. Pure.</p>
+ClassMethod ChangesQualityMeasures(pType As %String, pAction As %String = "") As %Boolean
+{
+    If ..IsQualityMeasureWrite(pType) || ..IsQualityMeasurePartWrite(pType) Quit 1
+    Quit (pAction '= "") && ((pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPECOPYTARGET) || (pType = ..#TYPEQUALITYMEASUREELEMENT) || (pType = ..#TYPEQUALITYMEASUREMETA))
+}
+
+/// <p>404 <code>ANALYTICS.QUALITYMEASURE.ABSENT</code>: the quality measure is not there.</p>
+ClassMethod QualityMeasureAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASUREABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>404 <code>ANALYTICS.QUALITYMEASURE.PARTABSENT</code>: the group, element or documentation item the write names is not there.</p>
+ClassMethod QualityMeasurePartAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREPARTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASUREPARTABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pName</var> names a quality measure to look up: three non-empty parts joined by <code>/</code>, no control character, at most three names' length. Pure.</p>
+ClassMethod QualityMeasureKeyShaped(pName As %String) As %Boolean
+{
+    If ($Length(pName, "/") '= 3) || ($Length(pName) > (3 * ..#LISTINGNAMEMAX + 2)) || ($ZStrip(pName, "*C") '= pName) Quit 0
+    Quit ($Piece(pName, "/", 1) '= "") && ($Piece(pName, "/", 2) '= "") && ($Piece(pName, "/", 3) '= "")
+}
+
+/// <p>Whether <var>pName</var> can name a new quality measure, as the classic Save dialog's rules have it: <method>QualityMeasureKeyShaped</method>, each part at most
+/// <parameter>LISTINGNAMEMAX</parameter> characters and with no dot. Pure.</p>
+ClassMethod QualityMeasureNameShaped(pName As %String) As %Boolean
+{
+    If '..QualityMeasureKeyShaped(pName) Quit 0
+    Set tShaped = 1
+    For tPart = 1:1:3 {
+        Set tText = $Piece(pName, "/", tPart)
+        If ($Length(tText) > ..#LISTINGNAMEMAX) || (tText [ ".") Set tShaped = 0
+    }
+    Quit tShaped
+}
+
+/// <p>Whether the expression <var>pExpression</var> resolves as the vendor's compile resolves it: each <code>[name]</code> names, without regard to case, a group in
+/// <var>pGroups</var> (<code>pGroups(UPPERNAME)</code>), and every <code>[</code> is closed. Pure.</p>
+ClassMethod ExpressionHolds(pExpression As %String, ByRef pGroups) As %Boolean
+{
+    Set tOpen = 0
+    Set tToken = ""
+    Set tHolds = 1
+    For tAt = 1:1:$Length(pExpression) {
+        Set tChar = $Extract(pExpression, tAt)
+        If 'tOpen {
+            If tChar = "[" Set tOpen = 1, tToken = ""
+            Continue
+        }
+        If tChar '= "]" {
+            Set tToken = tToken _ tChar
+            Continue
+        }
+        Set tOpen = 0
+        If (tToken = "") || '$Data(pGroups($ZConvert(tToken, "U"))) {
+            Set tHolds = 0
+            Quit
+        }
+    }
+    Quit tHolds && 'tOpen
+}
+
+/// <p>The quality measure <var>pName</var>'s state in the namespace the process is in: <var>pListed</var>, how many classes the vendor's list gives that name (compared without
+/// regard to case), and <var>pClass</var>, the class its registry holds for it, <code>""</code> for none. Reads only.</p>
+ClassMethod QualityMeasureHeld(pName As %String, Output pListed As %Integer, Output pClass As %String)
+{
+    Set pListed = 0
+    Set pClass = ""
+    Set tUpper = $ZConvert(pName, "U")
+    Set tSC = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList)
+    Set tAt = ""
+    While $$$ISOK(tSC) {
+        Set tAt = $Order(tList(tAt))
+        If tAt = "" Quit
+        If $ZConvert($List(tList(tAt), 1), "U") = tUpper Set pListed = pListed + 1
+    }
+    Set tClass = ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(pName, .tFound)
+    If $$$ISOK(tFound) Set pClass = tClass
+}
+
+/// <p>The quality measure <var>pName</var> as the vendor reports it in <var>pNamespace</var>, switched by explicit save and restore (AD-16), into <var>pData</var>:
+/// <code>listed</code> (how many classes the vendor's list names it for); <code>class</code> (the class its registry names), <code>exists</code> (the registered class
+/// answers the measure's own model, <code>%GetModel</code> read without its link), <code>compiled</code>, and the model's <code>name</code>, <code>catalog</code>, <code>set</code>, <code>id</code>, <code>caption</code>,
+/// <code>description</code>, <code>subjectArea</code>, <code>expression</code>, <code>linkedTo</code>, <code>published</code>, <code>format</code>, <code>href</code> and <code>groups</code> (their count). An exception
+/// is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod ReadQualityMeasureData(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException)
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("listed") = 0
+    Set pData("class") = ""
+    Set pData("groups") = 0
+    Set pData("metas") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..QualityMeasureHeld(pName, .tListed, .tClass)
+        Set pData("listed") = tListed
+        Set pData("class") = tClass
+        If tClass '= "" {
+            Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(pName, .tModelStatus, 0)
+            If $IsObject(tModel) && (tModel.name '= "") {
+                Set pData("exists") = 1
+                Set pData("compiled") = ''$System.OBJ.IsUpToDate(tClass)
+                Set pData("name") = tModel.name
+                Set pData("catalog") = tModel.catalog
+                Set pData("set") = tModel.set
+                Set pData("id") = tModel.id
+                Set pData("caption") = tModel.caption
+                Set pData("description") = tModel.description
+                Set pData("subjectArea") = tModel.subjectArea
+                Set pData("expression") = tModel.expression
+                Set pData("linkedTo") = tModel.linkedTo
+                Set pData("published") = ''tModel.published
+                Set pData("format") = tModel.format
+                Set pData("href") = tModel.href
+                Set pData("groups") = tModel.groups.Count()
+                For tGroupAt = 1:1:tModel.groups.Count() {
+                    Set tGroup = tModel.groups.GetAt(tGroupAt)
+                    Set pData("g", tGroupAt) = $ListBuild(tGroup.name, tGroup.caption, tGroup.description, ''tGroup.disabled, tGroup.elements.Count())
+                    For tElementAt = 1:1:tGroup.elements.Count() {
+                        Set tElement = tGroup.elements.GetAt(tElementAt)
+                        Set pData("g", tGroupAt, tElementAt) = $ListBuild(tElement.name, tElement.caption, tElement.mdx, ''tElement.disabled)
+                    }
+                }
+                Set pData("metas") = tModel.metas.Count()
+                For tMetaAt = 1:1:tModel.metas.Count() {
+                    Set tMeta = tModel.metas.GetAt(tMetaAt)
+                    Set pData("m", tMetaAt) = $ListBuild(tMeta.name, tMeta.caption, tMeta.section, tMeta.content, ''tMeta.disabled)
+                }
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p><method>ReadQualityMeasureData</method> of <var>pName</var>, a name that cannot be a quality measure's answering none, with a fault as the answer's error status.</p>
+ClassMethod QualityMeasureFacts(pNamespace As %String, pName As %String, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pData("exists") = 0
+    Set pData("listed") = 0
+    Set pData("class") = ""
+    Set pData("groups") = 0
+    Set pData("metas") = 0
+    If '..QualityMeasureKeyShaped(pName) Quit $$$OK
+    Set tCaught = ""
+    Do ..ReadQualityMeasureData(pNamespace, pName, .pData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the quality measure could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The quality measure <var>pData</var> as a row: <code>{Name, Catalog, Set, Id, Class, Caption, Description, SubjectArea, Expression, LinkedTo, Published, Format, Href,
+/// Compiled, Groups, Version, Namespace}</code>, <code>Version</code> the class's version, <code>""</code> when none was read. Pure.</p>
+ClassMethod QualityMeasureRow(pNamespace As %String, ByRef pData, pVersion As %String = "") As %DynamicObject
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pData("name"), "string")
+    Do tRow.%Set("Catalog", pData("catalog"), "string")
+    Do tRow.%Set("Set", pData("set"), "string")
+    Do tRow.%Set("Id", pData("id"), "string")
+    Do tRow.%Set("Class", pData("class"), "string")
+    Do tRow.%Set("Caption", pData("caption"), "string")
+    Do tRow.%Set("Description", pData("description"), "string")
+    Do tRow.%Set("SubjectArea", pData("subjectArea"), "string")
+    Do tRow.%Set("Expression", pData("expression"), "string")
+    Do tRow.%Set("LinkedTo", pData("linkedTo"), "string")
+    Do tRow.%Set("Published", ''pData("published"), "boolean")
+    Do tRow.%Set("Format", pData("format"), "string")
+    Do tRow.%Set("Href", pData("href"), "string")
+    Do tRow.%Set("Compiled", ''pData("compiled"), "boolean")
+    Do tRow.%Set("Groups", pData("groups"), "number")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The measure and its part named by the target id <var>pId</var> of <var>pEndpoint</var> (Story 24.12): the full name <code>catalog/set/id</code> alone on the measures endpoint; on the
+/// elements endpoint the composite <code>[QualityMeasure, Group, Name]</code>, <var>pPart</var> the group and the element name joined by the composite separator (the name empty for the
+/// group itself); on the documentation endpoint <code>[QualityMeasure, Name]</code>, <var>pPart</var> the item's name. 0 for an id of another grammar, an empty group or an empty item
+/// name. Pure.</p>
+ClassMethod QualityMeasureTarget(pEndpoint As %String, pId As %String, Output pName As %String, Output pPart As %String) As %Boolean
+{
+    Set pName = pId
+    Set pPart = ""
+    If pEndpoint = ..#ENDPOINTQUALITYMEASURES Quit 1
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tExpected = $Select(pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS: 3, 1: 2)
+    Set pName = $ListGet(tParts, 1)
+    If ($ListLength(tParts) '= tExpected) || ($List(tParts, 2) = "") Quit 0
+    Set pPart = $Select(tExpected = 3: $List(tParts, 2) _ $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR) _ $List(tParts, 3), 1: $List(tParts, 2))
+    Quit 1
+}
+
+/// <p>The position in <var>pData</var> (<method>ReadQualityMeasureData</method>) of the group named exactly <var>pGroup</var>, 0 when the measure holds none. Pure.</p>
+ClassMethod QualityMeasureGroupAt(ByRef pData, pGroup As %String) As %Integer
+{
+    Set tFound = 0
+    For tAt = 1:1:+$Get(pData("groups")) {
+        If $List(pData("g", tAt), 1) = pGroup {
+            Set tFound = tAt
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>The position of the element named exactly <var>pName</var> in the group at <var>pGroupAt</var> of <var>pData</var>, 0 when it holds none. Pure.</p>
+ClassMethod QualityMeasureElementAt(ByRef pData, pGroupAt As %Integer, pName As %String) As %Integer
+{
+    Set tFound = 0
+    For tAt = 1:1:$List(pData("g", pGroupAt), 5) {
+        If $List(pData("g", pGroupAt, tAt), 1) = pName {
+            Set tFound = tAt
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>The position of the documentation item named exactly <var>pName</var> in <var>pData</var>, 0 when the measure holds none. Pure.</p>
+ClassMethod QualityMeasureMetaAt(ByRef pData, pName As %String) As %Integer
+{
+    Set tFound = 0
+    For tAt = 1:1:+$Get(pData("metas")) {
+        If $List(pData("m", tAt), 1) = pName {
+            Set tFound = tAt
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>The element at <var>pElementAt</var> of the group at <var>pGroupAt</var> of <var>pData</var> as a row: <code>{QualityMeasure, Group, GroupCaption, GroupDescription,
+/// GroupDisabled, Name, Caption, MDX, Disabled, Version, Namespace}</code>; the element fields of the group itself (<var>pElementAt</var> 0) are empty, as the screen's empty-group
+/// row has them. <code>Version</code> is the class's, <code>""</code> when none was read. Pure.</p>
+ClassMethod QualityMeasureElementRow(pNamespace As %String, ByRef pData, pGroupAt As %Integer, pElementAt As %Integer, pVersion As %String = "") As %DynamicObject
+{
+    Set tGroup = pData("g", pGroupAt)
+    Set tElement = $Select(pElementAt: pData("g", pGroupAt, pElementAt), 1: $ListBuild("", "", "", 0))
+    Set tRow = {}
+    Do tRow.%Set("QualityMeasure", pData("name"), "string")
+    Do tRow.%Set("Group", $List(tGroup, 1), "string")
+    Do tRow.%Set("GroupCaption", $List(tGroup, 2), "string")
+    Do tRow.%Set("GroupDescription", $List(tGroup, 3), "string")
+    Do tRow.%Set("GroupDisabled", $List(tGroup, 4), "boolean")
+    Do tRow.%Set("Name", $List(tElement, 1), "string")
+    Do tRow.%Set("Caption", $List(tElement, 2), "string")
+    Do tRow.%Set("MDX", $List(tElement, 3), "string")
+    Do tRow.%Set("Disabled", $List(tElement, 4), "boolean")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The documentation item at <var>pAt</var> of <var>pData</var> as a row: <code>{QualityMeasure, Name, Caption, Section, Content, Disabled, Version, Namespace}</code>. Pure.</p>
+ClassMethod QualityMeasureMetaRow(pNamespace As %String, ByRef pData, pAt As %Integer, pVersion As %String = "") As %DynamicObject
+{
+    Set tMeta = pData("m", pAt)
+    Set tRow = {}
+    Do tRow.%Set("QualityMeasure", pData("name"), "string")
+    Do tRow.%Set("Name", $List(tMeta, 1), "string")
+    Do tRow.%Set("Caption", $List(tMeta, 2), "string")
+    Do tRow.%Set("Section", $List(tMeta, 3), "string")
+    Do tRow.%Set("Content", $List(tMeta, 4), "string")
+    Do tRow.%Set("Disabled", $List(tMeta, 5), "boolean")
+    Do tRow.%Set("Version", pVersion, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>A documentation item's <var>pContent</var> in the form the vendor holds it (Story 24.12): the markup the model's <code>content</code> property keeps, written by
+/// <code>%XML.Writer</code> and read back by <code>%XML.Reader</code>, with the line breaks the model read drops removed. A caller that sends this form reads back what it sent
+/// (AD-58). <var>pStorable</var> is 1 when that form is well-formed and survives a second write unchanged; a content that is not (a bare <code>&amp;</code> or <code>&lt;</code>, a
+/// control character, <code>]]&gt;</code>, or a character the writer turns into an entity XML does not define) is answered as sent, with <var>pStorable</var> 0. Pure: it reads
+/// no database and writes nothing.</p>
+ClassMethod NormalizedContent(pContent As %String, Output pStorable As %Boolean) As %String
+{
+    Set pStorable = 0
+    Set tStored = pContent
+    Try {
+        Set tFirst = ..ContentRoundTrip(pContent, .tOK)
+        If 'tOK Quit
+        Set tFirst = $Translate(tFirst, $Char(10, 13))
+        Set tSecond = ..ContentRoundTrip(tFirst, .tOK)
+        If 'tOK || ($Translate(tSecond, $Char(10, 13)) '= tFirst) Quit
+        Set tStored = tFirst
+        Set pStorable = 1
+    } Catch {
+        Set pStorable = 0
+        Set tStored = pContent
+    }
+    Quit tStored
+}
+
+/// <p>The content <var>pContent</var> of one documentation item written by <code>%XML.Writer</code> and read back by <code>%XML.Reader</code>: <var>pOK</var> is 0 when the text
+/// is not well-formed. Pure.</p>
+ClassMethod ContentRoundTrip(pContent As %String, Output pOK As %Boolean) As %String
+{
+    Set pOK = 0
+    Set tModel = ##class(%DeepSee.Model.QualityMeasure.qualityMeasure).%New()
+    Set tModel.catalog = "C"
+    Set tModel.set = "S"
+    Set tModel.id = "I"
+    Set tMeta = ##class(%DeepSee.Model.QualityMeasure.meta).%New()
+    Set tMeta.name = "M"
+    Set tMeta.content = pContent
+    Do tModel.metas.Insert(tMeta)
+    Set tWriter = ##class(%XML.Writer).%New()
+    Set tWriter.NoXMLDeclaration = 1
+    Set tStream = ##class(%Stream.TmpCharacter).%New()
+    Set tSC = tWriter.OutputToStream(tStream)
+    If $$$ISOK(tSC) Set tSC = tWriter.RootObject(tModel)
+    If $$$ISERR(tSC) Quit ""
+    Do tStream.Rewind()
+    Set tReader = ##class(%XML.Reader).%New()
+    Set tSC = tReader.OpenString(tStream.Read(3000000))
+    If $$$ISERR(tSC) Quit ""
+    Do tReader.Correlate("qualityMeasure", "%DeepSee.Model.QualityMeasure.qualityMeasure")
+    If 'tReader.Next(.tRead, .tSC) || '$IsObject(tRead) || (tRead.metas.Count() '= 1) Quit ""
+    Set pOK = 1
+    Quit tRead.metas.GetAt(1).content
+}
+
+/// <p>The shape violations of a quality measure write that need nothing from the instance, in <var>pViolations</var>
+/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>), every one <code>PORT.FIELD.SHAPE</code>: <var>pType</var> is the write, <var>pName</var>
+/// the measure it acts on (an add's is its new name, <method>QualityMeasureNameShaped</method>), <var>pPart</var> the part of it the write acts on (<code>""</code> on the measures endpoint;
+/// <var>pEndpoint</var>'s part writes are <method>QualityMeasurePartViolations</method>'s), <var>pBody</var> what the caller sends. A text member is a string within its
+/// length (<parameter>QUALITYMEASURETEXTMAX</parameter>, an expression <parameter>LONGTEXTMAX</parameter>, a format <parameter>SHORTTEXTMAX</parameter>); <code>Published</code>
+/// is true or false; and <code>LinkedTo</code> does not name the measure itself. Pure.</p>
+ClassMethod QualityMeasureViolations(pType As %String, pName As %String, pPart As %String, pBody As %DynamicObject, Output pViolations, pEndpoint As %String = "QualityMeasures") As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    If ..IsQualityMeasurePartEndpoint(pEndpoint) Quit ..QualityMeasurePartViolations(pType, pPart, pBody, pEndpoint, .pViolations)
+    If (pType = ..#TYPEADD) && '..QualityMeasureNameShaped(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", tShape)
+    If (pType '= ..#TYPEADD) && (pType '= ..#TYPEUPDATE) Quit $$$OK
+    Set tFields = $Select(pType = ..#TYPEADD: "Caption,Description,SubjectArea", 1: "Caption,Description,SubjectArea,LinkedTo,Href,Format,Expression")
+    For tMember = 1:1:$Length(tFields, ",") {
+        Set tName = $Piece(tFields, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tName)
+        If tMemberType = "unassigned" Continue
+        Set tMax = $Case(tName, "Expression": ..#LONGTEXTMAX, "Format": ..#SHORTTEXTMAX, : ..#QUALITYMEASURETEXTMAX)
+        If (tMemberType '= "string") || ($Length(pBody.%Get(tName)) > tMax) Set pViolations($Increment(pViolations)) = $ListBuild(tName, tShape)
+    }
+    If pType '= ..#TYPEUPDATE Quit $$$OK
+    Set tPublishedType = pBody.%GetTypeOf("Published")
+    If (tPublishedType '= "unassigned") && (tPublishedType '= "boolean") Set pViolations($Increment(pViolations)) = $ListBuild("Published", tShape)
+    If (pBody.%GetTypeOf("LinkedTo") = "string") && (pBody.%Get("LinkedTo") '= "") && ($ZConvert(pBody.%Get("LinkedTo"), "U") = $ZConvert(pName, "U")) Set pViolations($Increment(pViolations)) = $ListBuild("LinkedTo", tShape)
+    Quit $$$OK
+}
+
+/// <p>The shape violations of a write to a quality measure's part endpoint <var>pEndpoint</var> (Story 24.12), in the form of <method>QualityMeasureViolations</method>: <var>pType</var> is
+/// <parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> or <parameter>TYPEENTRYREMOVE</parameter> and <var>pPart</var> the target's part
+/// (<method>QualityMeasureTarget</method>). A group, element or item name is <method>ListingNameShaped</method>, except that an element target's name is empty when it names the group
+/// itself (a set or remove); an element add needs a name. A caption or group description is a string of at most 2,000 characters, an MDX expression or a content one of at most
+/// <parameter>LONGTEXTMAX</parameter>; every flag is true or false. A write to a group itself sets no element field: its element caption and MDX are empty and its element flag false, which is
+/// what the group's row holds and a merged payload repeats. A remove carries no field. Pure.</p>
+ClassMethod QualityMeasurePartViolations(pType As %String, pPart As %String, pBody As %DynamicObject, pEndpoint As %String, Output pViolations) As %Status
+{
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    Set tElements = (pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS)
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    Set tGroup = $Select(tElements: $Piece(pPart, tSeparator, 1), 1: "")
+    Set tName = $Select(tElements: $Piece(pPart, tSeparator, 2), 1: pPart)
+    If tElements && '..ListingNameShaped(tGroup) Set pViolations($Increment(pViolations)) = $ListBuild("Group", tShape)
+    If ((pType = ..#TYPEENTRYADD) || '(tElements && (tName = ""))) && '..ListingNameShaped(tName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", tShape)
+    If pType = ..#TYPEENTRYREMOVE Quit $$$OK
+    Set tGroupOnly = tElements && (tName = "")
+    Set tText = $Select(tElements: "Caption,MDX,GroupCaption,GroupDescription", 1: "Caption,Content")
+    Set tFlags = $Select(tElements: "Disabled,GroupDisabled", 1: "Disabled")
+    For tMember = 1:1:$Length(tText, ",") {
+        Set tField = $Piece(tText, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tField)
+        If tMemberType = "unassigned" Continue
+        Set tMax = $Case(tField, "MDX": ..#LONGTEXTMAX, "Content": ..#LONGTEXTMAX, : ..#QUALITYMEASURETEXTMAX)
+        If (tMemberType '= "string") || ($Length(pBody.%Get(tField)) > tMax) || (tGroupOnly && $ListFind($ListBuild("Caption", "MDX"), tField) && (pBody.%Get(tField) '= "")) Set pViolations($Increment(pViolations)) = $ListBuild(tField, tShape)
+    }
+    For tMember = 1:1:$Length(tFlags, ",") {
+        Set tField = $Piece(tFlags, ",", tMember)
+        Set tMemberType = pBody.%GetTypeOf(tField)
+        If (tMemberType '= "unassigned") && ((tMemberType '= "boolean") || (tGroupOnly && (tField = "Disabled") && pBody.%Get(tField))) Set pViolations($Increment(pViolations)) = $ListBuild(tField, tShape)
+    }
+    Quit $$$OK
+}
+
+/// <p><method>QualityMeasureViolations</method> of the groups and elements endpoint, with the signature the shared tool base calls: <var>pName</var> the measure, <var>pPart</var> the
+/// group and element.</p>
+ClassMethod QualityMeasureElementViolations(pType As %String, pName As %String, pPart As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Quit ..QualityMeasureViolations(pType, pName, pPart, pBody, .pViolations, ..#ENDPOINTQUALITYMEASUREELEMENTS)
+}
+
+/// <p><method>QualityMeasureViolations</method> of the documentation endpoint, with the signature the shared tool base calls: <var>pName</var> the measure, <var>pPart</var> the item.</p>
+ClassMethod QualityMeasureMetaViolations(pType As %String, pName As %String, pPart As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Quit ..QualityMeasureViolations(pType, pName, pPart, pBody, .pViolations, ..#ENDPOINTQUALITYMEASUREMETAS)
+}
+
+/// <p>The class text a write's new XML belongs in, composed from the vendor's own model in <var>pNamespace</var>, switched by explicit save and restore (AD-16):
+/// <var>pOp</var> is <parameter>TYPEADD</parameter>, <parameter>TYPEUPDATE</parameter> or <parameter>TYPECOPY</parameter> on the measures endpoint, or, on the part endpoint
+/// <var>pEndpoint</var>, a part write of the part <var>pPart</var> (<method>ApplyQualityMeasurePart</method>). An add starts from the classic page's new model (a
+/// numerator and a denominator group of one element each, the expression dividing them); the others from <code>%GetModel</code> of <var>pName</var> without its link, read now, so
+/// what the caller cannot see is kept as stored. <var>pBody</var> carries the members to set (<method>QualityMeasureViolations</method> says which), <var>pNewName</var> a copy's
+/// name and <var>pNewClass</var> the class an add or copy creates. <var>pXml</var> is the model written by <code>%XML.Writer</code>. <var>pCode</var> is the refusal, <code>""</code>
+/// for none, in the vendor compile's order: <code>ABSENT</code>, <code>LINKEDPARTS</code> and <method>ApplyQualityMeasurePart</method>'s codes on a part endpoint,
+/// <code>TAKEN</code> (the new name listed or registered, or its class defined), <code>COMPILE</code> (the model's own <code>%Validate</code>, or a composed text
+/// <code>%XML.Reader</code> refuses), <code>EXPRESSION</code> (an expression naming a group that is not enabled or holds no enabled element, or unmatched brackets) and <code>LINKED</code>
+/// (a linked measure's expression, format or URL changed). Nothing is written. An exception is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod VendorQualityMeasureCompose(pNamespace As %String, pOp As %String, pName As %String, pBody As %DynamicObject, pNewName As %String, pNewClass As %String, Output pXml As %String, Output pCode As %String, Output pCaught As %Exception.AbstractException, pEndpoint As %String = "QualityMeasures", pPart As %String = "") As %Status
+{
+    Set pXml = ""
+    Set pCode = ""
+    Set pCaught = ""
+    Set tSC = $$$OK
+    Set tPart = ..IsQualityMeasurePartEndpoint(pEndpoint)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tNewName = $Select(pOp = ..#TYPEADD: pName, 1: pNewName)
+        If pOp = ..#TYPEADD {
+            Set tModel = ##class(%DeepSee.Model.QualityMeasure.qualityMeasure).%New()
+            Set tModel.published = 1
+            Set tModel.expression = "[Numerator]/[Denominator]"
+            For tGroupName = "Numerator", "Denominator" {
+                Set tGroup = ##class(%DeepSee.Model.QualityMeasure.group).%New()
+                Set tGroup.name = tGroupName
+                Set tGroup.description = tGroupName
+                Set tElement = ##class(%DeepSee.Model.QualityMeasure.element).%New()
+                Set tElement.name = tGroupName _ " Cohort"
+                Set tElement.mdx = "100"
+                Do tGroup.elements.Insert(tElement)
+                Do tModel.groups.Insert(tGroup)
+            }
+        } Else {
+            Set tModel = ##class(%DeepSee.QualityMeasure.Utils).%GetModel(pName, .tModelStatus, 0)
+            If '$IsObject(tModel) || (tModel.name = "") Set pCode = "ABSENT"
+        }
+        If pCode = "" {
+            Set tOldExpression = tModel.expression
+            Set tOldFormat = tModel.format
+            Set tOldHref = tModel.href
+            If (pOp = ..#TYPEADD) || (pOp = ..#TYPEUPDATE) {
+                If pBody.%GetTypeOf("Caption") = "string" Set tModel.caption = pBody.%Get("Caption")
+                If pBody.%GetTypeOf("Description") = "string" Set tModel.description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("SubjectArea") = "string" Set tModel.subjectArea = pBody.%Get("SubjectArea")
+            }
+            If pOp = ..#TYPEUPDATE {
+                If pBody.%GetTypeOf("Expression") = "string" Set tModel.expression = pBody.%Get("Expression")
+                If pBody.%GetTypeOf("LinkedTo") = "string" Set tModel.linkedTo = pBody.%Get("LinkedTo")
+                If pBody.%GetTypeOf("Published") = "boolean" Set tModel.published = pBody.%Get("Published")
+                If pBody.%GetTypeOf("Format") = "string" Set tModel.format = pBody.%Get("Format")
+                If pBody.%GetTypeOf("Href") = "string" Set tModel.href = pBody.%Get("Href")
+            } ElseIf 'tPart {
+                Set tModel.catalog = $Piece(tNewName, "/", 1)
+                Set tModel.set = $Piece(tNewName, "/", 2)
+                Set tModel.id = $Piece(tNewName, "/", 3)
+            }
+        }
+        If pCode = "" && tPart {
+            ; The part endpoints write a measure's own groups and documentation, which a linked measure takes from its master.
+            Set pCode = $Select(tModel.linkedTo '= "": "LINKEDPARTS", 1: ..ApplyQualityMeasurePart(tModel, pEndpoint, pOp, pPart, pBody))
+        }
+        If pCode = "" && ((pOp = ..#TYPEADD) || (pOp = ..#TYPECOPY)) {
+            ; A name in use, whoever declares it: the vendor's list, its registry and the class's own definition.
+            Do ..QualityMeasureHeld(tNewName, .tListed, .tHeldClass)
+            If tListed || (tHeldClass '= "") || ##class(%Dictionary.ClassDefinition).%ExistsId(pNewClass) Set pCode = "TAKEN"
+        }
+        If pCode = "" && $$$ISERR(tModel.%Validate()) Set pCode = "COMPILE"
+        If pCode = "" {
+            Kill tGroups
+            For tGroupAt = 1:1:tModel.groups.Count() {
+                Set tGroup = tModel.groups.GetAt(tGroupAt)
+                If tGroup.disabled Continue
+                For tElementAt = 1:1:tGroup.elements.Count() {
+                    If 'tGroup.elements.GetAt(tElementAt).disabled Set tGroups($ZConvert(tGroup.name, "U")) = ""
+                }
+            }
+            If '..ExpressionHolds(tModel.expression, .tGroups) Set pCode = "EXPRESSION"
+        }
+        If pCode = "" && (pOp = ..#TYPEUPDATE) && (tModel.linkedTo '= "") && ((tModel.expression '= tOldExpression) || (tModel.format '= tOldFormat) || (tModel.href '= tOldHref)) Set pCode = "LINKED"
+        If pCode = "" {
+            Set tWriter = ##class(%XML.Writer).%New()
+            Set tWriter.NoXMLDeclaration = 1
+            Set tWriter.Indent = 1
+            Set tStream = ##class(%Stream.TmpCharacter).%New()
+            Set tSC = tWriter.OutputToStream(tStream)
+            If $$$ISOK(tSC) Set tSC = tWriter.RootObject(tModel)
+            If $$$ISOK(tSC) {
+                Do tStream.Rewind()
+                Set pXml = tStream.Read(3000000)
+                ; The text the class would hold must be well-formed XML, or the compile would refuse it: read it back before anything is saved.
+                If $$$ISERR(##class(%XML.Reader).%New().OpenString(pXml)) {
+                    Set pXml = ""
+                    Set pCode = "COMPILE"
+                }
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Apply the part write <var>pOp</var> (<parameter>TYPEENTRYADD</parameter>, <parameter>TYPEENTRYSET</parameter> or <parameter>TYPEENTRYREMOVE</parameter>) of <var>pPart</var>
+/// (<method>QualityMeasureTarget</method>) to the model <var>pModel</var> of <method>VendorQualityMeasureCompose</method>, from the members of <var>pBody</var>. A group, element or item
+/// is found by its exact name; an added name is refused when the group or measure holds it, without regard to case, enabled or not (the model's own rule skips a disabled part, but the
+/// ids key by name). An added element names a group the measure lacks: the group is created at the end, and the group fields sent with an element change the group it names. Added
+/// parts go at the end, and a part's <code>Section</code> is kept as stored. Answers <code>""</code>, or the refusal code <code>PARTABSENT</code>, <code>ELEMENTTAKEN</code>,
+/// <code>METATAKEN</code> or, for a content the model cannot hold (<method>NormalizedContent</method>), <code>COMPILE</code>.</p>
+ClassMethod ApplyQualityMeasurePart(pModel As %DeepSee.Model.QualityMeasure.qualityMeasure, pEndpoint As %String, pOp As %String, pPart As %String, pBody As %DynamicObject) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTQUALITYMEASUREMETAS Quit ..ApplyMetaPart(pModel, pOp, pPart, pBody)
+    Set tSeparator = $Char(..#PARTSEPARATOR)
+    Set tGroupName = $Piece(pPart, tSeparator, 1)
+    Set tName = $Piece(pPart, tSeparator, 2)
+    Set tGroupAt = 0
+    For tAt = 1:1:pModel.groups.Count() {
+        If pModel.groups.GetAt(tAt).name = tGroupName {
+            Set tGroupAt = tAt
+            Quit
+        }
+    }
+    If (pOp = ..#TYPEENTRYADD) && 'tGroupAt {
+        Set tGroup = ##class(%DeepSee.Model.QualityMeasure.group).%New()
+        Set tGroup.name = tGroupName
+        Do pModel.groups.Insert(tGroup)
+    } ElseIf 'tGroupAt {
+        Quit "PARTABSENT"
+    } Else {
+        Set tGroup = pModel.groups.GetAt(tGroupAt)
+    }
+    Set tElementAt = 0
+    Set tHeld = 0
+    For tAt = 1:1:tGroup.elements.Count() {
+        If $ZConvert(tGroup.elements.GetAt(tAt).name, "U") = $ZConvert(tName, "U") Set tHeld = 1
+        If tGroup.elements.GetAt(tAt).name = tName Set tElementAt = tAt
+    }
+    If pOp = ..#TYPEENTRYREMOVE {
+        If tName = "" {
+            Do ..RemoveFromRelationship(pModel.groups, tGroupAt)
+        } ElseIf tElementAt {
+            Do ..RemoveFromRelationship(tGroup.elements, tElementAt)
+        } Else {
+            Quit "PARTABSENT"
+        }
+        Quit ""
+    }
+    If tName '= "" {
+        If pOp = ..#TYPEENTRYADD {
+            If tHeld Quit "ELEMENTTAKEN"
+            Set tElement = ##class(%DeepSee.Model.QualityMeasure.element).%New()
+            Set tElement.name = tName
+            Do tGroup.elements.Insert(tElement)
+        } ElseIf 'tElementAt {
+            Quit "PARTABSENT"
+        } Else {
+            Set tElement = tGroup.elements.GetAt(tElementAt)
+        }
+        If pBody.%GetTypeOf("Caption") = "string" Set tElement.caption = pBody.%Get("Caption")
+        If pBody.%GetTypeOf("MDX") = "string" Set tElement.mdx = pBody.%Get("MDX")
+        If pBody.%GetTypeOf("Disabled") = "boolean" Set tElement.disabled = pBody.%Get("Disabled")
+    }
+    If pBody.%GetTypeOf("GroupCaption") = "string" Set tGroup.caption = pBody.%Get("GroupCaption")
+    If pBody.%GetTypeOf("GroupDescription") = "string" Set tGroup.description = pBody.%Get("GroupDescription")
+    If pBody.%GetTypeOf("GroupDisabled") = "boolean" Set tGroup.disabled = pBody.%Get("GroupDisabled")
+    Quit ""
+}
+
+/// <p>Remove the member at position <var>pAt</var> from the model's relationship <var>pCollection</var> and keep the positions of the rest unbroken: <code>RemoveAt</code> of a member that is
+/// not the last leaves a gap that the model's own <code>%Validate</code> reads as <code>&lt;INVALID OREF&gt;</code>, so the rest are put back in order after a <code>Clear</code>.</p>
+ClassMethod RemoveFromRelationship(pCollection, pAt As %Integer) [ Private ]
+{
+    Set tKey = ""
+    Set tKept = 0
+    For {
+        Set tObject = pCollection.GetNext(.tKey)
+        If tKey = "" Quit
+        If tKey = pAt Continue
+        Set tKept($Increment(tKept)) = tObject
+    }
+    Do pCollection.Clear()
+    For tAt = 1:1:tKept Do pCollection.Insert(tKept(tAt))
+}
+
+/// <p><method>ApplyQualityMeasurePart</method> for a documentation item (Story 24.12): <var>pPart</var> is the item's name.</p>
+ClassMethod ApplyMetaPart(pModel As %DeepSee.Model.QualityMeasure.qualityMeasure, pOp As %String, pPart As %String, pBody As %DynamicObject) As %String [ Private ]
+{
+    Set tMetaAt = 0
+    Set tHeld = 0
+    For tAt = 1:1:pModel.metas.Count() {
+        If $ZConvert(pModel.metas.GetAt(tAt).name, "U") = $ZConvert(pPart, "U") Set tHeld = 1
+        If pModel.metas.GetAt(tAt).name = pPart Set tMetaAt = tAt
+    }
+    If pOp = ..#TYPEENTRYADD {
+        If tHeld Quit "METATAKEN"
+        Set tMeta = ##class(%DeepSee.Model.QualityMeasure.meta).%New()
+        Set tMeta.name = pPart
+        Do pModel.metas.Insert(tMeta)
+    } ElseIf 'tMetaAt {
+        Quit "PARTABSENT"
+    } ElseIf pOp = ..#TYPEENTRYREMOVE {
+        Do ..RemoveFromRelationship(pModel.metas, tMetaAt)
+        Quit ""
+    } Else {
+        Set tMeta = pModel.metas.GetAt(tMetaAt)
+    }
+    If pBody.%GetTypeOf("Caption") = "string" Set tMeta.caption = pBody.%Get("Caption")
+    If pBody.%GetTypeOf("Disabled") = "boolean" Set tMeta.disabled = pBody.%Get("Disabled")
+    If pBody.%GetTypeOf("Content") = "string" {
+        Set tContent = ..NormalizedContent(pBody.%Get("Content"), .tStorable)
+        If 'tStorable Quit "COMPILE"
+        Set tMeta.content = tContent
+    }
+    Quit ""
+}
+
+/// <p>The refusal for the code <var>pCode</var> <method>VendorQualityMeasureCompose</method> answered: <code>TAKEN</code>, <code>ELEMENTTAKEN</code>, <code>METATAKEN</code>, <code>LINKED</code>
+/// and <code>LINKEDPARTS</code> 409, <code>ABSENT</code> 404 and <code>PARTABSENT</code> 404, and <code>COMPILE</code> and <code>EXPRESSION</code> 422.</p>
+ClassMethod QualityMeasureComposeRefusal(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If pCode = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault)
+    If pCode = "LINKED" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURELINKED, .pHttpStatus, .pFault)
+    If pCode = "LINKEDPARTS" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURELINKEDPARTS, .pHttpStatus, .pFault)
+    If pCode = "ELEMENTTAKEN" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREELEMENTTAKEN, .pHttpStatus, .pFault)
+    If pCode = "METATAKEN" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREMETATAKEN, .pHttpStatus, .pFault)
+    If pCode = "PARTABSENT" Quit ..QualityMeasurePartAbsent(.pHttpStatus, .pFault)
+    If pCode = "COMPILE" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECOMPILE, .pHttpStatus, .pFault)
+    If pCode = "EXPRESSION" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREEXPRESSION, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASUREEXPRESSION, .pHttpStatus, .pFault)
+    Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+}
+
+/// <p>Serve the quality measure endpoints' typed calls after <method>Invoke</method>'s gate (Story 24.12): the reads <code>QUALITYMEASURE</code> and <code>COPYTARGET</code>
+/// (<method>ReadQualityMeasure</method>) and the four writes (<method>PerformQualityMeasure</method>) of <var>pEndpoint</var> <code>QualityMeasures</code>, and the part endpoints' read and
+/// three writes. The measure is named under <parameter>IDKEY</parameter> by its full name <code>catalog/set/id</code>, kept exactly (AD-13), a part by the composite id
+/// <method>QualityMeasureTarget</method> splits. A read carrying <parameter>ACTIONKEY</parameter> is composed for that write: an add's read is 409 when the name is held and
+/// 404 when it is not, and the other writes' reads are 404 <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> when the measure is not there and 409 <code>AMBIGUOUS</code> when two
+/// classes declare it.</p>
+ClassMethod InvokeQualityMeasure(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '..QualityMeasureTarget(pEndpoint, $Get(pQuery(..#IDKEY)), .tName, .tPart) || '..QualityMeasureKeyShaped(tName) {
+        Set tViolation = 1
+        Set tViolation(1) = $ListBuild("Name", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Quit ..ViolationRefusal(.tViolation, .pHttpStatus, .pFault)
+    }
+    Set tPartEndpoint = ..IsQualityMeasurePartEndpoint(pEndpoint)
+    Set tWrite = $Select(tPartEndpoint: ..IsQualityMeasurePartWrite(pType), 1: ..IsQualityMeasureWrite(pType))
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '$Select(tPartEndpoint: ..IsQualityMeasurePartWrite(tAction), 1: ..IsQualityMeasureWrite(tAction)) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If tWrite Quit ..PerformQualityMeasure(pNamespace, pEndpoint, pType, tName, tPart, .pQuery, pBody, 0, .pResult, .pHttpStatus, .pFault)
+    Quit ..ReadQualityMeasure(pNamespace, pEndpoint, pType, tName, tPart, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The single-object reads of the quality measures endpoint: <code>QUALITYMEASURE</code> (the measure as <method>QualityMeasureRow</method>) and <code>COPYTARGET</code>
+/// (<code>{Name, Version, Groups, NewName, NewClass, Present, Namespace}</code>, the measure with the copy's own name and class from the query), and on the part endpoint
+/// <var>pEndpoint</var> <code>QUALITYMEASUREELEMENT</code> and <code>QUALITYMEASUREMETA</code> (<method>QualityMeasureElementRow</method>, <method>QualityMeasureMetaRow</method>),
+/// a part that is not there 404 and, composed for a write, <code>PARTABSENT</code>, a held name on an add 409, and a linked measure 409 <code>LINKEDPARTS</code>. A measure that is not there is 404
+/// <code>PORT.NOTFOUND</code> on a plain read and <code>ANALYTICS.QUALITYMEASURE.ABSENT</code> with <var>pAction</var>. A read composed for a write carries the class's
+/// <code>Version</code>, which the proposal's fingerprint covers, and is refused as that write would be refused (<method>PlanQualityMeasure</method>).</p>
+ClassMethod ReadQualityMeasure(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pPart As %String, pAction As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..QualityMeasureFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tPartEndpoint = ..IsQualityMeasurePartEndpoint(pEndpoint)
+    Set tHeld = +tData("exists") || (tData("listed") > 0) || (tData("class") '= "")
+    If 'tPartEndpoint && (pAction = ..#TYPEADD) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode($Get(pQuery(..#NEWCLASSKEY))) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If 'tPartEndpoint && (pAction = ..#TYPEADD) Quit $Select(tHeld: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    If 'tData("exists") Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..QualityMeasureAbsent(.pHttpStatus, .pFault))
+    If pAction '= "" {
+        If tData("listed") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pAction '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tData("class")) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tData("class") _ ".cls", .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    } Else {
+        Set tVersion = ""
+    }
+    If tPartEndpoint {
+        ; A write's read is refused as the write is: a linked measure's groups and documentation are its master's, whatever part the target names.
+        If (pAction '= "") && (tData("linkedTo") '= "") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURELINKEDPARTS, .pHttpStatus, .pFault)
+        Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+        If pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS {
+            Set tGroupAt = ..QualityMeasureGroupAt(.tData, $Piece(pPart, tSeparator, 1))
+            Set tElementAt = $Select(tGroupAt && ($Piece(pPart, tSeparator, 2) '= ""): ..QualityMeasureElementAt(.tData, tGroupAt, $Piece(pPart, tSeparator, 2)), 1: 0)
+            Set tPresent = tGroupAt && (($Piece(pPart, tSeparator, 2) = "") || tElementAt)
+            If pAction = ..#TYPEENTRYADD Quit $Select(tElementAt: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREELEMENTTAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+            If 'tPresent Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..QualityMeasurePartAbsent(.pHttpStatus, .pFault))
+            Set pResult = ..QualityMeasureElementRow(pNamespace, .tData, tGroupAt, tElementAt, tVersion)
+        } Else {
+            Set tMetaAt = ..QualityMeasureMetaAt(.tData, pPart)
+            If pAction = ..#TYPEENTRYADD Quit $Select(tMetaAt: ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREMETATAKEN, .pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+            If 'tMetaAt Quit $Select(pAction = "": ..Absent(.pHttpStatus, .pFault), 1: ..QualityMeasurePartAbsent(.pHttpStatus, .pFault))
+            Set pResult = ..QualityMeasureMetaRow(pNamespace, .tData, tMetaAt, tVersion)
+        }
+    } ElseIf pType = ..#TYPEQUALITYMEASURE {
+        Set pResult = ..QualityMeasureRow(pNamespace, .tData, tVersion)
+    } Else {
+        If pAction '= "" {
+            Set tSC = ..PlanQualityMeasure(pNamespace, pEndpoint, ..#TYPECOPY, pName, "", .pQuery, {}, .tPlan, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit tSC
+        }
+        Set pResult = {}
+        Do pResult.%Set("Name", tData("name"), "string")
+        Do pResult.%Set("Version", tVersion, "string")
+        Do pResult.%Set("Groups", tData("groups"), "number")
+        Do pResult.%Set("NewName", $Get(pQuery(..#NEWNAMEKEY)), "string")
+        Do pResult.%Set("NewClass", $Get(pQuery(..#NEWCLASSKEY)), "string")
+        Do pResult.%Set("Present", 0, "boolean")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Judge the quality measure write <var>pType</var> of <var>pName</var> before anything is written (Story 24.12). In order, each refusal before any save: the shape rules
+/// (<method>QualityMeasureViolations</method>, a copy's new name too, 422); a class of OcuPilot's own (the new class of an add or copy, the measure's class for the others, 403
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>); the new class's shape (<code>ANALYTICS.QUALITYMEASURE.CLASS</code>, 422); the measure read now
+/// (<method>ReadQualityMeasureData</method>): one not there is 404 <code>ABSENT</code>, one two classes declare 409 <code>AMBIGUOUS</code>, a held name on an add 409
+/// <code>TAKEN</code>; then the model composed from <code>%GetModel</code> read now (<method>VendorQualityMeasureCompose</method>), whose refusals are
+/// <method>QualityMeasureComposeRefusal</method>'s. <var>pPlan</var> holds what the write needs: <code>class</code> (the class it saves or deletes), <code>text</code> (its new
+/// text), <code>prior</code> (the text read, <code>""</code> for a create), <code>version</code>, <code>compiled</code> (whether the class was up to date) and <code>name</code> (the
+/// measure's name after the write). A delete has no text. Nothing is written.</p>
+ClassMethod PlanQualityMeasure(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject, Output pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pPlan
+    Set tNew = $Get(pQuery(..#NEWNAMEKEY))
+    Set tCreates = (pType = ..#TYPEADD) || (pType = ..#TYPECOPY)
+    Set tNewClass = $Select(pType = ..#TYPEADD: pBody.%Get("Class"), 1: $Get(pQuery(..#NEWCLASSKEY)))
+    Kill tViolations
+    Set tSC = ..QualityMeasureViolations(pType, pName, pPart, pBody, .tViolations, pEndpoint)
+    If $$$ISERR(tSC) Quit tSC
+    If (pType = ..#TYPECOPY) && '..QualityMeasureNameShaped(tNew) Set tViolations($Increment(tViolations)) = $ListBuild("NewName", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If tViolations Quit ..ViolationRefusal(.tViolations, .pHttpStatus, .pFault)
+    If tCreates && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tNewClass) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    If tCreates && '..ListingClassShaped(tNewClass) Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECLASS, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECLASS, .pHttpStatus, .pFault)
+    Set tSC = ..QualityMeasureFacts(pNamespace, pName, .tData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If pType = ..#TYPEADD {
+        If +tData("exists") || (tData("listed") > 0) || (tData("class") '= "") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURETAKEN, .pHttpStatus, .pFault)
+    } Else {
+        If 'tData("exists") Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+        If tData("listed") > 1 Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASUREAMBIGUOUS, .pHttpStatus, .pFault)
+        If (pType '= ..#TYPECOPY) && ##class(OcuPilot.Kernel.Proposal.Prohibited).IsOcuPilotCode(tData("class")) Quit ..OwnCodeRefusal(.pHttpStatus, .pFault)
+    }
+    Set pPlan("class") = $Select(tCreates: tNewClass, 1: tData("class"))
+    Set pPlan("name") = $Select(pType = ..#TYPEADD: pName, pType = ..#TYPECOPY: tNew, 1: tData("name"))
+    Set pPlan("compiled") = ''$Get(tData("compiled"))
+    Set pPlan("text") = ""
+    Set pPlan("prior") = ""
+    Set pPlan("version") = ""
+    If pType = ..#TYPEDELETE Quit $$$OK
+    If 'tCreates {
+        Set tSC = ##class(OcuPilot.Kernel.SourceDocument).Read(..AtelierPortClass(), pNamespace, pPlan("class") _ ".cls", .tPrior, .tVersion, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pPlan("prior") = tPrior
+        Set pPlan("version") = tVersion
+    }
+    Set tCaught = ""
+    Set tCode = ""
+    Set tSC = ..VendorQualityMeasureCompose(pNamespace, pType, $Get(tData("name"), pName), pBody, tNew, tNewClass, .tXml, .tCode, .tCaught, pEndpoint, pPart)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the quality measure could not be composed", .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit ..Statused(tSC, "the quality measure could not be composed", .pHttpStatus, .pFault)
+    If tCode '= "" Quit ..QualityMeasureComposeRefusal(tCode, .pHttpStatus, .pFault)
+    If tCreates {
+        Set pPlan("text") = ##class(OcuPilot.Kernel.QualityMeasureText).ClassText(pPlan("class"), "", tXml)
+    } ElseIf '##class(OcuPilot.Kernel.QualityMeasureText).Splice(pPlan("prior"), "", tXml, .tSpliced) {
+        Quit ..QualityMeasureAbsent(.pHttpStatus, .pFault)
+    } Else {
+        Set pPlan("text") = tSpliced
+    }
+    Quit $$$OK
+}
+
+/// <p>The refusal sentence of the write <var>pType</var> of <var>pName</var> (and of its part <var>pPart</var> on the part endpoint <var>pEndpoint</var>) with the members <var>pBody</var>, <code>""</code> when nothing refuses it:
+/// <method>PlanQualityMeasure</method>'s, with nothing written. The mint and a screen's save ask it, so the agent and the person are refused what the write would refuse.</p>
+ClassMethod QualityMeasureProblem(pNamespace As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject, pEndpoint As %String = "QualityMeasures") As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        Set tSC = ..PlanQualityMeasure(pNamespace, pEndpoint, pType, pName, pPart, .pQuery, pBody, .tPlan, .tHttp, .tFault)
+        If $$$ISERR(tSC) && $IsObject($Get(tFault)) Set tProblem = tFault.%Get("reason")
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p><method>QualityMeasureProblem</method> of the groups and elements endpoint, with the signature the shared tool base calls.</p>
+ClassMethod QualityMeasureElementProblem(pNamespace As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject) As %String
+{
+    Quit ..QualityMeasureProblem(pNamespace, pType, pName, pPart, .pQuery, pBody, ..#ENDPOINTQUALITYMEASUREELEMENTS)
+}
+
+/// <p><method>QualityMeasureProblem</method> of the documentation endpoint, with the signature the shared tool base calls.</p>
+ClassMethod QualityMeasureMetaProblem(pNamespace As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject) As %String
+{
+    Quit ..QualityMeasureProblem(pNamespace, pType, pName, pPart, .pQuery, pBody, ..#ENDPOINTQUALITYMEASUREMETAS)
+}
+
+/// <p>Make the quality measure write <var>pType</var> (Story 24.12, AD-65): <method>PlanQualityMeasure</method>, then the class saved, compiled and deleted through
+/// <method>WriteClass</method>. A create (<code>ADD</code>, <code>COPY</code>) saves a new class and compiles it; an update saves the class's text with the
+/// <code>QualityMeasure</code> XData replaced, against the version read, and compiles it; a delete deletes the class. A compile the instance refuses (its own text is logged, never
+/// sent) undoes the write and answers 422 <code>ANALYTICS.QUALITYMEASURE.COMPILE</code>. Each write that reached the class records OcuPilot's own <code>ConfigChange</code> row
+/// (<method>AuditWrite</method>), a restored one with its outcome. With <var>pDry</var> nothing is written and <var>pResult</var> stays empty.</p>
+ClassMethod PerformQualityMeasure(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pPart As %String, ByRef pQuery, pBody As %DynamicObject, pDry As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..PlanQualityMeasure(pNamespace, pEndpoint, pType, pName, pPart, .pQuery, pBody, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || pDry Quit tSC
+    Set tSC = ..WriteClass(pNamespace, pType, tPlan("class"), .tPlan, "quality measure", .tOutcome, .tRefused, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tPartEndpoint = ..IsQualityMeasurePartEndpoint(pEndpoint)
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    Set tElements = (pEndpoint = ..#ENDPOINTQUALITYMEASUREELEMENTS)
+    Set tGroup = $Select(tElements: $Piece(pPart, tSeparator, 1), 1: "")
+    Set tPartName = $Select(tElements: $Piece(pPart, tSeparator, 2), 1: pPart)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("qualityMeasure", tPlan("name"), "string")
+    Do tEffects.%Set("class", tPlan("class"), "string")
+    If tElements Do tEffects.%Set("group", tGroup, "string")
+    If tPartEndpoint && (tPartName '= "") Do tEffects.%Set($Select(tElements: "element", 1: "item"), tPartName, "string")
+    Do tEffects.%Set("outcome", tOutcome, "string")
+    If tPartEndpoint {
+        Set tVerb = $Select(tElements: $Case(pType, ..#TYPEENTRYADD: ..#VERBQUALITYMEASUREELEMENTADD, ..#TYPEENTRYSET: ..#VERBQUALITYMEASUREELEMENTSET, : ..#VERBQUALITYMEASUREELEMENTREMOVE), 1: $Case(pType, ..#TYPEENTRYADD: ..#VERBQUALITYMEASUREMETAADD, ..#TYPEENTRYSET: ..#VERBQUALITYMEASUREMETASET, : ..#VERBQUALITYMEASUREMETAREMOVE))
+        Set tAuditId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($Select(tElements: $ListBuild(tPlan("name"), tGroup, tPartName), 1: $ListBuild(tPlan("name"), tPartName)))
+        Set tEntity = $Select(tElements: ..#ENTITYQUALITYMEASUREELEMENT, 1: ..#ENTITYQUALITYMEASUREMETA)
+    } Else {
+        Set tVerb = $Case(pType, ..#TYPEADD: ..#VERBQUALITYMEASUREADD, ..#TYPEUPDATE: ..#VERBQUALITYMEASUREUPDATE, ..#TYPECOPY: ..#VERBQUALITYMEASURECOPY, : ..#VERBQUALITYMEASUREDELETE)
+        Set tAuditId = tPlan("name")
+        Set tEntity = ..#ENTITYQUALITYMEASURE
+    }
+    Do ..AuditWrite(tVerb, tAuditId, tEffects, tEntity)
+    If tRefused Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#QUALITYMEASURECOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURECOMPILE, .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If pType = ..#TYPEDELETE {
+        Do pResult.%Set("Name", tPlan("name"), "string")
+    } ElseIf pType = ..#TYPEENTRYREMOVE {
+        Do pResult.%Set("QualityMeasure", tPlan("name"), "string")
+        If tElements Do pResult.%Set("Group", tGroup, "string")
+        Do pResult.%Set("Name", tPartName, "string")
+    } Else {
+        Do ..QualityMeasureFacts(pNamespace, tPlan("name"), .tAfter, .tAfterHttp, .tAfterFault)
+        Set tVersion = ""
+        If tAfter("exists") {
+            Do ##class(OcuPilot.Kernel.SourceDocument).Version(..AtelierPortClass(), pNamespace, tAfter("class") _ ".cls", .tVersion, .tVersionHttp, .tVersionFault)
+            If tElements {
+                Set tGroupAt = ..QualityMeasureGroupAt(.tAfter, tGroup)
+                Set tElementAt = $Select(tGroupAt && (tPartName '= ""): ..QualityMeasureElementAt(.tAfter, tGroupAt, tPartName), 1: 0)
+                If tGroupAt && ((tPartName = "") || tElementAt) Set pResult = ..QualityMeasureElementRow(pNamespace, .tAfter, tGroupAt, tElementAt, tVersion)
+            } ElseIf tPartEndpoint {
+                Set tMetaAt = ..QualityMeasureMetaAt(.tAfter, tPartName)
+                If tMetaAt Set pResult = ..QualityMeasureMetaRow(pNamespace, .tAfter, tMetaAt, tVersion)
+            } Else {
+                Set pResult = ..QualityMeasureRow(pNamespace, .tAfter, tVersion)
+            }
+        }
+        If pResult.%GetTypeOf("Name") = "unassigned" {
+            Do pResult.%Set("Name", $Select(tPartEndpoint: tPartName, 1: tPlan("name")), "string")
+            If tPartEndpoint Do pResult.%Set("QualityMeasure", tPlan("name"), "string")
+            If tElements Do pResult.%Set("Group", tGroup, "string")
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for a quality measure write <var>pType</var> of the measure the id <var>pId</var> names (Story 24.12, AD-59): the class the write would
+/// save, compiled, and, as the write does, put back when the compile is refused (<method>ClassWriteSnippet</method>). A write <method>PlanQualityMeasure</method> refuses is a script
+/// that only sets the refusal's sentence. An add's or a copy's steps are gated on one line by a free-name check (the name listed or registered, or its class defined).</p>
+ClassMethod QualityMeasureSnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If '..QualityMeasureTarget(pEndpoint, pId, .tName, .tPart) Set tName = pId
+    Set tSC = ..PlanQualityMeasure(tNamespace, pEndpoint, pType, tName, tPart, .pQuery, pBody, .tPlan, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit $Char(10) _ " Set tSC = $System.Status.Error(5001, " _ ..Literal($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: $System.Status.GetErrorText(tSC))) _ ")"
+    Set tNameU = ..Literal($ZConvert(tPlan("name"), "U"))
+    Set tPrelude = $Char(10) _ " Kill tList Set tListed = 0, tAt = """" Do ##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.tList) For { Set tAt = $Order(tList(tAt)) Quit:tAt=""""  Set:($ZConvert($List(tList(tAt), 1), ""U"") = " _ tNameU _ ") tListed = 1 }"
+    Set tFree = "'tListed, '$Data(^DeepSee.QMsrs(""qmsrNames"", " _ tNameU _ ")), '##class(%Dictionary.ClassDefinition).%ExistsId(" _ ..Literal(tPlan("class")) _ ")"
+    Quit ..ClassWriteSnippet(pType, tNamespace, tPlan("class"), tPlan("text"), tPlan("prior"), tPlan("compiled"), tPrelude, tFree, ##class(OcuPilot.Api.AnalyticsError).#REASONQUALITYMEASURETAKEN)
+}
+
+/// <p>The fifteen settings of the classic Settings page's General tab, in the page's order, as a <class>%List</class> of <class>%List</class>s:
+/// <code>name, node, second node, default, numeric, secret, the property the page's form sends it under, kind</code>. The <code>kind</code> is
+/// <code>scheme</code>, <code>series</code>, <code>mail</code>, <code>bool</code>, <code>text</code>, <code>secret</code>, or <code>custom</code> (the flag that turns the Worklists options on, which the
+/// page saves by its own call, <code>SetCustom</code>). Pure; <method>Collect</method> and the writes both read it, so the page's own nodes are named once.</p>
+ClassMethod SettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Scheme", "Scheme", "", "simple", 0, 0, "Scheme", "scheme"), $ListBuild("ChartSeriesScheme", "ChartSeriesScheme", "", "", 0, 0, "ChartSeriesScheme", "series"), $ListBuild("PageTitle", "PageTitle", "", "", 0, 0, "PageTitle", "text"), $ListBuild("CompanyName", "CompanyName", "", "", 0, 0, "CompanyName", "text"), $ListBuild("CompanyImage", "CompanyImage", "", "", 0, 0, "CompanyLogo", "text"), $ListBuild("CompanyLink", "CompanyLink", "", "", 0, 0, "CompanyLink", "text"), $ListBuild("GoogleMapsKey", "GoogleMapsKey", "", "", 0, 1, "GoogleMapsKey", "secret"), $ListBuild("MailEnabled", "MailEnabled", "", 0, 1, 0, "MailEnabled", "mail"), $ListBuild("DefaultResource", "DefaultResource", "", "", 0, 0, "DefaultResource", "text"), $ListBuild("DashboardNoTitle", "DashboardNoTitle", "", "", 0, 0, "DbNoTitle", "bool"), $ListBuild("DashboardNoBorder", "DashboardNoBorder", "", "", 0, 0, "DbNoBorder", "bool"), $ListBuild("Controls.showCalculated", "Controls", "showCalculated", "", 0, 0, "ctrlShowCalc", "bool"), $ListBuild("autosaveAnalyzer", "autosaveAnalyzer", "", "", 0, 0, "autosaveAnalyzer", "bool"), $ListBuild("autosaveUserPortal", "autosaveUserPortal", "", "", 0, 0, "autosaveUserPortal", "bool"), $ListBuild("Worklist", "Worklist", "", 0, 1, 0, "", "custom"))
+}
+
+/// <p>The four worklist classes the classic Worklists tab lists, in the page's fixed order: a class's place in it is the option number <code>SetOption</code> takes.</p>
+ClassMethod WorklistClasses() As %List
+{
+    Quit $ListBuild("%DeepSee.UserPortal.FavoritesList", "%DeepSee.UserPortal.RecentList", "%DeepSee.UserPortal.AlertList", "%DeepSee.UserPortal.DetailsList")
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape, from the names of the scheme lists the instance offers
+/// (<var>pSchemes</var> and <var>pSeries</var>, <class>%List</class>s); <code>""</code> for a name the page has no setting for. A choice setting holds the names
+/// it offers; <code>MailEnabled</code> is 1, 2 or 0; a boolean is 0 or 1; text, and the Google Maps key, are up to <parameter>SETTINGTEXTMAX</parameter> characters. Pure.</p>
+ClassMethod LimitsFrom(pName As %String, pSchemes As %List, pSeries As %List) As %List
+{
+    Set tKind = ""
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tAt), 1) = pName Set tKind = $List($List(tRoster, tAt), 8)
+    }
+    If tKind = "scheme" Quit $ListBuild("choice", "", "", pSchemes, "", "")
+    If tKind = "series" Quit $ListBuild("choice", "", "", pSeries, "", "")
+    If tKind = "mail" Quit $ListBuild("choice", "", "", $ListBuild("1", "2", "0"), "", "")
+    If (tKind = "bool") || (tKind = "custom") Quit $ListBuild("boolean", "", "", "", "", "")
+    If (tKind = "text") || (tKind = "secret") Quit $ListBuild("text", "", "", "", ..#SETTINGTEXTMAX, "")
+    Quit ""
+}
+
+/// <p>The limits of the setting <var>pName</var> of the namespace <var>pNamespace</var> (the request's scope when empty), as <method>LimitsFrom</method>; <code>""</code> for a name the page
+/// has no setting for or a namespace whose scheme lists cannot be read. The rules class asks it.</p>
+ClassMethod SettingLimits(pName As %String, pNamespace As %String = "") As %List
+{
+    Set tNamespace = $Select(pNamespace '= "": pNamespace, 1: ##class(OcuPilot.Kernel.Scope).Current())
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit ""
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(tNamespace, ..#ENDPOINTSETTINGS, "", 1, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) || $$$ISERR(tVendorSC) Quit ""
+    Quit ..LimitsFrom(pName, $Get(tData("schemes")), $Get(tData("series")))
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> (the request's scope when empty) holds a General setting that is not stored, other than the Worklists flag: the settings a save of the General form
+/// would store. A namespace or read that fails answers 0.</p>
+ClassMethod UnstoredGeneral(pNamespace As %String = "") As %Boolean
+{
+    Set tNamespace = $Select(pNamespace '= "": pNamespace, 1: ##class(OcuPilot.Kernel.Scope).Current())
+    If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit 0
+    Kill tData
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(tNamespace, ..#ENDPOINTSETTINGS, "", 0, .tData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) || $$$ISERR(tVendorSC) Quit 0
+    Set tUnstored = 0
+    For tAt = 1:1:tData {
+        If ($List(tData(tAt), 1) '= ..#SETTINGCUSTOMNAME) && '$List(tData(tAt), 3) Set tUnstored = 1
+    }
+    Quit tUnstored
+}
+
+/// <p>What a row's <code>Accepts</code> reads for the limits <var>pLimits</var>:<code>ConfigPort.AcceptsOf</code>'s sentence, a choice listed without its empty name (the chart series scheme's
+/// default), which the field accepts and the sentence has no word for. Pure.</p>
+ClassMethod AcceptsFor(pLimits As %List) As %String
+{
+    If $ListGet(pLimits, 1) = "choice" {
+        Set tChoices = ""
+        Set tList = $ListGet(pLimits, 4)
+        For tAt = 1:1:$ListLength(tList) {
+            If $List(tList, tAt) '= "" Set tChoices = tChoices _ $ListBuild($List(tList, tAt))
+        }
+        Set pLimits = $ListBuild("choice", "", "", tChoices, "", "")
+    }
+    Quit ##class(OcuPilot.Port.ConfigPort).AcceptsOf(pLimits)
+}
+
+/// <p>The names of the color schemes (<var>pSeries</var> 0) or the chart series schemes (1) the namespace offers, as the classic page lists them. Runs in the target namespace, and names only
+/// vendor classes.</p>
+ClassMethod SchemeNamesHere(pSeries As %Boolean) As %List [ Private ]
+{
+    Set tNames = ""
+    If pSeries {
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%GetChartSeriesSchemes(.tSchemes)
+    } Else {
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%GetColorSchemes(.tSchemes)
+    }
+    Set tAt = ""
+    For {
+        Set tAt = $Order(tSchemes(tAt))
+        If tAt = "" Quit
+        Set tNames = tNames _ $ListBuild($List(tSchemes(tAt), 1))
+    }
+    Quit tNames
+}
+
+/// <p>The rows of the Settings or Worklists endpoint of <var>pNamespace</var>, uncapped, as <method>Invoke</method>'s read answers them, and the collected values in <var>pData</var>. An error is
+/// <var>pHttpStatus</var> and <var>pFault</var>.</p>
+ClassMethod ReadSettingRows(pNamespace As %String, pEndpoint As %String, Output pRows As %DynamicArray, Output pData, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pData
+    Set pRows = ""
+    Set tVendorSC = $$$OK
+    Set tCaught = ""
+    Do ..Collect(pNamespace, pEndpoint, "", 0, .pData, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the " _ pEndpoint _ " read failed", .pHttpStatus, .pFault)
+    Set pRows = ..Rows(pEndpoint, .pData)
+    Quit $$$OK
+}
+
+/// <p>The refusal <var>pCode</var> of <class>OcuPilot.Api.ConfigError</class>, on that class's status and slug, with its sentence.</p>
+ClassMethod ConfigRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(##class(OcuPilot.Api.ConfigError).HttpStatusFor(pCode), ##class(OcuPilot.Api.ConfigError).SlugFor(pCode), pCode, ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>The query a settings tool's fresh read sends (AD-52): <parameter>ACTIONKEY</parameter> <var>pAction</var> when <var>pPayload</var> carries no <var>pMarker</var> field, which a stored payload
+/// does and a call's arguments do not, and <parameter>NAMESPACEKEY</parameter> from the payload's <code>Namespace</code>.</p>
+ClassMethod ActionQuery(pPayload As %DynamicObject, pMarker As %String, pAction As %String, ByRef pQuery)
+{
+    If '$IsObject(pPayload) Quit
+    If pPayload.%GetTypeOf(pMarker) = "unassigned" Set pQuery(..#ACTIONKEY) = pAction
+    If (pPayload.%GetTypeOf("Namespace") = "string") && (pPayload.%Get("Namespace") '= "") Set pQuery(..#NAMESPACEKEY) = pPayload.%Get("Namespace")
+}
+
+/// <p>What a settings write's caller must hold, as a <class>%List</class> of pairs: the screen <var>pDescriptorClass</var>'s own, WRITE on the resource guarding the database
+/// <var>pGlobal</var> maps to in the request's namespace, READ on the one guarding its routines database, then the custom resource of each page of <var>pClassicPages</var> (AD-8, AD-44, AD-65).
+/// <var>pResolved</var> is 0 when a database names no resource.</p>
+ClassMethod WritePairs(pDescriptorClass As %String, pGlobal As %String, pClassicPages As %String, Output pResolved As %Boolean) As %List
+{
+    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(pDescriptorClass, .pResolved)
+    If 'pResolved Quit ""
+    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tGlobals = ""
+    Set tReadOnly = 0
+    Set tMounted = 0
+    Set tRoutines = ""
+    If '..DestinationDatabase(tNamespace, pGlobal, .tGlobals, .tReadOnly, .tMounted) || (tGlobals = "") {
+        Set pResolved = 0
+        Quit ""
+    }
+    If '##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase(tNamespace, .tRoutines, .tReadOnly) || (tRoutines = "") {
+        Set pResolved = 0
+        Quit ""
+    }
+    Set tWrite = $ListBuild(tGlobals, ..#WRITEPERMISSION)
+    If '$ListFind(tPairs, tWrite) Set tPairs = tPairs _ $ListBuild(tWrite)
+    Set tRead = $ListBuild(tRoutines, ..#READPERMISSION)
+    If '$ListFind(tPairs, tRead) Set tPairs = tPairs _ $ListBuild(tRead)
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, pClassicPages)
+}
+
+/// <p>Serve the settings reads and writes after <method>Invoke</method>'s gate (Story 24.13). <code>SETTING</code> reads one General row by its name under <parameter>IDKEY</parameter> and <code>WORKLIST</code> one
+/// Worklists row by the composite <code>[Page, Panel, Class]</code>, each answering the row and <code>Namespace</code>; carrying <parameter>ACTIONKEY</parameter> the read is composed for that write,
+/// and refuses as the write would: a name the page has no setting for 404 <code>CONFIG.SETTING.NOTFOUND</code>, the Google Maps key for the plain set 409 <code>ANALYTICS.SETTING.SECRET</code>,
+/// any other name for the key's write 404, a worklist the page does not list 404 <code>ANALYTICS.WORKLIST.ABSENT</code>, and a show or hide while the worklists are not customized 409
+/// <code>ANALYTICS.WORKLIST.NOTCUSTOMIZED</code>. A write is judged and sent under one lock per namespace (<method>SendSetting</method>); a lock held past
+/// <parameter>SETTINGLOCKSECONDS</parameter> is 409 <code>WRITE.TARGETBUSY</code>.</p>
+ClassMethod InvokeSetting(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery(..#IDKEY))
+    Set tWrite = ..IsSettingsWrite(pType, pEndpoint)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsSettingsWrite(tAction, pEndpoint) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    If 'tWrite Quit ..JudgeSetting(pNamespace, pEndpoint, tId, tAction, .tData, .pResult, .pHttpStatus, .pFault)
+    Lock +^CacheTemp.OcuPilotAnalyticsSettings(pNamespace):..#SETTINGLOCKSECONDS
+    If '$Test Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, .pHttpStatus, .pFault)
+    Try {
+        Set tSC = ..SendSetting(pNamespace, pEndpoint, pType, tId, pBody, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("a settings write failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Lock -^CacheTemp.OcuPilotAnalyticsSettings(pNamespace)
+    Quit tSC
+}
+
+/// <p>The row <var>pId</var> names on <var>pEndpoint</var>, read fresh and judged for the write <var>pAction</var> (<code>""</code> for a plain read), with <code>Namespace</code> added: <var>pRow</var>, or the refusal
+/// <method>InvokeSetting</method> describes. <var>pData</var> is what <method>Collect</method> gathered.</p>
+ClassMethod JudgeSetting(pNamespace As %String, pEndpoint As %String, pId As %String, pAction As %String, Output pData, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pForWrite As %Boolean = 0) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tEntry = ..IsEntryEndpoint(pEndpoint)
+    Set tSettings = (pEndpoint = ..#ENDPOINTSETTINGS) || tEntry
+    Set tParts = $Select(tSettings: $ListBuild(pId), 1: ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId))
+    If tEntry && (pAction = ..#TYPEENTRYADD) && ('..NameShaped(pId) || '..SettingNameFits(pEndpoint, pId)) Quit ..SettingRefused(##class(OcuPilot.Api.AnalyticsError).#SETTINGNAME, .pHttpStatus, .pFault)
+    Set tSC = ..ReadSettingRows(pNamespace, pEndpoint, .tRows, .pData, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tFound = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tSettings {
+            If tRow.%Get("Name") = pId Set tFound = tRow
+        } ElseIf ($ListLength(tParts) = 3) && (tRow.%Get("Page") = $List(tParts, 1)) && (tRow.%Get("Panel") = +$List(tParts, 2)) && (tRow.%Get("Class") = $List(tParts, 3)) && ($List(tParts, 2) = +$List(tParts, 2)) {
+            Set tFound = tRow
+        }
+        If $IsObject(tFound) Quit
+    }
+    If tEntry {
+        If pAction = ..#TYPEENTRYADD {
+            If $IsObject(tFound) Quit ..Conflict($Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: ##class(OcuPilot.Api.AnalyticsError).#VARIABLETAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#ICONTAKEN), .pHttpStatus, .pFault)
+            If 'pForWrite Quit ..Absent(.pHttpStatus, .pFault)
+            Set pHttpStatus = 200
+            Quit $$$OK
+        }
+        If '$IsObject(tFound) {
+            Set tAbsent = $Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: ##class(OcuPilot.Api.AnalyticsError).#VARIABLEABSENT, 1: ##class(OcuPilot.Api.AnalyticsError).#ICONABSENT)
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, tAbsent, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(tAbsent), .pHttpStatus, .pFault)
+        }
+    } ElseIf tSettings {
+        If '$IsObject(tFound) || ((pAction = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit ..ConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+        If (pAction = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#SETTINGSECRET, .pHttpStatus, .pFault)
+    } Else {
+        If '$IsObject(tFound) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#WORKLISTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT, .pHttpStatus, .pFault)
+        If (pAction '= "") && 'tFound.%Get("Customized") Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#WORKLISTNOTCUSTOMIZED, .pHttpStatus, .pFault)
+    }
+    Do tFound.%Set("Namespace", pNamespace, "string")
+    Set pRow = tFound
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Judge and send the settings write <var>pType</var> for the target <var>pId</var>, inside the namespace's settings lock: the row is read and judged as the write's own read is
+/// (<method>JudgeSetting</method>); the value is judged by the limits <method>LimitsFrom</method> gives it, 400 <code>CONFIG.SETTING.VALUE</code>; then the classic page's own setters are called through the
+/// seams, the whole General form composed in the namespace from the nodes as they stand (<method>SettingsSaveHere</method>), and OcuPilot's own <code>ConfigChange</code> row is recorded, names only.
+/// The answer is the target's row, read again.</p>
+ClassMethod SendSetting(pNamespace As %String, pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, pType, .tData, .tRow, .pHttpStatus, .pFault, 1)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tCaught = ""
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    If ..IsEntryEndpoint(pEndpoint) {
+        Set tVariable = (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES)
+        Set tStored = $Select($IsObject(tRow): tRow, 1: {})
+        Set tCode = ..SettingEntryViolation(pEndpoint, pType, pId, pBody, tStored.%Get("Value"))
+        If tCode '= "" Quit ..SettingRefused(tCode, .pHttpStatus, .pFault)
+        If pType = ..#TYPEENTRYREMOVE {
+            Set tVendorSC = $Select(tVariable: ..VendorRuntimeVariableRemove(pNamespace, pId, .tCaught), 1: ..VendorUserIconRemove(pNamespace, pId, .tCaught))
+        } ElseIf tVariable {
+            Set tVendorSC = ..VendorRuntimeVariableSet(pNamespace, pId, ..TextOr(pBody, "Value", tStored.%Get("Value")), ..TextOr(pBody, "Comment", tStored.%Get("Comment")), ..TextOr(pBody, "Context", tStored.%Get("Context")), .tCaught)
+        } Else {
+            Set tVendorSC = ..VendorUserIconSet(pNamespace, pId, ..TextOr(pBody, "Path", tStored.%Get("Path")), .tCaught)
+        }
+        Do tEffects.%Set($Select(tVariable: "variable", 1: "icon"), pId, "string")
+        Set tVerb = $Case(pType, ..#TYPEENTRYADD: $Select(tVariable: ..#VERBRUNTIMEVARIABLEADD, 1: ..#VERBUSERICONADD), ..#TYPEENTRYSET: $Select(tVariable: ..#VERBRUNTIMEVARIABLESET, 1: ..#VERBUSERICONSET), : $Select(tVariable: ..#VERBRUNTIMEVARIABLEREMOVE, 1: ..#VERBUSERICONREMOVE))
+        Set tEntity = $Select(tVariable: ..#ENTITYRUNTIMEVARIABLE, 1: ..#ENTITYUSERICON)
+        Set tAuditId = pId
+    } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
+        Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
+        If pBody.%GetTypeOf(tField) '= "string" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+        Set tValue = pBody.%Get(tField)
+        If '##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).ValueHolds(..LimitsFrom(pId, $Get(tData("schemes")), $Get(tData("series"))), tValue) Quit ..ConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+        If pId = ..#SETTINGCUSTOMNAME {
+            Set tVendorSC = ..VendorSettingCustom(pNamespace, tValue, .tCaught)
+        } Else {
+            Set tOverrides(pId) = tValue
+            Set tVendorSC = ..VendorSettingsSave(pNamespace, .tOverrides, .tCaught)
+        }
+        Do tEffects.%Set("setting", pId, "string")
+        Set tVerb = $Select(pType = ..#TYPESETTINGKEY: ..#VERBSETTINGKEY, 1: ..#VERBSETTINGSET)
+        Set tEntity = ..#ENTITYSETTING
+        Set tAuditId = pId
+    } Else {
+        Set tShow = (pType = ..#TYPEWORKLISTSHOW)
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+        Set tNumber = $ListFind(..WorklistClasses(), $List(tParts, 3))
+        If 'tNumber Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#WORKLISTABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT, .pHttpStatus, .pFault)
+        Set tVendorSC = ..VendorWorklistOption(pNamespace, $List(tParts, 1), +$List(tParts, 2), $List(tParts, 3), tNumber, tShow, .tCaught)
+        Do tEffects.%Set("page", $List(tParts, 1), "string")
+        Do tEffects.%Set("panel", +$List(tParts, 2), "number")
+        Do tEffects.%Set("class", $List(tParts, 3), "string")
+        Set tVerb = $Select(tShow: ..#VERBWORKLISTSHOW, 1: ..#VERBWORKLISTHIDE)
+        Set tEntity = ..#ENTITYWORKLIST
+        Set tAuditId = pId
+    }
+    If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the settings write failed", .pHttpStatus, .pFault)
+    Do ..AuditWrite(tVerb, tAuditId, tEffects, tEntity)
+    Set tSC = ..JudgeSetting(pNamespace, pEndpoint, pId, "", .tAfter, .pResult, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        Set pResult = {}
+        If ..IsEntryEndpoint(pEndpoint) Do pResult.%Set("Name", pId, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Set pFault = ""
+    }
+    Quit $$$OK
+}
+
+/// <p>The code of the first rule the write <var>pType</var> of the run-time variable or icon <var>pName</var> of <var>pEndpoint</var> breaks, <code>""</code> for none (Story 24.13): a name to add is
+/// <method>NameShaped</method> and <method>SettingNameFits</method> (<code>ANALYTICS.SETTING.NAME</code>); a member the body names is a string of at most <parameter>SETTINGTEXTMAX</parameter> characters
+/// with no control character (<code>ANALYTICS.SETTING.TEXT</code>); a variable's expression that is not empty, and is new, passes <method>VariableExpressionHolds</method>
+/// (<code>ANALYTICS.VARIABLE.EXPRESSION</code>). An expression the variable already holds is not judged again, so a comment can be changed on a variable whose stored expression does not pass the syntax check.
+/// <var>pStoredValue</var> is the expression the variable holds now. <var>pField</var> is the member the rule is about. A removal breaks no rule. Pure.</p>
+ClassMethod SettingEntryViolation(pEndpoint As %String, pType As %String, pName As %String, pBody As %DynamicObject, pStoredValue As %String = "", Output pField As %String) As %String
+{
+    Set pField = ""
+    If pType = ..#TYPEENTRYREMOVE Quit ""
+    If (pType = ..#TYPEENTRYADD) && ('..NameShaped(pName) || '..SettingNameFits(pEndpoint, pName)) {
+        Set pField = "Name"
+        Quit ##class(OcuPilot.Api.AnalyticsError).#SETTINGNAME
+    }
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tFields = $Select(pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES: $ListBuild("Value", "Comment", "Context"), 1: $ListBuild("Path"))
+    For tAt = 1:1:$ListLength(tFields) {
+        Set tMember = $List(tFields, tAt)
+        Set tType = pBody.%GetTypeOf(tMember)
+        If tType = "unassigned" Continue
+        If ((tType '= "string") || '..SettingTextShaped(pBody.%Get(tMember))) && (pField = "") Set pField = tMember
+    }
+    If pField '= "" Quit ##class(OcuPilot.Api.AnalyticsError).#SETTINGTEXT
+    If (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) && (pBody.%GetTypeOf("Value") = "string") {
+        Set tValue = pBody.%Get("Value")
+        If (tValue '= "") && ((pType = ..#TYPEENTRYADD) || (tValue '= pStoredValue)) && '..VariableExpressionHolds(tValue) {
+            Set pField = "Value"
+            Quit ##class(OcuPilot.Api.AnalyticsError).#VARIABLEEXPRESSION
+        }
+    }
+    Quit ""
+}
+
+/// <p>The sentence of the first rule the write <var>pType</var> of the name <var>pName</var> on <var>pEndpoint</var> breaks (<method>SettingEntryViolation</method>), naming the member, <code>""</code> when it
+/// breaks none. A change reads the expression the variable holds now, so an expression it keeps is not judged again. The mint and a screen action ask it so that the agent and the person are refused what the write would
+/// refuse; the caller has passed this port's gate. Reads through <var>pNamespace</var> and writes nothing.</p>
+ClassMethod SettingEntryProblem(pNamespace As %String, pEndpoint As %String, pType As %String, pName As %String, pBody As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tStored = ""
+        If (pType = ..#TYPEENTRYSET) && (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES) {
+            Set tRow = ..SettingEntryRow(pNamespace, pEndpoint, pName)
+            If $IsObject(tRow) Set tStored = tRow.%Get("Value")
+        }
+        Set tCode = ..SettingEntryViolation(pEndpoint, pType, pName, pBody, tStored, .tField)
+        If tCode '= "" Set tProblem = "'" _ tField _ "': " _ ##class(OcuPilot.Api.AnalyticsError).ReasonFor(tCode)
+    } Catch {
+        Set tProblem = ""
+    }
+    Quit tProblem
+}
+
+/// <p>Save the General form with the setting overrides <var>pOverrides</var> (name to value) in <var>pNamespace</var>, through <code>%DeepSee.UI.Settings.SaveToServer</code>: every other setting at the value its
+/// node holds now, or the page's default (<method>SettingsSaveHere</method>). A status that names what the vendor refused. A raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorSettingsSave(pNamespace As %String, ByRef pOverrides, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tMessage = ..SettingsSaveHere(.pOverrides)
+        Set $NAMESPACE = tOrigNS
+        If tMessage '= "" Set tSC = $$$ERROR($$$GeneralError, "the Settings page refused its save: " _ tMessage)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The form <code>SaveToServer</code> takes, composed in the target namespace from every node as it stands (the page's default for a node that is not stored), the overrides in <var>pOverrides</var>
+/// laid over it, and saved. The stored Google Maps key is read and passed here and nowhere else. Runs in the target namespace, and names only vendor classes.</p>
+ClassMethod SettingsSaveHere(ByRef pOverrides) As %String [ Private ]
+{
+    Set tData = ##class(%ZEN.proxyObject).%New()
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tAt)
+        If $List(tEntry, 8) = "custom" Continue
+        Set tName = $List(tEntry, 1)
+        If $Data(pOverrides(tName)) {
+            Set tValue = pOverrides(tName)
+        } ElseIf $List(tEntry, 3) = "" {
+            Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2)), $List(tEntry, 4))
+        } Else {
+            Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2), $List(tEntry, 3)), $List(tEntry, 4))
+        }
+        If $List(tEntry, 5) Set tValue = +tValue
+        Do tData.%DispatchSetProperty($List(tEntry, 7), tValue)
+    }
+    Quit ##class(%DeepSee.UI.Settings).SaveToServer(tData)
+}
+
+/// <p>Turn the Worklists options on (<var>pValue</var> 1) or off (0) in <var>pNamespace</var> through <code>SetCustom</code>. Turning them off keeps the options already chosen: the vendor's call removes every
+/// stored option with the flag, so they are read first and set again with <code>SetOption</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorSettingCustom(pNamespace As %String, pValue As %Boolean, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..SettingCustomHere(''pValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The body of <method>VendorSettingCustom</method>. Runs in the target namespace, and names only vendor classes.</p>
+ClassMethod SettingCustomHere(pValue As %Boolean) [ Private ]
+{
+    Set tCount = 0
+    If 'pValue {
+        Set tPage = ""
+        For {
+            Set tPage = $Order(^DeepSee.UserPortalSettings("Worklist", tPage))
+            If tPage = "" Quit
+            Set tPanel = ""
+            For {
+                Set tPanel = $Order(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel))
+                If tPanel = "" Quit
+                Set tNumber = ""
+                For {
+                    Set tNumber = $Order(^DeepSee.UserPortalSettings("Worklist", tPage, tPanel, tNumber), 1, tClass)
+                    If tNumber = "" Quit
+                    Set tCount = tCount + 1
+                    Set tOptions(tCount) = $ListBuild(tPage, tPanel, tClass, tNumber)
+                }
+            }
+        }
+    }
+    Do ##class(%DeepSee.UI.Settings).SetCustom(pValue)
+    For tAt = 1:1:tCount {
+        Set tOption = tOptions(tAt)
+        Do ##class(%DeepSee.UI.Settings).SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1)
+    }
+}
+
+/// <p>Show (<var>pValue</var> 1) or hide (0) the worklist class <var>pClass</var>, the <var>pNumber</var>th of the page's list, in panel <var>pPanel</var> of page <var>pPage</var>, in <var>pNamespace</var>,
+/// through <code>SetOption</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorWorklistOption(pNamespace As %String, pPage As %String, pPanel As %Integer, pClass As %String, pNumber As %Integer, pValue As %Boolean, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(%DeepSee.UI.Settings).SetOption(pPage, pPanel, pClass, pNumber, ''pValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Whether the instance can address the run-time variable or icon <var>pName</var> of <var>pEndpoint</var>: a reference past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code>, and
+/// the limit counts the global's name and every subscript together. The test reads a process-private global shaped as the vendor's longest node of that endpoint (the comment of a variable), which
+/// nothing writes. Pure.</p>
+ClassMethod SettingNameFits(pEndpoint As %String, pName As %String) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        If pEndpoint = ..#ENDPOINTUSERICONS {
+            Set tProbe = $Data(^||DeepSee.User.Icons(pName))
+        } Else {
+            Set tProbe = $Data(^||DeepSee.User.Settings(pName, "comment"))
+        }
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>Whether <var>pText</var> is an expression, comment, context or path the settings accept: at most <parameter>SETTINGTEXTMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod SettingTextShaped(pText As %String) As %Boolean
+{
+    Quit ($Length(pText) '> ..#SETTINGTEXTMAX) && ($ZStrip(pText, "*C") = pText)
+}
+
+/// <p>Whether <var>pExpression</var>, a run-time variable's stored text, is valid ObjectScript for the line the vendor's <code>%GetUserSetting</code> executes (<code>Set %out=</code> and the expression),
+/// checked with <code>%Library.Routine.CheckSyntax</code>, which was measured to run nothing and write nothing. An empty expression holds. This is a syntax check, not a safety check, and the expression is
+/// never run, evaluated or executed here. Pure.</p>
+ClassMethod VariableExpressionHolds(pExpression As %String) As %Boolean
+{
+    If pExpression = "" Quit 1
+    Set tHolds = 0
+    Try {
+        Set tLine = " Set %out=" _ pExpression
+        Set tHolds = $$$ISOK(##class(%Library.Routine).CheckSyntax(.tLine, .tErrors))
+    } Catch {
+        Set tHolds = 0
+    }
+    Quit tHolds
+}
+
+/// <p>The 400 refusal <var>pCode</var> of a run-time variable or icon write that breaks a rule of its own shape, with its published sentence.</p>
+ClassMethod SettingRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, pCode, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>Set the run-time variable <var>pName</var> to the expression <var>pValue</var> (stored as text, never run), the comment <var>pComment</var> and the context <var>pContext</var>, in <var>pNamespace</var>,
+/// through <code>%DeepSee.UserPortal.Utils.%SetUserSetting</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorRuntimeVariableSet(pNamespace As %String, pName As %String, pValue As %String, pComment As %String, pContext As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(pName, pValue, pComment, pContext)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Remove the run-time variable <var>pName</var> in <var>pNamespace</var> through <code>%RemoveUserSetting</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorRuntimeVariableRemove(pNamespace As %String, pName As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%RemoveUserSetting(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Set the user-defined icon <var>pName</var> to the path <var>pPath</var> (text, never loaded) in <var>pNamespace</var> through <code>%SetUserIcon</code>. A status; a raised exception is
+/// <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorUserIconSet(pNamespace As %String, pName As %String, pPath As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%SetUserIcon(pName, pPath)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Remove the user-defined icon <var>pName</var> in <var>pNamespace</var> through <code>%RemoveUserIcon</code>. A status; a raised exception is <var>pCaught</var>. Test subclasses override it.</p>
+ClassMethod VendorUserIconRemove(pNamespace As %String, pName As %String, ByRef pCaught As %Exception.AbstractException) As %Status
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.UserPortal.Utils).%RemoveUserIcon(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for a settings write <var>pType</var> of the target <var>pId</var> (Story 24.13, AD-59): the classic page's own calls, the General form re-read from the
+/// nodes when the script runs, so no stored value, the Google Maps key least of all, is in its text, and the key's own write sets it to the text the body carries (the kernel's placeholder). A target the
+/// write would refuse is a script that only sets the refusal's sentence. Every script that writes takes the namespace's settings lock in one line, as the write does, releases it in its last, and sets the
+/// busy sentence, writing nothing, when the lock is held past <parameter>SETTINGLOCKSECONDS</parameter>. A run-time variable's or icon's script gates on one line with the port's taken or absent rule and then
+/// calls the vendor's setter; an expression is text in a string literal, never run.</p>
+ClassMethod SettingSnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tSettings = "##class(%DeepSee.UI.Settings)"
+    Set tRefuse = tNL _ " Set tSC = $System.Status.Error(5001, "
+    Set tLock = "^CacheTemp.OcuPilotAnalyticsSettings(" _ ..Literal($Get(pQuery(..#NAMESPACEKEY))) _ ")"
+    Set tOpen = tNL _ " Lock +" _ tLock _ ":" _ ..#SETTINGLOCKSECONDS _ " Set tLocked = $Test"
+    Set tClose = tNL _ " If tLocked Lock -" _ tLock
+    Set tBusy = "$System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY) _ ")"
+    If ..IsEntryEndpoint(pEndpoint) Quit ..EntrySnippet(pEndpoint, pType, pId, pBody, .pQuery, tOpen, tClose, tBusy)
+    If pEndpoint = ..#ENDPOINTWORKLISTS {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+        Set tNumber = $Select($ListLength(tParts) = 3: $ListFind(..WorklistClasses(), $List(tParts, 3)), 1: 0)
+        If 'tNumber Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTABSENT) _ ")"
+        Set tCustom = " Set tSC = $Select('tLocked: " _ tBusy _ ", +$Get(^DeepSee.UserPortalSettings(""Worklist"")): 1, 1: $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONWORKLISTNOTCUSTOMIZED) _ "))"
+        Quit tOpen _ tNL _ tCustom _ tNL _ " If $System.Status.IsOK(tSC) Do " _ tSettings _ ".SetOption(" _ ..Literal($List(tParts, 1)) _ ", " _ +$List(tParts, 2) _ ", " _ ..Literal($List(tParts, 3)) _ ", " _ tNumber _ ", " _ (pType = ..#TYPEWORKLISTSHOW) _ ")" _ tClose
+    }
+    Set tField = $Select(pType = ..#TYPESETTINGKEY: ..#SETTINGSECRETNAME, 1: "Value")
+    Set tValue = $Select(pBody.%GetTypeOf(tField) = "string": pBody.%Get(tField), 1: "")
+    ; Every General script says where the key stands: the key's own write takes it from the confirm, any other write keeps the stored one.
+    Set tNote = tNL _ " ; <" _ ..#SETTINGSECRETNAME _ "> is never rendered here: the key's own write takes it at the confirm, and every other write keeps the stored one."
+    Set tRefuse = tNote _ tRefuse
+    Set tKnown = 0
+    Set tRoster = ..SettingRoster()
+    For tAt = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tAt), 1) = pId Set tKnown = 1
+    }
+    If 'tKnown || ((pType = ..#TYPESETTINGKEY) && (pId '= ..#SETTINGSECRETNAME)) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.ConfigError).#REASONSETTINGNOTFOUND) _ ")"
+    If (pType = ..#TYPESETTINGSET) && (pId = ..#SETTINGSECRETNAME) Quit tRefuse _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONSETTINGSECRET) _ ")"
+    If pId = ..#SETTINGCUSTOMNAME {
+        If tValue = 1 Quit tNote _ tOpen _ tNL _ " If tLocked Do " _ tSettings _ ".SetCustom(1)" _ tNL _ " Set tSC = $Select(tLocked: 1, 1: " _ tBusy _ ")" _ tClose
+        Set tText = tNote _ tOpen _ tNL _ " Kill tOptions  Set tPage = """""
+        Set tText = tText _ tNL _ " For { Set tPage = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage)) Quit:tPage=""""  Set tPanel = """" For { Set tPanel = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel)) Quit:tPanel=""""  Set tNumber = """" For { Set tNumber = $Order(^DeepSee.UserPortalSettings(""Worklist"", tPage, tPanel, tNumber), 1, tClass) Quit:tNumber=""""  Set tOptions($Increment(tOptions)) = $ListBuild(tPage, tPanel, tClass, tNumber) } } }"
+        Set tText = tText _ tNL _ " If tLocked Do " _ tSettings _ ".SetCustom(0)"
+        Set tText = tText _ tNL _ " If tLocked { For tAt = 1:1:$Get(tOptions) { Set tOption = tOptions(tAt) Do " _ tSettings _ ".SetOption($List(tOption, 1), $List(tOption, 2), $List(tOption, 3), $List(tOption, 4), 1) } }"
+        Quit tText _ tNL _ " Set tSC = $Select(tLocked: 1, 1: " _ tBusy _ ")" _ tClose
+    }
+    Set tText = tNote _ tOpen _ tNL _ " Set tData = ##class(%ZEN.proxyObject).%New()"
+    For tAt = 1:1:$ListLength(tRoster) {
+        Set tEntry = $List(tRoster, tAt)
+        If $List(tEntry, 8) = "custom" Continue
+        If $List(tEntry, 1) = pId {
+            Set tExpression = $Select($List(tEntry, 5): "+", 1: "") _ ..Literal(tValue)
+        } Else {
+            Set tNode = ""
+            Set tNode = "^DeepSee.UserPortalSettings(" _ ..Literal($List(tEntry, 2)) _ $Select($List(tEntry, 3) = "": "", 1: ", " _ ..Literal($List(tEntry, 3))) _ ")"
+            Set tExpression = $Select($List(tEntry, 5): "+", 1: "") _ "$Get(" _ tNode _ ", " _ ..Literal($List(tEntry, 4)) _ ")"
+        }
+        Set tText = tText _ tNL _ " Set tData." _ $List(tEntry, 7) _ " = " _ tExpression
+    }
+    Set tText = tText _ tNL _ " Set tMessage = $Select(tLocked: " _ tSettings _ ".SaveToServer(tData), 1: """")"
+    Quit tText _ tNL _ " Set tSC = $Select('tLocked: " _ tBusy _ ", tMessage = """": 1, 1: $System.Status.Error(5001, tMessage))" _ tClose
+}
+
+/// <p>The lines <method>SettingSnippet</method> adds for the run-time variable or icon write <var>pType</var> of the name <var>pId</var> on <var>pEndpoint</var> (Story 24.13, Batch 3, AD-59), between the lock
+/// lines <var>pOpen</var> and <var>pClose</var>: the line that gates as the port does (the name held, 409, for an add; not held, 404, for a change or a removal; the lock held, the busy sentence
+/// <var>pBusy</var>) and the line that calls the vendor's setter. A write the port would refuse for its shape is a script that only sets the refusal's sentence. A member the body leaves out is read
+/// from the global when the script runs, so a change keeps it. Names and values are string literals.</p>
+ClassMethod EntrySnippet(pEndpoint As %String, pType As %String, pId As %String, pBody As %DynamicObject, ByRef pQuery, pOpen As %String, pClose As %String, pBusy As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tVariable = (pEndpoint = ..#ENDPOINTRUNTIMEVARIABLES)
+    Set tStoredValue = ""
+    If (pType = ..#TYPEENTRYSET) && tVariable {
+        Set tRow = ..SettingEntryRow($Get(pQuery(..#NAMESPACEKEY)), pEndpoint, pId)
+        If $IsObject(tRow) Set tStoredValue = tRow.%Get("Value")
+    }
+    Set tCode = ..SettingEntryViolation(pEndpoint, pType, pId, pBody, tStoredValue)
+    If tCode '= "" Quit tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).ReasonFor(tCode)) _ ")"
+    Set tGlobal = $Select(tVariable: "^DeepSee.User.Settings", 1: "^DeepSee.User.Icons")
+    Set tName = ..Literal(pId)
+    Set tTaken = $Select(tVariable: ##class(OcuPilot.Api.AnalyticsError).#REASONVARIABLETAKEN, 1: ##class(OcuPilot.Api.AnalyticsError).#REASONICONTAKEN)
+    Set tAbsent = $Select(tVariable: ##class(OcuPilot.Api.AnalyticsError).#REASONVARIABLEABSENT, 1: ##class(OcuPilot.Api.AnalyticsError).#REASONICONABSENT)
+    Set tGate = $Select(pType = ..#TYPEENTRYADD: "$Data(" _ tGlobal _ "(" _ tName _ ")): $System.Status.Error(5001, " _ ..Literal(tTaken) _ ")", 1: "'$Data(" _ tGlobal _ "(" _ tName _ ")): $System.Status.Error(5001, " _ ..Literal(tAbsent) _ ")")
+    Set tText = pOpen _ tNL _ " Set tSC = $Select('tLocked: " _ pBusy _ ", " _ tGate _ ", 1: 1)"
+    Set tUtils = "##class(%DeepSee.UserPortal.Utils)"
+    If pType = ..#TYPEENTRYREMOVE {
+        Set tCall = tUtils _ $Select(tVariable: ".%RemoveUserSetting(", 1: ".%RemoveUserIcon(") _ tName _ ")"
+    } ElseIf tVariable {
+        Set tCall = tUtils _ ".%SetUserSetting(" _ tName
+        For tNode = "Value", "Comment", "Context" {
+            Set tCall = tCall _ ", " _ $Select(pBody.%GetTypeOf(tNode) = "string": ..Literal(pBody.%Get(tNode)), 1: "$Get(" _ tGlobal _ "(" _ tName _ ", " _ ..Literal($ZConvert(tNode, "L")) _ "))")
+        }
+        Set tCall = tCall _ ")"
+    } Else {
+        Set tCall = tUtils _ ".%SetUserIcon(" _ tName _ ", " _ $Select(pBody.%GetTypeOf("Path") = "string": ..Literal(pBody.%Get("Path")), 1: "$Get(" _ tGlobal _ "(" _ tName _ "))") _ ")"
+    }
+    Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = " _ tCall _ pClose
+}
+
+/// <p>The row of the run-time variable or icon <var>pName</var> of <var>pEndpoint</var> in <var>pNamespace</var>, as <method>ReadSettingRows</method> answers it, or <code>""</code> when there is none or
+/// the read failed. The caller has passed this port's gate.</p>
+ClassMethod SettingEntryRow(pNamespace As %String, pEndpoint As %String, pName As %String) As %DynamicObject [ Private ]
+{
+    Set tFound = ""
+    Set tSC = ..ReadSettingRows(pNamespace, pEndpoint, .tRows, .tData, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("Name") = pName {
+            Set tFound = tRow
+            Quit
+        }
+    }
+    Quit tFound
 }
 
 }

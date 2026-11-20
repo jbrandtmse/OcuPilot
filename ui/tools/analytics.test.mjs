@@ -22,6 +22,7 @@ const ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls');
 const MDX_CODE = [
   PORT,
   join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'MdxQuery.cls'),
+  join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PivotRun.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'RowFetch.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls'),
@@ -83,7 +84,14 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('PORTALPAIRS'), '%DeepSee_Portal:USE');
   assert.equal(parameter('TERMLISTPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
-  assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager');
+  assert.equal(parameter('LISTINGGROUPPAIRS'), '%DeepSee_Portal:USE,%DeepSee_ListingGroup:USE');
+  assert.equal(parameter('LISTINGGROUPSQLPAIRS'), '%DeepSee_ListingGroupSQL:USE');
+  assert.equal(parameter('QUALITYMEASUREPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
+  assert.equal(parameter('SETTINGSPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
+  assert.equal(
+    parameter('ENDPOINTS'),
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets'
+  );
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');
@@ -280,7 +288,8 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   // The two vendor calls are exactly the ones the story names.
   const code = codeOf(readFileSync(PORT, 'utf8'), true);
   assert.ok(code.includes('%BuildCube(pCube, 1, 0, 0, 0, 0, .tStats)'), 'the build call is %BuildCube(cube, 1, 0, 0, 0, 0, .stats)');
-  assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts)');
+  // Story 24.13: the call passes the vendor's own defaults for its read-committed, reference-check and async arguments to reach its statistics argument.
+  assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts, 1, 1, 0, .tStats)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts, 1, 1, 0, .stats)');
   const calls = codeOf(readFileSync(PORT, 'utf8'), false);
   assert.equal((calls.match(/##class\(%DeepSee\.Utils\)\.%BuildCube\(/g) ?? []).length, 1, 'and %BuildCube is called once outside a string');
   // Mutation (Rule 19): add `Set tX = $Get(^DeepSee.Fact(1))` to AnalyticsPort or to a tool -> this goes red; the one vendor-global
@@ -290,6 +299,12 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   assert.deepEqual(
     referencing(PORT),
     [
+      // Story 24.13 (AD-65), strings blanked: the analytics settings read by name, the page's own nodes and each worklist option, which the General and Worklists tabs read and never write.
+      'Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne)) # 2',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne), $List(tSetting, 4))',
+      'Set tStored = $Data(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo)) # 2',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings(tNodeOne, tNodeTwo), $List(tSetting, 4))',
+      `Set pData(pData) = $ListBuild(tPage, tPanel, $ClassMethod(tClass, ""), tClass, ''$Data(^DeepSee.UserPortalSettings("", tPage, tPanel, tAt)), ''(+$Get(^DeepSee.UserPortalSettings(""))))`,
       'Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1',
       'Lock -^DeepSee.Build(tIndex, "")',
       // Story 24.2 (AD-65), strings blanked: the term list editor's fit probe in a process-private global that nothing writes, its hide-value
@@ -301,8 +316,23 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
       'Kill ^DeepSee.TermList(tId, "")',
       'Kill ^DeepSee.TermList(tId, "", pKey)',
       'Set ^DeepSee.TermList(tId, "") = $ZDateTime($Horolog, 3)',
+      // Story 24.11 (AD-65), strings blanked: the listing group write's reads of the registry the vendor's compile checks before it refuses, the cube registry's
+      // listing-group switch and each target cube's own and registered listings, which the pre-checks read and never write.
+      'If $Data(tSaved($ZConvert(tModel.name, ""))) || $Data(^DeepSee.ListingGroups("", $ZConvert(tModel.name, ""))) || ##class(%Dictionary.ClassDefinition).%ExistsId($Select(pOp = "": pBody.%Get(""), 1: pNewClass)) Set pCode = ""',
+      `If '##class(%DeepSee.Utils).%CubeExists(tCube) || $Get(^DeepSee.Cubes("", $ZConvert(tCube, ""), ""), 0) {`,
+      `If $Data(^DeepSee.Cubes("", tCubeU, "", tName)) || ($Data(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) && ($Get(^DeepSee.ListingGroups("", tCubeU, "", tName, "")) '= $ZConvert(tModel.name, ""))) {`,
+      // Story 24.13 Batch 2 (AD-65), strings blanked: the General form composed in the target namespace from each node as it stands (the one method that calls the page's save), and the
+      // Worklists options read before the page's own call that turns them off removes them, which the same method sets again through the page's own call.
+      'Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2)), $List(tEntry, 4))',
+      'Set tValue = $Get(^DeepSee.UserPortalSettings($List(tEntry, 2), $List(tEntry, 3)), $List(tEntry, 4))',
+      'Set tPage = $Order(^DeepSee.UserPortalSettings("", tPage))',
+      'Set tPanel = $Order(^DeepSee.UserPortalSettings("", tPage, tPanel))',
+      'Set tNumber = $Order(^DeepSee.UserPortalSettings("", tPage, tPanel, tNumber), 1, tClass)',
+      // Story 24.13 Batch 3 (AD-65), strings blanked: the fit probe of a run-time variable's or an icon's name, in a process-private global that nothing writes.
+      'Set tProbe = $Data(^||DeepSee.User.Icons(pName))',
+      'Set tProbe = $Data(^||DeepSee.User.Settings(pName, ""))',
     ],
-    'the port names a vendor global only in the lock probe and in the term list editor\'s named nodes'
+    'the port names a vendor global only in the lock probe, in the term list editor\'s named nodes, in the listing group write\'s pre-checks and in the analytics settings\' reads by name'
   );
   for (const file of [BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) assert.deepEqual(referencing(file), [], `${file} names no vendor global`);
 });
@@ -385,6 +415,7 @@ const FOLDER_ITEM_SENTENCES = [
   ['REASONFOLDERITEMIMPORTSHAPE', 'analyticsRefusalFolderItemImportShape'],
   ['REASONFOLDERITEMTOOLARGE', 'analyticsRefusalTermListTooLarge'],
   ['REASONFOLDERITEMIMPORTCHANGED', 'analyticsRefusalTermListImportChanged'],
+  ['REASONPIVOTCUBE', 'analyticsRefusalPivotCube'],
 ];
 
 const FOLDER_ITEM_TOOLS = ['AnalyticsFolderItemExport', 'AnalyticsFolderItemImport', 'AnalyticsFolderItemDelete'].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
@@ -410,8 +441,307 @@ test("Story 24.10: the folder item delete's consequence code names one published
   assert.ok(experience.includes(`"${stringValue('analyticsFolderItemDeleteConsequence')}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
 });
 
+test('Story 24.11: the port reads listing groups through the two measured pure reads only, and writes none', () => {
+  // Mutation (Rule 19): call %RegisterRecentItem, %SaveToClass or %DeleteListingGroup from AnalyticsPort.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'and only those ListingGroup calls');
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /%DeepSee\.ListingGroupDefinition/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+});
+
+/** The refusals of the listing group writes (Story 24.11, Batch 2), each pinned to its `strings.ts` key. */
+const LISTING_GROUP_SENTENCES = [
+  ['REASONLISTINGGROUPTAKEN', 'analyticsRefusalListingGroupTaken'],
+  ['REASONLISTINGGROUPCLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONLISTINGGROUPCUBE', 'analyticsRefusalListingGroupCube'],
+  ['REASONLISTINGGROUPLISTINGTAKEN', 'analyticsRefusalListingGroupListingTaken'],
+  ['REASONLISTINGGROUPAMBIGUOUS', 'analyticsRefusalListingGroupAmbiguous'],
+  ['REASONLISTINGGROUPCOMPILE', 'analyticsRefusalListingGroupCompile'],
+  ['REASONLISTINGGROUPABSENT', 'analyticsRefusalListingGroupAbsent'],
+  ['REASONLISTINGGROUPREADONLY', 'analyticsRefusalListingGroupReadonly'],
+];
+
+const LISTING_GROUP_TOOLS = [
+  'AnalyticsListingGroupAdd',
+  'AnalyticsListingGroupUpdate',
+  'AnalyticsListingGroupCopy',
+  'AnalyticsListingGroupDelete',
+  'AnalyticsListingAdd',
+  'AnalyticsListingSet',
+  'AnalyticsListingRemove',
+].map((name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`));
+
+test('Story 24.11 Batch 2: each listing group refusal and consequence is published once, and the port saves, compiles and deletes through the source code port', () => {
+  // Mutation (Rule 19): change one word of REASONLISTINGGROUPCOMPILE in AnalyticsError.cls (or of analyticsRefusalListingGroupCompile in strings.ts) -> this goes red naming the pair;
+  // swap the SQL and SAVE returns in proposal-view.ts's `consequenceSentence` -> this goes red naming the constant;
+  // call %SaveToClass, %DeleteListingGroup or $System.OBJ.Delete from AnalyticsPort.cls -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of LISTING_GROUP_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [code, key] of [
+    ['ANALYTICS.LISTINGGROUP.DELETE', 'analyticsListingGroupDeleteConsequence'],
+    ['ANALYTICS.LISTINGGROUP.REMOVE', 'analyticsListingRemoveConsequence'],
+    ['ANALYTICS.LISTINGGROUP.SQL', 'analyticsListingSqlConsequence'],
+    ['ANALYTICS.LISTINGGROUP.SAVE', 'analyticsListingGroupSaveConsequence'],
+  ]) {
+    const constant = `CONSEQUENCE_ANALYTICSLISTINGGROUP${code.split('.').pop()}`;
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(classParameter(LISTING_GROUP_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.LISTINGGROUP.DELETE', 'the group delete names its consequence code');
+  assert.equal(classParameter(LISTING_GROUP_TOOLS[6], 'CONSEQUENCECODE'), 'ANALYTICS.LISTINGGROUP.REMOVE', 'the listing remove names its consequence code');
+  for (const file of LISTING_GROUP_TOOLS) {
+    const text = readFileSync(file, 'utf8');
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.Analytics(?:ListingGroup|Listing)Action/.test(text), `${file} extends a listing group tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsListingGroupAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.ListingGroupManager";'), 'the base declares the classic Listing Group Manager');
+  assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.ListingGroup\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetListingGroups', '%GetModel'], 'the port still calls only the two measured ListingGroup reads');
+  for (const never of [/%SaveToClass/, /%DeleteListingGroup/, /%RegisterRecentItem/, /\$System\.OBJ\.(?!IsUpToDate\()/i, /%Api\.Atelier/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  assert.ok(code.includes('##class(OcuPilot.Kernel.SourceDocument).Save('), 'the write saves through the shared source document helper');
+});
+
+test('Story 24.12: the port reads quality measures through the three measured pure reads and IsUpToDate only, and writes none', () => {
+  // Mutation (Rule 19): call %SaveQMsrDefinition from AnalyticsPort.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.QualityMeasure\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%GetModel', '%GetQualityMeasureClass', '%GetQualityMeasureList'], 'and only those Utils calls');
+  const objCalls = [...code.matchAll(/\$System\.OBJ\.(\w+)\(/gi)].map((match) => match[1]);
+  assert.deepEqual([...new Set(objCalls)], ['IsUpToDate'], 'and the one $System.OBJ call');
+  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$classmethod\([^)]*%GetModel/i, /##class\(%SYSTEM\.OBJ\)/i]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+});
+
+/** The refusals of the quality measure writes (Story 24.12, Batch 2), each pinned to its `strings.ts` key; the class sentence is the listing groups'. */
+const QUALITY_MEASURE_SENTENCES = [
+  ['REASONQUALITYMEASURETAKEN', 'analyticsRefusalQualityMeasureTaken'],
+  ['REASONQUALITYMEASUREAMBIGUOUS', 'analyticsRefusalQualityMeasureAmbiguous'],
+  ['REASONQUALITYMEASURECOMPILE', 'analyticsRefusalQualityMeasureCompile'],
+  ['REASONQUALITYMEASUREABSENT', 'analyticsRefusalQualityMeasureAbsent'],
+  ['REASONQUALITYMEASUREREADONLY', 'analyticsRefusalQualityMeasureReadonly'],
+  ['REASONQUALITYMEASUREEXPRESSION', 'analyticsRefusalQualityMeasureExpression'],
+  ['REASONQUALITYMEASURELINKED', 'analyticsRefusalQualityMeasureLinked'],
+  ['REASONQUALITYMEASURECLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONQUALITYMEASUREELEMENTTAKEN', 'analyticsRefusalQualityMeasureElementTaken'],
+  ['REASONQUALITYMEASUREMETATAKEN', 'analyticsRefusalQualityMeasureMetaTaken'],
+  ['REASONQUALITYMEASUREPARTABSENT', 'analyticsRefusalQualityMeasurePartAbsent'],
+  ['REASONQUALITYMEASURELINKEDPARTS', 'analyticsRefusalQualityMeasureLinkedParts'],
+];
+
+const QUALITY_MEASURE_TOOLS = ['AnalyticsQualityMeasureAdd', 'AnalyticsQualityMeasureUpdate', 'AnalyticsQualityMeasureCopy', 'AnalyticsQualityMeasureDelete'].map((name) =>
+  join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`)
+);
+
+const SETTING_SENTENCES = [
+  ['REASONSETTINGREADONLY', 'analyticsRefusalSettingReadOnly'],
+  ['REASONSETTINGSECRET', 'analyticsRefusalSettingSecret'],
+  ['REASONSETTINGSAVE', 'analyticsSettingSaveConsequence'],
+  ['REASONWORKLISTNOTCUSTOMIZED', 'analyticsRefusalWorklistNotCustomized'],
+  ['REASONWORKLISTABSENT', 'analyticsRefusalWorklistAbsent'],
+];
+
+test('Story 24.13 Batch 2: each settings refusal and the save consequence is published once and mapped for the card', () => {
+  // Mutation (Rule 19): change one word of REASONWORKLISTNOTCUSTOMIZED in AnalyticsError.cls (or of analyticsRefusalWorklistNotCustomized in strings.ts) -> this goes red naming the pair;
+  // drop the `ANALYTICS.SETTING.SAVE` branch from proposal-view.ts's `consequenceSentence` -> the second half goes red naming the constant.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of SETTING_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE'"), 'proposal-view.ts holds ANALYTICS.SETTING.SAVE');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;'), 'and maps it to the sentence');
+  for (const name of ['AnalyticsSettingSet', 'AnalyticsSettingKey']) {
+    assert.equal(classParameter(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'CONSEQUENCECODE'), 'ANALYTICS.SETTING.SAVE', `${name} names its consequence code`);
+  }
+});
+
+test('Story 24.13: the port reads the analytics settings through the measured pure reads and by name, runs no expression and writes a setting only through the page\'s own setters', () => {
+  // Mutation (Rule 19): call ##class(%DeepSee.UserPortal.Utils).%GetUserSetting from AnalyticsPort.cls, or set a node of ^DeepSee.UserPortalSettings -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const portalCalls = [...code.matchAll(/##class\(%DeepSee\.UserPortal\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
+  // Story 24.13 Batch 3: the four setters of the user portal's run-time variables and icons are named in their own seams below, beside the two list reads and the two scheme lists.
+  assert.deepEqual(
+    [...new Set(portalCalls)].sort(),
+    ['%GetChartSeriesSchemes', '%GetColorSchemes', '%GetUserIconList', '%GetUserSettingsList', '%RemoveUserIcon', '%RemoveUserSetting', '%SetUserIcon', '%SetUserSetting'],
+    'the port calls only the two measured list reads of the user portal, the two scheme lists the General tab offers and the four setters the Batch 3 seams hold'
+  );
+  // Story 24.13 Batch 2 (AD-65): the classic page's three setters are named in their seams only, each seam a method of its own that runs in the target namespace.
+  const seamBody = (name) => code.match(new RegExp(`ClassMethod ${name}\\([^\\n]*\\n\\{\\n[\\s\\S]*?\\n\\}\\n`))?.[0] ?? '';
+  const seams = {
+    SettingsSaveHere: /SaveToServer\(/,
+    SettingCustomHere: /SetCustom\(|SetOption\(/,
+    VendorWorklistOption: /SetOption\(/,
+    VendorRuntimeVariableSet: /\.%SetUserSetting\(/,
+    VendorRuntimeVariableRemove: /\.%RemoveUserSetting\(/,
+    VendorUserIconSet: /\.%SetUserIcon\(/,
+    VendorUserIconRemove: /\.%RemoveUserIcon\(/,
+  };
+  let outside = code;
+  for (const [name, setter] of Object.entries(seams)) {
+    const body = seamBody(name);
+    assert.ok(setter.test(body), `${name} calls the page's own setter`);
+    outside = outside.replace(body, '');
+  }
+  for (const never of [/%GetUserSetting\(/, /%SetUserSetting/, /%SetUserIcon/, /%RemoveUser/, /%ClearUser/, /ApplySettingToServer|ApplyIconToServer/, /SaveToServer/, /SetOption\(/, /SetCustom\(/, /%DeepSee\.UI\.Settings/]) {
+    assert.ok(!never.test(outside), `the port names ${never} in no method but its seam`);
+  }
+  // Story 24.13 Batch 3: the one call that touches a stored expression is the syntax check, on the line the vendor executes, in the helper that holds it and nowhere else.
+  assert.equal((code.match(/##class\(%Library\.Routine\)\.CheckSyntax\(/g) ?? []).length, 1, 'the expression is checked with %Library.Routine.CheckSyntax, once');
+  assert.ok(/ClassMethod VariableExpressionHolds\([^\n]*\n\{\n[\s\S]*?CheckSyntax\([\s\S]*?\n\}\n/.test(code), 'and in VariableExpressionHolds');
+  assert.ok(!/\b(Set|Kill|Merge|Lock)\s+[+-]?\^DeepSee\.(UserPortalSettings|User\.)|\$(Increment|Order)\(\^DeepSee\.User[^\n]*\)\s*=/i.test(code), 'and no line of the port sets, kills, merges into or locks one of the three settings globals');
+  assert.ok(!/\bXECUTE\b|\bX\s+"|\$XECUTE/i.test(code), 'and the port executes no stored expression');
+});
+
+/** The refusals and consequences of the run-time variable and icon writes (Story 24.13, Batch 3), each pinned to its `strings.ts` key. */
+const SETTING_ENTRY_SENTENCES = [
+  ['REASONVARIABLETAKEN', 'analyticsRefusalVariableTaken'],
+  ['REASONICONTAKEN', 'analyticsRefusalIconTaken'],
+  ['REASONVARIABLEABSENT', 'analyticsRefusalVariableAbsent'],
+  ['REASONICONABSENT', 'analyticsRefusalIconAbsent'],
+  ['REASONSETTINGNAME', 'analyticsRefusalSettingName'],
+  ['REASONSETTINGTEXT', 'analyticsRefusalSettingText'],
+  ['REASONVARIABLEEXPRESSION', 'analyticsRefusalVariableExpression'],
+  ['REASONVARIABLECODE', 'analyticsVariableCodeConsequence'],
+  ['REASONVARIABLEREMOVE', 'analyticsVariableRemoveConsequence'],
+  ['REASONICONREMOVE', 'analyticsIconRemoveConsequence'],
+];
+
+/** Each Batch 3 tool, whether it is destructive, and the consequence code it names (`''` for none). */
+const SETTING_ENTRY_TOOLS = [
+  ['AnalyticsRuntimeVariableAdd', 'analytics.runtimevariables.add', false, 'ANALYTICS.VARIABLE.CODE'],
+  ['AnalyticsRuntimeVariableSet', 'analytics.runtimevariables.set', false, 'ANALYTICS.VARIABLE.CODE'],
+  ['AnalyticsRuntimeVariableRemove', 'analytics.runtimevariables.remove', true, 'ANALYTICS.VARIABLE.REMOVE'],
+  ['AnalyticsUserIconAdd', 'analytics.usericons.add', false, ''],
+  ['AnalyticsUserIconSet', 'analytics.usericons.set', false, ''],
+  ['AnalyticsUserIconRemove', 'analytics.usericons.remove', true, 'ANALYTICS.ICON.REMOVE'],
+];
+
+test('Story 24.13 Batch 3: each run-time variable and icon refusal and consequence is published once, the six tools declare their writes and keys, and the expression is checked, never run', () => {
+  // Mutation (Rule 19): change one word of REASONVARIABLEEXPRESSION in AnalyticsError.cls (or of analyticsRefusalVariableExpression in strings.ts) -> this goes red naming the pair;
+  // drop the `ANALYTICS.VARIABLE.CODE` branch from proposal-view.ts's `consequenceSentence` -> the consequence leg goes red naming the constant;
+  // flip `analytics.usericons.remove` to `true` in Baseline.cls -> the key leg goes red naming the tool.
+  const errors = readFileSync(ERROR, 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of SETTING_ENTRY_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!declared.toLowerCase().includes('agent'), `${parameter} names no caller`);
+  }
+  for (const [key, text] of [
+    ['analyticsRuntimeVariableAddAction', 'Add run-time variable'],
+    ['analyticsRuntimeVariableChangeAction', 'Change run-time variable'],
+    ['analyticsRuntimeVariableRemoveAction', 'Remove run-time variable'],
+    ['analyticsUserIconAddAction', 'Add icon'],
+    ['analyticsUserIconChangeAction', 'Change icon'],
+    ['analyticsUserIconRemoveAction', 'Remove icon'],
+    ['analyticsRuntimeVariablesEmptyAgent', 'add a run-time variable'],
+    ['analyticsUserIconsEmptyAgent', 'add a user-defined icon'],
+  ]) {
+    assert.equal(values[key], text, `${key} is the ruled sentence`);
+    assert.ok(experience.includes(`"${text}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [code, constant, key] of [
+    ['ANALYTICS.VARIABLE.CODE', 'CONSEQUENCE_ANALYTICSVARIABLECODE', 'analyticsVariableCodeConsequence'],
+    ['ANALYTICS.VARIABLE.REMOVE', 'CONSEQUENCE_ANALYTICSVARIABLEREMOVE', 'analyticsVariableRemoveConsequence'],
+    ['ANALYTICS.ICON.REMOVE', 'CONSEQUENCE_ANALYTICSICONREMOVE', 'analyticsIconRemoveConsequence'],
+  ]) {
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
+  }
+  const baseline = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Governance', 'Baseline.cls'), 'utf8');
+  const toolDir = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool');
+  for (const [name, tool, destructive, consequence] of SETTING_ENTRY_TOOLS) {
+    const file = join(toolDir, `${name}.cls`);
+    assert.equal(classParameter(file, 'TOOLNAME'), tool, `${name} names its tool`);
+    assert.equal(classParameter(file, 'DESCRIPTION').length > 0, true, `${name} describes itself`);
+    assert.ok(new RegExp(`"${tool.replace(/\./g, '\\.')}": ${destructive ? 'false' : 'true'},`).test(baseline), `${tool} ships ${destructive ? 'off' : 'on'} in the baseline`);
+    const hierarchy = [file, join(toolDir, `${name.replace(/(Add|Set|Remove)$/, 'Action')}.cls`), join(toolDir, 'AnalyticsSettingEntryAction.cls')].map((path) => readFileSync(path, 'utf8')).join('\n');
+    assert.equal(/Parameter DESTRUCTIVE As BOOLEAN = 1;/.test(readFileSync(file, 'utf8')), destructive, `${name} is destructive only as a removal`);
+    const optional = (path) => new RegExp('^Parameter CONSEQUENCECODE(?: As \\w+)? = "([^"]*)";', 'm').exec(readFileSync(path, 'utf8'))?.[1] ?? '';
+    const named = optional(file) || optional(join(toolDir, `${name.replace(/(Add|Set|Remove)$/, 'Action')}.cls`));
+    assert.equal(named, consequence, `${name} names its consequence code`);
+    assert.ok(hierarchy.includes('Parameter CLASSICPAGES = "%DeepSee.UI.Settings";'), `${name} declares the classic Settings page`);
+  }
+  const entryBase = readFileSync(join(toolDir, 'AnalyticsSettingEntryAction.cls'), 'utf8');
+  assert.ok(entryBase.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'the shared base extends the analytics write base, whose port is the analytics port');
+  for (const global of ['^DeepSee.User.Settings', '^DeepSee.User.Icons']) {
+    assert.ok(readFileSync(join(toolDir, 'AnalyticsRuntimeVariableAction.cls'), 'utf8').includes(`"${global}"`) || readFileSync(join(toolDir, 'AnalyticsUserIconAction.cls'), 'utf8').includes(`"${global}"`), `a base names ${global} as its destination`);
+  }
+  // The expression is text on every surface: the port runs none, and no tool or save names a call that would.
+  for (const file of ['AnalyticsSettingEntryAction.cls', 'AnalyticsRuntimeVariableAdd.cls', 'AnalyticsRuntimeVariableSet.cls']) {
+    assert.ok(!/%GetUserSetting\(|\bXECUTE\b|\$XECUTE/i.test(codeOf(readFileSync(join(toolDir, file), 'utf8'), false)), `${file} runs no expression`);
+  }
+});
+
+test('Story 24.12 Batch 2: each quality measure refusal and consequence is published once, and the port writes only through the source code port and the model', () => {
+  // Mutation (Rule 19): change one word of REASONQUALITYMEASURELINKED in AnalyticsError.cls (or of analyticsRefusalQualityMeasureLinked in strings.ts) -> this goes red naming the pair;
+  // swap the delete and save returns in proposal-view.ts's `consequenceSentence` -> this goes red naming the constant;
+  // call %SaveQMsrDefinition, DeleteQMeasure or $System.OBJ.Delete from AnalyticsPort.cls -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of QUALITY_MEASURE_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [code, key] of [
+    ['ANALYTICS.QUALITYMEASURE.DELETE', 'analyticsQualityMeasureDeleteConsequence'],
+    ['ANALYTICS.QUALITYMEASURE.REMOVE', 'analyticsQualityMeasureRemoveConsequence'],
+    ['ANALYTICS.QUALITYMEASURE.SAVE', 'analyticsQualityMeasureSaveConsequence'],
+  ]) {
+    const constant = `CONSEQUENCE_ANALYTICSQUALITYMEASURE${code.split('.').pop()}`;
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(proposalView.includes(`if (code === ${constant}) return STRINGS.${key};`), `${constant} maps to ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(classParameter(QUALITY_MEASURE_TOOLS[3], 'CONSEQUENCECODE'), 'ANALYTICS.QUALITYMEASURE.DELETE', 'the delete names its consequence code');
+  for (const name of ['AnalyticsQualityMeasureElementRemove', 'AnalyticsQualityMeasureMetaRemove']) {
+    assert.equal(classParameter(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'CONSEQUENCECODE'), 'ANALYTICS.QUALITYMEASURE.REMOVE', `${name} names its consequence code`);
+  }
+  for (const file of QUALITY_MEASURE_TOOLS) {
+    assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsQualityMeasureAction'), `${file} extends the quality measure tool base`);
+  }
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsQualityMeasureAction.cls'), 'utf8');
+  assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.QualityMeasures";'), 'the base declares the classic Quality Measures Manager');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/%SaveQMsrDefinition/, /DeleteQMeasure/, /LastQMSR/, /\$System\.OBJ\.(?!IsUpToDate\()/i, /%Api\.Atelier/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  assert.ok(code.includes('##class(OcuPilot.Kernel.QualityMeasureText).ClassText('), 'a new measure is composed by the shared class text helper');
+  assert.ok(code.includes('##class(OcuPilot.Kernel.SourceDocument).Save('), 'and saved through the shared source document helper');
+  assert.equal([...code.matchAll(/\.%Validate\(\)/g)].length, 1, 'the model validates itself once, the one added pure call');
+});
+
 test('Story 24.10: the three folder manager tools declare write, the analytics port and the classic Folder Manager, and the port loads and compiles nothing', () => {
-  // Mutation (Rule 19): call $System.OBJ.Load or an XML reader from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
+  // Mutation (Rule 19): call $System.OBJ.Load or an XML reader of a file, stream or URL from AnalyticsPort.cls, or pass a replace flag to %Import -> this goes red naming the call.
   for (const file of FOLDER_ITEM_TOOLS) {
     assert.ok(readFileSync(file, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsFolderItem'), `${file} extends the folder item tool base`);
   }
@@ -419,11 +749,36 @@ test('Story 24.10: the three folder manager tools declare write, the analytics p
   assert.ok(base.includes('Parameter CLASSICPAGES = "%DeepSee.UI.FolderManager";'), 'the base declares the classic Folder Manager');
   assert.ok(base.includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'and extends the analytics write base, whose port is the analytics port');
   const code = codeOf(readFileSync(PORT, 'utf8'), false);
-  for (const never of [/\$System\.OBJ\./i, /\$SYSTEM\.OBJ\./i, /%XML\.Reader/, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
+  for (const never of [/\$System\.OBJ\.(?!IsUpToDate\()/i, /%Compiler/, /%DeepSee\.UserLibrary\.Utils\)\.%ImportContainer/, /%ProcessContainer/, /%KillFolders/]) {
     assert.ok(!never.test(code), `the port never names ${never}`);
   }
+  // Story 24.12: an XML reader reads only text the port composed, which it checks before saving it (never a file, stream or URL).
+  assert.equal([...code.matchAll(/\.OpenString\(/g)].length, [...code.matchAll(/##class\(%XML\.Reader\)/g)].length, 'every XML reader the port makes opens a string');
   const vendorCalls = [...code.matchAll(/##class\(%DeepSee\.UserLibrary\.Utils\)\.(%\w+)\(/g)].map((match) => match[1]);
-  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import'], 'and only those Utils calls');
+  assert.deepEqual([...new Set(vendorCalls)].sort(), ['%DeleteFolderItem', '%Export', '%FolderItemExists', '%GetFavoriteList', '%GetFolderItemClasses', '%GetFolderItemList', '%Import', '%OpenFolderItem'], 'and only those Utils calls');
   const imports = [...code.matchAll(/\.%Import\(([^)]*)\)/g)].map((match) => match[1]);
   assert.deepEqual(imports, ['tBytes, 0, 0, 0, "", .tLoaded'], 'the one vendor import replaces nothing and kills nothing');
+});
+
+test('Story 24.14: a saved pivot is composed only by the one seam, and the viewer and its run name none of the calls its Never list forbids', () => {
+  // Mutation (Rule 19): call %GetBaseMDX from ReadFolderItem or any method of AnalyticsPort.cls but VendorPivotMdx, or %RegisterRecentItem, %CreateResultSet or
+  // %ExecuteMDX from the port, PivotRun.cls or AnalyticsMdxRead.cls -> this goes red naming the call.
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  assert.equal([...code.matchAll(/%GetBaseMDX\(/g)].length, 1, '%GetBaseMDX is called once in the port');
+  const seam = /ClassMethod VendorPivotMdx\([\s\S]*?\n\}\n/.exec(code);
+  assert.notEqual(seam, null, 'the port declares VendorPivotMdx');
+  assert.ok(seam[0].includes('%GetBaseMDX('), 'and the one call sits in that seam');
+  for (const file of [PORT, join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PivotRun.cls'), join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls')]) {
+    const source = codeOf(readFileSync(file, 'utf8'), false);
+    for (const never of [/%RegisterRecentItem/, /%CreateResultSet/, /%DrawKPITable/, /%OnLoadKPI/, /%ExecuteMDX/, /%ExecuteSQL/, /%GetKPIValueArray/, /%DeepSee\.UserPortal\.DashboardViewer/, /\blastAccessed\b/, /\btimeModified\s*=/]) {
+      assert.ok(!never.test(source), `${file} never names ${never}`);
+    }
+  }
+  assert.ok(!/%GetBaseMDX/.test(codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls'), 'utf8'), false)), 'the agent\'s tool composes through the port');
+  const strings = readFileSync(STRINGS_SOURCE, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const key of ['agentDefinitionFormLabel', 'analyticsTabWidgets', 'analyticsColumnDataSource', 'analyticsFolderItemDefinitionEmpty', 'analyticsDashboardWidgetsEmpty']) {
+    assert.ok(strings.includes(`${key}:`), `strings.ts holds ${key}`);
+    assert.ok(experience.includes(`"${stringValue(key)}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
 });

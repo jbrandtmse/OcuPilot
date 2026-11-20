@@ -5,8 +5,9 @@
 /// conditional live-to-terminal update Cancel uses (AD-34).</p>
 /// <p><b>It sends nothing.</b> No port write, no mint, no token, no ledger row, no agent marker
 /// (AD-15 binds only an executed write) and no change event. The only reads are the proposal's own
-/// row and the prohibited set's own read of its target (AD-10), which refuses a prohibited effect
-/// with the row left live.</p>
+/// row, the prohibited set's own read of its target (AD-10), which refuses a prohibited effect
+/// with the row left live, and what a port's <code>Snippet</code> reads to mirror its branch, such as
+/// the server file a locale import names.</p>
 /// <p><b>No secret is rendered.</b> Every name the tool declares secret, every <code>secret</code>
 /// row of its field list and every name the credential pattern matches
 /// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) reads as the placeholder
@@ -55,12 +56,14 @@ ClassMethod ToolRegistryClass() As %String
 /// at 403; 409 <code>PROPOSAL.NODRAFT</code> for a tool whose port or request type has no script
 /// form. Every refusal but the lost race leaves the row as it was.</p>
 /// <p><b>Caller contract:</b> <var>pUser</var> is the authenticated caller and
-/// <var>pOrigin</var> the request's own scheme and host, neither taken from a body.</p>
-ClassMethod Take(pProposalId As %String, pUser As %String, pOrigin As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String) As %Status
+/// <var>pOrigin</var> the request's own scheme and host, neither taken from a body.
+/// <var>pReason</var> is the prohibited set's sentence when it refused, <code>""</code> otherwise.</p>
+ClassMethod Take(pProposalId As %String, pUser As %String, pOrigin As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pReason As %String) As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pCode = ""
+    Set pReason = ""
     Set tSC = $$$OK
     Try {
         If ##class(OcuPilot.Kernel.Proposal.Caller).IsTurn() {
@@ -89,13 +92,14 @@ ClassMethod Take(pProposalId As %String, pUser As %String, pOrigin As %String, O
         ; AD-10: the effect the write would have is refused here as the write would refuse it, and
         ; the row stays live. No privilege pair is checked: whoever runs the script is checked by
         ; the instance.
-        Set tProhibitSC = $ClassMethod(..ProhibitedClassName(), "Prohibits", $Get(tRow("toolName")), $Get(tRow("targetRef")), $Get(tRow("payload")), $Get(tRow("diff")), .tProhibits, .tProhibitCode)
+        Set tProhibitSC = $ClassMethod(..ProhibitedClassName(), "Prohibits", $Get(tRow("toolName")), $Get(tRow("targetRef")), $Get(tRow("payload")), $Get(tRow("diff")), .tProhibits, .tProhibitCode, .tProhibitReason)
         If $$$ISERR(tProhibitSC) {
             Set tSC = ..Internal("the prohibited set could not be read: " _ $System.Status.GetErrorText(tProhibitSC), .pHttpStatus, .pCode)
             Quit
         }
         If tProhibits {
             Set tSC = ..Refuse(403, tProhibitCode, .pHttpStatus, .pCode)
+            Set pReason = tProhibitReason
             Quit
         }
 

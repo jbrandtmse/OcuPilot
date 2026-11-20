@@ -73,6 +73,37 @@ export async function rememberedShellMember(name) {
 }
 
 /**
+ * Wait until the instance holds the signing-in account's remembered table view for `route` with
+ * `filter` as its filter text, and fail with the stored value last read otherwise. A list screen
+ * sends its view without awaiting it, so a spec that ends right after typing a filter leaves that
+ * write in flight, and it can land after the next test's reset has cleared the kind; returning
+ * only once the instance holds it means the reset clears the last write.
+ */
+export async function waitForRememberedView(route, filter, timeoutMs, intervalMs = 100) {
+  const config = browserConfig();
+  const deadline = Date.now() + timeoutMs;
+  let last = null;
+  for (;;) {
+    const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, { headers: { Authorization: authHeader(config) } });
+    const text = await answer.text();
+    assert.equal(answer.status, 200, `the preferences read answers: ${text}`);
+    const row = JSON.parse(text).views.find((entry) => entry.route === route);
+    last = row === undefined ? null : row.value;
+    let stored = null;
+    try {
+      stored = last === null ? null : JSON.parse(last).filter;
+    } catch {
+      stored = null;
+    }
+    if (stored === filter) return;
+    if (Date.now() >= deadline) {
+      assert.fail(`the instance never held filter ${JSON.stringify(filter)} for the ${route} view within ${timeoutMs} ms; the stored view last read: ${JSON.stringify(last)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}
+
+/**
  * Forget everything the instance remembers about the signing-in account, kind by kind, and turn
  * its read-only choice off unless `keepReadOnlyForYou` is set.
  */

@@ -157,6 +157,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 20.31: Resend, on Messages' checked rows and a message's Header tab, and Edit and resend, on the Header tab.
   resend: STRINGS.interopMessagesResendAction,
   editresend: STRINGS.interopMessagesEditResendAction,
+  // Story 21.19: a security recommendation's Ignore and Stop ignoring, on the Security advisor.
+  ignore: STRINGS.securityAdvisorIgnoreAction,
+  unignore: STRINGS.securityAdvisorUnignoreAction,
 };
 
 /**
@@ -180,6 +183,23 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
+  'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
+  'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },
+  // Story 24.13 Batch 2: Analytics' General settings' Set value, which opens the page's dialog (the key's own action is sent from it), and Worklists' Show and Hide.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList': { set: STRINGS.interopItemSettingSetAction, setkey: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.AnalyticsWorklistList': { show: STRINGS.oauthRegisteredClientShow, hide: STRINGS.oauthRegisteredClientHide },
+  // Story 24.13 Batch 3: Run-time variables' Add, Change and Remove, and User-defined icons', each also the title of its dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': {
+    add: STRINGS.analyticsRuntimeVariableAddAction,
+    set: STRINGS.analyticsRuntimeVariableChangeAction,
+    remove: STRINGS.analyticsRuntimeVariableRemoveAction,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': {
+    add: STRINGS.analyticsUserIconAddAction,
+    set: STRINGS.analyticsUserIconChangeAction,
+    remove: STRINGS.analyticsUserIconRemoveAction,
+  },
   // Story 21.3: the three settings screens' Set value, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.StartupSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.MemorySettingList': { set: STRINGS.interopItemSettingSetAction },
@@ -189,9 +209,25 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.TsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.10: System-wide security's Set value, which opens the same page's dialog.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
+  // Story 21.14: the NLS defaults' Set value opens the settings page's dialog; the locales' Validate opens its own dialog, and Install and Delete type the name.
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': { set: STRINGS.interopItemSettingSetAction },
+  'OcuPilot.Screen.Descriptor.LocaleList': { validate: STRINGS.licenseKeyValidate, install: STRINGS.localeInstallAction, delete: STRINGS.actionDelete, copy: STRINGS.auditDatabaseCopyConfirm, export: STRINGS.taskExportAction },
+  // Story 21.19: the Resources list's Export acts on the selected resource and Export all on every one; its Import is the screen-level one.
+  'OcuPilot.Screen.Descriptor.ResourceList': { export: STRINGS.taskExportAction, 'export-all': STRINGS.resourceExportAllAction },
+  // Story 21.16: one locale's properties, whose Set value is the configuration settings page's own.
+  'OcuPilot.Screen.Descriptor.LocalePropertyList': {
+    set: STRINGS.interopItemSettingSetAction,
+    'add-table': STRINGS.localeAddTableAction,
+    'remove-table': STRINGS.localeRemoveTableAction,
+    'load-table': STRINGS.localeLoadTableAction,
+  },
   // Story 20.34: the Cube manager's Build rebuilds a cube and its dependents, and its Synchronize applies the source's recorded changes.
   'OcuPilot.Screen.Descriptor.AnalyticsCubeManager': { build: STRINGS.aboutBuild, synchronize: STRINGS.actionSynchronize },
   // Story 24.2: Term lists' New term list opens the dialog that creates a list, its Edit term list the dialog that changes one and its Delete removes one;
@@ -202,6 +238,34 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     delete: STRINGS.analyticsTermListDeleteAction,
     export: STRINGS.taskExportAction,
     copy: STRINGS.analyticsTermListCopyAction,
+  },
+  // Story 24.11: Listing groups' New listing group opens the dialog that creates a group, its Edit the dialog that changes one, its Copy the dialog that copies one and its Delete removes one;
+  // a group's Listings' Add listing opens the dialog that adds one, its Change listing the dialog that changes one and its Remove listing deletes one.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': {
+    add: STRINGS.analyticsListingGroupNewAction,
+    update: STRINGS.agentPanelSecretWarningEdit,
+    copy: STRINGS.auditDatabaseCopyConfirm,
+    delete: STRINGS.actionDelete,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { add: STRINGS.analyticsListingAddAction, set: STRINGS.analyticsListingChangeAction, remove: STRINGS.analyticsListingRemoveAction },
+  // Story 24.12 Batch 3: Groups and elements' Add element, Change element, Remove element and Remove group, and Documentation's Add, Change and Remove documentation item.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': {
+    add: STRINGS.analyticsQualityMeasureElementAddAction,
+    set: STRINGS.analyticsQualityMeasureElementChangeAction,
+    remove: STRINGS.analyticsQualityMeasureElementRemoveAction,
+    'remove-group': STRINGS.analyticsQualityMeasureGroupRemoveAction,
+  },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': {
+    add: STRINGS.analyticsQualityMeasureMetaAddAction,
+    set: STRINGS.analyticsQualityMeasureMetaChangeAction,
+    remove: STRINGS.analyticsQualityMeasureMetaRemoveAction,
+  },
+  // Story 24.12: Quality measures' New quality measure opens the dialog that creates a measure, its Edit the dialog that changes one, its Copy the dialog that copies one and its Delete removes one.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': {
+    add: STRINGS.analyticsQualityMeasureNewAction,
+    update: STRINGS.agentPanelSecretWarningEdit,
+    copy: STRINGS.auditDatabaseCopyConfirm,
+    delete: STRINGS.actionDelete,
   },
   // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
@@ -257,6 +321,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     disable: STRINGS.auditingTurnOffAction,
     copy: STRINGS.auditDatabaseCopyAction,
     purge: STRINGS.auditDatabasePurgeAction,
+    export: STRINGS.taskExportAction,
   },
   // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
@@ -301,6 +366,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Export, which opens the export dialog over them.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
+  // Story 21.17: the Globals list's Export acts on the selected global.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { export: STRINGS.taskExportAction, replace: STRINGS.explorerGlobalFindAndReplace },
   // Story 24.9: Compare namespaces' Promote, over the checked rows.
   'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff': { promote: STRINGS.explorerPromoteAction },
   // Story 18.5: Journals' two switches, each also titling its warning dialog, and its Check integrity.
@@ -341,6 +408,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
   // Story 18.26: managed file transfer connections' token revoke.
   'OcuPilot.Screen.Descriptor.MftConnectionList': { 'revoke-token': STRINGS.mftConnectionRevokeAction },
+  // Story 21.10: mobile phone providers' Create provider, which opens the provider editor.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList': { create: STRINGS.phoneProviderCreateAction },
   // Story 18.46: the Allowed directories screen's three actions; Add and Change also title their warning dialogs.
   'OcuPilot.Screen.Descriptor.AllowedDirectoryList': {
     add: STRINGS.allowedDirectoryAddAction,

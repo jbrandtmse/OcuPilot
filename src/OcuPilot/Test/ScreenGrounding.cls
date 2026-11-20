@@ -78,9 +78,8 @@ Method TestAListWithRowActionsNamesItsReadAndActionTools()
 Method TestAPrimaryActionNamesItsCreateToolOnly()
 {
     Set tTools = ..ToolsFor("os-management/devices")
-    Do $$$AssertEquals(tTools, "[""osmgmt_devices_read"",""osmgmt_devices_create""]", "the device list's read and its create")
+    Do $$$AssertEquals(tTools, "[""osmgmt_devices_read"",""osmgmt_devices_create"",""osmgmt_devices_delete""]", "the device list's read, its create, then the delete behind its one row action")
     Do $$$AssertTrue(tTools '[ "osmgmt_devices_update", "update is bound to the screen but behind no declared action")
-    Do $$$AssertTrue(tTools '[ "osmgmt_devices_delete", "and so is delete")
 }
 
 /// <p>A detail screen whose row actions no tool of its own carries resolves them through its

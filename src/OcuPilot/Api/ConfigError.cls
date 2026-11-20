@@ -6,9 +6,9 @@
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit of 1,000
 /// parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
-/// <p><parameter>SETTINGRESTART</parameter>, <parameter>SETTINGPURGE</parameter> and <parameter>MAPPINGDELETE</parameter> are not refusals: each is the consequence
+/// <p><parameter>SETTINGRESTART</parameter>, <parameter>SETTINGPURGE</parameter>, <parameter>MAPPINGDELETE</parameter> and <parameter>NLSRELOAD</parameter> are not refusals: each is the consequence
 /// code the proposal card, the dialog and the Save of a setting that takes effect only at the next restart, that purges the
-/// cached queries when it changes, or of a delete of a DDL mapping, carry.</p>
+/// cached queries when it changes, of a delete of a DDL mapping, or of a set of the locale-format switch, carry.</p>
 Class OcuPilot.Api.ConfigError Extends %RegisteredObject
 {
 
@@ -26,6 +26,12 @@ Parameter REASONSETTINGREADONLY = "This setting is shown here and never changed 
 Parameter SETTINGVALUE = "CONFIG.SETTING.VALUE";
 
 Parameter REASONSETTINGVALUE = "This setting does not accept that value.";
+
+/// <p>400: a Task Manager email subject or message holds a <code>#(field)#</code> the Task Manager does not substitute (Story 21.19). The sentence
+/// is published with <code>&lt;fields&gt;</code>, which <method>ReasonFor</method> replaces with the Task Manager's own fields.</p>
+Parameter SETTINGSUBSTITUTION = "CONFIG.SETTING.SUBSTITUTION";
+
+Parameter REASONSETTINGSUBSTITUTION = "Use only these fields between #( and )#: <fields>.";
 
 /// <p>The consequence code of a set of a setting that takes effect only at the next restart.</p>
 Parameter SETTINGRESTART = "CONFIG.SETTING.RESTART";
@@ -52,6 +58,11 @@ Parameter MAPPINGDELETE = "CONFIG.MAPPING.DELETE";
 
 Parameter REASONMAPPINGDELETE = "DDL that names this type no longer maps it to this datatype.";
 
+/// <p>The consequence code of a set of the locale-format switch, which reloads the current locale (Story 21.14).</p>
+Parameter NLSRELOAD = "CONFIG.NLS.RELOAD";
+
+Parameter REASONNLSRELOAD = "Changing this reloads the current locale, so new processes take its date, time and number formats.";
+
 /// <p>What a row's <code>Accepts</code> reads, one sentence per kind. <code>%1</code> and <code>%2</code> are replaced
 /// by <method>Accepting</method>.</p>
 Parameter ACCEPTSBOOLEAN = "0 (off) or 1 (on).";
@@ -76,11 +87,13 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGNOTFOUND Quit ..#REASONSETTINGNOTFOUND
     If pCode = ..#SETTINGREADONLY Quit ..#REASONSETTINGREADONLY
     If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
+    If pCode = ..#SETTINGSUBSTITUTION Quit ..SubstitutionReason()
     If pCode = ..#SETTINGRESTART Quit ..#REASONSETTINGRESTART
     If pCode = ..#SETTINGPURGE Quit ..#REASONSETTINGPURGE
     If pCode = ..#MAPPINGTAKEN Quit ..#REASONMAPPINGTAKEN
     If pCode = ..#MAPPINGNAME Quit ..#REASONMAPPINGNAME
     If pCode = ..#MAPPINGDELETE Quit ..#REASONMAPPINGDELETE
+    If pCode = ..#NLSRELOAD Quit ..#REASONNLSRELOAD
     Quit ""
 }
 
@@ -91,6 +104,7 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer
     If pCode = ..#SETTINGREADONLY Quit 409
     If pCode = ..#MAPPINGTAKEN Quit 409
     If pCode = ..#SETTINGVALUE Quit 400
+    If pCode = ..#SETTINGSUBSTITUTION Quit 400
     If pCode = ..#MAPPINGNAME Quit 400
     Quit 0
 }
@@ -102,6 +116,13 @@ ClassMethod SlugFor(pCode As %String) As %String
     If tHttp = 404 Quit ##class(OcuPilot.Api.Error).#NOTFOUND
     If tHttp = 400 Quit ##class(OcuPilot.Api.Error).#BADREQUEST
     Quit ##class(OcuPilot.Api.Error).#CONFLICT
+}
+
+/// <p><parameter>REASONSETTINGSUBSTITUTION</parameter> with <code>&lt;fields&gt;</code> replaced by the fields
+/// <code>%SYS.Task.Config.SubstitutionFields()</code> lists, comma and space apart.</p>
+ClassMethod SubstitutionReason() As %String
+{
+    Quit $Replace(..#REASONSETTINGSUBSTITUTION, "<fields>", $Replace(##class(%SYS.Task.Config).SubstitutionFields(), ",", ", "))
 }
 
 /// <p>The sentence <var>pTemplate</var> (one of the <code>ACCEPTS*</code> parameters) reads with <var>pFirst</var> in

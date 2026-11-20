@@ -18,7 +18,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { entityKeyOf, rowKey } from '../core/table-model';
-import { violationsOf, type Violation } from '../core/violations';
+import { STATE_CONFLICT_CODE, violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
@@ -105,6 +105,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.JournalList',
   // Story 18.6: License servers, whose Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList',
+  // Story 21.20: Devices, whose Delete types the device's name; SQL activity, whose Cancel query warns first; System alerts, whose Reset alerts warns first.
+  'OcuPilot.Screen.Descriptor.DeviceList',
+  'OcuPilot.Screen.Descriptor.SqlActivityList',
+  'OcuPilot.Screen.Descriptor.SystemAlertsList',
   // Story 18.20: ECP data servers, whose Delete types the server's name and states its impact, and
   // whose Change status its own page runs.
   'OcuPilot.Screen.Descriptor.EcpDataServerList',
@@ -116,6 +120,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SuperserverList',
   // Story 18.26: managed file transfer connections, whose Delete and Revoke token each type the connection's name.
   'OcuPilot.Screen.Descriptor.MftConnectionList',
+  // Story 21.10: mobile phone providers, whose Delete types the provider's name.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList',
   // Story 18.30: Doc DB applications, whose Delete types the record's name.
   'OcuPilot.Screen.Descriptor.DocDbAppList',
   // Story 18.31: privileged routine applications, whose Delete types the application's name.
@@ -157,6 +163,20 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
   // Story 24.10: the Folder items, whose Delete types the item's name and whose Export and Import dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
+  // Story 24.11: the Listing groups and the Listings lists, whose Delete and Remove type the name, and whose New, Edit, Copy, Add, Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+  // Story 24.12: the Quality measures, whose Delete types the name and whose New, Edit and Copy dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
+  // Story 24.12 Batch 3: the Groups and elements and the Documentation lists, whose removals type the name and whose Add and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+  // Story 24.13 Batch 2: Analytics' General settings, whose Set value the settings page's dialog sends, and Worklists, whose Show and Hide are sent at once.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
+  'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
+  // Story 24.13 Batch 3: Run-time variables and User-defined icons, whose removals type the name and whose Add and Change dialogs send the rest.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList',
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList',
   // Story 21.3: Startup, Memory and Compatibility settings, whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.StartupSettingList',
   'OcuPilot.Screen.Descriptor.MemorySettingList',
@@ -166,9 +186,21 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SqlShellSettingList',
   'OcuPilot.Screen.Descriptor.TsqlSettingList',
   'OcuPilot.Screen.Descriptor.IsqlSettingList',
+  // Story 21.10: System-wide security, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList',
+  // Story 21.19: Task Manager email, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList',
   // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
   'OcuPilot.Screen.Descriptor.DdlUserMappingList',
+  // Story 21.14: NLS configured defaults, whose Set value its settings page's dialog sends, and Locale definitions, whose Install and Delete type the locale's name and whose Validate its own page's dialog runs.
+  'OcuPilot.Screen.Descriptor.NlsDefaultList',
+  'OcuPilot.Screen.Descriptor.LocaleList',
+  'OcuPilot.Screen.Descriptor.LocalePropertyList',
+  // Story 21.5: Globals, whose Delete types the global's name.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
+  // Story 21.19: the Security advisor, whose Ignore and Stop ignoring are sent at once.
+  'OcuPilot.Screen.Descriptor.SecurityAdvisorList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -270,6 +302,15 @@ export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerLis
  */
 export const BACKUP_TASK_LIST = 'OcuPilot.Screen.Descriptor.BackupTaskList';
 export const BACKUP_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.BackupDatabaseList';
+/** Locale definitions (Story 21.14): its Validate is a read its own page's dialog runs, and its Install and Delete type the locale's name. */
+export const LOCALE_LIST = 'OcuPilot.Screen.Descriptor.LocaleList';
+export const LOCALE_VALIDATE = 'validate';
+/** The Locale definitions row action Copy, which that list's page registers (Story 21.16). */
+export const LOCALE_COPY = 'copy';
+/** The Locale properties list and its actions: Add table is its primary action, Set value its row action, each registered by the config settings page (Story 21.16). */
+export const LOCALE_PROPERTY_LIST = 'OcuPilot.Screen.Descriptor.LocalePropertyList';
+export const LOCALE_ADD_TABLE = 'add-table';
+export const LOCALE_LOAD_TABLE = 'load-table';
 export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';
 export const BACKUP_ADD_DATABASE = 'add';
@@ -428,6 +469,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
   // Story 24.9: Compare namespaces' Promote lists the steps and the documents left alone before it is confirmed.
   [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
+  // Story 21.18: the Global nodes page's Replace counts the nodes and occurrences it would change before it is confirmed.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['replace'],
 };
 
 /**
@@ -497,6 +540,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
   [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
+  // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList': ['set', 'setkey'],
   'OcuPilot.Screen.Descriptor.StartupSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.MemorySettingList': ['set'],
   'OcuPilot.Screen.Descriptor.CompatibilitySettingList': ['set'],
@@ -505,9 +550,21 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.TsqlSettingList': ['set'],
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
+  // System-wide security's page registers Set value itself, whose dialog sends the value (Story 21.10).
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': ['set'],
+  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19).
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set'],
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
+  // NLS configured defaults' page registers Set value itself, whose dialog sends the value, and Locale definitions' page registers Validate itself, whose dialog reads the locale's checks (Story 21.14).
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': ['set'],
+  // Its page also registers Export and Import itself, whose dialogs name the file the four transfer actions send (Story 21.15).
+  [LOCALE_LIST]: [LOCALE_VALIDATE, LOCALE_COPY, 'export', 'export-browser', 'import', 'import-local'],
+  // The Resources list's page registers Export and Import itself, whose dialogs name the file the four transfer actions send (Story 21.19).
+  [RESOURCE_LIST]: ['export', 'export-all', 'import', 'import-local'],
+  // Locale properties' set and Add table are the config settings page's own (Story 21.16).
+  [LOCALE_PROPERTY_LIST]: ['set', LOCALE_ADD_TABLE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
@@ -525,8 +582,22 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': ['update', 'copy', 'export', 'export-browser', 'import', 'import-local'],
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': ['set'],
+  // The Listing groups' page registers Edit and Copy itself, and the Listings' page Change listing, whose dialogs send the values (Story 24.11).
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': ['update', 'copy'],
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': ['set'],
+  // Story 24.12: the Quality measures' Edit and Copy, which their dialogs send.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': ['update', 'copy'],
+  // Story 24.12 Batch 3: the Groups and elements' page registers Change element and Remove group itself, and the Documentation's page Change documentation item.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['set', 'remove-group'],
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': ['set'],
+  // Story 24.13 Batch 3: the Run-time variables' and the User-defined icons' page registers Change itself, whose dialog sends the members.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': ['set'],
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': ['set'],
   // The Folder items' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.10).
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': ['export', 'export-browser', 'import', 'import-local'],
+  // The Globals' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 21.17).
+  // The Global nodes page draws Replace itself, beside its Find field, and starts its review (Story 21.18).
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['export', 'export-browser', 'import', 'import-local', 'replace'],
   // Productions' page registers Start with the instance and Shutdown group itself, whose dialogs send the startup values (Story 24.3).
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
@@ -613,6 +684,30 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
 const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
 
 /**
+ * The actions that are destructive on one screen only, keyed by descriptor: Install makes another locale the instance's current one, and the word
+ * means nothing destructive elsewhere (Story 21.14).
+ */
+const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
+  [LOCALE_LIST]: ['install', 'import'],
+  // Story 21.19: a resource import overwrites a resource of the same name without asking.
+  [RESOURCE_LIST]: ['import'],
+  // Story 21.16: a table load changes what every process can use, and on the current locale can change the instance's defaults.
+  [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
+  // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['remove-group'],
+};
+
+/**
+ * Why an action cannot be taken on a row its screen lists, keyed by descriptor and action id: the published sentence, or `''` where the row
+ * allows it. The surfaces draw the action refused with it while that row is selected; the instance refuses the same write again (Story 21.14).
+ */
+const ROW_REASONS: Readonly<Record<string, Readonly<Record<string, (row: Readonly<Record<string, unknown>>) => string>>>> = {
+  [LOCALE_LIST]: {
+    delete: (row) => (row['Custom'] !== true ? STRINGS.localeRefusalSystem : row['Current'] === true ? STRINGS.localeRefusalCurrent : ''),
+  },
+};
+
+/**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
  * keyed by descriptor (AD-8, Story 16.19): read from the instance each time the dialog opens.
  */
@@ -650,7 +745,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [LOG_ERROR_LIST]: { delete: STRINGS.errorDeleteEveryConsequence },
   [AUDIT_USER_EVENT_LIST]: { delete: STRINGS.auditUserEventDeleteConsequence },
   [ROLE_LIST]: { delete: STRINGS.roleDeleteConsequence },
-  [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence },
+  [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence, import: STRINGS.resourceImportConsequence },
   'OcuPilot.Screen.Descriptor.X509CredentialList': { delete: STRINGS.x509DeleteConsequence },
   'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
@@ -665,6 +760,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
   // Story 18.26: a connection's Delete and Revoke token each type its name.
   [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
+  // Story 21.10: a mobile phone provider's Delete types its name.
+  'OcuPilot.Screen.Descriptor.PhoneProviderList': { delete: STRINGS.phoneProviderDeleteConsequence },
   // Story 18.30: a Doc DB application's Delete types its name.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
   // Story 18.31: a privileged routine application's Delete types its name.
@@ -678,6 +775,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [REMOTE_DATABASE_LIST]: { delete: STRINGS.remoteDatabaseDeleteConsequence },
   // Story 18.6: the license server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
+  // Story 21.20: the device's Delete types the device's name.
+  'OcuPilot.Screen.Descriptor.DeviceList': { delete: STRINGS.deviceDeleteConsequence },
   // Story 18.20: the ECP data server's Delete types the server's name.
   [ECP_DATA_SERVER_LIST]: { delete: STRINGS.ecpDataServerDeleteConsequence },
   // Story 18.21: an SSL/TLS authorization's Delete types the SSL computer name.
@@ -712,9 +811,25 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.13: DDL that names a deleted mapping's type no longer maps it to its datatype.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { delete: STRINGS.configMappingDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { delete: STRINGS.configMappingDelete },
+  // Story 21.14: an install replaces the current locale and purges the cached queries, and a delete removes a custom locale's definition.
+  [LOCALE_LIST]: { install: STRINGS.localeInstallConsequence, delete: STRINGS.localeDeleteConsequence, import: STRINGS.localeImportConsequence },
+  [LOCALE_PROPERTY_LIST]: { [LOCALE_LOAD_TABLE]: STRINGS.localeLoadConsequence },
+  // Story 21.5: a deleted global takes all of its data.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': { delete: STRINGS.globalDeleteConsequence, replace: STRINGS.globalReplaceConsequence },
   // Story 24.2: a deleted term list takes its entries, and a removed entry cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { delete: STRINGS.analyticsTermListDeleteConsequence },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { remove: STRINGS.analyticsTermListRemoveConsequence },
+  // Story 24.11: a deleted listing group takes its class, and a removed listing leaves its group; cubes lose them either way.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': { delete: STRINGS.analyticsListingGroupDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { remove: STRINGS.analyticsListingRemoveConsequence },
+  // Story 24.12: a quality measure's deletion.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { delete: STRINGS.analyticsQualityMeasureDeleteConsequence },
+  // Story 24.12 Batch 3: a removed group takes its elements, and nothing a removal takes can be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence, 'remove-group': STRINGS.analyticsQualityMeasureRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { remove: STRINGS.analyticsQualityMeasureRemoveConsequence },
+  // Story 24.13 Batch 3: a removed run-time variable leaves the dashboards that use it an empty value, and a removed icon cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': { remove: STRINGS.analyticsVariableRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': { remove: STRINGS.analyticsIconRemoveConsequence },
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
@@ -757,7 +872,7 @@ const SCOPED_TARGETS: Readonly<
  * instance's answer (AD-10).
  */
 const TYPED_NAME_ROWS: Readonly<
-  Record<string, { readonly name: string; readonly field: string; readonly equals: string; readonly advisory: string }>
+  Record<string, { readonly name: string; readonly fallback?: string; readonly field: string; readonly equals: string; readonly advisory: string }>
 > = {
   [TASK_SCHEDULE]: { name: 'Name', field: 'Type', equals: 'System', advisory: STRINGS.taskSystemDeleteConsequence },
   // Deleting OcuPilot's own marker event stops agent writes being marked (AD-15).
@@ -785,6 +900,9 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, whose separator no one can type, so its Delete
   // types the record's name and sends the row key.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 21.16: a locale property is keyed by `[Locale, Name]`, whose separator no one can type, so its Load table types
+  // the row's name and sends the row key.
+  [LOCALE_PROPERTY_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 18.31: a privileged routine application is keyed by its name, which its Delete types.
   'OcuPilot.Screen.Descriptor.RoutineAppList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
@@ -810,6 +928,17 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.2: a delete types the term list's name and a remove the entry's key.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 24.11: a delete types the listing group's name and a remove the listing's name.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.12: a delete types the quality measure's full name, which the list's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.12 Batch 3: a removal types the element's or the documentation item's name; a group's, which has no element name, types the group's.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': { name: 'Name', fallback: 'Group', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.13 Batch 3: a removal types the variable's or the icon's name, which the tab's name column shows.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.10: a folder item's Delete types its full name, which the list's name column shows.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
@@ -836,6 +965,9 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
   // Story 16.5: a canceled background task cannot be resumed.
   'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
+  // Story 21.20: a canceled statement ends where it is and its process keeps running; a reset keeps alerts.log whole.
+  'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelConsequence },
+  'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetConsequence },
   // Story 16.10: a stop is the vendor's hard shutdown.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { stop: STRINGS.languageServerStopConsequence },
   // Story 18.4: each disk operation is disruptive, and none removes data, so each warns.
@@ -966,8 +1098,13 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
 /** The entity type of a production, which the re-read event names (AD-14). */
 const PRODUCTION_ENTITY = 'production';
 
-/** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
-function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
+/** The sentence a refused action shows: the stale-save sentence for a row that moved, a published state refusal, else the envelope's own reason. */
+function refusalReason(result: {
+  readonly reason: string | null;
+  readonly code?: string | null;
+  readonly detail: Record<string, unknown> | null;
+}): string {
+  if (result.code === STATE_CONFLICT_CODE) return STRINGS.formStaleSave;
   const problem = result.detail === null || result.detail === undefined ? undefined : result.detail['problem'];
   if (typeof problem === 'string' && PUBLISHED_PROBLEMS.includes(problem)) return problem;
   return result.reason ?? '';
@@ -1200,10 +1337,16 @@ export class ScreenActionHandler {
         if ((UNDRAWN_ACTIONS[screen.descriptor] ?? []).includes(action.id)) continue;
         // No inert control: a destructive action with no published consequence has no dialog to
         // open, so it registers no handler and no surface draws it (DW-389).
-        if (this.isDestructive(action.id) && this.consequence(screen.descriptor, action.id) === '') {
+        if (this.isDestructive(screen.descriptor, action.id) && this.consequence(screen.descriptor, action.id) === '') {
           continue;
         }
-        this.actions.register(screen.descriptor, action.id, () => this.start(screen, action.id));
+        const rowReason = (ROW_REASONS[screen.descriptor] ?? {})[action.id];
+        this.actions.register(
+          screen.descriptor,
+          action.id,
+          () => this.start(screen, action.id),
+          rowReason === undefined ? undefined : () => this.reasonFor(screen, rowReason)
+        );
       }
     }
   }
@@ -1397,7 +1540,7 @@ export class ScreenActionHandler {
       this.open('warning', descriptor, actionId, target, warning, [], sink);
       return;
     }
-    if (!this.isDestructive(actionId)) {
+    if (!this.isDestructive(descriptor, actionId)) {
       void this.send(descriptor, actionId, target, undefined, sink);
       return;
     }
@@ -1413,7 +1556,9 @@ export class ScreenActionHandler {
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
     const read = TYPED_NAME_ROWS[descriptor];
     const row = read === undefined ? null : rowFields;
-    const rowName = row?.[read?.name ?? ''];
+    const named = row?.[read?.name ?? ''];
+    // A row whose own name is empty (a group's, on its Remove group) types the field `fallback` names.
+    const rowName = (named === undefined || named === '') && read?.fallback !== undefined ? row?.[read.fallback] : named;
     // A numeric field, a superserver's port, is typed as its digits (Story 18.25).
     const name = typeof rowName === 'number' ? String(rowName) : rowName;
     this.open(
@@ -1886,8 +2031,15 @@ export class ScreenActionHandler {
     return this.stores.for(descriptor, rates);
   }
 
-  private isDestructive(actionId: string): boolean {
-    return DESTRUCTIVE_ACTIONS.includes(actionId);
+  /** `rowReason`'s sentence for the screen's selected row, or `''` while none is selected. */
+  private reasonFor(screen: ScreenDeclaration, rowReason: (row: Readonly<Record<string, unknown>>) => string): string {
+    const target = this.selected(screen);
+    const row = target === '' ? null : this.row(screen, target);
+    return row === null ? '' : rowReason(row);
+  }
+
+  private isDestructive(descriptor: string, actionId: string): boolean {
+    return DESTRUCTIVE_ACTIONS.includes(actionId) || (DESTRUCTIVE_ON[descriptor] ?? []).includes(actionId);
   }
 
   private warning(descriptor: string, actionId: string): string {
@@ -2006,8 +2158,12 @@ function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
   return [...textLines(row.before).map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
 }
 
-/** One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. */
+/**
+ * One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. A row that is not removed
+ * and has no before-text (a replace's counts, Story 21.18) states its value alone, `<field>: <after>`.
+ */
 function fieldReviewLines(row: DryRunRow): readonly string[] {
+  if (row.removed !== true && row.before === '') return [`${row.field}: ${row.after}`.trimEnd()];
   const before = `- ${row.field}: ${row.before}`.trimEnd();
   return row.removed === true ? [before] : [before, `+ ${row.field}: ${row.after}`.trimEnd()];
 }

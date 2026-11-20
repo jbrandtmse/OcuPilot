@@ -2,7 +2,8 @@
 /// favorites, read through <class>OcuPilot.Port.AnalyticsPort</class> (source kind <code>analytics</code>, endpoint <code>FolderItems</code>) and rendered by the <code>list</code> archetype's page from the declared
 /// <code>table</code> (AD-5, AD-29, AD-36, AD-44, AD-65, Story 20.11). An item the vendor's own resource check refuses the caller is absent, which is stricter than the classic Folder Manager. The vendor opens every item
 /// before the row cap applies.</p>
-/// <p><b>Its id is the item's full name</b>, folder and extension included, kept exactly (AD-13), and its scope is <code>namespace</code>.</p>
+/// <p><b>Its id is the item's full name</b>, folder and extension included, kept exactly (AD-13), and its scope is <code>namespace</code>. Its name cell opens the item's viewer, the Definition and
+/// Widgets tabs of <code>analytics/folder-items/document</code> (Story 24.14).</p>
 /// <p><b>Its pairs</b> are <code>%DeepSee_Portal:USE</code> and, as its own, <code>%Development:USE</code>: the classic Folder Manager admits <code>%DeepSee_Admin</code> or <code>%Development</code>, and a pair set is an AND, so
 /// this screen names the narrower audience (AD-8, AD-65). It does not refresh (AD-43).</p>
 /// <p><b>Its row actions are the folder manager's</b> (Story 24.10): Export, to a server file or to this browser; Import, from a server file or a file this browser reads, which creates the

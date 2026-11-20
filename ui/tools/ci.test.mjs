@@ -108,7 +108,8 @@ export const DECLARED_GATES = [
   `git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`,
   'npm ci',
   'npm run build',
-  'npm test',
+  'sh ../scripts/ci-resource-sample.sh -- npm test',
+  'sh scripts/ci-resource-sample.sh --report',
   'uv run scripts/check-objectscript.py',
   'uv run scripts/test_check_objectscript.py',
   'bash scripts/lint-docs.sh',
@@ -2722,17 +2723,28 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
 // --- The bind retry and its time budget (DW-439, DW-2123) ------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0' }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
   const capture = join(dir, 'docker-argv.txt');
   const counter = join(dir, 'up-count.txt');
   const sleeps = join(dir, 'sleeps.txt');
+  const clock = join(dir, 'clock.txt');
   mkdirSync(bin);
   // A `sleep` that records its argument and returns at once, so the backoff sequence is read
-  // without waiting it out. Only the budget's own clock (`date`) stays real.
+  // without waiting it out. The budget's own clock (`date`) stays real unless `steppedClock` is set.
   if (stubSleep) writeStub(bin, 'sleep', ['printf \'%s\\n\' "$1" >> "$OCUPILOT_SLEEP_CAPTURE"', 'exit 0']);
+  // A `date +%s` that reads a counter file and adds one second per read, so the budget's own clock is
+  // stepped and never straddles a real second; any other `date` call reaches the real one.
+  if (steppedClock) {
+    writeStub(bin, 'date', [
+      'if [ "$*" != "+%s" ]; then exec /bin/date "$@"; fi',
+      'n=$(cat "$OCUPILOT_CLOCK" 2>/dev/null || echo 0)',
+      'printf \'%s\\n\' $((1700000000 + n))',
+      'printf \'%s\' $((n + 1)) > "$OCUPILOT_CLOCK"',
+    ]);
+  }
   if (stubSs) writeStub(bin, 'ss', ['printf \'%s\\n\' "SS-STUB $*"', 'exit 0']);
   writeStub(bin, 'docker', [
     'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
@@ -2742,7 +2754,14 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
     '    n=$((n + 1))',
     '    printf \'%s\' "$n" > "$OCUPILOT_UP_COUNT"',
     '    if [ "$n" -le "$OCUPILOT_UP_FAILS" ]; then',
-    '      if [ "$n" -eq 1 ] && [ "$OCUPILOT_FIRST_UP_SECONDS" -gt 0 ]; then sleep "$OCUPILOT_FIRST_UP_SECONDS"; fi',
+    '      if [ "$n" -eq 1 ] && [ "$OCUPILOT_FIRST_UP_SECONDS" -gt 0 ]; then',
+    '        if [ -n "$OCUPILOT_CLOCK" ]; then',
+    '          c=$(cat "$OCUPILOT_CLOCK" 2>/dev/null || echo 0)',
+    '          printf \'%s\' $((c + OCUPILOT_FIRST_UP_SECONDS)) > "$OCUPILOT_CLOCK"',
+    '        else',
+    '          sleep "$OCUPILOT_FIRST_UP_SECONDS"',
+    '        fi',
+    '      fi',
     '      printf \'%s\\n\' "$OCUPILOT_UP_MESSAGE" >&2',
     '      exit 1',
     '    fi',
@@ -2772,6 +2791,8 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
         OCUPILOT_SLEEP_CAPTURE: sleeps,
         // How long the first `up` runs before it fails, standing in for an image pull.
         OCUPILOT_FIRST_UP_SECONDS: firstUpSeconds,
+        // Set only with `steppedClock`: the counter file the stub `date` reads, and the first `up` advances.
+        OCUPILOT_CLOCK: steppedClock ? clock : '',
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
@@ -2835,9 +2856,13 @@ test('DW-2123: the budget runs from the first bind failure, so a slow first atte
   // The first attempt also pulls the image; with the clock started before it, an attempt that ran
   // past the whole budget and then failed on the bind exited with no retry at all.
   //
+  // The clock is stepped (one second per read, the first `up` advancing it by its own two seconds with
+  // no real sleep), so a second boundary between two reads cannot spend the one second budget.
+  //
   // Mutation (Rule 19): start the budget clock before the first attempt -> the 2 second first
-  // attempt spends the 1 second budget, and this goes red with a non-zero exit after one attempt.
-  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, waitSeconds: '1', firstUpSeconds: '2' });
+  // attempt spends the 1 second budget, and this goes red with a non-zero exit after one attempt;
+  // read the clock twice in an attempt again -> the second read spends it and this goes red the same way.
+  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, waitSeconds: '1', firstUpSeconds: '2', steppedClock: true });
   assert.equal(run.status, 0, `expected the retry to succeed: ${run.output}`);
   assert.equal(run.ups, 2, 'one retry after the slow first attempt');
 });
@@ -2878,6 +2903,9 @@ test('DW-2123: a budget or a first wait that is not a whole number is refused be
   }
 });
 
+// The gates job's client suite step, and the step that reports what the machine did when it fails.
+const CLIENT_SUITE_RUN = 'sh ../scripts/ci-resource-sample.sh -- npm test';
+
 test('DW-2501: the gates job fetches the release branch tips before it runs the tests that read them', () => {
   // The stored-order test reads `refs/remotes/origin/release/*`, and skips where a shallow clone holds none, so a
   // fetch that moved to another job or after `npm test` would turn the gate local-only with CI still green.
@@ -2885,9 +2913,29 @@ test('DW-2501: the gates job fetches the release branch tips before it runs the 
   // Mutation (Rule 19): move the step into another job, or below `npm test` -> red.
   const runs = jobSteps(workflow, 'gates').map((step) => step.run);
   const fetchAt = runs.indexOf(`git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`);
-  const testAt = runs.indexOf('npm test');
+  const testAt = runs.indexOf(CLIENT_SUITE_RUN);
   assert.ok(fetchAt >= 0, 'the gates job fetches the release branch tips, at depth 1');
   assert.ok(testAt > fetchAt, 'and does so before npm test');
+});
+
+// Mutation (Rule 19): drop the client suite step's `timeout-minutes`, or the report step's
+// `cancelled()` -> red; run `npm test` without the sampler -> red.
+test('the client suite step is bounded under the job, sampled, and followed by the resource report on failure or cancel', () => {
+  const steps = jobSteps(workflow, 'gates');
+  const at = steps.findIndex((step) => step.run === CLIENT_SUITE_RUN);
+  assert.ok(at >= 0, `the gates job runs the client suite through the sampler: ${CLIENT_SUITE_RUN}`);
+  const jobTimeout = Number(/^ {4}timeout-minutes:\s*(\d+)\s*$/m.exec(jobSlice(workflow, 'gates'))?.[1]);
+  const stepTimeout = Number(/^ {8}timeout-minutes:\s*(\d+)\s*$/m.exec(steps[at].text)?.[1]);
+  assert.ok(Number.isInteger(stepTimeout) && stepTimeout > 0, 'the client suite step carries its own timeout-minutes');
+  assert.ok(
+    stepTimeout < jobTimeout,
+    `the step's ${stepTimeout} minutes must be under the job's ${jobTimeout}, so a hang fails the step with its log and the report step still runs`
+  );
+  const report = steps[at + 1];
+  assert.equal(report?.run, 'sh scripts/ci-resource-sample.sh --report', 'the next step prints the kernel OOM lines');
+  assert.match(report.condition ?? '', /failure\(\)/, 'and runs after a failure');
+  assert.match(report.condition ?? '', /cancelled\(\)/, 'and after a cancellation, which is how a run ends when it is superseded or the job reaches its own bound');
+  assert.doesNotMatch(report.text, /working-directory:/, 'and from the repository root, where its scripts/ path resolves');
 });
 
 test('DW-439: the retry waits between attempts, and the waits are overridable', () => {

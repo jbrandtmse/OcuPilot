@@ -9,8 +9,11 @@
  * shows it; the dialog over `FastDistinct` states the purge sentence and, canceled, sends nothing; `DefaultSchema` and `EscapeCondition` draw
  * Set value unavailable.
  *
- * **It changes one compatibility setting and one SQL setting** through the shipped screens, so it runs on a throwaway only; the `after` hook puts
- * `LineRecall` and `SaveMAC` back to the values it found, whatever the tests answered.
+ * Story 21.19's Task Manager email lists its twelve settings and never the mail password; Set value on `Port` refuses a port out of range, stores
+ * a port and shows it without a reload; a subject naming another field is refused with the Task Manager's fields.
+ *
+ * **It changes one compatibility setting, one SQL setting and the Task Manager email port** through the shipped screens, so it runs on a throwaway
+ * only; the `after` hook puts `LineRecall`, `SaveMAC` and `Port` back to the values it found, whatever the tests answered.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/config-settings.browser-spec.mjs` (after `npm run build` and the bundle copied into the throwaway).
@@ -33,11 +36,33 @@ const STRINGS = loadStrings();
 const route = (name) => `/ocupilot/os-management/${name}`;
 const NAME = 'LineRecall';
 const SQL_NAME = 'SaveMAC';
+const MAIL_NAME = 'Port';
+const MAIL_NAMES = ['AuthUser', 'MessageFailure', 'MessageSuccess', 'Port', 'ReplyTo', 'SSLConfiguration', 'Sender', 'Server', 'SubjectFailure', 'SubjectSuccess', 'TimeZone', 'UseSTARTTLS'];
 
 let browser = null;
 let found = '';
 let foundSql = '';
+let foundMail = '';
 let touched = false;
+
+/** The Task Manager email setting `name`, as `EmailGet` answers it. */
+function storedMail(name) {
+  const output = runIris(config.container, [
+    'Set $NAMESPACE="%SYS"',
+    `Set tSC=##class(%SYS.Task.Config).EmailGet("${name}",.v)`,
+    'Write "OCU-MAILGET-START:"_$Get(v)_":OCU-MAILGET-END",!',
+  ]);
+  return { value: markerValue(output, 'MAILGET'), output };
+}
+
+/** Put the Task Manager email setting `name` back to `value` through `EmailSet`, answering whether the status was OK. */
+function restoreMail(name, value) {
+  const output = runIris(config.container, [
+    'Set $NAMESPACE="%SYS"',
+    `Write "OCU-MAILPUT-START:"_$System.Status.IsOK(##class(%SYS.Task.Config).EmailSet("${name}","${value}"))_":OCU-MAILPUT-END",!`,
+  ]);
+  return { value: markerValue(output, 'MAILPUT'), output };
+}
 
 /** The setting `name` of `Config.Miscellaneous`, as the instance stores it. */
 function stored(name) {
@@ -133,6 +158,9 @@ before(async () => {
   const readSql = storedSql(SQL_NAME);
   assert.match(readSql.value ?? '', /^[01]$/, `${SQL_NAME} reads 0 or 1 on the instance: ${readSql.output}`);
   foundSql = readSql.value;
+  const readMail = storedMail(MAIL_NAME);
+  assert.match(readMail.value ?? '', /^[0-9]{0,5}$/, `${MAIL_NAME} of the Task Manager email reads a port or nothing on the instance: ${readMail.output}`);
+  foundMail = readMail.value;
   touched = true;
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -143,6 +171,9 @@ after(async () => {
       // Both restores run before either is asserted, so a failed first one cannot leave the second setting changed.
       const put = restore(found);
       const putSql = restoreSql(foundSql);
+      const putMail = restoreMail(MAIL_NAME, foundMail);
+      assert.equal(putMail.value, '1', `${MAIL_NAME} of the Task Manager email is put back to '${foundMail}': ${putMail.output}`);
+      assert.equal(storedMail(MAIL_NAME).value, foundMail, `and reads '${foundMail}' again`);
       assert.equal(put.value, '1', `${NAME} is put back to ${found}: ${put.output}`);
       assert.equal(stored(NAME).value, found, `and reads ${found} again`);
       assert.equal(putSql.value, '1', `${SQL_NAME} is put back to ${foundSql}: ${putSql.output}`);
@@ -321,5 +352,83 @@ test('DefaultSchema and the shell EscapeCondition draw Set value unavailable wit
     } finally {
       await context.close();
     }
+  }
+});
+
+/** The refusal the dialog states: on the value's field where the instance names it, else above the field in the envelope's own sentence. */
+const REFUSAL_SELECTOR = '[data-interop-setting-violation], [data-interop-setting-reason]';
+
+/** Replace the dialog's text with `value`. */
+async function typeInDialog(page, value) {
+  await page.click('[data-interop-setting-value]', { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  if (value !== '') await page.type('[data-interop-setting-value]', value);
+}
+
+test('Task Manager email lists its twelve settings and never the mail password', async () => {
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/tasks/email', VIEWPORTS.wide);
+  try {
+    await answered(page);
+    const listed = await names(page);
+    assert.deepEqual([...listed].sort(), [...MAIL_NAMES].sort(), 'the rows are the twelve settings of the roster');
+    assert.ok(!listed.some((entry) => /password/i.test(entry)), 'and none is the mail password');
+    assert.equal(await page.evaluate(() => document.body.textContent.includes('AuthPassword')), false, 'the page names it nowhere');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Set value on the Task Manager email Port stores it on the instance, refuses a port out of range, and shows the change without a reload', async () => {
+  const changed = foundMail === '587' ? '588' : '587';
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/tasks/email', VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await page.evaluate(() => {
+      window.__ocuNoReload = 'standing';
+    });
+    await selectRow(page, MAIL_NAME);
+    assert.deepEqual(await setValueEntry(page), { disabled: false, reason: '' }, 'Set value is offered on the port');
+    await clickSetValue(page);
+    await typeInDialog(page, '70000');
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector(REFUSAL_SELECTOR, { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim()), STRINGS.configRefusalValue, 'a port out of range stays in the dialog with the published sentence');
+    assert.equal(storedMail(MAIL_NAME).value, foundMail, 'and nothing was stored');
+    await typeInDialog(page, changed);
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector('[data-interop-setting-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(storedMail(MAIL_NAME).value, changed, `the instance stores ${changed}`);
+    await page.waitForFunction(
+      (rowSelector, wanted, value) => [...document.querySelectorAll(rowSelector)].some((row) => {
+        const cells = row.querySelectorAll('[role="gridcell"]');
+        return cells[0]?.textContent.trim().startsWith(wanted) && cells[1]?.textContent.trim() === value;
+      }),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      MAIL_NAME,
+      changed
+    );
+    assert.equal(await page.evaluate(() => window.__ocuNoReload), 'standing', 'the list re-read without the page reloading');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a Task Manager email subject naming a field the Task Manager does not fill in is refused with the fields, and stores nothing', async () => {
+  const before = storedMail('SubjectFailure').value;
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/tasks/email', VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectRow(page, 'SubjectFailure');
+    assert.equal((await setValueEntry(page))?.disabled, false, 'Set value is offered on the subject');
+    await clickSetValue(page);
+    await typeInDialog(page, '#(BOGUS)#');
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector(REFUSAL_SELECTOR, { visible: true, timeout: config.navigationTimeoutMs });
+    const sentence = await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim());
+    assert.ok(sentence.startsWith('Use only these fields between #( and )#: ID, DESCRIPTION, NAME,') && sentence.endsWith('ERROR, SUCCESS.'), `the dialog names the Task Manager's fields: ${sentence}`);
+    assert.equal(storedMail('SubjectFailure').value, before, 'and the subject reads as before');
+  } finally {
+    await context.close();
   }
 });

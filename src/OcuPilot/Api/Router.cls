@@ -248,9 +248,13 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/mdx/background/:id/cancel" Method="POST" Call="AnalyticsMdxBackgroundCancel"/>
   <Route Url="/analytics/mdx/background/:id" Method="GET" Call="AnalyticsMdxBackgroundPoll"/>
   <Route Url="/analytics/mdx/background" Method="POST" Call="AnalyticsMdxBackgroundStart"/>
+  <Route Url="/analytics/pivot/background/:id/cancel" Method="POST" Call="AnalyticsPivotBackgroundCancel"/>
+  <Route Url="/analytics/pivot/background/:id" Method="GET" Call="AnalyticsPivotBackgroundPoll"/>
+  <Route Url="/analytics/pivot/background" Method="POST" Call="AnalyticsPivotBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
+  <Route Url="/explorer/globals/nodes" Method="POST" Call="ExplorerGlobalNodes"/>
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
   <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
@@ -262,6 +266,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/mft-connection/form" Method="GET" Call="MftConnectionFormRead"/>
   <Route Url="/mft-connection/:id" Method="PUT" Call="MftConnectionUpdate"/>
   <Route Url="/mft-connection" Method="POST" Call="MftConnectionCreate"/>
+  <Route Url="/phone-provider/form" Method="GET" Call="PhoneProviderFormRead"/>
+  <Route Url="/phone-provider/:id" Method="PUT" Call="PhoneProviderUpdate"/>
+  <Route Url="/phone-provider" Method="POST" Call="PhoneProviderCreate"/>
   <Route Url="/docdb-application/form" Method="GET" Call="DocDbAppFormRead"/>
   <Route Url="/docdb-application/:id" Method="PUT" Call="DocDbAppUpdate"/>
   <Route Url="/docdb-application" Method="POST" Call="DocDbAppCreate"/>
@@ -275,11 +282,23 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/term-lists/form" Method="GET" Call="AnalyticsTermListForm"/>
   <Route Url="/analytics/term-lists" Method="POST" Call="AnalyticsTermListCreate"/>
   <Route Url="/analytics/term-list-entries" Method="POST" Call="AnalyticsTermListEntryCreate"/>
+  <Route Url="/analytics/listing-groups/form" Method="GET" Call="AnalyticsListingGroupForm"/>
+  <Route Url="/analytics/listing-groups" Method="POST" Call="AnalyticsListingGroupCreate"/>
+  <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
+  <Route Url="/analytics/quality-measures/form" Method="GET" Call="AnalyticsQualityMeasureForm"/>
+  <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
+  <Route Url="/analytics/quality-measure-elements" Method="POST" Call="AnalyticsQualityMeasureElementCreate"/>
+  <Route Url="/analytics/quality-measure-metas" Method="POST" Call="AnalyticsQualityMeasureMetaCreate"/>
+  <Route Url="/analytics/runtime-variables" Method="POST" Call="AnalyticsRuntimeVariableCreate"/>
+  <Route Url="/analytics/user-icons" Method="POST" Call="AnalyticsUserIconCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
+  <Route Url="/locales/:name/validation" Method="GET" Call="LocaleValidation"/>
+  <Route Url="/locales" Method="POST" Call="LocaleCreate"/>
+  <Route Url="/locale-properties" Method="POST" Call="LocalePropertyCreate"/>
 </Routes>
 }
 
@@ -1870,6 +1889,28 @@ ClassMethod AnalyticsMdxBackgroundStart() As %Status
     Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleStart()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pivot/background/:id/cancel</code> (Story
+/// 24.14): a saved pivot's run cancel, delegating to <class>OcuPilot.Area.Analytics.PivotRun</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/pivot/background</code>.</p>
+ClassMethod AnalyticsPivotBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/pivot/background/:id</code>: a saved pivot's run
+/// poll.</p>
+ClassMethod AnalyticsPivotBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pivot/background</code>: a saved pivot's run
+/// start.</p>
+ClassMethod AnalyticsPivotBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleStart()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
 /// form read, delegating to <class>OcuPilot.Area.OsMgmt.EcpSettingsRules</class>. It precedes
 /// <code>/ecp-settings</code>.</p>
@@ -1883,6 +1924,13 @@ ClassMethod EcpSettingsFormRead() As %Status
 ClassMethod EcpSettingsUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/globals/nodes</code> (Story 21.5): Global nodes' page read, delegating to
+/// <class>OcuPilot.Area.Explorer.GlobalNodes</class>.</p>
+ClassMethod ExplorerGlobalNodes() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.GlobalNodes).HandleNodes()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data
@@ -1964,6 +2012,67 @@ ClassMethod AnalyticsTermListEntryCreate() As %Status
     Quit ##class(OcuPilot.Area.Analytics.TermListEntrySave).HandleCreate()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/listing-groups/form</code> (Story 24.11): one listing group for the Edit and Copy dialogs.</p>
+ClassMethod AnalyticsListingGroupForm() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingGroupForm).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/listing-groups</code> (Story 24.11): Listing groups' New listing group, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsListingGroupCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingGroupSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/listing-group-listings</code> (Story 24.11): the Listings screen's Add listing, resolved through the one tool the agent's confirm
+/// uses (AD-55).</p>
+ClassMethod AnalyticsListingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.ListingSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/quality-measures/form</code> (Story 24.12): one quality measure for the Edit and Copy dialogs.</p>
+ClassMethod AnalyticsQualityMeasureForm() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureForm).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measures</code> (Story 24.12): Quality measures' New quality measure, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-elements</code> (Story 24.12): the Groups and elements screen's Add element, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureElementCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureElementSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-metas</code> (Story 24.12): the Documentation screen's Add documentation item, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsQualityMeasureMetaCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.QualityMeasureMetaSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/runtime-variables</code> (Story 24.13, Batch 3): the Run-time variables screen's Add run-time variable, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod AnalyticsRuntimeVariableCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.RuntimeVariableSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/user-icons</code> (Story 24.13, Batch 3): the User-defined icons screen's Add icon, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsUserIconCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.UserIconSave).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business
 /// partner, resolved through the one tool the agent's confirm uses (AD-55).</p>
 ClassMethod InteropPartnerCreate() As %Status
@@ -1976,6 +2085,27 @@ ClassMethod InteropPartnerCreate() As %Status
 ClassMethod DdlMappingCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DdlMappingSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /locales/:name/validation</code> (Story 21.14): Locale definitions' Validate dialog,
+/// screen-only.</p>
+ClassMethod LocaleValidation(pName As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleRules).HandleValidate(pName)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /locales</code> (Story 21.16): Locale definitions' Copy, resolved through the one tool the
+/// agent's confirm uses (AD-55).</p>
+ClassMethod LocaleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleCopySave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /locale-properties</code> (Story 21.16): Locale properties' Add table, resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LocalePropertyCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LocaleTableSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the
@@ -2035,6 +2165,28 @@ ClassMethod MftConnectionUpdate(pId As %String) As %Status
 ClassMethod MftConnectionCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /phone-provider/form</code> (Story 21.10): the mobile phone
+/// provider editor's form read, delegating to <class>OcuPilot.Area.Security.PhoneProviderRules</class>. It precedes
+/// <code>/phone-provider/:id</code>.</p>
+ClassMethod PhoneProviderFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.PhoneProviderRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /phone-provider/:id</code>: the form's edit, resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod PhoneProviderUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.PhoneProviderSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /phone-provider</code>: the form's create, resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod PhoneProviderCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.PhoneProviderSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /docdb-application/form</code> (Story 18.30): the Doc DB

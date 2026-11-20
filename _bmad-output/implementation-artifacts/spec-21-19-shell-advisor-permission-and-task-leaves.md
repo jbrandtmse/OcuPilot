@@ -2,18 +2,22 @@
 title: 'Story 21.19: Shell, advisor, permission and task leaves'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c757d6c0c3b546b56c36f2a3329073f016ca9d92'
 review_loop_iteration: 0
 followup_review_recommended: false
+deferred:
+  - summary: >-
+      The Task Manager email settings' UseSTARTTLS and message values have no real set-and-read-back leg against the vendor.
+    evidence: |-
+      TaskMailSettingWrite sets Port, SubjectSuccess and SubjectFailure against the vendor; UseSTARTTLS and the two messages are exercised at the rules level and through a stubbed page spec only, so a vendor that stores UseSTARTTLS other than as EmailGet echoes it would read back as differs. (inference until measured on a throwaway)
+    location: >-
+      src/OcuPilot/Test/TaskMailSettingWrite.cls
+    severity: medium (unverified)
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-20-os-management-and-log-leaves.md'
 warnings: ['multiple-goals', 'oversized']
-deferred:
-  - summary: 'The Task Manager mail password reaches an audit row OcuPilot shows, whoever sets it'
-    evidence: '%SYS.Task.Config.AuthPassSet stores Base64(password) through UpdateData, which writes OldValue/NewValue into a %System/%System/ConfigurationChange audit row (irissys/%SYS/Task/Config.cls:43-63,98-104); that event is enabled on slot A, and AuditPort declares no mask for it (VENDORSYSTEMSECRETS covers SMTP Password only). Base64 is not a mask. (inference until a set is measured on a throwaway)'
-    location: 'src/OcuPilot/Port/AuditPort.cls:131'
-    severity: 'high'
 ---
 
 <intent-contract>
@@ -67,7 +71,7 @@ deferred:
 
 - (a) A caller holding only `%Admin_Secure:USE` and `%DB_IRISSYS:READ` reads `GetRecommendations` in `%SYS`, and sets and clears an ignore flag through `SetIgnoreFlag` with its device output discarded; the flag survives a re-read. Any extra pair is recorded as the ignore tools' `WRITEPAIRS`; a pair beyond `%DB_IRISSYS:WRITE` is a HALT `intent gap`.
 - (b) A `ConfigPort.PAIRS`-only caller reads every `EmailGet` name; `%DB_IRISSYS:WRITE` added is enough for `EmailSet`. Each non-secret set writes one `ConfigurationChange` row naming the old and new value.
-- (c) For Batch 4 only, after its records: a `AuthPassSet` writes Base64 of the password into that row's `New value`.
+- (c) Moved to Story 21.36 with TM-18's password.
 
 ### Batch 1: the Security Advisor (server and client; commit when its loop is green)
 
@@ -103,11 +107,10 @@ deferred:
 - DW-2471: `ui/src/app/core/screen-read.ts:230-234` answers an `ok` answer it cannot read as `{kind:'rejected', status, code:null, path}`, so every shared-read screen draws its refusal and holds until Retry. The class-access tab's own remap (`web-app-class-access-tab.ts:211-214`) is removed as redundant; Guardrails and findings keep their own reads.
 - Tests: `create-form.store.spec.ts` (copy fills and skips, a refused source read keeps the buffer, clearing restores); `ui/browser/web-applications-create.browser-spec.mjs` (Copy from a source the spec creates, Save, the editor shows the copied values; the spec deletes both apps); a held-chunk leg in it and in `users-create.browser-spec.mjs` and `roles-create.browser-spec.mjs` (the editor chunk is held: no Saved status shows; released: the editor's Saved shows); `ui/tools/screen-read.test.mjs:261-266` now asserts `rejected`; `web-app-class-access-tab.spec.ts`'s unreadable leg keeps passing through the shared read, its `mutation:` note moved to the shared read.
 
-### Batch 4: PM-24, TM-17 and TM-18's password (records written on owner answer U-70)
+### Batch 4: PM-24 (TM-17 and TM-18's password moved to Story 21.36)
 
 - **PM-24**, on `TaskExport`/`TaskImport`'s shape: `permissions.resources.export` (all resources or the selected ones, to a `PathPort` root and name as an overwriting `file` whose overwrite is a constant) and `permissions.resources.import` (a `source` file or the screen's local text, through a temporary file OcuPilot names, previewed with `Flags` 1 and refused when the file no longer yields the reviewed resource names). Row/toolbar actions on `ResourceList`; `classicPage` `%CSP.UI.Portal.Dialog.ExportResource`. Import is destructive by name (it overwrites existing resources), so its key ships `false`.
-- **TM-17**: Task details gains `OutputFile` and an Open output action that reads the task's stored output file, bounded and tail-first through `LogSourcePort`, only where the record allows it.
-- **TM-18's password**: `tasks.mail.password`, a secret-only write on `AuthOptionsSmtpPassword`'s shape (AD-56 (i)), and `AuditPort`'s declaration for the `ConfigurationChange` row.
+- **TM-17** (Task details `OutputFile` and an Open output action) and **TM-18's password** (`tasks.mail.password`): moved to Story 21.36; nothing is built for either here.
 
 **Acceptance Criteria:**
 
@@ -118,9 +121,71 @@ deferred:
 - AC5 (DW-2471). Given a list screen whose read answers 200 with a body that is not a read's shape, when it renders, then it shows its refusal with Retry, not a blank table and no banner.
 - AC6. Given the default baseline, when the agent proposes any new write, then it mints and confirms; with its key `false`, the governance gate refuses it.
 
+### Review Findings
+
+- [x] [Review][HIGH] CI runs 44674547477 and 44682408366 (and the runner's fresh check): two tests this story's new screens broke. (1) `OcuPilot.Test.PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces`: "OcuPilot.Screen.Descriptor.ResourceList: and its one row action is Delete" — the Resources list now also declares export and import (PM-24). (2) `OcuPilot.Test.BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks`: "its other screens are open, and Background tasks is refused on its own pair" — a tasks-area screen this story added (the Task Manager email settings) changes what a tasks holder sees. Read each assertion and the story's change, update the test to the new shape (with names read from the instance, never recalled) or fix the product if the test caught a real defect, and say which. Run both as full classes, then every class under `src/OcuPilot/Test` whose name starts with `Permissions`, `BackgroundTasks`, `Tasks`, `Resource`, `Advisor` or `WebApp`, one per call. [src/OcuPilot/Test/PermissionsLists.cls, src/OcuPilot/Test/BackgroundTasksLive.cls]
+
+Code review 2026-11-20 (four layers, full-opus; 42 rows, 34 entries). Measured on `ocupilot-ci`; every roster class green before and after the patches.
+
+- [x] [Review][Patch] The advisor shows the vendor's second `_PUBLIC` roles line as its raw code `PUBLICRolesList1` and never names the roles (medium) [src/OcuPilot/Port/AdvisorPort.cls `Listed`, `PublicRoles`]
+- [x] [Review][Patch] The port's own `RESOURCEFILE.CHANGED` refusal was never driven (medium) [src/OcuPilot/Test/ResourceTransferRead.cls `TestAnImportIsRefusedWhenItsFileIsNotTheOneReviewed`]
+- [x] [Review][Patch] The kernel's route of a resource import to `ResourceImport` was unpinned; the port's own check hid it (medium) [src/OcuPilot/Test/ResourceTransferWrite.cls]
+- [x] [Review][Patch] An import's server file outside the allowed directories had no refusal test (medium) [src/OcuPilot/Test/ResourceTransferRead.cls]
+- [x] [Review][Patch] `UseSTARTTLS` and the two messages had no set and read-back against the vendor (DW-2788; medium) [src/OcuPilot/Test/TaskMailSettingWrite.cls `TestTheStartTlsFlagAndTheMessagesRoundTripThroughTheVendor`]
+- [x] [Review][Patch] The mail write's screen leg set a fixed `587` and asserted an audit row the vendor skips when the port already reads 587 (medium, Rule 19) [src/OcuPilot/Test/TaskMailSettingWrite.cls]
+- [x] [Review][Patch] A Save pressed again during the editor hand-off posted the create twice [ui/src/app/areas/web-applications/create-form.page.ts, user-create-form.page.ts, role-create-form.page.ts `onSave`]
+- [x] [Review][Patch] The advisor's changed-after-mint leg asserted only "not ok" [src/OcuPilot/Test/AdvisorWrite.cls]
+- [x] [Review][Patch] `warmEditPage`'s unknown-descriptor test named a mutation that cannot redden it [ui/src/app/shell/screen-outlet.spec.ts]
+- [x] [Review][Patch] The 2,000-resource bound was pinned above only [src/OcuPilot/Test/ResourceTransferRead.cls]
+- [x] [Review][Patch] The CHANGED sentence's doc and the import header claimed the port compares the replaced count; `REPLACESPARAM` was never read [src/OcuPilot/Api/ResourceFileError.cls, ResourceTransferPort.cls, Screen/Tool/ResourceImport.cls]
+- [x] [Review][Patch] The ignore tools' `type` enum repeated `ADVISORAREAS` [src/OcuPilot/Screen/Tool/SecurityAdvisorIgnore.cls]
+- [x] [Review][Patch] PM-24's tests cited AC1-AC4, which are other features' criteria; the export's root refusal asserted only its status [src/OcuPilot/Test/ResourceTransferRead.cls, ResourceTransferWrite.cls]
+- [x] [Review][Defer] A resource import that opens an administrative resource is not named as a privilege grant on its card [src/OcuPilot/Kernel/Proposal/Prohibited.cls `GrantsPrivilegeByEffect`] — deferred: DW-2793 escalated (contended file)
+- [x] [Review][Defer] The Resources list's transfer glue is the eighth copy of the transfer-dialog glue [ui/src/app/areas/permissions/resource-list.page.ts] — deferred: DW-2794 routed burndown; the port's copy of LocalePort's file helpers is an occurrence on DW-2763
+- [x] [Review][Defer] Closed at emission: DW-2795 (`tasks.mail.set` stricter than measured), DW-2796 (`ReadMail` public, contended file), DW-2797 (person's import has no typed confirm, by design), DW-2798 (failed export over an existing file), DW-2799 (digest-only read-back, as LocaleImport), DW-2800 and DW-2801 (theoretical)
+
+**Strings (PM-24, orchestrator ruling).** All ten pass EXPERIENCE.md's plain-words, sentence-case and no-internal-id rules and are kept as written: the two refusals match the term-list and locale precedents, and the two lines an applied transfer leaves stay count-neutral ("Resources imported: <count>.", "Resources exported to <path>: <count>."), since the sentence form reads "Imported 1 resources." for the single-resource export the browser spec drives. ClassicPageGate's 158 `OWNPAIRS` names equal the instance's registry roster (run 1168).
+
+**Rejected:** a >3,000,000-character text is "more than 2,000 resources" (`false`: each entry is bounded by the vendor's MAXLENs, so no real export of 2,000 or fewer exceeds the cap); export of several selected resources (`false`: the list is single-select); PM-24 has no AC (its fix edits the spec; the orchestrator ruled it into the story); Copy from on a 200 of the wrong shape, an unknown transport fault in the transfer dialog, the Copy from cap of 1,000 (low, unlikely, matched by siblings); AC5 has no browser leg (Rule 3 is met by the story's browser specs, and the shared read runs in real components); the local-import browser refusal and the agent's export-all (pinned by the ObjectScript legs).
+
 ## Spec Change Log
 
+- 2026-11-20, orchestrator rulings on the implement halt: (1) PM-24's ten strings are accepted under the orchestrator's grant (U-118 precedent), style-checked at review, and listed verbatim in a veto item; EXPERIENCE.md stays add-only. (2) TM-17 (a task's output file) and TM-18's mail password move to Story 21.36 (split, Rule 5; owner answer U-70 carries); this story closes with Batches 1 to 3 and PM-24, and Batch 4's TM-17 and mail-password bullets and their acceptance clauses are out of scope here. The AD-35 audit mask for the mail password's ConfigurationChange row is already in feature (Story 21.24, `b706fb831`, `AuditPort.VENDORCONFIGSECRETS`, pinned by `OcuPilot.Test.TaskMailAuditMask`).
+
 ## Review Triage Log
+
+### 2026-11-19 -- Review pass
+
+- verdicts: 22 findings -- high 0, medium 2, low 13, false 6, maybe-false 1
+- findings:
+  - `[low]` `[patch]` warmEditPage's swallowed chunk failure and unknown-descriptor return had no test -- `screen-outlet.spec.ts` gains two cases (loader rejects, unknown descriptor), mutation recorded.
+  - `[low]` `[patch]` advisor read-source grammar arm had no negative case -- `AdvisorRead.TestAnAdvisorReadSourceIsRefusedWhenItDeclaresAnythingButTheWholeList` added, mutation recorded.
+  - `[medium]` `[patch]` advisor `Execute` never driven with a cap, so AD-36's truncation report was unpinned -- `AdvisorRead.TestTheScreenReadReportsACutAtItsCap` added, mutation recorded.
+  - `[low]` `[reject]` recommendation-code roster checked against the vendor only where `irissys/` exists -- a wrong unemitted code shows its raw code as its sentence; the fix is a new reader of vendor source text.
+  - `[low]` `[patch]` import consequence checked by source text only -- `proposal-view.test.mjs` now executes `consequenceSentence`, mutation recorded.
+  - `[medium]` `[patch]` agent mint of an unlisted recommendation and a confirm after the flag changed were untested (matrix row "Advisor gone") -- `AdvisorWrite.TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone` added, mutation recorded.
+  - `[maybe-false]` `[defer]` `UseSTARTTLS` and message values have no vendor round trip -- in the frontmatter `deferred:` list; a throwaway set and read of each settles it.
+  - `[low]` `[reject]` ACs lack a `mutation:` line for secondary clauses -- Rule 19 asks one per AC and each AC has one.
+  - `[low]` `[reject]` `TaskMailSettingRead`'s Value check is vacuous on an all-empty instance -- the armed write class and the browser spec pin Value.
+  - `[low]` `[reject]` the refused-Save specs hold equally if no POST is made -- the accepted-Save legs in the same specs reach the POST.
+  - `[false]` `[reject]` zero agent markers could be an auditing-off reading -- the agent leg in the same class asserts one, so the pair holds.
+  - `[low]` `[reject]` `saveWithChunksHeld` waits a fixed 600 ms before asserting absence -- an absence check has no signal to wait for, and the released leg asserts the arrival.
+  - `[false]` `[reject]` some tests are not self-contained -- each states what it needs and fails loudly without it.
+  - `[low]` `[patch]` browser spec's sentence key for `UserNoNamespace` -- mapped to `UserNoDefault` as the string test does.
+  - `[low]` `[patch]` a dropped space in `READ_SOURCE_PORTS =[` -- restored.
+  - `[low]` `[reject]` `CONFIG.SETTING.VALUE` and the substitution code answer 400 where the matrix says 409 -- the shared code already answered 400 in Story 21.3, and the tests pin its code and slug.
+  - `[false]` `[reject]` advisor pairs include `%DB_IRISSYS:WRITE` -- measured in Task 0 and decided in-stage; stricter than the classic page.
+  - `[false]` `[reject]` Copy from keeps a typed name -- decided in-stage; the matrix's empty name holds for a form nothing was typed into.
+  - `[low]` `[reject]` the Copy from picker's list read is capped at 1000 without a notice -- an instance with more web applications than that is not a case any measured instance reaches.
+  - `[low]` `[reject]` the mail descriptor carries `ReadOnly` beyond the matrix's five members -- it is the config roster family's own field.
+  - `[false]` `[reject]` the matrix's 173 rows were not observed -- the test compares to the pane at run time, and 173 was slot A's count, which the throwaway need not equal.
+  - `[false]` `[reject]` the substitution check calls the vendor -- the matrix's "no vendor call" means no `EmailSet`, which the tests record.
+
+### 2026-11-19 -- Review pass (rework 1)
+
+- verdicts: 1 finding -- high 0, medium 0, low 1, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` the email screen's own-pair verdict is asserted on the navigation map only, and the test's doc-comment mutation names Background tasks alone -- the read's 403 is pinned by `TaskMailSettingRead`, and this pass's mutation is in `## Verification`.
 
 ## Design Notes
 
@@ -146,6 +211,20 @@ deferred:
 - Copy from copies no `%`-class access, as the classic page does on a create.
 - The tree held another stage's uncommitted Story 21.12 files at this plan's start; this stage wrote only its spec.
 - The epic context is reused as the runner instructed.
+- Batch 3: `warmEditPage` is exported from `screen-outlet.ts` and imported by the three create pages; `build-output.test.mjs` and the lazy-load tooling accepted it (initial bundle 2.18 MB). It resolves on a missing descriptor or a failed chunk, and the page's `handingOff` keeps its own Saved hidden for the whole hand-off.
+- Batch 3, Copy from: the picker's empty choice reuses "None" through `STRINGS.sslVerifyPeerNone` (`strings.test.mjs` holds every value unique), so no string is added; the form fills the type its source's fields describe (dispatch class: REST, application file: Python) and the source's methods the instance offers, keeps a typed name through a choice or its clearing, and a refused read returns the select to the source the form holds.
+
+**Batch 4 state:**
+
+- PM-24 is built and verified on `ocupilot-ci`: `Port/ResourceTransferPort.cls`, `Api/ResourceFileError.cls`, `Screen/Tool/ResourceExport.cls`, `ResourceExportMint.cls`, `ResourceImport.cls`; `ResourceList.cls` row actions `export`, `export-all`, `import`, `import-local`; the add-only rows (`Baseline.cls` export `true` and import `false`, `AdminPort` `ResourceTransfer/EXPORT` and `/IMPORT`, `Error.cls`, `Prohibited.cls`, `strings.ts`, `proposal-view.ts`); client `resource-list.page.ts`, `explorer-export-dialog.ts`; tests `Test/ResourceTransferFixture`, `ResourceTransferRead`, `ResourceTransferWrite`, `ui/tools/resource-transfer.test.mjs`, `resource-transfer.spec.ts`, `ui/browser/resources-transfer.browser-spec.mjs`.
+- PM-24 pairs, measured on `ocupilot-ci` (2026-11-20, a throwaway user whose role held `%Admin_Secure:USE` and `%DB_IRISSYS:READ` only, in a jobbed process after `$SYSTEM.Security.Login`): `Security.Resources` `Export` of every resource, `Import` with `Flags` 1 and with `Flags` 0 all succeed in `%SYS` (185 resources exported; the one resource imported and then held). `%DB_IRISSYS:WRITE` is not needed, so `ResourceTransferPort.PAIRS` stays `%Admin_Secure:USE,%DB_IRISSYS:READ` and no tool declares `WRITEPAIRS`.
+- TM-17 and TM-18's password move to Story 21.36 (Spec Change Log): `TaskDetails.cls` carries no `OutputFile` and no Open output action, and no `tasks.mail.password` tool exists.
+
+**Task 0, measured on `ocupilot-ci` (2026-11-19, a throwaway user whose role held exactly the listed pairs, run in a jobbed process after `$SYSTEM.Security.Login`):**
+
+- (a) `%Admin_Secure:USE` + `%DB_IRISSYS:READ` is not enough: `GetRecommendations` raises `<PROTECT>` at `$ZU(69,64)` (`GetServiceRecommendations+14`), and adding `%Admin_Manage:USE` does not help. With `%DB_IRISSYS:WRITE` added it reads (184 rows on `ocupilot-ci`), `SetIgnoreFlag(...,1,"")` and `(...,0,"")` run with the null device current (`Open <null>::1`; `Open <null>:1` fails with `$Test` 0), and the flag reads back `1` then empty. No pair beyond `%DB_IRISSYS:WRITE` is needed, so there is no halt. **Decided:** `AdvisorPort.PAIRS` is `%Admin_Secure:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE` for the read and both writes, so no tool declares `WRITEPAIRS`; the screen's privilege set carries the same three pairs. This is stricter than the classic page's `%Admin_Secure` alone, never looser.
+- (b) `%Admin_Manage:USE` + `%DB_IRISSYS:READ` (ConfigPort's `PAIRS`) reads all 12 non-secret `EmailGet` names, and `EmailSet("Port", ...)` succeeds with those pairs alone: no `WRITEPAIRS` for `tasks.mail.set`. Each set writes one `%System/%System/ConfigurationChange` row, `Modify Task Config.MailPort`, so a set and its restore wrote two.
+- (c) Not re-measured: Story 21.24 recorded it in the spine (AD-35, `Config.MailAuthPassword`, Base64 in `Old value` and `New value`, measured 2026-11-16).
 
 **Declined:** none. DW-2372 and DW-2471 are addressed in Batch 3 (AC4, AC5).
 
@@ -156,9 +235,7 @@ deferred:
 **Records Batch 4 needs (the halt; proposed text for the runner and owner):**
 
 - **PM-24, AD-51 named entry:** "Story 21.19's case: `TaskTransferPort` (or a sibling `ResourceTransferPort`) builds `Security.Resources.Export`'s and `Import`'s file argument from the export and import tools' declared `root` and `path`, resolved through `PathPort` at the write, or from the screen's local text through a temporary file OcuPilot names and deletes; it answers the import's fresh read with the file's resource names (`Flags` 1) and refuses an import whose file no longer yields them." Plus an AD-21 consumer line on 16.4's and 21.15's model: the export an overwriting `file` whose overwrite is a constant, the import a `source`, local text a screen value.
-- **TM-17, an AD-21 case:** AD-21's third case lets a task write only `<ManagerDirectory>` plus a single-segment `.txt` name; no case reads a file whose path a task definition stores, and the fifth case's precedent (a name derived from instance state) took its own record. Proposed: "A task's output file is read only when its stored `OutputDirectory` normalizes to `<ManagerDirectory>`, computed at call time, and its `OutputFilename` matches the third case's pattern; it is read through `LogSourcePort` under the task screens' pairs, bounded, and any other location is shown, never read."
-- **TM-18's password, an AD-35 declaration:** "The sixth declaration: `%SYS.Task.Config.AuthPassSet` writes the Task Manager mail password, Base64-encoded, as the `New value` and `Old value` of its `%System/%System/ConfigurationChange` row for `Config.MailAuthPassword`, so the audit read masks both values for that row on both paths." This mask is needed whoever sets the password (frontmatter `deferred`).
-- Recommended: the owner allows the three records (A), or Batch 4 moves to Story 21.21 with the owner-gated leaves (B). Either way Batches 1-3 can be built now.
+- TM-17's AD-21 case and TM-18's password record (the AD-35 mask for the `ConfigurationChange` row, already in `AuditPort.VENDORCONFIGSECRETS` from Story 21.24) belong to Story 21.36.
 
 **Strings, escalated for the spec gate's ruling** (proposed wording; nothing is used until ruled):
 
@@ -183,12 +260,34 @@ Shared surfaces (each is in the `(loop)` set; the implement stage greps `ui/brow
 
 Every test added or changed passes on a fresh environment, in either order. Each pinning test records `mutation:` lines here:
 
-- AC1: `IGNORE` skips `SetFlag`.
-- AC2: drop the `Port` range rule.
-- AC3: copy `Path` too.
-- AC4: navigate before the warm resolves.
-- AC5: restore the `server-fault` mapping at `screen-read.ts:230-234`.
-- AC6: the key fallback.
+- AC1: `IGNORE` skips `SetFlag`. mutation: `AdvisorPort.Control` sets `tSC = $$$OK` in place of the `SetFlag` call -> `AdvisorWrite` 4 of 4 red (person, agent, seam, key legs; run 904), reverted and reloaded, 180 rows / 0 ignored as before.
+- AC1 (words): `ui/tools/advisor-strings.test.mjs`. mutation: `AuditingON=Auditing is enabled` respelled `Auditing is turned on` in `AdvisorPort.cls`'s `ADVISORTEXTS` -> 2 of 5 red (the EXPERIENCE.md literal and string-source legs), file restored byte-identical (shasum equal; never loaded, so no reload).
+- AC1 (browser): `ui/browser/security-advisor.browser-spec.mjs`. mutation: `screen-action-handler.ts`'s send maps `ignore` to `unignore` -> AC2 red (the Ignored cell never changes, the instance reads the row not ignored), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green; the ignored count is 0 before and after.
+- AC2: drop the `Port` range rule. mutation: `ConfigSettingRules.TaskMailCode` loses its `MAXPORT` comparison -> `TaskMailSettingRules` 2 of 5 red (the 65536 and 99999 rows with a vendor call recorded, and the mint; run 969), reverted (shasum equal) and reloaded, 5 of 5 green. Also: `ConfigPort.CollectRoster` ignores `ReadMail`'s status -> `TaskMailSettingRead` 1 of 7 red (a failed read is a fault, run 974); `SendNode` sends no `EmailSet` -> `TaskMailSettingWrite` 2 of 4 red (read-back `differs`, run 975); the page's `multiline` binding removed -> the spec's message leg red.
+- AC3: copy `Path` too. mutation: `fill` in `create-form.store.ts` also sets `next['Path'] = textAt(source, 'Path')` -> `create-form.store.spec.ts` 1 of 16 red (`value('Path')` reads `/probe/path/`), reverted (shasum equal).
+- AC4: navigate before the warm resolves. mutation: `void warmEditPage(...)` in place of the `await` in the web application create page -> `create-form.page.spec.ts` 1 of 5 red (navigation while the loader is held), reverted (shasum equal). Browser: the `handingOff` check dropped from `showSaved` on all three create pages, rebuilt and redeployed -> the held-chunk leg red in `web-applications-create`, `users-create` and `roles-create` (a `Saved` status shows while the chunk is held), reverted (shasum equal), rebuilt and redeployed, all green.
+- AC5: restore the `server-fault` mapping at `screen-read.ts`. mutation: the unreadable `ok` answer mapped to `server-fault` -> `screen-read.test.mjs` 1 of 15, `web-app-class-access-tab.spec.ts` 1 of 23 (the unreadable leg, which now passes through the shared read) and `list-page.spec.ts` 1 of 38 red, reverted (shasum equal).
+- AC6 (tasks.mail.set): the key fallback. mutation: the `tasks.mail.set` line removed from `Baseline.cls` -> `TaskMailSettingRead` 1 of 7 red (the baseline leg and the mint; run 971), reverted (shasum equal) and reloaded, 7 of 7 green.
+- AC6: the key fallback. mutation: the `security.advisor.unignore` line removed from `Baseline.cls` (an absent key reads disabled) -> `AdvisorWrite` 2 of 4 red (the agent's mint and the baseline leg; run 905), reverted and reloaded.
+- AC1 (cap): mutation: the advisor branch of `Read.Execute` asks the port for `tMax` rows in place of `tMax + 1` -> `AdvisorRead` 1 of 8 red (the cut is never reported; run 1156), reverted and reloaded.
+- AC1 (grammar): mutation: `Registry.ReadProblem`'s advisor arm drops its `type` check -> `AdvisorRead` 1 of 8 red (run 1158), reverted and reloaded.
+- AC1 (agent, row gone): mutation: `AdvisorPort.Find` answers an unlisted recommendation as found -> `AdvisorWrite.TestTheAgentsProposalIsRefusedWhenTheRowChangedOrIsGone` red with two others (run 1162), reverted and reloaded. The changed-after-mint leg now asserts `409 PROPOSAL.TARGETCHANGED`. mutation: `SecurityAdvisorIgnore.FINGERPRINTSUBJECT` set to `Code` -> that test red with three others (run 1224), reverted, 5 of 5 green (run 1225).
+- AC1 (`_PUBLIC` roles line): mutation: `Listed` skips `PublicRoles` -> `AdvisorRead.TestThePublicRolesLineReadsTheRolesPublicHolds` 1 of 9 red (run 1222), reverted and reloaded.
+- AC2 (`UseSTARTTLS` and messages, DW-2788): mutation: `ConfigPort.SendNode` sends no `EmailSet` -> `TaskMailSettingWrite.TestTheStartTlsFlagAndTheMessagesRoundTripThroughTheVendor` red with two others (run 1232), reverted (diff empty), 5 of 5 green (run 1233).
+- AC4 (second Save during the hand-off): mutation: the `handingOff()` check dropped from the web application create page's `onSave` guard -> `create-form.page.spec.ts` 1 of 6 red (two creates sent), reverted.
+- AC4 (hand-off tolerance): mutation: the `try`/`catch` removed from `warmEditPage` -> `screen-outlet.spec.ts` 1 of 33 red, reverted (the file's diff from the baseline read as before). The unknown-descriptor case reddens only with the `Object.hasOwn` guard and the `try`/`catch` both removed (2 of 33 red at review), reverted.
+- PM-24 (consequence card): mutation: the `CONSEQUENCE_RESOURCEFILEIMPORT` branch dropped from `consequenceSentence` -> `proposal-view.test.mjs` 1 red, restored.
+- PM-24 (import writes): mutation: `ResourceTransferPort.SendImport` passing `Flags` 1 -> `ResourceTransferWrite` 1 of 2 red (the screen's and the agent's imports; run 1021), reverted (shasum equal) and reloaded.
+- PM-24 (review): mutation: `Review` adding 0 in place of 1 for a resource the instance holds -> `ResourceTransferRead` 1 of 7 red (the replaced count; run 1022), reverted (shasum equal).
+- PM-24 (export directory): mutation: `ExportFile` with its directory check made unreachable -> `ResourceTransferRead` 1 of 7 red (a name whose directory is absent; run 1023), reverted (shasum equal).
+- PM-24 (gate): mutation: `Invoke` with its `Gate` check made unreachable -> `ResourceTransferRead` 1 of 7 red (the denial test; run 1024), reverted (shasum equal).
+- PM-24 (own resources): mutation: `Prohibited.ImportedResources` stopping after the first entry -> `ResourceTransferRead` 1 of 7 red (every second-entry row and the port's refusal; run 1025), reverted (shasum equal) and reloaded.
+- PM-24 (changed since review, import outside the allowed directories): mutations applied together, each in its own method: `Import` without its reviewed-values comparison, and `ImportText` reading the server file without `Locate` -> `ResourceTransferRead` 2 of 8 red, the two targeted methods (run 1227; the vendor import armed to fail, `T21Pm24Rd1` absent afterwards), reverted (diff empty).
+- PM-24 (the 2,000 bound): mutation: `Review` refusing at `>=` the cap -> `ResourceTransferRead` 1 of 8 red (run 1236), reverted and reloaded.
+- PM-24 (kernel route): mutation: `Prohibited.Prohibits` not calling `ResourceImport` for a resource import -> `ResourceTransferWrite` 1 of 2 red, on the kernel's own row only (run 1229), reverted (diff empty), 2 of 2 green (run 1230).
+- PM-24 (client): mutation: `resource-list.page.ts` sending `export` for the all target -> `resource-transfer.spec.ts` 1 of 6 red (the body assertion), reverted (shasum equal). Browser: the `export` registration dropped, rebuilt and redeployed -> `resources-transfer.browser-spec.mjs` 1 of 2 red (no export dialog opens), reverted (shasum equal), rebuilt and redeployed, 2 of 2 green.
+- PM-24 (Resources row actions, `PermissionsLists`): mutation: `export-all` removed from `ResourceList`'s `rowActions` -> `PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces` 1 of 7 red (the row-action roster), reverted (diff empty) and reloaded, 7 of 7 green.
+- AC2 (Task Manager email own pair, `BackgroundTasksLive`): mutation: `%Admin_Manage:USE` removed from `TaskMailSettingList`'s `privileges` (its `ownPrivileges` left as is) -> `BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks` 1 of 9 red (the email screen reads open), reverted (diff empty) and reloaded, 9 of 9 green.
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
@@ -200,11 +299,17 @@ Every test added or changed passes on a fresh environment, in either order. Each
 - `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` (loop) -- expected: clean.
 - The full ObjectScript sweep over `src/OcuPilot/Test` (once, before `dev_complete`), one class per call or batches sized from `ui/tools/ci-timings.json` to about 8 minutes -- expected: green. The full browser suite is left to CI (Rule 29).
 
-**Runner ruling at the spec gate (2026-11-16):** Batch 4 (PM-24, TM-17, TM-18's password) moves to Story 21.21, which waits on the owner for the three records; this story builds Batches 1 to 3. The mail-password audit exposure is ledgered as DW-2625 (decision-pending, owner item requested). The escalated strings and named limits are kept (veto U-69).
-
-**Owner answer U-70 (2026-11-16, "A: all three + mask (Recommended)"):** the AD-51 entry and AD-21 consumer line for PM-24 and the AD-21 case for TM-17 are written into the spine as proposed above; the AD-35 record names the mail-password row. Batch 4 is built in this story; the audit mask itself is Story 21.24's and is already in the code, so TM-18's password task is the secret-only write alone.
+**Rulings (2026-11-20):** this story closes with Batches 1 to 3 and PM-24; TM-17 and TM-18's password are Story 21.36's (Spec Change Log). PM-24's ten strings are accepted as written in `strings.ts` and EXPERIENCE.md's Fixed strings.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change (rework 1).** Both CI reds were test-shape updates, not product defects. `PermissionsLists` now expects `ResourceList`'s row actions `delete,export,export-all,import,import-local` (PM-24, by design). `BackgroundTasksLive` now expects `tasks/email=%Admin_Manage:USE` among a tasks holder's verdicts: `TaskMailSettingList` declares that own pair on purpose, as Background tasks does for `%Admin_Operate:USE`. No product file changed.
+
+**Review.** 1 finding (low), rejected with its reason in the Review Triage Log; no patches, nothing deferred. Follow-up review recommended: false (a follow-up pass that patched no high has converged).
+
+**Verification.** On `ocupilot-ci`, full classes, one per call: `PermissionsLists` 7 of 7, `BackgroundTasksLive` 9 of 9, `BackgroundTasks` 13, `AdvisorRead` 9, `AdvisorWrite` 5, `ResourceCreate` 8, `ResourceDelete` 6, `ResourceTransferRead` 8, `ResourceTransferWrite` 2, `ResourceUpdate` 8, `ResourceWire` 5, `WebApp` 26, `WebAppCreate` 10, `WebAppLocation` 5, `WebAppPctAccess` 11, `WebAppRolesRead` 2, `WebAppSave` 7, `WebAppWeakening` 9, `WebAppWire` 6, all green; `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues. Mutation lines for both changed assertions are in `## Verification`.
+
+**Residual risk.** Both tests hold a literal roster pin, so a later screen or row action in either area reddens them again, by design.

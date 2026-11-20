@@ -335,6 +335,9 @@ const KERNEL_REFUSALS = [
   ['MIRRORDATABASES', 'mirrorRefusalDatabases'],
   // Story 24.5: a call of the unit-test runner through a tool the agent can reach, which either caller is refused with.
   ['PERSONONLY', 'personOnlyRefusal'],
+  // Story 21.5: a global that holds OcuPilot's own data or the instance's protected system data, which either caller is refused changing or
+  // deleting, and which the Globals list and the node page draw on the action before a click for a global OcuPilot's own name begins.
+  ['PROTECTEDGLOBAL', 'globalRefusalProtected'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -349,6 +352,24 @@ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings
     assert.equal(kernel[1], stringValue(key), `${code}REASON and ${key} are one published sentence`);
     assert.ok(prohibited.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
     assert.ok(!kernel[1].toLowerCase().includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
+  }
+});
+
+// A code that carries a second sentence for one case: `Prohibits` answers it in `pReason`, and `ReasonFor` keeps the code's default.
+const KERNEL_REFUSAL_VARIANTS = [['STARTUPKMIP', 'STARTUPKMIPJOURNAL', 'encryptionStartupKmipJournalRefusal']];
+
+test('Story 21.10, AD-53: each variant sentence of a kernel refusal is published verbatim in Fixed strings and is the sentence its arm answers', () => {
+  // Mutation (Rule 19): change one word of a variant parameter, or let its arm answer the code's default sentence -> that row goes red.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [code, variant, key] of KERNEL_REFUSAL_VARIANTS) {
+    const kernel = new RegExp(`Parameter ${variant}REASON = "([^"]+)";`).exec(prohibited);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${variant}REASON`);
+    assert.ok(experience.includes(`"${kernel[1]}"`), `${variant}REASON is published in EXPERIENCE.md's Fixed strings table`);
+    assert.equal(kernel[1], stringValue(key), `${variant}REASON and ${key} are one published sentence`);
+    assert.ok(prohibited.includes(`Set pReason = ..#${variant}REASON`), `the ${code} arm answers ${variant}REASON in pReason`);
+    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${variant}REASON names no caller: ${kernel[1]}`);
+    assert.ok(kernel[1].includes('classic Database Encryption page'), `${variant}REASON names the classic page`);
   }
 });
 
@@ -597,6 +618,26 @@ test('Story 23.4: the started write\'s sentence is one sentence on both surfaces
   assert.notEqual(server, null, 'PortError.cls declares REASONSTARTED');
   assert.equal(server[1], stringValue('auditDatabaseStillRunning'), 'REASONSTARTED and auditDatabaseStillRunning are one published sentence');
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "REASONSTARTED's sentence is published in EXPERIENCE.md's Fixed strings");
+});
+
+/** Story 21.20's two error classes: `[file, parameter, strings.ts key]`. */
+const SQL_ACTIVITY_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'SqlActivityError.cls');
+const MONITOR_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'MonitorError.cls');
+const STORY_21_20_REFUSALS = [
+  [SQL_ACTIVITY_ERROR, 'REASONREMOTE', 'sqlActivityRemoteReason'],
+  [SQL_ACTIVITY_ERROR, 'REASONENDED', 'sqlActivityEndedReason'],
+  [SQL_ACTIVITY_ERROR, 'REASONNOPRIVILEGE', 'sqlActivityNoPrivilegeReason'],
+  [MONITOR_ERROR, 'REASONNOTRUNNING', 'transactionsNotRunning'],
+];
+
+test('Story 21.20: each SQL activity and monitor refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONENDED in SqlActivityError.cls -> this goes red naming both.
+  for (const [file, parameter, key] of STORY_21_20_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
 });
 
 /** Story 18.15's enable tool, which declares the refusal of %SYS and %ALL. */
@@ -1095,4 +1136,49 @@ test('Story 18.40, C4: no tool, read or screen class names the egress row or its
     return /State\.Egress\b/.test(source) || source.includes('switches/egress');
   });
   assert.deepEqual(naming, [], 'no class under Screen/ reaches the egress row or its route');
+});
+
+test("Story 21.5: protected-global answers the sentence for a name beginning with OcuPilot in any case, with or without ^, and nothing for another global", async () => {
+  // Mutation (Rule 19): compare the stem case-sensitively in `selfProtectionReason` -> the upper-case leg goes red.
+  const { selfProtectionReason, PROTECTED_GLOBAL_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(PROTECTED_GLOBAL_RULE, 'protected-global');
+  for (const name of ['OcuPilotTurnSignal', 'ocupilotx', 'OCUPILOTX', '^OcuPilotTurnSignal']) {
+    assert.equal(selfProtectionReason(PROTECTED_GLOBAL_RULE, name), STRINGS.globalRefusalProtected, name);
+  }
+  for (const name of ['ZZProbe', 'oddDEF', '%ocupilot', '']) assert.equal(selfProtectionReason(PROTECTED_GLOBAL_RULE, name), '', `'${name}' is not protected by name`);
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('protected-global'), 'the instance declares the rule in SELFPROTECTIONRULES');
+});
+
+test('Story 21.20: sql-statement-remote answers the sentence for a row on another server and nothing for a local one', async () => {
+  // Mutation (Rule 19): drop the `Remote` read in `selfProtectionReason` -> the remote leg goes red.
+  const { selfProtectionReason, SQL_STATEMENT_REMOTE_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(SQL_STATEMENT_REMOTE_RULE, 'sql-statement-remote');
+  const key = 'host:1972\u000142\u0001abc';
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', { Remote: true }), STRINGS.sqlActivityRemoteReason);
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', { Remote: false }), '');
+  assert.equal(selfProtectionReason(SQL_STATEMENT_REMOTE_RULE, key, '', null), '');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('sql-statement-remote'), 'the instance declares sql-statement-remote');
+});
+
+test('Story 21.16: locale-table answers a row that is no table, else the refusal the row carries, and locale-loadable a row that is not loadable', async () => {
+  // Mutation (Rule 19): answer the refusal before the row's Kind in `selfProtectionReason` -> the first leg goes red.
+  const { selfProtectionReason, LOCALE_TABLE_RULE, LOCALE_LOADABLE_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(LOCALE_TABLE_RULE, 'locale-table');
+  assert.equal(LOCALE_LOADABLE_RULE, 'locale-loadable');
+  const key = 'yzzw\u0001DateFormat';
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'integer', Refusal: 'LOCALE.EDIT.CURRENT' }), STRINGS.localeRefusalTableRow);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: 'LOCALE.EDIT.CURRENT' }), STRINGS.localeRefusalEditCurrent);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: 'LOCALE.EDIT.SYSTEM' }), STRINGS.localeRefusalEditSystem);
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', { Kind: 'table', Refusal: '' }), '');
+  assert.equal(selfProtectionReason(LOCALE_TABLE_RULE, key, '', null), '');
+  assert.equal(selfProtectionReason(LOCALE_LOADABLE_RULE, key, '', { Loadable: false }), STRINGS.localeRefusalTableNotLoadable);
+  assert.equal(selfProtectionReason(LOCALE_LOADABLE_RULE, key, '', { Loadable: true }), '');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('locale-table'), 'the instance declares locale-table');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('locale-loadable'), 'the instance declares locale-loadable');
 });

@@ -38,7 +38,9 @@ const {
   CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED,
   CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
   CONSEQUENCE_PRIVILEGED,
+  CONSEQUENCE_RESOURCEFILEIMPORT,
   CONSEQUENCE_PURGEMARKERS,
+  CONSEQUENCE_AUDITEXPORT,
   CONSEQUENCE_COPYMAPPINGS,
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
@@ -68,6 +70,11 @@ const {
   CONSEQUENCE_BACKUPFREEZE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
+  CONSEQUENCE_CONFIGNLSRELOAD,
+  CONSEQUENCE_LOCALEINSTALL,
+  CONSEQUENCE_LOCALEDELETE,
+  CONSEQUENCE_GLOBALDELETE,
+  CONSEQUENCE_GLOBALNODEDELETE,
   CONSEQUENCE_CONFIGSETTINGPURGE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
@@ -96,6 +103,8 @@ const {
   CONSEQUENCE_SUPERSERVERSERVES,
   CONSEQUENCE_MFTDELETE,
   CONSEQUENCE_MFTREVOKE,
+  CONSEQUENCE_SYSTEMSECURITYSET,
+  CONSEQUENCE_PHONEPROVIDERDELETE,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
@@ -290,6 +299,14 @@ test('the two privilege-grant consequence codes resolve to their published sente
   assert.equal(consequenceSentence(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED), STRINGS.privilegedGrantEffectUnauthenticated);
 });
 
+// Story 21.19: the resource import's consequence code resolves to the import's published sentence.
+//
+// Mutation (Rule 19): drop the CONSEQUENCE_RESOURCEFILEIMPORT branch from `consequenceSentence` -> this goes red.
+test("the resource import's consequence code resolves to its published sentence", () => {
+  assert.equal(CONSEQUENCE_RESOURCEFILEIMPORT, 'RESOURCEFILE.IMPORT');
+  assert.equal(consequenceSentence(CONSEQUENCE_RESOURCEFILEIMPORT), STRINGS.resourceImportConsequence);
+});
+
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own
 // consequence code, read here from `AuditPurge.cls` rather than restated, and the card says what it
 // removes.
@@ -301,6 +318,18 @@ test("the audit purge's consequence code is the tool's own and resolves to its p
   assert.ok(declared, 'AuditPurge.cls declares its consequence code');
   assert.equal(CONSEQUENCE_PURGEMARKERS, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_PURGEMARKERS), STRINGS.auditPurgeMarkersEffect);
+});
+
+// Story 21.10, AC3: the agent's audit export carries the export tool's own consequence code, read here from
+// `AuditExport.cls` rather than restated, and the card says what the file holds.
+//
+// Mutation (Rule 19): drop the AUDITEXPORT branch from `consequenceSentence` -> this goes red.
+test("the audit export's consequence code is the tool's own and resolves to its published sentence", () => {
+  const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'AuditExport.cls'), 'utf8');
+  const declared = /^Parameter CONSEQUENCE = "([^"]+)";/m.exec(source);
+  assert.ok(declared, 'AuditExport.cls declares its consequence code');
+  assert.equal(CONSEQUENCE_AUDITEXPORT, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_AUDITEXPORT), STRINGS.auditExportEffect);
 });
 
 // Story 18.14, AD-10: a global mapping whose name begins with `%` is permitted at the strongest
@@ -1142,6 +1171,34 @@ test('Story 18.26: a connection delete and a token revoke state their consequenc
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionRevoke'))?.[1], CONSEQUENCE_MFTREVOKE, 'MftConnectionRevoke.cls declares the revoke code the card reads');
 });
 
+// Story 21.10: a change of a system-wide security parameter states what it reaches on the card, under the code its tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_SYSTEMSECURITYSET` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.10: a system-wide security change states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMSECURITYSET), STRINGS.systemSecuritySetConsequence);
+  assert.match(STRINGS.systemSecuritySetConsequence, /signs in, is locked out, or is checked/, 'the sentence names what a change reaches');
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'SystemSecuritySettingSet.cls'), 'utf8');
+  assert.equal(/Parameter SECURITYCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_SYSTEMSECURITYSET, 'SystemSecuritySettingSet.cls declares the code the card reads');
+});
+
+// Story 21.10: a mobile phone provider's deletion states its consequence on the card, under the code its tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_PHONEPROVIDERDELETE` line from `consequenceSentence` -> the first assertion goes red on ''.
+test('Story 21.10: a mobile phone provider delete states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_PHONEPROVIDERDELETE), STRINGS.phoneProviderDeleteConsequence);
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'PhoneProviderDelete.cls'), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_PHONEPROVIDERDELETE, 'PhoneProviderDelete.cls declares the code the card reads');
+});
+
+// Story 21.10: the provider's in-use refusal and delete consequence are one sentence on the server and in the strings table.
+// Mutation (Rule 19): change one word of REASONINUSE in PhoneProviderError.cls -> this goes red.
+test('Story 21.10: the phone provider sentences the server sends equal their strings', () => {
+  const error = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'PhoneProviderError.cls'), 'utf8');
+  const server = (parameter) => new RegExp(`^Parameter ${parameter} = "([^"]*)";`, 'm').exec(error)?.[1];
+  assert.equal(server('REASONINUSE'), STRINGS.phoneProviderInUse);
+  assert.equal(server('REASONDELETE'), STRINGS.phoneProviderDeleteConsequence);
+});
+
 // Story 20.16: the two consequences whose confirmed card reports the compile are the explorer save's and the editor save's, and no other.
 // Mutation (Rule 19): add a third code to the set -> this goes red.
 test('the code-save consequences are the explorer save\'s and the editor save\'s alone', () => {
@@ -1185,6 +1242,17 @@ test('Story 21.13: a DDL mapping delete states the delete sentence on the card',
   }
 });
 
+// Story 21.14: the locale-format switch, a locale's install and a locale's delete each state their published sentence on the card.
+// Mutation (Rule 19): delete the `CONSEQUENCE_LOCALEINSTALL` line from `consequenceSentence` -> the install assertion goes red on ''.
+test('Story 21.14: the locale cards state the sentence their consequence code names', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_CONFIGNLSRELOAD), STRINGS.nlsDefaultReloadConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_LOCALEINSTALL), STRINGS.localeInstallConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_LOCALEDELETE), STRINGS.localeDeleteConsequence);
+  for (const sentence of [STRINGS.nlsDefaultReloadConsequence, STRINGS.localeInstallConsequence, STRINGS.localeDeleteConsequence]) {
+    assert.notEqual(sentence, '', 'each code names a published sentence');
+  }
+});
+
 // Story 21.4: a SQL setting whose change purges the cached queries of every namespace states the purge sentence on the card, under the code the
 // abstract set tool declares as its purge code, which the four SQL set tools inherit.
 // Mutation (Rule 19): delete the `CONSEQUENCE_CONFIGSETTINGPURGE` line from `consequenceSentence` -> the first assertion goes red on ''.
@@ -1211,4 +1279,11 @@ test('Story 24.10: the analytics deletes and the entry remove state their conseq
     assert.ok(typeof sentence === 'string' && sentence !== '', `${code} has a published sentence`);
     assert.equal(view.consequenceSentence(code), sentence, `${code} reads its published sentence`);
   }
+});
+
+test('Story 21.5: the global delete cards state the sentence their consequence code names', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_GLOBALDELETE), STRINGS.globalDeleteConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_GLOBALNODEDELETE), STRINGS.globalNodeDeleteConsequence);
+  assert.notEqual(STRINGS.globalDeleteConsequence, '', 'the global delete code names a published sentence');
+  assert.notEqual(STRINGS.globalNodeDeleteConsequence, '', 'the node delete code names a published sentence');
 });

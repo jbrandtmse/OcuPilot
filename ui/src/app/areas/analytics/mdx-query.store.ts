@@ -39,6 +39,23 @@ import { STRINGS } from '../../core/strings';
 /** The MDX run's start route; its poll and cancel routes are `runPath`'s under it. */
 export const MDX_BACKGROUND_PATH = '/api/ocupilot/analytics/mdx/background';
 
+/** A saved pivot's run start route (Story 24.14), MDX query's run over the pivot's own composed MDX. */
+export const PIVOT_BACKGROUND_PATH = '/api/ocupilot/analytics/pivot/background';
+
+/**
+ * Which run a state sends: its start route, the body key that carries the run's text (the statement, or a saved pivot's full name), and whether it
+ * offers cubes to pick from. A saved pivot's run is the same state over its own route, sending `{ item }` in place of `{ statement }`.
+ */
+export interface MdxRunKind {
+  readonly path: string;
+  readonly textKey: string;
+  readonly cubes: boolean;
+}
+
+export const MDX_RUN_KIND: MdxRunKind = { path: MDX_BACKGROUND_PATH, textKey: 'statement', cubes: true };
+
+export const PIVOT_RUN_KIND: MdxRunKind = { path: PIVOT_BACKGROUND_PATH, textKey: 'item', cubes: false };
+
 /** The machine code a start answers when the caller's own MDX run is still running. */
 export const MDX_BUSY_CODE = 'ANALYTICS.MDX.BUSY';
 
@@ -62,6 +79,8 @@ const REFUSAL_SENTENCES = new Map<string, string>([
   ['ANALYTICS.MDX.FULL', STRINGS.analyticsRefusalMdxFull],
   ['ANALYTICS.MDX.NOTFOUND', STRINGS.analyticsRefusalMdxNotFound],
   ['ANALYTICS.MDX.LOST', STRINGS.analyticsRefusalMdxLost],
+  ['ANALYTICS.FOLDERITEM.ABSENT', STRINGS.analyticsRefusalFolderItemAbsent],
+  ['ANALYTICS.PIVOT.CUBE', STRINGS.analyticsRefusalPivotCube],
 ]);
 
 /** The sentence a refusal shows: a privilege denial names the pair it lacks (AD-8), a known code its own, any other the envelope's (AD-39). */
@@ -117,10 +136,7 @@ export class MdxQueryState {
   /** The namespace the page is in: the one the cubes on offer were read for, or `null` before any read. */
   private cubesScope: string | null = null;
 
-  private readonly run: BackgroundRun<MdxAnswer> = new BackgroundRun<MdxAnswer>(
-    { path: MDX_BACKGROUND_PATH, busyCode: MDX_BUSY_CODE, answerOf: mdxAnswerOf, refusalText: mdxRefusalText },
-    () => this.adopt()
-  );
+  private readonly run: BackgroundRun<MdxAnswer>;
 
   /** What a start answered without starting a run: an error outcome. */
   private immediateValue: MdxAnswer | null = null;
@@ -146,6 +162,10 @@ export class MdxQueryState {
   private refusalValue = '';
 
   private readonly listeners = new Set<() => void>();
+
+  constructor(private readonly kind: MdxRunKind = MDX_RUN_KIND) {
+    this.run = new BackgroundRun<MdxAnswer>({ path: kind.path, busyCode: MDX_BUSY_CODE, answerOf: mdxAnswerOf, refusalText: mdxRefusalText }, () => this.adopt());
+  }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -245,6 +265,8 @@ export class MdxQueryState {
     const generation = ++this.cubesGeneration;
     const scope = deps.scope();
     this.cubesScope = scope;
+    // A run with no cube picker only records the namespace the page is in, which a drill is judged against.
+    if (!this.kind.cubes) return;
     const screen = screenForDescriptor(MDX_CUBES_DESCRIPTOR);
     let names: readonly string[] = [];
     if (screen !== null && screen.read !== null) {
@@ -268,7 +290,7 @@ export class MdxQueryState {
   async runStatement(deps: MdxQueryDeps): Promise<void> {
     const statement = this.textValue;
     if (this.run.busy() || statement.trim() === '') return;
-    await this.send(deps, { statement }, { statement, confirmed: false, drill: false, namespace: deps.scope() });
+    await this.send(deps, { [this.kind.textKey]: statement }, { statement, confirmed: false, drill: false, namespace: deps.scope() });
   }
 
   /** Proceed: send the statement the confirmation was asked for, once more, with the confirmation. */
@@ -278,7 +300,7 @@ export class MdxQueryState {
     this.confirmValue = null;
     this.notify();
     if (pending.namespace !== deps.scope() || this.run.busy()) return;
-    await this.send(deps, { statement: pending.statement, confirmed: true }, { statement: pending.statement, confirmed: true, drill: false, namespace: pending.namespace });
+    await this.send(deps, { [this.kind.textKey]: pending.statement, confirmed: true }, { statement: pending.statement, confirmed: true, drill: false, namespace: pending.namespace });
   }
 
   /** Cancel: the confirmation closes and nothing is sent. */
@@ -296,7 +318,7 @@ export class MdxQueryState {
   async drill(deps: MdxQueryDeps, row: number, column: number): Promise<void> {
     const shown = this.shownRun;
     if (this.run.busy() || this.cellsValue === null || shown === null || shown.namespace !== deps.scope()) return;
-    const request: Record<string, unknown> = { statement: shown.statement, drill: { row, column } };
+    const request: Record<string, unknown> = { [this.kind.textKey]: shown.statement, drill: { row, column } };
     if (shown.confirmed) request['confirmed'] = true;
     await this.send(deps, request, { statement: shown.statement, confirmed: shown.confirmed, drill: true, namespace: shown.namespace });
   }

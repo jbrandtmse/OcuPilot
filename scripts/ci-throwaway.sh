@@ -378,6 +378,8 @@ services:
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
+      # The locale write class signs in as principals holding the Locale properties screen's write pairs, and its read pairs alone (Story 21.16).
+      # classes: LocaleEditWrite
       # The SQL catalog's live class signs in as a principal granted SELECT on one probe table
       # alone and reads the catalog as it (Story 19.5).
       # classes: AtelierPortCatalogLive
@@ -476,6 +478,9 @@ services:
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The SQL activity cancel's privilege class signs in as a probe principal holding exactly the port's pairs, cancels its own and
+      # another account's probe statement as it, and grants and revokes the SQL privilege %CANCEL_QUERY on the principal's role (Story 21.20).
+      # classes: SqlActivityCancelPrivilege
       # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
       # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
       # classes: MetricsGate
@@ -615,6 +620,20 @@ services:
       # probe principals each missing a pair or WRITE on the folder item database. The edge class adds the hidden item, the text bound, the bystander
       # and the cards, through the transfer class's helpers.
       # classes: AnalyticsFolderItemBounds, AnalyticsFolderItemEdge, AnalyticsFolderItemGate, AnalyticsFolderItemRoutes, AnalyticsFolderItemTransfer
+      # The listing group classes (Story 24.11) turn analytics on in USER and save and compile marker-named listing group classes there: the read class
+      # drives the two reads at the port, over HTTP and as the agent's tools, and the gate class signs in as probe principals that hold different pairs.
+      # classes: AnalyticsListingGroupGate, AnalyticsListingGroupRead
+      # The listing group write classes (Story 24.11, Batch 2) turn analytics on in USER and save, compile and delete marker-named listing group classes there. The base class
+      # declares the variable and the three test classes inherit it: the write class drives the four group writes at both callers, the listing class the three listing writes
+      # and the SQL rule, and the edge class the twin, the refused compile, the stale proposal, the baseline and the gate in process.
+      # The database class inherits it too: it drives the gate's destination database half in process and the SQL pair's mint in a child process.
+      # classes: AnalyticsListingGroupBase
+      # The quality measure write classes (Story 24.12, Batch 2) inherit it through AnalyticsQualityMeasureBase: the write class drives the four measure writes at both callers, and the edge class
+      # the twin, the refused compile, the stale proposal, the baseline and the gate in process.
+      # The real-compiler class inherits it too: it refuses an update through the vendor's own compiler at both callers and the port.
+      # The element and documentation write classes (Story 24.12, Batch 3) inherit it through AnalyticsQualityMeasurePartBase: the write class drives the six part writes at both callers, and the
+      # edge class the linked measure, the twin, own code, the refused compile, the stale proposal, the baseline and the gate in process.
+      # The gaps class inherits it too: stored content that cannot be written again, the person's and the agent's own refusal sentences, an emptied group and an empty target.
       # The startup settings classes (Story 24.3) compile the probe productions in USER and set its auto-start production and shutdown groups: the
       # control class drives both callers over HTTP, the refusals class the refusals before the vendor, and the gate class signs in as probe
       # principals each missing a pair, with a second interoperability namespace registered for the length of one test. The wire class signs in
@@ -626,6 +645,26 @@ services:
       # One leg of the compile-without-interoperability class runs the probe production in USER and sets its auto-start production (Story 24.3); the
       # class is armed by the database variable too.
       # classes: CompileWithoutInterop
+      # The globals writes' developer class (Story 21.5) signs in over HTTP as a principal holding the development resource and the install namespace's
+      # databases, and edits, kills and deletes a global of its own.
+      # classes: GlobalWriteDeveloper
+      # The quality measure read, edge and gate classes (Story 24.12) turn analytics on in USER and save and compile marker-named quality measure classes there; they drive the three
+      # reads at the port, over HTTP and as the agent's tools, and the gate class creates and deletes OcuP2412* principals.
+      # classes: AnalyticsQualityMeasureEdge, AnalyticsQualityMeasureGate, AnalyticsQualityMeasureRead
+      # The analytics settings read class (Story 24.13) turns analytics on in USER and rewrites USER's three analytics settings globals, which it restores from a snapshot; it drives the four
+      # reads at the port, over HTTP and as the agent's tools.
+      # classes: AnalyticsSettingsRead
+      # The folder item viewer classes (Story 24.14) turn analytics on in USER and save pivots and a dashboard there through the vendor's classes: the view class reads the two tabs at the port,
+      # over HTTP and as the agent's tools, and the pivot run class runs a saved pivot over the three routes and as the agent's read, with three probe principals.
+      # classes: AnalyticsFolderItemView, AnalyticsPivotRun
+      # The settings edge class (Story 24.13) rewrites the same three globals from its own snapshot, and drives the agent's four read tools at their caps and in a namespace without analytics.
+      # classes: AnalyticsSettingsEdge
+      # The settings write classes (Story 24.13 Batch 2) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent, and the edge class takes the namespace's
+      # settings lock from this process to see a second writer refused.
+      # classes: AnalyticsSettingsWrite, AnalyticsSettingsWriteEdge
+      # The run-time variable and icon write classes (Story 24.13 Batch 3) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent; they start a
+      # second process that holds the namespace's settings lock, and the edge class takes it from this process.
+      # classes: AnalyticsSettingsEntryWrite, AnalyticsSettingsEntryWriteEdge
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -884,6 +923,9 @@ services:
       # every startup setting change only to a seam port that sends nothing, and sends the vendor one
       # Settings PUT of the settings unchanged.
       # classes: EncryptionStartupWrite
+      # Story 21.10's class holds the same shape for KMIP start mode with journal encryption, again only
+      # through the seam port.
+      # classes: EncryptionStartupKmipWrite
       # Story 18.48's class activates one probe database key, which sets key activation at startup to
       # Interactive, creates one encrypted probe database over it and, on every path, deletes the database,
       # deactivates the key and sets key activation at startup back to None through the settings PUT. It
@@ -905,9 +947,22 @@ services:
       # every path (Story 21.3). SqlSettingWrite does the same for one SQL setting, one SQL Shell node, one TSQL flag and one ISQL node,
       # and purges the cached queries of every namespace once (Story 21.4). TaskMailAuditMask sets, changes and clears the Task Manager
       # mail password to probe values and restores the stored one after every method (Story 21.24). DdlMappingWrite creates, changes and
-      # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask
+      # deletes one user DDL mapping, and changes and deletes one system DDL mapping, restoring it (Story 21.13). LocaleWrite sets the
+      # locale-format switch, installs another locale and the original again, and creates and deletes one custom locale, restoring the
+      # current locale and the switch after every method (Story 21.14). LocaleEditWrite copies the current locale to custom locales, sets,
+      # adds and removes properties and tables of one, and loads one table of the copy, deleting every copy it made (Story 21.16).
+      # LocaleTransferWrite exports and imports custom locales, deleting every one it made (Story 21.15).
+      # SystemSecuritySettingWrite changes the system-wide security parameter InactiveLimit and back (Story 21.10).
+      # PhoneProviderWrite creates, changes and deletes marker mobile phone providers and one probe user, removing each (Story 21.10).
+      # AuditExportWrite starts the audit export task for new files under the first allowed directory, each bounded to a day no record predates, and removes them (Story 21.10).
+      # TaskMailSettingWrite sets the Task Manager's mail port and subjects on both callers and restores every email setting it read, removing a stored row it created (Story 21.19).
+      # ResourceTransferWrite creates, exports, deletes and imports one probe resource and writes files under the first allowed directory, removing each (Story 21.19).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
+      # Sets the instance's system state to Alert and resets its system alerts, through the shipped screen-action and confirm paths, and
+      # reads alerts.log to show that no line is lost (Story 21.20). The reset is not undoable; the throwaway's own monitor raises the state again.
+      # classes: SystemAlertsWrite
+      OCUPILOT_ALLOW_ALERT_RESET: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro
@@ -982,8 +1037,9 @@ EOF
             fi
             # The budget runs from the first bind failure, so a first attempt that spent its time
             # pulling the image still leaves the whole budget for the retries.
-            if [ -z "$BIND_DEADLINE" ]; then BIND_DEADLINE=$(( $(date +%s) + BIND_WAIT_SECONDS )); fi
-            BIND_REMAINING=$(( BIND_DEADLINE - $(date +%s) ))
+            BIND_NOW=$(date +%s)
+            if [ -z "$BIND_DEADLINE" ]; then BIND_DEADLINE=$(( BIND_NOW + BIND_WAIT_SECONDS )); fi
+            BIND_REMAINING=$(( BIND_DEADLINE - BIND_NOW ))
             if [ "$BIND_REMAINING" -le 0 ]; then
                 echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $ATTEMPT attempt(s) over a $BIND_WAIT_SECONDS second budget; this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
                 exit 1

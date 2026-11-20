@@ -64,6 +64,17 @@ Parameter BACKUPDISABLED = "osmgmt.backuptasks.run,osmgmt.backuptasks.freeze,osm
 /// two sets ship enabled.</p>
 Parameter DDLMAPPINGDISABLED = "osmgmt.systemddlmappings.delete,osmgmt.userddlmappings.delete";
 
+/// <p>Story 21.14's locale install and locale delete, which ship disabled (AD-22): an install purges every cached query and can change IRISTEMP's
+/// default collation, and a delete removes a locale OcuPilot cannot restore. The locale-format set ships enabled.</p>
+Parameter LOCALEDISABLED = "osmgmt.locales.install,osmgmt.locales.delete,osmgmt.localeproperties.load,osmgmt.locales.import";
+
+/// <p>Story 21.19's resource import, which ships disabled (AD-22): it overwrites a resource of the same name, which OcuPilot cannot restore. The
+/// export ships enabled.</p>
+Parameter RESOURCEDISABLED = "permissions.resources.import";
+
+/// <p>Story 21.5's globals delete, node save and node delete, and Story 21.17's import, each listed false in the baseline.</p>
+Parameter GLOBALDISABLED = "explorer.globals.delete,explorer.globalnodes.save,explorer.globalnodes.delete,explorer.globals.import,explorer.globals.replace";
+
 /// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
 /// other four term list writes ship enabled.</p>
 Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
@@ -71,9 +82,24 @@ Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentri
 /// <p>Story 24.10: the folder item delete, the one folder manager line the baseline ships off.</p>
 Parameter FOLDERITEMDISABLED = "analytics.folderitems.delete";
 
+/// <p>Story 24.11: the listing group delete and the listing remove, the two listing group lines the baseline ships off.</p>
+Parameter LISTINGGROUPDISABLED = "analytics.listinggroups.delete,analytics.listinggrouplistings.remove";
+
+/// <p>Story 24.12: the quality measure delete and the removal of an element or group and of a documentation item, the three quality measure lines the baseline ships off.</p>
+Parameter QUALITYMEASUREDISABLED = "analytics.qualitymeasures.delete,analytics.qualitymeasureelements.remove,analytics.qualitymeasuremetas.remove";
+
+/// <p>Story 24.13 Batch 3: the removal of a run-time variable and of a user-defined icon, the two settings lines the baseline ships off.</p>
+Parameter ANALYTICSSETTINGDISABLED = "analytics.runtimevariables.remove,analytics.usericons.remove";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
+
+/// <p>The system-wide security parameters' set, which the baseline also disables (Story 21.10).</p>
+Parameter SYSTEMSECURITYDISABLED = "security.systemsecurity.set";
+
+/// <p>The mobile phone provider delete, which the baseline also disables (Story 21.10).</p>
+Parameter PHONEPROVIDERDISABLED = "security.phoneproviders.delete";
 
 /// <p>The license key's activation and the license server delete, which the baseline also disables
 /// (Story 18.6).</p>
@@ -200,8 +226,16 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#FOLDERITEMDISABLED Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#LISTINGGROUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#QUALITYMEASUREDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#ANALYTICSSETTINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#DDLMAPPINGDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#RESOURCEDISABLED Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#SYSTEMSECURITYDISABLED Set tExpected = "0|baseline"
+        If tKey = ..#PHONEPROVIDERDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"
@@ -210,7 +244,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete, the lookup table import, the folder item delete and the two DDL mapping deletes disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete, the lookup table import, the folder item delete and the two DDL mapping deletes and the locale install and delete disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

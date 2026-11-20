@@ -23,7 +23,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { resetRememberedState } from './preferences-reset.mjs';
+import { resetRememberedState, waitForRememberedView } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -31,6 +31,7 @@ const { formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 
 
 const config = browserConfig();
 const LIST_PATH = '/ocupilot/web-applications/list';
+const LIST_ROUTE = 'web-applications/list';
 const LIST_URL = `${LIST_PATH}?ns=HSCUSTOM`;
 const READ_PATH = '/api/ocupilot/screens/webapp.list/read';
 const DENIED_USER = 'OcuPilotWebAppsProbe';
@@ -223,6 +224,8 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);
+    // The last filter write is in flight when this returns, and AC5's reset would otherwise race it.
+    await waitForRememberedView(LIST_ROUTE, 'myapp', config.navigationTimeoutMs);
   } finally {
     await context.close();
   }

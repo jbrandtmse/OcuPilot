@@ -5,15 +5,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
+import { joinCompositeId } from '../../core/entity-id';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { DetailPage } from '../../shell/detail-page';
 import { ListPage } from '../../shell/list-page';
-import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { LOCALE_ADD_TABLE, LOCALE_LOAD_TABLE, LOCALE_PROPERTY_LIST, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import {
+  ANALYTICS_SETTING_LIST,
   COMPATIBILITY_SETTING_LIST,
   CONFIG_SET_ACTION,
   ConfigSettingsPage,
@@ -22,9 +25,12 @@ import {
   DDL_USER_MAPPING_LIST,
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
+  NLS_DEFAULT_LIST,
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
+  SYSTEM_SECURITY_SETTING_LIST,
+  TASK_MAIL_SETTING_LIST,
   TSQL_SETTING_LIST,
 } from './config-settings.page';
 
@@ -37,6 +43,9 @@ import {
 
 @Component({ selector: 'app-list-page', template: '' })
 class StubListPage {}
+
+@Component({ selector: 'app-detail-page', template: '' })
+class StubDetailPage {}
 
 const row = (name: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
   Name: name,
@@ -57,6 +66,8 @@ const ROWS = [
   row('FastDistinct', { Value: '1', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Purges: true }),
   row('SaveMAC', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
   row('BIGINT(%1)', { Value: '%Library.BigInt', Kind: 'datatype', Accepts: 'A datatype class name, with its parameters in parentheses if it takes any, of up to 256 characters.' }),
+  row('LocaleFormat', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Source: 'locale' }),
+  row('Collation', { Value: 'Cache standard', Kind: 'text', ReadOnly: true, Accepts: 'Shown here and never changed here.', Source: 'config' }),
 ];
 
 const UPDATED: JsonResult<unknown> = {
@@ -82,7 +93,7 @@ interface Call {
 }
 
 /** Mount the page at `descriptor`'s route over `ROWS`; each request resolves to the next of `answers`. */
-function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], descriptor = STARTUP_SETTING_LIST) {
+function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], descriptor = STARTUP_SETTING_LIST, rows: readonly Record<string, unknown>[] = ROWS) {
   TestBed.resetTestingModule();
   const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
   const calls: Call[] = [];
@@ -106,9 +117,9 @@ function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], 
       { provide: Router, useValue: { url: `/${screen.route}`, events: { subscribe: () => ({ unsubscribe: () => undefined }) } } },
     ],
   });
-  TestBed.overrideComponent(ConfigSettingsPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
+  TestBed.overrideComponent(ConfigSettingsPage, { remove: { imports: [ListPage, DetailPage] }, add: { imports: [StubListPage, StubDetailPage] } });
   const store = stores.for(screen.descriptor, screen.refreshRates);
-  store.applyTick(ROWS, false, '', new Date());
+  store.applyTick(rows, false, '', new Date());
   const fixture = TestBed.createComponent(ConfigSettingsPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -305,6 +316,107 @@ describe('the settings page', () => {
   });
 
   // Mutation (Rule 19): drop `DDL_USER_MAPPING_LIST` from `SERVED_LISTS` -> the user list's assertions go red.
+  // Mutation (Rule 19): drop `SYSTEM_SECURITY_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+  it('serves System-wide security, and registers Set value on its own screen alone', () => {
+    const { actions } = mount([], SYSTEM_SECURITY_SETTING_LIST);
+    expect(actions.has(SYSTEM_SECURITY_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+    expect(actions.has(STARTUP_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+  });
+
+  // Mutation (Rule 19): drop the `systemSecuritySetConsequence` suffix from `openTarget` -> the first assertion goes red, and the Startup dialog's statement is unchanged.
+  it('states what a system-wide security change reaches after the line of the setting itself, and only on that screen', async () => {
+    const security = mount([], SYSTEM_SECURITY_SETTING_LIST);
+    await open(security.fixture, security.store, security.actions, SYSTEM_SECURITY_SETTING_LIST, 'LineRecall');
+    expect(security.host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`0 (off) or 1 (on). ${STRINGS.systemSecuritySetConsequence}`);
+    expect(STRINGS.systemSecuritySetConsequence).toBe('This changes how every user on this instance signs in, is locked out, or is checked.');
+    const startup = mount([], STARTUP_SETTING_LIST);
+    await open(startup.fixture, startup.store, startup.actions, STARTUP_SETTING_LIST, 'LineRecall');
+    expect(startup.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.systemSecuritySetConsequence);
+  });
+
+  describe('Task Manager email (Story 21.19)', () => {
+    const MAIL_ROWS = [
+      row('Port', { Value: '', Kind: 'text', Accepts: 'Text of up to 5 characters.' }),
+      row('UseSTARTTLS', { Value: '', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+      row('SubjectSuccess', { Value: '', Kind: 'text', Accepts: 'Text of up to 255 characters.' }),
+      row('MessageSuccess', { Value: 'Hello', Kind: 'text', Accepts: 'Text of up to 32000 characters.' }),
+    ];
+    const MAIL_UPDATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'task-mail-setting', scope: 'instance', id: 'Port' }, readBack: { verdict: 'matches' } },
+    };
+
+    // Mutation (Rule 19): drop `TASK_MAIL_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+    it('serves Task Manager email, and registers Set value on its own screen alone', () => {
+      const { actions } = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      expect(actions.has(TASK_MAIL_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+      expect(actions.has(STARTUP_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    });
+
+    it("sends the typed port as the one value to the screen's own route and publishes the updated event of its entity type", async () => {
+      const { fixture, host, store, actions, calls, events } = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'Port');
+      type(fixture, host, '587');
+      confirm(host);
+      await settle(fixture);
+      expect(calls[0]).toEqual({
+        path: '/api/ocupilot/screens/tasks.mail/action',
+        method: 'POST',
+        body: JSON.stringify({ action: 'set', id: 'Port', values: { Value: '587' } }),
+      });
+      expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['task-mail-setting/updated']);
+      expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+      expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
+    });
+
+    it('sends 1 for the STARTTLS switch, drawn as a checkbox', async () => {
+      const { fixture, host, store, actions, calls } = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'UseSTARTTLS');
+      expect(host.querySelector('[data-interop-setting-checkbox]')).not.toBeNull();
+      (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+      fixture.detectChanges();
+      confirm(host);
+      await settle(fixture);
+      expect(JSON.parse(calls[0].body).values).toEqual({ Value: '1' });
+    });
+
+    // Mutation (Rule 19): drop the `multiline` binding from the page's dialog -> the message row's text area assertion goes red.
+    it('draws a message as a text area that sends its whole 32000 characters, and a subject as one line', async () => {
+      const message = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(message.fixture, message.store, message.actions, TASK_MAIL_SETTING_LIST, 'MessageSuccess');
+      expect(message.host.querySelector('textarea[data-interop-setting-value]')).not.toBeNull();
+      const long = `Line one\nLine two #(NAME)# ${'x'.repeat(32000 - 27)}`;
+      expect(long).toHaveLength(32000);
+      const field = message.host.querySelector('textarea[data-interop-setting-value]') as HTMLTextAreaElement;
+      field.value = long;
+      field.dispatchEvent(new Event('input'));
+      message.fixture.detectChanges();
+      confirm(message.host);
+      await settle(message.fixture);
+      expect(JSON.parse(message.calls[0].body).values).toEqual({ Value: long });
+      const subject = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(subject.fixture, subject.store, subject.actions, TASK_MAIL_SETTING_LIST, 'SubjectSuccess');
+      expect(subject.host.querySelector('textarea[data-interop-setting-value]')).toBeNull();
+      expect(subject.host.querySelector('input[type="text"][data-interop-setting-value]')).not.toBeNull();
+    });
+
+    it("keeps the instance's sentence naming the Task Manager's fields on the value when a subject holds another field, and publishes nothing", async () => {
+      const reason = 'Use only these fields between #( and )#: ID, DESCRIPTION, NAME, SERVER, INSTANCE, LASTSTARTED, LASTFINISHED, SCHEDULED, CURRENTDATE, CURRENTTIME, STATUS, TASKCLASS, ERROR, SUCCESS.';
+      const { fixture, host, store, actions, events } = mount(
+        [{ kind: 'error', status: 400, code: 'CONFIG.SETTING.SUBSTITUTION', reason, detail: { violations: [{ field: 'Value', code: 'CONFIG.SETTING.SUBSTITUTION', reason }] } } as JsonResult<unknown>],
+        TASK_MAIL_SETTING_LIST,
+        MAIL_ROWS
+      );
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'SubjectSuccess');
+      type(fixture, host, '#(BOGUS)#');
+      confirm(host);
+      await settle(fixture);
+      expect(host.querySelector('[data-interop-setting-violation]')?.textContent?.trim()).toBe(reason);
+      expect(events).toEqual([]);
+    });
+  });
+
   it('serves both DDL mapping screens, and registers New mapping on the user list alone', () => {
     const system = mount([], DDL_SYSTEM_MAPPING_LIST);
     expect(system.actions.has(DDL_SYSTEM_MAPPING_LIST, CONFIG_SET_ACTION)).toBe(true);
@@ -349,5 +461,230 @@ describe('the settings page', () => {
       method: 'POST',
       body: JSON.stringify({ action: 'set', id: 'BIGINT(%1)', values: { Value: '%Library.Integer' } }),
     });
+  });
+
+  // Mutation (Rule 19): drop `NLS_DEFAULT_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+  it('serves NLS configured defaults, and offers Set value on the locale-format switch alone', async () => {
+    const { fixture, host, store, actions } = mount([], NLS_DEFAULT_LIST);
+    expect(actions.has(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(true);
+    store.setSelection(['Collation']);
+    expect(actions.reason(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    expect(actions.run(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe(false);
+    await settle(fixture);
+    expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+    store.setSelection(['LocaleFormat']);
+    expect(actions.reason(NLS_DEFAULT_LIST, CONFIG_SET_ACTION)).toBe('');
+  });
+
+  // Mutation (Rule 19): drop the `reloads` branch from `onOpen`'s statement -> the dialog states the Accepts line alone and this goes red.
+  it('states the reload sentence in the dialog and after an applied change of the locale-format switch', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED], NLS_DEFAULT_LIST);
+    await open(fixture, store, actions, NLS_DEFAULT_LIST, 'LocaleFormat');
+    expect(host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`0 (off) or 1 (on). ${STRINGS.nlsDefaultReloadConsequence}`);
+    (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    confirm(host);
+    await settle(fixture);
+    expect(calls[0]).toEqual({
+      path: '/api/ocupilot/screens/osmgmt.nlsdefaults/action',
+      method: 'POST',
+      body: JSON.stringify({ action: 'set', id: 'LocaleFormat', values: { Value: '1' } }),
+    });
+    expect(host.querySelector('[data-config-setting-reload]')?.textContent?.trim()).toBe(STRINGS.nlsDefaultReloadConsequence);
+    expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
+    expect(host.querySelector('[data-config-setting-purge]')).toBeNull();
+  });
+
+  describe('locale properties', () => {
+    const property = (name: string, refusal = ''): Record<string, unknown> => ({
+      Locale: 'yzzw',
+      Group: 'tables',
+      Name: name,
+      Value: 'Unicode',
+      Kind: 'table',
+      Accepts: STRINGS.configAcceptsReadOnly,
+      ReadOnly: true,
+      Refusal: refusal,
+      Loadable: false,
+    });
+    const rows = [property('PatternTables:Unicode')];
+    const CREATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 201,
+      body: { id: 'x', target: { type: 'locale-property', scope: 'instance', id: 'yzzw\u0001PatternTables:Latin2' }, readBack: { verdict: 'matches' } },
+    };
+
+    const fill = (host: HTMLElement, field: string, value: string): void => {
+      const control = host.querySelector(`[data-locale-table-field="${field}"]`) as HTMLInputElement | HTMLSelectElement;
+      control.value = value;
+      control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input'));
+    };
+
+    it('registers Add table on the properties screen alone and gives the refusal its locale carries as its reason', () => {
+      const current = mount([], LOCALE_PROPERTY_LIST, [property('PatternTables:Unicode', 'LOCALE.EDIT.CURRENT')]);
+      expect(current.actions.has(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe(true);
+      expect(current.actions.reason(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe(STRINGS.localeRefusalEditCurrent);
+      const custom = mount([], LOCALE_PROPERTY_LIST, rows);
+      expect(custom.actions.reason(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE)).toBe('');
+      expect(mount([], STARTUP_SETTING_LIST).actions.has(STARTUP_SETTING_LIST, LOCALE_ADD_TABLE)).toBe(false);
+    });
+
+    // Mutation (Rule 19): drop the `localeEditRefusal` branch from Set value's reason -> the shipped locale's sentence goes red.
+    it('gives Set value the refusal its locale carries as its reason, and the read-only sentence only on a row that carries none', () => {
+      const settable = (refusal: string): Record<string, unknown> => ({ ...property('DateFormat', refusal), Group: 'formats', Kind: 'integer', ReadOnly: false });
+      const shipped = mount([], LOCALE_PROPERTY_LIST, [settable('LOCALE.EDIT.SYSTEM')]);
+      shipped.store.setSelection([joinCompositeId(['yzzw', 'DateFormat'])]);
+      expect(shipped.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.localeRefusalEditSystem);
+      expect(shipped.actions.run(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(false);
+      const custom = mount([], LOCALE_PROPERTY_LIST, [settable('')]);
+      custom.store.setSelection([joinCompositeId(['yzzw', 'DateFormat'])]);
+      expect(custom.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe('');
+      const shown = mount([], LOCALE_PROPERTY_LIST, rows);
+      shown.store.setSelection([joinCompositeId(['yzzw', 'PatternTables:Unicode'])]);
+      expect(shown.actions.reason(LOCALE_PROPERTY_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    });
+
+    // Mutation (Rule 19): drop `LOCALE_PROPERTY_LIST` from `DESTRUCTIVE_ON` -> Load table is sent at once, no confirmation opens and this goes red.
+    it('confirms Load table before it sends anything and states the published consequence', async () => {
+      const id = joinCompositeId(['yzzw', 'PatternTables:Unicode']);
+      const { fixture, store, actions, handler, calls } = mount([], LOCALE_PROPERTY_LIST, [{ ...property('PatternTables:Unicode'), Loadable: true }]);
+      store.setSelection([id]);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_LOAD_TABLE);
+      await settle(fixture);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.consequence).toBe(STRINGS.localeLoadConsequence);
+      expect(handler.pending()?.target).toBe(id);
+      expect(handler.pending()?.name).toBe('PatternTables:Unicode');
+      expect(calls).toEqual([]);
+      handler.confirmPending();
+      await settle(fixture);
+      expect(calls).toEqual([{ path: '/api/ocupilot/screens/osmgmt.localeproperties/action', method: 'POST', body: JSON.stringify({ action: LOCALE_LOAD_TABLE, id }) }]);
+    });
+
+    // Mutation (Rule 19): post to the screen's action route instead of `/api/ocupilot/locale-properties` -> the path and body assertions go red.
+    it('posts an internal table of the locale on screen to the Save route and announces the row the server created', async () => {
+      const { fixture, host, actions, calls, events } = mount([CREATED], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      expect(host.querySelector('app-locale-table-dialog')).not.toBeNull();
+      expect(host.querySelector('[data-locale-table-field="InputFrom"]')).toBeNull();
+      fill(host, 'Table', 'Latin2');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(calls).toEqual([{ path: '/api/ocupilot/locale-properties', method: 'POST', body: JSON.stringify({ Locale: 'yzzw', Name: 'PatternTables:Latin2' }) }]);
+      expect(host.querySelector('app-locale-table-dialog')).toBeNull();
+      expect(events.map((event) => `${event.type}|${event.scope}|${event.id}|${event.action}|${event.tool}`)).toEqual([
+        'locale-property|instance|yzzw\u0001PatternTables:Latin2|created|osmgmt.localeproperties.add',
+      ]);
+    });
+
+    it('sends the two sides of an input/output table and no others', async () => {
+      const { fixture, host, actions, calls } = mount([CREATED], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      fill(host, 'Type', 'XLTTables');
+      await settle(fixture);
+      fill(host, 'Table', 'myio');
+      fill(host, 'InputFrom', 'Latin2');
+      fill(host, 'OutputTo', 'Latin2');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ Locale: 'yzzw', Name: 'XLTTables:myio', InputFrom: 'Latin2', OutputTo: 'Latin2' });
+    });
+
+    it('keeps the dialog open with the sentence the server gave when the add is refused, and publishes nothing', async () => {
+      const refused: JsonResult<unknown> = { kind: 'error', status: 409, code: 'LOCALE.TABLE.TAKEN', reason: STRINGS.localeRefusalTableTaken, detail: null };
+      const { fixture, host, actions, events } = mount([refused], LOCALE_PROPERTY_LIST, rows);
+      actions.run(LOCALE_PROPERTY_LIST, LOCALE_ADD_TABLE);
+      await settle(fixture);
+      fill(host, 'Table', 'Unicode');
+      await settle(fixture);
+      (host.querySelector('[data-locale-table-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('[data-locale-table-reason]')?.textContent?.trim()).toBe(STRINGS.localeRefusalTableTaken);
+      expect(events).toEqual([]);
+    });
+  });
+});
+
+describe('the settings page over the analytics General tab (Story 24.13)', () => {
+  const general = (name: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    Name: name,
+    Value: '',
+    Stored: true,
+    Kind: 'text',
+    Accepts: 'Text of up to 2000 characters.',
+    ...extra,
+  });
+  const GENERAL_ROWS = [
+    general('PageTitle', { Value: 'Title' }),
+    general('GoogleMapsKey', { Value: '[redacted]', Kind: 'secret' }),
+    general('DashboardNoTitle', { Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+    general('Worklist', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+  ];
+  const UPDATED_SETTING: JsonResult<unknown> = {
+    kind: 'ok',
+    status: 200,
+    body: { action: 'updated', target: { type: 'analytics-setting', scope: 'USER', id: 'PageTitle' }, readBack: { verdict: 'matches' } },
+  };
+
+  // Mutation (Rule 19): drop `ANALYTICS_SETTING_LIST` from `SERVED_LISTS` -> this goes red.
+  it('registers Set value on the General tab', () => {
+    const { actions } = mount([], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    expect(actions.has(ANALYTICS_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+  });
+
+  // Mutation (Rule 19): send `set` for a secret row -> the action leg goes red; prefill the field with the row's value -> the empty-field leg goes red.
+  it('opens a secret row as an empty masked field with a reveal toggle and sends its text by the key\'s own action', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(fixture, store, actions, ANALYTICS_SETTING_LIST, 'GoogleMapsKey');
+    const field = host.querySelector('[data-interop-setting-secret]') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(field.type).toBe('password');
+    expect(field.value).toBe('');
+    (host.querySelector('[data-interop-setting-reveal]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((host.querySelector('[data-interop-setting-secret]') as HTMLInputElement).type).toBe('text');
+    type(fixture, host, 'a-key-text');
+    confirm(host);
+    await settle(fixture);
+    expect(calls[0]).toEqual({
+      path: '/api/ocupilot/screens/analytics.settings/action',
+      method: 'POST',
+      body: JSON.stringify({ action: 'setkey', id: 'GoogleMapsKey', values: { GoogleMapsKey: 'a-key-text' } }),
+    });
+    expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+  });
+
+  // Mutation (Rule 19): make a text row secret in `onOpen` -> the plain-field leg goes red.
+  it('opens a text row as the shared dialog does and sends Set value with its one value', async () => {
+    const { fixture, host, store, actions, calls } = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(fixture, store, actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(host.querySelector('[data-interop-setting-secret]')).toBeNull();
+    expect((host.querySelector('[data-interop-setting-value]') as HTMLInputElement).value).toBe('Title');
+    type(fixture, host, 'New title');
+    confirm(host);
+    await settle(fixture);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ action: 'set', id: 'PageTitle', values: { Value: 'New title' } });
+  });
+
+  // Mutation (Rule 19): drop the `saves` test from `onOpen`'s statement -> the dialog states the Accepts line alone and the first assertion goes red.
+  it('states the save sentence in the dialog and after the change while a General row is not stored, and not once every row is', async () => {
+    const unstored = GENERAL_ROWS.map((entry) => (entry['Name'] === 'DashboardNoTitle' ? { ...entry, Stored: false } : entry));
+    const first = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
+    await open(first.fixture, first.store, first.actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(first.host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`Text of up to 2000 characters. ${STRINGS.analyticsSettingSaveConsequence}`);
+    type(first.fixture, first.host, 'x');
+    confirm(first.host);
+    await settle(first.fixture);
+    expect(first.host.querySelector('[data-config-setting-save]')?.textContent?.trim()).toBe(STRINGS.analyticsSettingSaveConsequence);
+    const second = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, GENERAL_ROWS);
+    await open(second.fixture, second.store, second.actions, ANALYTICS_SETTING_LIST, 'PageTitle');
+    expect(second.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
+    const flag = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
+    await open(flag.fixture, flag.store, flag.actions, ANALYTICS_SETTING_LIST, 'Worklist');
+    expect(flag.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
   });
 });

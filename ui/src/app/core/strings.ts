@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:652 */
+  /** EXPERIENCE.md:662 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2862,6 +2862,15 @@ export const STRINGS = {
   auditDatabasePurgeDone: 'Purged audit records dated before <date>.',
   /** EXPERIENCE.md:516 */
   auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
+  // Story 21.10: the audit database group's Export (the shared `taskExportAction`), its dialog's day field, and the line shown once it has started.
+  /** EXPERIENCE.md:516 */
+  auditExportBefore: 'Records before',
+  /** EXPERIENCE.md:516 */
+  auditExportBeforeHint: 'Leave empty to export every record.',
+  /** EXPERIENCE.md:516 */
+  auditExportEffect: 'Writes the audit records to a new file on the server.',
+  /** EXPERIENCE.md:516 */
+  auditExportStarted: 'The export has started. Background tasks shows when it finishes and how many records it wrote.',
 
   // Story 12.4: the OAuth 2.0 client server description editor, its tab's Create, Delete and
   // Update JWKS, and the phrase that resolves the tab's agent invitation.
@@ -6281,6 +6290,9 @@ export const STRINGS = {
   encryptionStartupKmipRefusal:
     'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
   /** EXPERIENCE.md:364 */
+  encryptionStartupKmipJournalRefusal:
+    'Journal encryption is on, or a journal file the instance still needs is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds its key, so a start that cannot activate it does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
   encryptionStartupKmipUnconfigured:
     'This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server\'s configuration.',
   /** EXPERIENCE.md:364 */
@@ -6419,6 +6431,44 @@ export const STRINGS = {
   sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
   /** EXPERIENCE.md:603 */
   sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityCancelAction: 'Cancel query',
+  /** EXPERIENCE.md:603 */
+  systemAlertsResetAction: 'Reset alerts',
+  /** EXPERIENCE.md:603 */
+  sqlActivityCancelConsequence: 'Canceling stops this statement where it is. The process that ran it keeps running.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityRemoteReason: 'This statement runs on another server and can be canceled only there.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEndedReason: 'This statement is no longer running.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityNoPrivilegeReason: 'Canceling another user\'s query needs the SQL privilege %CANCEL_QUERY.',
+  /** EXPERIENCE.md:603 */
+  systemAlertsResetConsequence: 'Resetting sets the alert count to 0 and the system state to OK. alerts.log keeps every entry.',
+  /** EXPERIENCE.md:603 */
+  deviceDeleteConsequence: 'Deleting this device removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:603 */
+  transactionsLabel: 'Transactions',
+  /** EXPERIENCE.md:603 */
+  transactionsColumnSeconds: 'Seconds open',
+  /** EXPERIENCE.md:603 */
+  transactionsEmpty: 'There are no open transactions.',
+  /** EXPERIENCE.md:603 */
+  transactionsNotRunning: 'Transaction data is not available because the System Monitor is not running.',
+  /** EXPERIENCE.md:603 */
+  transactionsPrompt1: 'Which process has held a transaction open longest?',
+  /** EXPERIENCE.md:603 */
+  systemAlertsLabel: 'System alerts',
+  /** EXPERIENCE.md:603 */
+  systemAlertsColumnAlerts: 'Alerts',
+  /** EXPERIENCE.md:603 */
+  systemAlertsColumnLast: 'Last alert',
+  /** EXPERIENCE.md:603 */
+  systemAlertsPrompt1: 'Why is the system state not OK?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEmptyAgent: 'cancel a running SQL statement',
+  /** EXPERIENCE.md:603 */
+  systemAlertsEmptyAgent: 'reset the system alerts',
   /** EXPERIENCE.md:603 */
   metricsLabel: 'Prometheus metrics',
   /** EXPERIENCE.md:603 */
@@ -8126,6 +8176,306 @@ export const STRINGS = {
   analyticsFolderItemDeleteDone: 'Deleted <name>.',
   /** EXPERIENCE.md:610 */
   analyticsFolderItemsEmptyAgent: 'import folder items',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsLabel: 'Listing groups',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsLabel: 'Listings',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupCriterion: 'Listing group',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnTargetCubes: 'Target cubes',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnCompiled: 'Compiled',
+  /** EXPERIENCE.md:611 */
+  analyticsColumnDataConnector: 'Data connector',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsEmpty: 'No listing group in this namespace is visible to you.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsEmpty: 'This listing group no longer exists, or it has no listings.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt1: 'Summarize the listing groups in this namespace.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt2: 'Which listing groups are not compiled?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupsPrompt3: 'Which cubes do these listing groups add listings to?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt1: 'Summarize the listings in this group.',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt2: 'Which listings use a custom SQL query?',
+  /** EXPERIENCE.md:611 */
+  analyticsListingGroupListingsPrompt3: 'Which listings need a resource to open?',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewAction: 'New listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingAddAction: 'Add listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingChangeAction: 'Change listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveAction: 'Remove listing',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDefaultResourceLabel: 'Default resource',
+  /** EXPERIENCE.md:612 */
+  analyticsListingOrderByLabel: 'Order by',
+  /** EXPERIENCE.md:612 */
+  analyticsListingFormatsLabel: 'Formats',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSelectModeLabel: 'Select mode',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewNameLabel: 'New name',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupNewClassLabel: 'New class',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupDeleteConsequence: 'Deleting this listing group deletes its class, and cubes lose its listings. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingRemoveConsequence: 'Removing this listing takes it out of its group, and cubes lose it. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingSqlConsequence: 'This listing runs its SQL with the rights of whoever opens it.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupSaveConsequence: 'The listing group\'s class is saved and compiled.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupTaken: 'This namespace already holds a listing group or class with that name.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupClass: 'Name the class with letters, digits and dots, outside the % and OcuPilot packages.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCube: 'A target cube does not exist or does not accept listing groups.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupListingTaken: 'A listing of this group is already defined for a target cube. Choose other target cubes.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAmbiguous: 'Two classes define this listing group. Change it in its class instead.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupCompile: 'The instance refused to compile the listing group, so nothing was changed.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupAbsent: 'This listing group or listing no longer exists.',
+  /** EXPERIENCE.md:612 */
+  analyticsRefusalListingGroupReadonly: 'The database that holds listing groups is read-only.',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupsEmptyAgent: 'create a listing group',
+  /** EXPERIENCE.md:612 */
+  analyticsListingGroupListingsEmptyAgent: 'add a listing to this listing group',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresLabel: 'Quality measures',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsLabel: 'Groups and elements',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureCriterion: 'Quality measure',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnPublished: 'Published',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnGroup: 'Group',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnMdx: 'MDX',
+  /** EXPERIENCE.md:614 */
+  analyticsColumnContent: 'Content',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresEmpty: 'No quality measure is defined in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsEmpty: 'This quality measure no longer exists, or it has no groups.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasEmpty: 'This quality measure no longer exists, or it has no documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt1: 'Summarize the quality measures in this namespace.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt2: 'Which quality measures are not compiled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasuresPrompt3: 'Which quality measures are linked to another measure?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt1: 'Summarize the groups of this quality measure.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt2: 'Which elements are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureElementsPrompt3: 'Explain what each element\'s MDX selects.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt1: 'Summarize this quality measure\'s documentation.',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt2: 'Which documentation items are disabled?',
+  /** EXPERIENCE.md:614 */
+  analyticsQualityMeasureMetasPrompt3: 'What does the documentation say this measure is for?',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureNewAction: 'New quality measure',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureCatalogLabel: 'Catalog',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSetLabel: 'Set',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureFormatLabel: 'Format',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureLinkedToLabel: 'Linked to',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureDeleteConsequence: 'Deleting this quality measure deletes its class. This cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasureSaveConsequence: 'The quality measure\'s class is saved and compiled.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureTaken: 'This namespace already holds a quality measure or class with that name.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAmbiguous: 'Two classes define this quality measure. Change it in its class instead.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureCompile: 'The instance refused to compile the quality measure, so nothing was changed.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureAbsent: 'This quality measure no longer exists.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureReadonly: 'The database that holds quality measures is read-only.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureExpression: 'The expression names a group this quality measure does not hold, or its brackets do not match.',
+  /** EXPERIENCE.md:615 */
+  analyticsRefusalQualityMeasureLinked: 'This quality measure is linked to another measure, which defines its expression, format and URL.',
+  /** EXPERIENCE.md:615 */
+  analyticsQualityMeasuresEmptyAgent: 'create a quality measure',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementAddAction: 'Add element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementChangeAction: 'Change element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementRemoveAction: 'Remove element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureGroupRemoveAction: 'Remove group',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaAddAction: 'Add documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaChangeAction: 'Change documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetaRemoveAction: 'Remove documentation item',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementLegend: 'Element',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureRemoveConsequence: 'Removing a group removes every element in it. A removed group, element or documentation item cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureElementTaken: 'This group already holds an element with that name.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureMetaTaken: 'This quality measure already holds a documentation item with that name.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasurePartAbsent: 'This group, element or documentation item no longer exists.',
+  /** EXPERIENCE.md:616 */
+  analyticsRefusalQualityMeasureLinkedParts: 'This quality measure is linked to another measure, which defines its groups and documentation.',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureElementsEmptyAgent: 'add an element to this quality measure',
+  /** EXPERIENCE.md:616 */
+  analyticsQualityMeasureMetasEmptyAgent: 'add documentation to this quality measure',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsLabel: 'Worklists',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesLabel: 'Run-time variables',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsLabel: 'User-defined icons',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnPanel: 'Panel',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnWorklist: 'Worklist',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnShown: 'Shown',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnContext: 'Context',
+  /** EXPERIENCE.md:617 */
+  analyticsColumnStored: 'Stored',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsEmpty: 'No analytics setting can be read in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsEmpty: 'No worklist can be read in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesEmpty: 'No run-time variable is defined in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsEmpty: 'No user-defined icon is defined in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt1: 'Summarize the analytics settings in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt2: 'Which settings still have their default value?',
+  /** EXPERIENCE.md:617 */
+  analyticsSettingsPrompt3: 'Can dashboards send email in this namespace?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt1: 'Which worklists does the home page show?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt2: 'Are the worklists customized in this namespace?',
+  /** EXPERIENCE.md:617 */
+  analyticsWorklistsPrompt3: 'Which worklists does the dashboard page show?',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt1: 'Summarize the run-time variables in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt2: 'Explain what each run-time variable\'s expression returns.',
+  /** EXPERIENCE.md:617 */
+  analyticsRuntimeVariablesPrompt3: 'Which run-time variables have no comment?',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt1: 'Summarize the user-defined icons in this namespace.',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt2: 'Which icons point outside this instance?',
+  /** EXPERIENCE.md:617 */
+  analyticsUserIconsPrompt3: 'List each icon\'s name and path.',
+  /** EXPERIENCE.md:618 */
+  analyticsSettingsEmptyAgent: 'change an analytics setting',
+  /** EXPERIENCE.md:618 */
+  analyticsWorklistsEmptyAgent: 'show a worklist',
+  /** EXPERIENCE.md:618 */
+  analyticsSettingSaveConsequence: 'Saving stores every general setting with the value shown here, as the classic page\'s Save does.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalSettingReadOnly: 'The database that holds this namespace\'s analytics settings is read-only.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalSettingSecret: 'This setting is a secret. It is set with its own action, which asks for the value when it is confirmed.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalWorklistNotCustomized: 'Worklists are not customized in this namespace, so the portal shows its default worklists. Set Worklist to 1 on the General tab first.',
+  /** EXPERIENCE.md:618 */
+  analyticsRefusalWorklistAbsent: 'There is no worklist with that page, panel and class.',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableAddAction: 'Add run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableChangeAction: 'Change run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariableRemoveAction: 'Remove run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconAddAction: 'Add icon',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconChangeAction: 'Change icon',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconRemoveAction: 'Remove icon',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableTaken: 'This namespace already holds a run-time variable with that name.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalIconTaken: 'This namespace already holds a user-defined icon with that name.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableAbsent: 'This run-time variable no longer exists.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalIconAbsent: 'This user-defined icon no longer exists.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalSettingName: 'A name is 1 to 255 characters with no control character, within the length the instance can store.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalSettingText: 'An expression, comment, context or path is at most 2,000 characters with no control character.',
+  /** EXPERIENCE.md:619 */
+  analyticsRefusalVariableExpression: 'This expression is not valid ObjectScript. It was checked, not run, and nothing was saved.',
+  /** EXPERIENCE.md:619 */
+  analyticsVariableCodeConsequence: 'This expression is code. It runs with the rights of whoever opens a dashboard that uses it.',
+  /** EXPERIENCE.md:619 */
+  analyticsVariableRemoveConsequence: 'Removing this run-time variable cannot be undone from OcuPilot. A dashboard that uses it then gets an empty value.',
+  /** EXPERIENCE.md:619 */
+  analyticsIconRemoveConsequence: 'Removing this icon cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:619 */
+  analyticsRuntimeVariablesEmptyAgent: 'add a run-time variable',
+  /** EXPERIENCE.md:619 */
+  analyticsUserIconsEmptyAgent: 'add a user-defined icon',
+  /** EXPERIENCE.md:620 */
+  analyticsTabWidgets: 'Widgets',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnDataSource: 'Data source',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnFilters: 'Filters',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnCalculated: 'Calculated members',
+  /** EXPERIENCE.md:620 */
+  analyticsColumnRestriction: 'SQL restriction',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionEmpty: 'This folder item is not a pivot or a dashboard, or it no longer exists.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsEmpty: 'This folder item is not a dashboard, or it has no widgets.',
+  /** EXPERIENCE.md:620 */
+  analyticsRefusalPivotCube: 'This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt1: 'Explain what this pivot shows.',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt2: 'Which cube and filters does this pivot use?',
+  /** EXPERIENCE.md:620 */
+  analyticsFolderItemDefinitionPrompt3: 'Run this pivot and summarize its answer.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt1: 'Summarize the widgets on this dashboard.',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt2: 'Which widgets show a pivot, and which a KPI?',
+  /** EXPERIENCE.md:620 */
+  analyticsDashboardWidgetsPrompt3: 'Which widget takes its data from another widget?',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
@@ -8242,6 +8592,46 @@ export const STRINGS = {
   compatibilitySettingsPrompt2: 'Which compatibility settings take effect only after a restart?',
   /** EXPERIENCE.md:604 */
   compatibilitySettingsPrompt3: 'What does the Undefined setting do?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsLabel: 'System-wide security',
+  /** EXPERIENCE.md:604 */
+  aboutSystemSecuritySetting: 'System-wide security setting',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsEmptyAgent: 'change a system-wide security parameter',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt1: 'Which system-wide security parameters differ from the defaults?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt2: 'How many failed logins disable an account?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySettingsPrompt3: 'What does InactiveLimit change?',
+  /** EXPERIENCE.md:604 */
+  systemSecuritySetConsequence: 'This changes how every user on this instance signs in, is locked out, or is checked.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListLabel: 'Mobile phone providers',
+  /** EXPERIENCE.md:604 */
+  aboutPhoneProvider: 'Mobile phone provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderColumnGateway: 'SMS gateway',
+  /** EXPERIENCE.md:604 */
+  phoneProviderFormName: 'Provider name',
+  /** EXPERIENCE.md:604 */
+  phoneProviderCreateAction: 'Create provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListEmpty: 'No mobile phone providers on this instance.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListEmptyAgent: 'create a mobile phone provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt1: 'Which mobile phone providers can users choose for two-factor text messages?',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt2: 'What is an SMS gateway?',
+  /** EXPERIENCE.md:604 */
+  phoneProviderListPrompt3: 'Create a mobile phone provider named Example Mobile.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderRefusedAction: 'change the provider',
+  /** EXPERIENCE.md:604 */
+  phoneProviderInUse: 'One or more users name this provider for two-factor text messages, so it cannot be deleted. Change those users\' provider first.',
+  /** EXPERIENCE.md:604 */
+  phoneProviderDeleteConsequence: 'Deleting this provider removes it from this instance. This cannot be undone.',
   /** EXPERIENCE.md:604 */
   configRefusalNotFound: 'There is no setting with that name.',
   /** EXPERIENCE.md:604 */
@@ -8370,6 +8760,160 @@ export const STRINGS = {
   configMappingName: 'A name is 1 to 64 characters, with no =, comma, *, ^, control character, or space at either end.',
   /** EXPERIENCE.md:604 */
   configMappingDelete: 'DDL that names this type no longer maps it to this datatype.',
+  // Story 21.14: NLS configured defaults and Locale definitions -- their titles, entity nouns, the two words a default's source
+  // reads, the action Install, the Validate dialog's two sentences, the empty state, the empty-agent phrases, the three
+  // prompts, the four refusals and the three consequences the server sends.
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsLabel: 'NLS configured defaults',
+  /** EXPERIENCE.md:604 */
+  localesLabel: 'Locale definitions',
+  /** EXPERIENCE.md:604 */
+  aboutNlsDefault: 'NLS configured default',
+  /** EXPERIENCE.md:604 */
+  aboutLocaleDefinition: 'locale',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultSourceConfig: 'Configured',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultSourceLocale: 'From the locale',
+  /** EXPERIENCE.md:604 */
+  localeInstallAction: 'Install',
+  /** EXPERIENCE.md:604 */
+  localeValidateValid: 'This locale is valid.',
+  /** EXPERIENCE.md:604 */
+  localeValidateProblems: 'This locale has problems.',
+  /** EXPERIENCE.md:604 */
+  localesEmpty: 'No locales.',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsEmptyAgent: 'change an NLS configured default',
+  /** EXPERIENCE.md:604 */
+  localesEmptyAgent: 'install a locale',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultsPrompt1: 'Which collation does this instance use by default?',
+  /** EXPERIENCE.md:604 */
+  localesPrompt1: 'Which locale is current?',
+  /** EXPERIENCE.md:604 */
+  localesPrompt2: 'Is this locale valid?',
+  /** EXPERIENCE.md:604 */
+  localeRefusalNotFound: 'There is no locale with that name.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalNotInstallable: 'This locale cannot be installed on this instance.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalSystem: 'A locale InterSystems ships cannot be deleted; only a custom locale, whose name starts with y, can.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCurrent: 'The current locale cannot be deleted.',
+  /** EXPERIENCE.md:604 */
+  localeInstallConsequence: 'Installing makes this locale the instance\'s current locale, purges every cached query, and can change IRISTEMP\'s default collation.',
+  /** EXPERIENCE.md:604 */
+  localeDeleteConsequence: 'The locale and its definition are removed from this instance.',
+  /** EXPERIENCE.md:604 */
+  nlsDefaultReloadConsequence: 'Changing this reloads the current locale, so new processes take its date, time and number formats.',
+  // Story 21.16: Locale properties and the locale copy -- the title, the entity noun, the seven group words, the three table actions and
+  // the copy action, the two dialog titles, the empty-agent phrase, the three prompts, the nine refusals and the load consequence the server
+  // sends.
+  /** EXPERIENCE.md:604 */
+  localePropertiesLabel: 'Locale properties',
+  /** EXPERIENCE.md:604 */
+  aboutLocaleProperty: 'locale property',
+  /** EXPERIENCE.md:604 */
+  localeGroupBasic: 'Basic properties',
+  /** EXPERIENCE.md:604 */
+  localeGroupFormats: 'Date, time and number formats',
+  /** EXPERIENCE.md:604 */
+  localeGroupTables: 'Internal tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupIoTables: 'Input/output tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupTableDefaults: 'Defaults for internal tables',
+  /** EXPERIENCE.md:604 */
+  localeGroupIoDefaults: 'Defaults for input/output',
+  /** EXPERIENCE.md:604 */
+  localeGroupStrings: 'Strings',
+  /** EXPERIENCE.md:604 */
+  localeAddTableAction: 'Add table',
+  /** EXPERIENCE.md:604 */
+  localeRemoveTableAction: 'Remove table',
+  /** EXPERIENCE.md:604 */
+  localeLoadTableAction: 'Load table',
+  /** EXPERIENCE.md:604 */
+  localeCopyTitle: 'Copy locale <locale>',
+  /** EXPERIENCE.md:604 */
+  localePropertiesEmptyAgent: 'change a locale property',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt1: 'Which date format does this locale use?',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt2: 'Which tables can this locale load?',
+  /** EXPERIENCE.md:604 */
+  localePropertiesPrompt3: 'Copy this locale to a custom locale',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCopyName: 'A new locale\'s name is y, two lowercase letters or digits, and the last character of the locale it copies: w for Unicode or 8 for 8-bit.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalCopyTaken: 'A locale with that name already exists.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalEditSystem: 'A locale InterSystems ships cannot be changed; copy it to a custom locale and change the copy.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalEditCurrent: 'The current locale cannot be changed; copy it, change the copy, and install it.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableUnavailable: 'This instance holds no such table for this locale\'s character set.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableTaken: 'This locale already lists that table.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableDefault: 'This table is a default of this locale; choose another default first.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableRow: 'Only a table row can be removed.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTableNotLoadable: 'Only a table this locale lists that is not built in can be loaded.',
+  /** EXPERIENCE.md:604 */
+  localeLoadConsequence: 'Loading makes this table available to every process on this instance until the next restart; on the current locale it can also change the instance\'s defaults.',
+  // Story 21.15: Locale import and export -- the two dialogs' titles and the import's sentence, the card's Subtables row, the three lines an applied
+  // transfer leaves, the five refusals the server sends and the consequence an import states.
+  /** EXPERIENCE.md:604 */
+  localeImportTitle: 'Import locales and tables',
+  /** EXPERIENCE.md:604 */
+  localeImportReplaces: 'Importing replaces any custom locale or table with the same name.',
+  /** EXPERIENCE.md:604 */
+  localeExportTitle: 'Export locale <locale>',
+  /** EXPERIENCE.md:604 */
+  localeSubtables: 'Subtables',
+  /** EXPERIENCE.md:604 */
+  localeImportDone: 'Imported <locales> locales, <tables> tables and <subtables> subtables.',
+  /** EXPERIENCE.md:604 */
+  localeExportDone: 'Exported locale <locale> to <path>.',
+  /** EXPERIENCE.md:604 */
+  localeExportSaved: 'Saved locale <locale> as <file>.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportShape: 'This file is not a locale or table export.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportEmpty: 'This file holds no custom locale or table to import.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportCurrent: 'This file would replace the current locale or a table it loads, so it cannot be imported.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalImportChanged: 'The file or the locales changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:604 */
+  localeRefusalTooLarge: 'A locale file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:604 */
+  localeImportConsequence: 'Importing replaces any custom locale or table with the same name. This cannot be undone.',
+  // Story 21.19: the Resources list's export and import -- the Export all action, the two dialogs' titles and the import's sentence, the two lines an
+  // applied transfer leaves, the two refusals the server sends for a file, and the consequence an import states.
+  /** EXPERIENCE.md:479 */
+  resourceExportAllAction: 'Export all',
+  /** EXPERIENCE.md:479 */
+  resourceExportTitle: 'Export resources',
+  /** EXPERIENCE.md:479 */
+  resourceImportTitle: 'Import resources',
+  /** EXPERIENCE.md:479 */
+  resourceImportReplaces: 'Importing replaces any existing resource with the same name.',
+  /** EXPERIENCE.md:479 */
+  resourceImportDone: 'Resources imported: <count>.',
+  /** EXPERIENCE.md:479 */
+  resourceExportDone: 'Resources exported to <path>: <count>.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalShape: 'This file is not a resource export, or it holds no resource.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalChanged: 'The file\'s resources changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalTooLarge: 'A resource file holds at most 2,000 resources, and this one is larger.',
+  /** EXPERIENCE.md:479 */
+  resourceImportConsequence: 'It overwrites any existing resource with the same name. This cannot be undone.',
   // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
   // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
   /** EXPERIENCE.md:594 */
@@ -8432,6 +8976,180 @@ export const STRINGS = {
   explorerClassMethodPrompt2: 'How do I pass an argument by reference?',
   /** EXPERIENCE.md:594 */
   explorerClassMethodPrompt3: 'What does a %Status return value mean?',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalNodesLabel: 'Global nodes',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalColumnNode: 'Node',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalColumnBelow: 'Below',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalStartNode: 'Start node',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalMore: 'More',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalEditTitle: 'Edit node',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalListEmpty: 'This namespace holds no global that matches.',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalNodesEmpty: 'This global holds no nodes.',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalListEmptyAgent: 'list the globals',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalListPrompt1: 'Which globals does this namespace hold?',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalListPrompt2: 'Which database stores this global?',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalListPrompt3: 'Delete a global',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalValueShortened: 'Value shortened',
+  /** EXPERIENCE.md:613 */
+  globalDeleteConsequence: 'Deleting removes the global and all of its data. This cannot be undone.',
+  /** EXPERIENCE.md:613 */
+  globalNodeDeleteConsequence: 'Deleting removes this node and every node below it. This cannot be undone.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalNotFound: 'There is no global with that name in this namespace.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalNodeNotFound: 'This node no longer holds a value or nodes below it.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalNodeNotEditable: 'Only a value of plain text, 1,000 characters at most, can be edited here.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalValueShape: 'Enter plain text of 1,000 characters at most.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalProtected: 'This global holds OcuPilot\'s own data or the instance\'s protected system data, so it cannot be changed or deleted from OcuPilot.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalTooLarge: 'This global is too large for OcuPilot to export or replace: the most is 3,000,000 characters.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalOwnData: 'OcuPilot\'s own data cannot be exported.',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFind: 'Find',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceWith: 'Replace with',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFindAndReplace: 'Find and replace',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceNodes: 'Nodes',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalReplaceOccurrences: 'Occurrences',
+  /** EXPERIENCE.md:613 */
+  explorerGlobalFindEmpty: 'No node in this global holds that text.',
+  /** EXPERIENCE.md:613 */
+  globalReplaceConsequence: 'Replacing changes every value the review counts. This cannot be undone.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalNoChange: 'No plain-text value in this global holds that text, so nothing would change.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReplaceTooLarge: 'This global is too large to replace in here: it holds more than 20,000 nodes, or a replaced value would be longer than 32,767 characters.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReviewChanged: 'This global changed after the replace was reviewed, so nothing was replaced. Review the replace again.',
+  /** EXPERIENCE.md:613 */
+  globalRefusalReplaceSystem: 'Find and replace is not available in the %SYS namespace.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorLabel: 'Security advisor',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorColumnRecommendation: 'Recommendation',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorColumnIgnored: 'Ignored',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorAreaClientApplications: 'Client applications',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorIgnoreAction: 'Ignore',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorUnignoreAction: 'Stop ignoring',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorEmpty: 'There are no recommendations.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorEmptyAgent: 'ignore or stop ignoring a recommendation',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorPrompt1: 'Which of these recommendations matter most on this instance?',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorRefusalIgnored: 'This recommendation is already ignored.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorRefusalNotIgnored: 'This recommendation is not ignored.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingSBON: 'Auditing should be enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingTypeSBON: 'Auditing for this event type should be enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingON: 'Auditing is enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingOFF: 'Auditing is disabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSBOFF: 'Service should be disabled unless required',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUnauthenticatedSBOFF: 'Unauthenticated should be off',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSHClientIPS: 'Service should have client IP addresses assigned',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSHKerberos: 'Service should use Kerberos authentication where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServicePublic: 'Service should not be Public where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceOneAuthentication: 'Service should only have one authentication mode on',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceNoAuthentication: 'Service has no authentication modes enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPasswordSBChanged: 'Password should be changed from default password',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextDormantCount: 'Dormant users should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextNotUsedCount: 'Users who never logged in should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserIsDormant: 'User appears dormant and should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserNotUsed: 'User has never logged in and should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserNoDefault: 'User has a default namespace which does not exist',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAllCountMinMax: 'At least 2 and at most 5 users should have the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPUBLICHasRoles: '_PUBLIC user should not have roles',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPUBLICRolesList: 'All users are granted the following roles from _PUBLIC:',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextMGRCount: 'WRITE privilege to IRISSYS should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextSecureCount: 'WRITE privilege to system security settings should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditCount: 'READ and WRITE privilege to the audit database should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUnknownUserHasAll: 'UnknownUser user should not have the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAAllUsersInherit: 'All user\'s inherit the following roles from _PUBLIC',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPercentGlobalWrite: 'Ability to set % globals should be turned off',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasAll: 'This user holds the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasAudit: 'This user holds READ or WRITE privileges on the Audit database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasSys: 'This user holds WRITE privilege on the IRISSYS database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasSecure: 'This user holds WRITE privilege on the system security settings',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasAudit: 'This role holds READ or WRITE privileges on the Audit database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasSys: 'This role holds WRITE privilege on the IRISSYS database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasSecure: 'This role holds WRITE privilege on the system security settings',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppIsPublic: 'Application is Public',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppCondGrantsAll: 'Application conditionally grants the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppGrantsAll: 'Application grants the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppSHKerberos: 'Application should use Kerberos authentication where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppOneAuthentication: 'Application should only have one authentication mode on',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppNoAuthentication: 'Application has no authentication modes enabled',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsLabel: 'Task Manager email',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsPrompt1: 'Is task email set up to reach anyone?',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsEmptyAgent: 'change a Task Manager email setting',
+  /** EXPERIENCE.md:613 */
+  configRefusalSubstitution: 'Use only these fields between #( and )#: <fields>.',
 } as const;
 
 /**

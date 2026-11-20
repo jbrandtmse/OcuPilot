@@ -203,6 +203,9 @@ export const CONSEQUENCE_SERVERCLIENTSECRETCHANGE = 'OAUTH.SERVERCLIENTSECRETCHA
 /** Story 14.2: the agent's audit purge, which removes the markers of the agent's own writes too. */
 export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
 
+/** Story 21.10: the agent's audit export, which writes the audit records, event data included, to a new server file. */
+export const CONSEQUENCE_AUDITEXPORT = 'AUDIT.EXPORT.WRITES';
+
 /** Story 18.14: a global mapping whose name begins with `%`, which shadows a system global (AD-10). */
 export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 
@@ -413,12 +416,45 @@ export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
 /** Story 24.10: the folder item delete; one published sentence. */
 export const CONSEQUENCE_ANALYTICSFOLDERITEMDELETE = 'ANALYTICS.FOLDERITEM.DELETE';
+/** Story 24.11: the listing group editor's four consequences: the delete, the listing remove, a listing that sets SQL and every other write; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPDELETE = 'ANALYTICS.LISTINGGROUP.DELETE';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPREMOVE = 'ANALYTICS.LISTINGGROUP.REMOVE';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPSQL = 'ANALYTICS.LISTINGGROUP.SQL';
+export const CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE = 'ANALYTICS.LISTINGGROUP.SAVE';
+/** Story 24.12: the quality measure editor's two consequences: the delete and every other write; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE = 'ANALYTICS.QUALITYMEASURE.DELETE';
+/** Story 24.12 Batch 3: the removal of a group, an element or a documentation item; one published sentence. */
+export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASURE.REMOVE';
+export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
+/** Story 24.13 Batch 2: a General setting's write stores every general setting, as the classic page's Save does; one published sentence. */
+export const CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE';
+/** Story 24.13 Batch 3: a run-time variable's expression is code, and the removal of a variable and of an icon; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSVARIABLECODE = 'ANALYTICS.VARIABLE.CODE';
+export const CONSEQUENCE_ANALYTICSVARIABLEREMOVE = 'ANALYTICS.VARIABLE.REMOVE';
+export const CONSEQUENCE_ANALYTICSICONREMOVE = 'ANALYTICS.ICON.REMOVE';
 /** Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGRESTART = 'CONFIG.SETTING.RESTART';
 /** Story 21.4: a SQL setting whose change purges the cached queries of every namespace; one published sentence. */
 export const CONSEQUENCE_CONFIGSETTINGPURGE = 'CONFIG.SETTING.PURGE';
+/** Story 21.10: a change of a system-wide security parameter; one published sentence. */
+export const CONSEQUENCE_SYSTEMSECURITYSET = 'SECURITY.SYSTEM.SET';
+/** Story 21.10: a mobile phone provider's deletion; one published sentence. */
+export const CONSEQUENCE_PHONEPROVIDERDELETE = 'PHONEPROVIDER.DELETE';
 /** Story 21.13: a DDL mapping's deletion; one published sentence. */
 export const CONSEQUENCE_CONFIGMAPPINGDELETE = 'CONFIG.MAPPING.DELETE';
+/** Story 21.14: a set of the locale-format switch, and a locale's install and delete; each is one published sentence. */
+export const CONSEQUENCE_CONFIGNLSRELOAD = 'CONFIG.NLS.RELOAD';
+export const CONSEQUENCE_LOCALEINSTALL = 'LOCALE.INSTALL';
+export const CONSEQUENCE_LOCALEDELETE = 'LOCALE.DELETE';
+export const CONSEQUENCE_LOCALELOAD = 'LOCALE.LOAD';
+/** Story 21.15: a locale and table import; one published sentence. */
+export const CONSEQUENCE_LOCALEIMPORT = 'LOCALE.IMPORT';
+/** Story 21.19: a resource import; one published sentence. */
+export const CONSEQUENCE_RESOURCEFILEIMPORT = 'RESOURCEFILE.IMPORT';
+/** Story 21.5: a whole global's delete and a node's delete; each is one published sentence. */
+export const CONSEQUENCE_GLOBALDELETE = 'GLOBAL.DELETE';
+export const CONSEQUENCE_GLOBALNODEDELETE = 'GLOBAL.NODE.DELETE';
+export const CONSEQUENCE_GLOBALREPLACE = 'GLOBAL.REPLACE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -500,6 +536,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
   if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
+  if (code === CONSEQUENCE_AUDITEXPORT) return STRINGS.auditExportEffect;
   if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
   if (code === CONSEQUENCE_SCREENACCESSLOWERED) return STRINGS.screenPermissionsLowerConsequence;
   // The copy dialog's own consequence sentence, published once.
@@ -545,7 +582,23 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_CONFIGSETTINGRESTART) return STRINGS.encryptionStartupRestart;
   // Story 21.4: a SQL setting whose change purges the cached queries, published once.
   if (code === CONSEQUENCE_CONFIGSETTINGPURGE) return STRINGS.configSettingPurge;
+  // Story 21.10: a change of a system-wide security parameter, published once.
+  if (code === CONSEQUENCE_SYSTEMSECURITYSET) return STRINGS.systemSecuritySetConsequence;
+  // Story 21.10: a mobile phone provider's deletion, published once.
+  if (code === CONSEQUENCE_PHONEPROVIDERDELETE) return STRINGS.phoneProviderDeleteConsequence;
   if (code === CONSEQUENCE_CONFIGMAPPINGDELETE) return STRINGS.configMappingDelete;
+  // Story 21.14: the locale-format switch's reload, and a locale's install and delete.
+  if (code === CONSEQUENCE_CONFIGNLSRELOAD) return STRINGS.nlsDefaultReloadConsequence;
+  if (code === CONSEQUENCE_LOCALEINSTALL) return STRINGS.localeInstallConsequence;
+  if (code === CONSEQUENCE_LOCALEDELETE) return STRINGS.localeDeleteConsequence;
+  if (code === CONSEQUENCE_LOCALELOAD) return STRINGS.localeLoadConsequence;
+  if (code === CONSEQUENCE_LOCALEIMPORT) return STRINGS.localeImportConsequence;
+  if (code === CONSEQUENCE_RESOURCEFILEIMPORT) return STRINGS.resourceImportConsequence;
+  // Story 21.5: a global's delete and a node's delete.
+  if (code === CONSEQUENCE_GLOBALDELETE) return STRINGS.globalDeleteConsequence;
+  if (code === CONSEQUENCE_GLOBALNODEDELETE) return STRINGS.globalNodeDeleteConsequence;
+  // Story 21.18: a global's find and replace.
+  if (code === CONSEQUENCE_GLOBALREPLACE) return STRINGS.globalReplaceConsequence;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;
@@ -608,6 +661,21 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSTERMLISTREMOVE) return STRINGS.analyticsTermListRemoveConsequence;
+  // Story 24.11: the listing group editor's sentences, each published once.
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPDELETE) return STRINGS.analyticsListingGroupDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPREMOVE) return STRINGS.analyticsListingRemoveConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPSQL) return STRINGS.analyticsListingSqlConsequence;
+  if (code === CONSEQUENCE_ANALYTICSLISTINGGROUPSAVE) return STRINGS.analyticsListingGroupSaveConsequence;
+  // Story 24.12: the quality measure editor's sentences, each published once.
+  if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE) return STRINGS.analyticsQualityMeasureDeleteConsequence;
+  if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE) return STRINGS.analyticsQualityMeasureRemoveConsequence;
+  if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
+  // Story 24.13 Batch 2: the General settings' save, published once.
+  if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;
+  // Story 24.13 Batch 3: a variable's expression is code, and the two removals, each published once.
+  if (code === CONSEQUENCE_ANALYTICSVARIABLECODE) return STRINGS.analyticsVariableCodeConsequence;
+  if (code === CONSEQUENCE_ANALYTICSVARIABLEREMOVE) return STRINGS.analyticsVariableRemoveConsequence;
+  if (code === CONSEQUENCE_ANALYTICSICONREMOVE) return STRINGS.analyticsIconRemoveConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

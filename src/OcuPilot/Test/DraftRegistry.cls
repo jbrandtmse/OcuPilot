@@ -56,8 +56,8 @@ Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
-/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT";
+/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14).</p>
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses
@@ -79,8 +79,10 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 /// <method>OcuPilot.Test.EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder</method>.
 /// Story 18.23's startup settings update checks the synthetic settings against the instance's rules the
 /// same way; its placeholder is pinned by
-/// <method>OcuPilot.Test.EncryptionStartupWrite.TestThePasswordReachesNoRecord</method>.</p>
-Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update";
+/// <method>OcuPilot.Test.EncryptionStartupWrite.TestThePasswordReachesNoRecord</method>.
+/// Story 21.15's locale import reads the file its script writes the records of, so a synthetic file is refused; its script is pinned against a real file by
+/// <method>OcuPilot.Test.LocaleImportRules.TestAnImportAndAnExportRenderTheirScript</method>.</p>
+Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update,osmgmt.locales.import";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -296,6 +298,10 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
     Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
     If tType = "pct-class-access" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#PCTTARGETID))
+    ; A security recommendation's id is its type, its element and its code, which the advisor port renders no script for unless it splits into three (Story 21.19).
+    If tType = "security-recommendation" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Roles", " ", "AuditCount"))
+    ; A running SQL statement's id is its server, its process and its statement hash, which the SQL activity port renders no script for unless it splits into three (Story 21.20).
+    If tType = "sql-statement" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild($ClassMethod("OcuPilot.Port.SqlActivityPort", "LocalServer"), 4242, "OcuPilotDraftHash"))
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }

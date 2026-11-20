@@ -21,6 +21,11 @@
 /// <method>CreateHidden</method> and <method>RemoveHidden</method> (a cube whose resource <parameter>HIDDENRESOURCE</parameter> no
 /// principal of the cube manager holds), and the cleanup of what a build leaves: the build tracking and statistics nodes of each probe
 /// cube, and the source classes' update node. <method>Gone</method> checks the hidden cube and that residue.</p>
+/// <p>Story 24.12 adds the quality measures: <method>CreateQualityMeasures</method> saves and compiles four measure classes in the probe's package (compiled, refused, linked and
+/// disabled), <method>CreateEdgeQualityMeasures</method> the edge measures (no subject area, a dangling link), <method>CreateTwinQualityMeasure</method> a second class declaring
+/// the compiled measure's name, which <method>RemoveTwinQualityMeasure</method> deletes, and <method>RemoveQualityMeasures</method> deletes them all with their <code>^DeepSee.QMsrs</code> nodes. <method>Remove</method> calls it and <method>Left</method> checks those nodes.</p>
+/// <p>Story 24.13 adds the analytics settings fixture: <method>SnapshotSettings</method>, <method>ClearSettings</method>, <method>SetMarkerSettings</method>, <method>RestoreSettings</method>,
+/// <method>SettingsDigest</method> and <method>SettingsLeft</method>. <method>Remove</method> restores the settings from the snapshot and <method>Left</method> reports what is left of them.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
 /// <code>USER</code> by explicit save and restore of the namespace, and a run needs a throwaway instance.</p>
 Class OcuPilot.Test.AnalyticsProbe Extends %RegisteredObject
@@ -110,6 +115,129 @@ Parameter TERMFIELDSTWO = "Note^Tag";
 
 Parameter TERMSTWO = "z1=Zed=zed note=zed tag";
 
+/// <p>The listing groups <method>CreateListingGroups</method> makes in <code>USER</code>, each with the class that holds it (Story 24.11). The first
+/// is compiled over the Visits cube and holds two listings, the second names a cube that does not exist and so is saved but not compiled, the third
+/// carries <parameter>HIDDENRESOURCE</parameter> on the group, the fourth is disabled, and the fifth
+/// (<method>CreateBrokenListingGroup</method>) holds an attribute value the model refuses, so the vendor reads it as no group.</p>
+Parameter LISTGROUP = "OcuPilotProbeListings";
+
+Parameter LISTGROUPCLASS = "OcuPilotProbe.Analytics.ListingGroup";
+
+Parameter LISTGROUPSAVED = "OcuPilotProbeListingsSaved";
+
+Parameter LISTGROUPSAVEDCLASS = "OcuPilotProbe.Analytics.ListingGroupSaved";
+
+Parameter LISTGROUPHIDDEN = "OcuPilotProbeListingsHidden";
+
+Parameter LISTGROUPHIDDENCLASS = "OcuPilotProbe.Analytics.ListingGroupHidden";
+
+Parameter LISTGROUPOFF = "OcuPilotProbeListingsOff";
+
+Parameter LISTGROUPOFFCLASS = "OcuPilotProbe.Analytics.ListingGroupOff";
+
+Parameter LISTGROUPBROKEN = "OcuPilotProbeListingsBroken";
+
+Parameter LISTGROUPBROKENCLASS = "OcuPilotProbe.Analytics.ListingGroupBroken";
+
+/// <p>What the listing group write tests (Story 24.11, Batch 2) name: their groups start with <parameter>LISTGROUPWRITE</parameter>, their classes with
+/// <parameter>LISTGROUPWRITECLASS</parameter> and their listings with <parameter>LISTINGWRITE</parameter>, so <method>RemoveListingGroups</method> and
+/// <method>Left</method> find whatever a failed test left.</p>
+Parameter LISTGROUPWRITE = "OcuPilotProbeLGW";
+
+Parameter LISTGROUPWRITECLASS = "OcuProbeLGW.Analytics.LGW";
+
+/// <p>The prefix of the classes the write tests save directly, bypassing the port, whose names begin with <code>OcuPilot</code> so the writes' refusal of OcuPilot's own code
+/// can be shown against a group that exists. <method>RemoveListingGroups</method> and <method>Left</method> cover it as they cover <parameter>LISTGROUPWRITECLASS</parameter>.</p>
+Parameter LISTGROUPOWNCLASS = "OcuPilotLGW.Analytics.LGW";
+
+Parameter LISTINGWRITE = "LGW";
+
+/// <p>The class <method>CreateTwinListingGroup</method> saves: it names the compiled group's name over a cube that does not exist, so its compile is refused, and its
+/// class name sorts before the compiled group's.</p>
+Parameter LISTGROUPTWINCLASS = "OcuPilotProbe.Analytics.AListingGroupTwin";
+
+/// <p>The class <method>CreateTwinListingGroup</method> saves when it is asked for the late twin: the same group name as the early twin, and a class name that sorts after the compiled group's.</p>
+Parameter LISTGROUPTWINLATECLASS = "OcuPilotProbe.Analytics.ZListingGroupTwin";
+
+/// <p>The cube the saved listing group names and the SQL the compiled group's custom listing runs.</p>
+Parameter LISTGROUPNOCUBE = "OcuPilotProbeNoSuchCube";
+
+Parameter LISTGROUPSQL = "SELECT ID FROM OcuPilotProbe_Analytics.Visit";
+
+/// <p>What the quality measure tests (Story 24.12) name: the catalog and set every probe measure carries, each measure's name and the class that declares it. The
+/// subject area of each is <parameter>VISITS</parameter>. <method>RemoveQualityMeasures</method> and <method>Left</method> find whatever a failed test left.</p>
+Parameter QMCATALOG = "OcuPilotProbe";
+
+Parameter QMSET = "Quality";
+
+/// <p>The measure whose class compiles: two groups, one disabled element, one documentation item.</p>
+Parameter QMCOMPILED = "OcuPilotProbe/Quality/Compiled";
+
+Parameter QMCOMPILEDCLASS = "OcuPilotProbe.Analytics.QMCompiled";
+
+/// <p>The measure whose expression names a group it does not hold: its compile is refused and its name is registered.</p>
+Parameter QMREFUSED = "OcuPilotProbe/Quality/Refused";
+
+Parameter QMREFUSEDCLASS = "OcuPilotProbe.Analytics.QMRefused";
+
+/// <p>The measure linked to <parameter>QMCOMPILED</parameter>, with a caption of its own and no group.</p>
+Parameter QMLINKED = "OcuPilotProbe/Quality/Linked";
+
+Parameter QMLINKEDCLASS = "OcuPilotProbe.Analytics.QMLinked";
+
+/// <p>The disabled measure: its class compiles and the vendor lists it with no name.</p>
+Parameter QMOFF = "OcuPilotProbe/Quality/Off";
+
+Parameter QMOFFCLASS = "OcuPilotProbe.Analytics.QMOff";
+
+/// <p>The classes <method>CreateTwinQualityMeasure</method> saves: each declares <parameter>QMCOMPILED</parameter>'s name, and their class names sort before and after the compiled measure's.</p>
+Parameter QMTWINCLASS = "OcuPilotProbe.Analytics.AQMTwin";
+
+Parameter QMTWINLATECLASS = "OcuPilotProbe.Analytics.ZQMTwin";
+
+/// <p>The edge measures <method>CreateEdgeQualityMeasures</method> saves: one whose subject area names no cube, and a measure linked to a master whose class is deleted afterwards (the
+/// master's name and class are <parameter>QMMASTER</parameter> and <parameter>QMMASTERCLASS</parameter>, which exist only while the link is made).</p>
+Parameter QMMISSINGAREA = "OcuPilotProbeNoSuchArea";
+
+Parameter QMNOAREA = "OcuPilotProbe/Quality/NoArea";
+
+Parameter QMNOAREACLASS = "OcuPilotProbe.Analytics.QMNoArea";
+
+Parameter QMMASTER = "OcuPilotProbe/Quality/Master";
+
+Parameter QMMASTERCLASS = "OcuPilotProbe.Analytics.QMMaster";
+
+Parameter QMDANGLING = "OcuPilotProbe/Quality/Dangling";
+
+Parameter QMDANGLINGCLASS = "OcuPilotProbe.Analytics.QMDangling";
+
+/// <p>What the quality measure write tests (Story 24.12, Batch 2) name: their measures' catalog and their classes' package start with <parameter>QMWRITE</parameter>
+/// (<parameter>QMWRITECLASS</parameter> for the classes they save), and the classes they save directly to show a write refuse OcuPilot's own code start with
+/// <parameter>QMWRITEOWNCLASS</parameter> in any letter case. <method>RemoveQualityMeasures</method> and <method>Left</method> cover every class and registry node under them.</p>
+Parameter QMWRITE = "OcuProbeQMW";
+
+Parameter QMWRITECLASS = "OcuProbeQMW.Analytics.QMW";
+
+Parameter QMWRITEOWNCLASS = "OcuPilotQMW.Analytics.QMW";
+
+/// <p>The same three names for the tests of the element and documentation writes (Story 24.12, Batch 3): <method>RemoveQualityMeasures</method>, <method>KillQualityMeasureWriteNodes</method> and
+/// <method>Left</method> cover them as they cover <parameter>QMWRITE</parameter>'s.</p>
+Parameter QMPART = "OcuProbeQMP";
+
+Parameter QMPARTCLASS = "OcuProbeQMP.Analytics.QMP";
+
+Parameter QMPARTOWNCLASS = "OcuPilotQMP.Analytics.QMP";
+
+/// <p>The analytics settings markers (Story 24.13): the Google Maps key the General tab's save stores, two run-time variables (the first's expression would set
+/// <code>^OcuProbe2413Ran</code> if it ever ran) and a user-defined icon.</p>
+Parameter SETTINGSKEY = "OcuProbe2413SecretKey";
+
+Parameter SETTINGSVARIABLE = "OcuProbe2413Var";
+
+Parameter SETTINGSVARIABLETWO = "OcuProbe2413Text";
+
+Parameter SETTINGSICON = "OcuProbe2413Icon";
+
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
 
@@ -118,6 +246,23 @@ Parameter PIVOT = "OcuPilotProbe/Visits.pivot";
 Parameter DASHBOARD = "OcuPilotProbe/Board.dashboard";
 
 Parameter GUARDEDDASHBOARD = "OcuPilotProbe/Guarded.dashboard";
+
+/// <p>The viewer's fixtures (Story 24.14), made by <method>CreateViewerItems</method> through the vendor's own classes: a pivot with a row level, a column level, a measure, a filter, a calculated member
+/// and a SQL restriction; a pivot over the Visits cube with a row level and a measure only, which runs; a pivot in manual mode; a pivot over a KPI; and a dashboard of three widgets.</p>
+Parameter VIEWPIVOT = "OcuPilotProbe/ViewMatrix.pivot";
+
+Parameter VIEWRUN = "OcuPilotProbe/ViewRun.pivot";
+
+Parameter VIEWMANUAL = "OcuPilotProbe/ViewManual.pivot";
+
+Parameter VIEWKPI = "OcuPilotProbe/ViewKpi.pivot";
+
+Parameter VIEWBOARD = "OcuPilotProbe/ViewBoard.dashboard";
+
+/// <p>The manual pivot's own MDX, and the data source of the KPI pivot's cube.</p>
+Parameter VIEWMDX = "SELECT FROM [OcuPilotProbeVisits]";
+
+Parameter VIEWKPICUBE = "OcuPilotProbeNoSuch.kpi";
 
 /// <p>A favorite that names no folder item.</p>
 Parameter DANGLING = "OcuPilotProbe/Gone.pivot";
@@ -500,6 +645,433 @@ ClassMethod DeleteTermListTwo() As %Status
     Quit tSC
 }
 
+/// <p>The class text of the listing group <var>pWhich</var> (<code>compiled</code>, <code>saved</code>, <code>hidden</code>, <code>off</code>,
+/// <code>twin</code> or <code>broken</code>): a class extending <class>%DeepSee.ListingGroupDefinition</class> whose <code>Listings</code> XData holds the group. A single
+/// quote in the XML stands for a double one.</p>
+ClassMethod ListingGroupText(pWhich As %String) As %String [ Private ]
+{
+    Set tNL = $Char(13, 10)
+    Set tNS = "xmlns='http://www.intersystems.com/deepsee/listinggroup'"
+    Set tDepends = ""
+    If pWhich = "compiled" {
+        Set tClass = ..#LISTGROUPCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUP _ "' displayName='OcuPilot probe listings' description='Two listings over the Visits cube' targetCubes='" _ ..#VISITS _ "' defaultResource='%DeepSee_Portal'>" _
+            "<listing name='ByAmount' displayName='By amount' description='Amounts and minutes' listingType='table' fieldList='Amount,Minutes' formatList='color:red^' orderBy='Amount DESC' " _
+            "joinInfo='{&quot;joins&quot;:{&quot;Category&quot;:&quot;LEFT JOIN OcuPilotProbe_Analytics.Category c ON c.ID = Category&quot;},&quot;joinAlias&quot;:{&quot;Category&quot;:&quot;c&quot;}}'/>" _
+            "<listing name='CustomSql' displayName='Custom SQL' description='Runs its own query' sql='" _ ..#LISTGROUPSQL _ "' selectMode='1' resource='%DeepSee_Admin'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "saved" {
+        Set tClass = ..#LISTGROUPSAVEDCLASS
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPSAVED _ "' targetCubes='" _ ..#LISTGROUPNOCUBE _ "'>" _
+            "<listing name='Pending' fieldList='Amount' disabled='true'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "hidden" {
+        Set tClass = ..#LISTGROUPHIDDENCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPHIDDEN _ "' targetCubes='" _ ..#VISITS _ "' resource='" _ ..#HIDDENRESOURCE _ "'>" _
+            "<listing name='Secret' fieldList='Amount'/>" _
+            "</listingGroup>"
+    } ElseIf pWhich = "off" {
+        Set tClass = ..#LISTGROUPOFFCLASS
+        Set tDepends = " [ DependsOn = " _ ..#VISITSCLASS _ " ]"
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPOFF _ "' targetCubes='" _ ..#VISITS _ "' disabled='true'>" _
+            "<listing name='Idle' fieldList='Minutes'/>" _
+            "</listingGroup>"
+    } ElseIf (pWhich = "twin") || (pWhich = "twinlate") {
+        Set tClass = $Select(pWhich = "twin": ..#LISTGROUPTWINCLASS, 1: ..#LISTGROUPTWINLATECLASS)
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUP _ "' targetCubes='" _ ..#LISTGROUPNOCUBE _ "'>" _
+            "<listing name='Twin' fieldList='Amount'/>" _
+            "</listingGroup>"
+    } Else {
+        Set tClass = ..#LISTGROUPBROKENCLASS
+        Set tXML = "<listingGroup " _ tNS _ " name='" _ ..#LISTGROUPBROKEN _ "' targetCubes='" _ ..#VISITS _ "' disabled='perhaps'/>"
+    }
+    Quit "Class " _ tClass _ " Extends %DeepSee.ListingGroupDefinition" _ tDepends _ tNL _ "{" _ tNL _
+        "XData Listings [ XMLNamespace = ""http://www.intersystems.com/deepsee/listinggroup"" ]" _ tNL _ "{" _ tNL _
+        $Translate(tXML, "'", """") _ tNL _ "}" _ tNL _ "}" _ tNL
+}
+
+/// <p>Save the probe's listing group classes in <code>USER</code> and compile each: the compiled group, the saved group (its compile is refused for a missing
+/// target cube), the group that carries <parameter>HIDDENRESOURCE</parameter> and the disabled group. It refuses, changing nothing, unless
+/// <method>Create</method> has run, because the Visits cube is the target. A compile that is refused for the saved group is the point of that group, not a failure.
+/// <method>RemoveListingGroups</method> deletes them.</p>
+ClassMethod CreateListingGroups() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCreated = ..Reports()
+        If tCreated {
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCreated = ##class(%DeepSee.Utils).%CubeExists(..#VISITS)
+            Set $NAMESPACE = tOrigNS
+        }
+        If 'tCreated {
+            Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.CreateListingGroups needs the probe created in " _ ..#NAMESPACE _ ": call Enable and Create first")
+            Quit
+        }
+        For tWhich = "compiled", "saved", "hidden", "off" {
+            Set tClass = $Case(tWhich, "compiled": ..#LISTGROUPCLASS, "saved": ..#LISTGROUPSAVEDCLASS, "hidden": ..#LISTGROUPHIDDENCLASS, : ..#LISTGROUPOFFCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ListingGroupText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCompile = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If (tWhich '= "saved") && $$$ISERR(tCompile) {
+                Set tSC = tCompile
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save the probe's broken listing group in <code>USER</code>: a class whose <code>Listings</code> XData is well-formed XML that the model refuses
+/// (<code>disabled</code> is not a boolean). It is saved and its compile is attempted, and refused. <method>RemoveListingGroups</method> deletes it.</p>
+ClassMethod CreateBrokenListingGroup() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#LISTGROUPBROKENCLASS, ..ListingGroupText("broken"))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Compile(..#LISTGROUPBROKENCLASS, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save a twin listing group in <code>USER</code>: a second class that names the compiled group's name, its class name sorting before the compiled group's
+/// or, when <var>pLate</var> is true, after it. Its compile is attempted and refused, so the vendor lists two saved classes under that name and compiles one.
+/// <method>RemoveTwinListingGroup</method> and <method>RemoveListingGroups</method> delete it.</p>
+ClassMethod CreateTwinListingGroup(pLate As %Boolean = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = $Select(pLate: ..#LISTGROUPTWINLATECLASS, 1: ..#LISTGROUPTWINCLASS)
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ListingGroupText($Select(pLate: "twinlate", 1: "twin")))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Compile(tClass, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete both twin listing groups' classes from <code>USER</code>; nothing happens when they are not there.</p>
+ClassMethod RemoveTwinListingGroup() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+            Kill ^DeepSee.ListingGroups("classes", tClass)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the probe's listing group classes from <code>USER</code>, which also removes what their compile registered, and kill what is left of the
+/// probe groups' registry nodes; nothing happens when there are none.</p>
+ClassMethod RemoveListingGroups() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+        }
+        For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
+            Kill ^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))
+        }
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            Kill ^DeepSee.ListingGroups("classes", tClass)
+        }
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#LISTGROUPNOCUBE {
+            Set tListing = ""
+            For {
+                Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
+                If tListing = "" Quit
+                If $ListFind($ListBuild("ByAmount", "CustomSql", "Pending", "Secret", "Idle", "Twin"), tListing) || ($Extract(tListing, 1, $Length(..#LISTINGWRITE)) = ..#LISTINGWRITE) Kill ^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing)
+            }
+        }
+        ; The write tests' groups and classes, whatever a failed test left of them.
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
+        }
+        Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#LISTGROUPWRITE, "U")), -1)
+        For {
+            Set tName = $Order(^DeepSee.ListingGroups("groups", tName))
+            If $Extract(tName, 1, $Length(..#LISTGROUPWRITE)) '= $ZConvert(..#LISTGROUPWRITE, "U") Quit
+            Kill ^DeepSee.ListingGroups("groups", tName)
+        }
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            For {
+                Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+                If $Extract(tName, 1, $Length(tPrefix)) '= tPrefix Quit
+                Kill ^DeepSee.ListingGroups("classes", tName)
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The class text of the quality measure <var>pWhich</var> (<code>compiled</code>, <code>refused</code>, <code>linked</code>, <code>off</code>, <code>noarea</code>,
+/// <code>master</code>, <code>dangling</code>, <code>twin</code> or <code>twinlate</code>): a class extending <class>%DeepSee.QualityMeasure.QualityMeasure</class> whose <code>QualityMeasure</code> XData holds the measure. A single quote
+/// in the XML stands for a double one.</p>
+ClassMethod QualityMeasureText(pWhich As %String) As %String [ Private ]
+{
+    Set tNL = $Char(13, 10)
+    Set tNS = "http://www.intersystems.com/deepsee/qualityMeasure"
+    Set tHead = "<qualityMeasure xmlns='" _ tNS _ "' catalog='" _ ..#QMCATALOG _ "' set='" _ ..#QMSET _ "' "
+    If pWhich = "compiled" {
+        Set tClass = ..#QMCOMPILEDCLASS
+        Set tXML = tHead _ "id='Compiled' caption='OcuPilot probe measure' description='Visits that ran long' subjectArea='" _ ..#VISITS _ "' expression='[Long]/[Everyone]' published='true' format='#.##' href='https://example.invalid/measure'>" _
+            "<group name='Long' caption='Long stays' description='Visits over the limit'>" _
+            "<element name='Over30' caption='Over 30 minutes' mdx='{[Minutes].&amp;[30]}'/>" _
+            "<element name='Retired' caption='Retired rule' mdx='{[Minutes].&amp;[99]}' disabled='true'/>" _
+            "</group>" _
+            "<group name='Everyone' caption='All visits' description='Every visit'>" _
+            "<element name='AllVisits' caption='All visits' mdx='{[Minutes].Members}'/>" _
+            "</group>" _
+            "<meta name='Purpose' caption='Purpose' section='Overview'>Counts the long visits &amp; their share.</meta>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "refused" {
+        Set tClass = ..#QMREFUSEDCLASS
+        Set tXML = tHead _ "id='Refused' caption='Names a missing group' subjectArea='" _ ..#VISITS _ "' expression='[Num]/[Missing]' published='false'>" _
+            "<group name='Num' caption='Numerator'><element name='One' mdx='{[Minutes].&amp;[1]}'/></group>" _
+            "<group name='Spare' caption='Spare group' description='Holds no element' disabled='true'/>" _
+            "<meta name='Draft' caption='Draft note' section='Notes' disabled='true'>Not yet reviewed.</meta>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "linked" {
+        Set tClass = ..#QMLINKEDCLASS
+        Set tXML = tHead _ "id='Linked' caption='Follows the compiled measure' description='Linked' linkedTo='" _ ..#QMCOMPILED _ "' subjectArea='" _ ..#VISITS _ "' expression='1'/>"
+    } ElseIf pWhich = "off" {
+        Set tClass = ..#QMOFFCLASS
+        Set tXML = tHead _ "id='Off' caption='Disabled' subjectArea='" _ ..#VISITS _ "' expression='[Long]/[Everyone]' disabled='true'/>"
+    } ElseIf pWhich = "noarea" {
+        Set tClass = ..#QMNOAREACLASS
+        Set tXML = tHead _ "id='NoArea' caption='Names no cube' subjectArea='" _ ..#QMMISSINGAREA _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='One' mdx='{[Minutes].&amp;[3]}'/></group>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "master" {
+        Set tClass = ..#QMMASTERCLASS
+        Set tXML = tHead _ "id='Master' caption='Master of the dangling link' subjectArea='" _ ..#VISITS _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='One' mdx='{[Minutes].&amp;[4]}'/></group>" _
+            "</qualityMeasure>"
+    } ElseIf pWhich = "dangling" {
+        Set tClass = ..#QMDANGLINGCLASS
+        Set tXML = tHead _ "id='Dangling' caption='Follows a deleted master' linkedTo='" _ ..#QMMASTER _ "' subjectArea='" _ ..#VISITS _ "' expression='1'/>"
+    } Else {
+        Set tClass = $Select(pWhich = "twin": ..#QMTWINCLASS, 1: ..#QMTWINLATECLASS)
+        Set tXML = tHead _ "id='Compiled' caption='Twin of the compiled measure' subjectArea='" _ ..#VISITS _ "' expression='[Only]'>" _
+            "<group name='Only' caption='Only group'><element name='Twin' mdx='{[Minutes].&amp;[2]}'/></group>" _
+            "</qualityMeasure>"
+    }
+    Quit "Class " _ tClass _ " Extends %DeepSee.QualityMeasure.QualityMeasure" _ tNL _ "{" _ tNL _
+        "XData QualityMeasure [ XMLNamespace = ""http://www.intersystems.com/deepsee/qualityMeasure"" ]" _ tNL _ "{" _ tNL _
+        $Translate(tXML, "'", """") _ tNL _ "}" _ tNL _ "}" _ tNL
+}
+
+/// <p>Save the probe's quality measure classes in <code>USER</code> and compile each, the compiled measure first because the linked one names it: the compiled
+/// measure, the measure whose compile is refused (its name is registered anyway), the linked measure and the disabled one, which the vendor lists with no name. A compile
+/// that is refused for the second is the point of that measure, not a failure. <method>RemoveQualityMeasures</method> deletes them.</p>
+ClassMethod CreateQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tWhich = "compiled", "refused", "linked", "off" {
+            Set tClass = $Case(tWhich, "compiled": ..#QMCOMPILEDCLASS, "refused": ..#QMREFUSEDCLASS, "linked": ..#QMLINKEDCLASS, : ..#QMOFFCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCompile = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If (tWhich '= "refused") && $$$ISERR(tCompile) {
+                Set tSC = tCompile
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save the edge quality measures in <code>USER</code>: a measure whose subject area names no cube, and a measure linked to a master that is then deleted, so the link points at
+/// no measure. All three compile before the master is deleted. <method>RemoveQualityMeasures</method> deletes them.</p>
+ClassMethod CreateEdgeQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For tWhich = "noarea", "master", "dangling" {
+            Set tClass = $Case(tWhich, "noarea": ..#QMNOAREACLASS, "master": ..#QMMASTERCLASS, : ..#QMDANGLINGCLASS)
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText(tWhich))
+            If $$$ISERR(tSC) Quit
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tSC = $System.OBJ.Compile(tClass, "ck-d")
+            Set $NAMESPACE = tOrigNS
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $System.OBJ.Delete(..#QMMASTERCLASS, "-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Save a twin quality measure in <code>USER</code>: a second class that declares the compiled measure's name, its class name sorting before the compiled measure's
+/// or, when <var>pLate</var> is true, after it. It compiles and the vendor lists it, but its name stays registered to the compiled measure's class.
+/// <method>RemoveTwinQualityMeasure</method> and <method>RemoveQualityMeasures</method> delete it.</p>
+ClassMethod CreateTwinQualityMeasure(pLate As %Boolean = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = $Select(pLate: ..#QMTWINLATECLASS, 1: ..#QMTWINCLASS)
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..QualityMeasureText($Select(pLate: "twinlate", 1: "twin")))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $System.OBJ.Compile(tClass, "ck-d")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete both twin quality measures' classes from <code>USER</code>; nothing happens when they are not there. The registered measure's nodes stay.</p>
+ClassMethod RemoveTwinQualityMeasure() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#QMTWINCLASS, ..#QMTWINLATECLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the probe's quality measure classes from <code>USER</code>, the twins first, and kill what is left of the
+/// probe measures' registry nodes; nothing happens when there are none.</p>
+ClassMethod RemoveQualityMeasures() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tClass = ..#QMTWINCLASS, ..#QMTWINLATECLASS, ..#QMLINKEDCLASS, ..#QMREFUSEDCLASS, ..#QMOFFCLASS, ..#QMCOMPILEDCLASS, ..#QMDANGLINGCLASS, ..#QMMASTERCLASS, ..#QMNOAREACLASS {
+            If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Do $System.OBJ.Delete(tClass, "-d")
+            Kill ^DeepSee.QMsrs("qmsrClasses", tClass)
+        }
+        For tName = ..#QMCOMPILED, ..#QMREFUSED, ..#QMLINKED, ..#QMOFF, ..#QMNOAREA, ..#QMMASTER, ..#QMDANGLING {
+            Kill ^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U")), ^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))
+        }
+        ; The write tests' measures and classes, whatever a failed test left of them, in any letter case.
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS, ..#QMPART _ ".", ..#QMPARTOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            While tRS.%Next() {
+                Do $System.OBJ.Delete(tRS.%GetData(1), "-d")
+            }
+        }
+        Do ..KillQualityMeasureWriteNodes(1)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The registry nodes of the write tests' measures and classes, in the namespace the process is in: the names that start with <parameter>QMWRITE</parameter> and the classes that start with
+/// <parameter>QMWRITE</parameter> or <parameter>QMWRITEOWNCLASS</parameter>'s package, compared without regard to case. With <var>pKill</var> each is killed; the count found is answered.</p>
+ClassMethod KillQualityMeasureWriteNodes(pKill As %Boolean) As %Integer
+{
+    Set tCount = 0
+    Set tNamePrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ "/", $ZConvert(..#QMPART, "U") _ "/")
+    Set tClassPrefixes = $ListBuild($ZConvert(..#QMWRITE, "U") _ ".", $ZConvert($Piece(..#QMWRITEOWNCLASS, ".", 1), "U") _ ".", $ZConvert(..#QMPART, "U") _ ".", $ZConvert($Piece(..#QMPARTOWNCLASS, ".", 1), "U") _ ".")
+    Set tName = ""
+    For {
+        Set tName = $Order(^DeepSee.QMsrs("qmsrNames", tName))
+        If tName = "" Quit
+        If ..QMNameMarked(tName, tNamePrefixes) {
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrNames", tName)
+        }
+    }
+    Set tClass = ""
+    For {
+        Set tClass = $Order(^DeepSee.QMsrs("qmsrClasses", tClass))
+        If tClass = "" Quit
+        Set tUpper = $ZConvert(tClass, "U")
+        For tAt = 1:1:$ListLength(tClassPrefixes) {
+            Set tPrefix = $List(tClassPrefixes, tAt)
+            If $Extract(tUpper, 1, $Length(tPrefix)) '= tPrefix Continue
+            Set tCount = tCount + 1
+            If pKill Kill ^DeepSee.QMsrs("qmsrClasses", tClass)
+            Quit
+        }
+    }
+    Set tArea = ""
+    For {
+        Set tArea = $Order(^DeepSee.QMsrs("cubes", tArea))
+        If tArea = "" Quit
+        Set tName = ""
+        For {
+            Set tName = $Order(^DeepSee.QMsrs("cubes", tArea, tName))
+            If tName = "" Quit
+            If ..QMNameMarked(tName, tNamePrefixes) {
+                Set tCount = tCount + 1
+                If pKill Kill ^DeepSee.QMsrs("cubes", tArea, tName)
+            }
+        }
+    }
+    Quit tCount
+}
+
+/// <p>1 when the registry name <var>pName</var> starts with one of the upper-case catalog prefixes <var>pPrefixes</var>.</p>
+ClassMethod QMNameMarked(pName As %String, pPrefixes As %List) As %Boolean
+{
+    Set tMarked = 0
+    For tAt = 1:1:$ListLength(pPrefixes) {
+        If $Extract(pName, 1, $Length($List(pPrefixes, tAt))) = $List(pPrefixes, tAt) Set tMarked = 1
+    }
+    Quit tMarked
+}
+
 /// <p>Write the Category rows and the Visit rows, in <code>USER</code>, deterministically.</p>
 ClassMethod Fill() As %Status [ Private ]
 {
@@ -582,6 +1154,81 @@ ClassMethod CreateFolderItems() As %Status [ Private ]
     Quit tGuarded.%Save()
 }
 
+/// <p>Create, in <code>USER</code>, the viewer's fixtures (Story 24.14): <parameter>VIEWPIVOT</parameter>, <parameter>VIEWRUN</parameter>, <parameter>VIEWMANUAL</parameter>, <parameter>VIEWKPI</parameter>
+/// and <parameter>VIEWBOARD</parameter>. <method>Remove</method> deletes them and <method>Left</method> names any that remain. Each pivot is saved through <code>%DeepSee.Dashboard.Pivot</code> and the dashboard
+/// through <code>%DeepSee.Dashboard.Definition</code>, so a test compares what a read answers with what those classes hold.</p>
+ClassMethod CreateViewerItems() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPivot = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tPivot.fullName = ..#VIEWPIVOT
+        Set tPivot.cubeName = ..#VISITS
+        Set tPivot.title = "OcuPilot viewer matrix"
+        Set tPivot.description = "A pivot with every part the viewer reads."
+        Set tPivot.owner = "_SYSTEM"
+        For tPart = $ListBuild("rowLevels", "[Place].[H1].[Category].Members"), $ListBuild("rowLevels", "[Seen].[H1].[Year].Members"), $ListBuild("columnLevels", "[Seen].[H1].[Month].Members"), $ListBuild("measures", "[Measures].[Amount]"), $ListBuild("filters", "[Place].[H1].[Category].&[Category 1]") {
+            Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+            Set tLevel.spec = $List(tPart, 2)
+            Set tCollection = $Property(tPivot, $List(tPart, 1))
+            Do tCollection.Insert(tLevel)
+        }
+        Set tMember = ##class(%DeepSee.Dashboard.CalculatedMember).%New()
+        Set tMember.dimension = "Measures"
+        Set tMember.memberName = ..#CALCULATED
+        Set tMember.valueExpression = "[Measures].[Amount]*2"
+        Do tPivot.calculatedMembers.Insert(tMember)
+        Set tPivot.sqlRestriction = "Amount > 0"
+        Set tSC = tPivot.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tRun = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tRun.fullName = ..#VIEWRUN
+        Set tRun.cubeName = ..#VISITS
+        Set tRun.title = "OcuPilot viewer run"
+        Set tRun.owner = "_SYSTEM"
+        Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+        Set tLevel.spec = "[Place].[H1].[Category].Members"
+        Do tRun.rowLevels.Insert(tLevel)
+        Set tLevel = ##class(%DeepSee.Dashboard.PivotLevel).%New()
+        Set tLevel.spec = "[Measures].[Amount]"
+        Do tRun.measures.Insert(tLevel)
+        Set tSC = tRun.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tManual = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tManual.fullName = ..#VIEWMANUAL
+        Set tManual.cubeName = ..#VISITS
+        Set tManual.manualMode = 1
+        Set tManual.userMDX = ..#VIEWMDX
+        Set tSC = tManual.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tKpi = ##class(%DeepSee.Dashboard.Pivot).%New()
+        Set tKpi.fullName = ..#VIEWKPI
+        Set tKpi.cubeName = ..#VIEWKPICUBE
+        Set tSC = tKpi.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tBoard = ##class(%DeepSee.Dashboard.Definition).%New()
+        Set tBoard.fullName = ..#VIEWBOARD
+        Set tBoard.title = "OcuPilot viewer board"
+        Set tBoard.owner = "_SYSTEM"
+        For tPart = $ListBuild("Sales", "pivot", "Sales by place", ..#VIEWRUN, ""), $ListBuild("Score", "kpi", "A KPI", "OcuPilotProbe/Score.kpi", ""), $ListBuild("Follow", "pivot", "Follows the first", "", "Sales") {
+            Set tWidget = ##class(%DeepSee.Dashboard.Widget).%New()
+            Set tWidget.name = $List(tPart, 1)
+            Set tWidget.type = $List(tPart, 2)
+            Set tWidget.title = $List(tPart, 3)
+            Set tWidget.dataSource = $List(tPart, 4)
+            Set tWidget.dataLink = $List(tPart, 5)
+            Do tBoard.widgets.Insert(tWidget)
+        }
+        Set tSC = tBoard.%Save()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>How many result sets' local caches <code>USER</code> holds: the entries of <code>^DeepSee.Cache.LocalResults</code> other than the vendor's session
 /// counter, and the entries of <code>^DeepSee.Cache.LocalAxis</code>. A result set closed in the namespace it was made in clears its own, so a count
 /// that grows across a run says a result set was released elsewhere. Reads <code>USER</code> whatever namespace the caller is in.</p>
@@ -650,6 +1297,9 @@ ClassMethod Remove() As %Status
         For tClass = ..#VISITCLASS, ..#CATEGORYCLASS, ..#GRIDSOURCE {
             If ##class(%Dictionary.CompiledClass).%ExistsId(tClass) Do $ClassMethod(tClass, "%KillExtent")
         }
+        Do ..RemoveListingGroups()
+        Do ..RemoveQualityMeasures()
+        Do ..RestoreSettings()
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
         Kill ^OBJ.DSTIME(..#VISITCLASS), ^OBJ.DSTIME(..#CATEGORYCLASS)
         Do ..ForgetBuilds()
@@ -662,7 +1312,7 @@ ClassMethod Remove() As %Status
         }
         Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLIST)
         Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLISTTWO)
-        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
+        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD, ..#VIEWPIVOT, ..#VIEWRUN, ..#VIEWMANUAL, ..#VIEWKPI, ..#VIEWBOARD {
             Do ##class(%DeepSee.UserLibrary.Utils).%DeleteFolderItem(tItem)
         }
         Set tFolder = ##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)
@@ -704,6 +1354,195 @@ ClassMethod Remove() As %Status
     Quit tSC
 }
 
+/// <p>Story 24.13's analytics settings fixture. <method>SnapshotSettings</method> copies <code>USER</code>'s three settings globals
+/// (<code>^DeepSee.UserPortalSettings</code>, <code>^DeepSee.User.Settings</code> and <code>^DeepSee.User.Icons</code>) to <code>^OcuPilotProbeSettings</code> once, so a run
+/// that died is restored by the next; <method>ClearSettings</method> empties the three, the state where nothing is stored; <method>SetMarkerSettings</method> stores the markers through the
+/// vendor's own methods, which the classic page's save and its worklist options, and the user portal's variable and icon setters, are; <method>RestoreSettings</method> puts the three
+/// back from the snapshot and removes it and the marker the never-run variable would set; <method>SettingsDigest</method> is a text that is equal for equal settings.</p>
+ClassMethod SnapshotSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If '$Data(^OcuPilotProbeSettings) {
+            Merge ^OcuPilotProbeSettings("portal") = ^DeepSee.UserPortalSettings
+            Merge ^OcuPilotProbeSettings("variables") = ^DeepSee.User.Settings
+            Merge ^OcuPilotProbeSettings("icons") = ^DeepSee.User.Icons
+            Set ^OcuPilotProbeSettings = 1
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Kill the three settings globals in <code>USER</code>: the state where no setting, variable or icon is stored. The snapshot is the way back.</p>
+ClassMethod ClearSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill ^DeepSee.UserPortalSettings
+        Kill ^DeepSee.User.Settings
+        Kill ^DeepSee.User.Icons
+        Kill ^OcuProbe2413Ran
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Store the marker settings in <code>USER</code> through the vendor's own methods: <code>%DeepSee.UI.Settings.SaveToServer</code> (every setting of the General tab, the key
+/// <parameter>SETTINGSKEY</parameter> among them), <code>SetCustom</code> and two <code>SetOption</code> calls (the home page's top panel shows its favorites and the dashboard page's
+/// bottom panel its details), two run-time variables (one whose expression would set <code>^OcuProbe2413Ran</code> if it ever ran) and a user-defined icon. A status that names what the
+/// vendor refused.</p>
+ClassMethod SetMarkerSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tData = ##class(%ZEN.proxyObject).%New()
+        Set tData.Scheme = "OcuProbe2413Scheme"
+        Set tData.ChartSeriesScheme = "OcuProbe2413Series"
+        Set tData.CompanyName = "OcuProbe2413 Company"
+        Set tData.CompanyLogo = "/OcuProbe2413/logo.png"
+        Set tData.CompanyLink = "http://OcuProbe2413.invalid/home"
+        Set tData.GoogleMapsKey = ..#SETTINGSKEY
+        Set tData.PageTitle = "OcuProbe2413 Title"
+        Set tData.MailEnabled = 1
+        Set tData.DefaultResource = "OcuProbe2413Resource"
+        Set tData.DbNoTitle = 1
+        Set tData.DbNoBorder = 1
+        Set tData.ctrlShowCalc = 1
+        Set tData.autosaveAnalyzer = 1
+        Set tData.autosaveUserPortal = 1
+        Set tMessage = ##class(%DeepSee.UI.Settings).SaveToServer(tData)
+        If tMessage '= "" Set tSC = $$$ERROR($$$GeneralError, "SaveToServer refused: " _ tMessage)
+        Do ##class(%DeepSee.UI.Settings).SetCustom(1)
+        Do ##class(%DeepSee.UI.Settings).SetOption("Home", 1, "%DeepSee.UserPortal.FavoritesList", 1, 1)
+        Do ##class(%DeepSee.UI.Settings).SetOption("DashboardViewer", 2, "%DeepSee.UserPortal.DetailsList", 4, 1)
+        Set tVariable = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(..#SETTINGSVARIABLE, "$Increment(^OcuProbe2413Ran)", "OcuProbe2413 comment", "OcuProbe2413Context")
+        If $$$ISERR(tVariable) Set tSC = $$$ADDSC(tSC, tVariable)
+        Set tVariable = ##class(%DeepSee.UserPortal.Utils).%SetUserSetting(..#SETTINGSVARIABLETWO, """text""_$Char(10)", "", "")
+        If $$$ISERR(tVariable) Set tSC = $$$ADDSC(tSC, tVariable)
+        Set tIcon = ##class(%DeepSee.UserPortal.Utils).%SetUserIcon(..#SETTINGSICON, "/OcuProbe2413/icon.png")
+        If $$$ISERR(tIcon) Set tSC = $$$ADDSC(tSC, tIcon)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Put the three settings globals back as <method>SnapshotSettings</method> found them, remove the snapshot and the marker a never-run variable would set; <code>$$$OK</code> when
+/// there is no snapshot.</p>
+ClassMethod RestoreSettings() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill ^OcuProbe2413Ran
+        If $Data(^OcuPilotProbeSettings) {
+            Kill ^DeepSee.UserPortalSettings
+            Kill ^DeepSee.User.Settings
+            Kill ^DeepSee.User.Icons
+            Merge ^DeepSee.UserPortalSettings = ^OcuPilotProbeSettings("portal")
+            Merge ^DeepSee.User.Settings = ^OcuPilotProbeSettings("variables")
+            Merge ^DeepSee.User.Icons = ^OcuPilotProbeSettings("icons")
+            Kill ^OcuPilotProbeSettings
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>A text of every node of the three settings globals in <code>USER</code>, equal for equal settings; <code>"unreadable"</code> when they cannot be read.</p>
+ClassMethod SettingsDigest() As %String
+{
+    Set tText = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tRoot = "^DeepSee.UserPortalSettings", "^DeepSee.User.Settings", "^DeepSee.User.Icons" {
+            If $Data(@tRoot) # 2 Set tText = tText _ tRoot _ "=" _ @tRoot _ $Char(10)
+            Set tNode = tRoot
+            For {
+                Set tNode = $Query(@tNode)
+                If (tNode = "") || ($Extract(tNode, 1, $Length(tRoot) + 1) '= (tRoot _ "(")) Quit
+                Set tText = tText _ tNode _ "=" _ @tNode _ $Char(10)
+            }
+        }
+    } Catch ex {
+        Set tText = "unreadable"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tText
+}
+
+/// <p>What the settings fixture leaves in <code>USER</code>: the snapshot, a marker node in any of the three globals, or the never-run marker; <code>""</code> for nothing.</p>
+ClassMethod SettingsLeft() As %String
+{
+    Set tLeft = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If $Data(^OcuPilotProbeSettings) Set tLeft = tLeft _ ",settings snapshot"
+        If $Data(^OcuProbe2413Ran) Set tLeft = tLeft _ ",variable ran"
+        For tRoot = "^DeepSee.UserPortalSettings", "^DeepSee.User.Settings", "^DeepSee.User.Icons" {
+            Set tNode = tRoot
+            For {
+                Set tNode = $Query(@tNode)
+                If (tNode = "") || ($Extract(tNode, 1, $Length(tRoot) + 1) '= (tRoot _ "(")) Quit
+                If (tNode [ "OcuProbe2413") || (@tNode [ "OcuProbe2413") Set tLeft = tLeft _ ",marker " _ tNode
+            }
+        }
+    } Catch ex {
+        Set tLeft = tLeft _ ",unreadable: " _ ex.DisplayString()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit $Extract(tLeft, 2, *)
+}
+
+/// <p>The journal's current position as <code>file|offset</code>, after the journal buffer is flushed, for <method>JournalWrites</method> to scan from
+/// (Story 24.11).</p>
+ClassMethod JournalMark() As %String
+{
+    Do ##class(%SYS.Journal.System).Sync()
+    Quit ##class(%SYS.Journal.System).GetCurrentFileName() _ "|" _ ##class(%SYS.Journal.System).GetCurrentFileOffset()
+}
+
+/// <p>The global writes the calling process made since <var>pMark</var> (a <method>JournalMark</method> answer), one entry of <var>pWrites</var> for each
+/// set or kill record of this process (every record type whose name holds <code>SET</code> or <code>KILL</code>, the bit, vector, remote and mirror forms included), as <code>type global node</code>. Answers their count, or -1 when the journal rolled to another file in between,
+/// which the scan cannot span. Writes to a database that is not journaled are not seen. With <var>pAnyProcess</var> 1 the writes of every process count, for a scan of what a request served by another process wrote.</p>
+ClassMethod JournalWrites(pMark As %String, Output pWrites, pAnyProcess As %Boolean = 0) As %Integer
+{
+    Kill pWrites
+    Do ##class(%SYS.Journal.System).Sync()
+    Set tName = $Piece(pMark, "|", 1)
+    Set tFrom = +$Piece(pMark, "|", 2)
+    If ##class(%SYS.Journal.System).GetCurrentFileName() '= tName Quit -1
+    Set tFile = ##class(%SYS.Journal.File).%OpenId(tName)
+    If '$IsObject(tFile) Quit -1
+    Set tCount = 0
+    Set tRecord = tFile.LastRecord
+    While $IsObject(tRecord) && (tRecord.Address >= tFrom) {
+        If (pAnyProcess || (tRecord.ProcessID = $Job)) && ((tRecord.TypeName [ "SET") || (tRecord.TypeName [ "KILL")) {
+            Set tCount = tCount + 1
+            Set pWrites(tCount) = tRecord.TypeName _ " " _ tRecord.GlobalReference
+        }
+        Set tRecord = tRecord.Prev
+    }
+    Quit tCount
+}
+
 /// <p>1 when <code>USER</code> holds nothing of the probe: no probe class, cube, term list, folder item, favorite or build
 /// event, no probe node, and no analytics reported.</p>
 ClassMethod Gone() As %Boolean
@@ -726,9 +1565,45 @@ ClassMethod Left() As %String
             If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
         }
         If ..BuildsLeft() Set tLeft = tLeft _ ",build residue"
+        For tGroup = ..#LISTGROUP, ..#LISTGROUPSAVED, ..#LISTGROUPHIDDEN, ..#LISTGROUPOFF, ..#LISTGROUPBROKEN {
+            If $Data(^DeepSee.ListingGroups("groups", $ZConvert(tGroup, "U"))) Set tLeft = tLeft _ ",listing group " _ tGroup
+        }
+        Set tName = $Order(^DeepSee.ListingGroups("groups", $ZConvert(..#LISTGROUPWRITE, "U")), -1)
+        Set tName = $Order(^DeepSee.ListingGroups("groups", tName))
+        If $Extract(tName, 1, $Length(..#LISTGROUPWRITE)) = $ZConvert(..#LISTGROUPWRITE, "U") Set tLeft = tLeft _ ",listing group " _ tName
+        ; The registry's class nodes and the cubes' listing nodes the listing group tests' compiles register, which RemoveListingGroups kills.
+        For tClass = ..#LISTGROUPCLASS, ..#LISTGROUPSAVEDCLASS, ..#LISTGROUPHIDDENCLASS, ..#LISTGROUPOFFCLASS, ..#LISTGROUPBROKENCLASS, ..#LISTGROUPTWINCLASS, ..#LISTGROUPTWINLATECLASS {
+            If $Data(^DeepSee.ListingGroups("classes", tClass)) Set tLeft = tLeft _ ",listing group class node " _ tClass
+        }
+        For tPrefix = ..#LISTGROUPWRITECLASS, ..#LISTGROUPOWNCLASS {
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tPrefix), -1)
+            Set tName = $Order(^DeepSee.ListingGroups("classes", tName))
+            If $Extract(tName, 1, $Length(tPrefix)) = tPrefix Set tLeft = tLeft _ ",listing group class node " _ tName
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", tPrefix)
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",listing group classes " _ tPrefix
+        }
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#LISTGROUPNOCUBE {
+            Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", ..#LISTINGWRITE), -1)
+            Set tListing = $Order(^DeepSee.ListingGroups("cubes", $ZConvert(tCube, "U"), "listing", tListing))
+            If $Extract(tListing, 1, $Length(..#LISTINGWRITE)) = ..#LISTINGWRITE Set tLeft = tLeft _ ",cube listing node " _ tCube _ "/" _ tListing
+        }
+        ; The quality measures' registry nodes, which a class delete removes only for the class the name is registered to.
+        For tName = ..#QMCOMPILED, ..#QMREFUSED, ..#QMLINKED, ..#QMOFF, ..#QMNOAREA, ..#QMMASTER, ..#QMDANGLING {
+            If $Data(^DeepSee.QMsrs("qmsrNames", $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure " _ tName
+            If $Data(^DeepSee.QMsrs("cubes", $ZConvert(..#VISITS, "U"), $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure cube node " _ tName
+            If $Data(^DeepSee.QMsrs("cubes", $ZConvert(..#QMMISSINGAREA, "U"), $ZConvert(tName, "U"))) Set tLeft = tLeft _ ",quality measure missing-area node " _ tName
+        }
+        For tClass = ..#QMCOMPILEDCLASS, ..#QMREFUSEDCLASS, ..#QMLINKEDCLASS, ..#QMOFFCLASS, ..#QMTWINCLASS, ..#QMTWINLATECLASS, ..#QMNOAREACLASS, ..#QMMASTERCLASS, ..#QMDANGLINGCLASS {
+            If $Data(^DeepSee.QMsrs("qmsrClasses", tClass)) Set tLeft = tLeft _ ",quality measure class node " _ tClass
+        }
+        If ..KillQualityMeasureWriteNodes(0) Set tLeft = tLeft _ ",quality measure write nodes"
+        For tPrefix = ..#QMWRITE _ ".", ..#QMWRITEOWNCLASS, ..#QMPART _ ".", ..#QMPARTOWNCLASS {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) %STARTSWITH ?", $ZConvert(tPrefix, "U"))
+            If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",quality measure classes " _ tPrefix
+        }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"
-        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
+        For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD, ..#VIEWPIVOT, ..#VIEWRUN, ..#VIEWMANUAL, ..#VIEWKPI, ..#VIEWBOARD {
             If ##class(%DeepSee.UserLibrary.Utils).%FolderItemExists(tItem) Set tLeft = tLeft _ ",folder item " _ tItem
         }
         If $IsObject(##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)) Set tLeft = tLeft _ ",folder"
@@ -744,6 +1619,8 @@ ClassMethod Left() As %String
         Set tGlobal = $Order(^$GLOBAL($Extract(tPrefix, 1, *-1)))
         If (tGlobal '= "") && ($Extract(tGlobal, 1, $Length(tPrefix)) = tPrefix) Set tLeft = tLeft _ ",data globals"
         If $Data(^OcuPilotProbeAnalytics) Set tLeft = tLeft _ ",probe node"
+        Set tSettingsLeft = ..SettingsLeft()
+        If tSettingsLeft '= "" Set tLeft = tLeft _ "," _ tSettingsLeft
         Set tKey = $Order(^DeepSee.Cache.Results(""))
         While tKey '= "" {
             If ..IsProbeCube(tKey) Set tLeft = tLeft _ ",cache of " _ tKey

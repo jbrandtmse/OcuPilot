@@ -461,7 +461,7 @@ gate is run rather than described. Seven jobs, split by what each needs:
 
 | Job | Needs | Runs |
 | --- | --- | --- |
-| `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
+| `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test` (through `scripts/ci-resource-sample.sh`, which samples memory, load and Node processes every 15 seconds; the step is bounded at 12 minutes, and when it fails or is canceled the next step prints the kernel's out-of-memory lines), `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
 | `instance-shard` | eight legs, `instance shard 1/8` to `8/8`, each with its own throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `scripts/ci-throwaway.sh data-check`, and `ui/tools/ci-runner.mjs --shard k/8` over the leg's share of the classes, whose record it uploads as an artifact. Leg 1 alone also runs `ui/tools/admin-spec.mjs` before its share and `scripts/smoke.sh` after it. On failure only, `scripts/ci-throwaway.sh logs`; always, `scripts/ci-throwaway.sh down` |
 | `instance` | the eight legs' records | `ui/tools/ci-shards.mjs check`: red unless every class the instance offered ran in exactly one leg, every leg executed a test, and the legs succeeded |
 | `browser-shard` | five legs, each with its own throwaway container on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `npm run test:browser:shard -- --shard k/5` over the leg's share of the spec files, one file at a time in sorted order, then the record upload and the same capture and teardown |
@@ -491,7 +491,7 @@ classes are red by design on `ocupilot` or a slot instance. The variables are
 `OCUPILOT_ALLOW_AUDIT_PURGE`, `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`,
 `OCUPILOT_ALLOW_NAMESPACE_CONFIG`, `OCUPILOT_ALLOW_DATABASE_CONFIG`, `OCUPILOT_ALLOW_JOURNAL`,
 `OCUPILOT_ALLOW_LICENSE_CONFIG`, `OCUPILOT_ALLOW_ECP_CONFIG`,
-`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, `OCUPILOT_ALLOW_BACKUP_CONTROL`, and `OCUPILOT_ALLOW_CONFIG_SETTINGS`. The `# classes:` comment above each one in
+`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, `OCUPILOT_ALLOW_BACKUP_CONTROL`, `OCUPILOT_ALLOW_CONFIG_SETTINGS`, and `OCUPILOT_ALLOW_ALERT_RESET`. The `# classes:` comment above each one in
 `scripts/ci-throwaway.sh` lists the classes it arms, and `ui/tools/ci.test.mjs` holds each list
 equal to the classes that read the variable.
 

@@ -160,6 +160,12 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tSC = ..Internal("the proposal's target reference could not be built: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
             Quit
         }
+        ; The store keeps a target whole up to its limit and refuses a longer one as a fault, so the refusal is made here, as the agent's.
+        Set tTargetMax = +$Parameter(..StoreClass(), "TARGETREFMAX")
+        If $Length(tTargetRef) > tTargetMax {
+            Set tSC = ..Refuse("the target these arguments name is longer than the " _ $FNumber(tTargetMax, ",") _ " characters a proposal can hold; propose it in smaller parts, for example fewer documents per proposal", .pHttpStatus, .pFault)
+            Quit
+        }
 
         ; AD-54. The same read, through the same port, at the same request type, for both kinds of
         ; write -- what differs is which answer is the success precondition. A read that failed for

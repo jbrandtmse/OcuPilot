@@ -166,7 +166,7 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse(pTargetRef, .tType, .tScope, .tId)
         If $$$ISERR(tSC) Quit
 
-        Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", pToolName, pTargetRef, pPayloadJson, pDiffJson, .tProhibits, .tCode)
+        Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", pToolName, pTargetRef, pPayloadJson, pDiffJson, .tProhibits, .tCode, .tReason)
         If $$$ISERR(tSC) Quit
         Set tAnswer = {}
         Do tAnswer.%Set("kind", tKind, "string")
@@ -174,7 +174,7 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
         If tProhibits {
             Set tRefused = {}
             Do tRefused.%Set("code", tCode, "string")
-            Do tRefused.%Set("reason", $ClassMethod(..ProhibitedClass(), "ReasonFor", tCode), "string")
+            Do tRefused.%Set("reason", $Select($Get(tReason) '= "": tReason, 1: $ClassMethod(..ProhibitedClass(), "ReasonFor", tCode)), "string")
             Do tAnswer.%Set("refused", tRefused)
             Do tAnswer.%Set("parts", tParts)
             Set tImpact = tAnswer

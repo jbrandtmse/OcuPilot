@@ -193,6 +193,8 @@ XData Coverage
 <screen name="ExplorerSqlSchemaViews" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlSchemaProcedures" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
 <screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
+<screen name="ExplorerGlobalList" class="OcuPilot.Test.GlobalRead" method="TestTheScreensDeclareTheirShape" corpus="one declaration test pins both screens Story 21.5 adds, the list and the node page beneath it"/>
+<screen name="ExplorerGlobalView" class="OcuPilot.Test.GlobalRead" method="TestTheScreensDeclareTheirShape" corpus="one declaration test pins both screens Story 21.5 adds, the list and the node page beneath it"/>
 <screen name="ExplorerCodeMetrics" class="OcuPilot.Test.DevToolRead" method="TestMetricsAreTheProbesComposition"/>
 <screen name="ExplorerDocumentHashes" class="OcuPilot.Test.DevToolRead" method="TestHashesAreTheSha256OfTheStoredText"/>
 <screen name="ExplorerNamespaceDiff" class="OcuPilot.Test.NamespaceDiffRead" method="TestTheDiffListsEachDifferenceAndNotTheSameDocument"/>
@@ -222,6 +224,9 @@ XData Coverage
 <screen name="SuperserverForm" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="MftConnectionList" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
+<screen name="PhoneProviderList" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
+<screen name="SecurityAdvisorList" class="OcuPilot.Test.AdvisorRead" method="TestTheScreenAndToolsDeclareTheirPagePairsActionsAndKeys" corpus="the list and its two tools are asserted together in one test"/>
+<screen name="PhoneProviderForm" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="RoutineAppList" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
@@ -234,6 +239,8 @@ XData Coverage
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="MetricsList" class="OcuPilot.Test.MetricsDescriptor" method="TestTheDescriptorShape"/>
+<screen name="TransactionList" class="OcuPilot.Test.TransactionsRead" method="TestTheDescriptorShape"/>
+<screen name="SystemAlertsList" class="OcuPilot.Test.SystemAlertsRead" method="TestTheDescriptorShape"/>
 <screen name="InteropUsageTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropUsageVolumeTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropUsageImpactTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
@@ -275,6 +282,8 @@ XData Coverage
 <screen name="BackupHistoryList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
 <screen name="BackupDatabaseList" class="OcuPilot.Test.BackupRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Backup screens' declarations in a loop"/>
 <tool name="osmgmt.backuptasks.run" class="OcuPilot.Test.BackupWrite" method="TestARunStartsTheTaskOnBothCallers"/>
+<tool name="osmgmt.sqlactivity.cancel" class="OcuPilot.Test.SqlActivityCancel" method="TestBothCallersCancelTheStatementAndTheProcessSurvives"/>
+<tool name="osmgmt.systemalerts.reset" class="OcuPilot.Test.SystemAlertsWrite" method="TestBothCallersResetTheAlerts"/>
 <tool name="osmgmt.backuptasks.freeze" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
 <tool name="osmgmt.backuptasks.thaw" class="OcuPilot.Test.BackupWrite" method="TestAFreezeAndAThawSucceedOnBothCallers" corpus="one method freezes and thaws on both callers"/>
 <tool name="osmgmt.backupdatabases.add" class="OcuPilot.Test.BackupWrite" method="TestAddAndRemoveRoundTripAProbeDatabaseOnBothCallers" corpus="one method adds and removes on both callers"/>
@@ -291,6 +300,33 @@ XData Coverage
 <tool name="analytics.folderitems.export" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestAnExportWritesTheVendorsXmlToAFileAndToTheBrowser"/>
 <tool name="analytics.folderitems.import" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestAnExportImportsBackAsTheSameItem"/>
 <tool name="analytics.folderitems.delete" class="OcuPilot.Test.AnalyticsFolderItemTransfer" method="TestADeleteRemovesAnUnlockedItemAndRefusesALockedOrAbsentOne"/>
+<tool name="analytics.listinggroups.add" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestAGroupIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.listinggroups.update" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestAnUpdateChangesTheHeaderAndKeepsTheSqlAndEveryOtherLine"/>
+<tool name="analytics.listinggroups.copy" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestACopyMakesANewGroupAndLeavesTheSource"/>
+<tool name="analytics.listinggroups.delete" class="OcuPilot.Test.AnalyticsListingGroupWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
+<tool name="analytics.listinggrouplistings.add" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.listinggrouplistings.set" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.listinggrouplistings.remove" class="OcuPilot.Test.AnalyticsListingWrite" method="TestAListingIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a listing at both callers, so it covers the three listing writes"/>
+<tool name="analytics.qualitymeasures.add" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAMeasureIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.qualitymeasures.update" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestAnUpdateChangesTheHeaderAndKeepsEverythingElse"/>
+<tool name="analytics.qualitymeasures.copy" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestACopyMakesANewMeasureAndLeavesTheSource"/>
+<tool name="analytics.qualitymeasures.delete" class="OcuPilot.Test.AnalyticsQualityMeasureWrite" method="TestADeleteRemovesTheClassAndItsNodesAndShipsOff"/>
+<tool name="analytics.qualitymeasureelements.add" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementIsAddedByEachCallerAndReadsBack"/>
+<tool name="analytics.qualitymeasureelements.set" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementAndItsGroupAreChangedByEachCaller"/>
+<tool name="analytics.qualitymeasureelements.remove" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestAnElementAndAGroupAreRemovedAndTheKeyShipsOff"/>
+<tool name="analytics.qualitymeasuremetas.add" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
+<tool name="analytics.qualitymeasuremetas.set" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
+<tool name="analytics.qualitymeasuremetas.remove" class="OcuPilot.Test.AnalyticsQualityMeasurePartWrite" method="TestADocumentationItemIsAddedChangedAndRemovedByEachCaller" corpus="one test adds, changes and removes a documentation item at both callers, so it covers the three item writes"/>
+<tool name="analytics.settings.set" class="OcuPilot.Test.AnalyticsSettingsWrite" method="TestASettingIsSetByBothCallers" corpus="one test sets a general setting by both callers from an empty namespace"/>
+<tool name="analytics.settings.setkey" class="OcuPilot.Test.AnalyticsSettingsWrite" method="TestTheKeyIsSetByBothCallersAndSurfacesNowhere" corpus="one test sets the Google Maps key by both callers and searches every answer for its text"/>
+<tool name="analytics.worklists.show" class="OcuPilot.Test.AnalyticsSettingsWrite" method="TestAWorklistIsShownAndHiddenByBothCallers" corpus="one test shows and hides a worklist by both callers"/>
+<tool name="analytics.worklists.hide" class="OcuPilot.Test.AnalyticsSettingsWrite" method="TestAWorklistIsShownAndHiddenByBothCallers" corpus="one test shows and hides a worklist by both callers, so it covers both"/>
+<tool name="analytics.runtimevariables.add" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAVariableIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a run-time variable at both callers, so it covers the three variable writes"/>
+<tool name="analytics.runtimevariables.set" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAVariableIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a run-time variable at both callers, so it covers the three variable writes"/>
+<tool name="analytics.runtimevariables.remove" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAVariableIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a run-time variable at both callers, so it covers the three variable writes"/>
+<tool name="analytics.usericons.add" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
+<tool name="analytics.usericons.set" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
+<tool name="analytics.usericons.remove" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
@@ -301,6 +337,10 @@ XData Coverage
 <screen name="SqlShellSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="TsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="IsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
+<screen name="SystemSecuritySettingList" class="OcuPilot.Test.SystemSecuritySettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
+<screen name="TaskMailSettingList" class="OcuPilot.Test.TaskMailSettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
+<tool name="security.systemsecurity.set" class="OcuPilot.Test.SystemSecuritySettingWrite" method="TestASetChangesOnlyItsParameterOnBothCallersAndIsRestored"/>
+<tool name="tasks.mail.set" class="OcuPilot.Test.TaskMailSettingWrite" method="TestASetChangesOnlyItsSettingOnBothCallersAndIsRestored"/>
 <screen name="MirrorMonitor" class="OcuPilot.Test.MirrorRead" method="TestTheScreenDeclaresItsPagePairsAndSource"/>
 <screen name="DdlSystemMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
 <screen name="DdlUserMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
@@ -309,6 +349,19 @@ XData Coverage
 <tool name="osmgmt.userddlmappings.create" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
 <tool name="osmgmt.userddlmappings.set" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
 <tool name="osmgmt.userddlmappings.delete" class="OcuPilot.Test.DdlMappingWrite" method="TestAUserMappingIsCreatedChangedAndDeletedByBothCallers" corpus="one method creates, changes and deletes a user mapping on both callers"/>
+<screen name="NlsDefaultList" class="OcuPilot.Test.NlsDefaultRead" method="TestTheScreenAndToolDeclareTheirPageActionAndKey"/>
+<screen name="LocaleList" class="OcuPilot.Test.LocaleRead" method="TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences"/>
+<tool name="osmgmt.nlsdefaults.set" class="OcuPilot.Test.LocaleWrite" method="TestTheSwitchRoundTripsOverTheNodeAndReloadsOnBothCallers"/>
+<tool name="osmgmt.locales.install" class="OcuPilot.Test.LocaleWrite" method="TestAnotherLocaleIsInstalledOnBothCallersAndTheOriginalComesBack"/>
+<tool name="osmgmt.locales.delete" class="OcuPilot.Test.LocaleWrite" method="TestACustomLocaleIsDeletedOnBothCallersAndTheOthersAreRefused"/>
+<screen name="LocalePropertyList" class="OcuPilot.Test.LocalePropertyRead" method="TestTheScreenAndToolsDeclareTheirPageActionsAndConsequences"/>
+<tool name="osmgmt.locales.copy" class="OcuPilot.Test.LocaleEditWrite" method="TestTheCurrentLocaleIsCopiedOnBothCallersAndTheOthersAreRefused"/>
+<tool name="osmgmt.localeproperties.set" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.add" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.remove" class="OcuPilot.Test.LocaleEditWrite" method="TestASetAnAddAndARemoveRoundTripOnBothCallers" corpus="the set, add and remove writes round-trip together in one test on a copy of the current locale"/>
+<tool name="osmgmt.localeproperties.load" class="OcuPilot.Test.LocaleEditWrite" method="TestATableIsLoadedOnBothCallersAndTheDefaultBaselineRefusesIt"/>
+<tool name="osmgmt.locales.import" class="OcuPilot.Test.LocaleTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
+<tool name="osmgmt.locales.export" class="OcuPilot.Test.LocaleTransferWrite" method="TestALocaleIsExportedToThisBrowserAndToAServerFileOnBothCallers"/>
 <tool name="osmgmt.sqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.sqlshellsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
 <tool name="osmgmt.tsqlsettings.set" class="OcuPilot.Test.SqlSettingWrite" method="TestTheAgentsConfirmWritesOnceWithOneAuditMarkerOnEachFamily" corpus="one method confirms one setting of each of the four families on the agent's path"/>
@@ -318,6 +371,17 @@ XData Coverage
 <screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsTermListEntryList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsFolderItemList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsListingGroupList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
+<screen name="AnalyticsListingGroupListingList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11 and Story 24.11 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureElementList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
+<screen name="AnalyticsQualityMeasureMetaList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11 and Story 24.12 analytics screen in one loop"/>
+<screen name="AnalyticsSettingList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11, Story 24.12 and Story 24.13 analytics screen in one loop"/>
+<screen name="AnalyticsWorklistList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11, Story 24.12 and Story 24.13 analytics screen in one loop"/>
+<screen name="AnalyticsRuntimeVariableList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11, Story 24.12 and Story 24.13 analytics screen in one loop"/>
+<screen name="AnalyticsUserIconList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11, Story 24.12 and Story 24.13 analytics screen in one loop"/>
+<screen name="AnalyticsFolderItemDefinitionTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14's two folder item tabs among them"/>
+<screen name="AnalyticsDashboardWidgetsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14's two folder item tabs among them"/>
 <screen name="AnalyticsArchitectLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsAnalyzerLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsUserPortalLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
@@ -330,6 +394,8 @@ XData Coverage
 <tool name="permissions.resources.create" class="OcuPilot.Test.ResourceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="permissions.resources.update" class="OcuPilot.Test.ResourceUpdate" method="TestTheUpdateIsAMergeWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.resources.export" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
+<tool name="permissions.resources.import" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers"/>
 <tool name="security.x509.import" class="OcuPilot.Test.X509Import" method="TestTheSchemaAdvertisesNoSecretAndNoPath"/>
 <tool name="security.x509.update" class="OcuPilot.Test.X509Update" method="TestTheEditIsAMergeWriteOverTheTwoLists"/>
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
@@ -383,6 +449,7 @@ XData Coverage
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="security.auditing.copy" class="OcuPilot.Test.AuditCopy" method="TestTheToolsAreQueuedActionWritesOverTheScreensPairsAndOperate"/>
+<tool name="security.auditing.export" class="OcuPilot.Test.AuditExportWrite" method="TestTheAgentsConfirmStartsTheExportOnceWithOneAuditMarker"/>
 <tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnAdvertisedDestructiveActionWrite"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
@@ -471,6 +538,12 @@ XData Coverage
 <tool name="explorer.classmethod.run" class="OcuPilot.Test.ConsoleGate" method="TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
+<tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
+<tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
+<tool name="explorer.globals.export" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
+<tool name="explorer.globals.import" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
+<tool name="explorer.globals.replace" class="OcuPilot.Test.GlobalReplace" method="TestTheAgentProposesAndAPersonConfirms"/>
 <tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>
 <tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
 <tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>
@@ -549,6 +622,11 @@ XData Coverage
 <tool name="security.mftconnections.update" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
 <tool name="security.mftconnections.delete" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
 <tool name="security.mftconnections.revoketoken" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
+<tool name="security.phoneproviders.create" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderIsCreatedChangedAndDeletedByBothCallers" corpus="the create and the change are asserted together in one test"/>
+<tool name="security.phoneproviders.update" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderIsCreatedChangedAndDeletedByBothCallers" corpus="the create and the change are asserted together in one test"/>
+<tool name="security.phoneproviders.delete" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderNamedByAUserIsRefusedByBothCallersBeforeAnyVendorCall"/>
+<tool name="security.advisor.ignore" class="OcuPilot.Test.AdvisorWrite" method="TestTheAgentsConfirmIgnoresAndStopsIgnoringOnceWithOneAuditMarker" corpus="the ignore and the stop-ignoring are asserted together in one test"/>
+<tool name="security.advisor.unignore" class="OcuPilot.Test.AdvisorWrite" method="TestTheAgentsConfirmIgnoresAndStopsIgnoringOnceWithOneAuditMarker" corpus="the ignore and the stop-ignoring are asserted together in one test"/>
 <tool name="webapp.docdbapps.create" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.update" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.delete" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>

@@ -1236,13 +1236,20 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "WEBAUTH." Set tReason = ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Set tReason = ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Set tReason = ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 14) = "PHONEPROVIDER." Set tReason = ##class(OcuPilot.Api.PhoneProviderError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "DOCDBAPP." Set tReason = ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "SQLPRIV." Set tReason = ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ANALYTICS." Set tReason = ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "BACKUP." Set tReason = ##class(OcuPilot.Api.BackupError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "SQLACTIVITY." Set tReason = ##class(OcuPilot.Api.SqlActivityError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "MONITOR." Set tReason = ##class(OcuPilot.Api.MonitorError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "CONFIG." Set tReason = ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "LOCALE." Set tReason = ##class(OcuPilot.Api.LocaleError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "ADVISOR." Set tReason = ##class(OcuPilot.Api.AdvisorError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 13) = "RESOURCEFILE." Set tReason = ##class(OcuPilot.Api.ResourceFileError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "GLOBAL." Set tReason = ##class(OcuPilot.Api.GlobalError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Set tReason = ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "USERCOPY." Set tReason = ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Set tReason = ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
@@ -1439,6 +1446,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
     If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
+    If pCode = ..#AUDITEXPORTDIRECTORY Quit ..#REASONAUDITEXPORTDIRECTORY
     If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
     If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
@@ -1456,12 +1464,17 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "WEBAUTH." Quit ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Quit ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Quit ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 14) = "PHONEPROVIDER." Quit ##class(OcuPilot.Api.PhoneProviderError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "DOCDBAPP." Quit ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "SQLPRIV." Quit ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ANALYTICS." Quit ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "BACKUP." Quit ##class(OcuPilot.Api.BackupError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "CONFIG." Quit ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "LOCALE." Quit ##class(OcuPilot.Api.LocaleError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "ADVISOR." Quit ##class(OcuPilot.Api.AdvisorError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 13) = "RESOURCEFILE." Quit ##class(OcuPilot.Api.ResourceFileError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "GLOBAL." Quit ##class(OcuPilot.Api.GlobalError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Quit ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "USERCOPY." Quit ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Quit ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
@@ -4356,6 +4369,20 @@ Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does
 Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
 
 Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 21.10): an audit log export whose relative name names a directory that
+/// does not exist under its allowed directory, answered 400 with one violation on <code>ExportPath</code> by
+/// <class>OcuPilot.Port.AuditPort</class> before any vendor call.</p>
+Parameter AUDITEXPORTDIRECTORY = "AUDIT.EXPORT.DIRECTORY";
+
+Parameter REASONAUDITEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Every <code>AUDIT.EXPORT.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>ViolationCodes</method> exists.</p>
+ClassMethod AuditExportViolationCodes() As %List
+{
+    Quit $ListBuild(..#AUDITEXPORTDIRECTORY)
+}
 
 /// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
 /// unreadable XML, another root element, or no task -- answered 422 by

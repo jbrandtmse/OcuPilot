@@ -274,12 +274,38 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 If $List(tOwnPair, 1) = "" Continue
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsQualityMeasureAction") {
+            ; Story 24.12: the quality measure editor's four writes declare WRITE on the database ^DeepSee.QMsrs maps to and READ on the routines database of the request's
+            ; namespace, here this one's, then the source code API's own pairs and its write pairs for the namespace, after their screen's pairs, each once (AD-8, AD-61, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#QUALITYMEASUREGLOBAL, .tMeasureResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's quality measure database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild(tMeasureResource, "WRITE"), $ListBuild(tRoutineResource, "READ")) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs($Namespace)
+            For tOwnAt = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsListingGroupAction") {
+            ; Story 24.11: the listing group editor's seven writes declare WRITE on the database ^DeepSee.ListingGroups maps to and READ on the routines
+            ; database of the request's namespace, here this one's, then the edit pair, the source code API's own pairs and its write pairs for the
+            ; namespace, after their screen's pairs, each once (AD-8, AD-61, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#LISTINGGROUPGLOBAL, .tListingResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's listing group database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild(tListingResource, "WRITE"), $ListBuild(tRoutineResource, "READ"), $ListBuild("%DeepSee_ListingGroupEdit", "USE")) _ ##class(OcuPilot.Port.AtelierPort).Pairs() _ ##class(OcuPilot.Port.AtelierPort).WritePairs($Namespace)
+            For tOwnAt = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnAt)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnAt))
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingSet") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingKey") {
+            ; Story 24.13: the analytics settings' four writes (the General pair and the Worklists actions) declare WRITE on the database ^DeepSee.UserPortalSettings maps to, the cube manager's
+            ; actions the one ^DeepSee.Fact maps to, and both READ on the routines database.
             ; Story 20.34: the cube build and synchronize declare WRITE on the database ^DeepSee.Fact maps to and READ on the routines
             ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's fact database resolves")
+            Set tDestinationGlobal = $Select((tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingSet") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsSettingKey") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsWorklistAction"): ##class(OcuPilot.Port.AnalyticsPort).#SETTINGSGLOBAL, 1: ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL)
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, tDestinationGlobal, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's destination database resolves")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
             For tOwnPair = $ListBuild(tFactResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
                 If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
@@ -392,6 +418,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 19.8: so does the data browser's save, each statement's SQL privileges being checked
             ; at its prepare (AD-8).
             If tTool.name = "explorer.sqldata.save" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 21.5: the globals' writes declare their screen's set, then the custom resource of the classic page they also perform (the
+            ; node tools' edit page), and no write pair of their own: the instance checks WRITE on the database a global is stored in (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerGlobalWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).WithClassicPages(##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved), $Parameter(tTool.class, "CLASSICPAGES"))
             ; Story 18.9: the SQL privilege grants and revokes declare their screen's set and no write pair of
             ; their own, the namespace's database pairs being added by argument (AD-8).
             If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.SqlPrivilegeWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
@@ -424,10 +453,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
-        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsMdxRead") {
+        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsMdxRead") || (tTool.class = "OcuPilot.Screen.Tool.LocaleValidate") {
             ; Story 19.11: a read with a class of its own, gated as SQL query is; the statement's SQL
             ; privileges and the namespace's database pairs are the port's to check at its prepare.
             ; Story 20.35: the agent's MDX read is gated as MDX query is; the port checks the rest.
+            ; Story 21.14: the locale validation read is gated as Locale definitions is; the port checks the same pairs again.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropEditorSource") {

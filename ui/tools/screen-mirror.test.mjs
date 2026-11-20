@@ -61,6 +61,7 @@ import {
   timelineMemberProblem,
   READ_SOURCE_PORTS,
   monitorEndpoints,
+  configEndpoints,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -343,6 +344,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['interop-message', 'integerset'],
     // Story 21.2: a database on the backup list is named without regard to case.
     ['backup-database', 'foldcase'],
+    // Story 21.20: the instance's system alert state is one object.
+    ['system-alerts', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -997,6 +1000,12 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   assert.deepEqual(members, [
     // Story 20.11: a cube's three tabs, a parent-scoped group whose head is unlisted.
     ['analytics/cubes/document', 'analytics/cubes/document', 1, 0],
+    // Story 24.14: a folder item's Definition and Widgets, a parent-scoped group whose head is unlisted.
+    ['analytics/folder-items/document', 'analytics/folder-items/document', 1, 0],
+    // Story 24.12: a quality measure's Groups and elements and Documentation, a parent-scoped group whose head is unlisted.
+    ['analytics/quality-measures/document', 'analytics/quality-measures/document', 1, 0],
+    // Story 24.13: the analytics settings' four tabs, a listed group whose head is its first tab.
+    ['analytics/settings', 'analytics/settings', 1, 11],
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
@@ -1013,6 +1022,9 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['analytics/cubes/dimensions', 'analytics/cubes/document', 2, 0],
+    ['analytics/folder-items/widgets', 'analytics/folder-items/document', 2, 0],
+    ['analytics/quality-measures/documentation', 'analytics/quality-measures/document', 2, 0],
+    ['analytics/settings/worklists', 'analytics/settings', 2, 0],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
@@ -1024,6 +1036,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['analytics/cubes/relationships', 'analytics/cubes/document', 3, 0],
+    ['analytics/settings/variables', 'analytics/settings', 3, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-schemas/procedures', 'system-explorer/sql-schemas/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
@@ -1033,6 +1046,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/interoperability-usage/impact', 'os-management/interoperability-usage', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['analytics/settings/icons', 'analytics/settings', 4, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
     ['interoperability/productions/items/log', 'interoperability/productions/items/document', 4, 0],
     ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
@@ -1550,6 +1564,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
   // Story 20.30's Trace tab, whose one criterion is the message too.
   // Story 20.11's three cube tabs, whose one criterion is the cube, and a term list's entries, whose one criterion is the term list.
+  // Story 24.11's Listings, whose one criterion is the listing group the route id names.
   // Story 20.38's three schema tabs, whose one criterion is the schema the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
@@ -1558,6 +1573,11 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
@@ -1568,6 +1588,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerClassList',
       'OcuPilot.Screen.Descriptor.ExplorerCodeMetrics',
       'OcuPilot.Screen.Descriptor.ExplorerDocumentHashes',
+      'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
       'OcuPilot.Screen.Descriptor.ExplorerMacro',
       'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
@@ -1616,6 +1637,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
+      'OcuPilot.Screen.Descriptor.LocalePropertyList',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',
@@ -2749,10 +2771,21 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
       'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
+      'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
+      'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
+      'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+      'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList',
+      'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
+      'OcuPilot.Screen.Descriptor.AnalyticsUserIconList',
+      'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
       'OcuPilot.Screen.Descriptor.BackupDatabaseList',
       'OcuPilot.Screen.Descriptor.BackupHistoryList',
@@ -2809,6 +2842,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
       'OcuPilot.Screen.Descriptor.OAuthServerForm',
       'OcuPilot.Screen.Descriptor.OAuthServerTab',
+      'OcuPilot.Screen.Descriptor.SecurityAdvisorList',
+      'OcuPilot.Screen.Descriptor.SystemSecuritySettingList',
+      'OcuPilot.Screen.Descriptor.TaskMailSettingList',
       'OcuPilot.Screen.Descriptor.WalletCollectionList',
       'OcuPilot.Screen.Descriptor.WalletSecretForm',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
@@ -3156,7 +3192,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3332,7 +3368,7 @@ test('Story 18.11: Prometheus metrics reads through the monitor port, the fourte
 // instance's registry gives it there.
 // Mutation (Rule 19): let the monitor arm of `readProblem` admit any endpoint -> the endpoint cases go red.
 test('Story 18.37: the monitor source admits its four endpoints and refuses another endpoint, type and key, and the corpus agrees', () => {
-  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact'], 'the port declares its four endpoints');
+  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact', 'Transactions', 'Alerts'], 'the port declares its six endpoints (Transactions and Alerts joined in Story 21.20)');
   const corpus = testCorpus(['Test', 'InteropUsageDescriptor.cls'], 'Cases');
   let refusals = 0;
   let sound = 0;
@@ -3492,6 +3528,24 @@ test('Story 21.12: the mirror source refusals agree with the instance corpus', (
   assert.ok(refusals >= 5, `the corpus refuses its shapes (${refusals})`);
 });
 
+// Story 21.14: a locale read is one LIST of LocalePort's Locales endpoint with no per-row call, parent list, query or parts. Every case in
+// `OcuPilot.Test.LocaleRead`'s corpus gets its exact sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): let the locale arm of `readProblem` admit any endpoint -> the endpoint case goes red.
+test('Story 21.14: the locale source refusals agree with the instance corpus', () => {
+  const corpus = testCorpus(['Test', 'LocaleRead.cls'], 'Cases');
+  const { screens } = readSources();
+  const locales = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.LocaleList');
+  assert.ok(locales !== undefined, 'Locale definitions is declared');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(locales.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 5, `the corpus refuses its shapes (${refusals})`);
+});
+
 // Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, which both engines admit as one
 // LIST of the port's seven endpoints with no per-row call, parent list, query or parts, and with criteria only as a parent-scoped
 // list's route id. Every case in `OcuPilot.Test.AnalyticsDescriptor`'s corpus gets its exact sentence, or none, here as the
@@ -3521,6 +3575,17 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsTermListList', 'TermLists'],
     ['AnalyticsTermListEntryList', 'TermListEntries'],
     ['AnalyticsFolderItemList', 'FolderItems'],
+    ['AnalyticsListingGroupList', 'ListingGroups'],
+    ['AnalyticsListingGroupListingList', 'ListingGroupListings'],
+    ['AnalyticsQualityMeasureList', 'QualityMeasures'],
+    ['AnalyticsQualityMeasureElementList', 'QualityMeasureElements'],
+    ['AnalyticsQualityMeasureMetaList', 'QualityMeasureMetas'],
+    ['AnalyticsSettingList', 'Settings'],
+    ['AnalyticsWorklistList', 'Worklists'],
+    ['AnalyticsRuntimeVariableList', 'RuntimeVariables'],
+    ['AnalyticsUserIconList', 'UserIcons'],
+    ['AnalyticsFolderItemDefinitionTab', 'FolderItemDefinition'],
+    ['AnalyticsDashboardWidgetsTab', 'DashboardWidgets'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
@@ -3541,4 +3606,22 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
   const untabbed = structuredClone(screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab').declaration);
   delete untabbed.tab;
   assert.equal(rowTargetProblem(untabbed), "rowTarget is declared on a 'detail' archetype, and a row target is a list's own row link (AD-5)", 'a detail screen that is no tab may not');
+});
+
+// Story 21.19: the config source names the Task Manager email endpoint the port's own ENDPOINTS parameter declares, and the mirror
+// follows that parameter rather than a list of its own, so the Task Manager email screen's read passes and an endpoint the port
+// does not declare is refused naming the whole list.
+// Mutation (Rule 19): drop `TaskMail` from `ConfigPort.ENDPOINTS` -> the endpoint assertion and the screen's read go red.
+test('Story 21.19: the config source admits the Task Manager email endpoint the port declares, in the Tasks area at position 6', () => {
+  assert.ok(configEndpoints().includes('TaskMail'), "the config port declares 'TaskMail'");
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskMailSettingList');
+  assert.ok(screen !== undefined, 'the Task Manager email screen is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'config', endpoint: 'TaskMail', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(`${screen.declaration.area}|${screen.declaration.sideBarPosition}|${screen.declaration.route}`, 'tasks|6|tasks/email', 'it is the sixth Tasks entry');
+  assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_Manage', permission: 'USE' }], "the port's own pair is its own, which keeps the other Tasks screens open to the area's two");
+  const other = structuredClone(screen.declaration);
+  other.read.source.endpoint = 'Mail';
+  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'\)/, 'an endpoint the port does not declare is refused');
 });

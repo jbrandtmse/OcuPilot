@@ -41,6 +41,7 @@ import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
 import { SuperserverForm } from './areas/security/superserver-form.store';
 import { MftConnectionForm } from './areas/security/mft-connection-form.store';
+import { PhoneProviderForm } from './areas/security/phone-provider-form.store';
 import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
 import { RoutineAppForm } from './areas/web-applications/routine-app-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
@@ -1434,6 +1435,10 @@ describe('the shell frame', () => {
     const mftConnectionForm = TestBed.inject(MftConnectionForm);
     mftConnectionForm.setValue('Name', 'AMFTCONNECTIONTHISPRINCIPALTYPED');
     expect(mftConnectionForm.value('Name')).not.toBe('');
+    // And the mobile phone provider form (Story 21.10): a name THIS principal typed for a new one.
+    const phoneProviderForm = TestBed.inject(PhoneProviderForm);
+    phoneProviderForm.setValue('Name', 'APHONEPROVIDERTHISPRINCIPALTYPED');
+    expect(phoneProviderForm.value('Name')).not.toBe('');
     // And the Doc DB application form (Story 18.30): a name THIS principal typed for a new record.
     const docDbAppForm = TestBed.inject(DocDbAppForm);
     docDbAppForm.setValue('Name', 'ADOCDBAPPTHISPRINCIPALTYPED');
@@ -1629,6 +1634,9 @@ describe('the shell frame', () => {
     // one's typed name.
     expect(superserverForm.value('BindAddress')).toBe('');
     expect(mftConnectionForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.phoneProviderForm.reset()` from `App.verifyWhenSignedIn` -> this goes red, and the next principal's
+    // mobile phone provider form holds the previous one's typed name.
+    expect(phoneProviderForm.value('Name')).toBe('');
     // Mutation (Rule 19): delete `this.docDbAppForm.reset()` from `App.verifyWhenSignedIn` -> this goes red, and
     // the next principal's Doc DB application form holds the previous one's typed name.
     expect(docDbAppForm.value('Name')).toBe('');

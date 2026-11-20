@@ -208,10 +208,7 @@ export class WebAppClassAccessTab {
     const result = await this.read({ maxRows: PCT_ACCESS_MAX_ROWS });
     this.loaded.set(true);
     if (result.kind !== 'ok') {
-      // An answer that arrived with a success status but not the read's shape raised no connectivity fault, so it
-      // is recorded as a rejected read: the tab then says so itself rather than leaving no alert at all.
-      const fault: Fault =
-        result.fault.status >= 200 && result.fault.status < 300 ? { ...result.fault, kind: 'rejected' } : result.fault;
+      const fault: Fault = result.fault;
       this.faultSignal.set(fault);
       this.rows.set([]);
       // A banner fault is parked, and the list reads again once the instance answers.

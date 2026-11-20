@@ -262,9 +262,13 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/analytics/mdx/background/:id/cancel" path="/api/ocupilot/analytics/mdx/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/analytics/mdx/background/:id" path="/api/ocupilot/analytics/mdx/background/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/analytics/mdx/background" path="/api/ocupilot/analytics/mdx/background" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/pivot/background/:id/cancel" path="/api/ocupilot/analytics/pivot/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/pivot/background/:id" path="/api/ocupilot/analytics/pivot/background/ocupilot-coverage-probe" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/analytics/pivot/background" path="/api/ocupilot/analytics/pivot/background" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ecp-settings/form" path="/api/ocupilot/ecp-settings/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/ecp-settings" path="/api/ocupilot/ecp-settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/data" path="/api/ocupilot/explorer/sql/data" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/explorer/globals/nodes" path="/api/ocupilot/explorer/globals/nodes" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/encryption-key-file" path="/api/ocupilot/encryption-key-file" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/encryption-startup/form" path="/api/ocupilot/encryption-startup/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/encryption-startup" path="/api/ocupilot/encryption-startup" disposition="envelope" refusal="1"/>
@@ -276,6 +280,9 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/mft-connection/form" path="/api/ocupilot/mft-connection/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/mft-connection/:id" path="/api/ocupilot/mft-connection/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/mft-connection" path="/api/ocupilot/mft-connection" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/phone-provider/form" path="/api/ocupilot/phone-provider/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/phone-provider/:id" path="/api/ocupilot/phone-provider/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/phone-provider" path="/api/ocupilot/phone-provider" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/docdb-application/form" path="/api/ocupilot/docdb-application/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/docdb-application/:id" path="/api/ocupilot/docdb-application/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/docdb-application" path="/api/ocupilot/docdb-application" disposition="envelope" refusal="1"/>
@@ -289,11 +296,23 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/analytics/term-lists/form" path="/api/ocupilot/analytics/term-lists/form" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/analytics/term-lists" path="/api/ocupilot/analytics/term-lists" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/analytics/term-list-entries" path="/api/ocupilot/analytics/term-list-entries" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/listing-groups/form" path="/api/ocupilot/analytics/listing-groups/form" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/listing-groups" path="/api/ocupilot/analytics/listing-groups" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/listing-group-listings" path="/api/ocupilot/analytics/listing-group-listings" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/quality-measures/form" path="/api/ocupilot/analytics/quality-measures/form" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/quality-measures" path="/api/ocupilot/analytics/quality-measures" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/quality-measure-elements" path="/api/ocupilot/analytics/quality-measure-elements" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/quality-measure-metas" path="/api/ocupilot/analytics/quality-measure-metas" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/runtime-variables" path="/api/ocupilot/analytics/runtime-variables" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/user-icons" path="/api/ocupilot/analytics/user-icons" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/business-partners" path="/api/ocupilot/interop/business-partners" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/config/ddl-mappings" path="/api/ocupilot/config/ddl-mappings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/rest-service" path="/api/ocupilot/rest-service" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/locales/:name/validation" path="/api/ocupilot/locales/ocupilot-coverage-probe/validation" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/locales" path="/api/ocupilot/locales" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/locale-properties" path="/api/ocupilot/locale-properties" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

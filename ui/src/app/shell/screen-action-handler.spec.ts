@@ -459,6 +459,16 @@ describe('the Users list row actions (Story 7.2)', () => {
     ]);
   });
 
+  it('shows the published stale-save sentence for a refused write that answers a row moved since it was read', async () => {
+    // A 409 STATE.CONFLICT is the row-moved refusal for every screen (EXPERIENCE.md): its sentence, not the envelope's own.
+    // Mutation (Rule 19): drop the STATE_CONFLICT_CODE branch of `refusalReason` -> this goes red.
+    const refused = mountUsers([{ kind: 'error', status: 409, code: 'STATE.CONFLICT', reason: 'the envelope sentence', detail: null }]);
+    refused.actions.run(USERS.descriptor, SET_PASSWORD);
+    await refused.handler.submitPassword('pw1', false);
+    expect(refused.calls).toHaveLength(1);
+    expect(refused.store.refusal()).toBe(STRINGS.formStaleSave);
+  });
+
   it('offers a remove of the row\u2019s own roles and an add of the form read\u2019s others, sending one role', async () => {
     // Story 9.1 (DW-1523): the add's choices come from `GET /users/form`, each with the server's own
     // privilege mark, which the dialog states the grant's consequence from.
@@ -1712,6 +1722,35 @@ describe('the Managed file transfer list\u2019s Delete and Revoke token (Story 1
     expect(calls).toHaveLength(1);
     expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'revoke-token', id: target });
+  });
+});
+
+/**
+ * Story 21.10: the Mobile phone providers list's Delete types the provider's name -- the row key itself -- under its published
+ * consequence, and sends the name with no other argument.
+ */
+describe('the Mobile phone providers list Delete (Story 21.10)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.PhoneProviderList';
+  const target = 'OcuPhoneProbeA';
+
+  it('registers Delete, typing the provider name under its published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the list draws no Delete.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: target, SMSGateway: 'sms.ocuphoneprobe.invalid' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.phoneProviderDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the name and no argument', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'delete', target: { type: 'phone-provider', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
   });
 });
 

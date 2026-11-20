@@ -197,6 +197,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.3: the unlisted local database form -- the create wizard and, at its id route, the
       // properties editor -- reached from Local databases.
       'os-management/local-databases/edit',
+      // Story 21.16: the unlisted Locale properties list, reached from Locale definitions.
+      'os-management/locales/properties',
       // Story 18.2: the unlisted namespace editor, reached from the Namespaces list.
       'os-management/namespaces/edit',
       'os-management/namespaces/package-mappings/edit',
@@ -260,6 +262,12 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 21.13: System and User DDL mappings, the thirty-fourth and thirty-fifth.
       'os-management/system-ddl-mappings',
       'os-management/user-ddl-mappings',
+      // Story 21.14: NLS configured defaults and Locale definitions, the thirty-sixth and thirty-seventh.
+      'os-management/nls-defaults',
+      'os-management/locales',
+      // Story 21.20: Transactions and System alerts, the thirty-eighth and thirty-ninth.
+      'os-management/transactions',
+      'os-management/system-alerts',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -270,6 +278,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'tasks/history',
       // Story 16.5: Background tasks, the fifth Tasks entry.
       'tasks/background',
+      // Story 21.19: Task Manager email, the sixth Tasks entry.
+      'tasks/email',
       'permissions/roles/edit',
       // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
       'permissions/services/edit',
@@ -324,6 +334,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/edit',
       'security/oauth/server/edit',
       'security/oauth/server',
+      // Story 21.10: the unlisted mobile phone provider editor, reached from Mobile phone providers. Mutation (Rule 19): drop this line
+      // from the expectation -> this test goes red on the route the mirror lists before the SSL/TLS editor.
+      'security/phone-providers/edit',
       // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
       'security/ssl/edit',
       // Story 18.25: the unlisted superserver editor, reached from Superservers.
@@ -350,10 +363,21 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.26: Managed file transfer, the thirteenth Security and secrets entry. Mutation (Rule 19): drop
       // this line from the expectation -> this test goes red on the route the mirror lists at position 13.
       'security/mft-connections',
+      // Story 21.10: System-wide security, the fourteenth Security and secrets entry. Mutation (Rule 19): drop this line from the
+      // expectation -> this test goes red on the route the mirror lists at position 14.
+      'security/system-security',
+      // Story 21.10: Mobile phone providers, the fifteenth Security and secrets entry. Mutation (Rule 19): drop this line from the
+      // expectation -> this test goes red on the route the mirror lists at position 15.
+      'security/phone-providers',
+      // Story 21.19: the Security advisor, the sixteenth Security and secrets entry. Mutation (Rule 19): drop this line from the
+      // expectation -> this test goes red on the route the mirror lists at position 16.
+      'security/advisor',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
       'system-explorer/classes/editor',
+      // Story 21.5: Global nodes, the Globals list's unlisted document screen, by descriptor class name.
+      'system-explorer/globals/document',
       'system-explorer/routines/document',
       'system-explorer/routines/editor',
       // Stories 19.5 and 19.14: a SQL table's nine unlisted tabs, a view's three and a procedure's
@@ -398,7 +422,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.1: Code metrics and Document hashes, after Document databases.
       'system-explorer/code-metrics',
       'system-explorer/document-hashes',
-      // Story 24.8: Compare namespaces, after Document hashes.
+      // Story 21.5: Globals, after Document hashes.
+      'system-explorer/globals',
+      // Story 24.8: Compare namespaces, after Globals.
       'system-explorer/namespace-diff',
       // Story 24.5: Unit tests, after Compare namespaces.
       'system-explorer/unit-tests',
@@ -453,7 +479,19 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
       'analytics/cubes/relationships',
+      // Story 24.14: a folder item's Widgets and Definition (the first tab of the pair), unlisted, sort with them by class name.
+      'analytics/folder-items/widgets',
+      'analytics/folder-items/document',
+      // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
+      'analytics/listing-groups/listings',
+      // Story 24.12: a quality measure's Documentation and Groups and elements (the first tab of the pair), unlisted, sort with them by class name.
+      'analytics/quality-measures/document',
+      'analytics/quality-measures/documentation',
+      // Story 24.13: the Settings group's Run-time variables sorts after them by class name, User-defined icons and Worklists after the term list entries.
+      'analytics/settings/variables',
       'analytics/term-lists/entries',
+      'analytics/settings/icons',
+      'analytics/settings/worklists',
       'analytics/cubes',
       'analytics/term-lists',
       'analytics/folder-items',
@@ -465,6 +503,12 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/mdx-query',
       // Story 20.34: the Cube manager, listed after them at position 8.
       'analytics/cube-manager',
+      // Story 24.11: Listing groups, listed after them at position 9.
+      'analytics/listing-groups',
+      // Story 24.12: Quality measures, listed after them at position 10.
+      'analytics/quality-measures',
+      // Story 24.13: Settings, the first tab of its group, listed after it at position 11.
+      'analytics/settings',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -546,6 +590,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       // Story 21.13: the thirty-fourth and thirty-fifth.
       'os-management/system-ddl-mappings',
       'os-management/user-ddl-mappings',
+      // Story 21.14: the thirty-sixth and thirty-seventh.
+      'os-management/nls-defaults',
+      'os-management/locales',
+      // Story 21.20: the thirty-eighth and thirty-ninth.
+      'os-management/transactions',
+      'os-management/system-alerts',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -783,8 +833,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers', 'security/mft-connections'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options, Superservers and Managed file transfer'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers', 'security/mft-connections', 'security/system-security', 'security/phone-providers', 'security/advisor'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options, Superservers, Managed file transfer, System-wide security, Mobile phone providers and Security advisor'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
@@ -944,6 +994,31 @@ test('Story 20.11: a Cubes row opens the cube\'s Measures tab, a Relationships r
     screenForUrl(`/analytics/term-lists/entries/${encodeEntityId('OcuPilotProbeTerms')}`)?.descriptor,
     'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
     'an entries URL resolves to the entries list'
+  );
+  // Story 24.11: a listing group's name opens its Listings, as a term list's name opens its entries.
+  const listingGroups = screenForRoute('analytics/listing-groups');
+  assert.ok(listingGroups, 'Listing groups is declared');
+  assert.equal(childListFor(listingGroups)?.route, 'analytics/listing-groups/listings', 'the Listing groups name cell opens the Listings');
+  assert.equal(documentScreenFor(listingGroups), null, 'and Listing groups pairs no document viewer');
+  assert.equal(
+    screenForUrl(`/analytics/listing-groups/listings/${encodeEntityId('OcuPilotProbeListings')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+    'a Listings URL resolves to the Listings list'
+  );
+  // Story 24.12: a quality measure's name opens its Groups and elements, the first tab of a pair whose second is Documentation; its name holds slashes the one-segment id carries.
+  const qualityMeasures = screenForRoute('analytics/quality-measures');
+  assert.ok(qualityMeasures, 'Quality measures is declared');
+  assert.equal(childListFor(qualityMeasures), null, 'the Quality measures name cell opens no list: its two sub-screens are the tabs of one detail group');
+  assert.equal(documentScreenFor(qualityMeasures)?.route, 'analytics/quality-measures/document', 'it opens the Groups and elements, the pair\'s document route, as a cube\'s name cell opens its Measures tab');
+  assert.equal(
+    screenForUrl(`/analytics/quality-measures/document/${encodeEntityId('OcuPilotProbe/Set/Id')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
+    'a Groups and elements URL resolves to the list, the name\'s slashes encoded in one segment'
+  );
+  assert.equal(
+    screenForUrl(`/analytics/quality-measures/documentation/${encodeEntityId('OcuPilotProbe/Set/Id')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+    'a Documentation URL resolves to the list'
   );
 });
 

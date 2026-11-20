@@ -164,6 +164,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
   'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 24.13 Batch 2: Analytics' General settings, a detail tab, on the same page: its Set value, and its key's masked dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.StartupSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.MemorySettingList': CONFIG_SETTINGS_PAGE,
@@ -173,9 +175,18 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SqlShellSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.TsqlSettingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.IsqlSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.10: System-wide security, on the same page.
+  'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.19: Task Manager email, on the same page.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.13: System and User DDL mappings, on the same page, which adds New mapping to the user list.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': CONFIG_SETTINGS_PAGE,
+  // Story 21.14: NLS configured defaults, on the same page, and Locale definitions, whose page adds Validate.
+  'OcuPilot.Screen.Descriptor.NlsDefaultList': CONFIG_SETTINGS_PAGE,
+  'OcuPilot.Screen.Descriptor.LocaleList': () => import('../areas/os-management/locale-list.page').then((m) => m.LocaleListPage),
+  // Story 21.16: one locale's properties are served by the configuration settings page, whose Set value dialog they reuse.
+  'OcuPilot.Screen.Descriptor.LocalePropertyList': CONFIG_SETTINGS_PAGE,
   'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),
@@ -210,6 +221,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SuperserverForm': () => import('../areas/security/superserver-form.page').then((m) => m.SuperserverFormPage),
   // Story 18.26: the managed file transfer connection editor; the list is the shared list page.
   'OcuPilot.Screen.Descriptor.MftConnectionForm': () => import('../areas/security/mft-connection-form.page').then((m) => m.MftConnectionFormPage),
+  // Story 21.10: the mobile phone provider editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.PhoneProviderForm': () => import('../areas/security/phone-provider-form.page').then((m) => m.PhoneProviderFormPage),
   // Story 18.30: the Doc DB application editor; the list is the shared list page.
   'OcuPilot.Screen.Descriptor.DocDbAppForm': () => import('../areas/web-applications/docdb-app-form.page').then((m) => m.DocDbAppFormPage),
   // Story 18.31: the privileged routine application editor; the list is the shared list page.
@@ -243,6 +256,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': () => import('../areas/system-explorer/data-browser.page').then((m) => m.DataBrowserPage),
   // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': () => import('../areas/system-explorer/docdb-list.page').then((m) => m.DocDbListPage),
+  // Story 21.17: Globals, the shared code list's criteria form and table, its row Export and screen-level Import acting on the selected global.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalList': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
+  // Story 21.5: one global's nodes, a page at a time.
+  'OcuPilot.Screen.Descriptor.ExplorerGlobalView': () => import('../areas/system-explorer/global-view.page').then((m) => m.GlobalViewPage),
   // Story 18.34: the REST API explorer, the list with its create dialog.
   'OcuPilot.Screen.Descriptor.RestApiList': () => import('../areas/web-applications/rest-api-list.page').then((m) => m.RestApiListPage),
   // Story 24.3: Productions, the list with its Start with the instance and Shutdown group dialogs.
@@ -278,6 +295,18 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.2: Term lists with their New term list and Edit term list dialogs, and a term list's entries with their Add entry and Change entry dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList': () => import('../areas/analytics/term-list-list.page').then((m) => m.TermListListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': () => import('../areas/analytics/term-list-entry-list.page').then((m) => m.TermListEntryListPage),
+  // Story 24.11: Listing groups with their New listing group, Edit and Copy dialogs, and a group's listings with their Add listing and Change listing dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList': () => import('../areas/analytics/listing-group-list.page').then((m) => m.ListingGroupListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList': () => import('../areas/analytics/listing-group-listing-list.page').then((m) => m.ListingGroupListingListPage),
+  // Story 24.12: Quality measures with their New quality measure, Edit and Copy dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': () => import('../areas/analytics/quality-measure-list.page').then((m) => m.QualityMeasureListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': () => import('../areas/analytics/quality-measure-element-list.page').then((m) => m.QualityMeasureElementListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': () => import('../areas/analytics/quality-measure-meta-list.page').then((m) => m.QualityMeasureMetaListPage),
+  // Story 24.13 Batch 3: Run-time variables and User-defined icons, with their Add and Change dialogs.
+  'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
+  'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
+  // Story 24.14: a folder item's Definition tab, the detail page with a saved pivot's Run beneath it.
+  'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab': () => import('../areas/analytics/folder-item-definition.page').then((m) => m.FolderItemDefinitionPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };
@@ -304,6 +333,20 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 18.3: the local database form's id route is the properties editor beside the wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': () => import('../areas/os-management/database-editor.page').then((m) => m.DatabaseEditorPage),
 };
+
+/**
+ * Loads the id-route editor page the descriptor registers in `DESCRIPTOR_EDIT_PAGES`, so a create
+ * form hands off to an editor whose code is already in memory. Best effort: a descriptor with no
+ * editor, or a chunk that does not load, resolves anyway and leaves the navigation to report it.
+ */
+export async function warmEditPage(descriptor: string): Promise<void> {
+  if (!Object.hasOwn(DESCRIPTOR_EDIT_PAGES, descriptor)) return;
+  try {
+    await DESCRIPTOR_EDIT_PAGES[descriptor]();
+  } catch {
+    // The navigation that follows loads the page again and draws its own failure.
+  }
+}
 
 /**
  * The guard `page` applies before indexing either map -- exported as a pure function so it can be

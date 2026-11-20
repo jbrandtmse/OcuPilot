@@ -170,17 +170,20 @@ test('the journal tool test\'s second page asks for the context cap, not the fir
   assert.equal(Number(/"maxRows": (\d+)\}/.exec(body)?.[1]), 20, 'the first page still reads twenty, so the cap is what truncates it');
 });
 
-test('context-chip\'s second Send waits for the turn slot and never abandons turns', () => {
+test('context-chip\'s first and second Send each wait for the turn slot, and it never abandons turns', () => {
   const source = readFileSync(new URL('../browser/context-chip.browser-spec.mjs', import.meta.url), 'utf8');
   const start = source.indexOf("test('Fresh at Send:");
   assert.ok(start !== -1, 'the test exists');
   const body = source.slice(start, source.indexOf('\ntest(', start + 1));
   const firstWait = body.indexOf('await waitForReplies(page, 1, config, STRINGS.actionSend)');
-  const slotWait = body.indexOf('await waitForSlotFree(config)');
+  const slotWait = body.lastIndexOf('await waitForSlotFree(config)');
+  const entryWait = body.indexOf('await waitForSlotFree(config)');
+  const firstSend = body.indexOf("typeAndSend(page, 'first turn");
   const secondSend = body.indexOf("typeAndSend(page, 'second turn");
   const secondReply = body.indexOf("'the second turn to draw \"second\"");
   assert.ok(firstWait !== -1 && slotWait !== -1 && secondSend !== -1 && secondReply !== -1, 'all four steps are present');
   assert.ok(firstWait < slotWait && slotWait < secondSend && secondSend < secondReply, 'wait for turn 1, free slot, second Send, second reply');
+  assert.ok(firstSend !== -1 && entryWait < firstSend && entryWait < slotWait, 'the previous test\'s turn is waited out before the first Send');
   assert.ok(!body.includes('requireFreeSlot'), 'it never abandons a running turn');
   assert.match(body, /scriptStream\(tag, textReply\('first'\), [1-9]\d*\)/, 'turn 1 is streamed with a mid-turn pause, so its text is drawn while it runs');
 });

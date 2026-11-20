@@ -35,6 +35,7 @@ const ROOT = '/data/';
 const CLASSES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerClassList') as ScreenDeclaration;
 const ROUTINES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerRoutineList') as ScreenDeclaration;
 const SQL_TABLES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlTables') as ScreenDeclaration;
+const GLOBALS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerGlobalList') as ScreenDeclaration;
 
 const row = (name: string) => ({ Name: name, Modified: '2026-10-01 10:00:00.000', Database: 'HSCUSTOM', Generated: false });
 
@@ -764,5 +765,65 @@ describe('System Explorer counted documents (Story 23.5)', () => {
     calls[0].answer({ kind: 'ok', status: 200, body: { action: 'created', target: { type: 'routine', scope: 'HSCUSTOM', id: 'import' }, output: { imported: ['A.MAC'], lines: ['Load finished successfully.'], errors: false } } });
     await settle(fixture);
     expect(status(host)).toBe('Imported 1 document.');
+  });
+});
+
+const globalRow = (name: string) => ({ Name: name, Database: '/durable/iris/mgr/hscustom/', Collation: 'IRIS standard', Journal: 'Yes' });
+
+describe('The Globals list on the shared list page (Story 21.17)', () => {
+  it('AC5: Export acts on the one selected global, not on the checked set, and sends its name as the target', async () => {
+    // Mutation (Rule 19): send the checked set in place of the selected row in `onOpenExport` -> nothing is checked, no dialog opens and this goes red.
+    const { fixture, host, calls, store, actions } = await mount(GLOBALS, [globalRow('ZZOcuGlbA'), globalRow('ZZOcuGlbB')]);
+    expect(GLOBALS.multiSelect).toBeNull();
+    actions.run(GLOBALS.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
+    store.setSelection(['ZZOcuGlbB']);
+    actions.run(GLOBALS.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Export 1 document');
+    await typePath(fixture, host, 'out/glb.xml');
+    (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toEqual({ action: 'export', id: 'ZZOcuGlbB', values: { root: ROOT, path: 'out/glb.xml' } });
+    expect(calls[0].scope).toBe('HSCUSTOM');
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'global', scope: 'HSCUSTOM', id: 'ZZOcuGlbB' }, output: { root: ROOT, path: 'out/glb.xml' } } });
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
+    expect(status(host)).toBe(`Exported 1 document to ${ROOT}out/glb.xml.`);
+  });
+
+  it('Import sends one file on the one import target; a refusal keeps its sentence in the dialog', async () => {
+    const { fixture, host, calls, actions } = await mount(GLOBALS, [globalRow('ZZOcuGlbA')]);
+    expect(actions.has(GLOBALS.descriptor, TASK_IMPORT_ACTION_ID)).toBe(true);
+    actions.run(GLOBALS.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await typePath(fixture, host, 'in/glb.xml');
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls[0].body).toEqual({ action: 'import', id: 'import', values: { root: ROOT, path: 'in/glb.xml', Compile: 'true' } });
+    calls[0].answer({ kind: 'error', status: 403, code: 'PROHIBITED.PROTECTEDGLOBAL', reason: STRINGS.globalRefusalProtected, detail: null });
+    await settle(fixture);
+    expect(dialogRefusal(host)).toBe(STRINGS.globalRefusalProtected);
+  });
+
+  it('Delete stays the shell handler\'s: it asks the global\'s typed name, states the published consequence and sends one delete', async () => {
+    // Mutation (Rule 19): register Delete unconditionally in the page's constructor -> the page's own checked-row Delete replaces the handler's, nothing opens and this goes red.
+    const { fixture, host, calls, store, actions } = await mount(GLOBALS, [globalRow('ZZOcuGlbA')]);
+    expect(actions.has(GLOBALS.descriptor, COMPILE_ACTION)).toBe(false);
+    expect(actions.has(GLOBALS.descriptor, 'export-browser')).toBe(false);
+    expect(actions.has(GLOBALS.descriptor, 'import-local')).toBe(false);
+    store.setSelection(['ZZOcuGlbA']);
+    actions.run(GLOBALS.descriptor, DELETE_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.globalDeleteConsequence);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'ZZOcuGlbA';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle(fixture);
+    (host.querySelector('.ocu-dialog-actions .ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls.map((call) => call.body)).toEqual([{ action: 'delete', id: 'ZZOcuGlbA' }]);
   });
 });

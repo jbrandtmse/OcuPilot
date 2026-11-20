@@ -85,14 +85,14 @@ Method OnAfterAllTests() As %Status
 /// declares them: the caller-own agent reads and choices, its turns, proposals, conversations and
 /// transcripts, the shell reads, its own account, Home's reads and the analytics log (Story 19.12's
 /// audit), SQL query's two routes (Story 19.6), its three background routes (Story 19.15) and Data
-/// browser's route (Story 19.7). Each is
+/// browser's route (Story 19.7) and the Globals node page's route (Story 21.5). Each is
 /// owner-scoped, or its classic page carries no <code>RESOURCE</code> or one the principal holds (the
 /// analytics log's public <code>%DeepSee_Portal</code>, the classic SQL page's
 /// <code>%Development</code>).</p>
 ClassMethod Roster() As %List
 {
-    Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics,/explorer/sql/background/:id,/analytics/mdx/background/:id"
-    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences,POST /explorer/sql/run,POST /explorer/sql/plan,POST /explorer/sql/background,POST /explorer/sql/background/:id/cancel,POST /explorer/sql/data,POST /analytics/mdx/background,POST /analytics/mdx/background/:id/cancel"
+    Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics,/explorer/sql/background/:id,/analytics/mdx/background/:id,/analytics/pivot/background/:id"
+    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences,POST /explorer/sql/run,POST /explorer/sql/plan,POST /explorer/sql/background,POST /explorer/sql/background/:id/cancel,POST /explorer/sql/data,POST /explorer/globals/nodes,POST /analytics/mdx/background,POST /analytics/mdx/background/:id/cancel,POST /analytics/pivot/background,POST /analytics/pivot/background/:id/cancel"
     Set tRoster = ""
     For tI = 1:1:$Length(tGets, ",") Set tRoster = tRoster _ $ListBuild($ListBuild("GET", $Piece(tGets, ",", tI)))
     For tI = 1:1:$Length(tOthers, ",") Set tRoster = tRoster _ $ListBuild($ListBuild($Piece($Piece(tOthers, ",", tI), " ", 1), $Piece($Piece(tOthers, ",", tI), " ", 2)))

@@ -18,10 +18,18 @@
 /// <code>ocupilot-ci</code> 2026-09-28, each <code>PrometheusMetrics()</code> call rewrites 24
 /// sensor-baseline nodes of the vendor's SAM temporary global (the previous values, the CPU state
 /// and the last-collection time) and never its alerts cursor. So a read here shortens an external
-/// scraper's per-second intervals, and advances nothing the vendor's alerts read keeps; this class
-/// never calls that alerts read.</p>
+/// scraper's per-second intervals, and advances nothing the SAM <code>Alerts()</code> read keeps; this
+/// class never calls SAM's <code>Alerts()</code>.</p>
+/// <p><b>Two more ways in</b> (Story 21.20). <parameter>ENDPOINTTRANSACTIONS</parameter> answers the
+/// open transactions the System Monitor records, local then remote, after the System Monitor reads
+/// running (<method>Transactions</method>). <parameter>ENDPOINTALERTS</parameter> answers the
+/// <code>%SYSTEM.Monitor</code> alert state as one row (<code>LIST</code> and <code>GET</code>) and resets it
+/// (<code>RESET</code>, after <parameter>WRITEPAIRS</parameter>), through the harvested bodies behind
+/// <class>OcuPilot.Port.HarvestPort</class> (AD-23). The reset sets the alert count to 0 and the state to
+/// OK, and <code>alerts.log</code> is never truncated.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.MonitorPortFixture</class>):
-/// <method>GateClass</method>, <method>Source</method>, <method>UsageSource</method> and
+/// <method>GateClass</method>, <method>Source</method>, <method>UsageSource</method>,
+/// <method>MonitorRunning</method>, <method>TransactionNodes</method>, <method>HarvestCall</method> and
 /// <method>LogFault</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.MonitorPort Extends %RegisteredObject
 {
@@ -31,6 +39,11 @@ Class OcuPilot.Port.MonitorPort Extends %RegisteredObject
 /// requirement; without <code>%DB_IRISSYS:READ</code> the switch to <code>%SYS</code> raises
 /// <code>&lt;PROTECT&gt;</code>.</p>
 Parameter PAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
+
+/// <p>The pair set the alert reset requires: <code>%Admin_Manage:USE</code>, which
+/// <code>$SYSTEM.Monitor.Clear()</code> needs (measured), and <code>%DB_IRISSYS:READ</code> for the switch
+/// to <code>%SYS</code>.</p>
+Parameter WRITEPAIRS = "%Admin_Manage:USE,%DB_IRISSYS:READ";
 
 /// <p>The class the pair set is evaluated through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
@@ -56,10 +69,33 @@ Parameter PARTMETRICS = "cpuUsage:cpu_usage";
 /// <p>The endpoint answering every sample of one collection (AD-36).</p>
 Parameter ENDPOINT = "Metrics";
 
-/// <p>The endpoints a declared <code>monitor</code> read names (AD-36): <parameter>ENDPOINT</parameter>
-/// and the three interoperability usage lists, <parameter>ENDPOINTINTERFACES</parameter>,
-/// <parameter>ENDPOINTMESSAGEVOLUME</parameter> and <parameter>ENDPOINTDATABASEIMPACT</parameter>.</p>
-Parameter ENDPOINTS = "Metrics,Interfaces,MessageVolume,DatabaseImpact";
+/// <p>The endpoints a declared <code>monitor</code> read names (AD-36): <parameter>ENDPOINT</parameter>,
+/// the three interoperability usage lists, <parameter>ENDPOINTINTERFACES</parameter>,
+/// <parameter>ENDPOINTMESSAGEVOLUME</parameter> and <parameter>ENDPOINTDATABASEIMPACT</parameter>, and
+/// <parameter>ENDPOINTTRANSACTIONS</parameter> and <parameter>ENDPOINTALERTS</parameter>.</p>
+Parameter ENDPOINTS = "Metrics,Interfaces,MessageVolume,DatabaseImpact,Transactions,Alerts";
+
+/// <p>The endpoint answering the open transactions the System Monitor records (Story 21.20).</p>
+Parameter ENDPOINTTRANSACTIONS = "Transactions";
+
+/// <p>The endpoint answering and resetting the system alert state (Story 21.20).</p>
+Parameter ENDPOINTALERTS = "Alerts";
+
+/// <p>The one object an alerts read answers, for the write tool's fresh read.</p>
+Parameter TYPEGET = "GET";
+
+/// <p>The alert reset.</p>
+Parameter TYPERESET = "RESET";
+
+/// <p>The harvested bodies behind <parameter>ENDPOINTALERTS</parameter>, and the one caller that runs them.</p>
+Parameter HARVESTPORT = "OcuPilot.Port.HarvestPort";
+
+Parameter ALERTSBODY = "OcuPilot.Port.Harvest.Alerts";
+
+/// <p>The global the System Monitor keeps its transaction rows under, and the node of each kind.</p>
+Parameter TRANSACTIONSNODE = "Transactions";
+
+Parameter REMOTETRANSACTIONSNODE = "ECPTransactions";
 
 /// <p>The endpoint answering the interoperability interfaces: the classic page's
 /// <parameter>QUERYINTERFACES</parameter>.</p>
@@ -125,11 +161,11 @@ ClassMethod GateClass() As %String
     Quit ..#GATECLASS
 }
 
-/// <p><parameter>PAIRS</parameter> as the <code>%List</code> of two-element <code>%List</code>s the
-/// gate evaluates.</p>
-ClassMethod Pairs() As %List
+/// <p><var>pSpec</var>, <parameter>PAIRS</parameter> by default, as the <code>%List</code> of
+/// two-element <code>%List</code>s the gate evaluates.</p>
+ClassMethod Pairs(pSpec As %String = {..#PAIRS}) As %List
 {
-    Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#PAIRS)
+    Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(pSpec)
 }
 
 /// <p><parameter>ENDPOINTS</parameter> as a <code>%List</code>: the endpoints a declared
@@ -186,15 +222,20 @@ ClassMethod Performance(Output pValues As %DynamicObject, Output pHttpStatus As 
 /// with <method>OcuPilot.Port.AdminPort.Invoke</method>'s signature so the read issues either
 /// through either port the same way. <var>pBody</var> is accepted and unused, and so is
 /// <var>pQuery</var> except for <parameter>MAXROWSKEY</parameter>.</p>
-/// <p>First <parameter>PAIRS</parameter> is evaluated in the calling process: a caller lacking
-/// either pair is answered 403 <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>
-/// and no sensor call is made. Then:</p>
+/// <p>First <parameter>PAIRS</parameter>, or <parameter>WRITEPAIRS</parameter> for
+/// <parameter>ENDPOINTALERTS</parameter> with <parameter>TYPERESET</parameter>, is evaluated in the calling
+/// process: a caller lacking a pair is answered 403 <code>AUTH.NOPRIVILEGE</code> with
+/// <code>detail.failedPair</code> and no sensor call is made. Then:</p>
 /// <ul>
+/// <li><parameter>ENDPOINTALERTS</parameter> with <parameter>TYPEGET</parameter> or <parameter>TYPERESET</parameter>,
+/// and with <parameter>TYPELIST</parameter>, is <method>Alerts</method>; <parameter>ENDPOINTTRANSACTIONS</parameter>
+/// with <parameter>TYPELIST</parameter> is <method>Transactions</method>, 409 <code>MONITOR.NOTRUNNING</code>
+/// while the System Monitor is not running.</li>
 /// <li><parameter>ENDPOINT</parameter> with <parameter>TYPELIST</parameter> takes one collection
 /// and answers <method>Samples</method>' rows, at most <parameter>MAXROWSKEY</parameter> of them
 /// (<parameter>DEFAULTMAXROWS</parameter> when absent); a cap that is not a whole number above zero
 /// is 400 <code>PORT.VALIDATION</code>, before any collection.</li>
-/// <li>Each other member of <parameter>ENDPOINTS</parameter> with <parameter>TYPELIST</parameter>
+/// <li>Each interoperability usage list with <parameter>TYPELIST</parameter>
 /// answers <method>Usage</method>'s rows under the same cap and the same refusal, taking no
 /// collection.</li>
 /// <li><parameter>SENSORSENDPOINT</parameter> with <parameter>SENSORSTYPE</parameter> takes one
@@ -216,13 +257,29 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
-        Set tSC = ..Gate(.pHttpStatus, .pFault)
+        Set tSC = ..GateFor($Select((pEndpoint = ..#ENDPOINTALERTS) && (pType = ..#TYPERESET): ..#WRITEPAIRS, 1: ..#PAIRS), .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+
+        If (pEndpoint = ..#ENDPOINTALERTS) && ((pType = ..#TYPEGET) || (pType = ..#TYPERESET)) {
+            Set tSC = ..Alerts(pType, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
 
         If (pType = ..#TYPELIST) && $ListFind(..Endpoints(), pEndpoint) {
             Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
             If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTTRANSACTIONS {
+                Set tSC = ..Transactions($Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText), .tTransactionRows, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+                Set pResult = tTransactionRows
+                Set pHttpStatus = 200
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTALERTS {
+                Set tSC = ..Alerts(..#TYPELIST, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
             If pEndpoint '= ..#ENDPOINT {
@@ -266,10 +323,17 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 /// envelope naming the failed pair.</p>
 ClassMethod Gate(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
+    Quit ..GateFor(..#PAIRS, .pHttpStatus, .pFault)
+}
+
+/// <p><method>Gate</method> for the pair set <var>pSpec</var>, in the grammar of
+/// <parameter>PAIRS</parameter>.</p>
+ClassMethod GateFor(pSpec As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
     Set pHttpStatus = 0
     Set pFault = ""
     Set tFailedPair = ""
-    If $ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(), .tFailedPair) Quit $$$OK
+    If $ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pSpec), .tFailedPair) Quit $$$OK
     Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
     Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
     Set tDetail = ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair)
@@ -670,6 +734,126 @@ ClassMethod UsageSource(pEndpoint As %String, pMax As %Integer, Output pRows As 
     Quit tSC
 }
 
+/// <p>The open transactions the System Monitor records, at most <var>pMax</var> of them: each
+/// <code>{Kind, ProcessID, Seconds, Status, Remote}</code>, the local rows then the remote rows, in the monitor's own
+/// order; <code>Remote</code> is true for a remote row, which names no local process to open. <code>Status</code> is the kind's node mapped as the classic page maps it: <code>Normal</code> for
+/// <code>OK</code>, <code>Warning</code>, and <code>Troubled</code> for any other value. While the System Monitor is
+/// not running the answer is 409 <code>MONITOR.NOTRUNNING</code> and no row.</p>
+ClassMethod Transactions(pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    If '..MonitorRunning() Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.MonitorError).#NOTRUNNING, ##class(OcuPilot.Api.MonitorError).#REASONNOTRUNNING, .pHttpStatus, .pFault)
+    Set tRows = []
+    For tKind = "Local", "Remote" {
+        Set tSC = ..TransactionNodes(tKind, .tNodeStatus, .tNodes)
+        If $$$ISERR(tSC) Quit
+        Set tStatus = $Case(tNodeStatus, "OK": "Normal", "Warning": "Warning", : "Troubled")
+        Set tIterator = tNodes.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tNode) {
+            If tRows.%Size() >= pMax Quit
+            Set tRow = {}
+            Do tRow.%Set("Kind", tKind, "string")
+            Do tRow.%Set("ProcessID", tNode.%Get("ProcessID"), "string")
+            Do tRow.%Set("Seconds", +tNode.%Get("Seconds"), "number")
+            Do tRow.%Set("Status", tStatus, "string")
+            Do tRow.%Set("Remote", tKind = "Remote", "boolean")
+            Do tRows.%Push(tRow)
+        }
+    }
+    If $$$ISERR(tSC) Quit ..Fail("the open transactions could not be read", tSC, .pHttpStatus, .pFault)
+    Set pRows = tRows
+    Quit $$$OK
+}
+
+/// <p>Whether the System Monitor is running, as the classic Transactions page asks it: the vendor's
+/// <code>SYS.Metrics.SystemMonitorStatus()</code>, read in <code>%SYS</code>, answers <code>OK</code>. The
+/// caller's namespace is restored. Overridable so a test can supply the answer; production never overrides
+/// it.</p>
+ClassMethod MonitorRunning() As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tRunning = 0
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRunning = ($ClassMethod("SYS.Metrics", "SystemMonitorStatus") = "OK")
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tRunning = 0
+    }
+    Quit tRunning
+}
+
+/// <p>The monitor's transaction rows of kind <var>pKind</var>, <code>Local</code> or <code>Remote</code>:
+/// <var>pNodeStatus</var> is the kind's node value, and <var>pNodes</var> one
+/// <code>{ProcessID, Seconds}</code> per child row (<code>pid</code> and <code>secs</code>), in subscript order.
+/// Overridable so a test can supply the rows; production never overrides it.</p>
+ClassMethod TransactionNodes(pKind As %String, Output pNodeStatus As %String, Output pNodes As %DynamicArray) As %Status
+{
+    Set pNodes = []
+    Set pNodeStatus = ""
+    Set tName = $Case(pKind, "Local": ..#TRANSACTIONSNODE, "Remote": ..#REMOTETRANSACTIONSNODE, : "")
+    If tName = "" Quit $$$ERROR($$$GeneralError, "the monitor port reads no " _ pKind _ " transactions")
+    Set tSC = $$$OK
+    Try {
+        Set pNodeStatus = $Get(^IRIS.Temp.SysMetrics(tName))
+        Set tRow = $Order(^IRIS.Temp.SysMetrics(tName, ""))
+        While tRow '= "" {
+            Set tNode = {}
+            Do tNode.%Set("ProcessID", $Get(^IRIS.Temp.SysMetrics(tName, tRow, "pid")), "string")
+            Do tNode.%Set("Seconds", +$Get(^IRIS.Temp.SysMetrics(tName, tRow, "secs")), "number")
+            Do pNodes.%Push(tNode)
+            Set tRow = $Order(^IRIS.Temp.SysMetrics(tName, tRow))
+        }
+    } Catch ex {
+        Set pNodes = []
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The system alert state, through the harvested <code>SystemAlerts</code> body: <var>pType</var>
+/// <parameter>TYPELIST</parameter> answers an array of one row <code>{State, StateText, AlertCount,
+/// LastAlert}</code>, <parameter>TYPEGET</parameter> the row itself, and <parameter>TYPERESET</parameter>
+/// runs the harvested <code>AlertsManage</code> body with <code>{"action":"reset"}</code> and answers
+/// <code>{}</code>. The listed alert messages are not carried.</p>
+ClassMethod Alerts(pType As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If pType = ..#TYPERESET {
+        Set tBody = {}
+        Do tBody.%Set("action", "reset", "string")
+        Set tSC = ..HarvestCall("AlertsManage", ..#WRITEPAIRS, tBody, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pResult = {}
+        Quit $$$OK
+    }
+    Set tSC = ..HarvestCall("SystemAlerts", ..#PAIRS, "", .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit ..Fail("the system alerts answered no object", $$$ERROR($$$GeneralError, "the system alerts body answered no object"), .pHttpStatus, .pFault)
+    Set tRow = {}
+    Do tRow.%Set("State", +tAnswer.%Get("state"), "number")
+    Do tRow.%Set("StateText", tAnswer.%Get("stateText") _ "", "string")
+    Do tRow.%Set("AlertCount", +tAnswer.%Get("alertCount"), "number")
+    Do tRow.%Set("LastAlert", tAnswer.%Get("lastAlert") _ "", "string")
+    If pType = ..#TYPEGET {
+        Set pResult = tRow
+    } Else {
+        Set pResult = [(tRow)]
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The harvested alerts body <var>pMethod</var>, called through <parameter>HARVESTPORT</parameter> as the
+/// pair set <var>pSpec</var> and with <var>pBody</var>; its answer is <var>pAnswer</var>. Overridable so a
+/// test can supply the answer and so a reset never reaches the vendor; production never overrides it.</p>
+ClassMethod HarvestCall(pMethod As %String, pSpec As %String, pBody As %DynamicAbstractObject = "", Output pAnswer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Kill tQuery
+    Quit $ClassMethod(..#HARVESTPORT, "Invoke", ..#ALERTSBODY, pMethod, ..Pairs(pSpec), .tQuery, pBody, .pAnswer, .pHttpStatus, .pFault, .tConsole)
+}
+
 /// <p>A refusal this port decided, with a written reason (AD-39).</p>
 ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -685,17 +869,20 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, pStatus, pCode)
 }
 
-/// <p><code>""</code>: no write reaches the sensors through this port, so no request type has a
-/// script form (AD-59).</p>
+/// <p><code>objectscript</code> for the alert reset; <code>""</code> for every read, which has no script
+/// form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If (pEndpoint = ..#ENDPOINTALERTS) && (pType = ..#TYPERESET) Quit "objectscript"
     Quit ""
 }
 
-/// <p>No step: every branch of <method>Invoke</method> is a read (AD-59).</p>
+/// <p>The reset as a script (AD-59), in <code>%SYS</code>: <code>$SYSTEM.Monitor.Clear()</code>, which the
+/// harvested body calls; <code>alerts.log</code> is not truncated.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    Quit [($ClassMethod("OcuPilot.Port.AdminPort", "ObjectScriptStep", $ListBuild("Do $SYSTEM.Monitor.Clear()")))]
 }
 
 /// <p>An unexpected failure: the generic internal fault on the wire, the raw status to the log

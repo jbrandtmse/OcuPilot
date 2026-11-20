@@ -86,7 +86,27 @@ ClassMethod Resources(pNamespace As %String, Output pRoutine As %String, Output 
 ClassMethod Rows(pMax As %Integer, Output pRows As %DynamicArray) As %Status [ Private ]
 {
     Do $Increment(^||OcuPilotSqlActivitySeam("count", "rows"))
+    If $Data(^||OcuPilotSqlActivitySeam("rowsJson"), tJson) {
+        Set pRows = ##class(%DynamicArray).%FromJSON(tJson)
+        Quit $$$OK
+    }
     Quit ##super(pMax, .pRows)
+}
+
+/// <p>Count the call and record its arguments as <code>pid|statementId</code>; the cancel answers the status armed under
+/// <code>cancel</code>, and the vendor is not called, when one is armed.</p>
+ClassMethod Cancel(pPid As %Integer, pStatementId As %String) As %Status [ Private ]
+{
+    Do $Increment(^||OcuPilotSqlActivitySeam("count", "cancel"))
+    Set ^||OcuPilotSqlActivitySeam("canceled") = pPid _ "|" _ pStatementId
+    If $Data(^||OcuPilotSqlActivitySeam("cancel"), tStatus) Quit tStatus
+    Quit ##super(pPid, pStatementId)
+}
+
+/// <p>The arguments of the last cancel, as <code>pid|statementId</code>.</p>
+ClassMethod Canceled() As %String
+{
+    Quit $Get(^||OcuPilotSqlActivitySeam("canceled"))
 }
 
 ClassMethod Text(pNamespace As %String, pHash As %String, Output pStatus As %Status) As %String [ Private ]

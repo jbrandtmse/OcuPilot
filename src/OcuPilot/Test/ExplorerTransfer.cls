@@ -47,6 +47,11 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tOwnGlobal = "^ZZOcuGlb" _ $Job
+    Set tOwnPercentGlobal = "^%ZZOcuGlb" _ $Job
+    Kill @tOwnGlobal, @tOwnPercentGlobal
+    Set tProbeGlobal = "^|""" _ ..#PROBENAMESPACE _ """|ZZOcuGlb" _ $Job
+    Kill @tProbeGlobal
     Kill tRows
     Merge tRows = ..StoredPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
@@ -296,6 +301,86 @@ Method TestAnImportOfOcuPilotsOwnCodeIsRefusedOnBothCallers()
     Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "403 PROHIBITED.OCUPILOTCODE", "and refused at the confirm")
     Do $$$AssertTrue('$ClassMethod(tProbe, "Exists", ..#PROBENAMESPACE, tOwn _ ".cls"), "the document is not created")
+}
+
+/// <p>DW-2607 (Story 21.5): the screen's local import of an XML file holding a <code>%</code>-global is refused 403 <code>PROHIBITED.PROTECTEDGLOBAL</code> with the
+/// published sentence before anything loads, and the global stays undefined. The file is the instance's own export of a global with the name rewritten to a
+/// <code>%</code> name, which the instance's list of a file's documents names as one global document.</p>
+/// <p>Mutation (Rule 19): drop the <code>.gbl</code> clause from the import branch of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -> the
+/// refusal goes red and the global is loaded (and killed by this test).</p>
+Method TestAnImportOfAPercentGlobalIsRefusedAndLoadsNothing()
+{
+    Set tGlobal = "ZZOcuGlb" _ $Job
+    Set tPercent = "%" _ tGlobal
+    Set tFile = "/tmp/ocupilot-glb-" _ $Job _ ".xml"
+    Set tRoot = "^" _ tGlobal
+    Kill @tRoot
+    Set @tRoot@(1) = "a"
+    Set tSC = $System.OBJ.Export(tGlobal _ ".GBL", tFile, "/nodisplay")
+    Kill @tRoot
+    Do $$$AssertStatusOK(tSC, "the instance's export of a global is made")
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    Do tStream.LinkToFile(tFile)
+    Set tText = tStream.Read(100000)
+    Kill tStream
+    Do ##class(%File).Delete(tFile)
+    Do $$$AssertTrue(tText [ ("<Sub>^" _ tGlobal _ "</Sub>"), "the export names the global")
+    Set tText = $Replace(tText, "<Sub>^" _ tGlobal _ "</Sub>", "<Sub>^" _ tPercent _ "</Sub>")
+    Do ..Act("classes", "import-local", "import", {"fileName": "percent.xml", "content": (tText), "Compile": "false"}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.code _ " " _ tBody.reason, 1: ""), "403 PROHIBITED.PROTECTEDGLOBAL " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#PROTECTEDGLOBALREASON, "the screen's import is refused with the published sentence: " _ $Extract(..Json(tBody), 1, 200))
+    Set tPercentRoot = "^" _ tPercent
+    Do $$$AssertEquals($Data(@tPercentRoot), 0, "and the global stays undefined")
+    Kill @tPercentRoot
+}
+
+/// <p>DW-2608 on 19.13's own tools: a Routines list import of a file holding a global the probe namespace already holds previews the same summary twice, a second
+/// apart, and imports it, replacing the global with the file's. The vendor's time, which it answers as the current time for any global that exists, never
+/// reaches the summary.</p>
+/// <p>Mutation (Rule 19): take the vendor's time for a <code>.gbl</code> document in <method>OcuPilot.Port.AtelierPort.Examine</method> -> the equal-previews
+/// assertion goes red.</p>
+Method TestAnImportReplacingAGlobalReadsOneSummaryTwice()
+{
+    Set tGlobal = "ZZOcuGlb" _ $Job
+    Set tRoot = "^|""" _ ..#PROBENAMESPACE _ """|" _ tGlobal
+    Kill @tRoot
+    Set @tRoot@(1) = "a"
+    Set @tRoot@(2) = "b"
+    Set tFile = "global.xml"
+    Set tPath = $ClassMethod(..#PROBE, "Directory") _ tFile
+    Set tOrigNS = $Namespace
+    Try {
+        Set $Namespace = ..#PROBENAMESPACE
+        Set tSC = $System.OBJ.Export(tGlobal _ ".GBL", tPath, "/nodisplay")
+    } Catch tException {
+        Set tSC = tException.AsStatus()
+    }
+    Set $Namespace = tOrigNS
+    Do $$$AssertStatusOK(tSC, "the instance's export of the probe namespace's global is made")
+    Set tFileValues = ..FileValues(tFile)
+    Set tPairs = $ListBuild("id=import", "root=" _ tFileValues.root, "path=" _ tFileValues.path)
+    Set tFirst = ..Preview(tPairs)
+    Hang 1.1
+    Set tSecond = ..Preview(tPairs)
+    Do $$$AssertTrue((tFirst [ (tGlobal _ ".gbl replaces sha256 ")) && (tFirst = tSecond), "the summary is the same a second later: " _ tFirst _ " / " _ tSecond)
+    Set @tRoot@(2) = "other"
+    Set @tRoot@(3) = "c"
+    Set tValues = ..FileValues(tFile)
+    Do tValues.%Set("Compile", "false", "string")
+    Do ..Act("routines", "import", "import", tValues, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "and the import loads it: " _ ..Json(tBody))
+    Do $$$AssertEquals($Data(@tRoot@(3)) _ " " _ @tRoot@(2), "0 b", "replacing the global with the file's")
+}
+
+/// <p>The port's <code>PREVIEW</code> of the import <var>pPairs</var> names, in the probe namespace, as its summary.</p>
+ClassMethod Preview(pPairs As %List) As %String
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#PROBENAMESPACE
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tQuery($Piece($List(pPairs, tI), "=", 1)) = $Piece($List(pPairs, tI), "=", 2, *)
+    }
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).Invoke("Routines", "PREVIEW", .tQuery, "", .tResult, .tHttp, .tFault)
+    Quit $Select($IsObject($Get(tResult)): tResult.%Get("documents"), 1: tHttp)
 }
 
 /// <p>AC6: a file that does not read is refused <code>UNREADABLE</code> with no document, stub

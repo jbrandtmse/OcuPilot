@@ -171,6 +171,11 @@ Parameter FOLDERITEMABSENT = "ANALYTICS.FOLDERITEM.ABSENT";
 
 Parameter REASONFOLDERITEMABSENT = "This folder item no longer exists.";
 
+/// <p>409: the folder item is not a pivot on a cube this namespace holds, so its MDX cannot be composed and run here (Story 24.14).</p>
+Parameter PIVOTCUBE = "ANALYTICS.PIVOT.CUBE";
+
+Parameter REASONPIVOTCUBE = "This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.";
+
 /// <p>409: a delete of a locked folder item.</p>
 Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
 
@@ -200,6 +205,193 @@ Parameter REASONFOLDERITEMIMPORTSHAPE = "This file holds no folder item, or some
 Parameter FOLDERITEMIMPORTCHANGED = "ANALYTICS.FOLDERITEM.IMPORTCHANGED";
 
 Parameter REASONFOLDERITEMIMPORTCHANGED = "The file changed after it was reviewed, so nothing was imported.";
+
+/// <p>409: a listing group add or copy whose name matches a group the namespace holds, or whose class is already defined (Story 24.11).</p>
+Parameter LISTINGGROUPTAKEN = "ANALYTICS.LISTINGGROUP.TAKEN";
+
+Parameter REASONLISTINGGROUPTAKEN = "This namespace already holds a listing group or class with that name.";
+
+/// <p>422: a listing group class name that is malformed, begins with <code>%</code> or is in an <code>OcuPilot</code> package.</p>
+Parameter LISTINGGROUPCLASS = "ANALYTICS.LISTINGGROUP.CLASS";
+
+Parameter REASONLISTINGGROUPCLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+/// <p>422: a target cube that does not exist or does not accept listing groups.</p>
+Parameter LISTINGGROUPCUBE = "ANALYTICS.LISTINGGROUP.CUBE";
+
+Parameter REASONLISTINGGROUPCUBE = "A target cube does not exist or does not accept listing groups.";
+
+/// <p>409: a listing the group repeats, or that a target cube or another listing group already defines.</p>
+Parameter LISTINGGROUPLISTINGTAKEN = "ANALYTICS.LISTINGGROUP.LISTINGTAKEN";
+
+Parameter REASONLISTINGGROUPLISTINGTAKEN = "A listing of this group is already defined for a target cube. Choose other target cubes.";
+
+/// <p>409: two classes declare the listing group's name, so a write keyed by the name cannot tell which to change.</p>
+Parameter LISTINGGROUPAMBIGUOUS = "ANALYTICS.LISTINGGROUP.AMBIGUOUS";
+
+Parameter REASONLISTINGGROUPAMBIGUOUS = "Two classes define this listing group. Change it in its class instead.";
+
+/// <p>422: the instance refused to compile the listing group's class, and the write was undone.</p>
+Parameter LISTINGGROUPCOMPILE = "ANALYTICS.LISTINGGROUP.COMPILE";
+
+Parameter REASONLISTINGGROUPCOMPILE = "The instance refused to compile the listing group, so nothing was changed.";
+
+/// <p>404: the listing group, or the listing, is not there.</p>
+Parameter LISTINGGROUPABSENT = "ANALYTICS.LISTINGGROUP.ABSENT";
+
+Parameter REASONLISTINGGROUPABSENT = "This listing group or listing no longer exists.";
+
+/// <p>409: the database that holds the namespace's listing groups is read-only or not mounted.</p>
+Parameter LISTINGGROUPREADONLY = "ANALYTICS.LISTINGGROUP.READONLY";
+
+Parameter REASONLISTINGGROUPREADONLY = "The database that holds listing groups is read-only.";
+
+/// <p>The consequence codes of the listing group delete, the listing remove, a listing that sets SQL, and every other listing group write (Story 24.11).</p>
+Parameter LISTINGGROUPDELETE = "ANALYTICS.LISTINGGROUP.DELETE";
+
+Parameter LISTINGGROUPREMOVE = "ANALYTICS.LISTINGGROUP.REMOVE";
+
+Parameter LISTINGGROUPSQL = "ANALYTICS.LISTINGGROUP.SQL";
+
+Parameter LISTINGGROUPSAVE = "ANALYTICS.LISTINGGROUP.SAVE";
+
+/// <p>409: a quality measure add or copy whose name is listed or registered, or whose class is already defined (Story 24.12).</p>
+Parameter QUALITYMEASURETAKEN = "ANALYTICS.QUALITYMEASURE.TAKEN";
+
+Parameter REASONQUALITYMEASURETAKEN = "This namespace already holds a quality measure or class with that name.";
+
+/// <p>409: two classes declare the quality measure's name, so a write keyed by the name cannot tell which to change.</p>
+Parameter QUALITYMEASUREAMBIGUOUS = "ANALYTICS.QUALITYMEASURE.AMBIGUOUS";
+
+Parameter REASONQUALITYMEASUREAMBIGUOUS = "Two classes define this quality measure. Change it in its class instead.";
+
+/// <p>422: the instance refused to compile the quality measure's class, or its model does not validate, and the write was undone or never made.</p>
+Parameter QUALITYMEASURECOMPILE = "ANALYTICS.QUALITYMEASURE.COMPILE";
+
+Parameter REASONQUALITYMEASURECOMPILE = "The instance refused to compile the quality measure, so nothing was changed.";
+
+/// <p>404: the quality measure is not there.</p>
+Parameter QUALITYMEASUREABSENT = "ANALYTICS.QUALITYMEASURE.ABSENT";
+
+Parameter REASONQUALITYMEASUREABSENT = "This quality measure no longer exists.";
+
+/// <p>409: the database that holds the namespace's quality measures is read-only or not mounted.</p>
+Parameter QUALITYMEASUREREADONLY = "ANALYTICS.QUALITYMEASURE.READONLY";
+
+Parameter REASONQUALITYMEASUREREADONLY = "The database that holds quality measures is read-only.";
+
+/// <p>422: the expression names a group the measure does not hold or whose elements are all disabled, or its brackets do not match.</p>
+Parameter QUALITYMEASUREEXPRESSION = "ANALYTICS.QUALITYMEASURE.EXPRESSION";
+
+Parameter REASONQUALITYMEASUREEXPRESSION = "The expression names a group this quality measure does not hold, or its brackets do not match.";
+
+/// <p>409: a quality measure linked to another measure, whose expression, format and URL the master defines, cannot have them changed.</p>
+Parameter QUALITYMEASURELINKED = "ANALYTICS.QUALITYMEASURE.LINKED";
+
+Parameter REASONQUALITYMEASURELINKED = "This quality measure is linked to another measure, which defines its expression, format and URL.";
+
+/// <p>422: a quality measure class name that is malformed, begins with <code>%</code> or is in an <code>OcuPilot</code> package; the listing groups' sentence.</p>
+Parameter QUALITYMEASURECLASS = "ANALYTICS.QUALITYMEASURE.CLASS";
+
+Parameter REASONQUALITYMEASURECLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+/// <p>409: the group the element add names already holds an element of that name, without regard to case, disabled or not.</p>
+Parameter QUALITYMEASUREELEMENTTAKEN = "ANALYTICS.QUALITYMEASURE.ELEMENTTAKEN";
+
+Parameter REASONQUALITYMEASUREELEMENTTAKEN = "This group already holds an element with that name.";
+
+/// <p>409: the quality measure already holds a documentation item of that name, without regard to case, disabled or not.</p>
+Parameter QUALITYMEASUREMETATAKEN = "ANALYTICS.QUALITYMEASURE.METATAKEN";
+
+Parameter REASONQUALITYMEASUREMETATAKEN = "This quality measure already holds a documentation item with that name.";
+
+/// <p>404: the group, element or documentation item the write names is not there.</p>
+Parameter QUALITYMEASUREPARTABSENT = "ANALYTICS.QUALITYMEASURE.PARTABSENT";
+
+Parameter REASONQUALITYMEASUREPARTABSENT = "This group, element or documentation item no longer exists.";
+
+/// <p>409: a linked quality measure's groups and documentation are its master's, which the classic page shows read-only.</p>
+Parameter QUALITYMEASURELINKEDPARTS = "ANALYTICS.QUALITYMEASURE.LINKEDPARTS";
+
+Parameter REASONQUALITYMEASURELINKEDPARTS = "This quality measure is linked to another measure, which defines its groups and documentation.";
+
+/// <p>The consequence codes of the quality measure delete, of the removal of a group, element or documentation item, and of every other quality measure write (Story 24.12).</p>
+Parameter QUALITYMEASUREDELETE = "ANALYTICS.QUALITYMEASURE.DELETE";
+
+Parameter QUALITYMEASUREREMOVE = "ANALYTICS.QUALITYMEASURE.REMOVE";
+
+Parameter QUALITYMEASURESAVE = "ANALYTICS.QUALITYMEASURE.SAVE";
+
+/// <p>409: the database that holds the namespace's analytics settings is read-only (Story 24.13).</p>
+Parameter SETTINGREADONLY = "ANALYTICS.SETTING.READONLY";
+
+Parameter REASONSETTINGREADONLY = "The database that holds this namespace's analytics settings is read-only.";
+
+/// <p>409: the setting is a secret, which only its own action sets.</p>
+Parameter SETTINGSECRET = "ANALYTICS.SETTING.SECRET";
+
+Parameter REASONSETTINGSECRET = "This setting is a secret. It is set with its own action, which asks for the value when it is confirmed.";
+
+/// <p>The consequence code of a general setting write that stores every general setting, as the classic page's Save does.</p>
+Parameter SETTINGSAVE = "ANALYTICS.SETTING.SAVE";
+
+Parameter REASONSETTINGSAVE = "Saving stores every general setting with the value shown here, as the classic page's Save does.";
+
+/// <p>409: the worklists are not customized in this namespace, so a show or hide changes nothing the portal reads.</p>
+Parameter WORKLISTNOTCUSTOMIZED = "ANALYTICS.WORKLIST.NOTCUSTOMIZED";
+
+Parameter REASONWORKLISTNOTCUSTOMIZED = "Worklists are not customized in this namespace, so the portal shows its default worklists. Set Worklist to 1 on the General tab first.";
+
+/// <p>404: no worklist option has that page, panel and class.</p>
+Parameter WORKLISTABSENT = "ANALYTICS.WORKLIST.ABSENT";
+
+Parameter REASONWORKLISTABSENT = "There is no worklist with that page, panel and class.";
+
+/// <p>409: the namespace already holds a run-time variable, or a user-defined icon, with the name an add names (Story 24.13, Batch 3).</p>
+Parameter VARIABLETAKEN = "ANALYTICS.VARIABLE.TAKEN";
+
+Parameter REASONVARIABLETAKEN = "This namespace already holds a run-time variable with that name.";
+
+Parameter ICONTAKEN = "ANALYTICS.ICON.TAKEN";
+
+Parameter REASONICONTAKEN = "This namespace already holds a user-defined icon with that name.";
+
+/// <p>404: the run-time variable, or the user-defined icon, a change or a removal names is not there.</p>
+Parameter VARIABLEABSENT = "ANALYTICS.VARIABLE.ABSENT";
+
+Parameter REASONVARIABLEABSENT = "This run-time variable no longer exists.";
+
+Parameter ICONABSENT = "ANALYTICS.ICON.ABSENT";
+
+Parameter REASONICONABSENT = "This user-defined icon no longer exists.";
+
+/// <p>400: a name is not 1 to 255 characters with no control character, or is longer than the instance can store.</p>
+Parameter SETTINGNAME = "ANALYTICS.SETTING.NAME";
+
+Parameter REASONSETTINGNAME = "A name is 1 to 255 characters with no control character, within the length the instance can store.";
+
+/// <p>400: an expression, comment, context or path is not text of at most 2,000 characters with no control character.</p>
+Parameter SETTINGTEXT = "ANALYTICS.SETTING.TEXT";
+
+Parameter REASONSETTINGTEXT = "An expression, comment, context or path is at most 2,000 characters with no control character.";
+
+/// <p>400: a run-time variable's expression does not pass the syntax check. The check never runs it.</p>
+Parameter VARIABLEEXPRESSION = "ANALYTICS.VARIABLE.EXPRESSION";
+
+Parameter REASONVARIABLEEXPRESSION = "This expression is not valid ObjectScript. It was checked, not run, and nothing was saved.";
+
+/// <p>The consequence codes of a run-time variable that stores an expression, which is code, and of the removal of a run-time variable and of an icon (Story 24.13, Batch 3).</p>
+Parameter VARIABLECODE = "ANALYTICS.VARIABLE.CODE";
+
+Parameter REASONVARIABLECODE = "This expression is code. It runs with the rights of whoever opens a dashboard that uses it.";
+
+Parameter VARIABLEREMOVE = "ANALYTICS.VARIABLE.REMOVE";
+
+Parameter REASONVARIABLEREMOVE = "Removing this run-time variable cannot be undone from OcuPilot. A dashboard that uses it then gets an empty value.";
+
+Parameter ICONREMOVE = "ANALYTICS.ICON.REMOVE";
+
+Parameter REASONICONREMOVE = "Removing this icon cannot be undone from OcuPilot.";
 
 /// <p>The consequence code of the folder item delete.</p>
 Parameter FOLDERITEMDELETE = "ANALYTICS.FOLDERITEM.DELETE";
@@ -243,13 +435,57 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TERMLISTIMPORTCHANGED Quit ..#REASONTERMLISTIMPORTCHANGED
     If pCode = ..#FOLDERITEMTAKEN Quit ..#REASONFOLDERITEMTAKEN
     If pCode = ..#FOLDERITEMABSENT Quit ..#REASONFOLDERITEMABSENT
+    If pCode = ..#PIVOTCUBE Quit ..#REASONPIVOTCUBE
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
     If pCode = ..#FOLDERITEMTOOLARGE Quit ..#REASONFOLDERITEMTOOLARGE
     If pCode = ..#FOLDERITEMIMPORTSHAPE Quit ..#REASONFOLDERITEMIMPORTSHAPE
     If pCode = ..#FOLDERITEMIMPORTCHANGED Quit ..#REASONFOLDERITEMIMPORTCHANGED
+    If pCode = ..#LISTINGGROUPTAKEN Quit ..#REASONLISTINGGROUPTAKEN
+    If pCode = ..#LISTINGGROUPCLASS Quit ..#REASONLISTINGGROUPCLASS
+    If pCode = ..#LISTINGGROUPCUBE Quit ..#REASONLISTINGGROUPCUBE
+    If pCode = ..#LISTINGGROUPLISTINGTAKEN Quit ..#REASONLISTINGGROUPLISTINGTAKEN
+    If pCode = ..#LISTINGGROUPAMBIGUOUS Quit ..#REASONLISTINGGROUPAMBIGUOUS
+    If pCode = ..#LISTINGGROUPCOMPILE Quit ..#REASONLISTINGGROUPCOMPILE
+    If pCode = ..#LISTINGGROUPABSENT Quit ..#REASONLISTINGGROUPABSENT
+    If pCode = ..#LISTINGGROUPREADONLY Quit ..#REASONLISTINGGROUPREADONLY
+    If pCode = ..#QUALITYMEASURETAKEN Quit ..#REASONQUALITYMEASURETAKEN
+    If pCode = ..#QUALITYMEASUREAMBIGUOUS Quit ..#REASONQUALITYMEASUREAMBIGUOUS
+    If pCode = ..#QUALITYMEASURECOMPILE Quit ..#REASONQUALITYMEASURECOMPILE
+    If pCode = ..#QUALITYMEASUREABSENT Quit ..#REASONQUALITYMEASUREABSENT
+    If pCode = ..#QUALITYMEASUREREADONLY Quit ..#REASONQUALITYMEASUREREADONLY
+    If pCode = ..#QUALITYMEASUREEXPRESSION Quit ..#REASONQUALITYMEASUREEXPRESSION
+    If pCode = ..#QUALITYMEASURELINKED Quit ..#REASONQUALITYMEASURELINKED
+    If pCode = ..#QUALITYMEASURECLASS Quit ..#REASONQUALITYMEASURECLASS
+    If pCode = ..#QUALITYMEASUREELEMENTTAKEN Quit ..#REASONQUALITYMEASUREELEMENTTAKEN
+    If pCode = ..#QUALITYMEASUREMETATAKEN Quit ..#REASONQUALITYMEASUREMETATAKEN
+    If pCode = ..#QUALITYMEASUREPARTABSENT Quit ..#REASONQUALITYMEASUREPARTABSENT
+    If pCode = ..#QUALITYMEASURELINKEDPARTS Quit ..#REASONQUALITYMEASURELINKEDPARTS
+    If pCode = ..#SETTINGREADONLY Quit ..#REASONSETTINGREADONLY
+    If pCode = ..#SETTINGSECRET Quit ..#REASONSETTINGSECRET
+    If pCode = ..#WORKLISTNOTCUSTOMIZED Quit ..#REASONWORKLISTNOTCUSTOMIZED
+    If pCode = ..#WORKLISTABSENT Quit ..#REASONWORKLISTABSENT
+    If pCode = ..#VARIABLETAKEN Quit ..#REASONVARIABLETAKEN
+    If pCode = ..#ICONTAKEN Quit ..#REASONICONTAKEN
+    If pCode = ..#VARIABLEABSENT Quit ..#REASONVARIABLEABSENT
+    If pCode = ..#ICONABSENT Quit ..#REASONICONABSENT
+    If pCode = ..#SETTINGNAME Quit ..#REASONSETTINGNAME
+    If pCode = ..#SETTINGTEXT Quit ..#REASONSETTINGTEXT
+    If pCode = ..#VARIABLEEXPRESSION Quit ..#REASONVARIABLEEXPRESSION
     Quit ""
+}
+
+/// <p>The analytics settings writes' four refusal codes (Story 24.13), then the seven of the run-time variable and icon writes (Batch 3), as a <class>%List</class>.</p>
+ClassMethod SettingCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGREADONLY, ..#SETTINGSECRET, ..#WORKLISTNOTCUSTOMIZED, ..#WORKLISTABSENT, ..#VARIABLETAKEN, ..#ICONTAKEN, ..#VARIABLEABSENT, ..#ICONABSENT, ..#SETTINGNAME, ..#SETTINGTEXT, ..#VARIABLEEXPRESSION)
+}
+
+/// <p>The consequence codes of the analytics settings writes (Story 24.13), as a <class>%List</class>: the General save, and the code a variable's expression is and the two removals (Batch 3).</p>
+ClassMethod SettingConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGSAVE, ..#VARIABLECODE, ..#VARIABLEREMOVE, ..#ICONREMOVE)
 }
 
 /// <p>The cube manager's codes (Story 20.34), as a <class>%List</class>: the five refusals of a build or synchronize.</p>
@@ -278,10 +514,34 @@ ClassMethod TermListCodes() As %List
     Quit $ListBuild(..#TERMLISTTAKEN, ..#TERMLISTENTRYTAKEN, ..#TERMLISTABSENT, ..#TERMLISTNAME, ..#TERMLISTKEY, ..#TERMLISTFIELD, ..#TERMLISTNOFIELD, ..#TERMLISTFIELDINUSE, ..#TERMLISTVALUE, ..#TERMLISTREADONLY, ..#TERMLISTNOTJOURNALED, ..#TERMLISTTOOLARGE, ..#TERMLISTIMPORTSHAPE, ..#TERMLISTIMPORTCHANGED)
 }
 
-/// <p>The folder item transfers' and delete's eight refusal codes (Story 24.10), as a <class>%List</class>.</p>
+/// <p>The folder item transfers' and delete's eight refusal codes (Story 24.10), then the viewer's pivot refusal (Story 24.14), as a <class>%List</class>.</p>
 ClassMethod FolderItemCodes() As %List
 {
-    Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED)
+    Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
+}
+
+/// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>
+ClassMethod ListingGroupCodes() As %List
+{
+    Quit $ListBuild(..#LISTINGGROUPTAKEN, ..#LISTINGGROUPCLASS, ..#LISTINGGROUPCUBE, ..#LISTINGGROUPLISTINGTAKEN, ..#LISTINGGROUPAMBIGUOUS, ..#LISTINGGROUPCOMPILE, ..#LISTINGGROUPABSENT, ..#LISTINGGROUPREADONLY)
+}
+
+/// <p>The consequence codes of the listing group writes (Story 24.11), as a <class>%List</class>.</p>
+ClassMethod ListingGroupConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#LISTINGGROUPDELETE, ..#LISTINGGROUPREMOVE, ..#LISTINGGROUPSQL, ..#LISTINGGROUPSAVE)
+}
+
+/// <p>The quality measure writes' twelve refusal codes (Story 24.12), as a <class>%List</class>.</p>
+ClassMethod QualityMeasureCodes() As %List
+{
+    Quit $ListBuild(..#QUALITYMEASURETAKEN, ..#QUALITYMEASUREAMBIGUOUS, ..#QUALITYMEASURECOMPILE, ..#QUALITYMEASUREABSENT, ..#QUALITYMEASUREREADONLY, ..#QUALITYMEASUREEXPRESSION, ..#QUALITYMEASURELINKED, ..#QUALITYMEASURECLASS, ..#QUALITYMEASUREELEMENTTAKEN, ..#QUALITYMEASUREMETATAKEN, ..#QUALITYMEASUREPARTABSENT, ..#QUALITYMEASURELINKEDPARTS)
+}
+
+/// <p>The consequence codes of the quality measure writes (Story 24.12), as a <class>%List</class>.</p>
+ClassMethod QualityMeasureConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#QUALITYMEASUREDELETE, ..#QUALITYMEASUREREMOVE, ..#QUALITYMEASURESAVE)
 }
 
 /// <p>The consequence codes of the term list delete and the entry remove, as a <class>%List</class>.</p>

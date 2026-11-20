@@ -258,11 +258,14 @@ test('a refused read is a classified fault: the store keeps its rows and the tim
   assert.equal(harness.parks.length, 1, 'and one re-arm is parked');
 });
 
-test('an answer that is not the read shape is a server fault, never an empty success', async () => {
+test('a success answer that is not the read shape is a rejected read with its status, never an empty success or a banner fault', async () => {
   const harness = wired(() => ({ status: 200, body: { rows: 'not a list' } }));
   const result = await createScreenRead(harness.api, screen())({ maxRows: 5 });
   assert.equal(result.kind, 'fault');
-  assert.equal(result.fault.kind, 'server-fault');
+  assert.equal(result.fault.kind, 'rejected');
+  assert.equal(result.fault.status, 200);
+  assert.equal(result.fault.code, null);
+  assert.ok(result.fault.path.startsWith('/api/ocupilot/screens/'), 'and names the read it was about');
 });
 
 test('a screen that declares no read has no screen read', () => {

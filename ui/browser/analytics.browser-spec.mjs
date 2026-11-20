@@ -15,6 +15,18 @@
  * `OcuPilot.Test.AnalyticsProbe`, so it runs on a throwaway only; the `after` hook removes all of it and restores `USER`'s flags,
  * whatever the tests answered.
  *
+ * Story 24.11 adds one test: Listing groups lists the probe's listing groups with what the vendor's model reads, a name cell opens the group's Listings,
+ * and both screens pass the structural and contrast checks.
+ *
+ * Story 24.12 adds one test: Quality measures lists the probe's measures with what the vendor's model reads, a name that holds slashes opens the measure's Groups and elements,
+ * its Documentation shows the measure's items, and the three screens pass the structural and contrast checks.
+ *
+ * Story 24.13 adds two tests: Settings shows the markers the vendor's own methods stored, the Google Maps key as the mask, under a strip of its four tabs, each passing the structural and
+ * contrast checks; and with nothing stored it shows the classic page's defaults and the two empty tabs draw their own sentences. Each restores USER's settings from a snapshot.
+ *
+ * Story 24.14 adds one test: a dashboard opens from Folder items to its Definition and Widgets tabs, only the pivot widget links, and the pivot's Definition runs to the vendor's cells;
+ * the dashboard's Definition, Widgets and the pivot's Definition with its grid pass the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -52,6 +64,18 @@ const RELATIONSHIPS = `${CUBES}/relationships`;
 const TERM_LISTS = 'analytics/term-lists';
 const ENTRIES = `${TERM_LISTS}/entries`;
 const FOLDER_ITEMS = 'analytics/folder-items';
+const LISTING_GROUPS = 'analytics/listing-groups';
+const LISTINGS = `${LISTING_GROUPS}/listings`;
+const LISTING_GROUP = 'OcuPilotProbeListings';
+const QUALITY_MEASURES = 'analytics/quality-measures';
+const QUALITY_ELEMENTS = `${QUALITY_MEASURES}/document`;
+const QUALITY_DOCUMENTATION = `${QUALITY_MEASURES}/documentation`;
+const SETTINGS = 'analytics/settings';
+const SETTINGS_WORKLISTS = `${SETTINGS}/worklists`;
+const SETTINGS_VARIABLES = `${SETTINGS}/variables`;
+const SETTINGS_ICONS = `${SETTINGS}/icons`;
+const FOLDER_ITEM_DEFINITION = `${FOLDER_ITEMS}/document`;
+const FOLDER_ITEM_WIDGETS = `${FOLDER_ITEMS}/widgets`;
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -172,6 +196,13 @@ async function openTab(page, route) {
   await answered(page);
 }
 
+/** Open the strip's tab on `route`, a tab whose route takes no id, and wait for its rows or its empty sentence. */
+async function openGroupTab(page, route) {
+  await (await page.waitForSelector(`button.ocu-detail-tab[data-route="${route}"]`, { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForFunction((wanted) => new URL(window.location.href).pathname.endsWith(wanted), { timeout: config.navigationTimeoutMs }, `/${route}`);
+  await answered(page);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
@@ -219,8 +250,11 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsUserPortalLabel,
         STRINGS.analyticsMdxQueryLabel,
         STRINGS.analyticsCubeManagerLabel,
+        STRINGS.analyticsListingGroupsLabel,
+        STRINGS.analyticsQualityMeasuresLabel,
+        STRINGS.interopItemTabSettings,
       ],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33) and the Cube manager (Story 20.34)'
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12) and Settings (Story 24.13)'
     );
 
     const cubes = inUser('ANCUBES', [
@@ -507,5 +541,749 @@ test('Story 24.10: a folder item is exported to this browser, deleted by typing 
   } finally {
     await context.close();
     runIris(config.container, [`Do ##class(${FOLDER_PROBE}).Sweep()`]);
+  }
+});
+
+// Story 24.11 AC3. Mutation (Rule 19): make the Listings descriptor's parentScope empty (mirror regenerated, bundle rebuilt and redeployed) -> the Listing groups name cell is
+// text and the click leg goes red; drop `Compiled` from the Listing groups read in `AnalyticsPort.Collect` (reload the class) -> the Compiled column reads No and the first leg goes red.
+test('Story 24.11: Listing groups shows each group with what the vendor\'s model reads, a name cell opens its Listings, and both screens pass the structural checks', async () => {
+  const made = probe('LGMADE', `$System.Status.IsOK(##class(${PROBE}).CreateListingGroups())`);
+  assert.equal(made.value, '1', `the probe's listing groups are saved and compiled: ${made.output}`);
+  const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await openEntry(page, STRINGS.analyticsListingGroupsLabel);
+    await pathHolds(page, `/${LISTING_GROUPS}`);
+    await answered(page);
+    const groups = inUser('LGGROUPS', [
+      'Set sc=##class(%DeepSee.ListingGroup).%GetListingGroups(.l,0),k="",out=""',
+      `For { Set k=$Order(l(k))  Quit:k=""  Set m=##class(%DeepSee.ListingGroup).%GetModel($List(l(k,1),5))  If $Extract(m.name,1,21)="${LISTING_GROUP}" Set out=out_m.name_"~"_$List(l(k,1),3)_"~"_m.targetCubes_"~"_''##class(%DeepSee.ListingGroup).%ListingGroupExists(m.name,1)_"~"_m.listings.Count()_"|" }`,
+    ]);
+    const byName = (left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0);
+    const expectedGroups = groups.value
+      .split('|')
+      .filter((entry) => entry !== '')
+      .map((entry) => entry.split('~'))
+      .map(([name, caption, cubes, compiled, listings]) => [name, caption, cubes, compiled === '1' ? STRINGS.tableStatusYes : STRINGS.tableStatusNo, listings])
+      .sort(byName);
+    assert.equal(expectedGroups.length, 4, `the instance holds the four probe groups the vendor reads: ${groups.output}`);
+    assert.deepEqual((await rowsStartingWith(page, LISTING_GROUP)).sort(byName), expectedGroups, 'Listing groups shows each probe group with the caption, target cubes, compiled flag and listing count the vendor\'s model reads');
+    assert.deepEqual(
+      expectedGroups.filter((row) => row[3] === STRINGS.tableStatusYes).map((row) => row[0]),
+      [LISTING_GROUP, `${LISTING_GROUP}Hidden`],
+      'the compiled group and the guarded one are compiled, and the saved and disabled groups are not'
+    );
+    assert.deepEqual(await structural(page, LISTING_GROUPS), [], `${LISTING_GROUPS}: no violation beyond the baseline's entries`);
+
+    await clickRowCentre(page, { text: LISTING_GROUP, link: true });
+    await pathHolds(page, `/${LISTINGS}/${encodeEntityId(LISTING_GROUP)}`);
+    await answered(page);
+    const listings = inUser('LGLISTINGS', [
+      `Set m=##class(%DeepSee.ListingGroup).%GetModel(##class(%DeepSee.ListingGroup).%GetClassName("${LISTING_GROUP}",0)),out=""`,
+      'For i=1:1:m.listings.Count() { Set l=m.listings.GetAt(i)  Set out=out_l.name_"~"_l.listingType_"~"_l.fieldList_"~"_l.sourceClass_"~"_l.description_"|" }',
+    ]);
+    // An empty cell draws the table's own placeholder.
+    const expectedListings = listings.value
+      .split('|')
+      .filter((entry) => entry !== '')
+      .map((entry) => entry.split('~').map((cell) => (cell === '' ? STRINGS.tableEmptyValue : cell)));
+    assert.deepEqual(expectedListings.map((row) => row[0]), ['ByAmount', 'CustomSql'], `the vendor reads the compiled group's two listings: ${listings.output}`);
+    assert.deepEqual(await allRows(page), expectedListings, 'Listings shows each listing with the type, fields, data connector and description the vendor\'s model reads');
+    assert.deepEqual(await structural(page, LISTINGS), [], `${LISTINGS}: no violation beyond the baseline's entries`);
+  } finally {
+    await context.close();
+    probe('LGGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
+  }
+});
+
+// Story 24.12 AC3. Mutation (Rule 19): drop `MDX` from the elements read in `AnalyticsPort.Collect` (reload the class) -> the MDX cell reads empty and the elements leg goes red.
+test('Story 24.12: Quality measures shows each measure with what the vendor\'s model reads, a name that holds slashes opens its Groups and elements, and its Documentation shows its items', async () => {
+  const made = probe('QMMADE', `$System.Status.IsOK(##class(${PROBE}).CreateQualityMeasures())`);
+  assert.equal(made.value, '1', `the probe's quality measures are saved and compiled: ${made.output}`);
+  const measure = probe('QMNAME', `##class(${PROBE}).#QMCOMPILED`).value;
+  assert.ok(measure.includes('/'), `the compiled measure's name holds slashes: ${measure}`);
+  const placeholder = (cell) => (cell === '' ? STRINGS.tableEmptyValue : cell);
+  const yesNo = (flag) => (flag === '1' ? STRINGS.tableStatusYes : STRINGS.tableStatusNo);
+  const byFirstCell = (left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await openEntry(page, STRINGS.analyticsQualityMeasuresLabel);
+      await pathHolds(page, `/${QUALITY_MEASURES}`);
+      await answered(page);
+      const measures = inUser('QMMEASURES', [
+        'Set sc=##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.l),k="",out=""',
+        'For { Set k=$Order(l(k))  Quit:k=""  Set n=$List(l(k),1)  If $Piece(n,"/",1)="OcuPilotProbe" { Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel(n,,1)  Set out=out_n_"~"_m.caption_"~"_m.subjectArea_"~"_(\'\'m.published)_"~"_(\'\'$System.OBJ.IsUpToDate(##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureClass(n)))_"|" } }',
+      ]);
+      const expectedMeasures = measures.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~'))
+        .map(([name, caption, area, published, compiled]) => [name, placeholder(caption), area, yesNo(published), yesNo(compiled)])
+        .sort(byFirstCell);
+      assert.equal(expectedMeasures.length, 3, `the instance holds the three probe measures the vendor names: ${measures.output}`);
+      assert.deepEqual((await rowsStartingWith(page, 'OcuPilotProbe/')).sort(byFirstCell), expectedMeasures, 'Quality measures shows each probe measure with the caption, subject area, publication and compile state the vendor\'s model reads');
+      assert.deepEqual(
+        expectedMeasures.filter((row) => row[4] === STRINGS.tableStatusYes).map((row) => row[0]),
+        [measure, `${measure.replace(/Compiled$/, 'Linked')}`],
+        'the compiled measure and the linked one are compiled, and the one whose compile is refused is not'
+      );
+      assert.deepEqual(await structural(page, QUALITY_MEASURES), [], `${QUALITY_MEASURES}: no violation beyond the baseline's entries`);
+
+      await clickRowCentre(page, { text: measure, link: true });
+      await pathHolds(page, `/${QUALITY_ELEMENTS}/${encodeEntityId(measure)}`);
+      await answered(page);
+      assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'a measure opens a strip of its two tabs, Groups and elements and Documentation');
+      const elements = inUser('QMELEMENTS', [
+        `Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${measure}",,1),out=""`,
+        'For g=1:1:m.groups.Count() { Set gr=m.groups.GetAt(g)  For e=1:1:gr.elements.Count() { Set el=gr.elements.GetAt(e)  Set out=out_gr.name_"~"_el.name_"~"_el.caption_"~"_el.mdx_"|" } }',
+      ]);
+      const expectedElements = elements.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~').map(placeholder))
+        .sort(byFirstCell);
+      assert.deepEqual(expectedElements.map((row) => row[1]), ['AllVisits', 'Over30', 'Retired'], `the vendor reads the compiled measure's three elements, the disabled one included: ${elements.output}`);
+      assert.deepEqual(await allRows(page), expectedElements, 'Groups and elements shows each element under its group with the name, caption and MDX the vendor\'s model reads');
+      assert.deepEqual(await structural(page, QUALITY_ELEMENTS), [], `${QUALITY_ELEMENTS}: no violation beyond the baseline's entries`);
+    } finally {
+      await context.close();
+    }
+
+    const documentation = await signedInAt(browser, config, url(`${QUALITY_DOCUMENTATION}/${encodeEntityId(measure)}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(documentation.page);
+      const items = inUser('QMMETAS', [
+        `Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${measure}",,1),out=""`,
+        'For i=1:1:m.metas.Count() { Set mt=m.metas.GetAt(i)  Set out=out_mt.name_"~"_mt.caption_"~"_mt.content_"|" }',
+      ]);
+      const expectedItems = items.value
+        .split('|')
+        .filter((entry) => entry !== '')
+        .map((entry) => entry.split('~').map(placeholder));
+      assert.deepEqual(expectedItems.map((row) => row[0]), ['Purpose'], `the vendor reads the compiled measure's one documentation item: ${items.output}`);
+      assert.deepEqual(await allRows(documentation.page), expectedItems, 'Documentation shows each item with the name, caption and content the vendor\'s model reads, the content as the stored text');
+      assert.deepEqual(await structural(documentation.page, QUALITY_DOCUMENTATION), [], `${QUALITY_DOCUMENTATION}: no violation beyond the baseline's entries`);
+    } finally {
+      await documentation.context.close();
+    }
+  } finally {
+    probe('QMGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  }
+});
+
+// Story 24.12 QA, matrix rows Unknown and the empty namespace. Mutation (Rule 19): point the Documentation screen's `emptyStateKey` at `analyticsQualityMeasureElementsEmpty` in
+// `AnalyticsQualityMeasureMetaList.cls` (mirror regenerated, bundle rebuilt and redeployed) -> the Documentation leg draws the Groups and elements sentence and goes red.
+test('Story 24.12: a namespace with no quality measure, and a measure no one holds, draw each screen\'s own empty sentence and no row', async () => {
+  const cleaned = probe('QMEMPTYCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  assert.equal(cleaned.value, '1', `the probe's quality measures are removed: ${cleaned.output}`);
+  const held = inUser('QMEMPTYHELD', ['Set sc=##class(%DeepSee.QualityMeasure.Utils).%GetQualityMeasureList(.l),out=$Select($System.Status.IsOK(sc):+$Order(l("")),1:"unreadable")']);
+  assert.equal(held.value, '0', `the namespace holds no quality measure, so the list is empty: ${held.output}`);
+  const unknown = 'OcuPilotProbe/Quality/NoSuchMeasure';
+  const screens = [
+    { route: `/ocupilot/${QUALITY_MEASURES}?ns=USER`, empty: STRINGS.analyticsQualityMeasuresEmpty },
+    { route: `/ocupilot/${QUALITY_ELEMENTS}/${encodeEntityId(unknown)}?ns=USER`, empty: STRINGS.analyticsQualityMeasureElementsEmpty },
+    { route: `/ocupilot/${QUALITY_DOCUMENTATION}/${encodeEntityId(unknown)}?ns=USER`, empty: STRINGS.analyticsQualityMeasureMetasEmpty },
+  ];
+  assert.equal(new Set(screens.map((screen) => screen.empty)).size, screens.length, 'the three screens have three sentences of their own');
+  for (const screen of screens) {
+    const { context, page } = await signedInAt(browser, config, screen.route, VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), screen.empty, `${screen.route}: the screen draws its own empty sentence`);
+      assert.equal((await allRows(page)).length, 0, `${screen.route}: and no row`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// Story 24.13, AC3. The markers are written through the vendor's own methods; the General tab shows the Google Maps key as the mask and the key's text appears nowhere on any tab.
+// Mutation (Rule 19): make the settings branch of `AnalyticsPort.Rows` answer the key's own value -> the mask leg goes red (class reloaded); drop the Panel column
+// from `AnalyticsWorklistList.cls` (mirror regenerated, bundle rebuilt and redeployed) -> the Worklists leg goes red.
+test('Story 24.13: Settings shows each analytics setting with the Google Maps key as the mask, and its Worklists, Run-time variables and User-defined icons tabs show what is stored', async () => {
+  const stored = probe('STMADE', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())_$System.Status.IsOK(##class(${PROBE}).SetMarkerSettings())`);
+  assert.equal(stored.value, '111', `the markers are stored through the vendor's own methods: ${stored.output}`);
+  const key = probe('STKEY', `##class(${PROBE}).#SETTINGSKEY`).value;
+  assert.match(key, /^OcuProbe2413/, `the marker key is the probe's: ${key}`);
+  const placeholder = (cell) => (cell === '' ? STRINGS.tableEmptyValue : cell);
+  const yesNo = (flag) => (flag ? STRINGS.tableStatusYes : STRINGS.tableStatusNo);
+  const byName = (rows) => Object.fromEntries(rows.map((row) => [row[0], row]));
+  try {
+    const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await openEntry(page, STRINGS.interopItemTabSettings);
+      await pathHolds(page, `/${SETTINGS}`);
+      await answered(page);
+      assert.deepEqual(
+        await stripLabels(page),
+        [STRINGS.processDetailsGroupGeneral, STRINGS.analyticsWorklistsLabel, STRINGS.analyticsRuntimeVariablesLabel, STRINGS.analyticsUserIconsLabel],
+        'Settings opens a strip of its four tabs, General, Worklists, Run-time variables and User-defined icons'
+      );
+      const expectedSettings = {
+        Scheme: ['OcuProbe2413Scheme', true],
+        ChartSeriesScheme: ['OcuProbe2413Series', true],
+        PageTitle: ['OcuProbe2413 Title', true],
+        CompanyName: ['OcuProbe2413 Company', true],
+        CompanyImage: ['/OcuProbe2413/logo.png', true],
+        CompanyLink: ['http://OcuProbe2413.invalid/home', true],
+        GoogleMapsKey: ['[redacted]', true],
+        MailEnabled: ['1', true],
+        DefaultResource: ['OcuProbe2413Resource', true],
+        DashboardNoTitle: ['1', true],
+        DashboardNoBorder: ['1', true],
+        'Controls.showCalculated': ['1', true],
+        autosaveAnalyzer: ['1', true],
+        autosaveUserPortal: ['1', true],
+        Worklist: ['1', true],
+      };
+      const settings = byName(await allRows(page));
+      assert.deepEqual(Object.keys(settings).sort(), Object.keys(expectedSettings).sort(), 'General shows one row for each of the fifteen settings the classic page saves');
+      for (const [name, [value, isStored]] of Object.entries(expectedSettings)) {
+        assert.deepEqual(settings[name], [name, placeholder(value), yesNo(isStored)], `General: ${name} shows the value the vendor's save stored`);
+      }
+      assert.ok(!(await page.evaluate(() => document.body.innerText)).includes(key), 'and the Google Maps key\'s text is nowhere on the screen');
+      assert.deepEqual(await structural(page, SETTINGS), [], `${SETTINGS}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const worklists = await allRows(page);
+      assert.equal(worklists.length, 16, 'Worklists shows sixteen rows: two pages, two panels, four worklists');
+      assert.deepEqual(
+        worklists.filter((row) => row[3] === STRINGS.tableStatusYes).map((row) => `${row[0]}/${row[1]}/${row[2]}`),
+        ['DashboardViewer/2/Details', 'Home/1/Favorites'],
+        'Worklists, sorted by page, marks the two options the vendor\'s SetOption stored as shown, and no other'
+      );
+      assert.deepEqual(await structural(page, SETTINGS_WORKLISTS), [], `${SETTINGS_WORKLISTS}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_VARIABLES);
+      assert.deepEqual(
+        await allRows(page),
+        [
+          ['OcuProbe2413Text', '"text"_$Char(10)', STRINGS.tableEmptyValue, STRINGS.tableEmptyValue],
+          ['OcuProbe2413Var', '$Increment(^OcuProbe2413Ran)', 'OcuProbe2413 comment', 'OcuProbe2413Context'],
+        ],
+        'Run-time variables shows each variable with its stored expression as text, its comment and its context'
+      );
+      assert.equal(probe('STRAN', '$Data(^|"USER"|OcuProbe2413Ran)').value, '0', 'and no expression ran');
+      assert.deepEqual(await structural(page, SETTINGS_VARIABLES), [], `${SETTINGS_VARIABLES}: no violation beyond the baseline's entries`);
+
+      await openGroupTab(page, SETTINGS_ICONS);
+      assert.deepEqual(await allRows(page), [['OcuProbe2413Icon', '/OcuProbe2413/icon.png']], 'User-defined icons shows the icon with its path as text');
+      assert.deepEqual(await structural(page, SETTINGS_ICONS), [], `${SETTINGS_ICONS}: no violation beyond the baseline's entries`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('STGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored and none of the fixture's markers is left: ${restored.output}`);
+  }
+});
+
+// Story 24.13, matrix row Unset. Mutation (Rule 19): point the User-defined icons screen's `emptyStateKey` at `analyticsRuntimeVariablesEmpty` in `AnalyticsUserIconList.cls`
+// (mirror regenerated, bundle rebuilt and redeployed) -> the icons leg draws the variables sentence and goes red.
+test('Story 24.13: with nothing stored, Settings shows the classic page\'s defaults, Worklists shows nothing as shown, and the variables and icons tabs draw their own empty sentences', async () => {
+  const cleared = probe('STCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())`);
+  assert.equal(cleared.value, '11', `nothing is stored: ${cleared.output}`);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const settings = await allRows(page);
+      assert.equal(settings.length, 15, 'General shows its fifteen rows with nothing stored');
+      assert.ok(settings.every((row) => row[2] === STRINGS.tableStatusNo), 'none of them is stored');
+      const byName = Object.fromEntries(settings.map((row) => [row[0], row[1]]));
+      assert.equal(`${byName.Scheme}|${byName.MailEnabled}|${byName.Worklist}|${byName.PageTitle}`, `simple|0|0|${STRINGS.tableEmptyValue}`, 'the scheme reads simple, the mail and worklist flags 0 and the rest empty, as the classic page shows them');
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const worklists = await allRows(page);
+      assert.equal(worklists.length, 16, 'Worklists shows its sixteen rows');
+      assert.ok(worklists.every((row) => row[3] === STRINGS.tableStatusNo), 'none of them is shown');
+    } finally {
+      await context.close();
+    }
+    for (const { route, empty } of [
+      { route: SETTINGS_VARIABLES, empty: STRINGS.analyticsRuntimeVariablesEmpty },
+      { route: SETTINGS_ICONS, empty: STRINGS.analyticsUserIconsEmpty },
+    ]) {
+      const screen = await signedInAt(browser, config, url(route), VIEWPORTS.wide, REDUCED_MOTION);
+      try {
+        await waitForMapAnswered(screen.page, config.navigationTimeoutMs);
+        await screen.page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+        assert.equal(await screen.page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), empty, `${route}: the screen draws its own empty sentence`);
+        assert.equal((await allRows(screen.page)).length, 0, `${route}: and no row`);
+      } finally {
+        await screen.context.close();
+      }
+    }
+  } finally {
+    const restored = probe('STCLEARGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
+  }
+});
+
+/** The cells of the first row whose first cell starts with `prefix`, or `null`. */
+async function cellsOf(page, prefix) {
+  return (await allRows(page)).find((row) => row[0].startsWith(prefix)) ?? null;
+}
+
+/** Wait until the first row whose first cell starts with `prefix` reads `cells` (its leading cells, in order). */
+function rowReads(page, prefix, cells) {
+  return page.waitForFunction(
+    (rowSelector, wanted, expected) => {
+      const row = Array.from(document.querySelectorAll(rowSelector)).find((candidate) => candidate.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+      if (!row) return false;
+      const texts = Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim());
+      // A row the instance has just changed carries its marker and read-back in the first cell.
+      return expected.every((text, at) => (at === 0 ? texts[at]?.startsWith(text) : texts[at] === text));
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    prefix,
+    cells
+  );
+}
+
+/** Fill the open Set value dialog's field with `text` and confirm it. */
+async function setValue(page, text) {
+  await page.waitForSelector('[data-interop-setting-value]', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.click('[data-interop-setting-value]', { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type('[data-interop-setting-value]', text);
+  await page.click('[data-interop-setting-confirm]');
+  await page.waitForFunction(() => document.querySelector('app-interop-item-setting-dialog') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.13 Batch 2, AC4. A person sets PageTitle from the General tab, sets the Google Maps key from the masked field, turns Worklist on, and shows and hides a worklist; each screen shows the
+// change and the key row shows the mask. Mutation (Rule 19): send `set` in place of `setkey` for a secret row in `config-settings.page.ts` (bundle rebuilt and redeployed) -> the key leg goes red.
+test('Story 24.13 Batch 2: a person sets a setting, sets the key from a masked field, turns Worklist on, and shows and hides a worklist', async () => {
+  const cleared = probe('SWCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).ClearSettings())`);
+  const key = 'OcuProbe2413BrowserKey';
+  try {
+    assert.equal(cleared.value, '11', `nothing is stored: ${cleared.output}`);
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const labels = await rowAction(page, 'PageTitle', STRINGS.interopItemSettingSetAction);
+      assert.ok(labels.length >= 1, 'the General row offers Set value');
+      await setValue(page, 'OcuProbe2413 Browser Title');
+      await rowReads(page, 'PageTitle', ['PageTitle', 'OcuProbe2413 Browser Title']);
+
+      // A reload between actions clears the row selection the previous one left.
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'GoogleMapsKey', STRINGS.interopItemSettingSetAction);
+      await page.waitForSelector('[data-interop-setting-secret]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-interop-setting-secret]', (node) => `${node.type}|${node.value}`), 'password|', 'the key opens as an empty masked field');
+      await setValue(page, key);
+      await rowReads(page, 'GoogleMapsKey', ['GoogleMapsKey', '[redacted]']);
+      assert.ok(!(await page.evaluate(() => document.body.innerText)).includes(key), 'the key\'s text is nowhere on the screen');
+      assert.equal(probe('SWKEY', '$Get(^|"USER"|DeepSee.UserPortalSettings("GoogleMapsKey"))').value, key, 'and the instance holds it');
+
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'Worklist', STRINGS.interopItemSettingSetAction);
+      await page.waitForSelector('[data-interop-setting-checkbox]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.click('[data-interop-setting-checkbox]');
+      await page.click('[data-interop-setting-confirm]');
+      await page.waitForFunction(() => document.querySelector('app-interop-item-setting-dialog') === null, { timeout: config.navigationTimeoutMs });
+      await rowReads(page, 'Worklist', ['Worklist', '1']);
+
+      await openGroupTab(page, SETTINGS_WORKLISTS);
+      const first = await cellsOf(page, 'DashboardViewer');
+      assert.equal(first?.[3], STRINGS.tableStatusNo, 'the first worklist is not shown');
+      await rowAction(page, 'DashboardViewer', STRINGS.oauthRegisteredClientShow);
+      await rowReads(page, 'DashboardViewer', ['DashboardViewer', '1', 'Favorites', STRINGS.tableStatusYes]);
+      await page.reload();
+      await answered(page);
+      await rowAction(page, 'DashboardViewer', STRINGS.oauthRegisteredClientHide);
+      await rowReads(page, 'DashboardViewer', ['DashboardViewer', '1', 'Favorites', STRINGS.tableStatusNo]);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('SWGONE', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
+  }
+});
+
+const ENTRY_DIALOG = 'app-analytics-setting-entry-dialog';
+
+/** Click the command bar's primary action and wait for the variable or icon dialog titled `label`. */
+async function entryDialog(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-confirm]`, { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** The one open dialog draws no image, no link and no frame: a path typed into it is text. */
+async function dialogDrawsNoMedia(page, label) {
+  assert.equal(await page.$$eval('[role="dialog"]', (nodes) => nodes.length), 1, `${label}: the dialog is open`);
+  assert.equal(await page.$$eval('[role="dialog"] img, [role="dialog"] a, [role="dialog"] iframe', (nodes) => nodes.length), 0, `${label}: the typed path is text, drawn as no image, no link and no frame`);
+}
+
+// Story 24.13 Batch 3, AC4. A person adds, changes and removes a run-time variable (typing its name for the removal) and a user-defined icon; each tab shows the change, the instance's own globals hold it,
+// the expression the probe variable carries is never run and the icon's path is drawn as text. Mutation (Rule 19): post the Add run-time variable dialog to the icons' route in `analytics-setting-entry.store.ts`
+// (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red; make the Change dialog send the path in place of the comment -> the second leg goes red.
+test('Story 24.13 Batch 3: a person adds, changes and removes a run-time variable and a user-defined icon, the expression is never run and the path is text', async () => {
+  const cleared = probe('SEBCLEAR', `$System.Status.IsOK(##class(${PROBE}).SnapshotSettings())_$System.Status.IsOK(##class(${PROBE}).SetMarkerSettings())`);
+  const variable = 'OcuProbe2413BrowserVar';
+  const icon = 'OcuProbe2413BrowserIcon';
+  try {
+    assert.equal(cleared.value, '11', `the markers are stored: ${cleared.output}`);
+    assert.equal(inUser('SEBRAN', ['Kill ^OcuProbe2413Ran', 'Kill ^|"HSCUSTOM"|OcuProbe2413Ran', 'Set out=$Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran)']).value, '0', 'the global the expression would set is undefined in USER and in HSCUSTOM before the run');
+    const { context, page } = await signedInAt(browser, config, url(SETTINGS_VARIABLES), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await entryDialog(page, STRINGS.analyticsRuntimeVariableAddAction);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Name: variable, Value: '$Increment(^OcuProbe2413Ran)', Comment: 'browser comment', Context: 'OcuProbe2413Ctx' });
+      await rowReads(page, variable, [variable, '$Increment(^OcuProbe2413Ran)', 'browser comment', 'OcuProbe2413Ctx']);
+      assert.equal(inUser('SEBADD', [`Set out=$Get(^DeepSee.User.Settings("${variable}","value"))_"|"_$Get(^DeepSee.User.Settings("${variable}","comment"))_"|"_($Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran))`]).value, '$Increment(^OcuProbe2413Ran)|browser comment|0', 'the instance holds the expression as text, and nothing ran it');
+
+      await rowAction(page, variable, STRINGS.analyticsRuntimeVariableChangeAction);
+      await page.waitForFunction((name) => document.querySelector('[data-setting-entry-field="Name"]')?.value === name, { timeout: config.navigationTimeoutMs }, variable);
+      assert.equal(await page.$eval('[data-setting-entry-field="Name"]', (node) => node.readOnly), true, 'the name is fixed on a change');
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Comment: ' edited' });
+      await rowReads(page, variable, [variable, '$Increment(^OcuProbe2413Ran)', 'browser comment edited', 'OcuProbe2413Ctx']);
+
+      await entryDialog(page, STRINGS.analyticsRuntimeVariableAddAction);
+      await page.type(`${ENTRY_DIALOG} [data-setting-entry-field="Name"]`, variable);
+      await page.click(`${ENTRY_DIALOG} [data-setting-entry-confirm]`);
+      await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-reason]`, { timeout: config.navigationTimeoutMs });
+      assert.ok((await page.$eval(ENTRY_DIALOG, (node) => node.textContent)).includes(STRINGS.analyticsRefusalVariableTaken), 'a name the namespace holds is refused with the server\'s sentence, and the dialog stays open');
+      await page.type(`${ENTRY_DIALOG} [data-setting-entry-field="Value"]`, '1+');
+      await page.click(`${ENTRY_DIALOG} [data-setting-entry-confirm]`);
+      await page.waitForSelector(`${ENTRY_DIALOG} [data-setting-entry-violation="Value"]`, { timeout: config.navigationTimeoutMs });
+      assert.ok((await page.$eval(`${ENTRY_DIALOG} [data-setting-entry-violation="Value"]`, (node) => node.textContent)).includes(STRINGS.analyticsRefusalVariableExpression), 'an expression that is not valid is refused under its field, checked and not run');
+      await page.keyboard.press('Escape');
+      await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, ENTRY_DIALOG);
+
+      await typedRemoval(page, variable, STRINGS.analyticsRuntimeVariableRemoveAction, variable, STRINGS.analyticsVariableRemoveConsequence);
+      await rowGone(page, variable);
+      assert.equal(inUser('SEBGONE', [`Set out=$Data(^DeepSee.User.Settings("${variable}"))_"|"_($Data(^OcuProbe2413Ran)+$Data(^|"HSCUSTOM"|OcuProbe2413Ran))`]).value, '0|0', 'the variable is gone from the instance, and the expression never ran');
+
+      await openGroupTab(page, SETTINGS_ICONS);
+      await entryDialog(page, STRINGS.analyticsUserIconAddAction);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Name: icon, Path: 'http://OcuProbe2413.invalid/icon.png' }, () => dialogDrawsNoMedia(page, 'the Add icon dialog'));
+      await rowReads(page, icon, [icon, 'http://OcuProbe2413.invalid/icon.png']);
+      assert.equal(await page.$$eval('[role="grid"] img, [role="grid"] a, [role="grid"] iframe', (nodes) => nodes.length), 0, 'the path is text, drawn as no image and no link');
+      assert.equal(inUser('SEBICON', [`Set out=$Get(^DeepSee.User.Icons("${icon}"))`]).value, 'http://OcuProbe2413.invalid/icon.png', 'the instance holds the path as sent');
+      await rowAction(page, icon, STRINGS.analyticsUserIconChangeAction);
+      await page.waitForFunction((name) => document.querySelector('[data-setting-entry-field="Name"]')?.value === name, { timeout: config.navigationTimeoutMs }, icon);
+      await fillDialog(page, ENTRY_DIALOG, 'data-setting-entry-field', '[data-setting-entry-confirm]', { Path: '2' }, () => dialogDrawsNoMedia(page, 'the Change icon dialog'));
+      await rowReads(page, icon, [icon, 'http://OcuProbe2413.invalid/icon.png2']);
+      await typedRemoval(page, icon, STRINGS.analyticsUserIconRemoveAction, icon, STRINGS.analyticsIconRemoveConsequence);
+      await rowGone(page, icon);
+      assert.equal(inUser('SEBICONGONE', [`Set out=$Data(^DeepSee.User.Icons("${icon}"))`]).value, '0', 'the icon is gone from the instance');
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const restored = probe('SEBGONE2', `$System.Status.IsOK(##class(${PROBE}).RestoreSettings())_##class(${PROBE}).SettingsLeft()`);
+    assert.equal(restored.value, '1', `the settings are restored: ${restored.output}`);
+  }
+});
+
+const MEASURE_NAME = 'OcuProbeQMW/Browse/One';
+const MEASURE_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseOne';
+const COPY_NAME = 'OcuProbeQMW/Browse/Two';
+const COPY_CLASS = 'OcuProbeQMW.Analytics.QMWBrowseTwo';
+
+/** Type `fields` into the open dialog's inputs, each found by `attribute` and its member, run `beforeConfirm` when given, then confirm with `confirm`, which closes the dialog once the write was applied. */
+async function fillDialog(page, dialog, attribute, confirm, fields, beforeConfirm = null) {
+  for (const [member, text] of Object.entries(fields)) {
+    await page.type(`${dialog} [${attribute}="${member}"]`, text);
+  }
+  if (beforeConfirm !== null) await beforeConfirm();
+  await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs }, confirm);
+  await page.click(confirm);
+  await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, dialog);
+}
+
+// Story 24.12 AC4 (Batch 2). Mutation (Rule 19): make the New quality measure dialog post to the listing groups' route (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red;
+// the measures' own `TYPED_NAME_ROWS` entry is pinned in `screen-action-handler-qualitymeasure.spec.ts`, whose fixture's key differs from its name; here a measure's id is its name.
+test('Story 24.12: a person creates a quality measure, edits it, copies it and deletes the copy by typing its name, and the screen shows each change', async () => {
+  const { context, page } = await signedInAt(browser, config, url(QUALITY_MEASURES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-confirm]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsQualityMeasureNewAction, 'the primary action opens New quality measure');
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', {
+      Catalog: 'OcuProbeQMW',
+      Set: 'Browse',
+      Id: 'One',
+      Class: MEASURE_CLASS,
+      Caption: 'Browser measure',
+      SubjectArea: VISITS,
+    });
+    const nameShown = (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+    await page.waitForFunction(nameShown, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, MEASURE_NAME);
+    assert.deepEqual(
+      (await rowsStartingWith(page, MEASURE_NAME)).map((row) => row.slice(1, 5)),
+      [['Browser measure', VISITS, STRINGS.tableStatusYes, STRINGS.tableStatusYes]],
+      'Quality measures shows the new measure, published and compiled'
+    );
+    assert.equal(inUser('QMWNEW', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${MEASURE_CLASS}")`]).value, '1', 'and the instance holds its class');
+
+    await rowAction(page, MEASURE_NAME, STRINGS.agentPanelSecretWarningEdit);
+    await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-field="Caption"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value !== '', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, 'Browser measure edited');
+    assert.equal(
+      inUser('QMWEDIT', [`Set out=##class(%DeepSee.QualityMeasure.Utils).%GetModel("${MEASURE_NAME}",,0).caption`]).value,
+      'Browser measure edited',
+      'the edit changed the vendor\'s model, and Quality measures shows the caption'
+    );
+
+    await rowAction(page, MEASURE_NAME, STRINGS.auditDatabaseCopyConfirm);
+    await page.waitForSelector('app-listing-group-copy-dialog [data-listing-group-copy-confirm]', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-listing-group-copy-dialog', 'data-listing-group-copy-field', '[data-listing-group-copy-confirm]', { NewName: COPY_NAME, NewClass: COPY_CLASS });
+    await page.waitForFunction(nameShown, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, COPY_NAME);
+    assert.deepEqual(
+      (await rowsStartingWith(page, COPY_NAME)).map((row) => row.slice(1, 5)),
+      [['Browser measure edited', VISITS, STRINGS.tableStatusYes, STRINGS.tableStatusYes]],
+      'Quality measures shows the copy, with the source\'s caption and subject area'
+    );
+
+    await page.goto(new URL(url(QUALITY_MEASURES), page.url()).href, { waitUntil: 'networkidle2' });
+    await answered(page);
+    await rowAction(page, COPY_NAME, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.analyticsQualityMeasureDeleteConsequence, 'Delete states its consequence and asks for the measure\'s name typed');
+    await page.type('.ocu-typed-name-field', COPY_NAME);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowGone(page, COPY_NAME);
+    assert.equal(inUser('QMWGONE', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${COPY_CLASS}")_$Data(^DeepSee.QMsrs("qmsrNames","${COPY_NAME.toUpperCase()}"))`]).value, '00', 'the copy\'s class and registry node are gone');
+    assert.equal((await rowsStartingWith(page, MEASURE_NAME)).length, 1, 'and the source measure is still listed');
+  } finally {
+    await context.close();
+    probe('QMWCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  }
+});
+
+const WRITE_GROUP = 'OcuPilotProbeLGWBrowse';
+const WRITE_CLASS = 'OcuProbeLGW.Analytics.LGWBrowse';
+const WRITE_LISTING = 'LGWBrowseOne';
+
+/** Click the command bar's primary action, which opens the listing group dialog titled `label`. */
+async function commandBarAction(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('app-listing-group-dialog [data-listing-group-confirm]', { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** Type `text` into the listing group dialog's field `member` and confirm the dialog, which closes once the write was applied. */
+async function fillAndConfirm(page, fields) {
+  for (const [member, text] of Object.entries(fields)) {
+    await page.type(`app-listing-group-dialog [data-listing-group-field="${member}"]`, text);
+  }
+  await page.waitForFunction(() => document.querySelector('[data-listing-group-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
+  await page.click('[data-listing-group-confirm]');
+  await page.waitForFunction(() => document.querySelector('app-listing-group-dialog') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.11 AC4 (Batch 2). Mutation (Rule 19): make the New listing group dialog post to the term lists' route (bundle rebuilt and redeployed) -> the first row never appears and the first leg goes red;
+// the Listing groups' own `TYPED_NAME_ROWS` entry is pinned in `screen-action-handler-listinggroup.spec.ts`, whose fixture's key differs from its name; here a group's id is its name.
+test('Story 24.11: a person creates a listing group, edits it, adds a listing to it and deletes the group by typing its name, and each screen shows each change', async () => {
+  const { context, page } = await signedInAt(browser, config, url(LISTING_GROUPS), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    // The group list is empty when the test starts, so only the navigation map is awaited.
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await commandBarAction(page, STRINGS.analyticsListingGroupNewAction);
+    await fillAndConfirm(page, { Name: WRITE_GROUP, Class: WRITE_CLASS, TargetCubes: VISITS });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, WRITE_GROUP);
+    // A row the instance has just changed carries its marker and read-back in its first cell, and a group with no caption shows its name as the caption.
+    assert.deepEqual(
+      (await rowsStartingWith(page, WRITE_GROUP)).map((row) => row.slice(1, 5)),
+      [[WRITE_GROUP, VISITS, STRINGS.tableStatusYes, '0']],
+      'Listing groups shows the new group, compiled and holding no listing'
+    );
+    assert.equal(inUser('LGWNEW', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${WRITE_CLASS}")`]).value, '1', 'and the instance holds its class');
+
+    await rowAction(page, WRITE_GROUP, STRINGS.agentPanelSecretWarningEdit);
+    await page.waitForSelector('app-listing-group-dialog [data-listing-group-field="Caption"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('[data-listing-group-field="Name"]')?.value !== '', { timeout: config.navigationTimeoutMs });
+    await fillAndConfirm(page, { Caption: 'Browser caption' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, 'Browser caption');
+    assert.equal(
+      inUser('LGWEDIT', [`Set out=##class(%DeepSee.ListingGroup).%GetModel("${WRITE_CLASS}").displayName`]).value,
+      'Browser caption',
+      'the edit changed the vendor\'s model, and Listing groups shows the caption'
+    );
+
+    await clickRowCentre(page, { text: await firstCell(page, WRITE_GROUP), link: true });
+    await pathHolds(page, `/${LISTINGS}/${encodeEntityId(WRITE_GROUP)}`);
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await commandBarAction(page, STRINGS.analyticsListingAddAction);
+    await fillAndConfirm(page, { Name: WRITE_LISTING, Fields: 'Amount' });
+    await page.waitForFunction((rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, WRITE_LISTING);
+    assert.deepEqual(
+      (await rowsStartingWith(page, WRITE_LISTING)).map((row) => row.slice(1, 4)),
+      [['table', 'Amount', STRINGS.tableEmptyValue]],
+      'Listings shows the new listing with its type, fields and no data connector'
+    );
+
+    await page.goto(new URL(url(LISTING_GROUPS), page.url()).href, { waitUntil: 'networkidle2' });
+    await answered(page);
+    await rowAction(page, WRITE_GROUP, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.analyticsListingGroupDeleteConsequence, 'Delete states its consequence and asks for the group\'s name typed');
+    await page.type('.ocu-typed-name-field', WRITE_GROUP);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowGone(page, WRITE_GROUP);
+    assert.equal(inUser('LGWGONE', [`Set out=##class(%Dictionary.ClassDefinition).%ExistsId("${WRITE_CLASS}")_$Data(^DeepSee.ListingGroups("groups","${WRITE_GROUP.toUpperCase()}"))`]).value, '00', 'the class and the group\'s registry nodes are gone');
+  } finally {
+    await context.close();
+    probe('LGWCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveListingGroups())`);
+  }
+});
+
+const PART_MEASURE = 'OcuProbeQMP/Probe/Browse';
+const PART_BASE = 'OcuPilot.Test.AnalyticsQualityMeasurePartBase';
+
+/** Click the command bar's primary action and wait for the quality measure dialog titled `label`. */
+async function partDialog(page, label) {
+  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('app-quality-measure-dialog [data-quality-measure-confirm]', { timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), label, `the primary action opens ${label}`);
+}
+
+/** Choose the row action `label` on the row starting `name`, type `typed` into the typed-name dialog under the consequence `consequence`, and confirm; the dialog closes once the write was applied. */
+async function typedRemoval(page, name, label, typed, consequence) {
+  await rowAction(page, name, label);
+  await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), consequence, `${label} states its consequence and asks for the name typed`);
+  await page.type('.ocu-typed-name-field', typed);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+}
+
+// Story 24.12 AC4 (Batch 3, DW-2734). Mutation (Rule 19): make the Add element dialog post to the documentation items' route (bundle rebuilt and redeployed) -> the first element never appears and the first leg goes red; drop the
+// Documentation descriptor's `tab` (mirror regenerated, bundle rebuilt and redeployed) -> the strip leg goes red; make the dialog's group-only change send no group field (bundle rebuilt and redeployed)
+// -> the group change leg goes red; the removals' typed-name entries are pinned in `screen-action-handler-qualitymeasure.spec.ts`.
+test('Story 24.12: a person opens a quality measure to its two tabs, adds an element in a new group, changes it, removes it, changes and removes the group, and adds, changes and removes a documentation item', async () => {
+  const made = probe('QMPMADE', `$System.Status.IsOK(##class(${PART_BASE}).SaveMeasure("Browse", "OcuProbeQMP.Analytics.QMPBrowse"))`);
+  assert.equal(made.value, '1', `the measure is saved and compiled: ${made.output}`);
+  const model = (name, lines) => inUser(name, ['Set m=##class(%DeepSee.QualityMeasure.Utils).%GetModel("' + PART_MEASURE + '",,0),out=""', ...lines]);
+  const { context, page } = await signedInAt(browser, config, url(QUALITY_MEASURES), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await clickRowCentre(page, { text: PART_MEASURE, link: true });
+    await pathHolds(page, `/${QUALITY_ELEMENTS}/${encodeEntityId(PART_MEASURE)}`);
+    await answered(page);
+    assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'a measure opens to the strip of its two tabs');
+
+    await partDialog(page, STRINGS.analyticsQualityMeasureElementAddAction);
+    assert.deepEqual(
+      await page.$$eval('app-quality-measure-dialog legend', (nodes) => nodes.map((node) => node.textContent.trim())),
+      [STRINGS.analyticsColumnGroup, STRINGS.analyticsQualityMeasureElementLegend],
+      'the element form draws the group and the element in two fieldsets'
+    );
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Group: 'Fresh', GroupCaption: 'Fresh group', Name: 'Seed', Caption: 'Seed rule', MDX: '{[Minutes].&[1]}' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    // A row the instance has just changed carries its marker and read-back in its first cell.
+    assert.deepEqual((await rowsStartingWith(page, 'Fresh')).map((row) => row.slice(1, 4)), [['Seed', 'Seed rule', '{[Minutes].&[1]}']], 'Groups and elements shows the new element under its new group');
+    assert.equal(model('QMPADD', ['Set g=m.groups.GetAt(m.groups.Count()),out=g.name_"~"_g.caption_"~"_g.elements.GetAt(1).name']).value, 'Fresh~Fresh group~Seed', 'the vendor\'s model holds the group, created at the end, and its element');
+
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value === 'Seed', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.equal(model('QMPSET', ['Set out=m.groups.GetAt(m.groups.Count()).elements.GetAt(1).caption']).value, 'Seed rule edited', 'the change reached the vendor\'s model');
+
+    await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureElementRemoveAction, 'Seed', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await page.waitForFunction((rowSelector) => !Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Seed rule edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.deepEqual((await rowsStartingWith(page, 'Fresh')).map((row) => row[1]), [STRINGS.tableEmptyValue], 'the emptied group stays as its own row, with no element name');
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="GroupCaption"]')?.value === 'Fresh group', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('app-quality-measure-dialog [data-quality-measure-field="Name"]'), null, 'a group\'s row opens Change element on the group\'s fields alone');
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { GroupCaption: ' edited' });
+    assert.equal(model('QMPGROUPSET', ['Set out=m.groups.GetAt(m.groups.Count()).caption']).value, 'Fresh group edited', 'the group\'s change reached the vendor\'s model');
+    await rowAction(page, 'Fresh', STRINGS.analyticsQualityMeasureElementChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="GroupCaption"]')?.value === 'Fresh group edited', { timeout: config.navigationTimeoutMs });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('app-quality-measure-dialog') === null, { timeout: config.navigationTimeoutMs });
+    await typedRemoval(page, 'Fresh', STRINGS.analyticsQualityMeasureGroupRemoveAction, 'Fresh', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await rowGone(page, 'Fresh');
+    assert.equal(model('QMPGROUP', ['Set out=m.groups.Count()']).value, '2', 'the group is gone from the vendor\'s model, the measure\'s own two groups remain');
+
+    await openTab(page, QUALITY_DOCUMENTATION);
+    assert.deepEqual(await stripLabels(page), [STRINGS.analyticsQualityMeasureElementsLabel, STRINGS.linksDocumentation], 'Documentation carries the same strip');
+    await partDialog(page, STRINGS.analyticsQualityMeasureMetaAddAction);
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Name: 'Notes', Caption: 'Notes', Content: 'A <b>bold</b> note.' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('A <b>bold</b> note.')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.equal(model('QMPMETA', ['Set out=m.metas.GetAt(m.metas.Count()).name_"~"_m.metas.GetAt(m.metas.Count()).content']).value, 'Notes~A <b>bold</b> note.', 'the vendor\'s model holds the item and its markup as sent');
+
+    await rowAction(page, 'Notes', STRINGS.analyticsQualityMeasureMetaChangeAction);
+    await page.waitForFunction(() => document.querySelector('[data-quality-measure-field="Name"]')?.value === 'Notes', { timeout: config.navigationTimeoutMs });
+    await fillDialog(page, 'app-quality-measure-dialog', 'data-quality-measure-field', '[data-quality-measure-confirm]', { Caption: ' edited' });
+    await page.waitForFunction((rowSelector) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes('Notes edited')), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    await typedRemoval(page, 'Notes', STRINGS.analyticsQualityMeasureMetaRemoveAction, 'Notes', STRINGS.analyticsQualityMeasureRemoveConsequence);
+    await rowGone(page, 'Notes');
+    assert.equal(model('QMPMETAS', ['Set out=m.metas.Count()']).value, '1', 'only the measure\'s own documentation item remains');
+  } finally {
+    await context.close();
+    probe('QMPCLEAN', `$System.Status.IsOK(##class(${PROBE}).RemoveQualityMeasures())`);
+  }
+});
+
+/** The grid MDX query's run view draws, as `C=<column labels>;R=<row label>:<cells>;...` -- the shape `OcuPilot.Test.AnalyticsMdx.VendorCells` answers for the vendor's own result set. */
+function drawnGrid(page) {
+  return page.evaluate(() => {
+    const grid = document.querySelector('[data-ocu-mdx="grid"]');
+    if (grid === null) return 'no grid';
+    const head = Array.from(grid.querySelectorAll('.ocu-data-table-header-label')).filter((label) => label.getAttribute('data-ocu-mdx') !== 'row-header-column');
+    const rows = Array.from(grid.querySelectorAll('.ocu-data-table-body [role="row"]')).map((row) => {
+      const label = row.querySelector('[data-ocu-mdx="row-header"]')?.textContent.trim() ?? '';
+      return `;R=${label}:${Array.from(row.querySelectorAll('[data-ocu-mdx="drill-cell"]')).map((cell) => cell.textContent.trim()).join(',')}`;
+    });
+    return `C=${head.map((label) => label.textContent.trim()).join('|')}${rows.join('')}`;
+  });
+}
+
+// Story 24.14 AC5. Mutation (Rule 19): make `AnalyticsPort.WidgetNotPivot` answer 0 for every data source -> the KPI and linked rows draw links and the one-link leg goes red; send the
+// `statement` key from `folder-item-definition.page.ts` through the MDX route (rebuild and redeploy first) -> the run answers a refusal and the grid leg goes red.
+test('Story 24.14: a person opens a dashboard from Folder items, sees its three widgets with only the pivot linked, opens that pivot and runs it, and the grid shows the vendor\'s own cells', async () => {
+  const made = probe('VWMADE', `$System.Status.IsOK(##class(${PROBE}).CreateViewerItems())`);
+  assert.equal(made.value, '1', `the viewer's pivots and dashboard are saved: ${made.output}`);
+  const board = 'OcuPilotProbe/ViewBoard.dashboard';
+  const pivot = 'OcuPilotProbe/ViewRun.pivot';
+  const { context, page } = await signedInAt(browser, config, url(FOLDER_ITEMS), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await answered(page);
+    await clickRowCentre(page, { text: board, link: true });
+    await pathHolds(page, `/${FOLDER_ITEMS}/document/${encodeEntityId(board)}`);
+    await answered(page);
+    assert.deepEqual(await stripLabels(page), [STRINGS.agentDefinitionFormLabel, STRINGS.analyticsTabWidgets], 'the strip reads Definition and Widgets');
+    const definition = (await allRows(page))[0];
+    assert.deepEqual([definition[0], definition[1]], [board, 'Dashboard'], 'the Definition tab reads the dashboard: its name and its type');
+    assert.equal(await page.$('[data-ocu-pivot="run-panel"]'), null, 'a dashboard offers no Run');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries`);
+
+    await openTab(page, FOLDER_ITEM_WIDGETS);
+    const widgets = await allRows(page);
+    assert.deepEqual(widgets.map((row) => [row[0], row[1], row[2], row[3]]), [['1', 'Sales by place', 'pivot', pivot], ['2', 'A KPI', 'kpi', 'OcuPilotProbe/Score.kpi'], ['3', 'Follows the first', 'pivot', STRINGS.tableEmptyValue]], 'Widgets lists the three widgets in the stored order');
+    assert.equal(widgets[2][4], 'Sales', 'the third widget keeps the widget it takes its data from');
+    const links = await page.$$eval(`${ROW_SELECTOR} .ocu-data-table-link`, (anchors) => anchors.map((anchor) => anchor.textContent.trim()));
+    assert.deepEqual(links, [pivot], 'only the pivot widget\'s data source links');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_WIDGETS), [], `${FOLDER_ITEM_WIDGETS}: no violation beyond the baseline's entries`);
+
+    await clickRowCentre(page, { text: '1', link: true });
+    await pathHolds(page, `/${FOLDER_ITEMS}/document/${encodeEntityId(pivot)}`);
+    await answered(page);
+    assert.equal((await allRows(page))[0][1], 'Pivot', 'the pivot\'s Definition tab opens');
+    await (await page.waitForSelector('[data-ocu-pivot="run"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('[data-ocu-mdx="grid"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const vendor = probe('VWVENDOR', `##class(OcuPilot.Test.AnalyticsMdx).VendorCells(##class(OcuPilot.Test.AnalyticsPivotRun).BaseMdx("${pivot}"))`);
+    assert.match(vendor.value, /^C=Amount;R=Category 1:/, `the vendor answers the pivot's cells: ${vendor.output}`);
+    assert.equal(await drawnGrid(page), vendor.value, 'the grid shows the cells the vendor\'s own result set answers for the pivot\'s MDX');
+    assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries, with the run's grid drawn`);
+  } finally {
+    await context.close();
   }
 });

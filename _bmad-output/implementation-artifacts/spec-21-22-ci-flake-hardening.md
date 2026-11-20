@@ -2,12 +2,21 @@
 title: 'Story 21.22: CI flake hardening'
 type: 'chore'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '20229d63d6b756478169e63fa4ab77acbe539415'
+baseline_commit: '20229d63d6b756478169e63fa4ab77acbe539415'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A wrong private key password that OpenSSL decrypts with valid padding (about 1 in 230) is refused by the vendor with error 733 ("The public key in certificate ... and the private key ... do not match"), so the screen's Save answers 500 INTERNAL, not 422 on PrivateKeyPassword.
+    evidence: |-
+      Task 0 on ocupilot-ci, two runs with different keys: UndecodablePassword's candidate (openssl pkey: "Could not read key ... No supported data to decode") PUT to /ssl/OcuPilotProbeSslSecret answered 500 {"code":"INTERNAL"}, stored=0, and messages.log read "Security.SSLConfig failed with HTTP 500 ... ERROR #733: The public key in certificate ... do not match". 733 is also the real certificate and key mismatch, and IMPORTSAVECODES maps 731 and 733 to X509.PRIVATEKEY.MISMATCH, so a PROPERTYFAULTS entry for 733 would mislabel that fault.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls (PROPERTYFAULTS, Security.SSLConfig)
+    severity: low
 ---
 
 <intent-contract>
@@ -17,6 +26,8 @@ deferred: []
 **Problem:** Eight CI flakes are routed here, each red once and green on an unchanged rerun, plus two test-hygiene entries (DW-2202 literal roster counts, DW-2476 copied settle helpers). The story's criterion: each flake's test waits on the system's own readiness signal or is fixed at its cause, and its entry closes with the evidence.
 
 **Approach:** Fix the three flakes whose cause the code and CI log establish (DW-2534, DW-2565, DW-2553 after a Task 0 measurement). For the five whose cause is not established, land a named diagnosis step that makes the next red name its cause, add the readiness waits that are missing, and close them `wontfix-accepted` with a reopen condition. Take a bounded first slice of DW-2202 and DW-2476 and leave each residual ledgered with a scope note.
+
+**Re-plan ruling (2026-11-18, orchestrator priority):** DW-2721 comes first. The gates job's `client suite` step (`npm test`) on Node 22.22.3 hangs until the job is canceled at 25 minutes with no log (five times on 2026-11-18 across feature and both epics; node 24/26 pass in about 9 minutes). Batch 1 is DW-2721 with DW-2567 and is committable and pushable on its own: a step timeout well under the job's so a hang fails with a log; the resource sampler with OOM lines on failure or cancel; the vitest half run with a bounded worker count and a per-worker heap cap sized for the CI runner's 2 CPUs (a 2-CPU Linux container ran a vitest fork out of heap at file 90 of 286; 4 CPU and macOS stay green); a way for the log to name the hanging file; and the fix. The flakes routed here since the first plan (DW-2627, DW-2648, DW-2649, DW-2685, DW-2713, DW-2714, DW-2720) join the inbox: address each or decline it with a reason. If the whole does not fit in ordered batches, recommend a split, keeping Batch 1 here.
 
 ## Boundaries & Constraints
 
@@ -38,128 +49,367 @@ deferred: []
 
 ## Code Map
 
-- `ui/browser/web-applications.browser-spec.mjs:214-227` -- AC1's last `filterToSubset('myapp')` then `context.close()`; AC5 (`:230`) reads `total` after `signedInAtList`'s reset. Cause (CI run 43445087881 job 131952325102, `list-spec.mjs:138`): the late keystroke write (`screen-store.ts:532-536,608-618`, `account-preferences.ts:425-450`, sent one at a time, newest last) lands after the reset's `view` clear, so AC5 opens filtered.
-- `ui/browser/preferences-reset.mjs:66` -- `rememberedShellMember`; the new remembered-view wait goes beside it (add-only). `column-widths.browser-spec.mjs:194-195` already reads `GET /api/ocupilot/account/preferences` `views[]`.
-- `scripts/ci-throwaway.sh:954-955` -- two `$(date +%s)` reads; the cause of DW-2565 (run 43645120786 job 132601047925, `ci.test.mjs:2841` `1 !== 0`, "still bound after 1 attempt(s) over a 1 second budget"). Epic 24 has three commits on this file (near line 600); 21.24 changed it in this epic (37538ee8a).
-- `ui/tools/ci.test.mjs:2725-2786` -- `runThrowawayUp` (real 2 s docker-stub sleep at `:2745`, comment `:2733`); the test at `:2834-2843`. `:230` pins the workflow's `run:` multiset against `DECLARED_GATES`; `:398` refuses `|| true` anywhere in the workflow.
-- `src/OcuPilot/Test/SslSecret.cls:49-55,89-118` -- the key is PKCS#8 AES-256-CBC under `..Sentinel`; the wrong password is `..Sentinel _ "Wrong"` (`:100`); assertions `:103` (422 on `PrivateKeyPassword`) and `:116` (`#732` in the log). Armed; throwaway only.
-- `src/OcuPilot/Test/X509Material.cls:168` -- `Run(dir, args...)` runs `openssl`; the deterministic wrong-password helper extends this class (Rule 2).
-- `src/OcuPilot/Port/AdminPort.cls:3846` -- `PROPERTYFAULTS` maps `Security.SSLConfig:732:@PrivateKeyPassword` to `SSL.PRIVATEKEYPASSWORD.WRONG` (reason exists, `Api/Error.cls:3826-3828`). `irissys/%SYS/X509Credentials.cls:329-333` raises 732 only on `bad decrypt` or `pkcs12 cipherfinal error` (inference for `Security.SSLConfigs`, deployed without source).
-- `ui/browser/panel-spec.mjs:82-93` -- `gotoNamingInflight`, used by the shared `signedInAt` (`:115`); the diagnosis probe extends it (add-only). Tests in `ui/tools/panel-spec.test.mjs`.
-- `ui/browser/context-chip.browser-spec.mjs:302-314` -- a local `signedInAt` with a bare `page.goto`; test 7 (`:502`) sends without `waitForSlotFree` (`turnprobe-spec.mjs`) after test 6.
-- `ui/browser/stream-reply.browser-spec.mjs`, `ui/browser/agent-code-save.browser-spec.mjs` -- use the shared `signedInAt`; no edit. Logs: runs 43507916359 (shard 4/5) and 43543858957 (shard 5/5) show one turn never ending, then each later `goto` timing out with only `/ocupilot/?ns=` in flight while `resetRememberedState`'s Node fetches return 200; a fresh browser recovers.
-- `ui/browser/analytics-mdx.browser-spec.mjs:552-568` -- AC7 writes and runs before the shell resolved `ns` (`scope.ts:214` answers `''`; `api.ts:443-445` then sends no `ns`). Signals: `#ocu-namespace-switch-value` (`namespace-switch.ts:89`), the start POST `/api/ocupilot/analytics/mdx/background`.
-- `.github/workflows/ci.yml:120-122` -- gates `client suite` step (`npm test`); job `timeout-minutes: 20` (`:73`). Run 43675769752 job 132695467996: `The runner has received a shutdown signal` at 04:16:38.20 precedes every `EPIPE`; run 43713431335's log is gone (`BlobNotFound`). vitest 4.1.11, default `forks` pool, no config file; the upstream EPIPE bug (vitest#9014) is fixed in 4.0.10.
-- `ui/tools/browser-settle.test.mjs:250,291-301` -- `SETTLE_BODIES` and the `declared >= 30` floor.
-- `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs:313` -- literal 10 shortcuts; derive from `DATA_BROWSER_SHORTCUTS` (`ui/src/app/core/data-browser-model.ts:855`, imported the way `rail.browser-spec.mjs:30` imports core TS).
-- `src/OcuPilot/Test/WireSecurityRead.cls:782,815,1239` -- literal field counts 18, 9, 24; derive through `DeclarationJson` as `Dashboard.cls:99` does.
+Batch 1 (DW-2721, DW-2567):
+
+- `.github/workflows/ci.yml:68-72,122-124` -- gates job `timeout-minutes: 20`; step `client suite` runs `npm test` in `ui`. Run 44283101753 (node 22, its green rerun): the step took 4 m 33 s, the tools half 38 s, vitest 190.6 s over 293 files; the default reporter prints a line per file only when it finishes.
+- `ui/angular.json` -- `test` target: `@angular/build:unit-test`, runner vitest, no `runnerConfig`. The builder defaults vitest `isolate: false` (`node_modules/@angular/build/src/builders/unit-test/runners/vitest/plugins.js:184`), merges a runner config file's `test` block over that default (`:205`), and takes `runnerConfig` as a path (`executor.js:277`).
+- vitest 4.1.11 -- `maxWorkers` defaults to `availableParallelism - 1` (`resolveMaxWorkers` in `dist/chunks/cli-api.*.js`), so a 2-CPU runner runs one fork; `isolate`, `maxWorkers`, `execArgv` and reporter objects with `onTestModuleStart` are config options.
+- Measured at plan (macOS, Node 26.8.1, `maxWorkers: 2`): non-isolated, each fork's RSS grew 250 MB to 2.8-2.9 GB over about 146 files (171 s); with `--isolate`, the largest fork peaked at 511 MB (230 s), 293/293 green. One fork carrying all files grows about twice as far (inference), consistent with the orchestrator's 2-CPU heap OOM at file 90.
+- `ui/tools/ci.test.mjs:106-111` -- `DECLARED_GATES` holds `'npm test'`; `:230` holds it equal to the workflow's `run:` multiset; `:398` refuses `|| true` and `set +e`; `:2886-2890` (DW-2501) indexes `'npm test'`; `:3279` `jobSteps` parses each step's `run:` and `if:`.
+- `ui/tools/angular-json.test.mjs:119-150` -- DW-93 pins the test target and the `test` script.
+- `ui/tools/shell-scripts.test.mjs` -- every `scripts/*.sh` declares and parses under its shell (and dash); executing pins run scripts with `stub-bin.mjs` `writeStub`/`stubEnv`.
+
+Batch 2 (causes established):
+
+- `ui/browser/web-applications.browser-spec.mjs:214,227` -- AC1's last `filterToSubset(... 'myapp' ...)` then `context.close()`; cause (run 43445087881, `list-spec.mjs:138`): the late keystroke view write lands after AC5's reset clears `view`. `ui/browser/preferences-reset.mjs:66` `rememberedShellMember` is the sibling; `column-widths.browser-spec.mjs:194-195` reads `views[]` from `GET /api/ocupilot/account/preferences`.
+- `scripts/ci-throwaway.sh:998-999` -- two `$(date +%s)` reads straddling a second cause DW-2565 (run 43645120786, `ci.test.mjs:2841`). `ui/tools/ci.test.mjs:2725` `runThrowawayUp` (real 2 s stub sleep); the test at `:2834`.
+- `src/OcuPilot/Test/SslSecret.cls:100` -- wrong password `..Sentinel _ "Wrong"`; `src/OcuPilot/Test/X509Material.cls:168` `Run(dir, args...)` runs `openssl`; `src/OcuPilot/Port/AdminPort.cls:3863` `PROPERTYFAULTS` maps `Security.SSLConfig:732:@PrivateKeyPassword`. `irissys/%SYS/X509Credentials.cls:329-333` raises 732 only on `bad decrypt` or `pkcs12 cipherfinal error` (inference for `Security.SSLConfigs`).
+
+Batch 3 (diagnosis and readiness waits):
+
+- `ui/browser/panel-spec.mjs:82` `gotoNamingInflight`, `:101` shared `signedInAt`, used by stream-reply, agent-code-save, agent-picker, screen-permissions-agent and config-settings. Runs 43507916359 and 43543858957: after one turn never ends, each later `goto` times out with only the document in flight while Node fetches answer 200.
+- `ui/browser/context-chip.browser-spec.mjs:302` -- a local `signedInAt` with a bare `page.goto`; test 7 at `:502`.
+- `ui/browser/analytics-mdx.browser-spec.mjs:109` `writeStatement`, `:122` `pressRun` (clicks with no readiness), `:161` `answeredWith` (names the page state), `:552` AC7. `src/app/areas/analytics/mdx-query.page.ts:245-248` `blocked` (busy or empty statement) drives Run's `aria-disabled` (`:98`). DW-2714 (run 44143834574) and the DW-2522 sighting both read busy false and the idle prompt "Write one MDX statement, then Run.": Run was pressed and never started.
+- `ui/browser/list-spec.mjs:56-66` -- `clearFilter`'s wait throws Puppeteer's bare timeout; users AC2 (`users.browser-spec.mjs:211`, run 44178940947) failed there on its second `filterToSubset`.
+- `src/OcuPilot/Test/InteropItemRun.cls:102-126` -- `StartProbe` then `WaitJobs(1)`, ten seconds, whose error names only the count.
+
+Batch 4 (bounded slices):
+
+- `ui/tools/browser-settle.test.mjs:250,300` -- `SETTLE_BODIES` and the `declared >= 30` floor; 36 files declare `transitionsSettled`.
+- `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs:313` -- literal 10; derive from `DATA_BROWSER_SHORTCUTS` (`ui/src/app/core/data-browser-model.ts:855`, imported as `rail.browser-spec.mjs:30` imports core TS).
+- `src/OcuPilot/Test/WireSecurityRead.cls:782,815,1239` -- literal field counts; derive through `DeclarationJson` as `Dashboard.cls:99` does.
 
 ## Tasks & Acceptance
 
-**Execution (three batches, each verifiable and committable on its own):**
+**Execution (four batches in order; each is verifiable, committable and pushable alone; Batch 1 first):**
 
-Task 0 (implement stage, on `ocupilot-ci`, before Batch 1's DW-2553 task; record the result under Design Notes). Loop `X509Material.Run(dir,"pkey","-in",dir_"ssl-key.pem","-passin","pass:"_candidate,"-noout")` over `Sentinel_"Wrong"_n` until one candidate's stderr lacks `bad decrypt` (bound the loop at 3000). PUT that candidate to `/ssl/<probe>` and record the HTTP status, the vendor's status code and its text. Branch: **(a)** the vendor answers a code it uses only for a failed key decryption: map it in `PROPERTYFAULTS`; **(b)** the code is shared with another fault (a key and certificate mismatch): no mapping, and add a `deferred:` item naming the measured gap; **(c)** the vendor accepts it: add a `deferred:` item. The plan stage ran nothing here: `ocupilot-ci` was in use by another stage.
+**Scope of the current pass: Batch 4 only** (Batches 1 to 3 are built, reviewed and pushed). Do the Batch 4 tasks (the DW-2202 derived counts, the DW-2476 twelve converted specs and the ratchet), and run the Batch 4 lines of Verification (the `WireSecurityRead` class, the data-browser-tabs spec, the twelve specs in two calls of six, `ci.test.mjs`/`panel-spec.test.mjs`/`browser-settle.test.mjs`), the "Every batch" lines and the Batch 4 mutations. Every ObjectScript or browser run goes to `ocupilot-ci` only (reload the worktree source first with the `reload.sh` line under Verification; rebuild and redeploy the bundle before a browser spec); the `ocupilot-slot-a` profile is read-only. Edit files only with the Edit and Write tools, never through python, sed, perl or a heredoc in Bash; one step per Bash call, each bounded with `timeout 600`. This is the last batch: the pass finalizes at `status: done`, and its `## Auto Run Result` says all four batches are done.
 
-Batch 1, causes established:
+Batch 1 -- the node 22 client-suite hang (DW-2721, DW-2567):
 
-- `ui/browser/preferences-reset.mjs` -- add an exported wait that polls the preferences read until the `views` entry for a route holds an expected `filter`, failing with the stored value it last read -- the system's own record of the write (DW-2534).
-- `ui/browser/web-applications.browser-spec.mjs` -- before AC1's `context.close()`, await that wait for `web-applications/list` and `myapp` (DW-2534).
-- `scripts/ci-throwaway.sh` -- **ask the orchestrator first** (Epic 24 changed this file, and this replaces two lines). Read the clock once per attempt (`BIND_NOW=$(date +%s)`) and derive the deadline and the remainder from it (DW-2565).
-- `ui/tools/ci.test.mjs` -- give `runThrowawayUp` a stepped stub `date` on `PATH` (a counter file, plus one per read; the first `up` advances it by `firstUpSeconds` instead of sleeping); use it in the `:2834` test; correct the `:2733` comment (DW-2565).
-- `src/OcuPilot/Test/X509Material.cls` -- add a class method returning a wrong password the image's `openssl pkey` reports as `bad decrypt`, and one returning a wrong password it does not (bounded search) (DW-2553).
-- `src/OcuPilot/Test/SslSecret.cls` -- the existing test uses the `bad decrypt` helper. Branch (a) only: add one test saving the other kind and asserting 422 `SSL.PRIVATEKEYPASSWORD.WRONG` on `PrivateKeyPassword` (DW-2553).
+- `ui/vitest-base.config.mjs` (new) -- plain default export (no import): `test.isolate: true` (the fix: no fork carries the module graph of earlier files), `test.maxWorkers: 2`, `test.execArgv: ['--max-old-space-size=1536']` (three times the measured isolated peak), and `test.reporters: ['default', <object reporter>]` whose `onTestModuleStart` prints `vitest start <file relative to ui/>` -- so the file in flight at a cut is named.
+- `ui/angular.json` -- `test.options.runnerConfig: "vitest-base.config.mjs"`.
+- `ui/tools/angular-json.test.mjs` -- extend the DW-93 test: `runnerConfig` names that file; importing it yields `isolate === true`, a numeric `maxWorkers` of 1 or 2, one `--max-old-space-size=<n>` in `execArgv` with 1024 <= n <= 2048, and a reporter object with `onTestModuleStart`.
+- `scripts/ci-resource-sample.sh` (new, `#!/bin/sh`) -- `-- <cmd...>`: runs the command, and every 15 s (`--interval <s>` overrides) prints a UTC stamp, `free -m`'s Mem line, `/proc/loadavg` and the three largest node processes by RSS (`ps`), each reading `unavailable` where the platform lacks it; on exit or a signal it kills the sampler (`$!` captured, `trap`) and exits with the command's status. `--report`: prints the kernel's OOM lines (`sudo -n dmesg`, falling back to `dmesg`), or `no OOM lines`, or `kernel log unavailable`, and exits 0. No `|| true`, no `set +e`.
+- `.github/workflows/ci.yml` -- `client suite` runs `sh ../scripts/ci-resource-sample.sh -- npm test` with step `timeout-minutes: 12`; a next step `client suite resources`, `if: failure() || cancelled()`, runs `sh scripts/ci-resource-sample.sh --report` from the repository root.
+- `ui/tools/ci.test.mjs` -- `DECLARED_GATES` and the DW-2501 index follow the two `run:` lines; a new test asserts the client suite step's `timeout-minutes` is below the gates job's, its `run:` goes through the sampler, and the step after it is the `--report` step with an `if:` naming both `failure()` and `cancelled()`.
+- `ui/tools/shell-scripts.test.mjs` -- executing pins with stub `free`, `ps` and `dmesg`: `--interval 1 -- sh -c 'sleep 2; exit 3'` exits 3 with at least one sample line and leaves no sampler process (a unique marker read through `ps`); `--report` prints the stub's OOM line, and `no OOM lines` for an empty log.
+
+Batch 2 -- causes established (DW-2534, DW-2565, DW-2553). Task 0 (implement, on `ocupilot-ci`, before the DW-2553 tasks; result under Design Notes): loop `X509Material.Run(dir,"pkey","-in",dir_"ssl-key.pem","-passin","pass:"_candidate,"-noout")` over `Sentinel_"Wrong"_n` (n <= 3000) until one candidate's stderr lacks `bad decrypt`; PUT it to `/ssl/<probe>` and record the HTTP status, vendor code and text. Branch **(a)** a code used only for failed key decryption: map it; **(b)** a code shared with another fault: no mapping, add a `deferred:` item naming the gap; **(c)** accepted: add a `deferred:` item.
+
+- `ui/browser/preferences-reset.mjs` -- an exported wait that polls the preferences read until the `views` entry for a route holds an expected `filter`, failing with the stored value last read (DW-2534).
+- `ui/browser/web-applications.browser-spec.mjs` -- before AC1's `context.close()`, await it for `web-applications/list` and `myapp` (DW-2534).
+- `scripts/ci-throwaway.sh` -- **only if an orchestrator ruling is recorded under Design Notes** (Epic 24 holds an uncommitted edit to this file and the change replaces lines): read the clock once per attempt and derive the deadline and the remainder from it (DW-2565).
+- `ui/tools/ci.test.mjs` -- with that task only: `runThrowawayUp` gets a stepped stub `date` on `PATH` (counter file, plus one per read; the first `up` advances it by `firstUpSeconds` instead of sleeping), used by the `:2834` test (DW-2565).
+- `src/OcuPilot/Test/X509Material.cls` -- class methods returning a wrong password the image's `openssl pkey` reports as `bad decrypt`, and one it does not (bounded search) (DW-2553).
+- `src/OcuPilot/Test/SslSecret.cls` -- the existing test uses the `bad decrypt` helper; branch (a) only, one test saving the other kind and asserting 422 `SSL.PRIVATEKEYPASSWORD.WRONG` on `PrivateKeyPassword` (DW-2553).
 - `src/OcuPilot/Port/AdminPort.cls` -- branch (a) only: one `PROPERTYFAULTS` entry for the measured code (DW-2553).
 
-Batch 2, diagnosis steps and missing readiness waits:
+Batch 3 -- diagnosis and readiness waits:
 
-- `ui/browser/panel-spec.mjs` -- `gotoNamingInflight` takes an optional probe; on a navigation timeout it fetches the same URL from Node over a fresh connection (bounded) and appends `node fetch: <status> in <ms> ms` or `node fetch failed: <reason>`; the shared `signedInAt` passes it. A probe failure never replaces the original error (DW-2544, DW-2549, DW-2566).
+- `ui/browser/panel-spec.mjs` -- `gotoNamingInflight` takes an optional probe; on a navigation timeout it fetches the same URL from Node over a fresh connection (bounded) and appends `node fetch: <status> in <ms> ms` or `node fetch failed: <reason>`; the shared `signedInAt` passes it; a probe failure never replaces the original error (DW-2544, DW-2549, DW-2566, DW-2648, DW-2649, DW-2685).
 - `ui/tools/panel-spec.test.mjs` -- pin the appended line for an answering, a failing and an absent probe.
-- `ui/browser/context-chip.browser-spec.mjs` -- replace the local `signedInAt` with the shared one or its `trackInflightRequests` and `gotoNamingInflight` pair (Rule 2), and add `waitForSlotFree` before test 7's first Send (DW-2566).
-- `ui/browser/analytics-mdx.browser-spec.mjs` -- AC7 waits for `#ocu-namespace-switch-value` to read `ns`, awaits the start POST's response, asserts it carried `ns` and answered 4xx, and only then waits for the banner, whose timeout text names the POST's presence, `ns` and status (DW-2548).
-- `scripts/ci-resource-sample.sh` (new) -- runs a command under a sampler printing `free -m` and `/proc/loadavg` every 15 s, kills the sampler on exit (capture `$!`, `trap`), and exits with the command's status; a `--report` mode prints kernel OOM lines. No `|| true` (DW-2567).
-- `.github/workflows/ci.yml` -- gates `client suite` runs `npm test` through the sampler with a step `timeout-minutes` below the job's 20; a following step with `if: failure() || cancelled()` runs `--report` (DW-2567).
-- `ui/tools/ci.test.mjs` -- `DECLARED_GATES` and any step pin follow the new `run:` lines (DW-2567).
+- `ui/browser/context-chip.browser-spec.mjs` -- replace the local `signedInAt` with the shared one or its `trackInflightRequests`/`gotoNamingInflight` pair, and `waitForSlotFree` before test 7's first Send (DW-2566).
+- `ui/browser/analytics-mdx.browser-spec.mjs` -- `pressRun` first waits for Run's `aria-disabled` to read `false` (the store holds the statement) and `#ocu-namespace-switch-value` to read the page's namespace, failing with the textarea's value and `aria-disabled` (DW-2714); AC7 then awaits the start POST `/api/ocupilot/analytics/mdx/background`, asserts it carried `ns` and answered 4xx, and only then waits for the banner, whose timeout names the POST's presence, `ns` and status (DW-2548).
+- `ui/browser/list-spec.mjs` -- `clearFilter`'s timeout re-reads and names the filter field's value, the grid's `aria-rowcount` and the expected total (DW-2720).
+- `src/OcuPilot/Test/InteropItemRun.cls` -- `WaitJobs`'s failing status also names the seconds waited, the production's state and `Facts()` (DW-2713).
 
-Batch 3, bounded slices:
+Batch 4 -- bounded slices (DW-2202, DW-2476):
 
 - `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs:313` and `src/OcuPilot/Test/WireSecurityRead.cls:782,815,1239` -- derive the four counts (DW-2202).
-- The twelve specs `license-key`, `system-explorer-editor`, `ecp-application-servers`, `system-explorer-transfer`, `journal-settings`, `encryption-startup`, `ecp-settings`, `screen-permissions`, `encryption-keys`, `system-explorer-docdb`, `license-servers`, `oauth-registered-client-editor` (all `ui/browser/<name>.browser-spec.mjs`) -- delete the local `transitionsSettled`, import panel-spec's, and call it as `transitionsSettled(page, config.navigationTimeoutMs)` (DW-2476).
-- `ui/tools/browser-settle.test.mjs` -- replace the `>= 30` floor with: the set of files declaring their own `transitionsSettled` equals a `RESIDUAL_COPIES` list of the 23 not converted (a ratchet: converting one or adding one goes red; the doc comment says the list only shrinks and is deleted with the last copy), and every caller that declares none imports it from `./panel-spec.mjs`. Keep the hollow-body check (DW-2476).
+- The twelve specs `license-key`, `system-explorer-editor`, `ecp-application-servers`, `system-explorer-transfer`, `journal-settings`, `encryption-startup`, `ecp-settings`, `screen-permissions`, `encryption-keys`, `system-explorer-docdb`, `license-servers`, `oauth-registered-client-editor` (`ui/browser/<name>.browser-spec.mjs`) -- delete the local `transitionsSettled`, import panel-spec's, call it as `transitionsSettled(page, config.navigationTimeoutMs)` (DW-2476).
+- `ui/tools/browser-settle.test.mjs` -- replace the `>= 30` floor with a ratchet: the files declaring their own `transitionsSettled` equal a `RESIDUAL_COPIES` list of the 23 not converted (the doc comment says it only shrinks and goes with the last copy), and every caller declaring none imports it from `./panel-spec.mjs`; keep the hollow-body check (DW-2476).
 
 **Acceptance Criteria:**
 
+- Given the gates job on any Node band, when the client suite runs, then its component half runs isolated forks, at most two at once, each with a heap cap, and its log names each test file as it starts (DW-2721).
+- Given a client suite that hangs, when 12 minutes pass, then the step fails with its log kept, holding 15-second memory, load and process samples, and the next step prints the kernel's OOM lines or says there are none (DW-2721, DW-2567).
+- Given a fork that outgrows its cap, when the suite runs, then the run fails non-zero naming the out-of-memory fork and the file it had started, and does not hang (DW-2721).
 - Given AC1 left a filter write in flight, when AC5 starts, then it reads the unfiltered list, because AC1 returned only once the instance held its last write (DW-2534).
-- Given the bind-budget test under a clock that advances one second per read, when the first attempt fails, then the script retries once, with no real sleep (DW-2565).
-- Given `SslSecret`'s wrong password, when the test runs, then it is always one OpenSSL reports as `bad decrypt`; and on Task 0's branch (a), a wrong password of the other kind is also refused on its field (DW-2553).
-- Given a page load that times out, when the error is thrown, then it names the in-flight requests and the result of a fresh Node fetch of the same URL (DW-2544, DW-2549, DW-2566).
-- Given AC7 (QA) of analytics-mdx, when Run is pressed, then the namespace was already resolved, and a missing banner reports what the start POST did (DW-2548).
-- Given the gates client suite, when it fails or is cut off, then its log holds memory and load samples and the kernel's OOM lines (DW-2567).
-- Given the four derived counts and the twelve converted specs, when a member is added to a roster or a spec declares a new copy, then no literal needs editing and the ratchet test reddens (DW-2202, DW-2476).
+- Given the bind-budget test under a clock that advances one second per read, when the first attempt fails, then the script retries once, with no real sleep (DW-2565, if ruled).
+- Given `SslSecret`'s wrong password, when the test runs, then it is always one OpenSSL reports as `bad decrypt`; on Task 0's branch (a), a wrong password of the other kind is also refused on its field (DW-2553).
+- Given a page load that times out, when the error is thrown, then it names the in-flight requests and a fresh Node fetch's result for the same URL (the page-load entries).
+- Given an MDX test, when Run is pressed, then the statement was already in the screen's store and the namespace resolved; a run that never starts or a missing banner names what the page and the start POST did (DW-2714, DW-2548).
+- Given `clearFilter` or `WaitJobs` times out, when the error is raised, then it names the state it last read (DW-2720, DW-2713).
+- Given the four derived counts and the twelve converted specs, when a roster gains a member or a spec declares a new copy, then no literal needs editing and the ratchet reddens (DW-2202, DW-2476).
+
+### Review Findings
+
+Code review of Batch 1 (`c7d487258` against `71dbd2882`), 2026-11-18. Four layers, 29 raw findings, 11 entries after grouping.
+
+- [x] [Review][Patch] (med) The process sample dropped `ng test`, which renames itself (`@angular/cli/bin/ng.js:28`), and admitted any program path holding "node" (esbuild under `node_modules`); it now keeps programs named node, ng, npm or npx [scripts/ci-resource-sample.sh:71]
+- [x] [Review][Patch] (low) `--interval` with no value looped forever under bash, and `00` busy-looped; both now exit 2 [scripts/ci-resource-sample.sh:56,127]
+- [x] [Review][Patch] (low) Samples now carry the Swap line and the online CPU count, so a swap stall and the runner's size show in the log [scripts/ci-resource-sample.sh:58]
+- [x] [Review][Patch] (low) The config comment and a test message asserted a 2-CPU CI runner; the public repo's hosted runner is 4 vCPU per GitHub's documentation (inference), so both now state only what the settings do [ui/vitest-base.config.mjs:3, ui/tools/angular-json.test.mjs:144]
+- [x] [Review][Patch] (low) The runner-config pin missed the builder's overrides: a target `isolate` or `reporters`, a script flag, and dropping `'default'` all stayed green; now pinned [ui/tools/angular-json.test.mjs:146]
+- [x] [Review][Patch] (low) The `sudo -n dmesg` branch, the one CI takes, was never exercised; the stub `sudo` can now succeed [ui/tools/shell-scripts.test.mjs:297]
+- [x] [Review][Patch] (low) "Three largest, largest first" was never observed; the stub `ps` lists six processes in mixed order [ui/tools/shell-scripts.test.mjs:301]
+- [x] [Review][Patch] (low) The report step's working directory was unpinned; `working-directory: ui` would break its path with the suite green [ui/tools/ci.test.mjs:2915]
+- [x] [Review][Patch] (low) The script was added as mode 100644 beside twelve 100755 scripts [scripts/ci-resource-sample.sh]
+- [x] [Review][Patch] (low) `docs/DEVELOPMENT.md`'s CI table still listed a bare `npm test` for the gates job [docs/DEVELOPMENT.md:464]
+- [x] [Review][Defer] (low) A step timeout signals only the step's `bash`, so the script never sees it and its sampler and the hung suite run on until the job's orphan cleanup [scripts/ci-resource-sample.sh] — deferred: DW-2733 `wontfix-accepted`; the step still fails with its log and the report step runs (actions/runner `ProcessInvoker.cs`)
+
+Rejected:
+
+- (low) `--report -- <cmd>` skips the command: no caller passes both; the fix is a new guard.
+- (low) The start reporter's `printed` set never resets in watch mode: the line serves CI, where watch is off; the fix is a new hook.
+- (low) A deferred INT exits 143 and drops the command's status: nothing reads the difference.
+- (false) `jobSteps` reads single-line `run:` only: a reformat makes the new test fail loudly, not pass.
+- (low) The shebang-shell test skips `../scripts/` paths: `DECLARED_GATES` pins the exact invocation.
+
+Code review of Batch 2 (`6ccb71f23` against `0432b4561`), 2026-11-18. Four layers, 18 raw findings, 12 entries after grouping.
+
+- [x] [Review][Patch] (low) The wrong-password search classified a candidate by an `openssl.err` an earlier run left when a launch wrote none, and a search that found nothing hid the cause; the file is now removed before each run and the setup error names the last openssl error [src/OcuPilot/Test/X509Material.cls:201, src/OcuPilot/Test/SslSecret.cls:61]
+- [x] [Review][Patch] (low) `runThrowawayUp`'s comment said the budget clock always stays real [ui/tools/ci.test.mjs:2736]
+- [x] [Review][Defer] (low) A list spec test that ends right after typing a filter can leave its view write past the next test's reset; only web-applications AC1 waits [ui/browser/web-applications.browser-spec.mjs:238] — deferred: DW-2740 `wontfix-accepted`; one sighting (DW-2534), and AC6 after AC5 asserts no count
+
+Rejected:
+
+- (false) `X509Wire`'s fixed wrong password has the same padding hazard: `X509Rules.KeyMatches` names a `DECODER` error on an encrypted key as the password, pinned by `X509Import`'s decodes-to-no-key test.
+- (low) "the same on every run for the same key" adds nothing: it is accurate, and the property is that the kind of refusal is fixed.
+- (low) A `$ZF(-100)` throw in the search escapes `OnBeforeAllTests`: `%UnitTest` reports it as the class's error; the fix is a new guard.
+- (low) A failed search leaves the key directory behind: the early quits above it already do, on a throwaway only.
+- (low) `waitForRememberedView` can overrun on a hung fetch, throws a bare `TypeError` on a body with no `views`, and stops at once on a non-200 naming the body: none is reachable from the product's read; the fixes are new guards.
+- (low) A red AC1 before its wait cascades into AC5: the run is already red.
+- (low) Deleting the wait call reddens nothing deterministically: the race is removed by construction (Residual); a reproduction needs a server-side delay seam, since a held browser request is aborted at `context.close()` (inference).
+- (low) `UndecodablePassword` has no executed host outside the mutation: the task requires it, and this pass re-ran the mutation.
+- (low) The Task 0 key count reads two ways in this spec: the fix is a spec edit.
+
+Code review of Batch 3 (`a23ce11fd` against `ac041a779`), 2026-11-18. Four layers, 22 raw findings, 18 entries after grouping.
+
+- [x] [Review][Patch] (med) `pressRun`'s namespace clause read the switch, which shows the address's namespace before the shell resolves it (`namespace-switch.ts:150`), so a start could still go without `ns`; it now also waits for a finished API call that carried the namespace, which no call does before resolution (`scope.ts:214`, `api.ts:442`) [ui/browser/analytics-mdx.browser-spec.mjs:138]
+- [x] [Review][Patch] (low) AC7's 4xx assertion had no observed mutation; observed (Verification) [ui/browser/analytics-mdx.browser-spec.mjs:651]
+- [x] [Review][Patch] (low) `fetchFromNode` left the response open after reading the status, and nothing showed it acting on its abort; it now destroys the response, pinned with a stalled body and a silent server [ui/browser/panel-spec.mjs:86, ui/tools/panel-spec.test.mjs]
+- [x] [Review][Patch] (low) The probe's 10-second default was unpinned; a mock-timer test now pins it [ui/tools/panel-spec.test.mjs]
+- [x] [Review][Patch] (low) `pressRun`'s comment said Run enabled means the store holds the statement just written; it means a non-empty statement and no busy run [ui/browser/analytics-mdx.browser-spec.mjs:130]
+- [x] [Review][Patch] (low) A start POST that never answered failed without the page's state; `firstStartAnswered` now names it [ui/browser/analytics-mdx.browser-spec.mjs:200]
+- [x] [Review][Patch] (low) `WaitJobs` printed a failed read (-1) as a job count; it now says the tab could not be read [src/OcuPilot/Test/InteropItemRun.cls:126]
+- [x] [Review][Patch] (low) Three more context-chip first Sends follow a test whose turn just ended (DW-2566's mechanism) and did not wait for the slot; they now do [ui/browser/context-chip.browser-spec.mjs:473,661,690]
+- [x] [Review][Patch] (low) `browser-reset.test.mjs` named a demonstration on context-chip's reset import, which this batch removed, and two stale counts; re-observed on `about-help-links` and corrected [ui/tools/browser-reset.test.mjs:26,69]
+
+Rejected:
+
+- (low) No `requestfailed` listener in `watchStarts`: a failed POST still fails AC7, naming "no answer yet" and the page state; the fix is a new branch.
+- (low) Only AC7 records the start POSTs: the task places that record in AC7; DW-2714's cause is the readiness wait, and `answeredWith` names the page state.
+- (low) `clearFilter` wraps every error in a new one: no caller tells the classes apart, the underlying message is kept, and `answeredWith` does the same.
+- (low) `error-log` calls `gotoNamingInflight` without the probe: the task scopes the probe to the shared `signedInAt`.
+- (low) No mutation reaches the no-answer and missing-banner messages: one mutation per AC is the bar, and this AC has four.
+- (low) The `ECONNREFUSED` check reuses a port it just freed: not reachable in practice.
+- (low) `ci-flake-waits.test.mjs` pins source positions: the sibling pin pattern; behavior is shown by the held-lock mutation.
+- (low) `$ZHorolog` wraps at midnight in `WaitJobs`' message: message-only, theoretical.
+- (false) A lowercase `ns` would never match the switch: every `pageUrl` caller passes an uppercase literal.
+
+Code review of Batch 4 (`a9ae71724` against `20229d63d`), 2026-11-18. Four layers, 28 raw findings, 4 entries after grouping.
+
+- [x] [Review][Patch] (low) The System usage test's doc comment still named eighteen fields after the count became derived [src/OcuPilot/Test/WireSecurityRead.cls:762]
+- [x] [Review][Patch] (low) The process-list row assertion said seven declared fields against an eight-name list [src/OcuPilot/Test/WireSecurityRead.cls:667]
+- [x] [Review][Patch] (low) The planned DW-2202 mutation (the read drops a declared field) cannot redden a derived count; reworded to the wire-side mutation that was observed [spec Verification]
+- [x] [Review][Defer] (low) 83 specs toggle the dark theme by a hard-coded class with a local `frames` beside panel-spec's `setDarkTheme` [ui/browser] — deferred: DW-2741 `wontfix-accepted`; pre-existing, outside DW-2476's `transitionsSettled` scope
+
+Rejected:
+
+- (false) A dropped declared field shrinks both sides unnoticed: the rosters' own literal pins (`SystemUsage.cls:94`, `Descriptor.cls:933,2245`, `data-browser-model.test.mjs:465`) redden.
+- (false) The residual specs' one-argument calls reach the shared helper without a timeout: they call their own copies.
+- (low) "Only shrinks" is a comment: a new copy reddens with a message naming the import; listing it is a visible edit.
+- (low) The `declared > 23` floor admits losing two helpers: the census pins all 23 copies exactly through the same parser.
+- (low) The derived checks compare sizes, not names: the replaced literals were sizes; the task derives the counts.
+- (low) The expectation ignores `context.secretFields`: all three are empty, and the replaced literal behaved the same.
+- (low) Three five-line derivations repeat in one class: inline `DeclarationJson` is the class's pattern; a helper adds surface.
+- (low) Aliased, namespace or string-literal mentions of the helper: each a false red or a loud run-time error.
+- (low) A missing `read.fields` or failed `DeclarationJson` ends the test early: it is already red.
+- (low) No observed mutation for the Locks and audit-list derivations: one mutation per AC is the bar.
+- (low) Spec wording (the Auto Run Result's residual label, the re-own notes' owner, the 13-spec run): spec edits, reported to the runner.
 
 ## Spec Change Log
 
+- 2026-11-18 (runner): re-plan for the orchestrator's priority ruling (DW-2721 first) and seven newly routed flakes; status reset to draft.
+
 ## Review Triage Log
+
+### 2026-11-18 — Review pass (Batch 1)
+
+- verdicts: 12 findings — high 0, medium 0, low 10, false 1, maybe-false 1
+- findings:
+  - `[low]` `[patch]` sampler header promised signal handling the script defers until the command returns — verified by the reviewer under sh and bash; the header now states what the trap does (a group signal ends command and sampler; a signal to the script alone is acted on after the command returns). No test added: the deferral is not a promised behavior.
+  - `[low]` `[reject]` reporter and `maxWorkers` reaching the real builder are pinned only on the config file, plus the manual `vitest start` lines and the cap mutation — an include-limited `ng test` inside `test:tools` is a heavy fix for a regression only a toolchain bump could cause.
+  - `[low]` `[reject]` no mutation for the 15-second clause or the `out of memory` and `oom_reaper` patterns — one demonstrated mutation per AC is the bar and each Batch 1 AC has one.
+  - `[low]` `[reject]` AC3 (fork out of heap fails non-zero naming its file) rests on the observed macOS mutation — it cannot be reproduced on 2-CPU Linux here; CI's node 22.22.3 leg is the evidence the spec names.
+  - `[low]` `[patch]` the `ci.test.mjs` message said a timed-out step becomes canceled — a step timeout fails the step; the message now says the cancel condition covers a superseded run or the job's own bound.
+  - `[low]` `[reject]` the `if:` pin is two loose regexes, so `failure() && !cancelled()` would pass — nobody is expected to write that; a stricter match adds a parser for no named harm.
+  - `[false]` `[reject]` module-level `printed` Set makes the reporter test order-dependent — the test imports the module once and prints two distinct files; the Set only dedupes within one run.
+  - `[maybe-false]` `[reject]` 12-minute bound against the isolated 2-worker run time on a 2-CPU runner — the green node 22 run took 4 m 33 s and isolation added 35% locally (about 6 minutes, inference); the node 22.22.3 gates leg judges it. Would be low if wrong: a red step with its log.
+  - `[low]` `[reject]` intent audit: the expectation lives on the hosted node 22.22.3 runner and the local runs are macOS and Node 26 — known; the spec names that leg as DW-2721's evidence.
+  - `[low]` `[reject]` intent audit: the cause is measured on macOS and the 2-CPU extrapolation is an inference — the spec labels it so; no code claims otherwise.
+  - `[low]` `[reject]` intent audit: the sampler and report run against stubs, not the runner's real `/proc` and `dmesg` — the three outcomes are each a reported sentence; the CI log shows the real read.
+  - `[low]` `[reject]` intent audit: the log names the file by its start line, and with two workers the last line may not be the hung file — the default reporter prints each file as it finishes, so the unfinished files are the difference.
+
+### 2026-11-18 — Review pass (Batch 2)
+
+- verdicts: 11 findings — high 0, medium 0, low 11, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` `waitForRememberedView`'s retry, unparsable-value and timeout branches have no stubbed-fetch test in `preferences-reset.test.mjs` — the pinning test is web-applications AC1 and AC5 with their recorded mutations; four more unit tests for a browser-support helper whose only caller is AC1 is more than a direct correction.
+  - `[low]` `[reject]` `UndecodablePassword` has no caller and no test — Task `X509Material` in the spec requires both helpers, Task 0 and the recorded mutation use it, and deleting it contradicts the task text.
+  - `[low]` `[patch]` `UndecodablePassword`'s doc comment gave "about one in 256" against a measured 13 in 3000 — the figure is removed; the comment states only what the method returns.
+  - `[low]` `[reject]` the candidate sequence is pinned in the doc comments of the password helpers — the sequence is the contract that makes the answer the same for one key on every run.
+  - `[low]` `[reject]` intent audit: DW-2534 is fixed in the spec, not in the list screen's unawaited view write — the intent's matrix row names the spec's wait on the stored view; a client change is outside the stated approach.
+  - `[low]` `[reject]` intent audit: the wait checks only the last filter value, not earlier keystroke writes — the view writes of one screen reach the instance in order, so the last value held means the earlier ones landed (inference); AC5's reset follows.
+  - `[low]` `[reject]` intent audit: the stepped clock proves one read per attempt, not a real second boundary — the spec records the race as removed by construction.
+  - `[low]` `[reject]` intent audit: the clock lines sit near 995, not 948-955 — the ruling said "near"; the replaced lines are the two `date +%s` reads of the retry block.
+  - `[low]` `[reject]` intent audit: DW-2553 lands on branch (b), so a wrong password with valid padding still answers 500 — Task 0 measured it and the `deferred:` item records it; the spec's branch (b) is that outcome.
+  - `[low]` `[reject]` intent audit: the password is deterministic per key, not across runs — the key is made fresh each run, and the intent asks that the wrong password never be one OpenSSL accepts as other than `bad decrypt`.
+  - `[low]` `[reject]` intent audit: the rate of 13 in 3000 is measured on two keys only — the spec says so under Residual.
+
+### 2026-11-18 — Review pass (Batch 3)
+
+- verdicts: 14 findings — high 0, medium 1, low 13, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the probe's time bound and abort had no test: every probe in the tests settled at once, so removing the bound left all green, and a hung probe would replace the navigation error with a step timeout — the bound became a parameter (`probeTimeoutMs`), a never-answering probe test pins the named failure and the abort; mutation recorded.
+  - `[low]` `[patch]` `agent: false` was pinned by nothing — the `fetchFromNode` test counts connections across two probes; mutation recorded.
+  - `[low]` `[patch]` `pressRun`'s namespace clause had no mutation line — the expected namespace changed to `USERX` turns AC1 red at `pressRun` naming the namespace; line recorded.
+  - `[low]` `[reject]` the new failure messages (`clearFilter`, `WaitJobs`, `pressRun`, AC7's POSTs) rest on one observed mutation each, with no standing fake-page test — each AC asks that the error names the state, one demonstrated mutation per AC is the bar, and a fake-page harness for four helpers is more than a direct correction.
+  - `[low]` `[reject]` `ci-flake-waits.test.mjs` matches source positions, not behavior — it is the sibling pin the story's existing waits already use; the behavior is shown by the held-lock mutation.
+  - `[low]` `[reject]` the `ECONNREFUSED` check reuses a port it just freed — another process taking that port in the same few milliseconds is not a reachable failure.
+  - `[low]` `[reject]` intent audit: only navigations through `gotoNamingInflight` get the probe line, not the roughly 66 specs with their own sign-in — the six named flakes failed in `signedInAt`; the other specs have no sighting.
+  - `[low]` `[reject]` intent audit: the probe is pinned against a fake page and a local server, with no browser run that times out — the spec's Residual says so; a real timeout cannot be produced on demand.
+  - `[low]` `[reject]` intent audit: the probe runs after the timeout and from Node without a session — the matrix row asks whether a fresh fetch answered, not what it did during the stall.
+  - `[low]` `[reject]` intent audit: DW-2566's slot wait is a different surface from the page-load hang and is shown by a held lock — the spec's mutation wording was a slow turn that cannot be reproduced; the Residual line says which was used.
+  - `[low]` `[reject]` intent audit: `pressRun` and AC7's helpers have no `ui/tools` test — they are browser code whose pinning tests are the specs and their recorded mutations.
+  - `[low]` `[reject]` intent audit: `pressRun` takes its namespace from the page address, not an argument — every `analytics-mdx` page URL carries `ns` and the helper waits for no namespace when it does not.
+  - `[low]` `[reject]` intent audit: `clearFilter` and `WaitJobs` change the failure text only — the spec's Batch 3 text asks for exactly that; the waits and their bounds are untouched.
+  - `[low]` `[reject]` intent audit: the front matter reads `in-review` while the scope paragraph says the pass finalizes at `in-progress` — the review step sets the status, and finalize writes `in-progress` as the dispatch instructs.
+
+### 2026-11-18 — Review pass (Batch 4)
+
+- verdicts: 7 findings — high 0, medium 0, low 7, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` the data-browser shortcut assertion compared the rendered count to `DATA_BROWSER_SHORTCUTS.length` with no non-empty floor, so an emptied roster read `0 === 0` — an `assert.ok(length > 0)` now precedes it, matching the `WireSecurityRead` floors; the spec re-ran 4 of 4.
+  - `[low]` `[reject]` a converted spec could drop `transitionsSettled`'s second argument and the census would stay green — an omitted timeout falls back to Puppeteer's own bounded default, no spec does it today, and an arity check is a new parsing branch for a regression nobody is expected to write.
+  - `[low]` `[reject]` verification-gap: the audit list's 24 fields are no longer pinned by a literal anywhere — the spec's task is to derive the count through `DeclarationJson` as `Dashboard.cls:99` does, and the declaration is the one source the wire answer is built from; `SystemUsage` keeps its own 18 in `SystemUsage.cls` and the wire test keeps the answer-equals-declaration pin.
+  - `[low]` `[reject]` intent audit: the derived side of the field counts is the registry the surface is built from, so a field lost in both places stays green — that is the reading the spec's task states (derive, so no literal needs editing when a roster changes); the residual per-principal literals stay ledgered.
+  - `[low]` `[reject]` intent audit: the shortcut spec reads the roster from the TypeScript model through a dynamic import, as `rail.browser-spec.mjs` does for core TS — the pattern is the sibling's, and Node 22.22.3 handling is an inference from that sibling running in CI.
+  - `[low]` `[reject]` intent audit: the import check does not see an aliased import or a re-export — it would report a false red, never a false green, and no spec aliases the helper.
+  - `[low]` `[reject]` intent audit: the twelve conversions are exercised only by the recorded browser runs and the census, with no new test of the helper's timeout argument — the helper's behavior is unchanged from the copies it replaces and `panel-spec.test.mjs` already pins its export.
 
 ## Design Notes
 
-**ADs:** AD-19 (screen stores notify; the answered state is the readiness signal), AD-14, AD-43, AD-7 (the turn polls; a proposal card appears by poll), AD-17 (test classes only on a throwaway), AD-36. Test-only apart from Task 0's branch (a), one fault-map entry. No AD changes.
+**ADs:** none binds the client test runner's pool settings; the spine's Stack rows "Client test runners" and "CI" stay true as written. AD-19 (the screen's own signal is the readiness signal: Run's `aria-disabled`, the stored view), AD-14, AD-43, AD-7 (a turn's slot), AD-17 (test classes only on a throwaway), AD-36. Test-and-CI only apart from Task 0's branch (a). No AD change.
 
-**Consumes:** the shared helpers in `panel-spec.mjs`, `preferences-reset.mjs`, `turnprobe-spec.mjs`, `X509Material`. No consumers: nothing here is a service.
+**Consumes:** the shared helpers in `panel-spec.mjs`, `list-spec.mjs`, `preferences-reset.mjs`, `turnprobe-spec.mjs`, `X509Material`, `stub-bin.mjs`. No consumers: nothing here is a service.
 
-**Rule 2:** the preferences wait extends `preferences-reset.mjs`; the probe extends `gotoNamingInflight`; context-chip drops its `signedInAt` copy; the password helpers extend `X509Material`; the sampler is a new script because no sibling samples resources.
+**Rule 2:** the sampler pins extend `shell-scripts.test.mjs`; the runner-config pins extend `angular-json.test.mjs`'s DW-93 test; the preferences wait extends `preferences-reset.mjs`; the probe extends `gotoNamingInflight`; context-chip drops its `signedInAt` copy; `pressRun` gains the wait for every MDX test rather than a per-test copy; the password helpers extend `X509Material`. The sampler is new: no script samples resources.
+
+**Declined DW-2627:** not a flake; its cause (config-settings left a SQL setting changed) was fixed by 6a5bcf05f, merged with 21.24 at 48e3593a3, and no occurrence follows 2026-11-16T05:07Z. The runner closes it `resolved-by` 21.24's key.
 
 **Ledger closes, written by the runner at adjudication:**
 
-- DW-2534, DW-2565: `resolved-by:21-22-ci-flake-hardening` with the mechanism above.
-- DW-2553: `resolved-by` on branch (a); on (b) or (c), `wontfix-accepted note=reopen_if=SslSecret's deterministic wrong password reddens again`, and the measured gap is harvested from `deferred:`.
-- DW-2544, DW-2549, DW-2566 (one signature; DW-1545 and DW-2512 are earlier sightings): `wontfix-accepted note=reopen_if=a page.goto timeout whose node fetch line shows the instance answering (browser side) or not answering (instance side)`.
-- DW-2548: `wontfix-accepted note=reopen_if=AC7 reddens again; its text names the start POST's ns and status`.
-- DW-2567: `wontfix-accepted note=reopen_if=a gates client suite fails without a preceding runner shutdown line, or the sampler or --report shows memory at the limit`.
-- DW-2202: residual re-owned with `note=residual: WireSecurityRead 19 + WireOAuthRead 5 per-principal roster literals (derive via Wire.ExpectedScreens with held pairs, keep a per-screen containment literal); web-applications-actions:430 unchecked`. Fix-risk high: both sides would read the same gate, so each test must keep its own containment literal.
-- DW-2476: residual re-owned with `note=residual: 23 copies listed in browser-settle.test.mjs RESIDUAL_COPIES, including interop-editors and interop-viewers after Epic 24 merges`.
+- DW-2721, DW-2567: `resolved-by:21-22-ci-flake-hardening` once the Batch 1 head's node 22.22.3 gates leg is green and the cap mutation is recorded; mechanism: per-fork heap growth in non-isolated vitest forks (measured), removed by isolation, bounded by the cap and the step timeout.
+- DW-2534, DW-2565 (if ruled), DW-2714: `resolved-by` with the mechanisms above.
+- DW-2553: `resolved-by` on branch (a); on (b) or (c), `wontfix-accepted note=reopen_if=SslSecret's deterministic wrong password reddens again`.
+- DW-2544, DW-2549, DW-2566, DW-2648, DW-2649, DW-2685 (one page-load signature; DW-1545 and DW-2512 are earlier sightings): `wontfix-accepted note=reopen_if=a page.goto timeout whose node fetch line shows the instance answering or not`.
+- DW-2548, DW-2720, DW-2713: `wontfix-accepted note=reopen_if=<the test> reddens again; its text names the state it read`.
+- DW-2202: residual re-owned `note=residual: WireSecurityRead 19 + WireOAuthRead 5 per-principal roster literals (each test keeps its own containment literal); web-applications-actions:430 unchecked`.
+- DW-2476: residual re-owned `note=residual: 23 copies in browser-settle.test.mjs RESIDUAL_COPIES`.
 
-**Epic 24 contention** (`git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp -- <path>`, 2026-11-16): `scripts/ci-throwaway.sh` has 3 commits (`12f9fd65c`, `87704295e`, `c25e3207b`; ask first). Empty for every other file above: `web-applications`, `context-chip`, `stream-reply`, `agent-code-save`, `analytics-mdx` and `system-explorer-data-browser-tabs` specs, `panel-spec.mjs`, `preferences-reset.mjs`, `turnprobe-spec.mjs`, `tools/panel-spec.test.mjs`, `tools/ci.test.mjs`, `tools/browser-settle.test.mjs`, `.github/workflows/ci.yml`, `SslSecret.cls`, `X509Material.cls`, `AdminPort.cls`, `WireSecurityRead.cls`, and the twelve slice specs. Epic 24 changed `interop-editors` and `interop-viewers`, which stay out. `origin/OCU-1-epic22` no longer exists. No flake entry lives wholly in Epic 24's footprint: agent-code-save's cause is the shared page-load signature, not the agent's tools.
+**Epic 24 contention** (2026-11-18): no Epic 24 commit ahead of feature on any path above; the epic-24 worktree holds an uncommitted edit to `scripts/ci-throwaway.sh`, so the DW-2565 task waits for an orchestrator ruling (it replaces lines). Epic 24's `interop-editors` and `interop-viewers` specs stay out.
+
+**Orchestrator ruling (2026-11-18), DW-2565:** the `scripts/ci-throwaway.sh` task is ruled. Replace exactly the two `$(date +%s)` lines in the bring-up retry block (near lines 948-955 of the file as it stands now) and nothing else in that file; Epic 24 has an unrelated add-only edit pending near line 640.
 
 **Decided in-stage:**
 
-- The tree held 21.24's uncommitted work when this plan started (committed as 37538ee8a during it); the plan wrote only this spec. The committed epic context was reused, as the plan block directs.
-- DW-2476 takes the twelve fastest non-interop copies (about 3 minutes of browser time) under a ratchet, not all 33: it fixes no flake (none of the five flake specs holds a copy).
-- DW-2202 takes the four count literals; the 24 per-principal literals carry high fix-risk.
-- No Chrome net-log: the Node probe alone separates the browser side from the instance side.
+- Batch 1: the start reporter prints on `onTestModuleQueued` as well as `onTestModuleStart`, once per file. Vitest reports a file as started only after its import, so a fork that runs out of memory during the import never named its file; it is reported as queued when the worker begins it (measured: two forks died on files with no start line until this change).
+- Batch 1: `maxWorkers: 2` and the 1536 MB cap hold on macOS; the spec's mutation cap of 512 does not fail there, so the recorded mutation uses 256.
+- The fix is isolation, not the cap: the measurement shows growth per fork, and a cap alone turns a hang into a crash. `maxWorkers: 2` keeps a 2-CPU runner from oversubscribing and leaves a 4-CPU runner one worker short (plan-measured cost: isolation added 35% locally).
+- 12 minutes for the step is over twice the slowest green client suite (4 m 33 s) and leaves the 20-minute job room for its report step.
+- `runnerConfig` goes in `angular.json` so `npx ng test` and `npm test` load the same settings.
+- No Linux container reproduction: the shared-resource rule bars extra instances; the evidence is the local measurement, the cap mutation and CI's node 22 leg.
+- Batch 2, Task 0 (measured on `ocupilot-ci`, OpenSSL 3.0.13): 13 of 3000 wrong passwords against one key were not `bad decrypt` (error "Could not read key ... No supported data to decode"); the vendor answered such a password with error 733, HTTP 500 `INTERNAL`, nothing stored. Branch (b): 733 is shared with the certificate and key mismatch, so no `PROPERTYFAULTS` entry and no second test; the gap is a `deferred:` item.
+- Batch 2: `SslSecret` finds its `bad decrypt` password in `OnBeforeAllTests`, not in the test: the search puts each candidate on an `openssl` command line, and run after the test's audit mark it made the "no audit row holds it" assertion red.
+- Batch 2: `waitForRememberedView` takes the route and filter, so the next spec that ends on a typed filter can use it; only web-applications AC1 does here.
+- The page-load group gains DW-2648, DW-2649 and DW-2685: each failed in `signedInAt` with one request in flight.
+- DW-2714 joins DW-2548 in `pressRun`: the page state shows Run pressed while the statement was not yet in the store.
+- Batch 3: `gotoNamingInflight`'s probe is a function `(url, signal) => status`, bounded at 10 s by the caller; `signedInAt` passes `fetchFromNode`, which uses a connection of its own (`agent: false`). `pressRun` reads the namespace to wait for from the page's `?ns=`. context-chip keeps a one-line `signedInAt` wrapper over the shared one, because it also waits for an enabled composer.
+- DW-2476 takes twelve non-interop copies under a ratchet; DW-2202 takes the four count literals (the 24 per-principal literals carry high fix-risk).
 
 ## Verification
 
-**Shared surfaces:** `browser-settle.test.mjs`'s settle-helper census, `ci.test.mjs`'s `DECLARED_GATES` and step pins, `AdminPort.PROPERTYFAULTS` (branch a only; sweep `src/OcuPilot/Test` for tests that count or list it). The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each; every test it changes joins `(loop)`.
+**Shared surfaces:** `ci.test.mjs`'s `DECLARED_GATES` and gates step pins, `angular-json.test.mjs`'s test target, `shell-scripts.test.mjs`'s `scripts/*.sh` population, `browser-settle.test.mjs`'s settle-helper census, `AdminPort.PROPERTYFAULTS` (branch a). The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each; every test it changes joins `(loop)`.
 *Every test added or changed passes on a fresh environment, in either order.*
 
-**Commands.** One per foreground call, `timeout: 600000`, against `ocupilot-ci` only, never two test calls in one message. Every browser spec run follows `cd ui && npm run build` and `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`.
+**Commands.** One per foreground call, `timeout: 600000`; ObjectScript and browser runs against `ocupilot-ci` only, never two test calls in one message. Every browser run follows `cd ui && npm run build` and `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`.
 
-- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.SslSecret`, then the same for `WireSecurityRead`, and for any class the shared-surface sweep changes -- expected: green.
-- `(loop)` `cd ui && node --test tools/ci.test.mjs tools/panel-spec.test.mjs tools/browser-settle.test.mjs` -- expected: green.
-- `(loop)` `cd ui && node --test --test-concurrency=1 browser/web-applications.browser-spec.mjs browser/analytics-mdx.browser-spec.mjs browser/system-explorer-data-browser-tabs.browser-spec.mjs browser/context-chip.browser-spec.mjs` -- expected: green.
-- `(loop)` `cd ui && node --test --test-concurrency=1 browser/stream-reply.browser-spec.mjs browser/agent-code-save.browser-spec.mjs` -- expected: green.
-- `(loop)` `cd ui && node --test --test-concurrency=1` over the twelve Batch 3 specs -- expected: green.
-- `(loop)` `bash scripts/ci-resource-sample.sh -- true` and `-- false` -- expected: exit 0 and 1, sampler gone afterwards.
-- `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` -- expected: clean.
-- `(once)` `cd ui && npm run test:tools` and `npm run test:components` -- expected: green.
-- `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, Rule 30's fresh check. The full browser suite is left to CI, whose run is also the first evidence for Batch 2's diagnostics.
+Batch 1:
 
-**Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), reverted source reloaded:**
+- `(loop)` `cd ui && node --test tools/ci.test.mjs tools/angular-json.test.mjs tools/shell-scripts.test.mjs` -- green.
+- `(loop)` the component suite in three calls, each about 2 minutes: `cd ui && sh ../scripts/ci-resource-sample.sh -- npx ng test --include 'src/app/areas/os-management/**/*.spec.ts' --include 'src/app/areas/security/**/*.spec.ts'`, then `--include 'src/app/areas/**/*.spec.ts' --exclude 'src/app/areas/os-management/**' --exclude 'src/app/areas/security/**'`, then `--exclude 'src/app/areas/**'` -- green, with `vitest start` and sample lines in the output.
+- `(once)` `sh scripts/ci-resource-sample.sh --report` -- exit 0 and one of its three sentences.
 
-- DW-2534: delete AC5's `resetRememberedState()` call -> AC5 red with CI's message (the mechanism); point AC1's wait at `myap` -> AC1 red naming the stored view. The race itself cannot be forced locally.
+Batches 2-4:
+
+- `(loop)` `sh /private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/b708a79b-b765-42ec-adea-dbc87acf6251/scratchpad/e21u/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- `LOADERRORS=0`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.SslSecret`, then `InteropItemRun`, then `WireSecurityRead`, one call each -- green.
+- `(loop)` `cd ui && node --test tools/ci.test.mjs tools/panel-spec.test.mjs tools/browser-settle.test.mjs` -- green.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/web-applications.browser-spec.mjs browser/analytics-mdx.browser-spec.mjs browser/users.browser-spec.mjs browser/context-chip.browser-spec.mjs` -- green.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/stream-reply.browser-spec.mjs browser/agent-code-save.browser-spec.mjs browser/system-explorer-data-browser-tabs.browser-spec.mjs` -- green.
+- `(loop)` `cd ui && node --test --test-concurrency=1` over the twelve Batch 4 specs, in two calls of six -- green.
+
+Every batch:
+
+- `(loop)` `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` -- clean.
+- `(once)` `cd ui && npm run test:tools` -- green.
+- `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, Rule 30's fresh check. The full browser suite and the node 22.22.3 gates leg are CI's; the Batch 1 head's run is DW-2721's evidence.
+
+**Mutations (Rule 19), one per AC, each applied, observed red, reverted (tree identical by `git status --short` and `git diff --stat`), reverted ObjectScript reloaded:**
+
+- Isolation and cap: set `isolate: false` and the cap to 512 -> the os-management and security call exits non-zero naming the out-of-memory fork, with a `vitest start` line for a file that never finished, inside the call; drop `runnerConfig` from `angular.json` -> `angular-json.test.mjs` red.
+  - mutation (Batch 1, observed): `isolate: false` with the cap at 512 stayed green on macOS (92 files, 2 forks peaked near 380 MB RSS); with the cap at 256 the call exited 1 in 45 s with two `FATAL ERROR ... JavaScript heap out of memory` blocks, two `Worker exited unexpectedly` errors, and `vitest start` lines for `mapping-form.page.spec.ts` and `superserver-actions.spec.ts`, which never finished. Reverted; tree identical.
+  - mutation (Batch 1, observed): delete `runnerConfig` from `angular.json` -> `angular-json.test.mjs` red at "the target names the runner config file"; set `isolate: false` in `vitest-base.config.mjs` -> the same test red. Reverted; tree identical.
+- Step bound: drop the step's `timeout-minutes`, or the `--report` step's `cancelled()` -> `ci.test.mjs` red; the sampler stops propagating the command's status, or stops killing its sampler -> `shell-scripts.test.mjs` red.
+  - mutation (Batch 1, observed): delete the step's `timeout-minutes` -> `ci.test.mjs` red ("carries its own timeout-minutes"); the report step's `if:` narrowed to `failure()` -> red ("after a cancellation"); the script ends `exit 0` -> `shell-scripts.test.mjs` red ("the command's own status"); drop `trap stop_sampler EXIT` and the `stop_sampler` call -> red ("no process carrying the marker survives"); drop `killed process` from the OOM pattern -> the `--report` test red. Each reverted; tree identical.
+  - mutation (Batch 1 review, observed): process filter back to `$3 ~ /node/` -> sampler test red ("three largest Node processes"); `sudo -n dmesg` branch replaced by `false` -> `--report` test red ("read through sudo -n first"); interval check `!= 0` -> refusal test red ("interval 00"); `[ $# -ge 2 ]` guard removed -> red under `/bin/sh` ("not a loop", 10 s bound); `"isolate": false` on the test target -> `angular-json.test.mjs` red; `'default'` dropped from `reporters` -> red; `working-directory: ui` on the report step -> `ci.test.mjs` red. Each reverted; tree identical.
+- DW-2534: delete AC5's `resetRememberedState()` -> AC5 red with CI's message; point AC1's wait at `myap` -> AC1 red naming the stored view.
+  - mutation (Batch 2, observed): AC1's wait pointed at `myap` (3 s bound) -> AC1 red, "the instance never held filter "myap" ... the stored view last read: ... \"filter\":\"myapp\""; the `resetRememberedState()` call removed from `signedInAtList` -> AC5 red, "filtering on "myapp" left 1 of 1 row(s)" (CI's message). Each reverted; four web-applications tests green again.
 - DW-2565: restore the second `date` read -> the stepped-clock test red.
+  - mutation (Batch 2, observed): `BIND_REMAINING` back to `$(date +%s)` -> "the budget runs from the first bind failure" red ("still bound after 1 attempt(s) over a 1 second budget"). Reverted; the six `DW-2123` tests green.
 - DW-2553: the existing test draws from the non-`bad decrypt` helper -> red; branch (a): drop the new `PROPERTYFAULTS` entry -> the new test red.
-- Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs`'s probe line test red.
+  - mutation (Batch 2, observed): `OnBeforeAllTests` drawing from `UndecodablePassword` -> `SslSecret`'s wrong-password test red ("a wrong password is refused on its field"). Reverted and reloaded; the class green (4 of 4). Branch (b): no entry and no second test, so no second mutation. Re-observed after the review patch: red (run 823), reverted and reloaded, green (run 824).
+- Probe: the shared `signedInAt` stops passing the probe -> `panel-spec.test.mjs` red.
+  - mutation (Batch 3, observed): `signedInAt` calls `gotoNamingInflight` without `fetchFromNode` -> the `signedInAt` timeout test red (9 of 10 pass); the probe line dropped from the rethrown message -> the answering-probe, failing-probe and `signedInAt` tests red. Each reverted; ten of ten green.
+  - mutation (Batch 3 review, observed): the probe's `Promise.race` against its bound removed -> the never-answering-probe test red; `agent: false` dropped from `fetchFromNode` -> the connection-count assertion red ("each probe opens a connection of its own"). Each reverted; eleven of eleven green.
+  - mutation (Batch 3 code review, observed): `PROBE_TIMEOUT_MS` raised to 20 000 -> the ten-seconds test red; `response.resume()` in place of `response.destroy()`, or `signal` dropped from `fetchFromNode` -> the connection-closing test red at its 5 s bound. Each reverted; thirteen of thirteen green.
 - DW-2566: drop test 7's `waitForSlotFree` and delay test 6's slot release -> test 7 red.
-- DW-2548: `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
-- DW-2567: the sampler stops propagating the command's status -> the `-- false` check red; drop the `--report` step -> `ci.test.mjs` red.
-- DW-2202: the SystemUsage read drops one declared field -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the derived browser assertion red.
-- DW-2476: re-add a copy to one converted spec -> the ratchet red; drop one converted spec's import -> the import check red.
-
-**Runner ruling at the spec gate (2026-11-16):** validated. The `scripts/ci-throwaway.sh` two-line clock fix (DW-2565) and the `.github/workflows/ci.yml` sampler step (DW-2567) are asked of the orchestrator before implement, the first because Epic 24 has changed that file and the edit is not add-only, the second because the workflow is shared by every branch. The implement stage builds those two tasks only if a ruling is recorded here.
+  - mutation (Batch 3, observed): the slot is held for 25 s by a second IRIS process (`Lock +^OcuPilotTurnSlot` in `HSCUSTOM`) started at the end of test 6, with test 7's new `waitForSlotFree` removed -> test 7 red (`TimeoutError: Waiting failed: 30000ms exceeded`, 37.6 s); with the hold at 12 s and the wait restored -> test 7 green after waiting (21.2 s against 16.6 s). The hold and the removal reverted; the wait stays.
+- DW-2714/DW-2548: `writeStatement` stops dispatching `input` -> AC1 red at `pressRun` naming the textarea and `aria-disabled` within the navigation timeout, not after 145 s; `mdx-query.page.ts:201` scope answers `''` -> AC7's `ns` assertion red.
+  - mutation (Batch 3, observed): `writeStatement` without the `input` event -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {"statement":"SELECT ...","ariaDisabled":"true","namespace":"USER"}"; `scope: () => ''` at `mdx-query.page.ts:201`, bundle rebuilt and redeployed -> AC7 red, "HSCUSTOM: the start POST carried the namespace the page names". Each reverted (the bundle rebuilt and redeployed again); the eleven specs green.
+  - mutation (Batch 3 review, observed): the namespace `pressRun` waits for changed to `USERX` -> AC1 red in 35 s, "expected Run to be ready (aria-disabled false, namespace USER); the page shows {... \"ariaDisabled\":\"false\",\"namespace\":\"USER\"}". Reverted; AC1 green.
+  - mutation (Batch 3 code review, observed): AC7 with `GET /api/ocupilot/namespaces` held 8 s by request interception and `pressRun`'s scoped-call clause replaced by `true` -> red, "HSCUSTOM: the start POST carried the namespace the page names" (`null`); the clause restored, same hold -> green after waiting (22.9 s against 4.9 s). `AnalyticsPort.MdxAdmit` skipping `AdmitNamespace`, reloaded -> AC7 red, "HSCUSTOM: the start POST is refused before anything runs, not answered 200". Each reverted (ObjectScript reloaded); `analytics-mdx` 11 of 11.
+- DW-2720: pass AC2's `filterToSubset` a total one too high -> red naming the field, count and total. DW-2713: `StartProbe` waits for 2 jobs -> red naming state and seconds.
+  - mutation (Batch 3, observed): users AC2's `total` plus one -> red in 32.9 s, "expected the cleared filter to bring back all 14 row(s) (aria-rowcount 15); the filter field holds "" and the grid's aria-rowcount reads 14"; `StartProbe` ending `WaitJobs(2)` -> six of nine `InteropItemRun` tests red, "the Jobs tab lists 1 jobs, not 2, after 10.1 seconds; the production reads Running|0 and the item enabled=1 stopped=0 own=1 jobs=1 needs=0". Each reverted (ObjectScript reloaded); `InteropItemRun` 9 of 9 and `InteropItemRunGate` 3 of 3 green.
+- DW-2202: the SystemUsage answer drops a declared field on the wire side -> the derived `WireSecurityRead` assertion red; the data browser renders one shortcut fewer -> the browser assertion red. A field dropped from the declaration itself shrinks both sides; the roster's own literal pin (`SystemUsage.cls`, `Descriptor.cls`, `data-browser-model.test.mjs`) catches that.
+  - mutation (Batch 4, observed): `secretFields` on `SystemUsage` naming `Usage.LastUpdate`, reloaded -> `WireSecurityRead` 24 of 25, "all the declared fields" red; `shortcutRows` ending `.slice(1)`, bundle rebuilt and redeployed -> the data-browser-tabs shortcut test red, "every shortcut is listed" (actual 9, expected 10). Each reverted (ObjectScript reloaded, bundle rebuilt and redeployed); `WireSecurityRead` 25 of 25 and the four data-browser-tabs tests green.
+- DW-2476: re-add a copy to a converted spec -> the ratchet red; drop a converted spec's import -> the import check red.
+  - mutation (Batch 4, observed): a local `transitionsSettled` added to `ecp-settings` -> "the specs that declare their own transitionsSettled are the residual list" red, naming the file; the import dropped from `license-key` -> the same test red. Each reverted; `browser-settle.test.mjs` 19 of 19.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+All four batches are done. Batch 1 closed at its review (see the triage log; the node 22.22.3 gates leg on the pushed head is DW-2721's evidence).
+
+Batch 2 pass: DW-2534 `waitForRememberedView` in `preferences-reset.mjs`, called before web-applications AC1 closes its context. DW-2565 `scripts/ci-throwaway.sh` reads the clock once per attempt (the two `date` lines only, per the ruling), and `ci.test.mjs`'s `runThrowawayUp` takes a stepped stub clock the first `up` advances without sleeping. DW-2553 `X509Material.BadDecryptPassword` and `UndecodablePassword`; `SslSecret` draws its wrong password from the first, in `OnBeforeAllTests`. Task 0 landed on branch (b): the vendor answers an undecodable-key password with error 733 and HTTP 500, shared with the certificate and key mismatch, so there is no `PROPERTYFAULTS` entry and one `deferred:` item.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`): `SslSecret` 4 of 4; web-applications browser spec 4 of 4 on a rebuilt and redeployed bundle; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 127 of 127; `check-objectscript` 0 problems, its harness 163 OK, `lint-docs` 0 issues, `npm run test:tools` 2319 of 2319. The three Batch 2 mutations above each went red and were reverted, tree checked. Not run here: the other two ObjectScript classes and the Batch 3 and 4 specs (their batches), and `smoke.sh` and ObjectScript sweep (runner-owned). Residual: the one-second-boundary and late-write races are removed by construction, not reproduced; DW-2553's rate (13 in 3000) is measured on two keys only.
+
+Batch 2 review: 11 findings, none high or medium; 1 low patched (a doc comment's unmeasured rate), 10 rejected with reasons in the triage log, none deferred by review (the one `deferred:` item is Task 0's branch (b) finding); follow-up review not recommended. After the patch: source reloaded into `ocupilot-ci` (`LOADERRORS=0`), `SslSecret` 4 of 4, `check-objectscript` 0 problems. Files changed: `scripts/ci-throwaway.sh` (one clock read per attempt), `ui/tools/ci.test.mjs` (stepped stub clock), `ui/browser/preferences-reset.mjs` (`waitForRememberedView`), `ui/browser/web-applications.browser-spec.mjs` (AC1 waits on it), `src/OcuPilot/Test/X509Material.cls` and `SslSecret.cls` (deterministic `bad decrypt` password).
+
+Batch 3 pass: `panel-spec.mjs` `gotoNamingInflight` takes a bounded probe and appends `node fetch: <status> in <ms> ms` or `node fetch failed: <reason>`; `signedInAt` passes `fetchFromNode`; `panel-spec.test.mjs` pins the answering, failing and absent probe and `signedInAt`'s own call. `context-chip.browser-spec.mjs` signs in through the shared helper and waits for the turn slot before test 7's first Send (`ci-flake-waits.test.mjs`'s pin follows). `analytics-mdx.browser-spec.mjs` `pressRun` waits for Run's `aria-disabled` `false` and the namespace switch, naming the textarea, `aria-disabled` and namespace on failure; AC7 records the start POSTs, asserts `ns` and a 4xx, then waits for the banner with the POSTs named. `list-spec.mjs` `clearFilter` names the field, `aria-rowcount` and total. `InteropItemRun.WaitJobs` names the seconds, the production's state and `Facts()`.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`) and a rebuilt, redeployed bundle: `InteropItemRun` 9 of 9, `InteropItemRunGate` 3 of 3; `analytics-mdx` 11 of 11, `users` 4 of 4, `context-chip` 9 of 9, and `web-applications`, `stream-reply`, `agent-code-save` 18 of 18; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 131 of 131; `check-objectscript` 0 problems, its harness OK, `lint-docs` 0 issues, `npm run test:tools` 2323 of 2323. The Batch 3 mutations above each went red and were reverted. Not run here: `WireSecurityRead` and `SslSecret` (Batches 2 and 4), the runner-owned sweep and `smoke.sh`. Residual: test 7's slot race is shown by a held lock, not by a slow turn; no browser run reproduced a page-load timeout, so the probe line is pinned against a fake page and a local server only.
+
+Batch 3 review: 14 findings, none high, 1 medium and 2 low patched (the probe's time bound and abort, `agent: false`, `pressRun`'s namespace clause; each now pinned with a recorded mutation), 11 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. After the patches: `panel-spec.test.mjs` 11 of 11, AC1 green again, `lint-docs` 0 issues, `npm run test:tools` 2324 of 2324. Files changed this batch: `ui/browser/panel-spec.mjs` (probe), `ui/browser/context-chip.browser-spec.mjs`, `ui/browser/analytics-mdx.browser-spec.mjs`, `ui/browser/list-spec.mjs`, `src/OcuPilot/Test/InteropItemRun.cls`, `ui/tools/panel-spec.test.mjs`, `ui/tools/ci-flake-waits.test.mjs`.
+
+Batch 4 pass (re-run after a discarded first pass): DW-2202 `WireSecurityRead` derives the three field counts (System usage, Locks, audit list) from each descriptor's `DeclarationJson` `read.fields`, each beside a non-empty check, and the data-browser-tabs spec derives its shortcut count from `DATA_BROWSER_SHORTCUTS`. DW-2476 the twelve named specs drop their local `transitionsSettled`, import panel-spec's and pass `config.navigationTimeoutMs`; `browser-settle.test.mjs` replaces the `>= 30` floor with `RESIDUAL_COPIES` (the 23 specs still declaring a copy; it only shrinks), a census unit test, and the check that every other caller imports the shared helper; the hollow-body check stays.
+
+Verified on `ocupilot-ci` after reload (`LOADERRORS=0`) and a rebuilt, redeployed bundle: `WireSecurityRead` 25 of 25; the twelve converted specs plus data-browser-tabs 38 of 38 in two calls; `stream-reply`, `agent-code-save` and data-browser-tabs 18 of 18; `ci.test.mjs`, `panel-spec.test.mjs`, `browser-settle.test.mjs` 136 of 136; `check-objectscript` 0 problems, its harness OK, `lint-docs` 0 issues, `npm run test:tools` 2328 of 2328. The Batch 4 mutations above each went red and were reverted. Not run here: the other Batch 2 and 3 classes and specs (their batches), the runner-owned sweep and `smoke.sh`. Residual: the 23 copies in `RESIDUAL_COPIES`, the 24 per-principal field-list literals in `WireSecurityRead` and `WireOAuthRead`, and `web-applications-actions:430` stay ledgered as the Design Notes name; no review layer ran in the implement pass.
+
+Batch 4 review: 7 findings, none high or medium; 1 low patched (the shortcut assertion's non-empty floor, the spec re-ran 4 of 4 on a redeployed bundle), 6 low rejected with reasons in the triage log, none deferred; follow-up review not recommended. Files changed this batch: `src/OcuPilot/Test/WireSecurityRead.cls`, `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs`, the twelve converted `ui/browser/*.browser-spec.mjs`, `ui/tools/browser-settle.test.mjs`.

@@ -117,9 +117,16 @@ jobs:
       - name: build the client
         working-directory: ui
         run: npm run build
+      # The sampler prints memory, load and the largest node processes every 15 seconds, so a
+      # suite that hangs leaves its resource history in the log; the step's own bound is well under
+      # the job's, so the hang fails here with that log kept and the next step still runs.
       - name: client suite
         working-directory: ui
-        run: npm test
+        timeout-minutes: 12
+        run: sh ../scripts/ci-resource-sample.sh -- npm test
+      - name: client suite resources
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-resource-sample.sh --report
       - name: objectscript and ui checkers
         run: uv run scripts/check-objectscript.py
       - name: the checkers' own harness
@@ -246,7 +253,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 55
+    timeout-minutes: 62
     strategy:
       fail-fast: false
       matrix:

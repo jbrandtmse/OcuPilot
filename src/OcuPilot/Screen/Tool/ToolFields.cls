@@ -10,6 +10,9 @@ Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject
 XData Tools
 {
 {
+"analytics.settings.setkey": {"fieldList":"Process","fields":[
+  {"path":"GoogleMapsKey","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "osmgmt.devices.create": {"fieldList":"Device.Standard","fields":[
   {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

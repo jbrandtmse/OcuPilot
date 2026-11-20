@@ -46,7 +46,11 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [
-    {"id": "delete", "selfProtection": "system-resource"}
+    {"id": "delete", "selfProtection": "system-resource"},
+    {"id": "export", "selfProtection": ""},
+    {"id": "export-all", "selfProtection": ""},
+    {"id": "import", "selfProtection": ""},
+    {"id": "import-local", "selfProtection": ""}
   ],
   "context": {"fields": ["Name", "Description", "PublicPermission", "ResourceType", "AllowDelete"], "secretFields": []},
   "emptyStateKey": "resourceListEmpty",

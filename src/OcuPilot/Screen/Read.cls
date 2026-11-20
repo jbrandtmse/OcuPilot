@@ -318,6 +318,50 @@ ClassMethod ConfigPortClass() As %String
     Quit "OcuPilot.Port.ConfigPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's locale definitions, read through <method>LocalePortClass</method>
+/// behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.14).</p>
+Parameter SOURCELOCALE = "locale";
+
+/// <p>The <code>read.source.port</code> value naming a namespace's globals, read through <method>GlobalPortClass</method> from the
+/// route's scope and its <code>pattern</code> and <code>system</code> criteria, behind that port's own gate (AD-29, AD-36, Story 21.5).</p>
+Parameter SOURCEGLOBAL = "global";
+
+/// <p>The port every <b>global</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod GlobalPortClass() As %String
+{
+    Quit "OcuPilot.Port.GlobalPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the instance's mobile phone providers, read through
+/// <method>PhonePortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.10).</p>
+Parameter SOURCEPHONE = "phone";
+
+/// <p>The port every <b>phone</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod PhonePortClass() As %String
+{
+    Quit "OcuPilot.Port.PhoneProviderPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the instance's security recommendations, read through
+/// <method>AdvisorPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.19).</p>
+Parameter SOURCEADVISOR = "advisor";
+
+/// <p>The port every <b>advisor</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod AdvisorPortClass() As %String
+{
+    Quit "OcuPilot.Port.AdvisorPort"
+}
+
+/// <p>The port every <b>locale</b> read is issued through. Overridable so a fixture can reach another; production never overrides
+/// it.</p>
+ClassMethod LocalePortClass() As %String
+{
+    Quit "OcuPilot.Port.LocalePort"
+}
+
 /// <p>The <code>read.source.port</code> value naming the instance's mirror members, and the mirror state a banner reads, read through
 /// <method>MirrorPortClass</method> behind that port's own gate, with no namespace and no criteria (AD-29, AD-36, Story 21.12).</p>
 Parameter SOURCEMIRROR = "mirror";
@@ -486,7 +530,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG, ..#SOURCEMIRROR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS, ..#SOURCEDEVTOOL, ..#SOURCEBACKUP, ..#SOURCECONFIG, ..#SOURCEMIRROR, ..#SOURCELOCALE, ..#SOURCEGLOBAL, ..#SOURCEPHONE, ..#SOURCEADVISOR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -583,6 +627,21 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
             Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
             Set tPortSC = $ClassMethod(..AtelierPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tDocument)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEGLOBAL {
+            ; A namespace's globals (Story 21.5): the route's own scope travels as the port's namespace, and the port's gate and
+            ; bounds run before any vendor call.
+            Set tQuery("maxRows") = tMax + 1
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..GlobalPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
@@ -713,10 +772,53 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCELOCALE {
+            ; The instance's locale definitions (Story 21.14): no namespace and no criteria, so the cap is the whole ask; the port's gate
+            ; runs before any vendor call (AD-36).
+            ; One locale's properties (Story 21.16) are the exception: the route's own criterion names the locale, as an analytics read's does.
+            If tSource.%Get("endpoint") = $Parameter(..LocalePortClass(), "PROPERTIESENDPOINT") {
+                Kill tQuery
+                Set tQuery("maxRows") = tMax + 1
+                Set tRouteParam = ..ObjectCriterionParam(tRead)
+                If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
+                    Quit
+                }
+                Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+                If tCriterionProblem '= "" {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                    Quit
+                }
+                Set tPortSC = $ClassMethod(..LocalePortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            } Else {
+                Set tPortSC = $ClassMethod(..LocalePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            }
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } ElseIf tSource.%Get("port") = ..#SOURCEMIRROR {
             ; The instance's mirror members (Story 21.12): no namespace and no criteria, so the cap is the whole ask; the port's gate
             ; runs before any vendor call (AD-36).
             Set tPortSC = $ClassMethod(..MirrorPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEPHONE {
+            ; The instance's mobile phone providers (Story 21.10): no namespace and no criteria, so the cap is the whole ask; the
+            ; port's gate runs before any vendor call (AD-36).
+            Set tPortSC = $ClassMethod(..PhonePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEADVISOR {
+            ; The instance's security recommendations (Story 21.19): no namespace and no criteria, so the cap is the whole ask; the
+            ; port's gate runs before any vendor call (AD-36).
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..AdvisorPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

@@ -115,8 +115,11 @@
 /// <p><code>cube</code> is one analytics cube of a namespace, keyed by its logical name, kept exactly (AD-13, AD-65, Story 20.11), and
 /// <code>term-list</code> is one term list, keyed by its name. <code>term-list-entry</code> is one entry of a term list, keyed by the
 /// composite <code>[TermList, Key]</code>, each part kept exactly. <code>folder-item</code> is one pivot, dashboard or other folder
-/// item, keyed by its full name, folder and extension included, kept exactly. Each is namespace-scoped and has no <code>IDRULES</code>
-/// row.</p>
+/// item, keyed by its full name, folder and extension included, kept exactly. <code>listing-group</code> is one listing group, keyed by its
+/// name, and <code>listing-group-listing</code> is one listing of a group, keyed by the composite <code>[ListingGroup, Name]</code>, each part kept
+/// exactly (Story 24.11). <code>quality-measure</code> is one quality measure, keyed by its name, <code>quality-measure-element</code> is one element of a measure's group, keyed by the composite
+/// <code>[QualityMeasure, Group, Name]</code>, and <code>quality-measure-meta</code> is one documentation item of a measure, keyed by <code>[QualityMeasure, Name]</code>, each part kept exactly (Story 24.12). <code>analytics-setting</code> is one analytics setting, keyed by its name, <code>analytics-worklist</code> is one worklist option, keyed by the composite <code>[Page, Panel, Class]</code>,
+/// <code>analytics-runtime-variable</code> is one run-time variable and <code>analytics-user-icon</code> one user-defined icon, each keyed by its name, kept exactly (Story 24.13). <code>dashboard-widget</code> is one widget of a dashboard, keyed by the composite <code>[Dashboard, Position]</code> (Story 24.14). Each is namespace-scoped and has no <code>IDRULES</code> row.</p>
 /// <p><code>backup-task</code> is one backup task of the instance, keyed by its name, kept exactly (AD-13, Story 21.2); the instance's database
 /// writes, which a freeze and a thaw act on, are the literal <code>SYSTEM</code> under it. <code>backup-database</code> is one database on the
 /// backup database list, keyed by its name without regard to case. Each is instance-scoped.</p>
@@ -129,13 +132,28 @@
 /// <code>IDRULES</code> row; only the kernel's prohibited set names it.</p>
 /// <p><code>system-ddl-mapping</code> and <code>user-ddl-mapping</code> are one mapping of a DDL type name to a datatype class, keyed by its
 /// name, kept exactly (AD-13, Story 21.13). Each is instance-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>nls-default</code> is one NLS configured default of the instance, keyed by its name, and <code>locale</code> is one locale
+/// definition, keyed by its name, each kept exactly (AD-13, Story 21.14). Each is instance-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>system-security-setting</code> is one system-wide security parameter of the instance, keyed by its name, kept exactly (AD-13,
+/// Story 21.10). It is instance-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>phone-provider</code> is one mobile phone provider of the instance, keyed by its name, which the instance matches exactly
+/// and so is kept exactly (AD-13, Story 21.10). It is instance-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>security-recommendation</code> is one recommendation of the Security advisor, keyed by its type, its element and its code,
+/// each kept exactly, an element of one space being a type's general row (AD-13, Story 21.19). It is instance-scoped and has no
+/// <code>IDRULES</code> row.</p>
+/// <p><code>task-mail-setting</code> is one Task Manager email setting of the instance, keyed by its name, kept exactly (AD-13, Story 21.19). It is
+/// instance-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>system-alerts</code> is the instance's system alert state, the singleton (AD-13, Story 21.20).</p>
+/// <p><code>global</code> is one global of a namespace, keyed by its name without <code>^</code>, and <code>global-node</code> is one node of a
+/// global, keyed by its canonical reference without an environment, each kept exactly (AD-13, Story 21.5). Each is namespace-scoped and has no
+/// <code>IDRULES</code> row.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon,dashboard-widget,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,security-recommendation,task-mail-setting,system-alerts";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

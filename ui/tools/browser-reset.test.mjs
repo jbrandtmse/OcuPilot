@@ -23,11 +23,11 @@
  *   browser's default context is counted too" goes red.
  * - drop the `RESET_IMPORT` arm from `resetProblem` -> "a spec that calls the reset but does not
  *   import it is refused" goes red. Demonstrated against the tree as well as the fixtures:
- *   deleting the import line from `browser/context-chip.browser-spec.mjs` made the CLI report
+ *   deleting the import line from `browser/about-help-links.browser-spec.mjs` made the CLI report
  *   1 refusal naming that file, and reverting it read clean again.
  * - delete the reset call from `browser/panel-spec.mjs` -> "the real browser directory passes its
  *   own check" and "the shipped tree resolves its helper-sourced specs" go red, and the CLI reports
- *   13 refusals: the 12 helper-sourced specs and the helper itself. Under the spelling-keyed
+ *   a refusal for each spec that reaches a context through a helper (154 on this tree). Under the spelling-keyed
  *   checker it refused none, which is the under-detection DW-1448 names.
  * - restore `inspect()`'s `if (!source.includes(CONTEXT_CALL)) continue;` -> "the CLI refuses a spec
  *   written only with browser.newPage(", "the CLI refuses a helper-sourced spec whose helper does
@@ -66,7 +66,7 @@ import {
  * A floor, not an equality: specs join and leave. Its job is that "the graph resolved nothing" --
  * an import shape it stopped recognising, a helper moved out of `ui/browser/` -- reads as a red
  * test rather than as a clean report, because a checker that resolves no edges is exactly as quiet
- * as one with nothing to resolve. 12 take their page from `panel-spec.mjs`'s `signedInAt` today.
+ * as one with nothing to resolve. 154 reach a context through an imported helper today.
  */
 const HELPER_SOURCED_FLOOR = 12;
 

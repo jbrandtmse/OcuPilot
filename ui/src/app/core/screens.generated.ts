@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -171,7 +171,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config' | 'mirror';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics' | 'devtool' | 'backup' | 'config' | 'mirror' | 'locale' | 'global' | 'phone' | 'advisor';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -557,6 +557,16 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "term-list",
   "term-list-entry",
   "folder-item",
+  "listing-group",
+  "listing-group-listing",
+  "quality-measure",
+  "quality-measure-element",
+  "quality-measure-meta",
+  "analytics-setting",
+  "analytics-worklist",
+  "analytics-runtime-variable",
+  "analytics-user-icon",
+  "dashboard-widget",
   "backup-task",
   "backup-database",
   "startup-setting",
@@ -568,7 +578,17 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "isql-setting",
   "mirror",
   "system-ddl-mapping",
-  "user-ddl-mapping"
+  "user-ddl-mapping",
+  "nls-default",
+  "locale",
+  "locale-property",
+  "global",
+  "global-node",
+  "system-security-setting",
+  "phone-provider",
+  "security-recommendation",
+  "task-mail-setting",
+  "system-alerts"
 ];
 
 /**
@@ -623,7 +643,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "docdb-application": "foldcase",
   "routine-application": "foldcase",
   "interop-message": "integerset",
-  "backup-database": "foldcase"
+  "backup-database": "foldcase",
+  "system-alerts": "singleton"
 };
 
 /**
@@ -2709,6 +2730,410 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab",
+    "route": "analytics/folder-items/widgets",
+    "area": "analytics",
+    "labelKey": "analyticsTabWidgets",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "dashboard-widget",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/folder-items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Dashboard",
+        "Position"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Dashboard",
+        "Position",
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo",
+        "NotPivot"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsDashboardWidgetsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsDashboardWidgetsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsDashboardWidgetsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsDashboardWidgetsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UserPortal.DashboardViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "dashboard widget",
+      "source": {
+        "port": "analytics",
+        "endpoint": "DashboardWidgets",
+        "type": "LIST"
+      },
+      "fields": [
+        "Dashboard",
+        "Position",
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo",
+        "NotPivot"
+      ],
+      "filter": [
+        "Title",
+        "Type",
+        "DataSource",
+        "LinkedTo"
+      ],
+      "sort": {
+        "fields": [
+          "Position",
+          "Title",
+          "Type",
+          "DataSource"
+        ],
+        "default": "Position",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "dashboardLabel",
+            "kind": "text",
+            "maxLength": 600,
+            "hint": "One saved dashboard, spelled as analytics.folderitems.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Position",
+          "labelKey": "analyticsColumnPosition",
+          "kind": "number"
+        },
+        {
+          "field": "Title",
+          "labelKey": "interopPartnerFieldTitle",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "DataSource",
+          "labelKey": "analyticsColumnDataSource",
+          "kind": "name"
+        },
+        {
+          "field": "LinkedTo",
+          "labelKey": "analyticsQualityMeasureLinkedToLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "analytics/folder-items/document",
+      "field": "DataSource",
+      "unless": "NotPivot"
+    },
+    "tab": {
+      "group": "analytics/folder-items/document",
+      "position": 2,
+      "labelKey": "analyticsTabWidgets"
+    },
+    "toolIdentifier": "analytics.dashboardwidgets",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab",
+    "route": "analytics/folder-items/document",
+    "area": "analytics",
+    "labelKey": "agentDefinitionFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "folder-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/folder-items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Title",
+        "Description",
+        "Owner",
+        "Modified",
+        "Cube",
+        "Rows",
+        "Columns",
+        "Measures",
+        "Filters",
+        "Calculated",
+        "MDX",
+        "Restriction"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsFolderItemDefinitionEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemDefinitionPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemDefinitionPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsFolderItemDefinitionPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UserPortal.DashboardViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "pivot or dashboard definition",
+      "source": {
+        "port": "analytics",
+        "endpoint": "FolderItemDefinition",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Title",
+        "Description",
+        "Owner",
+        "Modified",
+        "Cube",
+        "Rows",
+        "Columns",
+        "Measures",
+        "Filters",
+        "Calculated",
+        "MDX",
+        "Restriction"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Title",
+        "Cube"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Title",
+          "Owner",
+          "Modified",
+          "Cube"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 600,
+            "hint": "One saved pivot or dashboard, spelled as analytics.folderitems.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Title",
+          "labelKey": "interopPartnerFieldTitle",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "analyticsColumnModified",
+          "kind": "text"
+        },
+        {
+          "field": "Cube",
+          "labelKey": "analyticsCubeCriterion",
+          "kind": "text"
+        },
+        {
+          "field": "Rows",
+          "labelKey": "explorerSqlColumnRows",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Columns",
+          "labelKey": "explorerSqlColumnColumns",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Measures",
+          "labelKey": "analyticsTabMeasures",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Filters",
+          "labelKey": "analyticsColumnFilters",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Calculated",
+          "labelKey": "analyticsColumnCalculated",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "MDX",
+          "labelKey": "analyticsColumnMdx",
+          "kind": "text",
+          "long": true
+        },
+        {
+          "field": "Restriction",
+          "labelKey": "analyticsColumnRestriction",
+          "kind": "text",
+          "long": true
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "analytics/folder-items/document",
+      "position": 1,
+      "labelKey": "agentDefinitionFormLabel"
+    },
+    "toolIdentifier": "analytics.folderitemdefinition",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsFolderItemList",
     "route": "analytics/folder-items",
     "area": "analytics",
@@ -2878,6 +3303,370 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsListingGroupList",
+    "route": "analytics/listing-groups",
+    "area": "analytics",
+    "labelKey": "analyticsListingGroupsLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "listing-group",
+    "secondaryEntityTypes": [
+      "listing-group-listing"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "update",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class",
+        "Compiled",
+        "Listings",
+        "Disabled",
+        "Description",
+        "Resource",
+        "DefaultResource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsListingGroupsEmpty",
+    "commandAliases": [
+      "listing groups",
+      "listing group"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ListingGroupManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "listing group",
+      "source": {
+        "port": "analytics",
+        "endpoint": "ListingGroups",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class",
+        "Compiled",
+        "Listings",
+        "Disabled",
+        "Description",
+        "Resource",
+        "DefaultResource"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Cubes",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Cubes",
+          "Class",
+          "Compiled",
+          "Listings"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Cubes",
+          "labelKey": "analyticsColumnTargetCubes",
+          "kind": "text"
+        },
+        {
+          "field": "Compiled",
+          "labelKey": "analyticsColumnCompiled",
+          "kind": "status"
+        },
+        {
+          "field": "Listings",
+          "labelKey": "analyticsListingGroupListingsLabel",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsListingGroupsEmptyAgent"
+    },
+    "toolIdentifier": "analytics.listinggroups",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList",
+    "route": "analytics/listing-groups/listings",
+    "area": "analytics",
+    "labelKey": "analyticsListingGroupListingsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_ListingGroup",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "listing-group-listing",
+    "secondaryEntityTypes": [
+      "listing-group"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/listing-groups",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ListingGroup",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "ListingGroup",
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "OrderBy",
+        "Joins",
+        "Formats",
+        "Source",
+        "Resource",
+        "SelectMode",
+        "Disabled",
+        "Description",
+        "SQL"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsListingGroupListingsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsListingGroupListingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupListingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsListingGroupListingsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ListingGroupManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "listing",
+      "source": {
+        "port": "analytics",
+        "endpoint": "ListingGroupListings",
+        "type": "LIST"
+      },
+      "fields": [
+        "ListingGroup",
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "OrderBy",
+        "Joins",
+        "Formats",
+        "Source",
+        "Resource",
+        "SelectMode",
+        "Disabled",
+        "Description",
+        "SQL"
+      ],
+      "filter": [
+        "Name",
+        "DisplayName",
+        "Type",
+        "Fields",
+        "Source"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "DisplayName",
+          "Type",
+          "Source"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "listinggroup",
+            "labelKey": "analyticsListingGroupCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One listing group, spelled as analytics.listinggroups.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Fields",
+          "labelKey": "explorerSqlTabFields",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "analyticsColumnDataConnector",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsListingGroupListingsEmptyAgent"
+    },
+    "toolIdentifier": "analytics.listinggrouplistings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsMdxQuery",
     "route": "analytics/mdx-query",
     "area": "analytics",
@@ -2956,6 +3745,840 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList",
+    "route": "analytics/quality-measures/document",
+    "area": "analytics",
+    "labelKey": "analyticsQualityMeasureElementsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure-element",
+    "secondaryEntityTypes": [
+      "quality-measure"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/quality-measures",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "QualityMeasure",
+        "Group",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-group",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "QualityMeasure",
+        "Group",
+        "GroupCaption",
+        "GroupDescription",
+        "GroupDisabled",
+        "Name",
+        "Caption",
+        "MDX",
+        "Disabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasureElementsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureElementsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasureElementsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureElementsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "element",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasureElements",
+        "type": "LIST"
+      },
+      "fields": [
+        "QualityMeasure",
+        "Group",
+        "GroupCaption",
+        "GroupDescription",
+        "GroupDisabled",
+        "Name",
+        "Caption",
+        "MDX",
+        "Disabled"
+      ],
+      "filter": [
+        "Group",
+        "Name",
+        "Caption",
+        "MDX"
+      ],
+      "sort": {
+        "fields": [
+          "Group",
+          "Name",
+          "Caption"
+        ],
+        "default": "Group",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "qualitymeasure",
+            "labelKey": "analyticsQualityMeasureCriterion",
+            "kind": "text",
+            "maxLength": 752,
+            "hint": "One quality measure, spelled as analytics.qualitymeasures.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Group",
+          "labelKey": "analyticsColumnGroup",
+          "kind": "name"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "text"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "MDX",
+          "labelKey": "analyticsColumnMdx",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsQualityMeasureElementsEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/quality-measures/document",
+      "position": 1,
+      "labelKey": "analyticsQualityMeasureElementsLabel"
+    },
+    "toolIdentifier": "analytics.qualitymeasureelements",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList",
+    "route": "analytics/quality-measures",
+    "area": "analytics",
+    "labelKey": "analyticsQualityMeasuresLabel",
+    "sideBarPosition": 10,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure",
+    "secondaryEntityTypes": [
+      "quality-measure-element",
+      "quality-measure-meta"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "update",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Catalog",
+        "Set",
+        "Id",
+        "Caption",
+        "Description",
+        "SubjectArea",
+        "Expression",
+        "LinkedTo",
+        "Published",
+        "Format",
+        "Href",
+        "Class",
+        "Compiled",
+        "Groups"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasuresEmpty",
+    "commandAliases": [
+      "quality measures",
+      "quality measure"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasuresPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasuresPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasuresPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "quality measure",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasures",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Catalog",
+        "Set",
+        "Id",
+        "Caption",
+        "Description",
+        "SubjectArea",
+        "Expression",
+        "LinkedTo",
+        "Published",
+        "Format",
+        "Href",
+        "Class",
+        "Compiled",
+        "Groups"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "SubjectArea",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "SubjectArea",
+          "Published",
+          "Compiled",
+          "Groups"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "SubjectArea",
+          "labelKey": "analyticsTermListSubjectArea",
+          "kind": "text"
+        },
+        {
+          "field": "Published",
+          "labelKey": "analyticsColumnPublished",
+          "kind": "status"
+        },
+        {
+          "field": "Compiled",
+          "labelKey": "analyticsColumnCompiled",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsQualityMeasuresEmptyAgent"
+    },
+    "toolIdentifier": "analytics.qualitymeasures",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList",
+    "route": "analytics/quality-measures/documentation",
+    "area": "analytics",
+    "labelKey": "linksDocumentation",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "quality-measure-meta",
+    "secondaryEntityTypes": [
+      "quality-measure"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/quality-measures",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "QualityMeasure",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "QualityMeasure",
+        "Name",
+        "Caption",
+        "Section",
+        "Content",
+        "Disabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsQualityMeasureMetasEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureMetasPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsQualityMeasureMetasPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsQualityMeasureMetasPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.QualityMeasures",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "documentation item",
+      "source": {
+        "port": "analytics",
+        "endpoint": "QualityMeasureMetas",
+        "type": "LIST"
+      },
+      "fields": [
+        "QualityMeasure",
+        "Name",
+        "Caption",
+        "Section",
+        "Content",
+        "Disabled"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Section",
+        "Content"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Section"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "qualitymeasure",
+            "labelKey": "analyticsQualityMeasureCriterion",
+            "kind": "text",
+            "maxLength": 752,
+            "hint": "One quality measure, spelled as analytics.qualitymeasures.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Content",
+          "labelKey": "analyticsColumnContent",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsQualityMeasureMetasEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/quality-measures/document",
+      "position": 2,
+      "labelKey": "linksDocumentation"
+    },
+    "toolIdentifier": "analytics.qualitymeasuremetas",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList",
+    "route": "analytics/settings/variables",
+    "area": "analytics",
+    "labelKey": "analyticsRuntimeVariablesLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "analytics-runtime-variable",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Comment",
+        "Context"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsRuntimeVariablesEmpty",
+    "commandAliases": [
+      "run-time variables",
+      "runtime variables"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsRuntimeVariablesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsRuntimeVariablesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsRuntimeVariablesPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Settings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "run-time variable",
+      "source": {
+        "port": "analytics",
+        "endpoint": "RuntimeVariables",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Comment",
+        "Context"
+      ],
+      "filter": [
+        "Name",
+        "Value",
+        "Comment",
+        "Context"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Comment",
+          "Context"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnExpression",
+          "kind": "text"
+        },
+        {
+          "field": "Comment",
+          "labelKey": "userFieldComment",
+          "kind": "text"
+        },
+        {
+          "field": "Context",
+          "labelKey": "analyticsColumnContext",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsRuntimeVariablesEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/settings",
+      "position": 3,
+      "labelKey": "analyticsRuntimeVariablesLabel"
+    },
+    "toolIdentifier": "analytics.runtimevariables",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsSettingList",
+    "route": "analytics/settings",
+    "area": "analytics",
+    "labelKey": "interopItemTabSettings",
+    "sideBarPosition": 11,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "analytics-setting",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "setkey",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Stored",
+        "Kind",
+        "Accepts"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "GoogleMapsKey"
+    ],
+    "emptyStateKey": "analyticsSettingsEmpty",
+    "commandAliases": [
+      "analytics settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Settings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "analytics setting",
+      "source": {
+        "port": "analytics",
+        "endpoint": "Settings",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Stored",
+        "Kind",
+        "Accepts"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value",
+          "Stored"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Stored",
+          "labelKey": "analyticsColumnStored",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsSettingsEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/settings",
+      "position": 1,
+      "labelKey": "processDetailsGroupGeneral"
+    },
+    "toolIdentifier": "analytics.settings",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -3277,6 +4900,142 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsUserIconList",
+    "route": "analytics/settings/icons",
+    "area": "analytics",
+    "labelKey": "analyticsUserIconsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "analytics-user-icon",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Path"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsUserIconsEmpty",
+    "commandAliases": [
+      "user-defined icons",
+      "user icons"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsUserIconsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsUserIconsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsUserIconsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Settings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "user-defined icon",
+      "source": {
+        "port": "analytics",
+        "endpoint": "UserIcons",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Path"
+      ],
+      "filter": [
+        "Name",
+        "Path"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Path"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Path",
+          "labelKey": "openApiColumnPath",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsUserIconsEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/settings",
+      "position": 4,
+      "labelKey": "analyticsUserIconsLabel"
+    },
+    "toolIdentifier": "analytics.usericons",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsUserPortalLink",
     "route": "analytics/user-portal",
     "area": "analytics",
@@ -3342,6 +5101,166 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "table": null,
     "banner": null,
     "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsWorklistList",
+    "route": "analytics/settings/worklists",
+    "area": "analytics",
+    "labelKey": "analyticsWorklistsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "analytics-worklist",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Page",
+        "Panel",
+        "Class"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "show",
+        "selfProtection": ""
+      },
+      {
+        "id": "hide",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Page",
+        "Panel",
+        "Worklist",
+        "Class",
+        "Shown",
+        "Customized"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsWorklistsEmpty",
+    "commandAliases": [
+      "worklists"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsWorklistsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsWorklistsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsWorklistsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Settings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "worklist option",
+      "source": {
+        "port": "analytics",
+        "endpoint": "Worklists",
+        "type": "LIST"
+      },
+      "fields": [
+        "Page",
+        "Panel",
+        "Worklist",
+        "Class",
+        "Shown",
+        "Customized"
+      ],
+      "filter": [
+        "Page",
+        "Worklist",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Page",
+          "Panel",
+          "Worklist",
+          "Shown"
+        ],
+        "default": "Page",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Page",
+          "labelKey": "explorerSqlDataPage",
+          "kind": "name"
+        },
+        {
+          "field": "Panel",
+          "labelKey": "analyticsColumnPanel",
+          "kind": "number"
+        },
+        {
+          "field": "Worklist",
+          "labelKey": "analyticsColumnWorklist",
+          "kind": "text"
+        },
+        {
+          "field": "Shown",
+          "labelKey": "analyticsColumnShown",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsWorklistsEmptyAgent"
+    },
+    "tab": {
+      "group": "analytics/settings",
+      "position": 2,
+      "labelKey": "analyticsWorklistsLabel"
+    },
+    "toolIdentifier": "analytics.worklists",
+    "refreshDefault": 0,
+    "banner": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
@@ -4007,6 +5926,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "purge",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
         "selfProtection": ""
       }
     ],
@@ -7949,7 +9872,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -10605,6 +12533,257 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "explorer.documenthashes",
     "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerGlobalList",
+    "route": "system-explorer/globals",
+    "area": "system-explorer",
+    "labelKey": "processColumnGlobals",
+    "sideBarPosition": 15,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "global",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "protected-global"
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      },
+      {
+        "id": "replace",
+        "selfProtection": "protected-global"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Database",
+        "Collation",
+        "Journal"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerGlobalListEmpty",
+    "commandAliases": [
+      "globals",
+      "global list"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.GlobalList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "global",
+      "source": {
+        "port": "global",
+        "endpoint": "Globals",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Database",
+        "Collation",
+        "Journal"
+      ],
+      "filter": [
+        "Name",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "pattern",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 256,
+            "default": "*"
+          },
+          {
+            "param": "system",
+            "labelKey": "explorerSystemLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Collation",
+          "labelKey": "mappingColumnCollation",
+          "kind": "text"
+        },
+        {
+          "field": "Journal",
+          "labelKey": "systemInfoJournal",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerGlobalListEmptyAgent"
+    },
+    "toolIdentifier": "explorer.globals",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerGlobalView",
+    "route": "system-explorer/globals/document",
+    "area": "system-explorer",
+    "labelKey": "explorerGlobalNodesLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "global-node",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "save",
+        "selfProtection": "protected-global"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "protected-global"
+      }
+    ],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerGlobalListPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.exp.utilexpglobalview",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.globalnodes",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -23537,6 +25716,339 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocaleList",
+    "route": "os-management/locales",
+    "area": "os-management",
+    "labelKey": "localesLabel",
+    "sideBarPosition": 37,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "locale",
+    "entityLabelKey": "aboutLocaleDefinition",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "validate",
+        "selfProtection": ""
+      },
+      {
+        "id": "install",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "Current",
+        "Custom"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "localesEmpty",
+    "commandAliases": [
+      "locale definitions",
+      "locales"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "nlsDefaultsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "localesPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NLS",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "locale",
+      "label": "The locales this instance defines: the current one, and the custom ones, whose names start with y and which can be deleted. Validate answers whether the instance finds a locale valid. The NLS defaults are in osmgmt.nlsdefaults.",
+      "source": {
+        "port": "locale",
+        "endpoint": "Locales",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "Current",
+        "Custom"
+      ],
+      "filter": [
+        "Name",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "Current",
+          "labelKey": "interopItemClassesColumnCurrent",
+          "kind": "status"
+        },
+        {
+          "field": "Custom",
+          "labelKey": "walletUsageCustom",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "localesEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.locales",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalePropertyList",
+    "route": "os-management/locales/properties",
+    "area": "os-management",
+    "labelKey": "localePropertiesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "locale-property",
+    "entityLabelKey": "aboutLocaleProperty",
+    "secondaryEntityTypes": [
+      "locale"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/locales",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Locale",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add-table",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-table",
+        "selfProtection": "locale-table"
+      },
+      {
+        "id": "load-table",
+        "selfProtection": "locale-loadable"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Locale",
+        "Group",
+        "Name",
+        "Value",
+        "Kind",
+        "ReadOnly",
+        "Refusal",
+        "Loadable"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "locale properties"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localePropertiesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NLSEdit",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "locale property",
+      "label": "One locale's properties, tables and input/output tables, one row each, by Group. Only a custom locale that is not current can be changed; Refusal says why not. Loadable is true for a table the instance can load.",
+      "source": {
+        "port": "locale",
+        "endpoint": "Properties",
+        "type": "LIST"
+      },
+      "fields": [
+        "Locale",
+        "Group",
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "ReadOnly",
+        "Refusal",
+        "Loadable"
+      ],
+      "filter": [
+        "Group",
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Group",
+          "Name",
+          "Value"
+        ],
+        "default": "Group",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "locale",
+            "labelKey": "aboutLocaleDefinition",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One locale, spelled as osmgmt.locales.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Group",
+          "labelKey": "analyticsColumnGroup",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "localePropertiesEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.localeproperties",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.LockList",
     "route": "os-management/locks",
     "area": "os-management",
@@ -25831,6 +28343,150 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.NlsDefaultList",
+    "route": "os-management/nls-defaults",
+    "area": "os-management",
+    "labelKey": "nlsDefaultsLabel",
+    "sideBarPosition": 36,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "nls-default",
+    "entityLabelKey": "aboutNlsDefault",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges",
+        "Source"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "nls defaults",
+      "nls configured defaults"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "nlsDefaultsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "localesPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NLSConfigDefs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "NLS configured default",
+      "label": "The table the instance uses for each NLS category, the configured one or else the current locale's, and the locale-format switch; only the locale-format switch is changed here. The locales are in osmgmt.locales.",
+      "source": {
+        "port": "config",
+        "endpoint": "NLSDefaults",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges",
+        "Source"
+      ],
+      "filter": [
+        "Name",
+        "Value",
+        "Source"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value",
+          "Source"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "nlsDefaultsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.nlsdefaults",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthClientForm",
     "route": "security/oauth/clients/edit",
     "area": "security",
@@ -27399,6 +30055,200 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.PhoneProviderForm",
+    "route": "security/phone-providers/edit",
+    "area": "security",
+    "labelKey": "aboutPhoneProvider",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "phone-provider",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.PhoneProvider",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.phoneproviderform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.PhoneProviderList",
+    "route": "security/phone-providers",
+    "area": "security",
+    "labelKey": "phoneProviderListLabel",
+    "sideBarPosition": 15,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "phone-provider",
+    "entityLabelKey": "aboutPhoneProvider",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "SMSGateway"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "phoneProviderListEmpty",
+    "commandAliases": [
+      "mobile phone providers",
+      "phone providers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "phoneProviderListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.PhoneProviders",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "mobile phone provider",
+      "source": {
+        "port": "phone",
+        "endpoint": "PhoneProviders",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "SMSGateway"
+      ],
+      "filter": [
+        "Name",
+        "SMSGateway"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "SMSGateway"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "SMSGateway",
+          "labelKey": "phoneProviderColumnGateway",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "phoneProviderListEmptyAgent"
+    },
+    "toolIdentifier": "security.phoneproviders",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
     "route": "os-management/processes/details",
     "area": "os-management",
@@ -28231,6 +31081,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": "system-resource"
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-all",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -29455,6 +32321,167 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.SecurityAdvisorList",
+    "route": "security/advisor",
+    "area": "security",
+    "labelKey": "securityAdvisorLabel",
+    "sideBarPosition": 16,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "security-recommendation",
+    "entityLabelKey": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Type",
+        "Element",
+        "Code"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "ignore",
+        "selfProtection": ""
+      },
+      {
+        "id": "unignore",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Type",
+        "Area",
+        "Element",
+        "Code",
+        "Recommendation",
+        "Ignored"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "securityAdvisorEmpty",
+    "commandAliases": [
+      "security advisor",
+      "security recommendations"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "securityAdvisorPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "roleListPrompt1"
+      }
+    ],
+    "classicPage": "%cspapp.sec.utilsyssecurityadvisor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "security recommendation",
+      "source": {
+        "port": "advisor",
+        "endpoint": "SecurityAdvisor",
+        "type": "LIST"
+      },
+      "fields": [
+        "Type",
+        "Area",
+        "Element",
+        "Code",
+        "Recommendation",
+        "Ignored"
+      ],
+      "filter": [
+        "Area",
+        "Element",
+        "Recommendation"
+      ],
+      "sort": {
+        "fields": [
+          "Area",
+          "Element",
+          "Recommendation",
+          "Ignored"
+        ],
+        "default": "Area",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Area",
+          "labelKey": "screenPermissionsColumnArea",
+          "kind": "text"
+        },
+        {
+          "field": "Element",
+          "labelKey": "interopItemSettingsCriterionItem",
+          "kind": "name"
+        },
+        {
+          "field": "Recommendation",
+          "labelKey": "securityAdvisorColumnRecommendation",
+          "kind": "text"
+        },
+        {
+          "field": "Ignored",
+          "labelKey": "securityAdvisorColumnIgnored",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "securityAdvisorEmptyAgent"
+    },
+    "toolIdentifier": "security.advisor",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ServiceForm",
     "route": "permissions/services/edit",
     "area": "permissions",
@@ -29717,7 +32744,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "cancel",
+        "selfProtection": "sql-statement-remote"
+      }
+    ],
     "context": {
       "fields": [
         "Server",
@@ -29860,8 +32892,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "sqlActivityEmptyAgent"
     },
     "rowTarget": {
       "route": "os-management/processes/details",
@@ -31212,6 +34244,286 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": []
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.SystemAlertsList",
+    "route": "os-management/system-alerts",
+    "area": "os-management",
+    "labelKey": "systemAlertsLabel",
+    "sideBarPosition": 39,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "system-alerts",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "State",
+        "StateText",
+        "AlertCount",
+        "LastAlert"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlDataNoRows",
+    "commandAliases": [
+      "system alerts",
+      "alerts",
+      "system state"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemAlertsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processListPrompt2"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "system alert state",
+      "source": {
+        "port": "monitor",
+        "endpoint": "Alerts",
+        "type": "LIST"
+      },
+      "fields": [
+        "State",
+        "StateText",
+        "AlertCount",
+        "LastAlert"
+      ],
+      "filter": [
+        "StateText",
+        "LastAlert"
+      ],
+      "sort": {
+        "fields": [
+          "State",
+          "AlertCount"
+        ],
+        "default": "State",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "StateText",
+          "labelKey": "processColumnState",
+          "kind": "name"
+        },
+        {
+          "field": "AlertCount",
+          "labelKey": "systemAlertsColumnAlerts",
+          "kind": "number"
+        },
+        {
+          "field": "LastAlert",
+          "labelKey": "systemAlertsColumnLast",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "systemAlertsEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.systemalerts",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SystemSecuritySettingList",
+    "route": "security/system-security",
+    "area": "security",
+    "labelKey": "systemSecuritySettingsLabel",
+    "sideBarPosition": 14,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "system-security-setting",
+    "entityLabelKey": "aboutSystemSecuritySetting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "system security",
+      "system-wide security"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemSecuritySettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "systemSecuritySettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "systemSecuritySettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Parameters",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "system-wide security parameter",
+      "label": "The instance's system-wide security parameters: how sign-in, lockout, password expiry and audit flags behave for every user. Each row says whether it is shown and never changed here.",
+      "source": {
+        "port": "config",
+        "endpoint": "Security",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Restart",
+          "labelKey": "actionRestart",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "systemSecuritySettingsEmptyAgent"
+    },
+    "toolIdentifier": "security.systemsecurity",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.SystemUsage",
     "route": "os-management/system-usage",
     "area": "os-management",
@@ -32055,6 +35367,149 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskMailSettingList",
+    "route": "tasks/email",
+    "area": "tasks",
+    "labelKey": "taskMailSettingsLabel",
+    "sideBarPosition": 6,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "task-mail-setting",
+    "entityLabelKey": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "task email",
+      "task manager email"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "taskMailSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskHistoryListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskHistoryListPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.mgr.utilsystaskmail",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "Task Manager email setting",
+      "label": "The email settings the Task Manager sends task mail with: the mail server, port, sender and sign-in name, the subject and message of the mail for a task that succeeds and for one that fails. The mail password is never shown.",
+      "source": {
+        "port": "config",
+        "endpoint": "TaskMail",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "taskMailSettingsEmptyAgent"
+    },
+    "toolIdentifier": "tasks.mail",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskOnDemandList",
     "route": "tasks/on-demand",
     "area": "tasks",
@@ -32797,6 +36252,146 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "field": "Id"
     },
     "toolIdentifier": "tasks.upcoming",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TransactionList",
+    "route": "os-management/transactions",
+    "area": "os-management",
+    "labelKey": "transactionsLabel",
+    "sideBarPosition": 38,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Kind",
+        "ProcessID",
+        "Seconds",
+        "Status",
+        "Remote"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "transactionsEmpty",
+    "commandAliases": [
+      "transactions",
+      "open transactions"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "transactionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processListPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Transactions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "open transaction",
+      "source": {
+        "port": "monitor",
+        "endpoint": "Transactions",
+        "type": "LIST"
+      },
+      "fields": [
+        "Kind",
+        "ProcessID",
+        "Seconds",
+        "Status",
+        "Remote"
+      ],
+      "filter": [
+        "Kind",
+        "ProcessID",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Kind",
+          "ProcessID",
+          "Seconds",
+          "Status"
+        ],
+        "default": "Seconds",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ProcessID",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Kind",
+          "labelKey": "agentLedgerColumnKind",
+          "kind": "text"
+        },
+        {
+          "field": "Seconds",
+          "labelKey": "transactionsColumnSeconds",
+          "kind": "number"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "ProcessID",
+      "unless": "Remote"
+    },
+    "toolIdentifier": "osmgmt.transactions",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

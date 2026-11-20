@@ -777,6 +777,7 @@ HARVEST_CALLERS = {
     "OcuPilot.Port.Harvest.EnvSync": "src/OcuPilot/Port/DevToolPort.cls",
     "OcuPilot.Port.Harvest.UnitTestRun": "src/OcuPilot/Port/DevToolPort.cls",
     "OcuPilot.Port.Harvest.ConsoleRun": "src/OcuPilot/Port/DevToolPort.cls",
+    "OcuPilot.Port.Harvest.Alerts": "src/OcuPilot/Port/MonitorPort.cls",
 }
 
 

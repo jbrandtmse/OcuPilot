@@ -143,6 +143,14 @@ export const SKIP = {
   'analytics/cubes/dimensions': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
   'analytics/cubes/relationships': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
   'analytics/term-lists/entries': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  // Story 24.11: a listing group's Listings are reached from a Listing groups name cell and need a group to open; analytics.browser-spec.mjs walks them in USER on its probe.
+  'analytics/listing-groups/listings': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  // Story 24.12: a quality measure's Groups and elements and Documentation need a measure to open, as the Listings do.
+  'analytics/quality-measures/document': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/quality-measures/documentation': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  // Story 24.14: a folder item's Definition and Widgets need a pivot or dashboard to open; analytics.browser-spec.mjs walks them in USER on its probe.
+  'analytics/folder-items/document': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/folder-items/widgets': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
   // Story 24.5: a fresh instance records no unit-test run, so the Unit tests list opens with no row to open;
   // unit-tests.browser-spec.mjs opens a run's methods list on the run it makes.
   'system-explorer/unit-tests/methods': 'a fresh instance records no unit-test run, so the Unit tests list opens with no row to open',

@@ -204,7 +204,10 @@ Method TestTokenPort()
     Do $$$AssertTrue(tText [ "/security/oauth2/server/revoke?user=typed'", "and the query's own where it carries none: " _ tText)
 }
 
-/// <p>A copy and a purge send the body the port composes from the query, and no query.</p>
+/// <p>A copy and a purge send the body the port composes from the query, and no query. An export starts the vendor's
+/// task for the joined file, cut off at the day's midnight or not at all, only while no file stands at the name.</p>
+/// <p>Mutation (Rule 19): drop the <code>Exists</code> gate from <method>OcuPilot.Port.AuditPort.Snippet</method> -- this
+/// goes red.</p>
 Method TestAuditPort()
 {
     Kill tQuery
@@ -216,6 +219,46 @@ Method TestAuditPort()
     Set tQuery("PurgeBefore") = "2026-09-01"
     Set tText = ..Text(##class(OcuPilot.Port.AuditPort).Snippet("Security.Audit.Record", "PURGE", .tQuery, "", ..Context()))
     Do $$$AssertTrue(tText [ """EndDateTime"":""2026-09-01 00:00:00""", "a purge sends its cutoff: " _ tText)
+    Kill tQuery
+    Set tQuery("ExportRoot") = "/durable/iris/mgr/"
+    Set tQuery("ExportPath") = "out/audit.xml"
+    Set tQuery("ExportBefore") = "2026-09-01"
+    Set tText = ..Text(##class(OcuPilot.Port.AuditPort).Snippet("Security.Audit.Record", "EXPORT", .tQuery, "", ..Context()))
+    Do $$$AssertTrue(tText [ "objectscript: ", "an export is ObjectScript: " _ tText)
+    Do $$$AssertTrue(tText [ "Set tParms(""FileName"") = ""/durable/iris/mgr/out/audit.xml""", "naming the root and the name joined")
+    Do $$$AssertTrue(tText [ "Set tParms(""EndDateTime"") = ""2026-09-01 00:00:00""", "cut off at the day's midnight")
+    Do $$$AssertTrue(tText [ "If '##class(%File).Exists(tParms(""FileName"")) Set tSC = ##class(%CSP.UI.System.BackgroundTask).RunTask(""AuditExport"", ""%SYS"", .tParms", "and starting the vendor's own export task only while no file stands at the name")
+    Kill tQuery("ExportBefore")
+    Set tText = ..Text(##class(OcuPilot.Port.AuditPort).Snippet("Security.Audit.Record", "EXPORT", .tQuery, "", ..Context()))
+    Do $$$AssertTrue(tText [ "Set tParms(""EndDateTime"") = """"", "an export with no day exports every record: " _ tText)
+}
+
+/// <p>The system-wide security set is <code>Security.System</code>'s <code>Modify</code> of the one settable name; a
+/// read-only name renders no step. A provider create and update are <code>%SYS.PhoneProviders</code>' own
+/// <code>Create</code> and <code>Modify</code> with the gateway, and a delete its <code>Delete</code>.</p>
+/// <p>Mutation (Rule 19): render <code>Modify</code> for a create in
+/// <method>OcuPilot.Port.PhoneProviderPort.Snippet</method> -- this goes red.</p>
+Method TestSecurityAndPhoneProviderScripts()
+{
+    Kill tQuery
+    Set tQuery("name") = "InactiveLimit"
+    Set tText = ..Text(##class(OcuPilot.Port.ConfigPort).Snippet("Security", "SET", .tQuery, {"Value": "89"}, ..Context()))
+    Do $$$AssertTrue(tText [ "Set tProps(""InactiveLimit"") = ""89""", "a security set names the one parameter: " _ tText)
+    ; The expected text is split so the source names no vendor call it does not make.
+    Do $$$AssertTrue(tText [ ("##class(Security.System)." _ "Modify(""SYSTEM"", .tProps)"), "and is Security.System's own Modify")
+    Kill tQuery
+    Set tQuery("name") = "RequiredRole"
+    Set tText = ..Text(##class(OcuPilot.Port.ConfigPort).Snippet("Security", "SET", .tQuery, {"Value": "%All"}, ..Context()))
+    Do $$$AssertEquals(tText, "", "a read-only name renders no step")
+    Kill tQuery
+    Set tQuery("name") = "Example Mobile"
+    Set tText = ..Text(##class(OcuPilot.Port.PhoneProviderPort).Snippet("PhoneProviders", "CREATE", .tQuery, {"Name": "Example Mobile", "SMSGateway": "sms.example.com"}, ..Context()))
+    Do $$$AssertTrue(tText [ "Set tProps(""SMSGateway"") = ""sms.example.com""", "a provider create sets the gateway: " _ tText)
+    Do $$$AssertTrue(tText [ "If '##class(%SYS.PhoneProviders).Exists(""Example Mobile"") Set tSC = ##class(%SYS.PhoneProviders).Create(""Example Mobile"", .tProps)", "and is the vendor's Create of a free name")
+    Set tText = ..Text(##class(OcuPilot.Port.PhoneProviderPort).Snippet("PhoneProviders", "SET", .tQuery, {"Name": "Example Mobile", "SMSGateway": "txt.example.com"}, ..Context()))
+    Do $$$AssertTrue(tText [ "##class(%SYS.PhoneProviders).Modify(""Example Mobile"", .tProps)", "an update is its Modify: " _ tText)
+    Set tText = ..Text(##class(OcuPilot.Port.PhoneProviderPort).Snippet("PhoneProviders", "DELETE", .tQuery, "", ..Context()))
+    Do $$$AssertTrue(tText [ "##class(%SYS.PhoneProviders).Delete(""Example Mobile"")", "a delete is its Delete: " _ tText)
 }
 
 /// <p>The database port's scripts (Story 18.3): a create that names no resource is a step creating

@@ -422,13 +422,13 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Do pPreview.%Set("diff", tDiff)
             Quit
         }
-        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, tPayloadJson, tDiff.%ToJSON(), tArgs.%ToJSON(), ..CallerUsername(), ..ProhibitedClassName(), "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, tPayloadJson, tDiff.%ToJSON(), tArgs.%ToJSON(), ..CallerUsername(), ..ProhibitedClassName(), "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail, .tGateReason)
         If $$$ISERR(tGateSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tGateSC))
             Quit
         }
         If tRefused {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
+            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, $Select($Get(tGateReason) '= "": tGateReason, 1: ..ReasonFor(tGateCode)), tGateCode, tGateDetail)
             Quit
         }
 
@@ -693,9 +693,13 @@ ClassMethod NotFound() As %Status [ Private ]
 
 /// <p>A refusal the request or the target's own state earned: 400 <code>TOOL.ARGUMENTS</code> with
 /// <var>pProblem</var> as <code>detail.problem</code>, the shape the mint answers its own
-/// refusals in.</p>
+/// refusals in. Two problems carry their own code: the stale-save reason is 409
+/// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> and a global that holds nothing is 404
+/// <parameter>OcuPilot.Api.GlobalError.NOTFOUND</parameter>, each under its own reason.</p>
 ClassMethod Refuse(pProblem As %String) As %Status [ Private ]
 {
+    If pProblem = ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT Quit ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, pProblem, ##class(OcuPilot.Api.Error).#STATECONFLICT)
+    If pProblem = ##class(OcuPilot.Api.GlobalError).#REASONNOTFOUND Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, pProblem, ##class(OcuPilot.Api.GlobalError).#NOTFOUND)
     Set tDetail = {}
     Do tDetail.%Set("problem", pProblem, "string")
     Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tDetail)

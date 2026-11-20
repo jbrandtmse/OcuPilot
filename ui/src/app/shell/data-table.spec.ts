@@ -1726,6 +1726,43 @@ describe('the data table', () => {
     // app01 carries "note 1", which the pending Note column must not write.
     expect(lines.find((line) => line.startsWith('/csp/app01,'))).toBe(`/csp/app01,USER,1000,${STRINGS.tableStatusNo},`);
   });
+
+  // Mutation (Rule 19): draw the cell without `wordedValue` in `data-table.ts`, or drop `this.screen().descriptor` from `downloadCsv`'s
+  // `tableCsvRows` call -> the matching assertion goes red and the Source column shows `config` and `locale`.
+  it('Story 21.14: the NLS defaults draw each Source as its words, on screen and in the file', async () => {
+    const declaration = SCREENS.find((entry) => entry.descriptor === 'OcuPilot.Screen.Descriptor.NlsDefaultList')!;
+    const wired = await wire(
+      declaration,
+      ok([
+        { Name: 'Collation', Value: 'IRIS standard', Source: 'locale' },
+        { Name: 'LocaleFormat', Value: '1', Source: 'config' },
+      ])
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const shown = wired.host().textContent ?? '';
+    expect(shown).toContain(STRINGS.nlsDefaultSourceLocale);
+    expect(shown).toContain(STRINGS.nlsDefaultSourceConfig);
+
+    const blobs: Blob[] = [];
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = (blob: Blob) => (blobs.push(blob), 'blob:ocupilot/csv');
+    URL.revokeObjectURL = () => undefined;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      expect(wired.actions.run(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+    const lines = (await blobs[0].text()).split('\r\n');
+    expect(lines.find((line) => line.startsWith('Collation,'))).toBe(`Collation,IRIS standard,${STRINGS.nlsDefaultSourceLocale}`);
+    expect(lines.find((line) => line.startsWith('LocaleFormat,'))).toBe(`LocaleFormat,1,${STRINGS.nlsDefaultSourceConfig}`);
+  });
 });
 
 /**

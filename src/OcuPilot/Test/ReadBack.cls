@@ -245,6 +245,21 @@ Method TestAListRowCreateReReadsByCreatedIdThroughItsUpdateRead()
     Do $$$AssertEquals(+$Get(^||OcuPilotReadBackPort("types")), 0, "and nothing was read")
 }
 
+/// <p>A write that sends no body and names <code>READBACKPAYLOAD</code> is compared on the payload's <code>READBACKFIELDS</code>: <code>matches</code>
+/// where the re-read holds the value, <code>differs</code> naming the field where it holds another, and never <code>nothingSent</code>.</p>
+/// <p>Mutation (Rule 19): <code>KindOf</code> ignores <method>OcuPilot.Kernel.Proposal.ReadBack.ComparesPayload</method> -> this goes red, and so does
+/// <method>OcuPilot.Test.GlobalWrite.TestAnEditRoundTripsAndANodeChangedSinceIsNotWritten</method>.</p>
+Method TestAPayloadComparedWriteReadsBackTheValueItSent()
+{
+    Set tTool = "OcuPilot.Screen.Tool.ExplorerGlobalNodeSave"
+    Set tPayload = {"Reference": "^G(1)", "Value": "new"}.%ToJSON()
+    Set tSame = ..ReadBackOf(tTool, 200, {"Reference": "^G(1)", "Value": "new"}.%ToJSON(), "", {"Value": "old"}, tPayload)
+    Do $$$AssertEquals(tSame.verdict, "matches", "a node that holds the value sent matches: " _ tSame.%ToJSON())
+    Set tOther = ..ReadBackOf(tTool, 200, {"Reference": "^G(1)", "Value": "other"}.%ToJSON(), "", {"Value": "old"}, tPayload)
+    Do $$$AssertEquals(tOther.verdict _ " " _ tOther.fields.%ToJSON(), "differs [""Value""]", "and one that holds another differs: " _ tOther.%ToJSON())
+    Do $$$AssertEquals($ClassMethod(..#RB, "KindOf", tTool), "merge", "the kind is a merge although no body is sent")
+}
+
 Method TestTheKindIsDerivedFromTheToolsParameters()
 {
     Set tRB = ..#RB

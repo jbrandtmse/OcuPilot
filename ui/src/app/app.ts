@@ -56,6 +56,8 @@ import { AuthOptionsForm } from './areas/security/auth-options.store';
 import { SuperserverActions } from './areas/security/superserver-actions';
 import { SuperserverForm } from './areas/security/superserver-form.store';
 import { MftConnectionActions } from './areas/security/mft-connection-actions';
+import { PhoneProviderActions } from './areas/security/phone-provider-actions';
+import { PhoneProviderForm } from './areas/security/phone-provider-form.store';
 import { MftConnectionForm } from './areas/security/mft-connection-form.store';
 import { DocDbAppActions } from './areas/web-applications/docdb-app-actions';
 import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
@@ -382,6 +384,9 @@ export class App {
   // Managed file transfer's declared Create (`areas/security/mft-connection-actions.ts`), with the form's store (Story 18.26).
   private readonly mftConnectionActions = inject(MftConnectionActions);
   private readonly mftConnectionForm = inject(MftConnectionForm);
+  // Mobile phone providers' declared Create provider (`areas/security/phone-provider-actions.ts`), with the form's store (Story 21.10).
+  private readonly phoneProviderActions = inject(PhoneProviderActions);
+  private readonly phoneProviderForm = inject(PhoneProviderForm);
   // Doc DB applications' declared Create (`areas/web-applications/docdb-app-actions.ts`), with the form's store (Story 18.30).
   private readonly docDbAppActions = inject(DocDbAppActions);
   private readonly docDbAppForm = inject(DocDbAppForm);
@@ -740,6 +745,8 @@ export class App {
       this.superserverForm.reset();
       // The connection form holds a managed file transfer connection THIS principal was creating or editing and has not saved.
       this.mftConnectionForm.reset();
+      // The provider form holds a mobile phone provider THIS principal was creating or editing and has not saved.
+      this.phoneProviderForm.reset();
       // The Doc DB application form holds a record THIS principal was creating or editing and has not saved.
       this.docDbAppForm.reset();
       // The routine application form holds an application THIS principal was creating or editing and has not saved.
