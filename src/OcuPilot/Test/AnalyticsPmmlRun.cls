@@ -133,23 +133,6 @@ ClassMethod Counter() As %Integer
     Quit +$Get(^IRIS.Temp.DeepSee.PMML.ResultI("TestIdx"))
 }
 
-/// <p>The vendor's own run of the probe's tree over its verification records in <code>USER</code>, which writes four result rows under test id <var>pId</var> (a new one when it is empty); the id, or
-/// <code>""</code> when the run failed.</p>
-ClassMethod Seed(pId As %Integer = "") As %Integer
-{
-    Set tOrigNS = $NAMESPACE
-    Set tId = pId
-    Try {
-        Set $NAMESPACE = ..#NAMESPACE
-        Set tSC = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.tId, ..#DEFINITION, "Colors", , 0)
-        If $$$ISERR(tSC) Set tId = ""
-    } Catch {
-        Set tId = ""
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tId
-}
-
 /// <p>Hold the lock the vendor's result table takes on its row <var>pRowId</var> until <code>^IRIS.Temp.OcuPilotPmmlDrop("release")</code> is set or <var>pSeconds</var> have passed, and say so in
 /// <code>("held")</code> and <code>("done")</code>. The job a test spawns to make another process's <code>DELETE</code> wait.</p>
 ClassMethod HoldRow(pRowId As %Integer, pSeconds As %Numeric)
@@ -373,7 +356,7 @@ Method TestADropThatMeetsALockIsSentAgainAndGivenUp()
     Kill ^IRIS.Temp.OcuPilotPmmlDrop
     Do $SYSTEM.SQL.Util.SetOption("ProcessLockTimeout", 1, .tOldTimeout)
     Try {
-        Set tId = ..Seed()
+        Set tId = $ClassMethod(..#PMML, "Seed")
         &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
         Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 30)::5
         Do $$$AssertTrue($Test && ..AwaitNode("held") && (^IRIS.Temp.OcuPilotPmmlDrop("held") = 1), "a job holds the lock on one of the test's rows")
@@ -394,7 +377,7 @@ Method TestADropThatMeetsALockIsSentAgainAndGivenUp()
         Kill ^IRIS.Temp.OcuPilotPmmlDrop
         Do $ClassMethod(..#GATESEAM, "Reset")
         Do $ClassMethod(..#GATESEAM, "Arm", "capture")
-        Set tId = ..Seed()
+        Set tId = $ClassMethod(..#PMML, "Seed")
         &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
         Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 2.5)::5
         Do $$$AssertTrue($Test && ..AwaitNode("held"), "a job holds the lock on one of another test's rows for two and a half seconds")
@@ -435,7 +418,7 @@ Method TestADropACancelInterruptsIsSentAgain()
 {
     Kill ^IRIS.Temp.OcuPilotPmmlDrop
     Try {
-        Set tId = ..Seed()
+        Set tId = $ClassMethod(..#PMML, "Seed")
         Do $$$AssertEquals($ClassMethod(..#PMML, "RowsOf", tId), 4, "the vendor's run wrote a test's four rows")
         &sql(SELECT MIN(%ID) INTO :tRowId FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :tId)
         Job ##class(OcuPilot.Test.AnalyticsPmmlRun).HoldRow(tRowId, 30)::5
@@ -463,8 +446,8 @@ Method TestADropACancelInterruptsIsSentAgain()
 /// leg goes red on the lower test's.</p>
 Method TestOtherTestsRowsSurviveEveryEnding()
 {
-    Set tLow = ..Seed()
-    Set tHigh = ..Seed(..Counter() + 100000)
+    Set tLow = $ClassMethod(..#PMML, "Seed")
+    Set tHigh = $ClassMethod(..#PMML, "Seed", ..Counter() + 100000)
     Set tLowRows = $ClassMethod(..#PMML, "RowsOf", tLow)
     Set tHighRows = $ClassMethod(..#PMML, "RowsOf", tHigh)
     Do $$$AssertEquals(tLowRows _ "|" _ tHighRows, "4|4", "two other tests hold four rows each, under a lower and a higher id than the runs'")

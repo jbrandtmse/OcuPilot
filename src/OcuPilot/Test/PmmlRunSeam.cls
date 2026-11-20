@@ -26,6 +26,12 @@ ClassMethod StopRequested(pKey As %String) As %Boolean
     Quit ^||OcuPilotPmmlRunSeam("asked") > 1
 }
 
+/// <p>The record hook: records nothing, since no canceller reads it here.</p>
+ClassMethod RecordTest(pKey As %String, pTestId As %Integer)
+{
+    Quit
+}
+
 /// <p>The shipped answer, or an exception when <code>fault</code> is armed.</p>
 ClassMethod PmmlAnswer(pTestId As %Integer, pMode As %String) As %DynamicObject
 {

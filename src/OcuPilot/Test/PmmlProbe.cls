@@ -222,7 +222,37 @@ ClassMethod RowsOf(pTestId As %Integer) As %Integer
     Quit +$Get(tCount)
 }
 
-/// <p>1 when <code>USER</code> holds nothing of the probe: no class under the package and no result row of its models.</p>
+/// <p>The vendor's own run of the probe's tree over its verification records in <code>USER</code>, which writes four result rows under test id <var>pId</var> (a new one when it is empty); the id, or
+/// <code>""</code> when the run failed.</p>
+ClassMethod Seed(pId As %Integer = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tId = pId
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.tId, ..#DEFINITIONCLASS, ..#CATEGORICAL, , 0)
+        If $$$ISERR(tSC) Set tId = ""
+    } Catch {
+        Set tId = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tId
+}
+
+/// <p>How many PMML test run records, <code>^IRIS.Temp.OcuPilotPmmlRun</code> nodes, exist.</p>
+ClassMethod Records() As %Integer
+{
+    Set tCount = 0
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^IRIS.Temp.OcuPilotPmmlRun(tKey))
+        If tKey = "" Quit
+        Set tCount = tCount + 1
+    }
+    Quit tCount
+}
+
+/// <p>1 when <code>USER</code> holds nothing of the probe: no class under the package, no result row of its models and no run record.</p>
 ClassMethod Gone() As %Boolean
 {
     Quit ..Left() = ""
@@ -244,6 +274,8 @@ ClassMethod Left() As %String
         If +$Get(tNew) Set tLeft = tLeft _ ",new:" _ tNew
         Set tRows = ..Rows()
         If tRows Set tLeft = tLeft _ ",results:" _ tRows
+        Set tRecords = ..Records()
+        If tRecords Set tLeft = tLeft _ ",records:" _ tRecords
     } Catch ex {
         Set tLeft = tLeft _ ",error:" _ ex.Name
     }
