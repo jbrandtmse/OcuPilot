@@ -574,3 +574,6 @@
 2026-11-20T11:52:40Z	Story 24.14	ruling	question=split_New(B3)/Export(B4),key_true,stricter_refusals,strings,AD-65/22_lines choice=keep_recommendations category=veto inbox=U-125 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-20T11:52:40Z	Story 24.14	spec_validated	service_introducing=true integration_ac=see_spec decision_dependency=none owned_ledger=none mutates_shared_runtime=true(throwaway_only) prohibited=widen_IsQualityMeasureType_body(no_condition_term,reported) scope=batch3
 2026-11-20T11:52:40Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-20T11:52:40Z model=sonnet agent_name=24-14-implement-batch3 cycle_iteration=3 story_base=4aeeab5a4 scope=batch3
+2026-11-20T12:07:32Z	Story 24.14	dev_blocked	scope=batch3 condition=intent_gap(Task0:_unmatched_close_brace_injects_members_beyond_line-start_guard)
+2026-11-20T12:07:32Z	Story 24.14	ruling	question=PMML_text_guard_any_close_brace+TEXT_reason_string choice=refuse_any_close_brace category=veto inbox=U-127 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-20T12:07:32Z	Story 24.14	stage_spawned	stage=implement-resume spawn_at=2026-11-20T12:07:32Z model=sonnet agent_name=24-14-implement-batch3-resume cycle_iteration=3
