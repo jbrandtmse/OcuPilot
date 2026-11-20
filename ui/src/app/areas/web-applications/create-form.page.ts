@@ -18,7 +18,9 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { warmEditPage } from '../../shell/screen-outlet';
 import {
+  COPY_FROM_FIELD,
   MATCH_ROLES_FIELD,
   TYPE_CSP,
   TYPE_PYTHON,
@@ -37,6 +39,9 @@ const FORM_ROUTE = 'web-applications/list/edit';
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
 const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
+
+/** The descriptor whose editor page a create hands off to, loaded before the hand-off. */
+const EDITOR_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.WebAppForm';
 
 /** One field, resolved for drawing: its control id, its refusal and its described-by wiring. */
 interface FieldView {
@@ -95,6 +100,27 @@ interface FieldView {
     @if (loadedFlag) {
     <p class="ocu-form-legend">{{ STRINGS.formRequiredFieldsLegend }}</p>
     <div class="ocu-form-fields">
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="copyFromField.id">{{ STRINGS.userCopyFrom }}</label>
+        <div class="ocu-field-control">
+          <select
+            class="ocu-field-input"
+            [id]="copyFromField.id"
+            [attr.aria-invalid]="copyFromField.invalid"
+            [attr.aria-describedby]="copyFromField.describedBy"
+            (change)="onCopyFrom($event)"
+          >
+            <option value="" [selected]="copyFromValue === ''">{{ STRINGS.sslVerifyPeerNone }}</option>
+            @for (application of applicationOptions; track application) {
+              <option [value]="application" [selected]="application === copyFromValue">{{ application }}</option>
+            }
+          </select>
+        </div>
+        @if (copyFromField.invalid) {
+          <p class="ocu-form-error" [id]="copyFromField.id + '-reason'">{{ copyFromField.reason }}</p>
+        }
+      </div>
+
       <div class="ocu-field">
         <label class="ocu-field-label ocu-field-label-required" [attr.for]="nameField.id">{{ STRINGS.tableColumnName }}</label>
         <div class="ocu-field-control">
@@ -435,6 +461,9 @@ export class WebAppCreateFormPage {
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
+  /** Whether an accepted Save is handing off to the editor, whose arrival "Saved" is the only one shown. */
+  private readonly handingOff = signal(false);
+
   private readonly summary = viewChild<ElementRef<HTMLElement>>('summary');
 
   /** Whether the summary has been focused for the refusal now on screen. */
@@ -586,7 +615,21 @@ export class WebAppCreateFormPage {
 
   protected get showSaved(): boolean {
     this.generation();
-    return this.store.saved();
+    return this.store.saved() && !this.handingOff();
+  }
+
+  protected get copyFromValue(): string {
+    this.generation();
+    return this.store.copyFrom();
+  }
+
+  protected get applicationOptions(): readonly string[] {
+    this.generation();
+    return this.store.applications();
+  }
+
+  protected get copyFromField(): FieldView {
+    return this.fieldView(COPY_FROM_FIELD);
   }
 
   /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
@@ -711,21 +754,36 @@ export class WebAppCreateFormPage {
     void this.store.onBlur(field);
   }
 
+  protected async onCopyFrom(event: Event): Promise<void> {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    await this.store.setCopyFrom(target.value);
+    // A refused choice falls back to the source the form holds, which the select must read too.
+    target.value = this.store.copyFrom();
+  }
+
   protected async onSave(): Promise<void> {
     if (this.store.busy()) return;
+    this.handingOff.set(true);
     const saved = await this.store.save();
     if (!saved) {
+      this.handingOff.set(false);
       this.afterRefusal();
       return;
     }
     // A create replaces the route with the new application's URL, so the address bar names the
     // entity and Back goes to the list. That URL is the web application editor (Story 9.2), which
     // reads the application and opens showing "Saved"; this form's own state is left behind with it.
+    // The editor's page code is loaded first and this form's own "Saved" stays hidden meanwhile,
+    // so the one "Saved" shown is the editor's arrival.
     const created = this.store.createdId();
-    if (created !== '') {
-      this.editor.arriveSaved(created, this.store.readBack());
-      void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
+    if (created === '') {
+      this.handingOff.set(false);
+      return;
     }
+    this.editor.arriveSaved(created, this.store.readBack());
+    await warmEditPage(EDITOR_DESCRIPTOR);
+    void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
   }
 
   protected focusField(field: string): void {

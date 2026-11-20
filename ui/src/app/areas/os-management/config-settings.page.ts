@@ -32,6 +32,9 @@ export const DDL_USER_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.DdlUserMappingL
 export const NLS_DEFAULT_LIST = 'OcuPilot.Screen.Descriptor.NlsDefaultList';
 /** System-wide security (Story 21.10), a Security screen this page serves with the same dialog. */
 export const SYSTEM_SECURITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SystemSecuritySettingList';
+/** Task Manager email (Story 21.19), a Tasks screen this page serves with the same dialog; its message settings are long text, drawn as a text area. */
+export const TASK_MAIL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.TaskMailSettingList';
+const TASK_MAIL_MESSAGE_PREFIX = 'Message';
 /** Analytics' General settings (Story 24.13): the first tab of the Settings group, a detail screen, whose Set value this page sends. */
 export const ANALYTICS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.AnalyticsSettingList';
 
@@ -49,6 +52,7 @@ const SERVED_LISTS: readonly string[] = [
   NLS_DEFAULT_LIST,
   LOCALE_PROPERTY_LIST,
   SYSTEM_SECURITY_SETTING_LIST,
+  TASK_MAIL_SETTING_LIST,
 ];
 
 /** The one NLS configured default a person changes: the switch that makes new processes take the current locale's formats (Story 21.14). */
@@ -85,6 +89,8 @@ interface SettingTarget {
   /** Whether a change stores every General row, which one not yet stored will be. */
   readonly saves: boolean;
   readonly statement: string;
+  /** Whether the value is long text, drawn as a text area. */
+  readonly multiline: boolean;
 }
 
 /** `value` as text, or `''`. */
@@ -160,6 +166,7 @@ function text(value: unknown): string {
         [current]="target.current"
         [type]="target.kind === 'boolean' ? booleanType : ''"
         [secret]="target.secret"
+        [multiline]="target.multiline"
         [statement]="target.statement"
         [defaultShown]="false"
         [sending]="sending()"
@@ -373,6 +380,7 @@ export class ConfigSettingsPage {
       reloads,
       secret,
       saves,
+      multiline: this.screen?.descriptor === TASK_MAIL_SETTING_LIST && text(row['Name']).startsWith(TASK_MAIL_MESSAGE_PREFIX),
       statement:
         row['Restart'] === true
           ? `${accepts} ${STRINGS.encryptionStartupRestart}`

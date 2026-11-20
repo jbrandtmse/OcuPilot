@@ -8790,6 +8790,28 @@ export const STRINGS = {
   localeRefusalTooLarge: 'A locale file holds at most 3,000,000 characters, and this one holds more.',
   /** EXPERIENCE.md:604 */
   localeImportConsequence: 'Importing replaces any custom locale or table with the same name. This cannot be undone.',
+  // Story 21.19: the Resources list's export and import -- the Export all action, the two dialogs' titles and the import's sentence, the two lines an
+  // applied transfer leaves, the two refusals the server sends for a file, and the consequence an import states.
+  /** EXPERIENCE.md:479 */
+  resourceExportAllAction: 'Export all',
+  /** EXPERIENCE.md:479 */
+  resourceExportTitle: 'Export resources',
+  /** EXPERIENCE.md:479 */
+  resourceImportTitle: 'Import resources',
+  /** EXPERIENCE.md:479 */
+  resourceImportReplaces: 'Importing replaces any existing resource with the same name.',
+  /** EXPERIENCE.md:479 */
+  resourceImportDone: 'Resources imported: <count>.',
+  /** EXPERIENCE.md:479 */
+  resourceExportDone: 'Resources exported to <path>: <count>.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalShape: 'This file is not a resource export, or it holds no resource.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalChanged: 'The file\'s resources changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:479 */
+  resourceFileRefusalTooLarge: 'A resource file holds at most 2,000 resources, and this one is larger.',
+  /** EXPERIENCE.md:479 */
+  resourceImportConsequence: 'It overwrites any existing resource with the same name. This cannot be undone.',
   // Story 24.6: the Command console and the Class method console -- their titles, fields, the two warning dialogs, the answer's labels
   // and truncation notes, the eight sentences the server refuses a run with and six suggested prompts.
   /** EXPERIENCE.md:594 */
@@ -8918,6 +8940,114 @@ export const STRINGS = {
   globalRefusalReviewChanged: 'This global changed after the replace was reviewed, so nothing was replaced. Review the replace again.',
   /** EXPERIENCE.md:613 */
   globalRefusalReplaceSystem: 'Find and replace is not available in the %SYS namespace.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorLabel: 'Security advisor',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorColumnRecommendation: 'Recommendation',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorColumnIgnored: 'Ignored',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorAreaClientApplications: 'Client applications',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorIgnoreAction: 'Ignore',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorUnignoreAction: 'Stop ignoring',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorEmpty: 'There are no recommendations.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorEmptyAgent: 'ignore or stop ignoring a recommendation',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorPrompt1: 'Which of these recommendations matter most on this instance?',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorRefusalIgnored: 'This recommendation is already ignored.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorRefusalNotIgnored: 'This recommendation is not ignored.',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingSBON: 'Auditing should be enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingTypeSBON: 'Auditing for this event type should be enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingON: 'Auditing is enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditingOFF: 'Auditing is disabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSBOFF: 'Service should be disabled unless required',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUnauthenticatedSBOFF: 'Unauthenticated should be off',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSHClientIPS: 'Service should have client IP addresses assigned',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceSHKerberos: 'Service should use Kerberos authentication where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServicePublic: 'Service should not be Public where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceOneAuthentication: 'Service should only have one authentication mode on',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextServiceNoAuthentication: 'Service has no authentication modes enabled',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPasswordSBChanged: 'Password should be changed from default password',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextDormantCount: 'Dormant users should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextNotUsedCount: 'Users who never logged in should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserIsDormant: 'User appears dormant and should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserNotUsed: 'User has never logged in and should be disabled or deleted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserNoDefault: 'User has a default namespace which does not exist',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAllCountMinMax: 'At least 2 and at most 5 users should have the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPUBLICHasRoles: '_PUBLIC user should not have roles',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPUBLICRolesList: 'All users are granted the following roles from _PUBLIC:',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextMGRCount: 'WRITE privilege to IRISSYS should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextSecureCount: 'WRITE privilege to system security settings should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAuditCount: 'READ and WRITE privilege to the audit database should be restricted',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUnknownUserHasAll: 'UnknownUser user should not have the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAAllUsersInherit: 'All user\'s inherit the following roles from _PUBLIC',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextPercentGlobalWrite: 'Ability to set % globals should be turned off',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasAll: 'This user holds the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasAudit: 'This user holds READ or WRITE privileges on the Audit database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasSys: 'This user holds WRITE privilege on the IRISSYS database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextUserHasSecure: 'This user holds WRITE privilege on the system security settings',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasAudit: 'This role holds READ or WRITE privileges on the Audit database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasSys: 'This role holds WRITE privilege on the IRISSYS database',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextRoleHasSecure: 'This role holds WRITE privilege on the system security settings',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppIsPublic: 'Application is Public',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppCondGrantsAll: 'Application conditionally grants the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppGrantsAll: 'Application grants the %All role',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppSHKerberos: 'Application should use Kerberos authentication where possible',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppOneAuthentication: 'Application should only have one authentication mode on',
+  /** EXPERIENCE.md:613 */
+  securityAdvisorTextAppNoAuthentication: 'Application has no authentication modes enabled',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsLabel: 'Task Manager email',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsPrompt1: 'Is task email set up to reach anyone?',
+  /** EXPERIENCE.md:613 */
+  taskMailSettingsEmptyAgent: 'change a Task Manager email setting',
+  /** EXPERIENCE.md:613 */
+  configRefusalSubstitution: 'Use only these fields between #( and )#: <fields>.',
 } as const;
 
 /**

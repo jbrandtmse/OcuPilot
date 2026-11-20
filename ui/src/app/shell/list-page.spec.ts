@@ -162,6 +162,21 @@ describe('the list page', () => {
     expect(rowNames(page.host())).toEqual(['A', 'B']);
   });
 
+  // DW-2471, AC5: a read answering 200 with a body that is not the read's shape is a refused read the table draws in place, with
+  // its Retry and no empty sentence.
+  //
+  // Mutation (Rule 19): restore the `server-fault` mapping in `createScreenRead` -> this goes red, the table drawing neither the
+  // refusal nor a banner kind the list can show.
+  it('DW-2471: an answer of the wrong shape draws the refusal with Retry, not a blank table or an empty sentence', async () => {
+    const page = await mount(tableDeclaration(), 'not a list' as unknown as unknown[]);
+    const host = page.host();
+    expect(page.refresh.fault()?.kind).toBe('rejected');
+    expect(host.querySelector('app-read-refusal')).not.toBeNull();
+    expect(host.querySelector('app-read-refusal button')?.textContent?.trim()).toBe(STRINGS.actionRetry);
+    expect(host.querySelector('.ocu-data-table-empty')).toBeNull();
+    expect(rowNames(host)).toEqual([]);
+  });
+
   // Story 20.9: a `body` component draws the rows in place of the table. The page still binds the declared read, so the body is
   // given the screen and the store the read fills; with no body the table draws, as every other list does.
   //

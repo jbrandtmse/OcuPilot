@@ -27,6 +27,12 @@ Parameter SETTINGVALUE = "CONFIG.SETTING.VALUE";
 
 Parameter REASONSETTINGVALUE = "This setting does not accept that value.";
 
+/// <p>400: a Task Manager email subject or message holds a <code>#(field)#</code> the Task Manager does not substitute (Story 21.19). The sentence
+/// is published with <code>&lt;fields&gt;</code>, which <method>ReasonFor</method> replaces with the Task Manager's own fields.</p>
+Parameter SETTINGSUBSTITUTION = "CONFIG.SETTING.SUBSTITUTION";
+
+Parameter REASONSETTINGSUBSTITUTION = "Use only these fields between #( and )#: <fields>.";
+
 /// <p>The consequence code of a set of a setting that takes effect only at the next restart.</p>
 Parameter SETTINGRESTART = "CONFIG.SETTING.RESTART";
 
@@ -81,6 +87,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGNOTFOUND Quit ..#REASONSETTINGNOTFOUND
     If pCode = ..#SETTINGREADONLY Quit ..#REASONSETTINGREADONLY
     If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
+    If pCode = ..#SETTINGSUBSTITUTION Quit ..SubstitutionReason()
     If pCode = ..#SETTINGRESTART Quit ..#REASONSETTINGRESTART
     If pCode = ..#SETTINGPURGE Quit ..#REASONSETTINGPURGE
     If pCode = ..#MAPPINGTAKEN Quit ..#REASONMAPPINGTAKEN
@@ -97,6 +104,7 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer
     If pCode = ..#SETTINGREADONLY Quit 409
     If pCode = ..#MAPPINGTAKEN Quit 409
     If pCode = ..#SETTINGVALUE Quit 400
+    If pCode = ..#SETTINGSUBSTITUTION Quit 400
     If pCode = ..#MAPPINGNAME Quit 400
     Quit 0
 }
@@ -108,6 +116,13 @@ ClassMethod SlugFor(pCode As %String) As %String
     If tHttp = 404 Quit ##class(OcuPilot.Api.Error).#NOTFOUND
     If tHttp = 400 Quit ##class(OcuPilot.Api.Error).#BADREQUEST
     Quit ##class(OcuPilot.Api.Error).#CONFLICT
+}
+
+/// <p><parameter>REASONSETTINGSUBSTITUTION</parameter> with <code>&lt;fields&gt;</code> replaced by the fields
+/// <code>%SYS.Task.Config.SubstitutionFields()</code> lists, comma and space apart.</p>
+ClassMethod SubstitutionReason() As %String
+{
+    Quit $Replace(..#REASONSETTINGSUBSTITUTION, "<fields>", $Replace(##class(%SYS.Task.Config).SubstitutionFields(), ",", ", "))
 }
 
 /// <p>The sentence <var>pTemplate</var> (one of the <code>ACCEPTS*</code> parameters) reads with <var>pFirst</var> in

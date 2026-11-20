@@ -146,6 +146,8 @@ XData Elsewhere
 <screen name="SystemSecuritySettingList"/>
 <screen name="PhoneProviderList"/>
 <screen name="PhoneProviderForm"/>
+<screen name="SecurityAdvisorList"/>
+<screen name="TaskMailSettingList"/>
 <screen name="MirrorMonitor"/>
 <screen name="DdlSystemMappingList"/>
 <screen name="DdlUserMappingList"/>

@@ -38,6 +38,7 @@ const {
   CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED,
   CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
   CONSEQUENCE_PRIVILEGED,
+  CONSEQUENCE_RESOURCEFILEIMPORT,
   CONSEQUENCE_PURGEMARKERS,
   CONSEQUENCE_AUDITEXPORT,
   CONSEQUENCE_COPYMAPPINGS,
@@ -296,6 +297,14 @@ test('the two privilege-grant consequence codes resolve to their published sente
   assert.equal(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED, 'WEBAPP.UNAUTHENTICATEDPRIVILEGED');
   assert.equal(consequenceSentence(CONSEQUENCE_PRIVILEGED), STRINGS.privilegedGrantEffect);
   assert.equal(consequenceSentence(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED), STRINGS.privilegedGrantEffectUnauthenticated);
+});
+
+// Story 21.19: the resource import's consequence code resolves to the import's published sentence.
+//
+// Mutation (Rule 19): drop the CONSEQUENCE_RESOURCEFILEIMPORT branch from `consequenceSentence` -> this goes red.
+test("the resource import's consequence code resolves to its published sentence", () => {
+  assert.equal(CONSEQUENCE_RESOURCEFILEIMPORT, 'RESOURCEFILE.IMPORT');
+  assert.equal(consequenceSentence(CONSEQUENCE_RESOURCEFILEIMPORT), STRINGS.resourceImportConsequence);
 });
 
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own

@@ -25,6 +25,7 @@ const SENTENCES = [
   ['REASONSETTINGNOTFOUND', 'configRefusalNotFound'],
   ['REASONSETTINGREADONLY', 'configRefusalReadOnly'],
   ['REASONSETTINGVALUE', 'configRefusalValue'],
+  ['REASONSETTINGSUBSTITUTION', 'configRefusalSubstitution'],
   ['REASONSETTINGRESTART', 'encryptionStartupRestart'],
   ['REASONSETTINGPURGE', 'configSettingPurge'],
   ['ACCEPTSBOOLEAN', 'configAcceptsBoolean'],

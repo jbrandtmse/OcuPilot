@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
+import { ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 import { RESOURCES_FORM_PATH, ResourceEditor } from './resource-editor.store';
 import { ResourceListPage } from './resource-list.page';
 
@@ -41,6 +44,8 @@ describe('the Resources list page', () => {
         { provide: ApiService, useValue: api as unknown as ApiService },
         { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: FormDirty, useValue: new FormDirty() },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
     TestBed.overrideComponent(ResourceListPage, { set: { imports: [], template: '' } });

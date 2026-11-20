@@ -1055,7 +1055,9 @@ export const SOURCE_LOCALE = 'locale';
 export const SOURCE_GLOBAL = 'global';
 /** The instance's mobile phone providers read through `OcuPilot.Port.PhoneProviderPort` (AD-29, AD-36, Story 21.10). */
 export const SOURCE_PHONE = 'phone';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL, SOURCE_PHONE];
+/** The instance's security recommendations read through `OcuPilot.Port.AdvisorPort` (AD-29, AD-36, Story 21.19). */
+export const SOURCE_ADVISOR = 'advisor';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL, SOURCE_PHONE, SOURCE_ADVISOR];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1116,6 +1118,22 @@ export function backgroundEndpoint() {
 
 /** The one request type a `background` source declares. */
 export const BACKGROUND_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.AdvisorPort` declares the one endpoint an `advisor` read names. */
+export const ADVISOR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AdvisorPort.cls');
+
+let advisorEndpointCache;
+
+/** `parseBackgroundEndpoint` over `AdvisorPort`'s class on disk, read once: its `ENDPOINT` parameter, or `null` when it is missing. */
+export function advisorEndpoint() {
+  if (advisorEndpointCache === undefined) {
+    advisorEndpointCache = parseBackgroundEndpoint(readFileSync(ADVISOR_PORT_SOURCE, 'utf8'));
+  }
+  return advisorEndpointCache;
+}
+
+/** The one request type an `advisor` source declares. */
+export const ADVISOR_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.DocDbPort` declares the one endpoint a `docdb` read names. */
 export const DOCDB_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DocDbPort.cls');
@@ -1570,8 +1588,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}', '${SOURCE_GLOBAL}' or '${SOURCE_PHONE}', ` +
-      'the twenty-two sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}', '${SOURCE_GLOBAL}', '${SOURCE_PHONE}' or '${SOURCE_ADVISOR}', ` +
+      'the twenty-three sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1800,6 +1818,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a phone source, which answers its list whole (AD-36)`;
+    }
+  }
+  // An advisor source lists the instance's security recommendations through `OcuPilot.Port.AdvisorPort`, which answers its endpoint whole
+  // behind its own gate (AD-29, AD-36, Story 21.19): its endpoint, a LIST, and nothing the port would have to issue per row, per parent,
+  // under a fixed query or in parts.
+  if (source.port === SOURCE_ADVISOR) {
+    const endpoint = advisorEndpoint();
+    if (endpoint === null) return `${ADVISOR_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the advisor port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== ADVISOR_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an advisor source, which lists the instance's security recommendations (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an advisor source, which answers its list whole (AD-36)`;
     }
   }
   // A locale source lists the instance's locale definitions through `OcuPilot.Port.LocalePort`, which answers its endpoint whole behind its own

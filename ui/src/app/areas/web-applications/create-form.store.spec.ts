@@ -6,9 +6,11 @@ import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { entityRefKey } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
 import {
+  TYPE_CSP,
   TYPE_PYTHON,
   TYPE_REST,
   WEB_APPLICATIONS_FORM_PATH,
+  WEB_APPLICATIONS_LIST_READ_PATH,
   WEB_APPLICATIONS_PATH,
   WEB_APPLICATION_ENTITY,
   WEB_APPLICATION_SCOPE,
@@ -58,9 +60,16 @@ async function settle(): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
 }
 
+/** What the copy's two reads answer: the source applications' form reads by name, and the list's names. */
+interface CopyAnswers {
+  readonly sources?: Readonly<Record<string, JsonResult<unknown>>>;
+  readonly names?: readonly string[];
+}
+
 function mount(
   createAnswer: JsonResult<unknown> = { kind: 'ok', status: 201, body: { name: '/csp/probe' } },
-  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { available: true, reason: '' } }
+  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { available: true, reason: '' } },
+  copy: CopyAnswers = {}
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -69,6 +78,14 @@ function mount(
       calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
       if (path === WEB_APPLICATIONS_FORM_PATH) {
         return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
+      }
+      if (path === WEB_APPLICATIONS_LIST_READ_PATH) {
+        const rows = (copy.names ?? []).map((name) => ({ Name: name }));
+        return { kind: 'ok', status: 200, body: { rows } } as unknown as JsonResult<T>;
+      }
+      if (path.startsWith(`${WEB_APPLICATIONS_FORM_PATH}?name=`)) {
+        const source = decodeURIComponent(path.slice(`${WEB_APPLICATIONS_FORM_PATH}?name=`.length));
+        return (copy.sources?.[source] ?? { kind: 'error', status: 404, code: 'WEBAPP.NAME.ABSENT', reason: 'gone', detail: null }) as JsonResult<T>;
       }
       if (path.startsWith(`${WEB_APPLICATIONS_PATH}/name`)) {
         return nameAnswer as JsonResult<T>;
@@ -319,5 +336,142 @@ describe('the Web application create form store', () => {
     await refused.store.onBlur('Name');
     expect(refused.store.violationFor('Name')).toBe('');
     expect(refused.store.violations()).toEqual([]);
+  });
+
+  describe('Copy from (WA-15)', () => {
+    const REST_SOURCE: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: {
+        application: {
+          Name: '/api/probe/source',
+          Path: '/probe/path/',
+          Description: 'Probe source',
+          NameSpace: 'HSCUSTOM',
+          Enabled: false,
+          DispatchClass: 'Probe.Rest',
+          WSGIAppLocation: '/should/not/travel',
+          Recurse: false,
+          Resource: '%Probe',
+          AutheEnabled: 96,
+          IsNameSpaceDefault: true,
+          MatchRoles: [
+            { MatchRole: '', TargetRoles: ['%Developer', '%all'] },
+            { MatchRole: 'Matcher', TargetRoles: ['ProbeUnmarked'] },
+          ],
+        },
+      },
+    };
+    const PYTHON_SOURCE: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: {
+        application: {
+          NameSpace: 'HSCUSTOM',
+          WSGIAppName: 'probe',
+          WSGICallable: 'app',
+          WSGIType: 'ASGI',
+          WSGIAppLocation: 'probedir',
+          AutheEnabled: 32,
+        },
+      },
+    };
+    const copying = (extra: CopyAnswers = {}) =>
+      mount(undefined, undefined, {
+        names: ['/api/probe/source', '/csp/python'],
+        sources: { '/api/probe/source': REST_SOURCE, '/csp/python': PYTHON_SOURCE },
+        ...extra,
+      });
+
+    it('lists the Web applications list\'s names, and reads one source through the edit form\'s read', async () => {
+      const { store, calls } = copying();
+      await store.open();
+      await settle();
+      expect(store.applications()).toEqual(['/api/probe/source', '/csp/python']);
+      await store.setCopyFrom('/api/probe/source');
+      expect(store.copyFrom()).toBe('/api/probe/source');
+      expect(calls.some((call) => call.path === `${WEB_APPLICATIONS_FORM_PATH}?name=${encodeURIComponent('/api/probe/source')}`)).toBe(true);
+    });
+
+    // Mutation (Rule 19): copy `Path` too -- `fill` also sets `next['Path'] = textAt(source, 'Path')` -> the skipped-fields
+    // assertion on `value('Path')` goes red.
+    it('fills every field the form carries but the name and the Python directory, and copies no Path, namespace default or %-class access', async () => {
+      const { store, calls } = copying();
+      await store.open();
+      store.setValue('Name', '/api/probe/new');
+      await store.setCopyFrom('/api/probe/source');
+      expect(store.value('Name'), 'the typed name stays').toBe('/api/probe/new');
+      expect(store.value('Description')).toBe('Probe source');
+      expect(store.value('NameSpace')).toBe('HSCUSTOM');
+      expect(store.flag('Enabled')).toBe(false);
+      expect(store.flag('Recurse')).toBe(false);
+      expect(store.type()).toBe(TYPE_REST);
+      expect(store.value('DispatchClass')).toBe('Probe.Rest');
+      expect(store.value('Resource')).toBe('%Probe');
+      expect(store.autheMask(), 'the source\'s methods the instance offers').toBe(96);
+      expect(store.matchRoleChecked('%Developer')).toBe(true);
+      expect(store.matchRoleChecked('%All'), 'matched case-insensitively, spelled as the instance lists it').toBe(true);
+      expect(store.matchRoleChecked('ProbeUnmarked'), 'a matching role is not an application role').toBe(false);
+      expect(store.value('WSGIAppLocation'), 'the Python directory is not copied').toBe('');
+      expect(store.value('Path')).toBe('');
+      expect(store.value('IsNameSpaceDefault')).toBe('');
+      expect(store.dirty()).toBe(true);
+
+      await store.save();
+      const body = postedBody(calls);
+      expect(Object.keys(body).sort()).toEqual(
+        ['AutheEnabled', 'Description', 'DispatchClass', 'Enabled', 'MatchRoles', 'Name', 'NameSpace', 'Recurse', 'Resource', 'WSGICallable'].sort()
+      );
+      expect(body['Name']).toBe('/api/probe/new');
+      expect(body['MatchRoles']).toEqual([{ MatchRole: '', TargetRoles: ['%Developer', '%All'] }]);
+      expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+    });
+
+    it('takes a Python source\'s application file, callable and protocol, and leaves the directory for the person to name', async () => {
+      const { store } = copying();
+      await store.open();
+      await store.setCopyFrom('/csp/python');
+      expect(store.type()).toBe(TYPE_PYTHON);
+      expect(store.value('WSGIAppName')).toBe('probe');
+      expect(store.value('WSGICallable')).toBe('app');
+      expect(store.value('WSGIType')).toBe('ASGI');
+      expect(store.value('WSGIAppLocation')).toBe('');
+      expect(store.autheMask()).toBe(32);
+      expect(store.matchRoleChecked('%Developer')).toBe(false);
+      expect(store.flag('Enabled'), 'a field the source does not hold keeps the form\'s own default').toBe(true);
+    });
+
+    it('a refused source read leaves the form as it was and shows the refusal as the editor\'s read does', async () => {
+      const { store } = copying();
+      await store.open();
+      await store.setCopyFrom('/api/probe/source');
+      expect(store.value('Description')).toBe('Probe source');
+      await store.setCopyFrom('/csp/gone');
+      expect(store.value('Description'), 'the buffer is unchanged').toBe('Probe source');
+      expect(store.type()).toBe(TYPE_REST);
+      expect(store.copyFrom(), 'the choice falls back to the source the form holds').toBe('/api/probe/source');
+      expect(store.reason()).toBe('gone');
+      expect(store.refusalCode()).toBe('WEBAPP.NAME.ABSENT');
+    });
+
+    it('clearing the choice restores the blank form, and keeps the name that was typed', async () => {
+      const { store } = copying();
+      await store.open();
+      store.setValue('Name', '/api/probe/new');
+      await store.setCopyFrom('/api/probe/source');
+      store.setMatchRole('%All', true);
+      await store.setCopyFrom('');
+      expect(store.copyFrom()).toBe('');
+      for (const field of ['Description', 'NameSpace', 'DispatchClass', 'Resource', 'WSGIAppLocation']) {
+        expect(store.value(field), field).toBe('');
+      }
+      expect(store.flag('Enabled')).toBe(true);
+      expect(store.flag('Recurse')).toBe(true);
+      expect(store.type()).toBe(TYPE_CSP);
+      expect(store.autheMask(), 'back on the instance\'s own default method').toBe(RULES.defaultMethod);
+      expect(store.matchRoleChecked('%Developer')).toBe(false);
+      expect(store.matchRoleChecked('%All')).toBe(false);
+      expect(store.value('Name')).toBe('/api/probe/new');
+    });
   });
 });

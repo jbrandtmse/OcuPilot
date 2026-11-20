@@ -30,6 +30,7 @@ import {
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
   SYSTEM_SECURITY_SETTING_LIST,
+  TASK_MAIL_SETTING_LIST,
   TSQL_SETTING_LIST,
 } from './config-settings.page';
 
@@ -331,6 +332,89 @@ describe('the settings page', () => {
     const startup = mount([], STARTUP_SETTING_LIST);
     await open(startup.fixture, startup.store, startup.actions, STARTUP_SETTING_LIST, 'LineRecall');
     expect(startup.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.systemSecuritySetConsequence);
+  });
+
+  describe('Task Manager email (Story 21.19)', () => {
+    const MAIL_ROWS = [
+      row('Port', { Value: '', Kind: 'text', Accepts: 'Text of up to 5 characters.' }),
+      row('UseSTARTTLS', { Value: '', Kind: 'boolean', Accepts: '0 (off) or 1 (on).' }),
+      row('SubjectSuccess', { Value: '', Kind: 'text', Accepts: 'Text of up to 255 characters.' }),
+      row('MessageSuccess', { Value: 'Hello', Kind: 'text', Accepts: 'Text of up to 32000 characters.' }),
+    ];
+    const MAIL_UPDATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'task-mail-setting', scope: 'instance', id: 'Port' }, readBack: { verdict: 'matches' } },
+    };
+
+    // Mutation (Rule 19): drop `TASK_MAIL_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+    it('serves Task Manager email, and registers Set value on its own screen alone', () => {
+      const { actions } = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      expect(actions.has(TASK_MAIL_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+      expect(actions.has(STARTUP_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    });
+
+    it("sends the typed port as the one value to the screen's own route and publishes the updated event of its entity type", async () => {
+      const { fixture, host, store, actions, calls, events } = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'Port');
+      type(fixture, host, '587');
+      confirm(host);
+      await settle(fixture);
+      expect(calls[0]).toEqual({
+        path: '/api/ocupilot/screens/tasks.mail/action',
+        method: 'POST',
+        body: JSON.stringify({ action: 'set', id: 'Port', values: { Value: '587' } }),
+      });
+      expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['task-mail-setting/updated']);
+      expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+      expect(host.querySelector('[data-config-setting-restart]')).toBeNull();
+    });
+
+    it('sends 1 for the STARTTLS switch, drawn as a checkbox', async () => {
+      const { fixture, host, store, actions, calls } = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'UseSTARTTLS');
+      expect(host.querySelector('[data-interop-setting-checkbox]')).not.toBeNull();
+      (host.querySelector('[data-interop-setting-checkbox]') as HTMLInputElement).click();
+      fixture.detectChanges();
+      confirm(host);
+      await settle(fixture);
+      expect(JSON.parse(calls[0].body).values).toEqual({ Value: '1' });
+    });
+
+    // Mutation (Rule 19): drop the `multiline` binding from the page's dialog -> the message row's text area assertion goes red.
+    it('draws a message as a text area that sends its whole 32000 characters, and a subject as one line', async () => {
+      const message = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(message.fixture, message.store, message.actions, TASK_MAIL_SETTING_LIST, 'MessageSuccess');
+      expect(message.host.querySelector('textarea[data-interop-setting-value]')).not.toBeNull();
+      const long = `Line one\nLine two #(NAME)# ${'x'.repeat(32000 - 27)}`;
+      expect(long).toHaveLength(32000);
+      const field = message.host.querySelector('textarea[data-interop-setting-value]') as HTMLTextAreaElement;
+      field.value = long;
+      field.dispatchEvent(new Event('input'));
+      message.fixture.detectChanges();
+      confirm(message.host);
+      await settle(message.fixture);
+      expect(JSON.parse(message.calls[0].body).values).toEqual({ Value: long });
+      const subject = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(subject.fixture, subject.store, subject.actions, TASK_MAIL_SETTING_LIST, 'SubjectSuccess');
+      expect(subject.host.querySelector('textarea[data-interop-setting-value]')).toBeNull();
+      expect(subject.host.querySelector('input[type="text"][data-interop-setting-value]')).not.toBeNull();
+    });
+
+    it("keeps the instance's sentence naming the Task Manager's fields on the value when a subject holds another field, and publishes nothing", async () => {
+      const reason = 'Use only these fields between #( and )#: ID, DESCRIPTION, NAME, SERVER, INSTANCE, LASTSTARTED, LASTFINISHED, SCHEDULED, CURRENTDATE, CURRENTTIME, STATUS, TASKCLASS, ERROR, SUCCESS.';
+      const { fixture, host, store, actions, events } = mount(
+        [{ kind: 'error', status: 400, code: 'CONFIG.SETTING.SUBSTITUTION', reason, detail: { violations: [{ field: 'Value', code: 'CONFIG.SETTING.SUBSTITUTION', reason }] } } as JsonResult<unknown>],
+        TASK_MAIL_SETTING_LIST,
+        MAIL_ROWS
+      );
+      await open(fixture, store, actions, TASK_MAIL_SETTING_LIST, 'SubjectSuccess');
+      type(fixture, host, '#(BOGUS)#');
+      confirm(host);
+      await settle(fixture);
+      expect(host.querySelector('[data-interop-setting-violation]')?.textContent?.trim()).toBe(reason);
+      expect(events).toEqual([]);
+    });
   });
 
   it('serves both DDL mapping screens, and registers New mapping on the user list alone', () => {

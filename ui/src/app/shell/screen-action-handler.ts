@@ -181,6 +181,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.IsqlSettingList',
   // Story 21.10: System-wide security, whose Set value the same page's dialog sends.
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList',
+  // Story 21.19: Task Manager email, whose Set value the same page's dialog sends.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList',
   // Story 21.13: System and User DDL mappings, whose Delete types the mapping's name and whose Set value and New mapping the same page's dialogs send.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList',
   'OcuPilot.Screen.Descriptor.DdlUserMappingList',
@@ -190,6 +192,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.LocalePropertyList',
   // Story 21.5: Globals, whose Delete types the global's name.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList',
+  // Story 21.19: the Security advisor, whose Ignore and Stop ignoring are sent at once.
+  'OcuPilot.Screen.Descriptor.SecurityAdvisorList',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -541,6 +545,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
   // System-wide security's page registers Set value itself, whose dialog sends the value (Story 21.10).
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': ['set'],
+  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19).
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set'],
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
@@ -548,6 +554,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.NlsDefaultList': ['set'],
   // Its page also registers Export and Import itself, whose dialogs name the file the four transfer actions send (Story 21.15).
   [LOCALE_LIST]: [LOCALE_VALIDATE, LOCALE_COPY, 'export', 'export-browser', 'import', 'import-local'],
+  // The Resources list's page registers Export and Import itself, whose dialogs name the file the four transfer actions send (Story 21.19).
+  [RESOURCE_LIST]: ['export', 'export-all', 'import', 'import-local'],
   // Locale properties' set and Add table are the config settings page's own (Story 21.16).
   [LOCALE_PROPERTY_LIST]: ['set', LOCALE_ADD_TABLE],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
@@ -671,6 +679,8 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-t
  */
 const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
   [LOCALE_LIST]: ['install', 'import'],
+  // Story 21.19: a resource import overwrites a resource of the same name without asking.
+  [RESOURCE_LIST]: ['import'],
   // Story 21.16: a table load changes what every process can use, and on the current locale can change the instance's defaults.
   [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
   // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
@@ -725,7 +735,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [LOG_ERROR_LIST]: { delete: STRINGS.errorDeleteEveryConsequence },
   [AUDIT_USER_EVENT_LIST]: { delete: STRINGS.auditUserEventDeleteConsequence },
   [ROLE_LIST]: { delete: STRINGS.roleDeleteConsequence },
-  [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence },
+  [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence, import: STRINGS.resourceImportConsequence },
   'OcuPilot.Screen.Descriptor.X509CredentialList': { delete: STRINGS.x509DeleteConsequence },
   'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },

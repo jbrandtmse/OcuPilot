@@ -225,6 +225,7 @@ XData Coverage
 <screen name="MftConnectionList" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="PhoneProviderList" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
+<screen name="SecurityAdvisorList" class="OcuPilot.Test.AdvisorRead" method="TestTheScreenAndToolsDeclareTheirPagePairsActionsAndKeys" corpus="the list and its two tools are asserted together in one test"/>
 <screen name="PhoneProviderForm" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
@@ -327,7 +328,9 @@ XData Coverage
 <screen name="TsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="IsqlSettingList" class="OcuPilot.Test.SqlSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the four Story 21.4 setting screens' declarations in a loop"/>
 <screen name="SystemSecuritySettingList" class="OcuPilot.Test.SystemSecuritySettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
+<screen name="TaskMailSettingList" class="OcuPilot.Test.TaskMailSettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
 <tool name="security.systemsecurity.set" class="OcuPilot.Test.SystemSecuritySettingWrite" method="TestASetChangesOnlyItsParameterOnBothCallersAndIsRestored"/>
+<tool name="tasks.mail.set" class="OcuPilot.Test.TaskMailSettingWrite" method="TestASetChangesOnlyItsSettingOnBothCallersAndIsRestored"/>
 <screen name="MirrorMonitor" class="OcuPilot.Test.MirrorRead" method="TestTheScreenDeclaresItsPagePairsAndSource"/>
 <screen name="DdlSystemMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
 <screen name="DdlUserMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
@@ -379,6 +382,8 @@ XData Coverage
 <tool name="permissions.resources.create" class="OcuPilot.Test.ResourceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="permissions.resources.update" class="OcuPilot.Test.ResourceUpdate" method="TestTheUpdateIsAMergeWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.resources.export" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
+<tool name="permissions.resources.import" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers"/>
 <tool name="security.x509.import" class="OcuPilot.Test.X509Import" method="TestTheSchemaAdvertisesNoSecretAndNoPath"/>
 <tool name="security.x509.update" class="OcuPilot.Test.X509Update" method="TestTheEditIsAMergeWriteOverTheTwoLists"/>
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
@@ -608,6 +613,8 @@ XData Coverage
 <tool name="security.phoneproviders.create" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderIsCreatedChangedAndDeletedByBothCallers" corpus="the create and the change are asserted together in one test"/>
 <tool name="security.phoneproviders.update" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderIsCreatedChangedAndDeletedByBothCallers" corpus="the create and the change are asserted together in one test"/>
 <tool name="security.phoneproviders.delete" class="OcuPilot.Test.PhoneProviderWrite" method="TestAProviderNamedByAUserIsRefusedByBothCallersBeforeAnyVendorCall"/>
+<tool name="security.advisor.ignore" class="OcuPilot.Test.AdvisorWrite" method="TestTheAgentsConfirmIgnoresAndStopsIgnoringOnceWithOneAuditMarker" corpus="the ignore and the stop-ignoring are asserted together in one test"/>
+<tool name="security.advisor.unignore" class="OcuPilot.Test.AdvisorWrite" method="TestTheAgentsConfirmIgnoresAndStopsIgnoringOnceWithOneAuditMarker" corpus="the ignore and the stop-ignoring are asserted together in one test"/>
 <tool name="webapp.docdbapps.create" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.update" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.delete" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>

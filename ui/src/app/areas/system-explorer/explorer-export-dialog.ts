@@ -28,16 +28,18 @@ export type ExportChoice = { readonly destination: 'server'; readonly root: stri
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog, ServerPathPicker],
   template: `<app-dialog [heading]="heading" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
-    <div class="ocu-explorer-transfer-choice">
-      <label class="ocu-field-checkbox ocu-explorer-compile-flag">
-        <input type="radio" name="ocu-explorer-export-destination" data-explorer-export-destination="server" [checked]="onServer" (change)="onDestination('server')" />
-        {{ STRINGS.explorerTransferServer }}
-      </label>
-      <label class="ocu-field-checkbox ocu-explorer-compile-flag">
-        <input type="radio" name="ocu-explorer-export-destination" data-explorer-export-destination="browser" [checked]="!onServer" (change)="onDestination('browser')" />
-        {{ STRINGS.explorerTransferBrowser }}
-      </label>
-    </div>
+    @if (offersBrowser) {
+      <div class="ocu-explorer-transfer-choice">
+        <label class="ocu-field-checkbox ocu-explorer-compile-flag">
+          <input type="radio" name="ocu-explorer-export-destination" data-explorer-export-destination="server" [checked]="onServer" (change)="onDestination('server')" />
+          {{ STRINGS.explorerTransferServer }}
+        </label>
+        <label class="ocu-field-checkbox ocu-explorer-compile-flag">
+          <input type="radio" name="ocu-explorer-export-destination" data-explorer-export-destination="browser" [checked]="!onServer" (change)="onDestination('browser')" />
+          {{ STRINGS.explorerTransferBrowser }}
+        </label>
+      </div>
+    }
     @if (onServer) {
       <app-server-path-picker
         kind="file"
@@ -75,6 +77,9 @@ export class ExplorerExportDialog {
   /** The sentence about a file already at the name, when the page words it itself; `''` is the shared one. */
   readonly replaces = input('');
 
+  /** Whether this browser is offered as a destination; `false` leaves the server file the only one, for an export that has no lines to save. */
+  readonly browser = input(true);
+
   /** The allowed directories the picker offers, loaded by the page when the dialog opens. */
   readonly store = input.required<AllowedDirectoriesStore>();
 
@@ -111,6 +116,10 @@ export class ExplorerExportDialog {
 
   protected get note(): string {
     return this.replaces() !== '' ? this.replaces() : STRINGS.taskExportReplaces;
+  }
+
+  protected get offersBrowser(): boolean {
+    return this.browser();
   }
 
   protected get onServer(): boolean {

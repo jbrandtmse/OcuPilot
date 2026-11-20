@@ -2,7 +2,7 @@ import { Component, ElementRef, afterNextRender, inject, reflectComponentType, t
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, type Route } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rememberedPage, routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
@@ -35,6 +35,7 @@ import {
   ScreenOutlet,
   resolveArchetypePage,
   resolveScreenPage,
+  warmEditPage,
 } from './screen-outlet';
 import { AccountPreferences } from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
@@ -648,5 +649,25 @@ describe('the descriptor map (DW-369)', () => {
     expect(switches).not.toBeNull();
     expect(definitionForm).toBe(await ARCHETYPE_PAGES['form-page']());
     expect(switches).not.toBe(definitionForm);
+  });
+});
+
+describe('warmEditPage: the hand-off of the create pages never strands the person (DW-2372)', () => {
+  const WEB_APP_EDITOR = 'OcuPilot.Screen.Descriptor.WebAppForm';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resolves for a descriptor that registers no editor, and calls no loader', async () => {
+    // Mutation (Rule 19): drop the `Object.hasOwn` guard -> the lookup throws a TypeError and this goes red.
+    await expect(warmEditPage('OcuPilot.Screen.Descriptor.NoSuchForm')).resolves.toBeUndefined();
+  });
+
+  it('resolves when the editor chunk fails to load, so the navigation that follows reports it', async () => {
+    // Mutation (Rule 19): remove the `try`/`catch` in `warmEditPage` -> the rejection escapes and this goes red.
+    const loader = vi.spyOn(DESCRIPTOR_EDIT_PAGES as Record<string, PageLoader>, WEB_APP_EDITOR).mockRejectedValue(new Error('chunk failed'));
+    await expect(warmEditPage(WEB_APP_EDITOR)).resolves.toBeUndefined();
+    expect(loader).toHaveBeenCalledTimes(1);
   });
 });

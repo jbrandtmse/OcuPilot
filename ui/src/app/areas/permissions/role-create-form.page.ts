@@ -18,6 +18,7 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { warmEditPage } from '../../shell/screen-outlet';
 import {
   GRANTED_ROLES_FIELD,
   RESOURCES_FIELD,
@@ -37,6 +38,9 @@ const FORM_ROUTE = 'permissions/roles/edit';
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
 const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
+
+/** The descriptor whose editor page a create hands off to, loaded before the hand-off. */
+const EDITOR_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.RoleForm';
 
 /** One field, resolved for drawing: its control id, its refusal and its described-by wiring. */
 interface FieldView {
@@ -256,6 +260,9 @@ export class RoleCreateFormPage {
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
+  /** Whether an accepted Save is handing off to the editor, whose arrival "Saved" is the only one shown. */
+  private readonly handingOff = signal(false);
+
   /** The grant dialog, when one is open. Local to this page and never stored. */
   private readonly grantDialog = signal<GrantDialogState | null>(null);
 
@@ -382,7 +389,7 @@ export class RoleCreateFormPage {
 
   protected get showSaved(): boolean {
     this.generation();
-    return this.store.saved();
+    return this.store.saved() && !this.handingOff();
   }
 
   /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
@@ -472,19 +479,25 @@ export class RoleCreateFormPage {
 
   protected async onSave(): Promise<void> {
     if (this.store.busy()) return;
+    this.handingOff.set(true);
     const saved = await this.store.save();
     if (!saved) {
+      this.handingOff.set(false);
       this.afterRefusal();
       return;
     }
     // A create replaces the route with the new role's URL, so the address bar names the entity
     // and Back goes to the list. That URL is the role editor (Story 9.3), which reads the role and
-    // opens showing "Saved"; this form's own state is left behind with it.
+    // opens showing "Saved"; this form's own state is left behind with it. The editor's page code
+    // is loaded first and this form's own "Saved" stays hidden meanwhile.
     const created = this.store.createdId();
-    if (created !== '') {
-      this.editor.arriveSaved(created, this.store.readBack());
-      void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
+    if (created === '') {
+      this.handingOff.set(false);
+      return;
     }
+    this.editor.arriveSaved(created, this.store.readBack());
+    await warmEditPage(EDITOR_DESCRIPTOR);
+    void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
   }
 
   protected focusField(field: string): void {

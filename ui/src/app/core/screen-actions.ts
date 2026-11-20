@@ -157,6 +157,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 20.31: Resend, on Messages' checked rows and a message's Header tab, and Edit and resend, on the Header tab.
   resend: STRINGS.interopMessagesResendAction,
   editresend: STRINGS.interopMessagesEditResendAction,
+  // Story 21.19: a security recommendation's Ignore and Stop ignoring, on the Security advisor.
+  ignore: STRINGS.securityAdvisorIgnoreAction,
+  unignore: STRINGS.securityAdvisorUnignoreAction,
 };
 
 /**
@@ -194,12 +197,16 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.10: System-wide security's Set value, which opens the same page's dialog.
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   // Story 21.14: the NLS defaults' Set value opens the settings page's dialog; the locales' Validate opens its own dialog, and Install and Delete type the name.
   'OcuPilot.Screen.Descriptor.NlsDefaultList': { set: STRINGS.interopItemSettingSetAction },
   'OcuPilot.Screen.Descriptor.LocaleList': { validate: STRINGS.licenseKeyValidate, install: STRINGS.localeInstallAction, delete: STRINGS.actionDelete, copy: STRINGS.auditDatabaseCopyConfirm, export: STRINGS.taskExportAction },
+  // Story 21.19: the Resources list's Export acts on the selected resource and Export all on every one; its Import is the screen-level one.
+  'OcuPilot.Screen.Descriptor.ResourceList': { export: STRINGS.taskExportAction, 'export-all': STRINGS.resourceExportAllAction },
   // Story 21.16: one locale's properties, whose Set value is the configuration settings page's own.
   'OcuPilot.Screen.Descriptor.LocalePropertyList': {
     set: STRINGS.interopItemSettingSetAction,

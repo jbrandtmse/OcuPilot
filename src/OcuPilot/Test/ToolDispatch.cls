@@ -202,6 +202,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DDLMAPPINGDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LOCALEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "GLOBALDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If tTool.name = $Parameter("OcuPilot.Test.Governance", "RESOURCEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }

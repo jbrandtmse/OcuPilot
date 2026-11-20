@@ -67,6 +67,7 @@ const SIDE_BAR_SPECS = [
   'prometheus-metrics.browser-spec.mjs',
   'remote-databases.browser-spec.mjs',
   'routine-applications.browser-spec.mjs',
+  'security-advisor.browser-spec.mjs',
   'security.browser-spec.mjs',
   'ssl.browser-spec.mjs',
   'superservers.browser-spec.mjs',

@@ -78,7 +78,8 @@ ClassMethod VendorProviders(Output pProviders) As %Integer
 /// <p>The Security area's screen verdicts <var>pJson</var> as a principal's navigation map answers them, with the two Mobile phone providers screens
 /// added: the list as Security's last listed screen and its editor among the unlisted ones, each carrying the verdict the Managed file transfer
 /// connections screens carry in the same answer, because the three declare the same two pairs (AD-8). The editor goes in the position the map sorts
-/// it to, by descriptor class name, before the SSL/TLS editor; the list goes last. A map that holds no connections entry is answered as it is.</p>
+/// it to, by descriptor class name, before the SSL/TLS editor; the list goes last, followed by the Security advisor's
+/// (<method>OcuPilot.Test.AdvisorRead.WithAdvisor</method>). A map that holds no connections entry is answered as it is.</p>
 ClassMethod WithScreens(pJson As %String) As %String
 {
     Set tListMark = "{""route"":""security/mft-connections"",""labelKey"":""mftConnectionListLabel"",""sideBarPosition"":13,"
@@ -90,7 +91,7 @@ ClassMethod WithScreens(pJson As %String) As %String
     Set tForm = "{""route"":""security/phone-providers/edit"",""labelKey"":""aboutPhoneProvider"",""sideBarPosition"":0," _ tFormVerdict _ "},"
     Set tList = ",{""route"":""security/phone-providers"",""labelKey"":""phoneProviderListLabel"",""sideBarPosition"":15," _ tListVerdict _ "}"
     Set tWith = $Piece(pJson, tSslMark, 1) _ tForm _ tSslMark _ $Piece(pJson, tSslMark, 2, *)
-    Quit $Extract(tWith, 1, *-1) _ tList _ "]"
+    Quit ##class(OcuPilot.Test.AdvisorRead).WithAdvisor($Extract(tWith, 1, *-1) _ tList _ "]")
 }
 
 /// <p>The screen's read through the shipped executor, answering its result object.</p>
