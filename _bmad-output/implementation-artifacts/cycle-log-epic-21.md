@@ -770,3 +770,5 @@
 2026-11-20T06:50:58Z	Story 21.19	ruling	question=re-review_for_test-only_rework choice=none(precedent_accepted_on_21.10) via=runner category=decide policy=b9ff703e
 2026-11-20T06:50:58Z	Story 21.19	code_head_pushed	sha=73c4c2fe6 run=44690683966 missing=none
 2026-11-20T06:50:58Z	Story 21.19	gate_step	step=fresh_check+full_sweep+smoke head=73c4c2fe6 started=2026-11-20T06:50:58Z dir=e21u/21-19/gate attempt=2
+2026-11-20T06:54:40Z	Story 21.19	integrated_forward	feature=dfc986c41(24.14_B1) merge=bc5a2e37f conflicts=5(EntityType_union;Descriptor_108;ReadTool_555;ToolRoundTrip_union;screens.generated.ts_regenerated) verified=screen-mirror,test:tools_2353,LOADERRORS=0,ReadTool,Descriptor,ToolRoundTrip,Navigation_green
+2026-11-20T06:54:40Z	Story 21.19	code_head_pushed	sha=bc5a2e37f run=44691109965 missing=none note=supersedes_73c4c2fe6
