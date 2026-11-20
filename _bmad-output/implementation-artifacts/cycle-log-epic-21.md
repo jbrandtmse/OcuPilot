@@ -840,3 +840,7 @@
 2026-11-20T22:49:03Z	Story 21.21	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-20T22:49:03Z	Story 21.21	ledger	resolved=DW-1850,DW-1280,DW-2805 closed=DW-2348(wontfix-accepted),DW-2807(wontfix-accepted) owner=DW-2806(burndown)
 2026-11-20T22:49:03Z	Story 21.21	story_complete	head=389656dcf run=44810355489 ci=success fresh=pass sweep=20/20 smoke=50/50 split=SH-27->21.37 spine=aff694cd9(AD-8) vetoes=U-128(for_21.37)
+2026-11-20T22:54:29Z	Story 21.21	integrated_forward	feature=178ed176a(24.14_B3+README) merge=M=b19395a16 parents=6529fbf1a,178ed176a conflicts=0(auto:Prohibited.cls,Test/ToolEmit.cls) verified=screen-mirror(259/111),test:tools_2358,check-objectscript_0,LOADERRORS=0,Prohibited,DatabaseActionsProhibited,GovernanceBaseline,ClaimReach_green diff_vs_feature=17_non-bmad_paths(21.21's_own) note=merged_in_the_epic_worktree_not_a_temp_one;hook_checks_run_by_hand(git_merge_runs_no_pre-commit)
+2026-11-20T22:54:29Z	Story 21.21	code_head_pushed	sha=b19395a16 run=44832705882 missing=none note=integrate-only_M_for_the_merge_gate
+2026-11-20T22:55:17Z	Story 21.36	story_started	base=M=b19395a16 doctrine=3d11cec9 policy=b9ff703e hold=none
+2026-11-20T22:55:17Z	Story 21.36	stage_spawned	stage=plan spawn_at=2026-11-20T22:55:17Z model=opus agent_name=21-36-plan cycle_iteration=1 prior_lines_ended=verified(a7596ce52)
