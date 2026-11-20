@@ -484,6 +484,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/folder-items/document',
       // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
       'analytics/listing-groups/listings',
+      // Story 24.14 Batch 2: a PMML model's Test screen, unlisted, sorts after them by class name.
+      'analytics/pmml-models/test',
       // Story 24.12: a quality measure's Documentation and Groups and elements (the first tab of the pair), unlisted, sort with them by class name.
       'analytics/quality-measures/document',
       'analytics/quality-measures/documentation',
@@ -509,6 +511,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/quality-measures',
       // Story 24.13: Settings, the first tab of its group, listed after it at position 11.
       'analytics/settings',
+      // Story 24.14 Batch 2: PMML models, listed after it at position 12.
+      'analytics/pmml-models',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

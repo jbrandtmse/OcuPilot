@@ -122,7 +122,7 @@
 /// checked for syntax (<method>VariableExpressionHolds</method>) and never run.</p>
 /// <p>Seams a test subclass overrides: <method>AtelierPortClass</method>, <method>ReadListingGroupData</method>, <method>VendorListingGroupCompose</method>, <method>ReadQualityMeasureData</method>, <method>VendorQualityMeasureCompose</method>, <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
 /// <method>LogFault</method>, <method>VendorBuild</method>, <method>VendorSynchronize</method>, <method>CollectState</method>, <method>DestinationDatabase</method>,
-/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
+/// <method>DestinationJournaled</method>, <method>ReadTermListData</method>, <method>ReadFolderItem</method>, <method>FolderItemClasses</method>, <method>PathPortClass</method>, <method>PmmlLookup</method>, <method>PmmlVendor</method>, <method>PmmlAnswer</method>, the <code>VendorTermList*</code> calls and the <code>VendorFolderItem*</code> calls. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -130,7 +130,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets,PmmlModels,PmmlModel";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -410,6 +410,36 @@ Parameter QUALITYMEASUREKEY = "qualitymeasure";
 /// <p>The query key naming a folder item by its full name, for the viewer's two reads.</p>
 Parameter FOLDERITEMKEY = "item";
 
+/// <p>The query key naming one PMML model, for the Test screen's read: the composite <code>[Class, Model]</code> or the vendor's <code>Class||Model</code> (Story 24.14).</p>
+Parameter PMMLMODELKEY = "model";
+
+/// <p>The pairs of the PMML model tester's two screens and its run (Story 24.14): the portal's, and <code>%Development:USE</code>, the classic tester's own resource. A pair set is an
+/// AND, so this is the narrower audience; the classic page admits <code>%Development</code> alone.</p>
+Parameter PMMLPAIRS = "%DeepSee_Portal:USE,%Development:USE";
+
+/// <p>The PMML models of the namespace, one row for each model of each compiled <code>%DeepSee.PMML.Definition</code> subclass.</p>
+Parameter ENDPOINTPMMLMODELS = "PmmlModels";
+
+/// <p>One PMML model's row, under the criterion <parameter>PMMLMODELKEY</parameter>.</p>
+Parameter ENDPOINTPMMLMODEL = "PmmlModel";
+
+/// <p>The shape of a PMML definition class name: the vendor's, so a value that is not one names no class.</p>
+Parameter PMMLCLASSPATTERN = "^[A-Za-z%][A-Za-z0-9%.]*$";
+
+/// <p>The three sources a PMML test runs against.</p>
+Parameter PMMLSOURCEDATASET = "dataset";
+
+Parameter PMMLSOURCEVERIFICATION = "verification";
+
+Parameter PMMLSOURCECUSTOM = "custom";
+
+/// <p>The data source kinds of <method>PmmlSourcesHere</method>: an SQL source, a cube source and any other.</p>
+Parameter PMMLKINDSQL = "sql";
+
+Parameter PMMLKINDCUBE = "cube";
+
+Parameter PMMLKINDOTHER = "other";
+
 /// <p>The permission a write needs on a database's resource.</p>
 Parameter WRITEPERMISSION = "WRITE";
 
@@ -673,6 +703,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
         Set tSpec = ..#TERMLISTPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTFOLDERITEMS, ..#ENDPOINTFOLDERITEMDEFINITION, ..#ENDPOINTDASHBOARDWIDGETS), pEndpoint) {
         Set tSpec = ..#FOLDERPAIRS
+    } ElseIf $ListFind($ListBuild(..#ENDPOINTPMMLMODELS, ..#ENDPOINTPMMLMODEL), pEndpoint) {
+        Set tSpec = ..#PMMLPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTLISTINGGROUPS, ..#ENDPOINTLISTINGGROUPLISTINGS), pEndpoint) {
         Set tSpec = ..#LISTINGGROUPPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASURES, ..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
@@ -824,6 +856,10 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 /// <li>FolderItemDefinition: <code>{Name, Type, Title, Description, Owner, Modified, Cube, Rows, Columns, Measures, Filters, Calculated, MDX, Restriction}</code>, one row for the
 /// saved pivot or dashboard the criterion <parameter>FOLDERITEMKEY</parameter> names (<method>ReadFolderItemView</method>).</li>
 /// <li>DashboardWidgets: <code>{Dashboard, Position, Title, Type, DataSource, LinkedTo, NotPivot}</code>, one row for each widget of that dashboard in its stored order.</li>
+/// <li>PmmlModels and PmmlModel (Story 24.14): <code>{Class, Model, Type, Target, TargetType, DataSources, Verification}</code>, one row for each model of each compiled <code>%DeepSee.PMML.Definition</code> subclass
+/// (<method>PmmlRowsHere</method>): <code>Type</code> is the vendor's model type, <code>Target</code> and <code>TargetType</code> the predicted field and its operational type, <code>DataSources</code> the names of the
+/// definition's <code>isc:datasource</code> extensions, one per line, and <code>Verification</code> whether the model carries a <code>ModelVerification</code> element. PmmlModel takes the model under
+/// <parameter>PMMLMODELKEY</parameter>, the composite <code>[Class, Model]</code> or <code>Class||Model</code>.</li>
 /// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
 /// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
 /// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
@@ -913,6 +949,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         } ElseIf $ListFind($ListBuild(..#ENDPOINTQUALITYMEASUREELEMENTS, ..#ENDPOINTQUALITYMEASUREMETAS), pEndpoint) {
             ; A criterion that names no measure answers no rows, and an empty one names none.
             Set tCriterion = $Get(pQuery(..#QUALITYMEASUREKEY))
+        } ElseIf pEndpoint = ..#ENDPOINTPMMLMODEL {
+            ; A criterion that names no model answers no rows, and an empty one names none. It is read here, where this class is visible (AD-16), and handed on as Class||Model.
+            Set tCriterion = $Get(pQuery(..#PMMLMODELKEY))
+            Set tCriterion = $Select(..PmmlParts(tCriterion, .tPmmlClass, .tPmmlModel): tPmmlClass _ "||" _ tPmmlModel, 1: "")
         }
         ; A listing's SQL is answered to a holder of its own pair only; the pair is judged here, where the gate class is visible (AD-16).
         Set tShowSQL = 0
@@ -1291,6 +1331,13 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                     Set pData(pData) = tList(tAt)
                 }
             }
+        } ElseIf (pEndpoint = ..#ENDPOINTPMMLMODELS) || (pEndpoint = ..#ENDPOINTPMMLMODEL) {
+            ; The models of every compiled definition class, which a criterion narrows to one model. A criterion that cannot name one answers no rows.
+            Set tWantClass = $Piece(pCriterion, "||", 1)
+            Set tWantModel = $Piece(pCriterion, "||", 2, *)
+            If (pEndpoint = ..#ENDPOINTPMMLMODELS) || (pCriterion [ "||") {
+                Do ..PmmlRowsHere(tWantClass, tWantModel, pMax, .pData, .pVendorStatus)
+            }
         } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
             ; No folder class is passed: the vendor splices that argument into its statement.
             Set pVendorStatus = ##class(%DeepSee.UserLibrary.Utils).%GetFolderItemList(.tIds, "", 0, "")
@@ -1336,6 +1383,14 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData, pShowSQL As %Boolean = 0) As
             Do tRow.%Set("Synchronizes", $List(tValues, 7), "boolean")
             Do tRow.%Set("Updating", $List(tValues, 8), "boolean")
             Do tRow.%Set("DependentCubes", $List(tValues, 10), "string")
+        } ElseIf (pEndpoint = ..#ENDPOINTPMMLMODELS) || (pEndpoint = ..#ENDPOINTPMMLMODEL) {
+            Do tRow.%Set("Class", $List(tValues, 1), "string")
+            Do tRow.%Set("Model", $List(tValues, 2), "string")
+            Do tRow.%Set("Type", $List(tValues, 3), "string")
+            Do tRow.%Set("Target", $List(tValues, 4), "string")
+            Do tRow.%Set("TargetType", $List(tValues, 5), "string")
+            Do tRow.%Set("DataSources", $List(tValues, 6), "string")
+            Do tRow.%Set("Verification", $List(tValues, 7), "boolean")
         } ElseIf pEndpoint = ..#ENDPOINTCUBES {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Caption", $List(tValues, 2), "string")
@@ -2323,6 +2378,418 @@ ClassMethod Cut(pText As %String) As %String
 {
     If $Length(pText) > ..#MDXMAXCELL Quit $Extract(pText, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
     Quit pText
+}
+
+/// <p>The class and the model <var>pText</var> names, in <var>pClass</var> and <var>pModel</var> (Story 24.14): the model's composite id <code>[Class, Model]</code>, or the vendor's
+/// <code>Class||Model</code>. The class must have the shape of a class name (<parameter>PMMLCLASSPATTERN</parameter>) and neither part may be empty. Pure.</p>
+ClassMethod PmmlParts(pText As %String, Output pClass As %String, Output pModel As %String) As %Boolean
+{
+    Set pClass = ""
+    Set pModel = ""
+    If pText = "" Quit 0
+    If pText [ $Char(1) {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pText)
+        If $ListLength(tParts) '= 2 Quit 0
+        Set tClass = $List(tParts, 1)
+        Set tModel = $List(tParts, 2)
+    } ElseIf pText [ "||" {
+        Set tClass = $Piece(pText, "||", 1)
+        Set tModel = $Piece(pText, "||", 2, *)
+    } Else {
+        Quit 0
+    }
+    If (tClass = "") || (tModel = "") || '$Match(tClass, ..#PMMLCLASSPATTERN) || ($Length(tModel) > ..#MDXMAXCELL) Quit 0
+    Set pClass = tClass
+    Set pModel = tModel
+    Quit 1
+}
+
+/// <p>The PMML tester's gate (Story 24.14, AD-8, AD-29, AD-65), the one the two reads, the run's start and its job make before any vendor call: <parameter>PMMLPAIRS</parameter>, then the namespace's
+/// shape, analytics on, and READ on its globals and routines databases (<method>AdmitNamespace</method>). The vendor writes only IRISTEMP, so there is no destination check (measured). A refusal is an error
+/// status with <var>pHttpStatus</var> and <var>pFault</var>. Names no vendor class.</p>
+ClassMethod PmmlAdmit(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#PMMLPAIRS), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
+}
+
+/// <p>The class names of the finder's tree <var>pTree</var> (<code>%ZEN.FinderUtils.%GetClassListArray</code>, which nests a class under its package parts), in tree order, as
+/// <var>pClasses</var>: the count, and <code>pClasses(n)</code>. A leaf of type <code>cls</code> is a class; its full name is the node's second element. Names no vendor class.</p>
+ClassMethod PmmlClassNames(ByRef pTree, ByRef pClasses) [ Private ]
+{
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pTree(tKey))
+        If tKey = "" Quit
+        If $Data(pTree(tKey), tValue) # 2 {
+            If $List(tValue, 3) = "cls" {
+                Set pClasses = $Get(pClasses) + 1
+                Set pClasses(pClasses) = $List(tValue, 2)
+            }
+        }
+        If $Data(pTree(tKey)) > 1 {
+            Kill tSub
+            Merge tSub = pTree(tKey)
+            Do ..PmmlClassNames(.tSub, .pClasses)
+        }
+    }
+}
+
+/// <p>The data sources the definition class <var>pClass</var> declares, as the classic tester lists them: each <code>isc:datasource</code> extension's data source, in order, as
+/// <var>pSources</var>: the count, and <code>pSources(n)</code> as <code>$ListBuild(name, kind, text)</code>, where <code>kind</code> is <parameter>PMMLKINDSQL</parameter> (the
+/// text is its SQL), <parameter>PMMLKINDCUBE</parameter> (the text is its cube's name) or <parameter>PMMLKINDOTHER</parameter>. Called with the namespace switched (AD-16); it
+/// reads the definition and writes nothing (measured).</p>
+ClassMethod PmmlSourcesHere(pClass As %String, Output pSources) As %Status [ Private ]
+{
+    Kill pSources
+    Set pSources = 0
+    Set tSC = $ClassMethod(pClass, "%GetDefinition", .tPMML)
+    If $$$ISERR(tSC) || '$IsObject($Get(tPMML)) Quit tSC
+    For tI = 1:1:tPMML.DataDictionary.Extension.Count() {
+        Set tExtension = tPMML.DataDictionary.Extension.GetAt(tI)
+        If tExtension.name '= "isc:datasource" Continue
+        For tJ = 1:1:tExtension.iscExtensions.Count() {
+            Set tSource = tExtension.iscExtensions.GetAt(tJ)
+            If 'tSource.%Extends("%DeepSee.PMML.Definition.Extension.DataSource") Continue
+            Set tKind = ..#PMMLKINDOTHER
+            Set tText = ""
+            If tSource.%Extends("%DeepSee.PMML.Definition.Extension.SQLDataSource") {
+                Set tKind = ..#PMMLKINDSQL
+                Set tText = tSource.SQL
+            } ElseIf tSource.%Extends("%DeepSee.PMML.Definition.Extension.DeepSeeDataSource") {
+                Set tKind = ..#PMMLKINDCUBE
+                Set tText = tSource.cubeName
+            }
+            Set pSources = pSources + 1
+            Set pSources(pSources) = $ListBuild(tSource.name, tKind, tText)
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The PMML model rows of <var>pNamespace</var>'s compiled definitions into <var>pData</var> (the row count, and <code>pData(n)</code> as <code>$ListBuild(class, model, type,
+/// target, target type, data sources, verification)</code>), at most <var>pMax</var> when that is above zero, in the finder's class order and each class's model order. A non-empty
+/// <var>pClass</var> narrows to that class (matched without regard to case, as the vendor keys classes) and a non-empty <var>pModel</var> to the model of that exact name. Only a
+/// compiled, non-abstract subclass of <code>%DeepSee.PMML.Definition</code> is a definition, and one whose methods raise is left out. <var>pStatus</var> is the finder's. Called with the
+/// namespace switched (AD-16), from <method>Collect</method> and <method>PmmlLookup</method>; every vendor call reads and writes nothing (measured).</p>
+ClassMethod PmmlRowsHere(pClass As %String, pModel As %String, pMax As %Integer, ByRef pData, Output pStatus As %Status) [ Private ]
+{
+    Set pStatus = $$$OK
+    Kill tParameters, tTree, tClasses
+    Set tParameters("sub") = "%DeepSee.PMML.Definition"
+    Set tParameters("abstract") = 0
+    Set pStatus = ##class(%ZEN.FinderUtils).%GetClassListArray(.tParameters, .tMetaData, .tTree)
+    If $$$ISERR(pStatus) Quit
+    Set tClasses = 0
+    Do ..PmmlClassNames(.tTree, .tClasses)
+    For tAt = 1:1:tClasses {
+        If (pMax > 0) && (pData >= pMax) Quit
+        Set tClass = tClasses(tAt)
+        If (pClass '= "") && ($ZConvert(tClass, "U") '= $ZConvert(pClass, "U")) Continue
+        Do ..PmmlClassRowsHere(tClass, pModel, pMax, .pData)
+    }
+}
+
+/// <p>The rows of one definition class for <method>PmmlRowsHere</method>.</p>
+ClassMethod PmmlClassRowsHere(pClass As %String, pModel As %String, pMax As %Integer, ByRef pData) [ Private ]
+{
+    Try {
+        If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit
+        Set tSC = $ClassMethod(pClass, "%GetModels", .tModels)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..PmmlSourcesHere(pClass, .tSources)
+        If $$$ISERR(tSC) Quit
+        Set tNames = ""
+        For tI = 1:1:tSources {
+            Set tNames = tNames _ $Select(tI = 1: "", 1: $Char(10)) _ $List(tSources(tI), 1)
+        }
+        For tI = 1:1:+$Get(tModels) {
+            If (pMax > 0) && (pData >= pMax) Quit
+            Set tName = $List(tModels(tI), 1)
+            If (pModel '= "") && (tName '= pModel) Continue
+            Set tModelName = tName
+            Set tModelClass = $ClassMethod(pClass, "%GetModelClassName", .tModelName)
+            If tModelClass = "" Continue
+            Kill tField, tOpType
+            Do $ClassMethod(tModelClass, "%GetPredictedFieldInfo", .tField, .tDataType, .tOpType)
+            Kill tModelDef
+            Set tVerification = 0
+            If $$$ISOK($ClassMethod(tModelClass, "%GetDefinition", .tModelDef)) && $IsObject($Get(tModelDef)) Set tVerification = ''$IsObject(tModelDef.ModelVerification)
+            Set pData = pData + 1
+            Set pData(pData) = $ListBuild(pClass, tName, $List(tModels(tI), 3), $Get(tField), $Get(tOpType), tNames, tVerification)
+        }
+    } Catch {
+        ; A definition class the vendor cannot read is not a row.
+    }
+}
+
+/// <p>Look the model <var>pModel</var> of the definition class <var>pClass</var> up in <var>pNamespace</var>, switched by explicit save and restore (AD-16): <var>pRow</var> is its
+/// row (<method>PmmlRowsHere</method>'s), <code>""</code> when no compiled definition holds it; <var>pKind</var> and <var>pText</var> are the kind and text of the data source named
+/// <var>pDataSource</var> (<code>""</code> for none declared), and, for a cube source, <var>pCubeHeld</var> is whether the namespace holds its cube and the caller may read it
+/// (<code>%CubeExists</code> and <code>%CheckPrivilege</code>). A vendor error is <var>pStatus</var>; an exception is <var>pCaught</var>. A seam: a fixture overrides it.</p>
+ClassMethod PmmlLookup(pNamespace As %String, pClass As %String, pModel As %String, pDataSource As %String, Output pRow, Output pKind As %String, Output pText As %String, Output pCubeHeld As %Boolean, Output pStatus As %Status, Output pCaught As %Exception.AbstractException)
+{
+    Set pRow = ""
+    Set pKind = ""
+    Set pText = ""
+    Set pCubeHeld = 0
+    Set pStatus = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tData
+        Set tData = 0
+        Do ..PmmlRowsHere(pClass, pModel, 1, .tData, .pStatus)
+        If $$$ISOK(pStatus) && tData {
+            Set pRow = tData(1)
+            Set tSC = ..PmmlSourcesHere($List(pRow, 1), .tSources)
+            For tI = 1:1:$Select($$$ISOK(tSC): tSources, 1: 0) {
+                If $List(tSources(tI), 1) '= pDataSource Continue
+                Set pKind = $List(tSources(tI), 2)
+                Set pText = $List(tSources(tI), 3)
+                Quit
+            }
+            If pKind = ..#PMMLKINDCUBE Set pCubeHeld = ##class(%DeepSee.Utils).%CubeExists(pText) && ##class(%DeepSee.Utils).%CheckPrivilege(pText)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>What a PMML test of the model <var>pModel</var> of the definition class <var>pClass</var> in <var>pNamespace</var> against <var>pSource</var> runs on (Story 24.14, AD-7, AD-29, AD-65),
+/// into <var>pSQL</var>: the SQL text a run executes (the declared SQL data source's, or <var>pCustomSQL</var> for <parameter>PMMLSOURCECUSTOM</parameter>), <code>""</code> when it executes none. The
+/// caller makes the SQL check; this makes the others, in order: <method>PmmlAdmit</method>, so no vendor call is made for a caller or a namespace it refuses; the class's shape; the
+/// definition and model (<method>PmmlLookup</method>), else 404 <code>ANALYTICS.PMML.ABSENT</code>; a <parameter>PMMLSOURCEDATASET</parameter> whose <var>pDataSource</var> the definition
+/// does not declare as an SQL or cube data source, or a <parameter>PMMLSOURCEVERIFICATION</parameter> the model has none for, 400 <code>ANALYTICS.PMML.INPUT</code>; and a cube data source whose cube
+/// the namespace does not hold or the caller may not read, 409 <code>ANALYTICS.PMML.CUBE</code>, before the vendor runs anything.</p>
+ClassMethod PmmlResolve(pNamespace As %String, pClass As %String, pModel As %String, pSource As %String, pDataSource As %String, pCustomSQL As %String, Output pSQL As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pSQL = ""
+    Set tSC = ..PmmlAdmit(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$Match(pClass, ..#PMMLCLASSPATTERN) || (pModel = "") Quit ..PmmlAbsent(.pHttpStatus, .pFault)
+    Do ..PmmlLookup(pNamespace, pClass, pModel, $Select(pSource = ..#PMMLSOURCEDATASET: pDataSource, 1: ""), .tRow, .tKind, .tText, .tCubeHeld, .tVendorSC, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the PMML model could not be read", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the PMML model could not be read", .pHttpStatus, .pFault)
+    If tRow = "" Quit ..PmmlAbsent(.pHttpStatus, .pFault)
+    If pSource = ..#PMMLSOURCEVERIFICATION {
+        If '$List(tRow, 7) Quit ..PmmlInput(.pHttpStatus, .pFault)
+    } ElseIf pSource = ..#PMMLSOURCECUSTOM {
+        Set pSQL = pCustomSQL
+    } Else {
+        If (tKind '= ..#PMMLKINDSQL) && (tKind '= ..#PMMLKINDCUBE) Quit ..PmmlInput(.pHttpStatus, .pFault)
+        If (tKind = ..#PMMLKINDCUBE) && 'tCubeHeld Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLCUBE, .pHttpStatus, .pFault)
+        If tKind = ..#PMMLKINDSQL Set pSQL = tText
+    }
+    Quit $$$OK
+}
+
+/// <p>The 404 <code>ANALYTICS.PMML.ABSENT</code> refusal.</p>
+ClassMethod PmmlAbsent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AnalyticsError).#PMMLABSENT, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLABSENT, .pHttpStatus, .pFault)
+}
+
+/// <p>The 400 <code>ANALYTICS.PMML.INPUT</code> refusal.</p>
+ClassMethod PmmlInput(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#PMMLINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLINPUT, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether the stop hook of <var>pStopClass</var>, <code>StopRequested(pStopKey)</code>, asks the run to stop: run unswitched (AD-16); 0 for an empty <var>pStopClass</var>.</p>
+ClassMethod PmmlStopAsked(pStopClass As %String, pStopKey As %String) As %Boolean [ Private ]
+{
+    If pStopClass = "" Quit 0
+    Quit ''$ClassMethod(pStopClass, "StopRequested", pStopKey)
+}
+
+/// <p>Run the PMML test of the model <var>pModel</var> of the definition class <var>pClass</var> in <var>pNamespace</var> (Story 24.14, AD-7, AD-41, AD-42): the one seam that names the vendor's three
+/// run calls. The caller has made <method>PmmlResolve</method>'s checks and the SQL check. The run allocates its test id, runs the vendor's <code>%RunModel</code> (<var>pDataSource</var>),
+/// <code>%RunModelFromPMMLRows</code> or <code>%RunModelFromSQL</code> (<var>pSQL</var>) with tracking off, under an alarm of <var>pBound</var> seconds, reads its answer, and then
+/// <b>drops the id's rows on every path</b>: answered, error, stopped, canceled or fault (<method>PmmlDrop</method>). The stop hook, <code>StopRequested(pStopKey)</code> of
+/// <var>pStopClass</var>, is asked before the start and once the vendor returns, unswitched.</p>
+/// <p><var>pAnswer</var> is <code>{outcome: "ran", mode, records, values, rows, truncated, ...}</code> (<method>PmmlAnswer</method>); the vendor's error answer (<method>ErrorAnswer</method>); or
+/// <code>{outcome: "stopped", seconds}</code> with <var>pStopped</var> <code>bound</code> or <code>request</code>. Otherwise <var>pStopped</var> is <code>""</code>. A fault is rethrown after the drop.
+/// The caller's namespace is unchanged on return.</p>
+ClassMethod PmmlRun(pNamespace As %String, pClass As %String, pModel As %String, pSource As %String, pDataSource As %String, pSQL As %String, pBound As %Numeric, pStopClass As %String, pStopKey As %String, Output pAnswer As %DynamicObject, Output pStopped As %String) As %Status
+{
+    Set pAnswer = ""
+    Set pStopped = ""
+    Set tId = ""
+    Set tCaught = ""
+    Set tSC = $$$OK
+    Try {
+        If ..PmmlStopAsked(pStopClass, pStopKey) {
+            Set tSC = ..StoppedAnswer("request", 0, pBound, .pAnswer, .pStopped)
+            Quit
+        }
+        Set tStart = $ZHorolog
+        Do ..PmmlVendor(pNamespace, pClass, pModel, pSource, pDataSource, pSQL, pBound, .tId, .tMode, .tVendorSC)
+        Set tElapsed = $ZHorolog - tStart
+        If ..Alarmed(tVendorSC) || ($$$ISOK(tVendorSC) && (tElapsed >= pBound)) {
+            Set tSC = ..StoppedAnswer("bound", tElapsed, pBound, .pAnswer, .pStopped)
+        } ElseIf ..PmmlStopAsked(pStopClass, pStopKey) {
+            Set tSC = ..StoppedAnswer("request", tElapsed, pBound, .pAnswer, .pStopped)
+        } ElseIf $$$ISERR(tVendorSC) {
+            Set pAnswer = ..ErrorAnswer(tVendorSC)
+        } Else {
+            Set pAnswer = ..PmmlAnswer(tId, tMode)
+        }
+    } Catch ex {
+        Set tCaught = ex
+    }
+    If tId '= "" Do ..PmmlDrop(tId)
+    If $IsObject(tCaught) Throw tCaught
+    Quit tSC
+}
+
+/// <p>The vendor half of <method>PmmlRun</method>, in <var>pNamespace</var> by explicit save and restore (AD-16): the target's operational type as <var>pMode</var>, the new test id as
+/// <var>pId</var> (set before the vendor runs, so that a fault still names its rows), and the vendor's status, or an exception's, as <var>pStatus</var>, with the alarm cleared. A seam: a
+/// fixture overrides it.</p>
+ClassMethod PmmlVendor(pNamespace As %String, pClass As %String, pModel As %String, pSource As %String, pDataSource As %String, pSQL As %String, pBound As %Numeric, Output pId As %Integer, Output pMode As %String, Output pStatus As %Status)
+{
+    Set pId = ""
+    Set pMode = ""
+    Set pStatus = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tAlarmed = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tName = pModel
+        Set tModelClass = $ClassMethod(pClass, "%GetModelClassName", .tName)
+        If tModelClass '= "" Do $ClassMethod(tModelClass, "%GetPredictedFieldInfo", .tField, .tDataType, .pMode)
+        Set pId = ##class(%DeepSee.PMML.Utils.TempResult).GetNewTestId()
+        Do $System.Alarm.Set(..AlarmSeconds(pBound))
+        Set tAlarmed = 1
+        If pSource = ..#PMMLSOURCEVERIFICATION {
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.pId, pClass, pModel, , 0)
+        } ElseIf pSource = ..#PMMLSOURCECUSTOM {
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromSQL(.pId, pClass, pModel, pSQL, , , , 0)
+        } Else {
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModel(.pId, pClass, pModel, pDataSource, , 0)
+        }
+        Do $System.Alarm.Clear()
+        Set tAlarmed = 0
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        If tAlarmed Do $System.Alarm.Clear()
+        Set $NAMESPACE = tOrigNS
+        Set pStatus = ex.AsStatus()
+    }
+}
+
+/// <p>The answer of a finished test <var>pTestId</var> of a target of operational type <var>pMode</var>, read from the vendor's shared result rows with embedded SQL bound to the id:
+/// <code>{outcome: "ran", mode, records, values, rows, truncated}</code>. A categorical (or ordinal) target adds <code>precision</code>, <code>recall</code> and <code>fMeasure</code>, each
+/// <code>{micro, macro}</code> in percent to two places, from <code>TempResult.GetAggregatePrecisionMetrics</code>, and <code>values</code> has one entry for each actual value,
+/// <code>{actual, records, correct, incorrect}</code>, ordered by value. A continuous target adds <code>sigma</code>, <code>rse</code> and <code>rSquared</code>, computed as the classic tester computes
+/// them, and its <code>values</code> is empty. <code>rows</code> is each record's <code>{record, actual, predicted, probability}</code> in id order. <code>values</code> and <code>rows</code> are cut at
+/// <parameter>MDXMAXROWS</parameter> entries and <parameter>MDXMAXANSWER</parameter> characters together, each text at <parameter>MDXMAXCELL</parameter>; <code>truncated</code> says any was left out.
+/// Names no OcuPilot class but this one; it needs no namespace switch.</p>
+ClassMethod PmmlAnswer(pTestId As %Integer, pMode As %String) As %DynamicObject
+{
+    &sql(SELECT COUNT(*) INTO :tRecords FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId)
+    Set tRecords = +$Get(tRecords)
+    Set tAnswer = {}
+    Do tAnswer.%Set("outcome", "ran", "string")
+    Do tAnswer.%Set("mode", pMode, "string")
+    Do tAnswer.%Set("records", tRecords, "number")
+    Set tValues = []
+    Set tRows = []
+    Set tTruncated = 0
+    Set tSize = 0
+    If pMode = "continuous" {
+        Set (tSigma, tRSE, tRSquared) = 0
+        If tRecords {
+            &sql(SELECT AVG(ActualValue) INTO :tMean FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId)
+            &sql(SELECT SUM(POWER(ActualValue-PredictedValue, 2)) / GREATEST(COUNT(*), 1), SUM(POWER(PredictedValue-ActualValue, 2)) / SUM(POWER(:tMean-ActualValue, 2))
+                INTO :tMSE, :tRSEValue FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId)
+            If 'SQLCODE {
+                Set tSigma = $FNumber($ZSqr(tMSE), "", 2)
+                Set tRSE = $FNumber(tRSEValue, "", 4)
+                Set tRSquared = $FNumber(1 - tRSEValue, "", 4)
+            }
+        }
+        Do tAnswer.%Set("sigma", +tSigma, "number")
+        Do tAnswer.%Set("rse", +tRSE, "number")
+        Do tAnswer.%Set("rSquared", +tRSquared, "number")
+    } Else {
+        Set tSC = ##class(%DeepSee.PMML.Utils.TempResult).GetAggregatePrecisionMetrics(pTestId, .tMacroP, .tMicroP, .tMacroR, .tMicroR, .tMacroF, .tMicroF)
+        If $$$ISERR(tSC) Set (tMacroP, tMicroP, tMacroR, tMicroR, tMacroF, tMicroF) = 0
+        Do tAnswer.%Set("precision", {"micro": (+$FNumber(tMicroP, "", 2)), "macro": (+$FNumber(tMacroP, "", 2))})
+        Do tAnswer.%Set("recall", {"micro": (+$FNumber(tMicroR, "", 2)), "macro": (+$FNumber(tMacroR, "", 2))})
+        Do tAnswer.%Set("fMeasure", {"micro": (+$FNumber(tMicroF, "", 2)), "macro": (+$FNumber(tMacroF, "", 2))})
+        &sql(DECLARE PmmlValues CURSOR FOR
+            SELECT %EXACT(ActualValue), COUNT(*), SUM(CASE WHEN PredictedValue = ActualValue THEN 1 ELSE 0 END), SUM(CASE WHEN PredictedValue != ActualValue THEN 1 ELSE 0 END)
+            FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId GROUP BY %EXACT(ActualValue) ORDER BY %EXACT(ActualValue))
+        &sql(OPEN PmmlValues)
+        For {
+            &sql(FETCH PmmlValues INTO :tActual, :tCount, :tCorrect, :tIncorrect)
+            If SQLCODE Quit
+            Set tActual = ..Cut($Get(tActual))
+            Set tSize = tSize + $Length(tActual) + 40
+            If (tValues.%Size() >= ..#MDXMAXROWS) || (tSize > ..#MDXMAXANSWER) {
+                Set tTruncated = 1
+                Quit
+            }
+            Set tValue = {}
+            Do tValue.%Set("actual", tActual, "string")
+            Do tValue.%Set("records", +tCount, "number")
+            Do tValue.%Set("correct", +tCorrect, "number")
+            Do tValue.%Set("incorrect", +tIncorrect, "number")
+            Do tValues.%Push(tValue)
+        }
+        &sql(CLOSE PmmlValues)
+    }
+    Do tAnswer.%Set("values", tValues)
+    &sql(DECLARE PmmlRows CURSOR FOR
+        SELECT TestRecordId, ActualValue, PredictedValue, Probability FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId ORDER BY %ID)
+    &sql(OPEN PmmlRows)
+    For {
+        &sql(FETCH PmmlRows INTO :tRecord, :tRowActual, :tPredicted, :tProbability)
+        If SQLCODE Quit
+        Set tRecord = ..Cut($Get(tRecord))
+        Set tRowActual = ..Cut($Get(tRowActual))
+        Set tPredicted = ..Cut($Get(tPredicted))
+        Set tSize = tSize + $Length(tRecord) + $Length(tRowActual) + $Length(tPredicted) + 60
+        If (tRows.%Size() >= ..#MDXMAXROWS) || (tSize > ..#MDXMAXANSWER) {
+            Set tTruncated = 1
+            Quit
+        }
+        Set tRow = {}
+        Do tRow.%Set("record", tRecord, "string")
+        Do tRow.%Set("actual", tRowActual, "string")
+        Do tRow.%Set("predicted", tPredicted, "string")
+        If $Get(tProbability) = "" {
+            Do tRow.%Set("probability", "", "null")
+        } Else {
+            Do tRow.%Set("probability", +tProbability, "number")
+        }
+        Do tRows.%Push(tRow)
+    }
+    &sql(CLOSE PmmlRows)
+    Do tAnswer.%Set("rows", tRows)
+    Do tAnswer.%Set("truncated", tTruncated, "boolean")
+    Quit tAnswer
+}
+
+/// <p>Drop the vendor's result rows of test <var>pTestId</var> with an embedded <code>DELETE</code> bound to the id (Story 24.14, AD-7): the vendor's own drop method prepares dynamic
+/// SQL, which a caller without the SQL privilege on the shared table is refused (measured), while this writes the same IRISTEMP rows. A statement that fails, as one that waits out the process's SQL lock
+/// timeout on a row (<code>SQLCODE</code> -110) or one a cancel interrupts (-456) does, is sent up to five times in all, so a drop that meets a held lock waits up to five lock timeouts. The vendor's
+/// test-id counter stays. A failure is logged once, never the run's answer.</p>
+ClassMethod PmmlDrop(pTestId As %Integer)
+{
+    For tTry = 1:1:5 {
+        &sql(DELETE FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = :pTestId)
+        If SQLCODE >= 0 Quit
+        If tTry < 5 Hang 0.2
+    }
+    If SQLCODE < 0 Do ..LogFault("a PMML test's result rows could not be dropped", $$$ERROR($$$GeneralError, "SQLCODE " _ SQLCODE), ##class(OcuPilot.Api.AnalyticsError).#PMMLLOST)
 }
 
 /// <p>The cube <var>pCube</var> as the cube manager reads it, from vendor and system classes only; called with the namespace

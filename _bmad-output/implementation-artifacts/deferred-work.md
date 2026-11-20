@@ -14198,6 +14198,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T03:50:33Z status=routed owner=burndown by=runner note=flake_policy:a_second_red_of_this_or_DW-2535_is_a_defect_not_a_flake;route_with_DW-2535
 - 2026-11-20T18:56:50Z status=routed owner=burndown by=runner note=recurred:21.21_runner_sweep_shard_5(head_83e75a7f8):InteropItemRun.TestTheAgentsStopAndStartConfirmOverHttp:operation_holds_no_job_after_the_start;CI_run_44790510586_ran_the_class_green;per_policy_a_second_red_is_a_defect
 - 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
+- 2026-11-20T10:25:11Z status=open owner=burndown by=runner note=SECOND RED (ocupilot-b-ci sweep shard 16, 24.14 Batch 2 implement, same assertion, green on its one re-run): per the orchestrator's rule this is now a defect, not a flake
 
 ### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: low | footprint: in-epic
@@ -14219,6 +14220,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: A real KPI fixture would need a compiled KPI class in USER.
 - 2026-11-20T04:31:09Z status=wontfix-accepted owner=24-14-pmml-model-tester-and-dashboard-viewer by=harvest note=reopen_if=a pivot over a real KPI runs
 
+### DW-2802: Background runs: pressing Run while another model's (or query's) run is live answers BUSY and attaches that run, so its answer shows under the current item; the busy banner stays after the attached run ends
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Shared BackgroundRun behavior that MDX query has too (24.14 Batch 2 implement review); fixing it touches the shared client store.
+- 2026-11-20T11:16:08Z status=routed owner=burndown by=harvest note=attach_only_the_same_target's_run
 ### DW-2803: The SQL activity cancel can reach a statement running in another OcuPilot process (a turn job or an API worker); AD-10 has no statement arm
 - source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
@@ -14239,3 +14244,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ocupilot-ci: every namespace reads Globals = Routines (HSCUSTOM, USER, %SYS, HSLIB, HSSYS); dropping Globals from the field loop leaves every test green (code read correct)
 - 2026-11-20T17:59:25Z status=wontfix-accepted owner=21-21-leaves-that-wait-on-the-owner by=cr note=reopen_if=a probe namespace with separate globals and routines databases exists in the suite, or the field loop changes
+### DW-2804: An install or update run by an administrator without %All stops at EnsureSqlPrivileges (SQLCODE -99) unless the account first holds SELECT on %Dictionary.CompiledClass and the OcuPilot_Kernel_State schema privileges WITH GRANT OPTION; the latter then draws the installer's foreign-grant warning, and the README does not say any of it
+- source: 1.0.18 upgrade check (prompts/upgrade-1018-prompt.md, 1.0.13 leg) | severity: med | fix-risk: med | footprint: cross-story
+- evidence: Measured on ocupilot-c-ci 2026-11-20: as OcuUpgAdmin (no %All) -99 at EnsureSqlPrivileges; schema grant alone -99; plus CompiledClass SELECT OK; revoking schema grant -112; Installer.cls identical 1dd513578..bdee5d94e, so pre-existing (the 1.0.17 check pre-granted both)
+- 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression

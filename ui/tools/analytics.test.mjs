@@ -90,8 +90,9 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('SETTINGSPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(
     parameter('ENDPOINTS'),
-    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets'
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets,PmmlModels,PmmlModel'
   );
+  assert.equal(parameter('PMMLPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');
@@ -781,4 +782,45 @@ test('Story 24.14: a saved pivot is composed only by the one seam, and the viewe
     assert.ok(strings.includes(`${key}:`), `strings.ts holds ${key}`);
     assert.ok(experience.includes(`"${stringValue(key)}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
   }
+});
+
+const PMML_SENTENCES = [
+  ['REASONPMMLINPUT', 'analyticsRefusalPmmlInput'],
+  ['REASONPMMLABSENT', 'analyticsPmmlModelGone'],
+  ['REASONPMMLQUERYONLY', 'analyticsRefusalPmmlQueryOnly'],
+  ['REASONPMMLCUBE', 'analyticsRefusalPmmlCube'],
+  ['REASONPMMLBUSY', 'analyticsRefusalPmmlBusy'],
+  ['REASONPMMLFULL', 'analyticsRefusalPmmlFull'],
+  ['REASONPMMLNOTFOUND', 'analyticsRefusalPmmlNotFound'],
+  ['REASONPMMLLOST', 'analyticsRefusalPmmlLost'],
+];
+
+test('Story 24.14 Batch 2: each PMML refusal is one sentence on both surfaces, and the tester names none of the vendor calls its Never list forbids', () => {
+  // Mutation (Rule 19): change one word of REASONPMMLBUSY in AnalyticsError.cls (or of analyticsRefusalPmmlBusy in strings.ts) -> the first half goes red naming the pair; call %DropAllResults,
+  // CreateFromFile, %ExecuteModel or %GetModelInstance from AnalyticsPort.cls or PmmlTest.cls, or the vendor's run outside PmmlVendor -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const area = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PmmlTest.cls'), 'utf8'), false);
+  for (const source of [code, area]) {
+    for (const never of [/CreateFromFile/, /CreateFromStream/, /CreateFromString/, /%OnSubmit/, /ExportToCubeDefinition/, /%DropAllResults/, /%DropResults/, /%GetModelInstance/, /%ExecuteModel/]) {
+      assert.ok(!never.test(source), `neither the port nor PmmlTest names ${never}`);
+    }
+  }
+  const seam = /ClassMethod PmmlVendor\([\s\S]*?\n\}\n/.exec(code);
+  assert.notEqual(seam, null, 'the port declares PmmlVendor');
+  for (const call of ['%RunModel(', '%RunModelFromPMMLRows(', '%RunModelFromSQL(']) {
+    assert.equal(code.split(call).length - 1, 1, `${call} is called once in the port`);
+    assert.ok(seam[0].includes(call), `and the one call sits in PmmlVendor`);
+  }
+  assert.ok(!/%RunModel/.test(area), 'PmmlTest runs nothing itself');
+  const drops = [...code.matchAll(/DELETE FROM %DeepSee_PMML_Utils\.TempResult/g)].length;
+  assert.equal(drops, 1, 'the one drop of the vendor\'s result rows is an embedded DELETE in PmmlDrop');
 });

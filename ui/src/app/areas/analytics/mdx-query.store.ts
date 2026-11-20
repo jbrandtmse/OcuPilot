@@ -81,6 +81,15 @@ const REFUSAL_SENTENCES = new Map<string, string>([
   ['ANALYTICS.MDX.LOST', STRINGS.analyticsRefusalMdxLost],
   ['ANALYTICS.FOLDERITEM.ABSENT', STRINGS.analyticsRefusalFolderItemAbsent],
   ['ANALYTICS.PIVOT.CUBE', STRINGS.analyticsRefusalPivotCube],
+  // A PMML model's test is the same kind of run, and its refusals read through this function.
+  ['ANALYTICS.PMML.INPUT', STRINGS.analyticsRefusalPmmlInput],
+  ['ANALYTICS.PMML.ABSENT', STRINGS.analyticsPmmlModelGone],
+  ['ANALYTICS.PMML.QUERYONLY', STRINGS.analyticsRefusalPmmlQueryOnly],
+  ['ANALYTICS.PMML.CUBE', STRINGS.analyticsRefusalPmmlCube],
+  ['ANALYTICS.PMML.BUSY', STRINGS.analyticsRefusalPmmlBusy],
+  ['ANALYTICS.PMML.FULL', STRINGS.analyticsRefusalPmmlFull],
+  ['ANALYTICS.PMML.NOTFOUND', STRINGS.analyticsRefusalPmmlNotFound],
+  ['ANALYTICS.PMML.LOST', STRINGS.analyticsRefusalPmmlLost],
 ]);
 
 /** The sentence a refusal shows: a privilege denial names the pair it lacks (AD-8), a known code its own, any other the envelope's (AD-39). */

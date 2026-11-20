@@ -27,6 +27,9 @@
  * Story 24.14 adds one test: a dashboard opens from Folder items to its Definition and Widgets tabs, only the pivot widget links, and the pivot's Definition runs to the vendor's cells;
  * the dashboard's Definition, Widgets and the pivot's Definition with its grid pass the structural and contrast checks.
  *
+ * Story 24.14 Batch 2 adds one test: PMML models lists the probe definition's three models, a model's name opens its Test screen, and a run against the model's verification records answers the
+ * count and the metrics the vendor's own run computes; the list and the Test screen with its answer pass the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -76,6 +79,11 @@ const SETTINGS_VARIABLES = `${SETTINGS}/variables`;
 const SETTINGS_ICONS = `${SETTINGS}/icons`;
 const FOLDER_ITEM_DEFINITION = `${FOLDER_ITEMS}/document`;
 const FOLDER_ITEM_WIDGETS = `${FOLDER_ITEMS}/widgets`;
+const PMML_MODELS = 'analytics/pmml-models';
+const PMML_MODEL_TEST = `${PMML_MODELS}/test`;
+const PMML_PROBE = 'OcuPilot.Test.PmmlProbe';
+const PMML_RUN = 'OcuPilot.Test.AnalyticsPmmlRun';
+const PMML_DEFINITION = 'OcuPilotProbe.Pmml.Definition';
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -253,6 +261,7 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsListingGroupsLabel,
         STRINGS.analyticsQualityMeasuresLabel,
         STRINGS.interopItemTabSettings,
+        STRINGS.analyticsPmmlModelsLabel,
       ],
       'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12) and Settings (Story 24.13)'
     );
@@ -1285,5 +1294,56 @@ test('Story 24.14: a person opens a dashboard from Folder items, sees its three 
     assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries, with the run's grid drawn`);
   } finally {
     await context.close();
+  }
+});
+
+// Story 24.14 Batch 2 AC5. Mutation (Rule 19): send the model's name in place of its composite id from `pmml-test.store.ts` (rebuild and redeploy first) -> the run answers a refusal and the answer
+// leg goes red; make `AnalyticsPort.PmmlAnswer` answer 0 records -> the count leg goes red.
+test('Story 24.14 Batch 2: a person opens PMML models, opens a model and runs it against its verification records, and the answer is the vendor\'s own', async () => {
+  const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+  const made = probe('PMMLMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(PMML_MODELS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const rows = await allRows(page);
+      assert.deepEqual(rows.map((row) => row[0]).sort(), ['Colors', 'Heights', 'Plain'], 'the list holds the probe definition\'s three models');
+      const colors = rows.find((row) => row[0] === 'Colors');
+      assert.deepEqual([colors[1], colors[2], colors[3], colors[4]], [PMML_DEFINITION, 'Tree', 'Color', 'categorical'], 'a row reads the model\'s class, type, target and target type');
+      assert.deepEqual(await structural(page, PMML_MODELS), [], `${PMML_MODELS}: no violation beyond the baseline's entries`);
+      await clickRowCentre(page, { text: 'Colors', link: true });
+      await pathHolds(page, `/${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`);
+      await answered(page);
+      assert.equal((await allRows(page))[0][0], 'Colors', 'the Test screen reads the model\'s own row');
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('[data-ocu-pmml="run"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('[data-ocu-pmml="records"]', { visible: true, timeout: config.navigationTimeoutMs });
+      const drawn = await page.evaluate(() => ({
+        records: document.querySelector('[data-ocu-pmml="records"]')?.textContent ?? '',
+        metrics: [...document.querySelectorAll('[data-ocu-pmml="metrics"] tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent.trim())),
+        values: [...document.querySelectorAll('[data-ocu-pmml="values"] tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent.trim())),
+      }));
+      const vendor = probe('PMMLVENDOR', `##class(${PMML_RUN}).Oracle("Colors","verification").%ToJSON()`);
+      const expected = JSON.parse(vendor.value);
+      assert.equal(drawn.records, String(expected.records), `the count is the vendor's own: ${vendor.output}`);
+      assert.deepEqual(
+        drawn.metrics.map((row) => row.slice(1)),
+        [expected.precision, expected.recall, expected.fMeasure].map((pair) => [String(pair.micro), String(pair.macro)]),
+        'the metrics are the vendor\'s own',
+      );
+      assert.deepEqual(
+        drawn.values,
+        expected.values.map((value) => [value.actual, String(value.records), String(value.correct), String(value.incorrect)]),
+        'and so are the per-value counts',
+      );
+      assert.deepEqual(await structural(page, PMML_MODEL_TEST), [], `${PMML_MODEL_TEST}: no violation beyond the baseline's entries, with the answer drawn`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_##class(${PMML_PROBE}).Gone()`);
+    assert.equal(gone.value, '11', `the PMML probe is removed: ${gone.output}`);
   }
 });

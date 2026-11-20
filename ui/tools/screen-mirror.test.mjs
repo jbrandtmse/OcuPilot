@@ -1576,6 +1576,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+      // Story 24.14 Batch 2: a PMML model's Test screen, whose one criterion is the model's id.
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -2777,6 +2779,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
+      // Story 24.14 Batch 2: the PMML models list and its Test screen.
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList',
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
@@ -3586,6 +3591,8 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsUserIconList', 'UserIcons'],
     ['AnalyticsFolderItemDefinitionTab', 'FolderItemDefinition'],
     ['AnalyticsDashboardWidgetsTab', 'DashboardWidgets'],
+    ['AnalyticsPmmlModelList', 'PmmlModels'],
+    ['AnalyticsPmmlModelTest', 'PmmlModel'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

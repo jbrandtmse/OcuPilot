@@ -311,6 +311,15 @@ ClassMethod FinishRefused(pKey As %String, pStatus As %Status, pFault) [ Private
     Do ..Finish(pKey, tFailed, ..Envelope(pFault).%ToJSON())
 }
 
+/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer. The stop hook the analytics kinds' runs ask while
+/// they wait on the vendor.</p>
+ClassMethod StopRequested(pKey As %String) As %Boolean
+{
+    Set tRequested = 0
+    Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
+    Quit $$$ISOK(tSC) && tRequested
+}
+
 /// <p>Ask run <var>pId</var> of <var>pUser</var> to stop (<method>OcuPilot.Kernel.State.SqlRun.GuardedCancel</method>) and send the
 /// kind's cancel to its job (<method>CancelJob</method>). <var>pFound</var> is 0 for anyone but the owner, and for another kind's
 /// run.</p>
@@ -389,6 +398,16 @@ ClassMethod Envelope(pFault As %DynamicObject) As %DynamicObject [ Private ]
 ClassMethod Render(pFault As %DynamicObject, pHttp As %Integer) As %Status [ Private ]
 {
     Quit ##class(OcuPilot.Api.Error).Render(+pHttp, pFault.%Get("error"), pFault.%Get("reason"), pFault.%Get("code"), pFault.%Get("detail"))
+}
+
+/// <p>Render the port's refusal <var>pFault</var> with the status <var>pHttp</var>, or the generic internal envelope for the failed status <var>pSC</var> when the port gave
+/// none.</p>
+ClassMethod RenderPortFault(pSC As %Status, pHttp As %Integer, pFault) As %Status [ Private ]
+{
+    If '$IsObject(pFault) || (pFault.%Get("code") = "") {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
+    }
+    Quit ..Render(pFault, $Select(+pHttp: +pHttp, 1: 500))
 }
 
 /// <p>Render the 404 <code>notfound</code> refusal; the id is not echoed back.</p>

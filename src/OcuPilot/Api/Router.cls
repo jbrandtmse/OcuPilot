@@ -251,6 +251,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/pivot/background/:id/cancel" Method="POST" Call="AnalyticsPivotBackgroundCancel"/>
   <Route Url="/analytics/pivot/background/:id" Method="GET" Call="AnalyticsPivotBackgroundPoll"/>
   <Route Url="/analytics/pivot/background" Method="POST" Call="AnalyticsPivotBackgroundStart"/>
+  <Route Url="/analytics/pmml/background/:id/cancel" Method="POST" Call="AnalyticsPmmlBackgroundCancel"/>
+  <Route Url="/analytics/pmml/background/:id" Method="GET" Call="AnalyticsPmmlBackgroundPoll"/>
+  <Route Url="/analytics/pmml/background" Method="POST" Call="AnalyticsPmmlBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
@@ -1909,6 +1912,26 @@ ClassMethod AnalyticsPivotBackgroundPoll(pId As %String) As %Status
 ClassMethod AnalyticsPivotBackgroundStart() As %Status
 {
     Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml/background/:id/cancel</code> (Story
+/// 24.14): a PMML model test's cancel, delegating to <class>OcuPilot.Area.Analytics.PmmlTest</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/pmml/background</code>.</p>
+ClassMethod AnalyticsPmmlBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/pmml/background/:id</code>: a PMML model test's poll.</p>
+ClassMethod AnalyticsPmmlBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml/background</code>: a PMML model test's start.</p>
+ClassMethod AnalyticsPmmlBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandleStart()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
