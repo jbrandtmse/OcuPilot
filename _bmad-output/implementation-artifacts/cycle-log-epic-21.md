@@ -824,3 +824,8 @@
 2026-11-20T19:08:45Z	Story 21.21	ci_red_classified	run=44790510586 sha=83e75a7f8 defect=ClaimReach(review_seam_KernelConfirmClass_names_the_claim_by_string) sweep_red=InteropItemRun(DW-2787_recurrence,not_this_story;CI_ran_it_green) runner_sweep=stopped_at_shard_5
 2026-11-20T19:08:45Z	Story 21.21	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ClaimReach scope_baseline=83e75a7f8
 2026-11-20T19:08:45Z	Story 21.21	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T19:08:45Z model=sonnet agent_name=21-21-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a283a19c1)
+2026-11-20T19:09:37Z	Story 21.21	ruling	question=DW-2787_third_red via=orchestrator choice=route_DW-2787+DW-2535_to_21-23_must-fix(root_cause_not_retry) interim=one_rerun_for_that_assertion_alone queue=21.36,21.37,21.23,21.6,21.25,21.31
+2026-11-20T19:33:26Z	Story 21.21	ruling	question=DW-1822 via=orchestrator choice=route_21-23_must-fix(measure_governance_settle;fix_cause_not_deadline)
+2026-11-20T19:33:26Z	Story 21.21	dev_complete	scope=rework1(ClaimReach:KernelConfirm_##class_seam;no_quoted_name) build_sha=02855fa44 followup_review_recommended=false cycle_iteration=2
+2026-11-20T19:33:26Z	Story 21.21	code_head_pushed	sha=02855fa44 run=44803204811 missing=none
+2026-11-20T19:33:26Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=02855fa44 started=2026-11-20T19:33:26Z dir=e21u/21-21/gate attempt=2
