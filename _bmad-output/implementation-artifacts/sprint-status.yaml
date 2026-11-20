@@ -264,14 +264,14 @@ development_status:
   16-26-epic-16-burn-down: done
   epic-16-retrospective: optional
 
-  epic-17: backlog
-  17-1-the-public-repository-and-the-ideas-portal-idea: backlog
-  17-2-a-readme-whose-install-steps-work-the-first-time: backlog
-  17-3-the-open-exchange-listing-submitted-for-review: backlog
-  17-4-the-contest-application: backlog
-  17-5-continuous-visible-improvement-to-the-deadline: backlog
-  17-6-the-walkthrough-a-judge-without-an-api-key-can-still-read: backlog
-  17-7-the-demo-freeze-and-the-final-submission: backlog
+  epic-17: done
+  17-1-the-public-repository-and-the-ideas-portal-idea: done
+  17-2-a-readme-whose-install-steps-work-the-first-time: done
+  17-3-the-open-exchange-listing-submitted-for-review: done
+  17-4-the-contest-application: done
+  17-5-continuous-visible-improvement-to-the-deadline: done
+  17-6-the-walkthrough-a-judge-without-an-api-key-can-still-read: done
+  17-7-the-demo-freeze-and-the-final-submission: done
   epic-17-retrospective: optional
 
   epic-18: done
