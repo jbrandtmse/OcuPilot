@@ -161,8 +161,12 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   themselves. Only an OcuPilot administrator can change the kill switch, the holds, the provider
   connection settings and the governance policy, and each user's conversations, proposals and
   agent records stay readable only by that user or an administrator, even from code run directly
-  in IRIS. Sixty-five agent actions ship switched off - promoting classes and routines to another
-  namespace, deleting an analytics folder item, running a backup, freezing and thawing writes, adding or
+  in IRIS. Eighty-two agent actions ship switched off - promoting classes and routines to another
+  namespace, deleting an analytics folder item, deleting, importing or finding and replacing in a
+  global, changing the system-wide security settings, deleting a mobile phone provider, importing
+  resources, installing, deleting or importing a locale and loading a locale table, deleting an
+  analytics listing group, quality measure, run-time variable or user-defined icon, removing a
+  listing or a quality measure's element, group or documentation item, running a backup, freezing and thawing writes, adding or
   removing a database on the backup list, deleting a system or user DDL mapping, deleting a term
   list or removing one of its entries, deleting a local database, a remote
   database, a namespace, a license server or an ECP data server, changing an ECP data server's
@@ -177,8 +181,8 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   revoking its token, replacing an RSA wallet secret, deleting a superserver, and deleting a %-class
   access entry, a Doc DB application, a REST service or a privileged routine application - and an
   administrator turns them on under **Agent co-pilot → Governance policy**. Running unit tests,
-  running a command and calling a class method are for people only, never the agent, and start
-  switched off in the same way. The **Guardrails** page shows all of it in one place.
+  running a command, calling a class method and editing or deleting a global's node are for people
+  only, never the agent, and start switched off in the same way. The **Guardrails** page shows all of it in one place.
 - **Step-by-step help.** Guided workflows walk you through nine common jobs - recovering a stuck
   production, resending failed messages, tracing a message, checking the instance's health, reviewing
   security, finding a slow query, fixing a class until it compiles, reviewing a class and setting up a
@@ -197,11 +201,11 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
 
 | Area | Screens | What you can do |
 | --- | --- | --- |
-| Web applications | Web applications, web sessions, REST API explorer, OpenAPI document viewer, %-class access, Doc DB applications, privileged routine applications | Create, edit, enable, disable and delete applications; end web sessions; browse every REST application's endpoints, send a request from its OpenAPI document and copy it as curl; create a spec-based REST service from an OpenAPI document and delete one; grant and remove %-class access; create, edit and delete Doc DB applications and privileged routine applications, with their roles, matching roles and routines |
-| Permissions | Users, roles, resources, services, SQL privileges, SQL column privileges, SQL admin privileges | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions; edit services - enabled state, allowed IP addresses, roles and authentication methods; see a user's effective privileges, and check whether a user or role holds a permission and through which role; copy a new user from an existing one, set the password rules, and see and set each role member's admin option; grant and revoke SQL privileges on objects and columns, and SQL admin privileges |
-| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories, encryption key files, database encryption, data element encryption, authentication options, superservers, managed file transfer | Editors for each, SSL/TLS and LDAP connection tests, an LDAP test sign-in that keeps no password, OAuth token revocation, audit event configuration, and audit database copy and purge; add, change and remove allowed directories, which starts switched off; create an encryption key file and add or remove its keys and administrators; removing a key that OcuPilot, a protected database or the journal depends on is refused; activate and deactivate database and data element encryption keys; change the encryption startup settings, where turning on audit-log encryption takes the strongest confirmation and asking for the key at startup is refused while the audit log or a system database is encrypted; change the authentication and web session options; create, edit and delete superservers and managed file transfer connections, and revoke a connection's token; create and replace RSA and symmetric-key wallet secrets |
-| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; suspend and resume the Task Manager itself; pause, resume and cancel background tasks |
-| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, remote databases, journals, journal settings, journal records, license key, license servers, ECP data servers, ECP settings, ECP application servers, SQL activity, integrity check and its log, namespaces, devices, external language servers, the dashboard's detail views (ECP, global and routine, most active processes, system resources), Prometheus metrics, Interoperability usage, backup tasks, backup history, backup database list, mirror monitor, startup, memory, compatibility, SQL, SQL Shell, TSQL and ISQL settings, system and user DDL mappings | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally encrypted and optionally with their files; create, edit and delete remote databases on an ECP data server; list journal files and page through their records, switch to a new journal file or directory, check a journal's integrity and change the journal settings; validate and activate a license key; create, edit and delete license servers; create, edit and delete ECP data servers and change their status; change the ECP settings; see the application servers connected to this one, and authorize, reject or delete their SSL/TLS requests; see the SQL statements running right now, slowest first, and open the process behind one; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; enable interoperability on a namespace; edit devices; free space per database; create, edit, delete, start and stop external language servers and read their activity log; open the dashboard's detail views; read the instance's Prometheus metrics as a table; see Interoperability usage - interfaces, message volume and the database space message activity uses; run a backup task, freeze and thaw writes for an external backup with a suspend limit, and add or remove databases on the backup list; see each mirror member's role, status and latency; change startup, memory, compatibility, SQL, SQL Shell, TSQL and ISQL settings, where a setting that could cut OcuPilot off is shown but not changed; add, change and delete DDL mappings |
+| Web applications | Web applications, web sessions, REST API explorer, OpenAPI document viewer, %-class access, Doc DB applications, privileged routine applications | Create, edit, enable, disable and delete applications; end web sessions; browse every REST application's endpoints, send a request from its OpenAPI document and copy it as curl; create a spec-based REST service from an OpenAPI document and delete one; copy a new application's settings from an existing one; grant and remove %-class access; create, edit and delete Doc DB applications and privileged routine applications, with their roles, matching roles and routines |
+| Permissions | Users, roles, resources, services, SQL privileges, SQL column privileges, SQL admin privileges | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions; edit services - enabled state, allowed IP addresses, roles and authentication methods; see a user's effective privileges, and check whether a user or role holds a permission and through which role; copy a new user from an existing one, set the password rules, and see and set each role member's admin option; grant and revoke SQL privileges on objects and columns, and SQL admin privileges; export and import resources |
+| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories, encryption key files, database encryption, data element encryption, authentication options, superservers, managed file transfer, system-wide security, Security Advisor, mobile phone providers | Editors for each, SSL/TLS and LDAP connection tests, an LDAP test sign-in that keeps no password, OAuth token revocation, audit event configuration, and audit database copy, purge and export to a file on the server; add, change and remove allowed directories, which starts switched off; create an encryption key file and add or remove its keys and administrators; removing a key that OcuPilot, a protected database or the journal depends on is refused; activate and deactivate database and data element encryption keys; change the encryption startup settings, where turning on audit-log encryption takes the strongest confirmation and asking for the key at startup is refused while the audit log or a system database is encrypted; change the authentication and web session options; create, edit and delete superservers and managed file transfer connections, and revoke a connection's token; create and replace RSA and symmetric-key wallet secrets; change the system-wide security settings, where a setting that could lock the instance out is shown but not changed; ignore a Security Advisor recommendation or stop ignoring it; create, edit and delete mobile phone providers |
+| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; suspend and resume the Task Manager itself; change the Task Manager's email settings, apart from the password; pause, resume and cancel background tasks |
+| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, remote databases, journals, journal settings, journal records, license key, license servers, ECP data servers, ECP settings, ECP application servers, SQL activity, integrity check and its log, namespaces, devices, external language servers, the dashboard's detail views (ECP, global and routine, most active processes, system resources), Prometheus metrics, Interoperability usage, backup tasks, backup history, backup database list, mirror monitor, startup, memory, compatibility, SQL, SQL Shell, TSQL and ISQL settings, system and user DDL mappings, transactions, system alerts, NLS defaults, locale definitions | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally encrypted and optionally with their files; create, edit and delete remote databases on an ECP data server; list journal files and page through their records, switch to a new journal file or directory, check a journal's integrity and change the journal settings; validate and activate a license key; create, edit and delete license servers; create, edit and delete ECP data servers and change their status; change the ECP settings; see the application servers connected to this one, and authorize, reject or delete their SSL/TLS requests; see the SQL statements running right now, slowest first, open the process behind one and cancel one; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; enable interoperability on a namespace; edit and delete devices; see open transactions, and reset the system alerts; free space per database; create, edit, delete, start and stop external language servers and read their activity log; open the dashboard's detail views; read the instance's Prometheus metrics as a table; see Interoperability usage - interfaces, message volume and the database space message activity uses; run a backup task, freeze and thaw writes for an external backup with a suspend limit, and add or remove databases on the backup list; see each mirror member's role, status and latency; change startup, memory, compatibility, SQL, SQL Shell, TSQL and ISQL settings, where a setting that could cut OcuPilot off is shown but not changed; add, change and delete DDL mappings; see the NLS defaults and change the locale format setting; validate, install, copy, edit, import, export and delete locales, and add, remove and load their tables |
 | Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, follow `messages.log` and `alerts.log` live as lines are written, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry, which it reads alongside the rest of the page, or to investigate it, working back to its likely causes |
 
 Five more areas sit beside the six. **Home** shows the instance's performance, refreshing itself,
@@ -224,13 +228,17 @@ In a namespace under source control, a save that source control has not released
 you check the document out. Accounts that use the classic Interoperability pages can sign in to
 OcuPilot for these screens. **Analytics** lists cubes with their measures, dimensions and
 relationships, term lists and folder items; creates, edits, deletes, exports, imports and copies term lists and their entries; exports,
-imports and deletes folder items; builds and synchronizes cubes from its Cube manager; runs an MDX query with a row limit, a time limit and
+imports and deletes folder items, and opens a dashboard's or pivot's definition and runs a pivot; creates, edits, copies and deletes
+listing groups and their listings, and quality measures with their groups, elements and documentation; changes the analytics
+settings, worklists, run-time variables and user-defined icons; builds and synchronizes cubes from its Cube manager; runs an MDX query with a row limit, a time limit and
 Cancel, and drills through to listings, asking you first when a statement would run code or SQL on
 the server; and links to Architect, Analyzer and the User Portal. **System Explorer** lists a namespace's classes and routines, shows and edits their
 source, shows a class's reference page from the instance's own class documentation, searches source, compares two documents line by line, compares the code of two namespaces, counts lines of code,
 promotes classes and routines to another namespace of this instance, lists each document's hash,
 runs unit tests and keeps their run records, has a command console and a class method console
-(people only, switched off at first) and finds where a macro is defined; it
+(people only, switched off at first) and finds where a macro is defined. It lists a namespace's
+globals, pages through a global's nodes, edits or deletes a node (people only), finds and replaces
+text in a global, and exports, imports and deletes globals. For classes and routines, it
 compiles and deletes them, exports them as XML to a file on the server or a download, and imports an
 XML export or a source file from the server or your computer. Its SQL catalog lists schemas, tables,
 views and procedures with their details, limited to what your own SQL privileges show; a schema
@@ -420,6 +428,14 @@ routines to another namespace, and deleting a folder item. The screens do both. 
 running a command and calling a class method start switched off for everyone, and an administrator
 switches each on under **Agent co-pilot → Governance policy**. Settings you already made are kept.
 
+In 1.0.18, seventeen more agent actions start switched off in the same way: deleting, importing or
+finding and replacing in a global; changing the system-wide security settings; deleting a mobile
+phone provider; importing resources; installing, deleting or importing a locale and loading a locale
+table; and deleting or removing analytics listing groups and listings, quality measures and their
+parts, run-time variables and user-defined icons. The screens do them all. Editing or deleting a
+global's node is for people only and starts switched off for everyone. Settings you already made are
+kept.
+
 ## Get a model key in two minutes
 
 | Provider | Default model | Where to get a key |
@@ -490,7 +506,10 @@ privileges. An account whose only role is `%Manager` also needs read access to t
 namespace OcuPilot is installed in, for example `%DB_HSCUSTOM`; without it, every request is
 refused. An administrator who installs or updates OcuPilot without the `%All` role also needs the
 Task Manager privilege, `%Admin_Task:USE`, because the installer sets up OcuPilot's nightly
-retention task; without it, the install stops at that step.
+retention task, and two SQL grants: `SELECT` on `%Dictionary.CompiledClass`, and `SELECT`, `INSERT`,
+`UPDATE` and `DELETE` on the schema `OcuPilot_Kernel_State` with the grant option. Without them, the
+install stops. With the schema grant in place, the installer warns that another account holds a grant
+on OcuPilot's schema; for that account, the warning is expected.
 
 ## What installing OcuPilot changes
 
@@ -632,8 +651,8 @@ token and hidden values left as placeholders.
   Community, and builds and loads the IPM package offline, including into a namespace without
   interoperability. The ObjectScript suite runs across eight
   containers at once and the browser specs across five, so a full run takes about 30 minutes.
-- **Tests:** 778 `%UnitTest` classes run inside IRIS; 136 Node test files and 286 Angular component
-  specs cover the client; 225 browser specs exercise the running portal.
+- **Tests:** 836 `%UnitTest` classes run inside IRIS; 140 Node test files and 310 Angular component
+  specs cover the client; 234 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question. It asks the instance's own web server at
@@ -686,8 +705,8 @@ that carry Community Opportunity status:
 ## Known limitations
 
 - **One instance at a time.** OcuPilot manages the instance it is installed on.
-- **Not every portal page yet.** System Explorer's globals pages, the SQL tuning tools, locales,
-  most of the analytics editors and some Interoperability pages are still the classic portal's.
+- **Not every portal page yet.** The SQL tuning tools, some analytics editors and some
+  Interoperability pages are still the classic portal's.
   Mirroring is shown but not changed.
 - **The embedded editors keep their own changes.** Leaving a rule, business process or data
   transformation editor, or choosing Refresh, discards changes you have not saved in the editor; the
@@ -705,6 +724,11 @@ that carry Community Opportunity status:
   ([issue #2](https://github.com/intersystems-community/sysadmin-api-specification/issues/2)).
 - **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
   need your Confirm, and the panel says plainly that they are not being marked.
+- **Exporting the whole audit log.** The export fails with an IRIS error when the log holds a record
+  whose text has a character outside the Western European set, which OcuPilot writes when it changes
+  something with such a name. Choose a cut-off date before that record. A fix is planned.
+- **Importing over a custom locale.** If IRIS rejects the new definition while a locale file replaces
+  an existing custom locale, the old locale can be left deleted. Export it first. A fix is planned.
 - **English only.**
 
 ## Roadmap
