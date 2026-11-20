@@ -4813,6 +4813,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T21:30:01Z status=escalated owner=burndown by=cr note=reopened: 20.10 publishes EXPLORER.DOCUMENT.SOURCECONTROL for the agent save; its card shows REASONTOOLUNAVAILABLE
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T22:49:03Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=failed-write_confirm_shows_the_fault's_own_sentence_(AC3);d0b4d7101,83e75a7f8,02855fa44
 
 ### DW-1281: A confirm that cannot take its target's lock is answered 500 rather than as the contention it is
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8572,6 +8573,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:40Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue (Story 18.17 is done) to the remaining-leaves story
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T22:49:03Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=Operate-only_dismount_via_DatabasePort_config_reads_(AD-27_case;AC1,AC2);db22ccb70
 
 ### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec

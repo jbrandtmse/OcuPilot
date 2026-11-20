@@ -833,3 +833,10 @@
 2026-11-20T20:19:58Z	Story 21.21	code_head_pushed	sha=389656dcf run=44810355489 missing=none note=supersedes_02855fa44(run_44803204811)
 2026-11-20T20:19:58Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=389656dcf started=2026-11-20T20:19:58Z dir=e21u/21-21/gate attempt=3
 2026-11-20T20:56:10Z	Epic 21	owner_decisions	vetoes_kept=U-121,U-124,U-126,U-128 DW-2803=burndown(at_Epic_21_burn-down:add-only_AD-10_rule_refusing_cancel_of_OcuPilot's_own_processes+guard) DW-2806=burndown(WA-16_buildable_leaf_later_story;register_text_unchanged) via=Planner/orchestrator
+2026-11-20T21:19:59Z	Story 21.21	note	feature_moved=177936ac8(24.14_B3) action=finish_gates_on_389656dcf;orchestrator_judges_code-equal_merge;any_later_head_integrates_177936ac8_first
+2026-11-20T22:49:03Z	Story 21.21	ci_resolved	story=21.21 sha=389656dcf runs=44810355489 result=success
+2026-11-20T22:49:03Z	Story 21.21	fresh_check	env=recipe(ci-throwaway_rebuild) tests=19_classes+1_spec result=pass order=forward,reverse(specs) head=389656dcf
+2026-11-20T22:49:03Z	Story 21.21	sweep	shards=20/20_green head=389656dcf
+2026-11-20T22:49:03Z	Story 21.21	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T22:49:03Z	Story 21.21	ledger	resolved=DW-1850,DW-1280,DW-2805 closed=DW-2348(wontfix-accepted),DW-2807(wontfix-accepted) owner=DW-2806(burndown)
+2026-11-20T22:49:03Z	Story 21.21	story_complete	head=389656dcf run=44810355489 ci=success fresh=pass sweep=20/20 smoke=50/50 split=SH-27->21.37 spine=aff694cd9(AD-8) vetoes=U-128(for_21.37)
