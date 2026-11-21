@@ -895,3 +895,9 @@
 2026-11-21T14:03:04Z	Story 21.23	code_head_pushed	sha=224854019 run=44911887727 missing=none
 2026-11-21T14:03:04Z	Story 21.23	gate_step	step=fresh_check+full_sweep+smoke head=224854019 started=2026-11-21T14:03:04Z dir=e21u/21-23/gate
 2026-11-21T14:03:43Z	Story 21.23	ruling	question=breach_handling via=orchestrator choice=rebuild_ocupilot-ci_from_scratch_before_the_sweep(fresh-all_rebuild:down+up_at_224854019,14:03Z);breach_in_Auto_Run_Result;no_re-review
+2026-11-21T16:52:03Z	Story 21.23	ci_resolved	story=21.23 sha=224854019 runs=44911887727 result=success
+2026-11-21T16:52:03Z	Story 21.23	fresh_check	env=recipe(ci-throwaway_rebuild:down+up_at_224854019,per_breach_ruling) tests=3_classes+20_specs result=pass order=forward,reverse(specs) head=224854019
+2026-11-21T16:52:03Z	Story 21.23	sweep	shards=20/20_green head=224854019
+2026-11-21T16:52:03Z	Story 21.23	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-21T16:52:03Z	Story 21.23	ledger	resolved=DW-2202,2225,2282,2459,2476,2714,2720,2761 closed=DW-2430(by_23-11),DW-2352(wontfix-theoretical),DW-2816,2817(wontfix-accepted) to_burndown=DW-1822,2600,2787,2535,2821 to_21.38=DW-2499,2405,2369,2442,2474 owned_by_21-23_routed=0
+2026-11-21T16:52:03Z	Story 21.23	story_complete	head=224854019 run=44911887727 ci=success fresh=pass sweep=20/20 smoke=50/50 split=21.38

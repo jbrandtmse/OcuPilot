@@ -10746,6 +10746,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:38Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=adjudication note=slice_landed(a9ae71724:3_field_counts+shortcut_count_derived);residual:WireSecurityRead_19+WireOAuthRead_5_screen-roster_literals,WireSecurityRead_field-name_lists_tasks:440_and_processes:641,web-applications-actions:430_unchecked
 - 2026-11-21T08:29:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=21.23_takes_a_bounded_slice;the_24_per-principal_literals_stay(deriving_them_would_re-implement_the_gate_the_test_judges)
+- 2026-11-21T16:51:54Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=bounded_slice_derived(line_430_from_the_declared_roster);the_24_per-principal_literals_stay_as_ruled;head_224854019
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10832,6 +10833,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T17:23:49Z status=escalated owner=burndown by=cr note=unverified; settle by confirming a compile card before its turn ends on a throwaway and reading the card after the next poll
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:measure_first_on_a_throwaway_then_fix_or_close
 - 2026-11-15T22:56:40Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
+- 2026-11-21T16:51:54Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=pollOnce_merges_the_fresh_proposal_with_the_held_one(panel.spec.ts);head_224854019
 
 ### DW-2226: The Transcripts screen's context payload keeps its twelve-line cap through a rule no test reads
 - source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: low | fix-risk: low | footprint: in-story
@@ -11221,6 +11223,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
 - 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=spinner_wait+settled_panel(782b093d,5574fede);no_red_under_throttle_recorded;CI_38755393824
 - 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44434412247(6bc7a0d66)browser_3/5_agent-code-save_QA4:structural_gate_read_app-tool-call-card>span.ocu-tool-call-spinner_2px(1280)/3px(720)_past_its_block;rerun_pending
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=impact_structural_gate_settle;head_224854019
 
 ### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12333,6 +12336,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T00:50:20Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-19T05:08:55Z occurrence=21-16-custom-locales
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=check-objectscript_Parameter_{...}_DependsOn_check_inside_an_existing_rule;head_224854019
 
 ### DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for #ocu-encryption-startup-DBEncStartMode-None in CI browser shard 1/5 (run 38782509360), green on the same tree locally
 - source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12437,6 +12441,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:38Z status=routed owner=21-22-ci-flake-hardening by=spec_gate note=21.10 split (unattended ruling): assigned to 21-22-ci-flake-hardening
 - 2026-11-18T17:21:46Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=adjudication note=slice_landed(a9ae71724:12_specs_on_the_shared_helper);residual:23_copies_in_browser-settle.test.mjs_RESIDUAL_COPIES(shrink-only_ratchet)
 - 2026-11-21T08:29:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=21.23_dedupes_16_specs;the_7_interoperability_copies_stay_with_Epic_24(it_works_in_that_area)
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=16_specs_share_the_panel_settle_helper;the_7_interoperability_copies_stay_with_Epic_24_as_ruled;head_224854019
 
 ### DW-2477: browser-settle.test.mjs refuses an unsettled measure only in detectScreen passes and the two LOCAL_PASSES specs, so a spec that reads geometry after a viewport change any other way is not held
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: in-story
@@ -13793,6 +13798,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-18T08:11:50Z occurrence=21-5-globals-and-the-data-tools note=CI_run_44260017976_browser_5/5_same_AC1_first-query_145s_timeout_on_head_1de56e265
 - 2026-11-18T17:21:44Z status=resolved-by:21-22-ci-flake-hardening owner=21-22-ci-flake-hardening by=adjudication note=pressRun_waits_for_Run_enabled_and_an_API_call_carrying_ns(f9a4b89f5)
 - 2026-11-19T12:03:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:run44511016378(7478c45a7)browser_3/5_analytics-mdx_AC1_waited_145s;page_state_busy=false,status='Write_one_MDX_statement,then_Run.'(the_Run_never_took_the_statement,after_21.22's_pressRun_waits);rerun_pending
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=MDX_Run_press_waits;its_stability_wait_unproven(kept,harmless);head_224854019
 
 ### DW-2725: A listing group copy reads back nothingSent (action-style, no READBACKFIELDS), so AC2's 'matches' for each write does not hold for copy; 24.10's term-list copy is the same
 - source: spec-24-11-listing-groups-2.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -13847,6 +13853,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T14:35:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44743879162_browser_shard_3:cleared_filter_waited_30s_(aria-rowcount_14);rerun_--failed
 - 2026-11-20T23:54:27Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=must-fix in 21.23 beside DW-1822: red again on README-only feature head 178ed176a (run 44824652605, browser 3/5; cleared filter rowcount 14 vs 5)
 - 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_3/5_users_AC2_cleared_filter_aria-rowcount_14_vs_5;fourth_red;now_must-fix_in_21-23_with_DW-1822
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=users_AC2/AC7_read_totals_from_an_empty_filter;reuses_waitForRememberedView;head_224854019
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -14055,6 +14062,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-16-custom-locales.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: CI run 44455430594 instance shards 1, 4, 7: container-start LOAD-FAILED pTAKENREASON, then STARTPATH-OK after the restart, then the suite ran; only images, package and CompileWithoutInterop failed on it
 - 2026-11-19T05:08:59Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=ci-throwaway.sh up could refuse a throwaway whose first start logged LOAD-FAILED
+- 2026-11-21T16:51:55Z status=resolved-by:21-23-test-hygiene-and-contended-client-fixes owner=21-23-test-hygiene-and-contended-client-fixes by=21-23 note=throwaway_restart_count_check(container_name_from_the_compose_file);head_224854019
 
 ### DW-2762: The locale export's %Admin_FileSystemAccess:USE refusal is asserted on the pair list only, not driven through a mint or screen action as a principal lacking it
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: low | footprint: in-epic
