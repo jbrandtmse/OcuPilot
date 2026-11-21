@@ -662,3 +662,4 @@
 2026-11-21T18:23:27Z	Story 24.14	ci_green	scope=batch4 sha=84f1ad5c9 run=44927449204 attempt=2(orchestrator_rerun;attempt1_DW-1822)
 2026-11-21T18:23:27Z	Story 24.14	spine_amended	commit=3578da119 AD-7+AD-42_add-only(U-130) lines=+4/-0
 2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
+2026-11-21T18:23:48Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-21T18:23:48Z model=opus agent_name=24-15-plan cycle_iteration=1 owned_ledger=DW-2636
