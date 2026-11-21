@@ -51,7 +51,7 @@ deferred:
 | No output file | `OpenOutputFile` 0 or `OutputFilename` empty | no file touched | 409 `LOG.TASKOUTPUT.NONE` |
 | Elsewhere | `OutputDirectory` not the manager directory, the manager directory without its trailing separator (the vendor then writes `.../iris/mgr<name>`, measured), or a name outside the pattern | no file touched; the refusal echoes no path | 409 `LOG.TASKOUTPUT.ELSEWHERE` |
 | Task gone | `taskId` unknown, or not a whole number of at most 10 digits | no record read for a shape miss; no file touched | 404 `TASK.ABSENT` (Task details' "This task no longer exists.") |
-| Missing pair | caller lacking `%Admin_Task:USE` or `%DB_IRISSYS:READ` | no record read | 403 `PORT.ACCESSDENIED` |
+| Missing pair | caller lacking `%Admin_Task:USE` or `%DB_IRISSYS:READ` | no record read | 403 `AUTH.NOPRIVILEGE` (the shared log-source gate's code, as every sibling source; orchestrator ruling 2026-11-21) |
 | Password set | person's dialog or agent's confirmed card, value `p` | `EmailSet("AuthPassword", p)`; read-back `written`, never examined | vendor refusal surfaces as the write's fault, value-free |
 | Password clear | empty value | `EmailSet("AuthPassword", "")` clears it (`CLEARABLESECRETS`) | none |
 | Password draft | "Give me the script instead" | `EmailSet("AuthPassword", "<AuthPassword>")`, no value | none |
@@ -104,6 +104,37 @@ deferred:
 - AC1 (TM-17). Given a task whose record names an output file in the manager directory, when a person opens "Open output file" from Task details or the agent calls `tasks.taskoutput.read` with its id, then both answer the same lines from the file's tail, bounded, with truncation stated; for a record naming any other location, both refuse without touching the file and Task details shows the location.
 - AC2 (TM-18). Given the Task Manager email screen, when a person sets the mail password from its dialog or confirms the agent's `tasks.mail.password`, then the vendor stores it, an empty value clears it, and the value appears in no read, card, proposal row, ledger row, screen context, log line, copy-out draft or unmasked audit row.
 - AC3. Given the default baseline, when the agent proposes `tasks.mail.password`, then it mints and confirms; with its key `false`, the governance gate refuses it.
+
+### Review Findings
+
+Code review 2026-11-21 (full-opus, four layers; measured on `ocupilot-ci`): 37 rows, 7 patch, 8 defer, 22 rejected; no high.
+
+- [ ] [Review][HIGH] CI run 44851185597 (on `ae4b9b1b3`): two roster tests the new screen broke. (1) `OcuPilot.Test.ScreenRead.TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow`: "OcuPilot.Screen.Descriptor.TaskOutput: the declared read answers through the executor => READ.CRITERION: taskId is required" and "all nine production logsource reads are checked … : 10" — the test must supply the task-output read's `taskId` criterion (a test-owned task with an output file) and count ten. (2) `OcuPilot.Test.WireSecurityRead.TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal`: "the seven task screens …" — the task area now has eight screens with Task output. Update both to the new shape with names read from the instance, keep each test's intent, and write a `mutation:` line for each. The same run's `a11y-structural-invariants` red was the governance settle timeout (DW-1822, Story 21.23's), so the walk never reached the new id-requiring Task output screen: run that spec locally against the rebuilt bundle and confirm the new screen is walked or skipped by rule. [src/OcuPilot/Test/ScreenRead.cls, src/OcuPilot/Test/WireSecurityRead.cls]
+
+- [ ] [Review][Patch] (rework, ruling 2026-11-21T01:38Z (1)) `Api/Error.cls` went 991 to 997 of the 1,000-parameter limit that `MonitorError` and `SqlActivityError` record (ERROR #5290): move the six `LOG.TASKOUTPUT.*` parameters to a sibling `TaskError`, code strings unchanged, and restore `PATHROOT`'s "(AD-12, AD-21, AD-39)" [src/OcuPilot/Api/Error.cls:388]
+- [ ] [Review][Patch] (rework, ruling (2)) The Set mail password dialog states "Current value: (none)" whatever is stored and shows the clear hint twice: no current-value line, the hint once [ui/src/app/areas/os-management/config-settings.page.ts]
+- [x] [Review][Patch] A relative stored `OutputDirectory` was judged from the reading process's directory: the vendor stores `../` verbatim and HSCUSTOM normalizes it to the manager directory (measured), so another file than the task writes was read; `TaskOutputHere` now requires an absolute directory, with a relative leg [src/OcuPilot/Port/LogSourcePort.cls TaskOutputHere]
+- [x] [Review][Patch] The password's refusal paths (another target at the screen and the confirm, a short caller, a second confirm) were never scanned for the probe; scans added and the confirm refusal pinned to `CONFIG.SETTING.NOTFOUND` [src/OcuPilot/Test/TaskMailPasswordWrite.cls]
+- [x] [Review][Patch] `SetPassword`'s vendor-refusal branch ran in no test; `ConfigGateSeam.SendPassword` honours `VendorRefuses`, and `TestAVendorRefusalIsTheWritesFaultWithoutTheValue` pins 400, the logged code and no value [src/OcuPilot/Test/ConfigGateSeam.cls]
+- [x] [Review][Patch] The "one byte more" leg wrote two bytes and began on a line boundary; it now writes 65,537 bytes, drops the partial line and asserts its `WriteFile` statuses [src/OcuPilot/Test/TaskOutputRead.cls:247]
+- [x] [Review][Patch] The card-row assertion would print a stored probe on a regression; it now compares in process [src/OcuPilot/Test/TaskMailPasswordWrite.cls:286]
+- [x] [Review][Defer] Matrix row "Missing pair" names `PORT.ACCESSDENIED`, the shared gate answers `AUTH.NOPRIVILEGE` — deferred: resolved by ruling (3), the code kept and the I/O row amended by the lead
+- [x] [Review][Defer] DW-2810: a `*.txt` symbolic link in the manager directory is followed outside it (measured) [LogSourcePort.cls OpenStream] — deferred: wontfix-theoretical, placing a link needs OS access or `%System_CallOut`
+- [x] [Review][Defer] DW-2811: a tail window with no line feed answers no rows beside the cut sentence [LogSourcePort.cls ReadWindow] — deferred: wontfix-accepted
+- [x] [Review][Defer] DW-2812: `OutputFileIsBinary` is ignored [LogSourcePort.cls TaskOutputRecord] — deferred: wontfix-accepted
+- [x] [Review][Defer] DW-2813: `tasks.mail.set` inherits `AuthPassword` as a declared secret, exempted in `DraftRegistry` [src/OcuPilot/Test/DraftRegistry.cls:89] — deferred: wontfix-accepted
+- [x] [Review][Defer] DW-2814: a card for a target other than `AuthUser` is refused only at the confirm [Screen/Tool/TaskMailPassword.cls] — deferred: wontfix-accepted
+- [x] [Review][Defer] DW-2815: the test's row cleanup swallows SQL failures [TaskMailPasswordWrite.cls:105] — deferred: wontfix-accepted
+- [x] [Review][Defer] DW-2236 occurrence: `BackgroundTasksLive` red once on the admin-API compact's Pause (run 992), green on rerun — deferred: existing flake entry
+
+Rejected: `ELSEWHERE` for a name outside the pattern (the matrix row names it); 8-bit inference (measured at Task 0); Base64 leak scans (the product never holds the encoded form; `TaskMailAuditMask` owns the audit row); raw versus decoded body parse (each matches what it reads; the 8-bit mutation went red); criteria admitted port-wide for log sources (as analytics and locale; real only with a second parented log screen); file replaced mid-read (a re-read answers the new file); zero-padded task id (ids come from the task list); 11-digit id answers `READ.CRITERION` (the criterion's declared length, as Task details); secret fallback in the page map (both secret descriptors are mapped); Catch restore order (`TaskOutputRecord` drops references first by contract, `SendPassword` restores on both paths); EXPERIENCE.md row grown in place (spec-named, 21.19 precedent); model- and developer-facing text (sibling style); browser spec's empty-password precondition (AD-35: the value cannot be held); the remaining duplicates of the rows above.
+
+## Fix Pack
+
+Rides the rework the ruling already schedules.
+
+1. A `ui/tools` test pins `TaskError`'s three `REASON*` sentences to `strings.ts` `taskOutputNone`, `taskOutputElsewhere` and `taskOutputAbsent` (the `config-settings.test.mjs` pattern), with its `mutation:` line.
+2. A `TaskOutputRead` leg: a `TaskOutputRecord` error armed through `LogSourceFixture` answers 500 with no path in the answer and no file touched.
 
 ## Spec Change Log
 
@@ -202,6 +233,7 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: `pTruncated` always 0 -> `TestAFileLargerThanTheWindowReadsOnlyItsEnd` and `TestTheScreenAndTheAgentToolAnswerTheSameRows` red (observed, reverted, reloaded).
   - mutation: link shown whatever `OpenOutputFile` and `OutputFilename` hold -> `details.page.spec.ts` "Open output file links the viewer only when the record names an output file" red (observed, reverted).
   - mutation: the window decoded as UTF-8 (`TaskOutputRows` passing `pDecode` 1 to `ReadWindow`) -> `TestASmallFileReadsWholeNewestFirstAsStored` and `TestAnEightBitByteReachesBothCallersAsStored` red (observed, reverted, reloaded).
+  - mutation: the absolute-directory test in `TaskOutputHere` made `If 0` -> `TestALocationOtherThanOneFileInTheManagerDirectoryIsRefused` red alone (code review; observed, reverted, reloaded).
   - mutation: `showTruncation` ignoring the answer's `truncated`, `LOG.TASKOUTPUT.ELSEWHERE` dropped from `OUTPUT_REFUSALS`, and the store mapping rows with `readRowsOf` -> `log-viewer.spec.ts` red on the truncation, the elsewhere-refusal and the text-alone legs (observed together, reverted).
 - AC2: `ConfigPort`'s `PASSWORD` branch sends `""` in place of the body's value -> `TaskMailPasswordWrite`'s set leg red; the draft renders the body's value in place of `<AuthPassword>` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red; the page sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red.
   - mutation: `SetPassword` sends `""` in place of the body's value -> `TaskMailPasswordWrite` red on the set legs of all three of its write tests (observed, reverted, reloaded).
@@ -210,6 +242,7 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: `CLEARABLESECRETS` emptied in `TaskMailPassword` -> `TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused` red on the person's and the agent's clear legs (observed, reverted, reloaded).
   - mutation: `TaskMailPassword.PrivilegePairs` answers the screen's pairs alone -> `TestThePairsAreTheSettingSetsAndAShortCallerIsRefusedBeforeTheVendor` red (observed, reverted, reloaded).
   - mutation: the page's secret map sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red on two tests (observed, reverted).
+  - mutation: `SetPassword`'s vendor-refusal branch made `If 0` -> `TaskMailPasswordWrite.TestAVendorRefusalIsTheWritesFaultWithoutTheValue` red (code review; observed, reverted, reloaded).
   - mutation: `SetPassword`'s body-shape test reduced to `'$IsObject(pBody)` -> `TaskMailPasswordWrite.TestAMalformedBodyIsRefusedAndClearsNothing` red (observed, reverted, reloaded).
 - AC3: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline` and `TaskMailPasswordWrite`'s key leg red.
   - mutation: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red, and `TaskMailPasswordWrite` red on the key leg and both other write tests, whose confirms read `GOVERNANCE.DISABLED` (observed, reverted, reloaded).

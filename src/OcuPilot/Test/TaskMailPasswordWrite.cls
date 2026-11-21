@@ -283,7 +283,7 @@ Method TestThePasswordIsSetByBothCallersAndSurfacesNowhere()
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, ..#TARGET, {"Name": (..#TARGET)}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's proposal is minted (" _ tProblem _ ")")
     If '$IsObject($Get(tProposal)) Quit
-    Do $$$AssertEquals(..CardRow(tProposal), ..#SECRETNAME _ "||", "its one row names the secret and carries no value")
+    Do $$$AssertTrue(..CardRow(tProposal) = (..#SECRETNAME _ "||"), "its one row names the secret and carries no value")
     Set tDraft = ##class(OcuPilot.Test.EncryptionKeyWrite).Draft(tProposal, .tSteps)
     Do $$$AssertTrue((tDraft [ "<" _ ..#SECRETNAME _ ">") && (tDraft [ "EmailSet"), "its copy-out script renders EmailSet with the placeholder")
     Do $$$AssertTrue((tDraft '[ tProbeA) && (tDraft '[ tProbeB), "and holds neither probe")
@@ -314,21 +314,34 @@ Method TestThePasswordIsSetByBothCallersAndSurfacesNowhere()
 
 /// <p><b>AC2.</b> An empty password clears the stored one on both callers, and a target other than the sign-in name is refused at the screen and at the confirm and changes nothing. A password
 /// set first reads back equal; the person's empty value then reads empty; the agent's confirm with an empty secret clears a second one; a refused action on <code>Server</code> answers
-/// 404 <code>CONFIG.SETTING.NOTFOUND</code>, and a proposal minted for <code>Server</code> is refused at the confirm, each leaving the stored password as it was.</p>
+/// 404 <code>CONFIG.SETTING.NOTFOUND</code>, and a proposal minted for <code>Server</code> is refused at the confirm, each leaving the stored password as it was and neither refused probe in
+/// its answer, a proposal or ledger row, or a line of <code>messages.log</code>.</p>
 /// <p>Mutation (Rule 19): <code>CLEARABLESECRETS</code> emptied in <class>OcuPilot.Screen.Tool.TaskMailPassword</class> -> the person's and the agent's clear legs go red.</p>
 Method TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused()
 {
     Set tProbe = ..Probe()
+    Set tMessages = ##class(OcuPilot.Test.EncryptionProbe).LineCount("messages.log")
     Do $$$AssertEquals(..Act(..#TARGET, tProbe, .tAnswer) _ "|" _ ..Reads(tProbe), "200|1", "a password is stored first")
-    Set tStatus = ..Act("Server", ..Probe(), .tRefused)
+    Set tScreenProbe = ..Probe()
+    Set tStatus = ..Act("Server", tScreenProbe, .tRefused, .tRefusedJson)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tRefused) _ "|" _ ..Reads(tProbe), "404|CONFIG.SETTING.NOTFOUND|1", "a target other than the sign-in name is refused at the screen and the stored password is as it was")
+    Set tRefusedText = $Get(tRefusedJson)
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, "Server", {"Name": "Server"}, .tOther, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "a proposal for another target is minted, so the confirm leg below is reached (" _ tProblem _ ")")
+    Set tConfirmProbe = ..Probe()
     If $IsObject($Get(tOther)) {
         Set tSecrets = {}
-        Do tSecrets.%Set(..#SECRETNAME, ..Probe(), "string")
+        Do tSecrets.%Set(..#SECRETNAME, tConfirmProbe, "string")
         Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tOther.%Get("proposalId"), tSecrets, $Username, .tResult, .tConfirmHttp, .tCode, .tDetail)
-        Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ ..Reads(tProbe), "1|1", "a proposal minted for another target is refused at the confirm and changes nothing")
+        Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ $Get(tCode) _ "|" _ ..Reads(tProbe), "1|CONFIG.SETTING.NOTFOUND|1", "a proposal minted for another target is refused at the confirm by the port and changes nothing")
+        Set tRefusedText = tRefusedText _ ..Text($Get(tResult)) _ ..Text($Get(tDetail))
+    }
+    Set tLines = ##class(OcuPilot.Test.EncryptionProbe).LinesAfter("messages.log", tMessages).%ToJSON()
+    For tRefusedProbe = tScreenProbe, tConfirmProbe {
+        Do $$$AssertTrue(tRefusedText '[ tRefusedProbe, "a refused probe is in neither refusal's answer")
+        Do $$$AssertTrue(tLines '[ tRefusedProbe, "nor in messages.log")
+        Do $$$AssertEquals(..TableCarries("OcuPilot_Kernel_State.Proposal", tRefusedProbe), 0, "nor in any proposal row")
+        Do $$$AssertEquals(..TableCarries("OcuPilot_Kernel_State.Ledger", tRefusedProbe), 0, "nor in any ledger row")
     }
     Set tStatus = ..Act(..#TARGET, "", .tCleared)
     Do $$$AssertEquals(tStatus _ "|" _ ..Verdict(tCleared) _ "|" _ ..Reads(""), "200|written|1", "the person's empty value clears it")
@@ -363,6 +376,29 @@ Method TestAMalformedBodyIsRefusedAndClearsNothing()
     }
 }
 
+/// <p><b>AC2.</b> A vendor refusal of the password is the write's own fault, 400 <code>CONFIG.SETTING.VALUE</code>, logged under that code, and neither the fault nor the answer carries the
+/// value; the stored password is as it was.</p>
+/// <p>Mutation (Rule 19): the vendor-refusal branch removed from <method>OcuPilot.Port.ConfigPort.SetPassword</method> -> the write answers 200 and this goes red.</p>
+Method TestAVendorRefusalIsTheWritesFaultWithoutTheValue()
+{
+    Set tProbe = ..Probe()
+    Do $$$AssertEquals(..Act(..#TARGET, tProbe) _ "|" _ ..Reads(tProbe), "200|1", "a password is stored first")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "WRITE")
+    Do $ClassMethod(..#SEAM, "VendorRefuses")
+    Kill tQuery
+    Set tQuery("name") = ..#TARGET
+    Set tRefusedProbe = ..Probe()
+    Set tBody = {}
+    Do tBody.%Set(..#SECRETNAME, tRefusedProbe, "string")
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", ..#ENDPOINT, "PASSWORD", .tQuery, tBody, .tOut, .tHttp, .tFault)
+    Set tCode = $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+    Do $$$AssertEquals(tHttp _ "|" _ tCode _ "|" _ ..Reads(tProbe), "400|CONFIG.SETTING.VALUE|1", "a vendor refusal is the write's fault and the stored password is as it was")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Faults"), "CONFIG.SETTING.VALUE|error", "and it is logged under the write's code")
+    Do $$$AssertTrue((..Text($Get(tFault)) _ ..Text($Get(tOut))) '[ tRefusedProbe, "and neither the fault nor the answer carries the value")
+}
+
 /// <p><b>AC3.</b> The baseline ships the key enabled, so with none stored the agent's call mints a proposal and its confirm stores the password once; a second confirm of the same proposal
 /// is refused. With the key stored disabled the same call is refused at dispatch while a person's Set mail password is not governed and still stores one.</p>
 /// <p>Mutation (Rule 19): the <code>tasks.mail.password</code> line removed from <class>OcuPilot.Kernel.Governance.Baseline</class> -> the first dispatch is refused and this goes red.</p>
@@ -380,7 +416,8 @@ Method TestTheKeyShipsEnabledAndADisabledKeyRefusesTheAgentAndNotAPerson()
     Do $$$AssertTrue(##class(OcuPilot.Test.TaskMailAuditMask).Stored() '= "", "and the vendor holds a stored password")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.TaskMailAuditMask).Store(..PreparedPassword), "the stored password is put back")
     Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tProposalId, tSecrets, $Username, .tResult2, .tHttp2, .tCode2, .tDetail2)
-    Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ ..Reads(tProbe), "1|0", "a second confirm of the same proposal is refused and stores nothing more")
+    Do $$$AssertEquals($$$ISERR(tSC) _ "|" _ ($Get(tCode2) '= "") _ "|" _ ..Reads(tProbe), "1|1|0", "a second confirm of the same proposal is refused with a code and stores nothing more: " _ $Get(tCode2))
+    Do $$$AssertTrue((..Text($Get(tResult2)) _ ..Text($Get(tDetail2))) '[ tProbe, "and its refusal carries no value")
     Kill tSettings
     Set tSettings(..#KEY) = "disabled"
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the key is stored disabled")
@@ -399,11 +436,13 @@ Method TestThePairsAreTheSettingSetsAndAShortCallerIsRefusedBeforeTheVendor()
     Do $$$AssertTrue(tResolved && tSetResolved && (tPairs = tSet) && ($ListFind(tPairs, $ListBuild("%DB_IRISSYS", "WRITE")) > 0) && ($ListFind(tPairs, $ListBuild("%Admin_Manage", "USE")) > 0), "the tool requires the setting set's pairs, the write pair and %Admin_Manage:USE among them")
     Kill tQuery
     Set tQuery("name") = ..#TARGET
+    Set tShortProbe = ..Probe()
     Set tBody = {}
-    Do tBody.%Set(..#SECRETNAME, ..Probe(), "string")
+    Do tBody.%Set(..#SECRETNAME, tShortProbe, "string")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", ..#ENDPOINT, "PASSWORD", .tQuery, tBody, .tOut, .tHttp, .tFault)
     Set tFailed = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("failedPair"), 1: "")
     Do $$$AssertEquals(tHttp _ "|" _ tFailed, "403|%Admin_Manage:USE", "a caller holding nothing is refused the first pair")
+    Do $$$AssertTrue(..Text($Get(tFault)) '[ tShortProbe, "and the refusal carries no value")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", ..#ENDPOINT, "PASSWORD", .tQuery, tBody, .tOut, .tHttp, .tFault)

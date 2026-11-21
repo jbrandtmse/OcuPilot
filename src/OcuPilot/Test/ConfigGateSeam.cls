@@ -237,6 +237,13 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
     Quit $$$OK
 }
 
+/// <p>The mail password write: the refusal <method>VendorRefuses</method> feeds, with no vendor call, else the shipped call. Nothing records the value.</p>
+ClassMethod SendPassword(pValue As %String) As %Status [ Private ]
+{
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    Quit ##super(pValue)
+}
+
 ClassMethod SendNlsNode(pValue As %String) As %Status [ Private ]
 {
     Set ^||OcuPilotConfigModifies($Increment(^||OcuPilotConfigModifies)) = $ListBuild("NLS|LocaleFormat|" _ pValue, "")

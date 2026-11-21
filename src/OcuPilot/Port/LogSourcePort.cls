@@ -3587,7 +3587,9 @@ ClassMethod TaskOutputRecord(pTaskId As %String, Output pFound As %Boolean, Outp
 /// <p>The vendor writes <code>OutputDirectory_OutputFilename</code> by plain concatenation, so a
 /// stored directory without its trailing separator names a file beside the manager directory
 /// (measured), and the join is held to the resolved file rather than read as a different one
-/// (AD-21): the directory is non-empty and normalizes to the manager directory, the name matches
+/// (AD-21): the directory is non-empty, absolute (a relative one resolves from the reading process's
+/// directory here and from the task's own when the vendor writes) and normalizes to the manager
+/// directory, the name matches
 /// <parameter>OcuPilot.Area.Task.TaskRules.OUTPUTFILEPATTERN</parameter> with no <code>..</code>, it
 /// resolves directly in that directory (<method>Resolve</method>), and the vendor's own join
 /// normalizes to that same path. Every check is a string test; nothing here touches the
@@ -3597,8 +3599,11 @@ ClassMethod TaskOutputHere(pDirectory As %String, pName As %String, Output pPath
     Set pPath = ""
     If pDirectory = "" Quit 0
     If ('$Match(pName, ##class(OcuPilot.Area.Task.TaskRules).#OUTPUTFILEPATTERN)) || (pName [ "..") Quit 0
-    Set tManager = ..ManagerDirectory()
-    If ##class(%File).NormalizeDirectory(pDirectory) '= ##class(%File).NormalizeDirectory(tManager) Quit 0
+    Set tManager = ##class(%File).NormalizeDirectory(..ManagerDirectory())
+    Set tSeparator = $Extract(tManager, *)
+    Set tRoot = $Piece(tManager, tSeparator, 1) _ tSeparator
+    If $ZConvert($Extract(pDirectory, 1, $Length(tRoot)), "U") '= $ZConvert(tRoot, "U") Quit 0
+    If ##class(%File).NormalizeDirectory(pDirectory) '= tManager Quit 0
     If $$$ISERR(..Resolve(..#TASKOUTPUTKEY, .tPath, .tStatus, .tFault, pName, 0)) Quit 0
     If ##class(%File).NormalizeFilename(pDirectory _ pName) '= tPath Quit 0
     Set pPath = tPath

@@ -240,15 +240,18 @@ Method TestAFileLargerThanTheWindowReadsOnlyItsEnd()
 
     ; Exactly the window: whole, not cut.
     Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), ..Lines(4096, 16))
+    Do $$$AssertStatusOK(tSC, "a file of exactly 65,536 bytes is written")
     Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
     Do $$$AssertEquals(tRows.%Size(), 4096, "a file of exactly 65,536 bytes reads whole")
     Do $$$AssertEquals(tTruncated, 0, "and is not truncated")
 
-    ; One byte more: cut, and the line the window begins in is dropped.
-    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "a" _ $Char(10) _ ..Lines(4096, 16))
+    ; One byte more: cut, and the 17-byte first line the window begins in is dropped.
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "a" _ ..Lines(4096, 16))
+    Do $$$AssertStatusOK(tSC, "a file of 65,537 bytes is written")
     Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
     Do $$$AssertEquals(tTruncated, 1, "a file one byte over the window is truncated")
-    Do $$$AssertEquals(tRows.%Size(), 4096, "the window starts on the line boundary")
+    Do $$$AssertEquals(tRows.%Size(), 4095, "the line the window begins in is dropped")
+    Do $$$AssertEquals(tRows.%Get(4094).offset, 18, "so the oldest row is the second line, a whole line")
 }
 
 /// <p>A row cap shorter than the file keeps the newest rows, and the caller sees the cut from the one
@@ -317,15 +320,24 @@ Method TestATaskThatWritesNoFileIsRefusedBeforeAnyFileIsTouched()
 /// <code>LOG.TASKOUTPUT.ELSEWHERE</code> before any file is touched, with no path in the answer: another
 /// directory, the manager directory without its trailing separator (which the vendor's own join turns
 /// into a file beside it), no directory, a name outside the pattern, and a name holding two dots. The
-/// manager directory with its separator is admitted.</p>
+/// manager directory with its separator is admitted. A relative directory that names the manager
+/// directory from this process is refused too, because the task's own process resolves it from its own
+/// directory.</p>
 /// <p>Mutation: never raise <code>LOG.TASKOUTPUT.ELSEWHERE</code> in <code>TaskOutputRows</code> -&gt;
 /// every refusal leg below goes red; compare only <code>NormalizeDirectory</code> and not the join -&gt;
-/// the no-separator leg goes red alone.</p>
+/// the no-separator leg goes red alone; drop the absolute-directory test -&gt; the relative leg goes red
+/// alone.</p>
 Method TestALocationOtherThanOneFileInTheManagerDirectoryIsRefused()
 {
     Set tManager = ..Directory()
     Set tBare = $Extract(tManager, 1, *-1)
+    ; The manager directory relative to this process's own directory, up to the root and down again.
+    Set tRelative = ""
+    For tUp = 1:1:($Length(##class(%File).NormalizeDirectory(""), "/") - 2) Set tRelative = tRelative _ "../"
+    Set tRelative = tRelative _ $Extract(tManager, 2, *)
+    Do $$$AssertEquals(##class(%File).NormalizeDirectory(tRelative), tManager, "the relative directory names the manager directory from this process")
     Set tCases = $ListBuild(
+        $ListBuild("a relative directory", tRelative, ..#PROBEFILE),
         $ListBuild("another directory", "/tmp/", ..#PROBEFILE),
         $ListBuild("the manager directory without its separator", tBare, ..#PROBEFILE),
         $ListBuild("no directory", "", ..#PROBEFILE),
