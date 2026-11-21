@@ -888,3 +888,4 @@
 2026-11-21T11:37:01Z	Story 21.23	ci_red_classified	run=44891215456 sha=346d580fe(B1_only) red=resources-transfer.browser-spec_local_import_refusal(waiting_for_input[data-explorer-import-file]) note=not_in_B1_footprint;watch_on_next_run
 2026-11-21T11:37:01Z	Story 21.23	code_head_pushed	sha=dcfcf0943 run=44899945083 missing=none
 2026-11-21T11:37:36Z	Story 21.23	stage_spawned	stage=code-review spawn_at=2026-11-21T11:37:36Z model=opus agent_name=21-23-code-review cycle_iteration=1 prior_lines_ended=verified(af028d6f6)
+2026-11-21T11:38:26Z	Story 21.23	ruling	question=DW-2352,DW-2787/2535,shared_files,resources-transfer via=orchestrator choice=DW-2352_wontfix-theoretical(reopen_if_reproduced;remove_Back_test_unless_a_mutation_reddens_it);DW-2787/2535/1822/2600_routed_to_burndown;shared_browser_files_clean;resources-transfer_classify_on_44899945083

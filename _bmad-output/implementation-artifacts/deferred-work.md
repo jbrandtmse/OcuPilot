@@ -8484,6 +8484,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_1/5_a11y_AC5_settle_/agent/governance_1280px_light_60s;rerun_--failed;must-fix_in_21-23_stands
 - 2026-11-21T02:14:04Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44851185597_browser_shard_1(21.36_head_ae4b9b1b3):1280px_light_settle_/agent/governance
 - 2026-11-21T01:35:50Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:24.14-2b_head_73c758917(server-only)_run44845372336_browser_1/5_a11y_AC5_settle_/agent/governance_720px_light;fifth_today;21-23_moved_ahead_of_21-37
+- 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -11666,6 +11667,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T13:24:18Z status=routed owner=burndown by=cr note=unmeasured on the viewer: open Class reference, switch class from the explorer, press Back
 - 2026-11-14T00:50:18Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:40Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
+- 2026-11-21T11:38:26Z status=wontfix-theoretical owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=not_reproducible_on_ocupilot-ci;no_AD-63_amendment,no_frame_recreation.reopen_if:a_reproduction_of_the_Back_defect_on_a_throwaway_or_in_CI
 
 ### DW-2353: CI flake: InteropQueueActions' pool-size-0 actor-queue abort test failed its entry read on 18.39's CI (instance shard 6/8, class run 37), so the queued entry was gone or changed before the read
 - source: ci-run-38250559529 | severity: med | fix-risk: low | footprint: in-epic
@@ -12798,6 +12800,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T03:50:33Z owner=burndown by=runner note=routed together with DW-2787 (same class InteropItemRun, production timing); a second red of either is a defect, not a flake (orchestrator)
 - 2026-11-20T03:50:41Z status=routed owner=burndown by=runner note=reopened with sibling DW-2787 (same class, production start timing on CI) per orchestrator; a second red of either is a defect
 - 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
+- 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=not_reproduced_in_5_of_5_runs(21.23);the_one_observed_mechanism(a_nameless_job_row)_fixed_in_5489af497;awaiting_a_CI_red_carrying_the_new_START/row_text;resolve_or_wontfix_at_burn-down
 
 ### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
 - source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
@@ -13183,6 +13186,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the identical sha was green on OCU-1-epic24 run 43738892741; AC5 ran 403 s; recurrence of the DW-1822/DW-2026/DW-2301 family
 - 2026-11-15T18:29:29Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun
 - 2026-11-19T11:02:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=same_family_as_DW-1822(a11y_governance_settle;reopened_and_routed_to_21-23_2026-11-18);not_in_21.10's_scope
+- 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
@@ -14220,6 +14224,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
 - 2026-11-20T10:25:11Z status=open owner=burndown by=runner note=SECOND RED (ocupilot-b-ci sweep shard 16, 24.14 Batch 2 implement, same assertion, green on its one re-run): per the orchestrator's rule this is now a defect, not a flake
 - 2026-11-21T08:29:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=START-race_hypothesis_refuted_locally(21.23_plan):12_start_cycles,START_200_Running_in_~10ms_with_the_operation's_job_listed;InteropHostTest_then_InteropItemRun_green(runs_868,869);suspects:helper_ignores_START's_answer,partial_job_lookup_reads_as_no_job
+- 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=not_reproduced_in_5_of_5_runs(21.23);the_one_observed_mechanism(a_nameless_job_row)_fixed_in_5489af497;awaiting_a_CI_red_carrying_the_new_START/row_text;resolve_or_wontfix_at_burn-down
 
 ### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: low | footprint: in-epic
