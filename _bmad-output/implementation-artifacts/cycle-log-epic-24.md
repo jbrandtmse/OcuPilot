@@ -663,3 +663,4 @@
 2026-11-21T18:23:27Z	Story 24.14	spine_amended	commit=3578da119 AD-7+AD-42_add-only(U-130) lines=+4/-0
 2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
 2026-11-21T18:23:48Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-21T18:23:48Z model=opus agent_name=24-15-plan cycle_iteration=1 owned_ledger=DW-2636
+2026-11-21T18:28:59Z	Story 24.14	spine_amended	commit=b1d934735 AD-7+AD-65_add-only(U-132/U-133,as_shipped) on=feature_94fca2375 patch_2b=deleted
