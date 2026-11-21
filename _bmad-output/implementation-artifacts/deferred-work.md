@@ -14272,3 +14272,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression
 - 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Document now, fix later (Recommended)": README half on the 1.0.18 release branch by the Planner (closes against the release commit when sent); installer-needs-less half routed to a later story
 - 2026-11-20T20:40:08Z status=routed owner=burndown by=orchestrator note=documentation half closed by release/1.0.18 7d53e3312 (README IPM install: %Admin_Task:USE, SELECT on %Dictionary.CompiledClass, schema OcuPilot_Kernel_State privileges WITH GRANT OPTION, foreign-grant warning expected); installer-needs-less half stays routed to a later story
+
+### DW-2818: PMML Export to cube's script form copies and drops the test rows with dynamic SQL, so for a person without SQL privileges on %DeepSee_PMML_Utils.TempResult the script's copy is refused and its rows stay in IRISTEMP; the write itself uses embedded SQL and is unaffected
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: review layer finding; the script is a copy-out draft a person runs in their own session (AD-59)
+- 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=needs a ruled sentence in the script, or embedded SQL in the draft; escalated to the orchestrator
+
+### DW-2819: PMML Export to cube kills the new result class extent before its copy (write and script), which also erases data an unrelated writer left under a free class name's data global; refusing such a name instead is stricter and changes Measured 1
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: review layer finding; Measured 1: deleting a compiled %Persistent class leaves its data global, so the export kills the extent first
+- 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=product ruling needed before 24.14's last head is pushed; escalated to the orchestrator
+
+### DW-2820: Test helper AnalyticsPmmlCreateBase.DataLeft reads ^<class>D, which is a class's data global only when the class name is at most 29 characters; longer test markers check no data
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (QA 354796f5d, review c7e20150a) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: measured on ocupilot-b-ci in review: a 30-character class name gets a hashed data global
+- 2026-11-21T13:13:35Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=review c7e20150a renamed the markers whose data check matters to six characters or fewer and states the limit in DataLeft's comment
