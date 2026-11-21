@@ -14277,11 +14277,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: review layer finding; the script is a copy-out draft a person runs in their own session (AD-59)
 - 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=needs a ruled sentence in the script, or embedded SQL in the draft; escalated to the orchestrator
+- 2026-11-21T14:07:06Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=fc429a890: the script states the SQL SELECT and DELETE privileges it needs (orchestrator-ruled comment); named limit in the spec's Design Notes
 
 ### DW-2819: PMML Export to cube kills the new result class extent before its copy (write and script), which also erases data an unrelated writer left under a free class name's data global; refusing such a name instead is stricter and changes Measured 1
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: review layer finding; Measured 1: deleting a compiled %Persistent class leaves its data global, so the export kills the extent first
 - 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=product ruling needed before 24.14's last head is pushed; escalated to the orchestrator
+- 2026-11-21T14:07:06Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=fc429a890: the export refuses ANALYTICS.PMML.DATAHELD when the compiled storage's data, index or stream location holds data, checked after compile and before any kill; the script makes the same check
 
 ### DW-2820: Test helper AnalyticsPmmlCreateBase.DataLeft reads ^<class>D, which is a class's data global only when the class name is at most 29 characters; longer test markers check no data
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (QA 354796f5d, review c7e20150a) | severity: low | fix-risk: low | footprint: in-footprint
