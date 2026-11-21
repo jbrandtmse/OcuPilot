@@ -32,6 +32,11 @@ prose into one checker.
    scanner never reads is not recognized, which is this line-oriented checker's scope rather
    than a claim about every storage class.
 
+   The same rule reads each column-0 `Parameter X = {...}` expression: a project class it names
+   through `##class(...)` or `$Parameter("...")` must appear in the class's `DependsOn` or
+   `Extends`, so the load order cannot decide whether the value is empty. A `..#NAME` argument
+   is read through the class's own and inherited parameter values.
+
 3. **Write discipline (AD-12).** A bare `Write` command may appear only in
    `OcuPilot/Api/Response.cls` and `OcuPilot/Api/Error.cls` — the tree's one response
    writer and one error writer. A `Write` reached through a dotted method call
@@ -449,6 +454,8 @@ def check_naming(problems: list[str]) -> None:
             for pname in extract_param_names(paramlist):
                 if not pname.startswith("p"):
                     problems.append(f"{rel}:{ln}: method {name!r} parameter {pname!r} does not start with p")
+
+    check_parameter_dependencies(problems)
 
 
 def read_fixed_packages(problems: list[str]) -> set[str] | None:
@@ -2137,6 +2144,129 @@ def check_route_ordering(problems: list[str]) -> None:
                                 f"follows the shorter route Url={url_i!r} at line {line_i} that "
                                 f"matches its leading segments; declare the longer route first"
                             )
+
+
+# --- Compile-time parameter expressions (rule 2) ---------------------------------------------------
+#
+# A column-0 `Parameter X = {...}` is evaluated while its class compiles, so a project class it
+# reads through `##class(...)` or `$Parameter("...")` has to be compiled first: the class names it
+# in `DependsOn` (or in `Extends`, which compiles first anyway). Without that, a clean compile
+# depends on the order the load happens to run in. A `..#NAME` argument is read through the
+# class's own parameter values, then its superclasses' in declared order.
+
+PARAMETER_EXPRESSION_RE = re.compile(r"^Parameter\s+([A-Za-z0-9_%]+)\b[^=\n]*=\s*\{", re.MULTILINE)
+PARAMETER_LITERAL_RE = re.compile(r'^Parameter\s+([A-Za-z0-9_%]+)\b[^=\n]*=\s*"((?:[^"]|"")*)"\s*;', re.MULTILINE)
+DEPENDS_ON_RE = re.compile(r"\bDependsOn\s*=\s*(\([^)]*\)|[A-Za-z0-9_.%]+)", re.IGNORECASE)
+PARAMETER_CLASS_REF_RE = re.compile(
+    r'##class\(\s*(?:([A-Za-z0-9_.%]+)|\.\.#([A-Za-z0-9]+))\s*\)'
+    r'|\$Parameter\(\s*(?:"([A-Za-z0-9_.%]+)"|\.\.#([A-Za-z0-9]+))\s*,',
+    re.IGNORECASE,
+)
+
+
+def read_parameter_classes() -> dict[str, dict]:
+    """Every class declared in this tree: its file, text, superclasses, `DependsOn` names and the
+    parameters it declares as a plain string literal."""
+    classes: dict[str, dict] = {}
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for m in CLASS_RE.finditer(text):
+            keywords = CLASS_KEYWORDS_RE.match(text, m.start())
+            keyword_list = keywords.group(2) if keywords and keywords.group(2) else ""
+            depends = DEPENDS_ON_RE.search(keyword_list)
+            classes[m.group(1)] = {
+                "rel": rel,
+                "text": text,
+                "supers": parse_superclasses(m.group(2)),
+                "depends": set(parse_superclasses(depends.group(1))) if depends else set(),
+                "values": {n: v.replace('""', '"') for n, v in PARAMETER_LITERAL_RE.findall(text)},
+            }
+    return classes
+
+
+def inherited_parameter_value(name: str, parameter: str, classes: dict[str, dict]) -> str | None:
+    """The string literal `parameter` holds on `name`, else on the first superclass in declared
+    order that declares one; None when no class in the chain does."""
+    seen: set[str] = set()
+
+    def walk(current: str) -> str | None:
+        if current in seen or current not in classes:
+            return None
+        seen.add(current)
+        if parameter in classes[current]["values"]:
+            return classes[current]["values"][parameter]
+        for parent in classes[current]["supers"]:
+            found = walk(parent)
+            if found is not None:
+                return found
+        return None
+
+    return walk(name)
+
+
+def expression_end(text: str, start: int) -> int | None:
+    """The offset of the `}` closing the expression whose body starts at `start`, skipping quoted
+    strings (`""` escapes included) and nested braces."""
+    depth = 1
+    in_string = False
+    i = start
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            if c == '"':
+                if text[i + 1 : i + 2] == '"':
+                    i += 2
+                    continue
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def check_parameter_dependencies(problems: list[str]) -> None:
+    classes = read_parameter_classes()
+    for name, info in sorted(classes.items()):
+        text = info["text"]
+        allowed = info["depends"] | set(info["supers"]) | {name}
+        for m in PARAMETER_EXPRESSION_RE.finditer(text):
+            end = expression_end(text, m.end())
+            if end is None:
+                continue
+            expression = text[m.end() : end]
+            strings = [s.span() for s in STRING_LITERAL_RE.finditer(expression)]
+            for ref in PARAMETER_CLASS_REF_RE.finditer(expression):
+                if any(a <= ref.start() < b for a, b in strings):
+                    continue
+                target = ref.group(1) or ref.group(3)
+                held = ref.group(2) or ref.group(4)
+                where = f"{info['rel']}:{line_of(text, m.start())}: parameter {m.group(1)!r} of {name}"
+                if held:
+                    target = inherited_parameter_value(name, held, classes)
+                    if target is None:
+                        problems.append(
+                            f"{where} names its class through ..#{held}, which no class in its Extends "
+                            f"chain declares as a string literal"
+                        )
+                        continue
+                if not target.startswith("OcuPilot.") or target in allowed:
+                    continue
+                via = f" (through ..#{held})" if held else ""
+                problems.append(
+                    f"{where} reads {target!r}{via} in a compile-time expression, but the class names it "
+                    f"in neither DependsOn nor Extends"
+                )
 
 
 CHECKS = (

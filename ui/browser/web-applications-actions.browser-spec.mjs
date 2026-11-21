@@ -28,6 +28,12 @@ import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
+
+/** The row actions the list declares under the `serves-ocupilot` rule, read from the client mirror of its descriptor. */
+const SERVES_OCUPILOT_ACTIONS = SCREENS.find(
+  (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WebAppList'
+).rowActions.filter((action) => action.selfProtection === 'serves-ocupilot').length;
 
 const config = browserConfig();
 const LIST_URL = '/ocupilot/web-applications/list?ns=HSCUSTOM';
@@ -427,7 +433,8 @@ test("AC3: OcuPilot's own application lists its actions with the refusal inline,
   try {
     await selectOnly(page, OWN);
     const entries = await openRowMenu(page);
-    assert.equal(entries.length, 3, 'all three actions are still listed');
+    assert.ok(SERVES_OCUPILOT_ACTIONS > 0, 'the list declares row actions under the serves-ocupilot rule');
+    assert.equal(entries.length, SERVES_OCUPILOT_ACTIONS, 'every action declared under the serves-ocupilot rule is still listed');
     for (const entry of entries) {
       assert.equal(entry.reason, STRINGS.webAppServesOcuPilotRefusal, `${entry.label} carries the published reason inline`);
       assert.equal(entry.name, `${entry.label} ${STRINGS.webAppServesOcuPilotRefusal}`, 'which is part of its accessible name');

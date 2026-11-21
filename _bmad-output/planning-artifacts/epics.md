@@ -9523,6 +9523,8 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
 
+[AMENDED 2026-11-21, Story 21.23 plan, orchestrator ruling: split into a sibling, Rule 5] The shared Rules helpers (DW-2499), the source-control follow-up (DW-2405) and three entries that wait on wording (DW-2369, DW-2442, DW-2474) move to Story 21.38. This story builds the rest, the CI flakes first.
+
 As a developer-administrator,
 I want the routed test-hygiene and small client entries closed,
 So that no area has a remaining gap.
@@ -9794,6 +9796,20 @@ So that the Permissions area has no remaining gap.
 - **Given** a classic page and a resource the instance defines
 - **When** a person or the agent assigns, changes or clears the page's custom resource
 - **Then** it round-trips over the vendor's own call, a page an OcuPilot Home or Agent co-pilot screen declares is refused, and a lowering on a page an OcuPilot screen replaces is minted destructive.
+
+### Story 21.38: Shared Rules helpers, the source-control follow-up and escalated wording
+
+[AMENDED 2026-11-21, Story 21.23 plan, orchestrator ruling: split into a sibling, Rule 5] Split from Story 21.23; it takes DW-2499, DW-2405, DW-2369, DW-2442 and DW-2474. Its wording comes to the orchestrator as one batch at its plan, and DW-2474 waits until Epic 24's Story 24.14 is on feature.
+
+As a developer-administrator,
+I want the area screen-editor Rules helpers shared, the source-control follow-up shown, and the routed wording entries closed,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the five routed entries
+- **When** each is worked
+- **Then** it is fixed, or closed with its reason, without changing a product behavior its story ruled, and every new sentence is one the orchestrator ruled.
 
 ---
 

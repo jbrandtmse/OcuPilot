@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { WALKCALLDEADLINE, closeOrAbandon, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, isAbandoned, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -201,12 +201,111 @@ const SLOWEST_VISITS = 5;
 /** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
 
+/** What `trackRequests` knows about each page it watches, for the report an abandoned call carries. */
+const trackers = new WeakMap();
+
+/** How many of a page's latest `/api/ocupilot` answers a stall report names. */
+const STALL_ANSWERS = 5;
+
+/** How long a stall report watches the renderer's task time. */
+const STALL_BUSY_WINDOW_MS = 2000;
+
+/** How long each probe of a stall report may take before it is reported as unanswered. */
+const STALL_PROBE_MS = 5000;
+
+/** Settle with `work`, or reject after `ms` with an error that names `what` and carries the `unanswered` marker. */
+function withinProbe(ms, work, what) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(`no answer to ${what} within ${ms} ms`), { unanswered: true })), ms);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
+
+/** One probe's failure as a phrase. */
+function reasonOf(error) {
+  return String(error?.message ?? error);
+}
+
+/**
+ * The renderer's state over `windowMs`, read from a fresh DevTools session of its own: `busy` when
+ * its task time grew by at least half the window, `idle` when it grew less, and `unresponsive` when
+ * the session does not answer within `probeMs`. A failed probe is named, never thrown.
+ */
+async function rendererState(page, windowMs, probeMs) {
+  let session = null;
+  try {
+    session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
+    await withinProbe(probeMs, session.send('Performance.enable'), 'Performance.enable');
+    const read = async () => {
+      const { metrics } = await withinProbe(probeMs, session.send('Performance.getMetrics'), 'Performance.getMetrics');
+      return metrics.find((metric) => metric.name === 'TaskDuration').value;
+    };
+    const first = await read();
+    await new Promise((resolve) => setTimeout(resolve, windowMs));
+    const grew = (await read()) - first;
+    const seconds = windowMs / 1000;
+    return `${grew >= seconds / 2 ? 'busy' : 'idle'} (task time grew ${grew.toFixed(2)} s over ${seconds} s)`;
+  } catch (error) {
+    return error?.unanswered === true ? `unresponsive (${reasonOf(error)})` : `unread (${reasonOf(error)})`;
+  } finally {
+    if (session !== null) await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+  }
+}
+
+/**
+ * One `stall:` line for a page whose call was abandoned: whether the page crashed since its tracker
+ * began, its frame's URL and the document requests in flight, the `/api/ocupilot` requests still
+ * unanswered with how long each has waited, the renderer's state, and the last `/api/ocupilot`
+ * answers with status and milliseconds. Each probe has its own bound and a failed one is named in
+ * the line; this never throws.
+ */
+export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, probeMs = STALL_PROBE_MS } = {}) {
+  const probe = (read) => {
+    try {
+      return read();
+    } catch (error) {
+      return `unread (${reasonOf(error)})`;
+    }
+  };
+  const tracker = trackers.get(page);
+  const crashed = probe(() => (tracker === undefined ? 'not tracked' : tracker.crashed === null ? 'no' : `yes (${tracker.crashed})`));
+  const frame = probe(() => {
+    const documents = tracker === undefined ? [] : [...tracker.documents].map((request) => pathOf(request.url()));
+    return `${pathOf(page.url())}, document request in flight: ${documents.length === 0 ? 'none' : documents.join(', ')}`;
+  });
+  const unanswered = probe(() =>
+    tracker === undefined || tracker.pending.size === 0
+      ? 'none'
+      : [...tracker.pending].map(([request, at]) => `${pathOf(request.url())} for ${Date.now() - at} ms`).join('; ')
+  );
+  const answers = probe(() =>
+    tracker === undefined || tracker.answers.length === 0
+      ? 'none'
+      : tracker.answers.map((answer) => `${answer.status} ${answer.path} ${answer.ms} ms`).join('; ')
+  );
+  let renderer;
+  try {
+    renderer = await rendererState(page, busyWindowMs, probeMs);
+  } catch (error) {
+    renderer = `unread (${reasonOf(error)})`;
+  }
+  return `stall: page crashed: ${crashed}; frame: ${frame}; /api/ocupilot unanswered: ${unanswered}; renderer: ${renderer}; last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
+}
+
 /**
  * Await one page call the walk issues, abandoning it after `WALKCALLDEADLINE`. The rejection is a
- * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more.
+ * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more. When
+ * the call is abandoned and `page` is given, the error's message gains `stallLine(page)`; that is
+ * the only path that reads the page's state.
  */
-function bounded(label, call) {
-  return withDeadline(call, WALKCALLDEADLINE, label);
+async function bounded(label, call, page = null) {
+  try {
+    return await withDeadline(call, WALKCALLDEADLINE, label);
+  } catch (error) {
+    if (page !== null && error instanceof Error && isAbandoned(error)) error.message += `\n${await stallLine(page)}`;
+    throw error;
+  }
 }
 
 /** The label of a walk step: the pass the tracker is standing in, then the step. */
@@ -631,7 +730,8 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
       classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
       tokenMinimums: minimums,
       overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
-    })
+    }),
+    page
   );
   const entries = [];
   const contextFor = (invariant) => (invariant === 'contrast' ? theme : invariant === 'name' ? '' : String(viewport));
@@ -639,7 +739,7 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
     entries.push({ route, invariant: violation.invariant, context: contextFor(violation.invariant), element: violation.element, measured: violation.measured });
   }
   if (checks.includes('name') && found.fields.length > 0) {
-    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page));
+    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page), page);
     for (const field of found.fields) {
       // A field Chrome leaves out of the accessibility tree, or one it answers nothing for, has no
       // name a reader can reach: a failed lookup is reported, never read as a pass.
@@ -674,16 +774,34 @@ function isShellScript(page, request) {
 /**
  * Count `/api/ocupilot` requests, and the shell's own `.js` requests, in flight on `page`, and when
  * the count last moved. The scripts are counted so a screen is never judged settled before its code
- * has arrived.
+ * has arrived. It also keeps what `stallLine` reports for the page: whether the page crashed, the
+ * document requests in flight, the `/api/ocupilot` requests not yet answered, and the last answers.
  */
-function trackRequests(page) {
+export function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
+  const watched = { crashed: null, documents: new Set(), answers: [], pending: new Map() };
+  const started = watched.pending;
+  trackers.set(page, watched);
+  page.on('error', (error) => {
+    watched.crashed = reasonOf(error);
+  });
   page.on('request', (request) => {
+    if (request.isNavigationRequest()) watched.documents.add(request);
+    if (request.url().includes('/api/ocupilot')) started.set(request, Date.now());
     if (!request.url().includes('/api/ocupilot') && !isShellScript(page, request)) return;
     state.inflight.add(request);
     state.last = Date.now();
   });
+  page.on('response', (response) => {
+    const request = response.request();
+    if (!started.has(request)) return;
+    watched.answers.push({ path: pathOf(request.url()), status: response.status(), ms: Date.now() - started.get(request) });
+    started.delete(request);
+    if (watched.answers.length > STALL_ANSWERS) watched.answers.shift();
+  });
   const done = (request) => {
+    watched.documents.delete(request);
+    started.delete(request);
     if (state.inflight.delete(request)) state.last = Date.now();
   };
   page.on('requestfinished', done);
@@ -711,7 +829,8 @@ export async function settle(page, requests, where = '') {
           if (document.fonts.status !== 'loaded') return `fonts ${document.fonts.status}`;
           const busy = document.querySelector('[aria-busy="true"]');
           return busy === null ? true : `busy element ${busy.tagName.toLowerCase()}${busy.id ? '#' + busy.id : ''}`;
-        })
+        }),
+        page
       );
       if (ready === true && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return { settled: true, ms: Date.now() - started, why: '' };
       pending = ready === true ? '' : String(ready);
@@ -746,11 +865,13 @@ export async function goInApp(page, requests, path, timeoutMs) {
     page.evaluate((to) => {
       window.history.pushState({}, '', to);
       window.dispatchEvent(new PopStateEvent('popstate'));
-    }, path)
+    }, path),
+    page
   );
   await bounded(
     stepLabel(requests, `await ${pathname}`),
-    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname)
+    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname),
+    page
   );
   return settle(page, requests, path);
 }
@@ -767,7 +888,8 @@ async function firstRowSegment(page, requests, route) {
         return segments[segments.length - 1];
       }
       return null;
-    }, `/ocupilot/${route}/`)
+    }, `/ocupilot/${route}/`),
+    page
   );
 }
 
@@ -775,11 +897,12 @@ async function firstRowSegment(page, requests, route) {
 export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
   const wasDark = await bounded(
     stepLabel(requests, 'read theme'),
-    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS)
+    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS),
+    page
   );
-  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'));
+  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'), page);
   await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
-  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM));
+  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM), page);
   await bounded(
     stepLabel(requests, 'await theme class'),
     page.waitForFunction(
@@ -787,12 +910,14 @@ export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
       { timeout: timeoutMs },
       THEME_DARK_CLASS,
       !wasDark
-    )
+    ),
+    page
   );
-  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'));
+  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'), page);
   await bounded(
     stepLabel(requests, 'await account panel closed'),
-    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs })
+    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs }),
+    page
   );
   await settle(page, requests);
 }
@@ -954,7 +1079,7 @@ export async function walk(browser, config, relaunch = null) {
         await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
       } finally {
-        await bounded('1280px light then dark: close context', wide.context.close());
+        await bounded('1280px light then dark: close context', wide.context.close(), wide.page);
       }
     });
 
@@ -964,7 +1089,7 @@ export async function walk(browser, config, relaunch = null) {
         const requests = trackRequests(narrow.page);
         found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
       } finally {
-        await bounded('720px light: close context', narrow.context.close());
+        await bounded('720px light: close context', narrow.context.close(), narrow.page);
       }
     });
   } finally {
@@ -1032,3 +1157,5 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   }
   await writeBaseline();
 }
+
+export { firstRowSegment };

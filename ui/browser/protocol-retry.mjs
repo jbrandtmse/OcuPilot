@@ -36,6 +36,11 @@ export function isProtocolTimeout(error) {
   return PROTOCOL_TIMEOUT.test(String(error?.message ?? error ?? ''));
 }
 
+/** Whether `error` is a call `withDeadline` abandoned, as opposed to a protocol timeout the browser reported. */
+export function isAbandoned(error) {
+  return /abandoned by withDeadline after \d+ ms/.test(String(error?.message ?? error ?? ''));
+}
+
 /** The message a browser, target, session or frame that is gone carries. */
 export const CONNECTION_LOSS = /Connection closed|Target closed|Session (closed|already detached)|frame (was |got )?detached|detached frame/i;
 

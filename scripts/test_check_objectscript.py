@@ -2699,5 +2699,109 @@ class TestDestructiveTestGuardRealClass(unittest.TestCase):
             self.assertIn(wire, wires, f"expected {wire} among the shipped marking tools, got {sorted(wires)}")
 
 
+class TestParameterExpressionsNameOnlyDependedClasses(FixtureTreeCase):
+    """A column-0 `Parameter X = {...}` naming a project class needs that class in `DependsOn` or
+    `Extends` (rule 2, called from `check_naming`)."""
+
+    FIXTURE = "OcuPilot.Test.InteropResendFixture"
+    PATH = "src/OcuPilot/Test/InteropEditResend.cls"
+
+    def write_fixture_class(self) -> None:
+        self.write(
+            "src/OcuPilot/Test/InteropResendFixture.cls",
+            "Class OcuPilot.Test.InteropResendFixture Extends %RegisteredObject\n"
+            '{\n\nParameter BODYCLASS = "OcuPilot.Test.Body";\n\n}\n',
+        )
+
+    def write_parent(self) -> None:
+        self.write(
+            "src/OcuPilot/Test/InteropResendCase.cls",
+            "Class OcuPilot.Test.InteropResendCase Extends %RegisteredObject\n"
+            f'{{\n\nParameter FIXTURE = "{self.FIXTURE}";\n\n}}\n',
+        )
+
+    def write_resend(self, keywords: str, expression: str, extends: str = "OcuPilot.Test.InteropResendCase") -> None:
+        self.write(
+            self.PATH,
+            f"Class OcuPilot.Test.InteropEditResend Extends {extends}{keywords}\n"
+            "{\n\n"
+            f"Parameter BODYCLASS = {{{expression}}};\n\n"
+            "}\n",
+        )
+
+    def problems(self) -> list[str]:
+        found: list[str] = []
+        co.check_naming(found)
+        return found
+
+    def test_a_class_without_dependson_is_flagged(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend("", f'$Parameter("{self.FIXTURE}", "BODYCLASS")')
+        found = self.problems()
+        self.assertTrue(
+            any("InteropEditResend.cls:4" in p and "'BODYCLASS'" in p and self.FIXTURE in p for p in found),
+            f"expected the class and the parameter named, got {found}",
+        )
+
+    def test_a_class_naming_it_in_dependson_is_clean(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend(f" [ DependsOn = {self.FIXTURE} ]", f'$Parameter("{self.FIXTURE}", "BODYCLASS")')
+        self.assertEqual(self.problems(), [])
+
+    def test_a_class_naming_it_in_extends_is_clean(self):
+        self.write_fixture_class()
+        self.write_resend("", '##class(OcuPilot.Test.InteropResendFixture).#BODYCLASS', extends=self.FIXTURE)
+        self.assertEqual(self.problems(), [])
+
+    def test_a_held_class_name_is_resolved_through_the_superclass_and_flagged(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend("", '$Parameter(..#FIXTURE, "BODYCLASS")')
+        found = self.problems()
+        self.assertTrue(
+            any("(through ..#FIXTURE)" in p and self.FIXTURE in p for p in found),
+            f"expected the resolved class named, got {found}",
+        )
+
+    def test_a_held_class_name_that_resolves_to_a_depended_class_is_clean(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend(f" [ DependsOn = ({self.FIXTURE}) ]", '$Parameter(..#FIXTURE, "BODYCLASS")')
+        self.assertEqual(self.problems(), [])
+
+    def test_a_held_class_name_no_class_declares_is_flagged(self):
+        self.write_fixture_class()
+        self.write_resend("", '$Parameter(..#FIXTURE, "BODYCLASS")', extends="%RegisteredObject")
+        found = self.problems()
+        self.assertTrue(any("..#FIXTURE" in p and "no class in its Extends chain" in p for p in found), found)
+
+    def test_a_vendor_class_and_a_string_that_looks_like_a_call_are_not_flagged(self):
+        self.write_resend("", '"##class(OcuPilot.Test.Nowhere)" _ ##class(%SYSTEM.Version).GetNumber()', extends="%RegisteredObject")
+        self.assertEqual(self.problems(), [])
+
+
+class TestShippedParameterExpressions(unittest.TestCase):
+    """The rule over the real tree, which is the population it protects."""
+
+    def test_the_shipped_tree_names_no_undepended_class(self):
+        problems: list[str] = []
+        co.check_parameter_dependencies(problems)
+        self.assertEqual(problems, [])
+
+    def test_the_shipped_tree_has_expressions_naming_project_classes_to_judge(self):
+        classes = co.read_parameter_classes()
+        judged = 0
+        for name, info in classes.items():
+            for m in co.PARAMETER_EXPRESSION_RE.finditer(info["text"]):
+                end = co.expression_end(info["text"], m.end())
+                expression = info["text"][m.end() : end]
+                judged += len(co.PARAMETER_CLASS_REF_RE.findall(expression))
+        self.assertGreater(judged, 20, "expected the shipped expressions that name a class to be read, not skipped")
+        resend = classes["OcuPilot.Test.InteropEditResend"]
+        self.assertIn("OcuPilot.Test.InteropResendFixture", resend["depends"])
+
+
 if __name__ == "__main__":
     unittest.main()

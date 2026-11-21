@@ -34,6 +34,8 @@ export async function cardViolations(page, route, timeoutMs) {
   const baseline = (readBaseline()?.entries ?? []).filter((entry) => entry.route === route);
   const requests = { inflight: new Set(), last: 0 };
   const found = [];
+  // The tool-call card's spinner rotates while its call runs, and a rotating square measures wider than its frame, so the passes begin once it is gone.
+  await page.waitForFunction(() => document.querySelector('.ocu-tool-call-spinner') === null, { timeout: timeoutMs });
   for (const { viewport, theme } of [
     { viewport: VIEWPORTS.wide, theme: 'light' },
     { viewport: VIEWPORTS.narrow, theme: 'light' },

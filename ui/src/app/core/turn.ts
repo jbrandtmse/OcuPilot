@@ -753,6 +753,28 @@ export function parseProposals(value: unknown): TurnProposal[] {
 }
 
 /**
+ * A fresh poll's `proposals[]` over the rows this store already holds under the same id. What a
+ * confirm recorded and the poll does not carry stays: the console lines and the compile outcome
+ * (memory only), a read-back the poll has none for, and a final state recorded over a poll that
+ * still reads the row live. Everything else is the poll's.
+ */
+function mergeHeldProposals(held: readonly TurnProposal[], fresh: readonly TurnProposal[]): TurnProposal[] {
+  const byId = new Map(held.map((proposal) => [proposal.proposalId, proposal]));
+  return fresh.map((proposal) => {
+    const kept = byId.get(proposal.proposalId);
+    if (kept === undefined) return proposal;
+    const settled = kept.state !== PROPOSAL_LIVE_STATE && proposal.state === PROPOSAL_LIVE_STATE;
+    return {
+      ...proposal,
+      ...(settled ? { state: kept.state, closedReason: kept.closedReason, confirmedAt: kept.confirmedAt } : {}),
+      ...(proposal.readBack == null && kept.readBack != null ? { readBack: kept.readBack } : {}),
+      ...(kept.output === undefined ? {} : { output: kept.output }),
+      ...(kept.outputErrors === undefined ? {} : { outputErrors: kept.outputErrors }),
+    };
+  });
+}
+
+/**
  * `proposals[]` as a **restored** turn carries them: parsed, and shown expired only where the
  * instance still calls them live.
  *
@@ -1802,7 +1824,7 @@ export class TurnStore {
     // below runs before `finalizeLive` clears it -- so subscribers would otherwise see a live
     // directive for a turn that has already ended.
     this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
-    const proposals = parseProposals(body['proposals']);
+    const proposals = mergeHeldProposals(this.liveEntryValue?.proposals ?? [], parseProposals(body['proposals']));
     for (const proposal of proposals) this.proposalTurns.set(proposal.proposalId, turnId);
     const citations = parseCitations(body['citations']);
     const egress = parseEgress(body['egress']);

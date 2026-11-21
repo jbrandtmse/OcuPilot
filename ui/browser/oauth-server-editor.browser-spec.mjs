@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { saveAndSettle, signedInAt } from './panel-spec.mjs';
+import { saveAndSettle, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -106,14 +106,6 @@ function frames(page) {
   return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-/** Wait until no CSS transition is running, so a contrast read measures the theme it is in. */
-function transitionsSettled(page) {
-  return page.waitForFunction(
-    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
-    { timeout: config.navigationTimeoutMs }
-  );
-}
-
 /** The baseline's allowance for this route: the shell's own DW-1583 and DW-1584 entries alone. */
 function shellAllowance() {
   return (readBaseline()?.entries ?? []).filter((entry) => entry.route === EDITOR_ROUTE && (entry.dw === 'DW-1583' || entry.dw === 'DW-1584'));
@@ -136,7 +128,7 @@ async function assertStructure(page, dialog = false) {
     await page.setViewport(viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
-    await transitionsSettled(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: EDITOR_ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);

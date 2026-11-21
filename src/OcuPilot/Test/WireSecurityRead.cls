@@ -439,9 +439,14 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     ; Story 5.11 added Suspended, taken per row from the same endpoint's INFO (DW-269, AD-36): it
-    ; is the eighth declared field and the only one the vendor's own LIST row does not carry.
-    Set tFields = "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled"",""Suspended""]"
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the eight declared fields")
+    ; is a declared field and the only one the vendor's own LIST row does not carry.
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.TaskScheduleList).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Set tFields = tDeclaration.read.fields.%ToJSON()
+    Do $$$AssertTrue(tDeclaration.read.fields.%Size() > 0, "the declaration declares fields")
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the declared fields, in the declared order")
+    Do $$$AssertTrue(tFields [ """Suspended""", "Suspended among them")
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's tasks listed: " _ tAnswer.rows.%Size())
     Set tBad = ""
     Set tIterator = tAnswer.rows.%GetIterator()
@@ -454,7 +459,7 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
         If tKeys.%ToJSON() '= tFields Set tBad = "row " _ tIndex _ " carries " _ tKeys.%ToJSON()
         If tBad '= "" Quit
     }
-    Do $$$AssertEquals(tBad, "", "every row carries exactly the eight declared fields, the detail call's Suspended among them")
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the declared fields, the detail call's Suspended among them")
     ; The banner is screen chrome the read resolves (AD-36); on a throwaway whose Task Manager is
     ; running it is the empty string, and the suspended half is the browser spec's.
     Do $$$AssertEquals(tAnswer.%GetTypeOf("banner"), "string", "the answer carries the banner key as a string")
@@ -641,8 +646,14 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tStatus, 200, "and answers")
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
-    Set tFields = "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]"
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the eight declared fields, the vendor's Nspace spelling and Story 16.6's broadcast flag included")
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.ProcessList).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Set tFields = tDeclaration.read.fields.%ToJSON()
+    Do $$$AssertTrue(tDeclaration.read.fields.%Size() > 0, "the declaration declares fields")
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the declared fields, in the declared order")
+    Do $$$AssertTrue(tFields [ """Nspace""", "the vendor's Nspace spelling among them")
+    Do $$$AssertTrue(tFields [ """CanReceiveBroadcast""", "and the broadcast flag")
     ; The caller is itself a process, so a zero-row answer would mean the read is not reading the
     ; instance at all.
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's processes listed: " _ tAnswer.rows.%Size())
@@ -667,7 +678,7 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
         }
         If (tBad '= "") || (tNotNumber '= "") Quit
     }
-    Do $$$AssertEquals(tBad, "", "every row carries exactly the eight declared fields, none of the four CanBe* gates among them")
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the declared fields, none of the four CanBe* gates among them")
     Do $$$AssertEquals(tNotNumber, "", "and both counter columns arrive as JSON numbers, which is what makes their sort numeric")
     ; A list screen that declares no banner answers the key as the empty string rather than omitting
     ; it, so the client's strip has one thing to read on every list. The type is asserted beside the

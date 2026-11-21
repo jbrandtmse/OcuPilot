@@ -898,7 +898,7 @@ function throwawayComposeFile(...args) {
   try {
     const bin = join(dir, 'bin');
     const scratch = join(dir, 'scratch');
-    writeStub(bin, 'docker', ['exit 0']);
+    writeStub(bin, 'docker', ['case "$1" in', '  inspect) echo 0; exit 0 ;;', 'esac', 'exit 0']);
     const run = spawnSync('sh', [join(repoRoot, 'scripts', 'ci-throwaway.sh'), 'up', '--dir', scratch, ...args], {
       cwd: repoRoot,
       encoding: 'utf8',
