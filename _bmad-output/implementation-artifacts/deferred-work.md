@@ -8482,6 +8482,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T19:33:26Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=three governance-settle reds 2026-11-20 (runs 44743879162, 44736623307, 44794079238); must-fix in 21.23; candidate cause the governance screen's settle time at 329 baseline keys (inference); 21.23 measures the settle time at 720px and 1280px, light and dark, and fixes the screen or the walker, never the deadline
 - 2026-11-20T19:29:15Z by=epic-24-runner note=occurrence: CI run 44794079238 (24.14 Batch 2 integrate head b70aa5d69), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance (720px light, 60 s); every instance shard and the other browser shards green; third settle red at /agent/governance today (21.20's run, fa07e9126's run, this one); the governance screen lists 329 keys, so a real settle-time regression is possible (inference); orchestrator routes DW-1822 to 21-23 as must-fix
 - 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_1/5_a11y_AC5_settle_/agent/governance_1280px_light_60s;rerun_--failed;must-fix_in_21-23_stands
+- 2026-11-21T02:14:04Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44851185597_browser_shard_1(21.36_head_ae4b9b1b3):1280px_light_settle_/agent/governance
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -10953,6 +10954,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-20T23:33:34Z status=routed owner=burndown by=lead note=flake recurred: 20.12 local sweep 313b3401 shard 6/20 run 212, row re-reads Paused; green on unchanged rerun
 - 2026-11-14T00:52:31Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
 - 2026-11-14T02:10:24Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_1:BackgroundTasksLive_waits_for_the_state_to_settle_(BackgroundSeed.Settled,new_SettledRow_for_the_admin_API_row)_after_Resume_and_a_200_Pause;red_shown_by_forcing_the_ended_branch(run_32);reopen_if=BackgroundTasksLive_reds_on_a_Pause,Resume_or_Cancel_after_the_settle
+- 2026-11-21T02:15:43Z occurrence=21-36-task-output-and-mail-password by=cr note=ocupilot-ci run 992 TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult Pause/Resume 409 STATE; run 993 green
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -14270,3 +14272,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression
 - 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Document now, fix later (Recommended)": README half on the 1.0.18 release branch by the Planner (closes against the release commit when sent); installer-needs-less half routed to a later story
 - 2026-11-20T20:40:08Z status=routed owner=burndown by=orchestrator note=documentation half closed by release/1.0.18 7d53e3312 (README IPM install: %Admin_Task:USE, SELECT on %Dictionary.CompiledClass, schema OcuPilot_Kernel_State privileges WITH GRANT OPTION, foreign-grant warning expected); installer-needs-less half stays routed to a later story
+
+### DW-2810: The task output read follows a symbolic link named *.txt in the manager directory to a file outside it
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: Measured on ocupilot-ci: link ocuplink2136.txt -> /etc/hostname read 200 through taskoutput; %File.Attributes follows links (33188), so no lstat exists; every LogSourcePort source opens paths the same way
+- 2026-11-21T02:15:47Z status=wontfix-theoretical owner=21-36-task-output-and-mail-password by=cr note=real if a caller without OS access or %System_CallOut can place a link in the manager directory
+
+### DW-2811: A task output whose last 65,536 bytes hold no line feed reads no rows, so the viewer shows No entries. beside the cut sentence
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ReadWindow's mid-line branch returns no lines when the window holds no LF (LogSourcePort.ReadWindow tAfterNewline = 0); TaskOutputRows still reports truncated
+- 2026-11-21T02:15:51Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=a real task's output viewer shows No entries. with the cut sentence for a non-empty file
+
+### DW-2812: The task output read ignores OutputFileIsBinary and draws a binary output file as text lines
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TaskOutputRecord reads OpenOutputFile, OutputDirectory and OutputFilename only; a binary file's bytes reach both callers as lines (output text is untrusted, AD-11/AD-60)
+- 2026-11-21T02:15:56Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=a binary-output task's viewer or tasks.taskoutput.read breaks the page or the agent turn
+
+### DW-2813: tasks.mail.set inherits AuthPassword as a declared secret from Task Manager email's secretArguments, covered by a DraftRegistry exemption rather than a SecretArguments override
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Write.SecretArguments returns the descriptor's list; DraftRegistry.UNSENTSECRETS exempts tasks.mail.set=AuthPassword; ServiceUpdate/SslDelete override SecretArguments instead; a supplied secret is dropped
+- 2026-11-21T02:15:59Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=a tasks.mail.set card asks for AuthPassword or its confirm sends AuthPassword in a body
+
+### DW-2814: tasks.mail.password mints a card for a target other than AuthUser and refuses it only at the confirm, after the password is typed
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskMailPasswordWrite mints for Server and the confirm answers CONFIG.SETTING.NOTFOUND; the tool has no mint-time target check; its description tells the model to send AuthUser
+- 2026-11-21T02:16:01Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=an agent turn mints tasks.mail.password for a target other than AuthUser
+
+### DW-2815: TaskMailPasswordWrite's RowExists and RemoveCreatedRow swallow SQL failures, so a failed cleanup leaves the vendor's mail password row unreported
+- source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskMailPasswordWrite.cls:105-130 run %ExecDirect without checking %SQLCODE and catch every error empty; the row holds an empty value on a throwaway
+- 2026-11-21T02:16:04Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=an empty MailAuthPassword row remains on a fresh throwaway after the class runs
