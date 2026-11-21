@@ -8588,6 +8588,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:623 */
   analyticsRefusalPmmlExportCompile: 'The instance refused the export\'s classes or rows, so nothing was changed.',
   /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlDataHeld: 'This namespace already holds data stored under this class name. Choose another name.',
+  /** EXPERIENCE.md:623 */
   analyticsPmmlModelTestEmptyAgent: 'export a test to a cube',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',

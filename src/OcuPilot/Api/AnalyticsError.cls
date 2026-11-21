@@ -237,7 +237,7 @@ Parameter PMMLSAVE = "ANALYTICS.PMML.SAVE";
 
 /// <p>The PMML export to a cube's refusals (Story 24.14, Batch 4): 422, the result class and the cube class are one class or one is in the other's package; 409, the namespace holds a cube of that name; 422, the cube name
 /// is outside 1 to 250 characters or holds a control character or a <code>}</code>; 422, the class to link to is not one the namespace holds; 422, the export's own test did not finish; 422, the instance refused
-/// the export's classes or rows. <code>PMMLEXPORT</code> is the export's consequence code.</p>
+/// the export's classes or rows; 409, the namespace holds data stored under the result class's name. <code>PMMLEXPORT</code> is the export's consequence code.</p>
 Parameter PMMLSAME = "ANALYTICS.PMML.SAME";
 
 Parameter REASONPMMLSAME = "The result class and the cube class must be two classes, neither in the other's package.";
@@ -261,6 +261,11 @@ Parameter REASONPMMLEXPORTRUN = "The test did not finish, so nothing was exporte
 Parameter PMMLEXPORTCOMPILE = "ANALYTICS.PMML.EXPORTCOMPILE";
 
 Parameter REASONPMMLEXPORTCOMPILE = "The instance refused the export's classes or rows, so nothing was changed.";
+
+/// <p>409: the namespace already holds data stored under the result class's name, so nothing was saved.</p>
+Parameter PMMLDATAHELD = "ANALYTICS.PMML.DATAHELD";
+
+Parameter REASONPMMLDATAHELD = "This namespace already holds data stored under this class name. Choose another name.";
 
 Parameter PMMLEXPORT = "ANALYTICS.PMML.EXPORT";
 
@@ -543,6 +548,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PMMLSOURCECLASS Quit ..#REASONPMMLSOURCECLASS
     If pCode = ..#PMMLEXPORTRUN Quit ..#REASONPMMLEXPORTRUN
     If pCode = ..#PMMLEXPORTCOMPILE Quit ..#REASONPMMLEXPORTCOMPILE
+    If pCode = ..#PMMLDATAHELD Quit ..#REASONPMMLDATAHELD
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
@@ -627,10 +633,10 @@ ClassMethod FolderItemCodes() As %List
     Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
 }
 
-/// <p>The PMML model tester's eight refusal codes (Story 24.14), then the five of the definition create (Batch 3) and the six of the export to a cube (Batch 4), as a <class>%List</class>.</p>
+/// <p>The PMML model tester's eight refusal codes (Story 24.14), then the five of the definition create (Batch 3) and the seven of the export to a cube (Batch 4), as a <class>%List</class>.</p>
 ClassMethod PmmlCodes() As %List
 {
-    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST, ..#PMMLCLASS, ..#PMMLTAKEN, ..#PMMLTEXT, ..#PMMLCOMPILE, ..#PMMLREADONLY, ..#PMMLSAME, ..#PMMLCUBETAKEN, ..#PMMLCUBENAME, ..#PMMLSOURCECLASS, ..#PMMLEXPORTRUN, ..#PMMLEXPORTCOMPILE)
+    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST, ..#PMMLCLASS, ..#PMMLTAKEN, ..#PMMLTEXT, ..#PMMLCOMPILE, ..#PMMLREADONLY, ..#PMMLSAME, ..#PMMLCUBETAKEN, ..#PMMLCUBENAME, ..#PMMLSOURCECLASS, ..#PMMLEXPORTRUN, ..#PMMLEXPORTCOMPILE, ..#PMMLDATAHELD)
 }
 
 /// <p>The consequence codes of the PMML definition create (Story 24.14, Batch 3) and of the export to a cube (Batch 4), as a <class>%List</class>.</p>

@@ -922,6 +922,7 @@ const PMML_EXPORT_SENTENCES = [
   ['REASONPMMLSOURCECLASS', 'analyticsRefusalPmmlSourceClass'],
   ['REASONPMMLEXPORTRUN', 'analyticsRefusalPmmlExportRun'],
   ['REASONPMMLEXPORTCOMPILE', 'analyticsRefusalPmmlExportCompile'],
+  ['REASONPMMLDATAHELD', 'analyticsRefusalPmmlDataHeld'],
 ];
 
 test("Story 24.14 Batch 4: each PMML export refusal and its consequence is one sentence on both surfaces, and the export names none of the classic's own writes", () => {

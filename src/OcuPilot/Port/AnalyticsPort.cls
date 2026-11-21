@@ -6378,6 +6378,33 @@ ClassMethod KillExtentHere(pNamespace As %String, pClass As %String) As %Boolean
     Quit tKilled
 }
 
+/// <p>Whether a global the compiled class <var>pClass</var> of <var>pNamespace</var> stores under holds data: the data, index and stream locations of each of its storages as the compiler recorded them
+/// (<class>%Dictionary.CompiledStorage</class>), never a global guessed from the name, since a long name's globals are hashed. 1 when one holds any node or when the storage cannot be read, so a failure refuses
+/// rather than lets data be erased; 0 when none does. Reads only, by explicit save and restore of the namespace (AD-16). Never raises.</p>
+ClassMethod PmmlDataHeld(pNamespace As %String, pClass As %String) As %Boolean [ Private ]
+{
+    Set tHeld = 1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tDefinition = ##class(%Dictionary.CompiledClass).%OpenId(pClass)
+        If $IsObject(tDefinition) {
+            Set tHeld = 0
+            For tAt = 1:1:tDefinition.Storages.Count() {
+                Set tStorage = tDefinition.Storages.GetAt(tAt)
+                For tProperty = "DataLocation", "IndexLocation", "StreamLocation" {
+                    Set tGlobal = $Property(tStorage, tProperty)
+                    If (tGlobal '= "") && $Data(@tGlobal) Set tHeld = 1
+                }
+            }
+        }
+    } Catch {
+        Set tHeld = 1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tHeld
+}
+
 /// <p>The lines a class write's script form holds (Story 24.11, 24.12, AD-59), for the write <var>pType</var> of the class <var>pClass</var> in <var>pNamespace</var>: the class text
 /// <var>pText</var> saved and compiled and, as the write does, put back as <var>pPrior</var> (compiled again when <var>pCompiled</var>) when the compile is refused; a delete is
 /// the class's deletion. A create's steps are each gated on one line by <var>pFreeCondition</var>, ObjectScript that is true when the name and class are free, after
@@ -7890,17 +7917,19 @@ ClassMethod PmmlExportAudit(pNamespace As %String, pClass As %String, pModel As 
 }
 
 /// <p>Put back what a PMML export saved when a later step failed: the cube class when <var>pCubeSaved</var>, then the result class with its data (<method>RestoreClass</method>, whose delete also removes the classes
-/// a cube class's compile generated). <code>restored</code> when each reported success, else <code>restorefailed</code>. The test's own rows were dropped by <method>PmmlRun</method>.</p>
-ClassMethod PmmlExportRestore(pNamespace As %String, pResultClass As %String, pCubeClass As %String, pCubeSaved As %Boolean) As %String [ Private ]
+/// a cube class's compile generated). <code>restored</code> when each reported success, else <code>restorefailed</code>. The test's own rows were dropped by <method>PmmlRun</method>. A zero <var>pKillExtent</var> deletes the
+/// result class and touches no global: the data the namespace already held under its name is not this export's.</p>
+ClassMethod PmmlExportRestore(pNamespace As %String, pResultClass As %String, pCubeClass As %String, pCubeSaved As %Boolean, pKillExtent As %Boolean = 1) As %String [ Private ]
 {
     Set tOutcome = "restored"
     If pCubeSaved && (..RestoreClass(pNamespace, pCubeClass _ ".cls", 1, "", 0, "PMML export") '= "restored") Set tOutcome = "restorefailed"
-    If ..RestoreClass(pNamespace, pResultClass _ ".cls", 1, "", 0, "PMML export", 1) '= "restored" Set tOutcome = "restorefailed"
+    If ..RestoreClass(pNamespace, pResultClass _ ".cls", 1, "", 0, "PMML export", pKillExtent) '= "restored" Set tOutcome = "restorefailed"
     Quit tOutcome
 }
 
 /// <p>Make the PMML export (Story 24.14, Batch 4; AD-7, AD-65) of the model <var>pModel</var> of the definition class <var>pClass</var> with the members <var>pInput</var>: <method>PlanPmmlExport</method>'s refusals, then in this
-/// request, in order: the result class saved and compiled (<method>WriteClass</method>); the export's own test, run through <method>PmmlRun</method> under the test's bound with the result class as its copy target, which copies the test's rows
+/// request, in order: the result class saved and compiled (<method>WriteClass</method>); a check that no global the result class stores under holds data (<method>PmmlDataHeld</method>), which refuses 409
+/// <code>ANALYTICS.PMML.DATAHELD</code>, deletes the class just saved and touches no global; the export's own test, run through <method>PmmlRun</method> under the test's bound with the result class as its copy target, which copies the test's rows
 /// into it before they are dropped; and the cube class saved and compiled, restricted to that test's id. The cube is never built. A test that does not answer <code>ran</code> is 422 <code>ANALYTICS.PMML.EXPORTRUN</code>; a compile the
 /// instance refuses, or a copy that fails, is 422 <code>ANALYTICS.PMML.EXPORTCOMPILE</code>; in each case every class saved is deleted with the result class's rows (<method>PmmlExportRestore</method>), and the vendor's text is logged.
 /// Each write that reached a class records OcuPilot's own <code>ConfigChange</code> row (<method>PmmlExportAudit</method>), a restored one with its outcome. The answer is <code>{ResultClass, CubeClass, Cube, Records}</code>.</p>
@@ -7922,11 +7951,11 @@ ClassMethod PerformPmmlExport(pNamespace As %String, pClass As %String, pModel A
         Do ..PmmlExportAudit(pNamespace, pClass, pModel, .tPlan, 0, tOutcome)
         Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#PMMLEXPORTCOMPILE, ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLEXPORTCOMPILE, .pHttpStatus, .pFault)
     }
-    ; A class of the same name made earlier and deleted left its data global behind, and the result class holds exactly this test's rows.
+    ; A class of the same name made earlier and deleted left its data global behind: that data is not this export's, so it is refused and no global is touched.
     Set tFailure = ""
     Set tRecords = 0
     Set tCaught = ""
-    If '..KillExtentHere(pNamespace, tResult) Set tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLEXPORTCOMPILE
+    If ..PmmlDataHeld(pNamespace, tResult) Set tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLDATAHELD
     If tFailure = "" {
         Try {
             Set tRunSC = ..PmmlRun(pNamespace, pClass, pModel, tPlan("source"), tPlan("dataSource"), tPlan("sql"), ..PmmlExportBound(), "", "", .tAnswer, .tStopped, tResult, .tCopied, .tTestId)
@@ -7964,10 +7993,11 @@ ClassMethod PerformPmmlExport(pNamespace As %String, pClass As %String, pModel A
         }
     }
     If tFailure '= "" {
-        Set tOutcome = ..PmmlExportRestore(pNamespace, tResult, tCubeClass, tCubeSaved)
+        Set tOutcome = ..PmmlExportRestore(pNamespace, tResult, tCubeClass, tCubeSaved, tFailure '= ##class(OcuPilot.Api.AnalyticsError).#PMMLDATAHELD)
         If $Get(tCubeOutcome) = "restorefailed" Set tOutcome = "restorefailed"
         Do ..PmmlExportAudit(pNamespace, pClass, pModel, .tPlan, 0, tOutcome)
         If tFailure = "error" Quit tSC
+        If tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLDATAHELD Quit ..Conflict(tFailure, .pHttpStatus, .pFault)
         Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, tFailure, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(tFailure), .pHttpStatus, .pFault)
     }
     Do ..PmmlExportAudit(pNamespace, pClass, pModel, .tPlan, tRecords, "applied")
@@ -7999,8 +8029,9 @@ ClassMethod PmmlDraftClassShaped(pClass As %String) As %Boolean [ Private ]
 
 /// <p>The lines <method>Snippet</method> adds for the PMML export of the model <var>pId</var> with the members <var>pBody</var> (Story 24.14, Batch 4; AD-59), the steps <method>PerformPmmlExport</method> takes with the vendor's own
 /// calls and no write run: the result class saved and compiled (<method>ClassWriteSnippet</method>), the model's test and the copy of its rows into the result class, the test's rows dropped, and the cube class saved and compiled with
-/// the test's id; when a later step fails, every class the script saved is deleted with the result class's data. The steps are gated on one line by a free-name check that applies the export's own rules (neither class, nor a class of
-/// either package, held, and no cube of the name), so a script run after another writer took a name changes nothing; the cube class's names are asked again just before its save. Two script comments state that the export cannot be undone and that the test runs without the write's bound. Every name is a string literal. A name or source
+/// the test's id; when a later step fails, every class the script saved is deleted with the result class's data. After the result class compiles, the script checks the globals its compiled storage names, as
+/// <method>PmmlDataHeld</method> does: data held there ends it on the <code>ANALYTICS.PMML.DATAHELD</code> sentence, deleting the class it saved and killing no global. The steps are gated on one line by a free-name check that applies the export's own rules (neither class, nor a class of
+/// either package, held, and no cube of the name), so a script run after another writer took a name changes nothing; the cube class's names are asked again just before its save. Three script comments state that the export cannot be undone, that the test runs without the write's bound and which SQL privileges the copy and the drop need. Every name is a string literal. A name or source
 /// that <method>PmmlExportDraftShaped</method> refuses, a model id that is not <method>PmmlParts</method>', a namespace that is named and is not one, and a script longer than
 /// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answer no step; a class of OcuPilot's own, and any other export <method>PlanPmmlExport</method> refuses, is a script that only sets the refusal's sentence.</p>
 ClassMethod PmmlExportSnippet(pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
@@ -8038,15 +8069,17 @@ ClassMethod PmmlExportSnippet(pId As %String, pBody As %DynamicAbstractObject, B
     Set tUpperK = ..Literal($ZConvert(tPlan("cubeClass"), "U"))
     Set tPrelude = tNL _ " ; OcuPilot cannot undo an export."
     Set tPrelude = tPrelude _ tNL _ " ; The test runs here without the " _ ..#MDXSECONDS _ " second limit the export has."
+    Set tPrelude = tPrelude _ tNL _ " ; This script needs SQL SELECT and DELETE privileges on %DeepSee_PMML_Utils.TempResult."
     Set tPrelude = tPrelude _ tNL _ " Set tHeld = 1, tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ? OR UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ?"", " _ tUpperR _ ", " _ tUpperR _ "_""."", " _ tUpperK _ ", " _ tUpperK _ "_""."") If (tRS.%SQLCODE = 0) && tRS.%Next() Set tHeld = tRS.%GetData(1)"
     Set tPrelude = tPrelude _ tNL _ " Set tCubeHeld = ''##class(%DeepSee.Utils).%CubeExists(" _ tCubeName _ ")"
     Set tText = ..ClassWriteSnippet(..#TYPEADD, tNamespace, tPlan("result"), tPlan("text"), "", 0, tPrelude, "'tHeld, 'tCubeHeld", ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN)
     If tText = "" Quit ""
     Set tText = tText _ tNL _ " If 'tMade, 'tHeld Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCUBETAKEN) _ ")"
-    Set tText = tText _ tNL _ " Set tId = """", tRecords = 0, tCubeSaved = 0, tFail = """""
+    Set tText = tText _ tNL _ " Set tId = """", tRecords = 0, tCubeSaved = 0, tFail = """", tDataHeld = 1"
     Set tText = tText _ tNL _ " If tMade, '" _ tOK _ " Set tFail = " _ tExportCompile
-    Set tText = tText _ tNL _ " If tMade, tFail = """" Set tSC = $ClassMethod(" _ tR _ ", ""%KillExtent"")"
-    Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportCompile
+    ; Data the namespace already holds under the result class's name is not this export's: the script ends on the sentence and, below, kills no global.
+    Set tText = tText _ tNL _ " If tMade, tFail = """" Set tStore = ##class(%Dictionary.CompiledClass).%OpenId(" _ tR _ "), tDataHeld = '$IsObject(tStore) If $IsObject(tStore) { For tNth = 1:1:tStore.Storages.Count() { Set tPart = tStore.Storages.GetAt(tNth) For tWhere = ""DataLocation"", ""IndexLocation"", ""StreamLocation"" { Set tGlobal = $Property(tPart, tWhere) If (tGlobal '= """") && $Data(@tGlobal) Set tDataHeld = 1 } } }"
+    Set tText = tText _ tNL _ " If tMade, tFail = """", tDataHeld Set tFail = " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONPMMLDATAHELD)
     Set tText = tText _ tNL _ " If tMade, tFail = """" Set tId = ##class(%DeepSee.PMML.Utils.TempResult).GetNewTestId(), tSC = " _ tRun
     Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportRun
     Set tText = tText _ tNL _ " If tMade, tFail = """" Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT TestRecordId, ActualValue, PredictedValue, Probability FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = ? ORDER BY %ID"", tId), tSC = $Select(tRS.%SQLCODE < 0: $System.Status.Error(5001, " _ tExportCompile _ "), 1: 1)"
@@ -8061,7 +8094,7 @@ ClassMethod PmmlExportSnippet(pId As %String, pBody As %DynamicAbstractObject, B
     Set tText = tText _ tNL _ " If tMade, tFail = """", " _ tOK _ " Set tCubeSaved = 1, tSC = $System.OBJ.Compile(" _ tK _ ", ""ck"")"
     Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportCompile
     Set tText = tText _ tNL _ " If tFail '= """" If tCubeSaved Do $System.OBJ.Delete(" _ tK _ ", ""-d"")"
-    Set tText = tText _ tNL _ " If tFail '= """", ##class(%Dictionary.CompiledClass).%ExistsId(" _ tR _ ") Do $ClassMethod(" _ tR _ ", ""%KillExtent"")"
+    Set tText = tText _ tNL _ " If tFail '= """", 'tDataHeld, ##class(%Dictionary.CompiledClass).%ExistsId(" _ tR _ ") Do $ClassMethod(" _ tR _ ", ""%KillExtent"")"
     Set tText = tText _ tNL _ " If tFail '= """" Do $System.OBJ.Delete(" _ tR _ ", ""-d"")"
     Set tText = tText _ tNL _ " If tFail '= """" Set tSC = $System.Status.Error(5001, tFail)"
     If $Length(tText) > ##class(OcuPilot.Port.AtelierPort).#SNIPPETMAXCHARACTERS Quit ""

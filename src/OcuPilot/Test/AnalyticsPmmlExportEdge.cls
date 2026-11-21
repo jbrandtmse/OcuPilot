@@ -1,7 +1,7 @@
 /// <p>Pins the refusals of Story 24.14 Batch 4's PMML export to a cube (AD-8, AD-10, AD-22, AD-54, AD-65) against <code>USER</code>, with the real compiler: a class of OcuPilot's own, a malformed name, two classes that are one
 /// or nested, a held class, package or cube, a cube name outside the vendor's bound, a class to link to that is absent and a source that is not a query are each refused by the port, the person's action and the agent's mint
 /// with their own codes and nothing is made; a name taken between the mint and the confirm closes the proposal as target-changed; a test that fails or outlasts its bound, a cube class the compiler refuses and a copy that
-/// fails leave no class, cube, row or data and record the outcome <code>restored</code>; the gate refuses before any lookup; the agent's confirm is refused with its key off while the person's action runs; and the export's script form
+/// fails leave no class, cube, row or data and record the outcome <code>restored</code>; a result class whose storage already holds data is refused and the data is untouched; the gate refuses before any lookup; the agent's confirm is refused with its key off while the person's action runs; and the export's script form
 /// makes what the write makes, changes nothing when a name is taken, restores when a step fails and spells no hostile name. The helpers are <class>OcuPilot.Test.AnalyticsPmmlExportBase</class>'s.</p>
 /// <p><b>What it needs from the environment:</b> the base class's. It makes and removes classes under <code>ProbePmml.Export</code> and cubes named <code>ProbePmmlExport</code> in <code>USER</code>, and rewrites the stored
 /// governance policy, which it restores after each test.</p>
@@ -326,38 +326,111 @@ ClassMethod SuperOf(pName As %String) As %String
     Quit tSuper
 }
 
-/// <p>AC1: over a data global an earlier class of the result class's name left, an export through the port leaves the result class holding only its own test's rows.</p>
-/// <p>Mutation (Rule 19): drop the extent kill before the test from <method>OcuPilot.Port.AnalyticsPort.PerformPmmlExport</method> -- the export holds the stale row beside the run's and goes red.</p>
-Method TestAnExportOverDataAnEarlierClassLeftHoldsOnlyItsRows()
+/// <p>The result class names a global that holds data: a node planted where the class's compiled storage puts its data, its index or its streams, as a class of that name deleted earlier leaves. The cases are a name whose
+/// data global is the name and <code>D</code>, a name over 29 characters, whose globals are hashed, and a node in the index global and in the stream global alone. A planted node is removed whatever the legs do.</p>
+/// <p>AC1: the export through the port, the person's action and the agent's confirm are each refused 409 <code>ANALYTICS.PMML.DATAHELD</code> with the published sentence; the class saved is deleted, nothing else is made and
+/// the planted node is as it was; the audit row records the outcome <code>restored</code>.</p>
+/// <p>Mutation (Rule 19): drop the data check from <method>OcuPilot.Port.AnalyticsPort.PerformPmmlExport</method> -- every case goes red on the status; make <method>OcuPilot.Port.AnalyticsPort.PmmlDataHeld</method> read the global
+/// <code>^</code> and the name and <code>D</code> instead of the compiled storage -- the long-name case goes red; drop the index and stream locations from it -- the index and stream cases go red; make the restore of the held-data
+/// refusal kill the extent -- every case goes red on the planted node.</p>
+Method TestAnExportOverHeldDataIsRefusedAndTheDataIsUntouched()
 {
-    Set tOracle = ..OracleAnswer("dataset")
-    Do ..LeaveData(..ExportClass("WStale"))
-    Do $$$AssertTrue(..DataLeft(..ExportClass("WStale")), "a row is left in the data global of a result class of that name")
-    Do $$$AssertEquals(..Export(..ExportValues("WStale"), .tRes), "200 ", "the export is made")
-    Do ..AssertExported("WStale", ..AnswerValues(tOracle), tOracle.records, "an export over stale data")
+    Set tCases = $ListBuild($ListBuild("WStale", "DataLocation"), $ListBuild("WStaleHashedStorageLongMarker", "DataLocation"), $ListBuild("WIdx", "IndexLocation"), $ListBuild("WStrm", "StreamLocation"))
+    Try {
+        For tCase = 1:1:$ListLength(tCases) {
+            Set tMarker = $List($List(tCases, tCase), 1)
+            Set tLocation = $List($List(tCases, tCase), 2)
+            Set tClass = ..ExportClass(tMarker)
+            Set tGlobal = ..PlantData(tClass, tLocation)
+            Do $$$AssertTrue(tGlobal '= "", tMarker _ ": data is planted where the result class's storage would put it (" _ tLocation _ ")")
+            If tGlobal = "" Continue
+            Set tPlanted(tGlobal) = ""
+            If tMarker [ "Long" Do $$$AssertTrue((tGlobal '= ("^" _ tClass _ "D")) && ($Length(tClass) > 29), tMarker _ ": its global is hashed: " _ tGlobal)
+            Set tBefore = ..Snapshot()
+            Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+            Do $$$AssertEquals(..Export(..ExportValues(tMarker), .tRes), "409 ANALYTICS.PMML.DATAHELD", tMarker _ ": the port refuses the export")
+            Do $$$AssertEquals(..Planted(tGlobal), "planted", tMarker _ ": and the planted node is as it was")
+            Do $$$AssertEquals(..Snapshot(), tBefore, tMarker _ ": the class saved was deleted and nothing else was made")
+            Do $$$AssertTrue(..Recorded(tSince, ..ModelId(), "analytics.pmmlmodel.export", "restored", "pmml-model"), tMarker _ ": and the audit row records the outcome restored")
+            Set tStatus = ..ExportAct(..ExportValues(tMarker), .tAnswer)
+            Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ "|" _ tAnswer.%Get("reason"), 1: ""), "409 ANALYTICS.PMML.DATAHELD|" _ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLDATAHELD, tMarker _ ": the person's action is refused with the published sentence")
+            Do ..Mint(..#EXPORTTOOL, ..ExportArgs(tMarker), .tProposal, .tTurn)
+            If $IsObject($Get(tProposal)) {
+                Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
+                Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "409 ANALYTICS.PMML.DATAHELD", tMarker _ ": the agent's confirm is refused the same: " _ $Extract($Get(tRaw), 1, 200))
+                Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+            }
+            Do $$$AssertEquals(..Planted(tGlobal), "planted", tMarker _ ": the node is still as it was")
+            Do $$$AssertEquals(..Snapshot(), tBefore, tMarker _ ": and no class is left")
+            Do $$$AssertEquals($ClassMethod(..#PMML, "Rows"), 0, tMarker _ ": nor a vendor result row")
+        }
+    } Catch tException {
+        Do $$$AssertTrue(0, "an unexpected error ended the legs: " _ tException.DisplayString())
+    }
+    Set tGlobal = $Order(tPlanted(""))
+    While tGlobal '= "" {
+        Do ..UnplantData(tGlobal)
+        Set tGlobal = $Order(tPlanted(tGlobal))
+    }
 }
 
-/// <p>Leave a row in the data global of the class <var>pClass</var>, which is not defined: what a class of that name deleted earlier leaves behind. The class's name is short enough that its default data global is the name and <code>D</code>.</p>
-ClassMethod LeaveData(pClass As %String)
+/// <p>Plant a node at the location <var>pLocation</var> (<code>DataLocation</code>, <code>IndexLocation</code> or <code>StreamLocation</code>) the compiler gives the result class <var>pClass</var>, which is not defined: a minimal
+/// persistent class of that name is compiled, the location is read from its compiled storage, the class is deleted and the node is set there, as a class of that name deleted earlier leaves it. Answers the global's reference,
+/// <code>""</code> when it could not be planted.</p>
+ClassMethod PlantData(pClass As %String, pLocation As %String = "DataLocation") As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tGlobal = ""
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, pClass, "Class " _ pClass _ " Extends %Persistent" _ $Char(13, 10) _ "{" _ $Char(13, 10) _ "Property A As %String;" _ $Char(13, 10) _ "}" _ $Char(13, 10))
+        If $$$ISOK(tSC) Set tSC = $System.OBJ.Compile(pClass, "ck-d")
+        If $$$ISOK(tSC) {
+            Set tGlobal = $Property(##class(%Dictionary.CompiledClass).%OpenId(pClass).Storages.GetAt(1), pLocation)
+            Do $System.OBJ.Delete(pClass, "-d")
+            If ##class(%Dictionary.CompiledClass).%ExistsId(pClass) Set tGlobal = ""
+        }
+        If tGlobal '= "" Set @tGlobal@(1) = "planted"
+    } Catch {
+        Set tGlobal = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tGlobal
+}
+
+/// <p>What the node <var>pGlobal</var> planted by <method>PlantData</method> holds, <code>""</code> when it is gone.</p>
+ClassMethod Planted(pGlobal As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tValue = ""
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tValue = $Get(@pGlobal@(1))
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tValue
+}
+
+/// <p>Kill the global <var>pGlobal</var> planted by <method>PlantData</method>.</p>
+ClassMethod UnplantData(pGlobal As %String)
 {
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        Set tGlobal = "^" _ pClass _ "D"
-        Set @tGlobal = 3
-        Set @tGlobal@(3) = $ListBuild("", "stale", "stale", 0, "stale", 0)
+        Kill @pGlobal
     } Catch {
     }
     Set $NAMESPACE = tOrigNS
 }
 
 /// <p>AD-59: the export's script form is one step for each source that, rendered, runs no write and names no class of OcuPilot's but in its one comment, and, run, makes the classes, rows and cube class the write makes; run again, or after
-/// another writer took a class or a cube, it changes nothing; over a data global an earlier class of the name left, the result class holds only the run's rows; and a cube class the compiler refuses, or a test that does not finish, leaves no class, cube, row or data.
+/// another writer took a class or a cube, it changes nothing; and a cube class the compiler refuses, or a test that does not finish, leaves no class, cube, row or data.
 /// The refusals the write makes are one step that only sets the published sentence, which fails the script and makes nothing. A cube class another writer takes while the script's test runs is asked for again before the save, so the script
 /// ends on the published sentence and leaves that class as it was.</p>
 /// <p>Mutation (Rule 19): make the free-name condition of <method>OcuPilot.Port.AnalyticsPort.PmmlExportSnippet</method> always true -- the run-again and class-taken legs go red; skip the delete of the result class in its failure lines -- the refused-compile leg goes red;
-/// drop the cube term from the free-name condition -- the cube-taken leg goes red; skip the delete of the cube class in its failure lines -- the long-name leg goes red, its message naming the class and the cube; drop the script's kill of the result class's extent before the test -- the stale-data leg goes red; skip the script's failure for a test that does not finish -- the unfinished-test leg goes red; drop the kill of the result class's extent in its failure
-/// lines -- the long-name leg goes red on its data; drop the second ask of the cube class's names -- the cube-class race leg goes red.</p>
+/// drop the cube term from the free-name condition -- the cube-taken leg goes red; skip the delete of the cube class in its failure lines -- the long-name leg goes red, its message naming the class and the cube; skip the script's failure for a test that does not finish -- the unfinished-test leg goes red; drop the kill of the result class's extent in its failure
+/// lines -- the long-name leg goes red on its data; drop the second ask of the cube class's names -- the cube-class race leg goes red. The script's comment that it needs SQL privileges on the vendor's result table is pinned in the same test.</p>
 Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
 {
     Set tSentence = ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN
@@ -374,6 +447,7 @@ Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
         Do $$$AssertEquals(..ExportLeft(tMarker), "", tSource _ ": rendering it made nothing")
         Do $$$AssertTrue((tText [ " ; OcuPilot cannot undo an export.") && ($Length($Replace(tText, $Parameter(..#PMML, "DEFINITIONCLASS"), ""), "OcuPilot") = 2), tSource _ ": it states its one-way step in one comment and, but for the probe's own model class, names none of OcuPilot's")
         Do $$$AssertTrue(tText [ (" ; The test runs here without the " _ ##class(OcuPilot.Port.AnalyticsPort).#MDXSECONDS _ " second limit the export has."), tSource _ ": and says in one comment that the test has no limit here")
+        Do $$$AssertTrue(tText [ (" ; This script needs SQL SELECT and DELETE privileges on %DeepSee_PMML_Utils.TempResult." _ $Char(10)), tSource _ ": and says in one comment which SQL privileges its copy and its drop need")
         Do $$$AssertTrue((tText [ "SetTextFromString") && (tText [ "%KillExtent") && (tText [ "%DeepSee.PMML.Utils") && (tText [ "FROM %DeepSee_PMML_Utils.TempResult"), tSource _ ": it saves, tests, copies and drops through the vendor's classes")
         Do $$$AssertEquals(..RunScript(tSteps), 1, tSource _ ": the script runs to a success")
         Do ..AssertExported(tMarker, ..AnswerValues(tOracle), tOracle.records, tSource _ " by script")
@@ -409,13 +483,6 @@ Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
     Do $$$AssertEquals(..RunScript(tLong), 0, "its script runs to a failure")
     Do $$$AssertEquals(..Snapshot(), tBefore, "and no class is saved: neither the result class, nor the cube class, nor one its compile generated")
     Do $$$AssertEquals(..ExportLeft("SLong", tValues.%Get("Cube")), "", "and no row, vendor result row, data or cube of that name is left: " _ ..ExportLeft("SLong", tValues.%Get("Cube")))
-
-    Set tStaleOracle = ..OracleAnswer("dataset")
-    Set tStaleSteps = ..ExportScript(..ExportValues("Stale"))
-    Do ..LeaveData(..ExportClass("Stale"))
-    Do $$$AssertTrue(..DataLeft(..ExportClass("Stale")), "a row is left in the data global of a result class of that name")
-    Do $$$AssertEquals(..RunScript(tStaleSteps), 1, "over a data global an earlier class of the name left, the script runs to a success")
-    Do ..AssertExported("Stale",..AnswerValues(tStaleOracle), tStaleOracle.records, "stale data by script")
 
     Set tFailSteps = ..ExportScript(..ExportValues("ScriptRunFail", "custom"))
     Do $$$AssertEquals(tFailSteps.%Size(), 1, "a custom export is one script step")
@@ -493,6 +560,45 @@ Method TestAScriptWhoseCopyFailsRestoresEverything()
     Do $$$AssertTrue(tOutcome [ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLEXPORTCOMPILE, "the script ends on the published sentence for a refused export: " _ tOutcome)
     Do $$$AssertEquals(..Snapshot(), tBefore, "and no class is saved")
     Do $$$AssertEquals(..ExportLeft("ScriptCopy"), "", "and no class, cube, row, vendor result row or data is left: " _ ..ExportLeft("ScriptCopy"))
+}
+
+/// <p>AD-59: over a global the result class's compiled storage names that holds data (a name whose data global is the name and <code>D</code>, a name over 29 characters, whose globals are hashed, and a node in the index
+/// global and in the stream global alone), the export's script ends on the <code>ANALYTICS.PMML.DATAHELD</code> sentence, deletes the class it saved, makes nothing else and leaves the planted node as it was. A planted node is
+/// removed whatever the legs do.</p>
+/// <p>Mutation (Rule 19): drop the script's data check -- every case goes red on the sentence; make the script's failure lines kill the result class's extent whatever the cause -- every case goes red on the planted node;
+/// make the script read the global <code>^</code> and the name and <code>D</code> instead of the compiled storage -- the long-name case goes red; drop the index and stream locations from the script's check -- the index and
+/// stream cases go red.</p>
+Method TestTheScriptOverHeldDataEndsOnItsSentenceAndTouchesNoGlobal()
+{
+    Set tSentence = ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLDATAHELD
+    Set tCases = $ListBuild($ListBuild("SStale", "DataLocation"), $ListBuild("SStaleHashedStorageLongMarker", "DataLocation"), $ListBuild("SIdx", "IndexLocation"), $ListBuild("SStrm", "StreamLocation"))
+    Try {
+        For tCase = 1:1:$ListLength(tCases) {
+            Set tMarker = $List($List(tCases, tCase), 1)
+            Set tLocation = $List($List(tCases, tCase), 2)
+            Set tSteps = ..ExportScript(..ExportValues(tMarker))
+            Do $$$AssertEquals(tSteps.%Size(), 1, tMarker _ ": the export is one script step")
+            If tSteps.%Size() '= 1 Continue
+            Set tGlobal = ..PlantData(..ExportClass(tMarker), tLocation)
+            Do $$$AssertTrue(tGlobal '= "", tMarker _ ": data is planted where the result class's storage would put it (" _ tLocation _ ")")
+            If tGlobal = "" Continue
+            Set tPlanted(tGlobal) = ""
+            Set tBefore = ..Snapshot()
+            Set tOutcome = ..ScriptOutcome(tSteps)
+            Do $$$AssertTrue(tOutcome [ tSentence, tMarker _ ": the script ends on the published sentence: " _ tOutcome)
+            Do $$$AssertEquals(..Planted(tGlobal), "planted", tMarker _ ": and the planted node is as it was")
+            Do $$$AssertEquals(..Snapshot(), tBefore, tMarker _ ": the class it saved was deleted and nothing else was made")
+            Do $$$AssertEquals($ClassMethod(..#PMML, "Rows"), 0, tMarker _ ": and no vendor result row is left")
+            Do $$$AssertEquals(..CubeHeld(..ExportCube(tMarker)), 0, tMarker _ ": nor a cube")
+        }
+    } Catch tException {
+        Do $$$AssertTrue(0, "an unexpected error ended the legs: " _ tException.DisplayString())
+    }
+    Set tGlobal = $Order(tPlanted(""))
+    While tGlobal '= "" {
+        Do ..UnplantData(tGlobal)
+        Set tGlobal = $Order(tPlanted(tGlobal))
+    }
 }
 
 /// <p>AD-59: a name or source the write's own shape checks refuse is never spelled in a script: a result class, cube class or class to link to holding a quote, a line feed, an underscore and <code>$$$</code>, a cube name holding a line
