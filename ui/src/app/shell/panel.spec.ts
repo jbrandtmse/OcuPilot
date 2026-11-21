@@ -3640,10 +3640,21 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
   });
 
-  // Mutation (Rule 19): hand `pollOnce` the fresh proposals unmerged (drop `mergeHeldProposals`) -> the outcome and output go red.
-  it('Story 20.17 AC5: a compile confirmed while its turn still polls keeps its output and outcome after the next poll', async () => {
-    const { host, fixture, scheduled } = await mountDecidable(
-      confirmedWithOutput(true),
+  // Mutation (Rule 19): hand `pollOnce` the fresh proposals unmerged (drop `mergeHeldProposals`) -> the outcome, the output, the
+  // read-back line, the closed reason and the confirmed time go red; drop only the `readBack` or only the `settled` spread -> the read-back
+  // line, or the closed reason and the confirmed time, go red.
+  it('Story 20.17 AC5: a compile confirmed while its turn still polls keeps its output, outcome, read-back, closed reason and time after the next poll', async () => {
+    const confirmed = confirmedWithOutput(true)[proposalConfirmPath('p1')][0];
+    const { host, fixture, scheduled, turn } = await mountDecidable(
+      {
+        [proposalConfirmPath('p1')]: [
+          {
+            ...confirmed,
+            // A closed reason the confirm recorded, distinctive so the store's copy is told from the poll's empty one.
+            body: { ...confirmed.body, closedReason: 'recorded-by-confirm', readBack: { verdict: 'differs', fields: ['Enabled'], written: [] } },
+          },
+        ],
+      },
       [wireProposal({ tool: 'explorer.classes.compile' })],
       'I have prepared the change.',
       'running'
@@ -3652,12 +3663,17 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     await turnSettle();
     fixture.detectChanges();
     expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompileErrors);
+    expect(host.querySelector('.ocu-proposal-card [data-slot="read-back"]')?.textContent?.trim()).toBe('Read back: differs in Enabled');
 
     await nextPoll(scheduled, fixture);
 
     expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompileErrors);
     expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')).not.toBeNull();
-    expect(host.querySelector('.ocu-proposal-card-status')?.textContent).toContain('Confirmed');
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent).toMatch(/^\s*Confirmed by _SYSTEM .+ 10:31:04\s*$/);
+    expect(host.querySelector('.ocu-proposal-card [data-slot="read-back"]')?.textContent?.trim()).toBe('Read back: differs in Enabled');
+    const held = turn.entries().flatMap((entry) => entry.proposals).find((proposal) => proposal.proposalId === 'p1');
+    expect(held?.closedReason).toBe('recorded-by-confirm');
+    expect(held?.confirmedAt).toBe('2026-10-08T10:31:04Z');
   });
 
   // Story 20.16. Mutation (Rule 19): the gate admits only `explorer.` tools -> the outcome and the banner go red.

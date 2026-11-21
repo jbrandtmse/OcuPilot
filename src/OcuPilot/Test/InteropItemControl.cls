@@ -320,9 +320,17 @@ ClassMethod StartProduction() As %Status
         If tFacts [ " own=1 jobs=1 needs=" Quit
         Hang 0.5
     }
-    If tFacts '[ " own=1 jobs=1 needs=" Quit $$$ERROR($$$GeneralError, "the probe production's operation reads no job of its own after the start (" _ tAnswer _ "); the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ ", the item " _ tFacts _ ", the job rows: " _ ..Jobs(1))
+    If tFacts '[ " own=1 jobs=1 needs=" Quit $$$ERROR($$$GeneralError, ..NoJobText(tAnswer))
     If '$ClassMethod(..#STARTUPDATE, "StartUpdated", .tWhy) Quit $$$ERROR($$$GeneralError, tWhy)
     Quit $$$OK
+}
+
+/// <p>The failure text of a start whose operation reads no job of its own: <var>pAnswer</var> (the port's start answer as
+/// <method>StartProduction</method> words it), the production's state, the operation's <method>ItemFacts</method> and every job row
+/// the vendor lists (<method>Jobs</method> with <var>pAll</var>).</p>
+ClassMethod NoJobText(pAnswer As %String) As %String
+{
+    Quit "the probe production's operation reads no job of its own after the start (" _ pAnswer _ "); the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ ", the item " _ ..ItemFacts() _ ", the job rows: " _ ..Jobs(1)
 }
 
 /// <p>Store a job-status row that carries no configuration name, with process id 1 so the vendor's job list reads it before every

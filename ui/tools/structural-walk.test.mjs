@@ -50,6 +50,8 @@
 //   `withinProbe` bound on the metrics read -> the unresponsive case runs to its own timeout.
 // - `trackRequests` without its `error` handler -> the crashed case red; without the answers it keeps ->
 //   the answers case red.
+// - drop the `page` argument from one `bounded(` call (the theme toggle's `close account menu`, say) -> that
+//   step's stall case red; drop `wide.page` from the `close context` call -> the context-close pin red.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -57,7 +59,7 @@ import test, { afterEach, mock } from 'node:test';
 
 import { CLOSEDEADLINE, WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
 
-const { detectScreen, goInApp, passRetrier, reportLines, settle, stallLine, toggleThemeThroughMenu, trackRequests } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
+const { detectScreen, firstRowSegment, goInApp, passRetrier, reportLines, settle, stallLine, toggleThemeThroughMenu, trackRequests } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
 
 /** A fake page whose `evaluate(fn)` runs `fn` against the stubbed `document` installed by the test. */
 function fakePage() {
@@ -656,4 +658,57 @@ test('an abandoned call carries the stall line after its own message, and a call
   assert.match(error.message, /1280px light: settle \/ocupilot\/agent\/governance timed out\..*\nstall: page crashed: not tracked; frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, /s, 'the line follows the message');
   assert.match(error.message, /renderer: unresponsive \(no answer to a new DevTools session within 5000 ms\);/, 'with the renderer unresponsive at the default bound');
   await assert.rejects(settle({ evaluate: async () => Promise.reject(new Error('the page closed')), createCDPSession: hang }, quiet()), (failed) => failed.message === 'the page closed');
+});
+
+/** A page whose calls answer, except the ones `hangs` replaces, and whose renderer never answers a new session. */
+const stalledPage = (hangs = {}) => ({
+  evaluate: async () => false,
+  click: async () => {},
+  waitForSelector: async () => {},
+  waitForFunction: async () => true,
+  keyboard: { press: async () => {} },
+  url: () => 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM',
+  createCDPSession: hang,
+  ...hangs,
+});
+
+/** A call that answers the first time it is made and hangs on the second. */
+const hangsOnSecondCall = () => {
+  let calls = 0;
+  return () => (++calls === 1 ? Promise.resolve(true) : hang());
+};
+
+const detectOptions = { route: 'tasks/schedule', checks: ['name'], viewport: 1280, theme: 'light', minimums: [] };
+
+const stallCases = [
+  ['goInApp, at its navigation', /1280px light: navigate \/ocupilot\/tasks\/schedule\?ns=USER timed out/, () => goInApp(stalledPage({ evaluate: hang }), quiet(), '/ocupilot/tasks/schedule?ns=USER', 30_000)],
+  ['goInApp, at its wait for the path', /1280px light: await \/ocupilot\/tasks\/schedule timed out/, () => goInApp(stalledPage({ waitForFunction: hang }), quiet(), '/ocupilot/tasks/schedule?ns=USER', 30_000)],
+  ['firstRowSegment', /1280px light: first row of tasks\/schedule timed out/, () => firstRowSegment(stalledPage({ evaluate: hang }), quiet(), 'tasks/schedule')],
+  ['the theme toggle, at its read of the theme', /1280px light: read theme timed out/, () => toggleThemeThroughMenu(stalledPage({ evaluate: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its open of the account menu', /1280px light: open account menu timed out/, () => toggleThemeThroughMenu(stalledPage({ click: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its choice of the theme item', /1280px light: choose theme item timed out/, () => toggleThemeThroughMenu(stalledPage({ click: hangsOnSecondCall() }), quiet(), 30_000)],
+  ['the theme toggle, at its wait for the class', /1280px light: await theme class timed out/, () => toggleThemeThroughMenu(stalledPage({ waitForFunction: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its close of the menu', /1280px light: close account menu timed out/, () => toggleThemeThroughMenu(stalledPage({ keyboard: { press: hang } }), quiet(), 30_000)],
+  ['the theme toggle, at its wait for the closed panel', /1280px light: await account panel closed timed out/, () => toggleThemeThroughMenu(stalledPage({ waitForFunction: hangsOnSecondCall() }), quiet(), 30_000)],
+  ['detectScreen, at its evaluate', /1280px light: detect tasks\/schedule timed out/, () => detectScreen(stalledPage({ evaluate: hang }), detectOptions)],
+  [
+    'detectScreen, at its field-name lookup',
+    /1280px light: field names tasks\/schedule timed out/,
+    () => detectScreen(stalledPage({ evaluate: async () => ({ violations: [], fields: [{ index: 0, element: 'input' }], unmeasurable: 0 }) }), detectOptions),
+  ],
+];
+
+for (const [name, label, call] of stallCases) {
+  test(`${name}: an abandoned call carries the stall line`, { timeout: 10_000 }, async () => {
+    const error = await endOfHungCall(call);
+    assert.ok(error instanceof Error && isProtocolTimeout(error), 'a protocol timeout');
+    assert.match(error.message, label, 'naming the step');
+    assert.match(error.message, /\nstall: page crashed: not tracked; frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, .*renderer: unresponsive \(/s, 'and the stall line, with the frame and the renderer');
+  });
+}
+
+test('both context closes of the walk go through the deadline with their page, so an abandoned close carries the stall line', () => {
+  const source = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
+  assert.match(source, /bounded\('1280px light then dark: close context', wide\.context\.close\(\), wide\.page\)/, 'the wide pass');
+  assert.match(source, /bounded\('720px light: close context', narrow\.context\.close\(\), narrow\.page\)/, 'the narrow pass');
 });

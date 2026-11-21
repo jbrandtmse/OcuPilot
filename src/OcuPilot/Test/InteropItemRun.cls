@@ -81,6 +81,7 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Restore")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "RemoveNamelessJob"), 0, "no planted job row or ghost row is left")
     Do $$$AssertStatusOK($ClassMethod(..#CONTROL, "Reset"), "the probe production is left stopped with its items as they began")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
@@ -387,7 +388,21 @@ Method TestTheJobListNamesAnUnreadableRowBesideTheOperation()
     } Catch ex {
         Do $$$AssertTrue(0, "the read beside a nameless job row threw " _ ex.DisplayString())
     }
-    Do $$$AssertEquals($ClassMethod(..#CONTROL, "RemoveNamelessJob"), 0, "the planted row and its ghost rows are removed")
+}
+
+/// <p>The failure text of a start whose operation reads no job (<method>OcuPilot.Test.InteropItemControl.NoJobText</method>), built
+/// while the probe runs, names the start's answer it is given, the production's state, the operation's facts and a job row.</p>
+/// <p>Mutation (Rule 19): drop the <code>Jobs(1)</code> read from <method>OcuPilot.Test.InteropItemControl.NoJobText</method> -- the job
+/// row assertion goes red.</p>
+Method TestTheNoJobFailureTextNamesTheStartTheStateTheFactsAndAJobRow()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs with the operation's job")
+    Set tAnswer = "HTTP 200, code '', state 'Running'"
+    Set tText = $ClassMethod(..#CONTROL, "NoJobText", tAnswer)
+    Do $$$AssertTrue(tText [ ("(" _ tAnswer _ ")"), "the text names the start's answer: " _ tText)
+    Do $$$AssertTrue(tText [ ("the production reads " _ $ClassMethod(..#PRODUCTIONS, "State")), "and the production's state: " _ tText)
+    Do $$$AssertTrue(tText [ ("the item " _ ..Facts() _ ","), "and the operation's facts: " _ tText)
+    Do $$$AssertTrue(($Piece(tText, "the job rows: ", 2) [ (..#OPNAME _ " (")), "and a job row of the operation: " _ tText)
 }
 
 /// <p>AC2: <method>OcuPilot.Port.InteropPort.ItemRunRefusal</method> judges in the matrix's order -- the production, the name, the item's

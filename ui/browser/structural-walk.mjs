@@ -1150,3 +1150,5 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   }
   await writeBaseline();
 }
+
+export { firstRowSegment };
