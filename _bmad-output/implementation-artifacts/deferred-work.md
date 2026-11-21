@@ -14277,11 +14277,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-ci: link ocuplink2136.txt -> /etc/hostname read 200 through taskoutput; %File.Attributes follows links (33188), so no lstat exists; every LogSourcePort source opens paths the same way
 - 2026-11-21T02:15:47Z status=wontfix-theoretical owner=21-36-task-output-and-mail-password by=cr note=real if a caller without OS access or %System_CallOut can place a link in the manager directory
+- 2026-11-21T04:18:20Z status=wontfix-theoretical owner=21-36-task-output-and-mail-password by=orchestrator note=accepted: reaching it needs OS access or %System_CallOut
 
 ### DW-2811: A task output whose last 65,536 bytes hold no line feed reads no rows, so the viewer shows No entries. beside the cut sentence
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ReadWindow's mid-line branch returns no lines when the window holds no LF (LogSourcePort.ReadWindow tAfterNewline = 0); TaskOutputRows still reports truncated
 - 2026-11-21T02:15:51Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=a real task's output viewer shows No entries. with the cut sentence for a non-empty file
+- 2026-11-21T04:18:20Z status=routed owner=21-36-task-output-and-mail-password by=orchestrator note=fixed in 21.36 rework 2: an unterminated final line is a line
 
 ### DW-2812: The task output read ignores OutputFileIsBinary and draws a binary output file as text lines
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: med | footprint: in-story

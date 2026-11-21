@@ -2,7 +2,7 @@
 title: 'Story 21.36: Task output and mail password'
 type: 'feature'
 created: '2026-11-20'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '18ca3836456d8febb2446a9caebdb7d3238b729d'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -108,6 +108,8 @@ deferred:
 - AC3. Given the default baseline, when the agent proposes `tasks.mail.password`, then it mints and confirms; with its key `false`, the governance gate refuses it.
 
 ### Review Findings
+
+- [ ] [Review][Patch] (rework 2, orchestrator ruling 2026-11-21: DW-2811 is fixed here, not deferred) An unterminated final line is a line: a task output whose last line has no line feed must show that line, so a one-line output written without a trailing LF never reads "No entries." The fix is local to the tail read (`LogSourcePort` `ReadWindow` / `TaskOutputRows`); the 65,536-byte window still starts at a line boundary, and a file of 64 KB or less is still never marked truncated. Add a test with a short no-LF file (its one line shows, not truncated) and one longer than 64 KB whose cut falls inside a no-LF tail (the rows the window can honestly show, the truncated sentence, never a mid-line start), each with a `mutation:` line; check the change leaves every other log source's tail unchanged (`LogSourceDenial`, every class starting `LogSource`, `TaskOutputRead`). [src/OcuPilot/Port/LogSourcePort.cls, src/OcuPilot/Test/TaskOutputRead.cls]
 
 Code review 2026-11-21 (full-opus, four layers; measured on `ocupilot-ci`): 37 rows, 7 patch, 8 defer, 22 rejected; no high.
 

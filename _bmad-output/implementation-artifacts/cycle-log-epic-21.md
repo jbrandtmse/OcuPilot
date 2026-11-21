@@ -862,3 +862,7 @@
 2026-11-21T03:15:31Z	Story 21.36	review_complete	model=opus tier=full-opus entries=high0,med5,low12 patched=5 commit=47165c6a6 open=Error.cls_move,dialog_text,fix_pack(2) deferred=DW-2810..2815 process_slip=CR_sent_two_test-runner_calls_in_one_message_once(0_overlaps_reported)
 2026-11-21T03:15:31Z	Story 21.36	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect)+orchestrator_rulings items=ScreenRead,WireSecurityRead,a11y_walk_of_TaskOutput,Error.cls->TaskError,dialog_text,fix_pack scope_baseline=47165c6a6
 2026-11-21T03:15:46Z	Story 21.36	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-21T03:15:46Z model=sonnet agent_name=21-36-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a1486caba)
+2026-11-21T04:18:21Z	Story 21.36	dev_complete	scope=rework1(CI_rosters,TaskError_move(Error.cls_991),dialog,fix_pack) build_sha=5cb698216 followup_review_recommended=false
+2026-11-21T04:18:21Z	Story 21.36	ruling	question=review_deferrals via=orchestrator choice=DW-2811_fix_in_rework2;DW-2810_wontfix-theoretical_accepted;DW-2812_stays_deferred;absolute-dir_patch_accepted(reuses_elsewhere_sentence)
+2026-11-21T04:18:21Z	Story 21.36	rework_opened	cycle_iteration=3 iteration=2 trigger=orchestrator_ruling items=DW-2811 scope_baseline=5cb698216
+2026-11-21T04:18:21Z	Story 21.36	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-21T04:18:21Z model=sonnet agent_name=21-36-implement-rework-2 cycle_iteration=3 prior_lines_ended=verified(a697b28fa)
