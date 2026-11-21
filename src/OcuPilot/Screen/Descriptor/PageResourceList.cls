@@ -6,6 +6,9 @@
 /// <code>%DB_IRISSYS:READ</code>, without which the switch to <code>%SYS</code> raises <code>&lt;PROTECT&gt;</code> (AD-8, AD-44).</p>
 /// <p><b>Its id is the page's class name</b>, kept exactly (AD-13). The classic page is <code>%CSP.Portal.ResourceDialog</code>, the dialog the
 /// classic portal assigns a custom resource from; as a list archetype it links out to nothing. It does not refresh (AD-43).</p>
+/// <p><b>Its actions are the two write tools of one operation</b> (AD-53): the primary <code>assign</code> and the row action <code>change</code> are
+/// <class>OcuPilot.Screen.Tool.PageResourceAssign</class>, and <code>clear</code> is <class>OcuPilot.Screen.Tool.PageResourceClear</class>. Its empty
+/// state invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.PageResourceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,8 +30,11 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "assign", "selfProtection": ""},
+  "rowActions": [
+    {"id": "change", "selfProtection": ""},
+    {"id": "clear", "selfProtection": ""}
+  ],
   "context": {"fields": ["Page", "Resource", "Screen"], "secretFields": []},
   "emptyStateKey": "pageResourcesEmpty",
   "commandAliases": ["page resources"],
@@ -54,8 +60,8 @@ XData Declaration
       {"field": "Resource", "labelKey": "webAppColumnResource", "kind": "text"},
       {"field": "Screen", "labelKey": "agentLedgerColumnScreen", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "pageResourcesEmptyAgent"
   },
   "toolIdentifier": "permissions.pageresources"
 }

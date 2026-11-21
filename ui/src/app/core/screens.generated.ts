@@ -30435,10 +30435,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "assign",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "change",
+        "selfProtection": ""
+      },
+      {
+        "id": "clear",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Page",
@@ -30522,8 +30531,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "pageResourcesEmptyAgent"
     },
     "toolIdentifier": "permissions.pageresources",
     "refreshDefault": 0,

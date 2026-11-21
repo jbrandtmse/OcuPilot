@@ -308,7 +308,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -695,6 +695,12 @@ Parameter TYPESUPERSERVER = "superserver";
 /// <p>One screen's adjustable permission set (Story 20.15, AD-64), keyed by the screen's
 /// <code>toolIdentifier</code>. <method>ScreenPermission</method> judges it by that identifier alone.</p>
 Parameter TYPESCREENPERMISSION = "screen-permission";
+
+/// <p>One classic page's custom resource (Story 21.37), keyed by the page's class name. <method>PageResource</method> judges an assignment to it by the
+/// page alone: a page a screen that cannot be adjusted declares is refused <parameter>OCUPILOTSCREEN</parameter>. A clear or a change of a page an
+/// OcuPilot screen declares is not refused but marked destructive by effect (<parameter>EFFECTPAGERESOURCECHANGED</parameter>,
+/// <parameter>EFFECTPAGERESOURCECLEARED</parameter>).</p>
+Parameter TYPEPAGERESOURCE = "page-resource";
 
 /// <p>A managed file transfer connection (Story 18.26), whose create, change, delete and token revoke the
 /// reviewed-few sweep alone judges (<method>MftConnectionFields</method>): AD-10 names no effect on one.</p>
@@ -1089,6 +1095,13 @@ Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
 /// set lacks a pair the stored set holds, compared without regard to case (AD-64). It is also the
 /// proposal's consequence code.</p>
 Parameter EFFECTSCREENLOWERED = "SCREENACCESS.LOWERED";
+
+/// <p>The effects <method>WeakensByEffect</method> answers for a page's custom resource that some OcuPilot screen declares and that the write
+/// changes to another resource (<parameter>EFFECTPAGERESOURCECHANGED</parameter>) or clears (<parameter>EFFECTPAGERESOURCECLEARED</parameter>)
+/// (AD-10, AD-64, Story 21.37). Each is also the proposal's consequence code.</p>
+Parameter EFFECTPAGERESOURCECHANGED = "PAGERESOURCE.CHANGED";
+
+Parameter EFFECTPAGERESOURCECLEARED = "PAGERESOURCE.CLEARED";
 
 /// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
 /// (<method>Namespace</method>).</p>
@@ -1703,7 +1716,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1720,6 +1733,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; reads no target. A screen that cannot be adjusted is OcuPilot's own.
         If tType = ..#TYPESCREENPERMISSION {
             Do ..ScreenPermission(tId, .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 21.37: a classic page's custom resource is judged by the page and the tool alone, so the arm reads no target.
+        If tType = ..#TYPEPAGERESOURCE {
+            Do ..PageResource(tId, ..ToolClassNamed(pToolName), .pProhibits, .pCode)
             Quit
         }
 
@@ -2520,6 +2539,8 @@ ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
 /// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
 /// answers true over <var>pTarget</var>.</p>
+/// <p>For a page resource, <method>PageResourceEffect</method>'s answer over <var>pTarget</var>'s <code>Page</code> and <code>Current</code> and the
+/// payload's <code>Resource</code>.</p>
 /// <p>For the active database encryption keys, <parameter>EFFECTFIRSTKEY</parameter> for a write that removes nothing
 /// while <var>pTarget</var> lists no active key.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
@@ -2529,6 +2550,13 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
     Try {
         If pType = ..#TYPESCREENPERMISSION {
             If ..LowersScreenPermission(pTarget) Set pEffect = ..#EFFECTSCREENLOWERED
+            Quit
+        }
+        If pType = ..#TYPEPAGERESOURCE {
+            If '$IsObject(pTarget) Quit
+            Set tPage = $Select(pTarget.%GetTypeOf("Page") = "string": pTarget.%Get("Page"), 1: pId)
+            Set tNew = $Select($IsObject(pPayload) && (pPayload.%GetTypeOf("Resource") = "string"): pPayload.%Get("Resource"), 1: "")
+            Set pEffect = ..PageResourceEffect(tPage, $Select(pTarget.%GetTypeOf("Current") = "string": pTarget.%Get("Current"), 1: ""), tNew, pRemoves)
             Quit
         }
         If pType = ..#TYPEGLOBALMAPPING {
@@ -3117,6 +3145,50 @@ ClassMethod ScreenPermission(pId As %String, Output pProhibits As %Boolean, Outp
     Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool(pId)
     If tDescriptor = "" Quit
     If '##class(OcuPilot.Screen.Gate).Adjustable(tDescriptor) Do ..Refuse(..#OCUPILOTSCREEN, .pProhibits, .pCode)
+}
+
+/// <p>The page resource arm (AD-10, AD-64, Story 21.37): an assignment to a classic page that a screen which cannot be adjusted
+/// (<method>OcuPilot.Screen.Gate.Adjustable</method>) declares is refused <parameter>OCUPILOTSCREEN</parameter>, whoever sends it. A clear is
+/// never refused here, and a page no screen declares, or that the tool's port does not resolve, is permitted: the port refuses it.</p>
+ClassMethod PageResource(pId As %String, pToolClass As %String, Output pProhibits As %Boolean, Output pCode As %String) [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If ..RefusesPageAssignment(pId, pToolClass, .pCode) Set pProhibits = 1
+}
+
+/// <p>Whether the write <var>pToolClass</var> makes to the page <var>pId</var> is refused before its precondition is read: an assignment to a page a
+/// screen that cannot be adjusted declares (<method>PageResource</method>), with <var>pCode</var> <parameter>OCUPILOTSCREEN</parameter>, else 0 and
+/// <code>""</code>. The declaring screens are read from the registry on every call (AD-64); the page is resolved by the tool's own port.</p>
+/// <p><b>Caller contract:</b> <var>pId</var> is the target's id as the caller holds it. A class whose write removes its target is never refused.</p>
+ClassMethod RefusesPageAssignment(pId As %String, pToolClass As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If (pToolClass = "") || ..RemovesOf(pToolClass) Quit 0
+    Set tNormalized = ""
+    Set tPortSC = $ClassMethod($ClassMethod(pToolClass, "PortClass"), "Normalized", pId, .tNormalized)
+    If $$$ISERR(tPortSC) || (tNormalized = "") Quit 0
+    Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(tNormalized, .tResolved)
+    For tI = 1:1:$ListLength(tScreens) {
+        If '##class(OcuPilot.Screen.Gate).Adjustable($List(tScreens, tI)) {
+            Set pCode = ..#OCUPILOTSCREEN
+            Quit
+        }
+    }
+    Quit (pCode '= "")
+}
+
+/// <p>The effect of changing the page <var>pPage</var> from the resource it holds, <var>pCurrent</var>, to <var>pNew</var>, or clearing it
+/// (<var>pRemoves</var>): <parameter>EFFECTPAGERESOURCECLEARED</parameter> or <parameter>EFFECTPAGERESOURCECHANGED</parameter> when the page holds a
+/// resource and an OcuPilot screen declares it, <code>""</code> otherwise, including an assignment of the resource the page already holds. A registry
+/// that could not be read is read as declaring it, the fail-closed direction.</p>
+ClassMethod PageResourceEffect(pPage As %String, pCurrent As %String, pNew As %String, pRemoves As %Boolean) As %String
+{
+    If pCurrent = "" Quit ""
+    If 'pRemoves && (pNew = pCurrent) Quit ""
+    Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(pPage, .tResolved)
+    If tResolved && ($ListLength(tScreens) = 0) Quit ""
+    Quit $Select(pRemoves: ..#EFFECTPAGERESOURCECLEARED, 1: ..#EFFECTPAGERESOURCECHANGED)
 }
 
 /// <p>The mirror arm (AD-10, Story 21.12): a write on a mirror whose stored payload sets <code>DeleteDB</code> or <code>DeleteDBs</code>

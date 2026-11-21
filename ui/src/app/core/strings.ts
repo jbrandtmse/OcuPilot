@@ -9272,6 +9272,10 @@ export const STRINGS = {
   pageResourcesPrompt3: 'Which OcuPilot screens follow a page\'s custom resource?',
   /** EXPERIENCE.md:613 */
   accessRefusalPageUnknown: 'No classic portal page has that name.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageResourceRequired: 'Name the resource to assign. To remove one, clear it instead.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageNotAssigned: 'This page has no custom resource, so there is nothing to clear.',
 } as const;
 
 /**

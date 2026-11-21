@@ -176,6 +176,23 @@ deferred: []
   - Without `%Admin_Secure:USE`: the vendor refuses `#822 Access Denied` and audits `AccessDenied`, and `Security.Resources.Exists` answers 0 for a defined resource.
 - With auditing on, a set and a clear left no audit row (re-read after 75 s). The same session's user, role and resource deletes were recorded.
 
+**Task 0, Batch 2 (2026-11-21, `ocupilot-ci`, after the port and tools loaded; the probe accounts were removed and the probe page read back with no resource):**
+
+- (a) Measured, passes. A principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and READ on the code database, through `POST /screens/permissions.pageresources/action`: a change on `%CSP.UI.Portal.About` answered 200 with read-back `matches`, and a clear answered 200 with `notFound`. `%GetCustomResource` read the resource after the first and none after the second.
+- (b) Measured: no existing refusal applies. An agent assign naming the resource the page already holds minted a proposal with `changed: []`, because the tool sends no body and `Mint.cls:272-274` runs only for one that does. Per the stop rule the wording is escalated and no string was added. The port stores and records nothing for such an assign.
+
+**Decided in-stage (Batch 2):**
+
+- The port serves `PUT` (assign) and `DELETE` (clear) and lists both in `AdminPort.MUTATINGTYPES`, `PortFixture` and its own `COMPOSEDTYPES`, since it extends the admin port. For that reason `ToolWrite`'s count stays 148.
+- The write tools declare `PrivilegePairs` as `Gate.RequiredPairs` of the screen. Without it they required nothing (the AC10 leg found it).
+- The route carries row actions only, so the tool serves `change` and the client registers the primary `assign`; Batch 3's Assign dialog sends `change` with the typed page.
+- The one-page read answers `{Page, Resource, Screen, Current}`. The fingerprint covers `Page`, `Resource` (the value the write names) and `Current` (the value stored now).
+- AC13: the port records `SecurityChange` (entity `page-resource`, verbs `updated` and `deleted`, `changes.resource.old` and `.new`) after each accepted write, so both callers share one record. The installer registers the triple from `Kernel.Audit.Event.Roster` and screen-access writes record it through `Kernel.State.Access.Audit`, so nothing is registered here.
+- Card summaries are `TargetName` templates in `PageResourceAction`; Batch 3 adds the client strings.
+- The vendor normalizes a `.cls` spelling itself, so the port's own normalization is pinned over `PageResourceStoreSeam` in `PageResourceProhibited`.
+- AC10: both short accounts are refused `AUTH.NOPRIVILEGE` naming the pair. The no-`%Admin_Secure` account holds `%Admin_Operate:USE`, since an account with no administrative resource is refused earlier.
+- `ScreenGate` is a seam class, not a test, so it has no run.
+
 **Adjustments to the carried ACs:**
 
 - AC1 and AC10 name `%DB_IRISSYS:READ` beside `%Admin_Secure:USE`. The port's `%SYS` entry needs it (measured), as `ResourceTransferPort` declares.
@@ -283,6 +300,21 @@ Mutations run, Batch 1 (`ocupilot-ci`; each reverted with Edit, md5 equal, sourc
 - mutation: Batch 1, `Listed` reads `Resource` from the page -> `PageResourceRead` red (3 tests); `ScreenTitles` stops after the first title -> the several-screens test red; `ScreensDeclaringPage` ignores a write tool's `CLASSICPAGES` -> 3 tests red; `Normalized` returns the caller's name -> 2 tests red; `Normalized` skips the shape check -> the unknown-page test red; `Rows` admits a cap of 0 -> the cap test red; `Read` asks the port for the cap, not the cap plus one -> the truncation test red; the descriptor's `sideBarPosition` 6 -> the declaration test red.
 - mutation: Batch 1, remove the `SurfaceCoverage` screen row -> `SurfaceCoverage` red alone (260 rows against 261 screens).
 - mutation: Batch 1, drop `SOURCE_PORTALRESOURCE` from `READ_SOURCE_PORTS` -> `screen-mirror.test.mjs` red; one word of `REASONPAGEUNKNOWN` changed -> `access.test.mjs` red.
+
+Mutations run, Batch 2 (`ocupilot-ci`; each reverted with Edit, md5 equal, source reloaded):
+
+- mutation: Batch 2, AC1, `AssignResource` stores the page as the caller spelled it -> `PageResourceProhibited` red (the accepted-write leg). `PageResourceWrite` stays green, since the vendor normalizes `.cls` itself.
+- mutation: Batch 2, AC2, `ClearResource` stores the old resource -> `PageResourceWrite` red (3 tests: the person's, the agent's and the gate's).
+- mutation: Batch 2, AC3, `RefusesPageAssignment` skips the `Adjustable` check -> `PageResourceProhibited` red on the prohibited set, the person's gate, the agent's mint and the registry sweep.
+- mutation: Batch 2, AC4, `WeakensByEffect` never takes the page effect -> the destructive-mint test red.
+- mutation: Batch 2, AC5, `AssignResource` drops its unknown-page check -> the unknown-page legs red; `ResourceProblem` drops its defined check -> the unknown-resource and mint legs red.
+- mutation: Batch 2, AC6, the tool's fingerprint subject loses `Current` -> `PageResourceWrite`'s stale-assign leg red.
+- mutation: Batch 2, AC7, `Gate.ClassicResource` reads a process-cached copy -> `PageResourceWrite`'s gate test red.
+- mutation: Batch 2, AC8, `SnippetForm` answers no form for the clear -> `DraftRegistry` red, naming `permissions.pageresources.clear`.
+- mutation: Batch 2, AC9, the clear key removed from `Baseline.cls` -> `GovernanceBaseline` red.
+- mutation: Batch 2, AC10, `PageResourceAction.PrivilegePairs` answers none -> `PageResourceWrite`'s short-pair test red on both accounts. (`PortalResourcePort.PAIRS` is pinned by Batch 1's line.)
+- mutation: Batch 2, AC11, the assign tool's `SurfaceCoverage` row removed -> `SurfaceCoverage` red alone.
+- mutation: Batch 2, AC13, the audit call skipped on the assign branch -> `PageResourceWrite`'s person and agent tests red; skipped on the clear branch -> both red; an event recorded for a refused clear -> `PageResourceProhibited` red.
 
 ## Auto Run Result
 
