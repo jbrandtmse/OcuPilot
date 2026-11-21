@@ -8530,6 +8530,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
 - 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 - 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
+- 2026-11-21T06:14:39Z by=epic-24-runner note=occurrence: BackgroundTasksLive red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 10/17; a seeded compact ended before its pause), green on one re-run
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -14207,6 +14208,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T18:56:50Z status=routed owner=burndown by=runner note=recurred:21.21_runner_sweep_shard_5(head_83e75a7f8):InteropItemRun.TestTheAgentsStopAndStartConfirmOverHttp:operation_holds_no_job_after_the_start;CI_run_44790510586_ran_the_class_green;per_policy_a_second_red_is_a_defect
 - 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
 - 2026-11-20T10:25:11Z status=open owner=burndown by=runner note=SECOND RED (ocupilot-b-ci sweep shard 16, 24.14 Batch 2 implement, same assertion, green on its one re-run): per the orchestrator's rule this is now a defect, not a flake
+- 2026-11-21T06:14:33Z by=epic-24-runner note=occurrence (same shape, different method): InteropItemRun.TestEachToolsDraftRendersItsScript red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 15/17; the probe production's job did not start), green on one re-run
 
 ### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
 - source: spec-24-14-pmml-model-tester-and-dashboard-viewer.md | severity: med | fix-risk: low | footprint: in-epic
