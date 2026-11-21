@@ -680,6 +680,8 @@ services:
       # The run-time variable and icon write classes (Story 24.13 Batch 3) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent; they start a
       # second process that holds the namespace's settings lock, and the edge class takes it from this process.
       # classes: AnalyticsSettingsEntryWrite, AnalyticsSettingsEntryWriteEdge
+      # PageResourceRead plants a custom resource on a probe classic page to read it back through the list, and restores the page (Story 21.37).
+      # classes: PageResourceRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

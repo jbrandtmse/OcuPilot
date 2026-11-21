@@ -9256,6 +9256,22 @@ export const STRINGS = {
   taskOutputPrompt3: 'Summarize this task\'s output.',
   /** EXPERIENCE.md:613 */
   taskMailPasswordAction: 'Set mail password',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLabel: 'Page resources',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmpty: 'No classic pages have a custom resource on this instance.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmptyAgent: 'assign a resource to a classic page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesNote: 'A page\'s custom resource decides who may open it in the classic portal and in OcuPilot. The instance still checks every read and write.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt1: 'Which classic pages have a custom resource?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt2: 'Which resource does the Users page require?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt3: 'Which OcuPilot screens follow a page\'s custom resource?',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageUnknown: 'No classic portal page has that name.',
 } as const;
 
 /**

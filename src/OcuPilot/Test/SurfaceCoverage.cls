@@ -227,6 +227,7 @@ XData Coverage
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="PhoneProviderList" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="SecurityAdvisorList" class="OcuPilot.Test.AdvisorRead" method="TestTheScreenAndToolsDeclareTheirPagePairsActionsAndKeys" corpus="the list and its two tools are asserted together in one test"/>
+<screen name="PageResourceList" class="OcuPilot.Test.PageResourceRead" method="TestTheScreenDeclaresItsPagePairsAndRead"/>
 <screen name="PhoneProviderForm" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>

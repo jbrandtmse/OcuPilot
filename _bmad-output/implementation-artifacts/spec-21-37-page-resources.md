@@ -2,7 +2,8 @@
 title: 'Story 21.37: Page resources'
 type: 'feature'
 created: '2026-11-21'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '317781c4e3a192147dd5a1da0ef3dcffeeb7ff88'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -275,6 +276,13 @@ Every test added or changed passes on a fresh environment, in either order.
 - AC12: remove the `clear` row action from the descriptor -> the browser spec red, against a rebuilt and redeployed bundle.
 - AC13: skip the `SecurityChange` record on the person's path, then on the agent's path -> the audit test red each time; record an event on the refused clear -> red.
 - AC14: drop the ", and <n> more" tail (list all titles) -> the 6-or-more component case red.
+
+Mutations run, Batch 1 (`ocupilot-ci`; each reverted with Edit, md5 equal, source reloaded):
+
+- mutation: Batch 1, `PortalResourcePort.PAIRS` loses `%DB_IRISSYS:READ` -> `PageResourceRead` red (the pair-count and the gate leg, and the declared-pairs assertion); `PortGate` stays green, since its roster checks only that the named parameter parses.
+- mutation: Batch 1, `Listed` reads `Resource` from the page -> `PageResourceRead` red (3 tests); `ScreenTitles` stops after the first title -> the several-screens test red; `ScreensDeclaringPage` ignores a write tool's `CLASSICPAGES` -> 3 tests red; `Normalized` returns the caller's name -> 2 tests red; `Normalized` skips the shape check -> the unknown-page test red; `Rows` admits a cap of 0 -> the cap test red; `Read` asks the port for the cap, not the cap plus one -> the truncation test red; the descriptor's `sideBarPosition` 6 -> the declaration test red.
+- mutation: Batch 1, remove the `SurfaceCoverage` screen row -> `SurfaceCoverage` red alone (260 rows against 261 screens).
+- mutation: Batch 1, drop `SOURCE_PORTALRESOURCE` from `READ_SOURCE_PORTS` -> `screen-mirror.test.mjs` red; one word of `REASONPAGEUNKNOWN` changed -> `access.test.mjs` red.
 
 ## Auto Run Result
 

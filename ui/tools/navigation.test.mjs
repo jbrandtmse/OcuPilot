@@ -295,6 +295,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/roles',
       'permissions/resources',
       'permissions/services',
+      // Story 21.37: Page resources, the fifth Permissions entry.
+      'permissions/pageresources',
       // Story 18.30: the unlisted Doc DB application editor, reached from Doc DB applications.
       'web-applications/docdb-applications/edit',
       'web-applications/rest-apis/document',

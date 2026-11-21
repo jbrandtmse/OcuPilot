@@ -62,6 +62,7 @@ import {
   READ_SOURCE_PORTS,
   monitorEndpoints,
   configEndpoints,
+  portalResourceEndpoint,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -261,12 +262,14 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.InteropUsageVolumeTab',
       // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
       'OcuPilot.Screen.Descriptor.MetricsList',
+      // Story 21.37: Page resources states that a page's custom resource decides who may open it, in the classic portal and in OcuPilot.
+      'OcuPilot.Screen.Descriptor.PageResourceList',
       // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
       'OcuPilot.Screen.Descriptor.ServiceList',
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, Page resources, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -3198,7 +3201,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor', 'portalresource']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3648,4 +3651,29 @@ test('Story 21.36: Task output takes its parent task as a logsource criterion, a
   const orphan = structuredClone(screen.declaration);
   orphan.parentScope = '';
   assert.match(criteriaProblem(orphan), /^read\.criteria is declared on a 'logsource' source, and server criteria travel on the admin/, 'and without its parent it is refused');
+});
+
+// Story 21.37: Page resources reads the classic pages that hold a custom resource through the portalresource source, whose endpoint the
+// port's own ENDPOINT parameter declares, the mirror following that parameter rather than a list of its own; an endpoint or a request
+// type the port does not declare, and a member the port would have to issue per row, are refused.
+//
+// Mutation (Rule 19): drop `SOURCE_PORTALRESOURCE` from `READ_SOURCE_PORTS` -> the roster pin in the Background tasks test goes red and
+// this test's first read assertion goes red with it.
+test('Story 21.37: the portalresource source admits the endpoint the port declares, in the Permissions area at position 5', () => {
+  assert.equal(portalResourceEndpoint(), 'PortalResource', "the port declares 'PortalResource'");
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.PageResourceList');
+  assert.ok(screen !== undefined, 'the Page resources screen is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'portalresource', endpoint: 'PortalResource', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(`${screen.declaration.area}|${screen.declaration.sideBarPosition}|${screen.declaration.route}`, 'permissions|5|permissions/pageresources', 'it is the fifth Permissions entry');
+  const wrongEndpoint = structuredClone(screen.declaration);
+  wrongEndpoint.read.source.endpoint = 'Pages';
+  assert.match(readProblem(wrongEndpoint), /is not the portal resource port's endpoint \('PortalResource'\)/, 'an endpoint the port does not declare is refused');
+  const wrongType = structuredClone(screen.declaration);
+  wrongType.read.source.type = 'GET';
+  assert.match(readProblem(wrongType), /is declared on a portal resource source/, 'a request type other than LIST is refused');
+  const perRow = structuredClone(screen.declaration);
+  perRow.read.source.rowGet = { endpoint: 'PortalResource', type: 'GET' };
+  assert.match(readProblem(perRow), /read\.source\.rowGet is declared on a portal resource source, which answers its list whole/, 'a per-row call is refused');
 });

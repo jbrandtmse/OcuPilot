@@ -1057,7 +1057,9 @@ export const SOURCE_GLOBAL = 'global';
 export const SOURCE_PHONE = 'phone';
 /** The instance's security recommendations read through `OcuPilot.Port.AdvisorPort` (AD-29, AD-36, Story 21.19). */
 export const SOURCE_ADVISOR = 'advisor';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL, SOURCE_PHONE, SOURCE_ADVISOR];
+/** The classic pages that hold a custom resource read through `OcuPilot.Port.PortalResourcePort` (AD-29, AD-36, Story 21.37). */
+export const SOURCE_PORTALRESOURCE = 'portalresource';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS, SOURCE_DEVTOOL, SOURCE_BACKUP, SOURCE_CONFIG, SOURCE_MIRROR, SOURCE_LOCALE, SOURCE_GLOBAL, SOURCE_PHONE, SOURCE_ADVISOR, SOURCE_PORTALRESOURCE];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1134,6 +1136,22 @@ export function advisorEndpoint() {
 
 /** The one request type an `advisor` source declares. */
 export const ADVISOR_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.PortalResourcePort` declares the one endpoint a `portalresource` read names. */
+export const PORTALRESOURCE_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PortalResourcePort.cls');
+
+let portalResourceEndpointCache;
+
+/** `parseBackgroundEndpoint` over `PortalResourcePort`'s class on disk, read once: its `ENDPOINT` parameter, or `null` when it is missing. */
+export function portalResourceEndpoint() {
+  if (portalResourceEndpointCache === undefined) {
+    portalResourceEndpointCache = parseBackgroundEndpoint(readFileSync(PORTALRESOURCE_PORT_SOURCE, 'utf8'));
+  }
+  return portalResourceEndpointCache;
+}
+
+/** The one request type a `portalresource` source declares. */
+export const PORTALRESOURCE_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.DocDbPort` declares the one endpoint a `docdb` read names. */
 export const DOCDB_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DocDbPort.cls');
@@ -1588,8 +1606,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}', '${SOURCE_GLOBAL}', '${SOURCE_PHONE}' or '${SOURCE_ADVISOR}', ` +
-      'the twenty-three sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}', '${SOURCE_ANALYTICS}', '${SOURCE_DEVTOOL}', '${SOURCE_BACKUP}', '${SOURCE_CONFIG}', '${SOURCE_MIRROR}', '${SOURCE_LOCALE}', '${SOURCE_GLOBAL}', '${SOURCE_PHONE}', '${SOURCE_ADVISOR}' or '${SOURCE_PORTALRESOURCE}', ` +
+      'the twenty-four sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1835,6 +1853,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an advisor source, which answers its list whole (AD-36)`;
+    }
+  }
+  // A portalresource source lists the classic pages that hold a custom resource through `OcuPilot.Port.PortalResourcePort`, which answers its
+  // endpoint whole behind its own gate (AD-29, AD-36, Story 21.37): its endpoint, a LIST, and nothing the port would have to issue per row,
+  // per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_PORTALRESOURCE) {
+    const endpoint = portalResourceEndpoint();
+    if (endpoint === null) return `${PORTALRESOURCE_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the portal resource port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== PORTALRESOURCE_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a portal resource source, which lists the classic pages that hold a custom resource (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a portal resource source, which answers its list whole (AD-36)`;
     }
   }
   // A locale source lists the instance's locale definitions through `OcuPilot.Port.LocalePort`, which answers its endpoint whole behind its own
