@@ -659,3 +659,6 @@
 2026-11-21T16:58:54Z	Story 24.14	integrate_head_pushed	scope=batch4 M=84f1ad5c9(03169939f+feature_de0df01f9_21.23) run=44927449204 supersedes=44927121755 conflicts=0 test_tools=2385 check_objectscript=0
 2026-11-21T17:49:21Z	Story 24.14	fresh_check_passed	scope=batch4 tree=84f1ad5c9 classes=InteropItemRun,InteropItemControl,WireSecurityRead,AnalyticsPmmlExport(+Edge)_fwd+rev_green browser=22_specs(21.23_changed+analytics+a11y)_132/132_fwd+rev test_tools=2385 smoke=PASSED
 2026-11-21T17:49:21Z	Story 24.14	ci_red	scope=batch4 sha=84f1ad5c9 run=44927449204 failed=browser_shard1/5(a11y_settle_/agent/governance,DW-1822_shape) ledger=DW-1822_occurrence
+2026-11-21T18:23:27Z	Story 24.14	ci_green	scope=batch4 sha=84f1ad5c9 run=44927449204 attempt=2(orchestrator_rerun;attempt1_DW-1822)
+2026-11-21T18:23:27Z	Story 24.14	spine_amended	commit=3578da119 AD-7+AD-42_add-only(U-130) lines=+4/-0
+2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
