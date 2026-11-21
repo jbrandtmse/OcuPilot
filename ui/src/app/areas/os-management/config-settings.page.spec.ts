@@ -442,6 +442,9 @@ describe('the settings page', () => {
       expect(field).not.toBeNull();
       expect(field.type).toBe('password');
       expect(field.value).toBe('');
+      expect(host.querySelector('[data-interop-setting-current]')).toBeNull();
+      expect(host.querySelector('[data-interop-setting-consequence]')).toBeNull();
+      expect(host.textContent?.split(STRINGS.interopSettingEmptyHint).length).toBe(2);
       type(fixture, host, 'a-mail-secret');
       confirm(host);
       await settle(fixture);

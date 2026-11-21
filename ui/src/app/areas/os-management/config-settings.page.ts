@@ -104,6 +104,8 @@ interface SettingTarget {
   readonly multiline: boolean;
   /** The dialog's heading, in place of the one that names the setting; `''` keeps that one. */
   readonly title: string;
+  /** Whether the dialog draws the field and its hint alone: no current-value line and no sentence above them. */
+  readonly fieldOnly: boolean;
 }
 
 /** `value` as text, or `''`. */
@@ -182,6 +184,8 @@ function text(value: unknown): string {
         [secret]="target.secret"
         [multiline]="target.multiline"
         [statement]="target.statement"
+        [currentShown]="!target.fieldOnly"
+        [consequenceShown]="!target.fieldOnly"
         [defaultShown]="false"
         [sending]="sending()"
         [refusal]="refusal()"
@@ -399,6 +403,7 @@ export class ConfigSettingsPage {
       saves,
       multiline: this.screen?.descriptor === TASK_MAIL_SETTING_LIST && text(row['Name']).startsWith(TASK_MAIL_MESSAGE_PREFIX),
       title: '',
+      fieldOnly: false,
       statement:
         row['Restart'] === true
           ? `${accepts} ${STRINGS.encryptionStartupRestart}`
@@ -446,7 +451,8 @@ export class ConfigSettingsPage {
       saves: false,
       multiline: false,
       title: STRINGS.taskMailPasswordAction,
-      statement: STRINGS.interopSettingEmptyHint,
+      fieldOnly: true,
+      statement: '',
     });
   }
 

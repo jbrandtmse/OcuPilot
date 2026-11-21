@@ -3519,9 +3519,9 @@ ClassMethod TaskOutputRows(pMaxRows As %Integer, pTaskId As %String, Output pAns
     If 'tFound Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#TASKABSENT, ##class(OcuPilot.Api.Error).#REASONTASKABSENT, .pHttpStatus, .pFault)
     If tDirectory = $Char(0) Set tDirectory = ""
     If tName = $Char(0) Set tName = ""
-    If 'tOpen || (tName = "") Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTNONE, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTNONE, .pHttpStatus, .pFault)
-    If '..TaskOutputHere(tDirectory, tName, .tPath) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTELSEWHERE, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTELSEWHERE, .pHttpStatus, .pFault)
-    If '..FileExists(tPath) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTABSENT, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTABSENT, .pHttpStatus, .pFault)
+    If 'tOpen || (tName = "") Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.TaskError).#NONE, ##class(OcuPilot.Api.TaskError).#REASONNONE, .pHttpStatus, .pFault)
+    If '..TaskOutputHere(tDirectory, tName, .tPath) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.TaskError).#ELSEWHERE, ##class(OcuPilot.Api.TaskError).#REASONELSEWHERE, .pHttpStatus, .pFault)
+    If '..FileExists(tPath) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.TaskError).#ABSENT, ##class(OcuPilot.Api.TaskError).#REASONABSENT, .pHttpStatus, .pFault)
 
     Set tOpenSC = ..OpenStream(tPath, .tStream)
     If $$$ISERR(tOpenSC) || '$IsObject(tStream) Quit ..Unreadable(tOpenSC, .pHttpStatus, .pFault)

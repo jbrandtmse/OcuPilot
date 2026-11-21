@@ -35,8 +35,12 @@ function fill(template: string, placeholder: string, value: string): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog],
   template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
-    <p class="ocu-banner" data-interop-setting-consequence>{{ consequence() }}</p>
-    <p class="ocu-field-caption" data-interop-setting-current>{{ currentLine() }}</p>
+    @if (showConsequence) {
+      <p class="ocu-banner" data-interop-setting-consequence>{{ consequence() }}</p>
+    }
+    @if (showCurrent) {
+      <p class="ocu-field-caption" data-interop-setting-current>{{ currentLine() }}</p>
+    }
     @if (showDefault) {
       <p class="ocu-field-caption" data-interop-setting-default>{{ defaultLine() }}</p>
     }
@@ -150,6 +154,12 @@ export class InteropItemSettingDialog {
   /** Whether the default line is drawn; an entry of a lookup table has no default. */
   readonly defaultShown = input<boolean>(true);
 
+  /** Whether the current-value line is drawn; a setting whose stored value no read reports has none to show. */
+  readonly currentShown = input<boolean>(true);
+
+  /** Whether the sentence above the fields is drawn; a dialog whose field hint says all there is to say leaves it out. */
+  readonly consequenceShown = input<boolean>(true);
+
   /** Whether the value is a secret (Story 24.13): drawn as an empty masked field with a reveal toggle, never filled with the current value, which is a mask. */
   readonly secret = input<boolean>(false);
 
@@ -239,6 +249,14 @@ export class InteropItemSettingDialog {
 
   protected get showDefault(): boolean {
     return this.defaultShown();
+  }
+
+  protected get showCurrent(): boolean {
+    return this.currentShown();
+  }
+
+  protected get showConsequence(): boolean {
+    return this.consequenceShown();
   }
 
   protected get secretField(): boolean {

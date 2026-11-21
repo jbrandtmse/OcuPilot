@@ -394,6 +394,45 @@ Method TestAnUnknownOrMalformedTaskIdIsTheUnknownTask()
     Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "and no file touched")
 }
 
+/// <p>A stored task record that cannot be read answers the generic 500 with no path or error text in
+/// it, touches no file, and logs one fault.</p>
+/// <p>Mutation: answer a record read failure as an absent task in
+/// <method>OcuPilot.Port.LogSourcePort.TaskOutputRows</method> -&gt; the status and code assertions go red;
+/// pass the error text into the answer's reason -&gt; the no-text assertions go red.</p>
+Method TestARecordThatCannotBeReadAnswersFiveHundredWithoutAPath()
+{
+    Set tProbe = "ocupilot-probe-" _ ..Directory() _ ..#PROBEFILE
+    Do ##class(OcuPilot.Test.LogSourceFixture).ArmTaskRecordError(tProbe)
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "7", 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusNotOK(tSC, "the read is refused")
+    Do $$$AssertEquals(tHttp, 500, "answered 500")
+    Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#INTERNAL, "on the generic internal code")
+    Do $$$AssertTrue(tFault.%ToJSON() '[ ..#PROBEFILE, "the answer does not name the file")
+    Do $$$AssertTrue(tFault.%ToJSON() '[ ..Directory(), "or the directory")
+    Do $$$AssertTrue(tFault.%ToJSON() '[ "ocupilot-probe-", "or the error's text")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).TaskRecordReads(), 1, "the record was asked for once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "no file was touched")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Faults(), 1, "and one fault was logged")
+}
+
+/// <p>The agent's step reason for each of the three refusals is the published sentence, through
+/// <method>OcuPilot.Api.Error.ReasonForToolCode</method> and <method>OcuPilot.Api.TaskError.ReasonFor</method>;
+/// a code the class does not own has none.</p>
+/// <p>Mutation: drop the <code>LOG.TASKOUTPUT.</code> branch from <method>ReasonForToolCode</method> -&gt; the
+/// first three assertions go red; swap two returns in <method>ReasonFor</method> -&gt; the per-code assertions
+/// go red.</p>
+Method TestTheAgentsStepReasonForEachRefusalIsThePublishedSentence()
+{
+    Set tCodes = $ListBuild("LOG.TASKOUTPUT.NONE", "LOG.TASKOUTPUT.ELSEWHERE", "LOG.TASKOUTPUT.ABSENT")
+    Set tReasons = $ListBuild("This task does not write its output to a file.", "OcuPilot reads output files only in the manager directory. Open this one on the server.", "This task has not written its output file yet. It writes one each time it runs.")
+    For tI = 1:1:$ListLength(tCodes) {
+        Set tCode = $List(tCodes, tI)
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), $List(tReasons, tI), tCode _ ": the agent's step carries the published sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Api.TaskError).ReasonFor(tCode), $List(tReasons, tI), tCode _ ": the class answers the same sentence")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Api.TaskError).ReasonFor("LOG.TASKOUTPUT.OTHER"), "", "a code the class does not own has no sentence")
+}
+
 /// <p>A caller lacking either of the source's two pairs is refused 403 <code>AUTH.NOPRIVILEGE</code>
 /// before any record is read or file touched; a caller holding both reads.</p>
 Method TestACallerLackingEitherPairIsRefusedBeforeAnyRecordIsRead()
