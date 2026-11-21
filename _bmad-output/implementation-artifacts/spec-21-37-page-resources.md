@@ -2,7 +2,7 @@
 title: 'Story 21.37: Page resources'
 type: 'feature'
 created: '2026-11-21'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '317781c4e3a192147dd5a1da0ef3dcffeeb7ff88'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -150,6 +150,8 @@ deferred: []
 - AC14 (the replaces line, plural): Given a page that one OcuPilot screen replaces, the dialog shows the ruled singular line; given several, it shows "These <count> screens follow this page's resource and will require it from the next request: <titles>." with at most five titles joined by ", " in the order screens already sort, ending ", and <n> more" past five. A component test pins 1, 5 and 6 or more screens.
 
 ### Review Findings
+
+- [ ] [Review][HIGH] CI run 44950309360 (on `9e79177c4`): four roster tests the new screen and tools broke. (1) `OcuPilot.Test.RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list". (2) `OcuPilot.Test.StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`: "PageResourceList is registered, so it takes a roster row (a screen Epic 18 added) or an Elsewhere row (any other)". (3) `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs`: `permissions.pageresources.assign` and `.clear` do not require exactly their screen's pairs plus their own write permission. (4) `OcuPilot.Test.ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode`: both tools answer `TOOL.ARGUMENTS: argument 'Page' is missing (required)`, so they need a round-trip fixture row (the class's argument roster) like their siblings. For each, read the assertion and the change, update the roster with names read from the instance (or fix the product if the test caught a real defect, and say which), keep each test's intent, and write a `mutation:` line per changed assertion. Run the four as full classes, then every `*Sweep`, `*Coverage` and `ToolRound*` class and `PageResource*`, one per call. [src/OcuPilot/Test/RemovalRowsSweep.cls, StageTwoTools.cls, ToolEmit.cls, ToolRoundTrip.cls]
 
 Code review 2026-11-21, `317781c4e..30157fa88`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor (full-opus). Patches uncommitted.
 

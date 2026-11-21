@@ -915,3 +915,7 @@
 2026-11-21T21:12:28Z	Story 21.37	code_head_pushed	sha=9e79177c4 run=44950309360 missing=none
 2026-11-21T21:13:00Z	Story 21.37	stage_spawned	stage=code-review spawn_at=2026-11-21T21:13:00Z model=opus agent_name=21-37-code-review cycle_iteration=1 prior_lines_ended=verified(aef137fb2)
 2026-11-21T21:13:23Z	Story 21.37	ruling	question=same-resource_assign+deviations via=orchestrator choice=refuse(veto=U-136;mint_nothing;test+mutation);PORT.ACCESSDENIED_accepted(I/O_row_amended);dry_run_on_blur_with_Enter/Save_guard(component_test);ToolWrite_148;AC10_mutation_names_PageResourceRead
+2026-11-21T23:02:17Z	Story 21.37	review_complete	model=opus tier=full-opus entries=high0,med7,low10 patched=13(rulings:same-resource_refusal,Enter/Save_guard,AC10) commit=7a6bd1a3e deferred=DW-2823(owner,decision-pending),DW-2824(burndown),DW-2825,DW-2826
+2026-11-21T23:02:17Z	Story 21.37	ci_red_classified	run=44950309360 sha=9e79177c4 defects=RemovalRowsSweep,StageTwoTools,ToolEmit,ToolRoundTrip(rosters)
+2026-11-21T23:02:17Z	Story 21.37	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=4_rosters scope_baseline=7a6bd1a3e
+2026-11-21T23:02:17Z	Story 21.37	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-21T23:02:17Z model=sonnet agent_name=21-37-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(aa5ec9204)
