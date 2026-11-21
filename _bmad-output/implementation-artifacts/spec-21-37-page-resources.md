@@ -145,8 +145,16 @@ deferred: []
 - AC10 (port gate): Given a caller without `%Admin_Secure:USE`, or without `%DB_IRISSYS:READ`, when it calls any endpoint of `PortalResourcePort`, then it is refused `AUTH.NOPRIVILEGE` naming the first pair it lacks, before any vendor call (AD-29), and the screen's own gate refuses it the screen.
 - AC11 (rosters): Given the new screen, tools, entity type and port, when `SurfaceCoverage`, `EndpointCoverage`, `PortGate`, `Descriptor`, `ScreenGrounding`, `ClassicPageGate`, `ReadTool`, `ToolWrite`, `Navigation`, `WireSecurityRead`, `PermissionsLists` and `navigation.test.mjs` run, then each passes and names them where it names its peers, with each count derived from the registry outside a roster's own pin (Rule 30).
 - AC12 (browser, the outermost surface): Given the deployed bundle, when `page-resources.browser-spec.mjs` signs in as an `%Admin_Secure` holder and assigns a resource to a probe-safe page, sees its row, changes it, clears it, and tries a page a Home screen declares, then each step shows the screen's own answer, and the refusal shows the existing sentence.
+- AC13 (audit, AD-15 named case 2026-11-21): Given a page custom-resource assign or clear from either caller (the person's dialog and the agent's confirmed proposal), when it writes, then OcuPilot records its own `OcuPilot/Security/SecurityChange` event with the page and the resource before and after, beside the agent's marker for an agent write; a clear of a page with no resource is refused (`ACCESS.PAGE.NOTASSIGNED`) and records no event. The event triple is the one the installer already registers (no second registration).
+- AC14 (the replaces line, plural): Given a page that one OcuPilot screen replaces, the dialog shows the ruled singular line; given several, it shows "These <count> screens follow this page's resource and will require it from the next request: <titles>." with at most five titles joined by ", " in the order screens already sort, ending ", and <n> more" past five. A component test pins 1, 5 and 6 or more screens.
 
 ## Spec Change Log
+
+- 2026-11-21, orchestrator rulings at the spec gate (authoritative):
+  - The plural replaces line is accepted with a cap (AC14): "These <count> screens follow this page's resource and will require it from the next request: <titles>." — at most five titles joined by ", " in the order screens already sort, then ", and <n> more"; one screen keeps the ruled singular line. "and <n> more" is a `strings.ts` string in the same veto item.
+  - AD-15, option (b), done here: the spine carries the add-only named case (`2fd24558e`); a page custom-resource assign or clear records OcuPilot's own `OcuPilot/Security/SecurityChange` from either caller (AC13). Confirm the installer already registers the event triple; register no second one.
+  - AC4 reads AD-10 as written: a clear or change is destructive on any page an OcuPilot screen declares, Home's included.
+  - The rest is approved as planned: the `AccessError` codes, the port's two checks, the pairs, three batches, add-only on the contended files.
 
 ## Review Triage Log
 
@@ -265,6 +273,8 @@ Every test added or changed passes on a fresh environment, in either order.
 - AC10: drop `%DB_IRISSYS:READ` from `PAIRS` -> `PortGate` and the gate test red.
 - AC11: delete the `SurfaceCoverage` screen row -> `SurfaceCoverage` red alone.
 - AC12: remove the `clear` row action from the descriptor -> the browser spec red, against a rebuilt and redeployed bundle.
+- AC13: skip the `SecurityChange` record on the person's path, then on the agent's path -> the audit test red each time; record an event on the refused clear -> red.
+- AC14: drop the ", and <n> more" tail (list all titles) -> the 6-or-more component case red.
 
 ## Auto Run Result
 

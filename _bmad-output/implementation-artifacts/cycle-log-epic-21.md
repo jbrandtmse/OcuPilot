@@ -906,3 +906,5 @@
 2026-11-21T17:25:11Z	Story 21.23	merged	feature=de0df01f9 via=orchestrator
 2026-11-21T17:25:11Z	Story 21.37	story_created	spawn_at=plan model=opus path=/Users/jbrandt/git/OcuPilot/.worktrees/epic-21/_bmad-output/implementation-artifacts/spec-21-37-page-resources.md build_status=ready-for-dev batches=3(~19,~18,~12_files) codes=Api/AccessError(ACCESS.PAGE.*) task0=URL-encoded_pages;vendor_checks_nothing;pairs_%Admin_Secure:USE+%DB_IRISSYS:READ;no_vendor_audit
 2026-11-21T17:25:11Z	Story 21.37	spec_validated	integration_ac=present adr_constrained_acs=AD-10,AD-44,AD-64,AD-22,AD-29,AD-51,AD-59 owned_ledger=none escalated=plural_replaces_line;person_write_audit_gap(AD-15) adjusted=AC1,AC2,AC3,AC4,AC5,AC10,AC11 model=claude-opus-5-5
+2026-11-21T17:26:35Z	Story 21.37	ruling	question=plural_line+AD-15+AC4 via=orchestrator choice=plural_capped_at_5(veto=U-134);AD-15_option_b(spine_2fd24558e;AC13);AC4_any_declared_page;rest_approved
+2026-11-21T17:26:35Z	Story 21.37	ad_amended	ad=AD-15 marker=[AMENDED_2026-11-21,Story_21.37_spec_gate,Rule_20] commit=2fd24558e lint_spine=ok(pre-existing_{id}) memlog=appended
