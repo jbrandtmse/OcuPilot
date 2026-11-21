@@ -2,7 +2,8 @@
 title: 'Story 21.23: Test hygiene and contended client fixes'
 type: 'chore'
 created: '2026-11-21'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '3158042357f68ade2409cd6ccfa0a342f8cb3dff'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -194,6 +195,12 @@ Batch 6 (DW-2225, DW-2352):
 - The governance screen is not slow at any width or theme (Code Map). Every CI red is an unanswered `Runtime.callFunctionOn` on that visit, repeated on a relaunched browser within the same job and absent in reruns. The cause sits with something per-job on the CI runner or instance (inference), so Batch 1 Task 0 tries to reproduce it before anything changes.
 - The orchestrator's DW-2787 hypothesis, that START answers before the job exists, is refuted on `ocupilot-ci`: START answered Running with the job present 12 times out of 12. The helper does ignore START's answer, and `Jobs()` does read a failed row as "no job"; either hides the CI cause (inference). H1 and H2 test those two mechanisms.
 
+**Batch 1 Task 0** (`ocupilot-ci`, bundle rebuilt and redeployed, 2026-11-21): branch (b).
+
+- Three runs of `a11y-structural-invariants.browser-spec.mjs`: 13/13 green each, no unsettled visit, no retried pass. Governance settled in 1.83-1.94 s in all three passes (1280 light, 1280 dark, 720 light) of every run. The stall line was added to the walker between runs 2 and 3 and runs only on the failure path.
+- A scratch harness repeated the 44 non-id visits from `system-explorer/sql-query` to `agent/screenpermissions` (governance is visit 190 of 260 in registry order) ten times in one 1280 px light page, with `page.on('error')` and a second CDP session on `Performance.getMetrics`. Governance settled in 1.83-2.24 s every time (one 2.24 s), 0 unsettled visits, 0 page errors, the largest task delta 0.24 s (`interoperability/schema-viewer`), and the page ended at 2 documents, 11,437 nodes, 645 listeners and 26 MB of heap.
+- No stall reproduced, so only the stall report lands and the cause stays open (Escalated, below).
+
 **Escalated:**
 
 - DW-1822 and DW-2600 on branch (b): the cause is not reproducible off CI. The entries stay routed with the stall report, and the orchestrator decides the next step. The plan proposes no deadline change.
@@ -271,7 +278,9 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 **Mutations (Rule 19).** One per AC. Each is applied, observed red, and reverted; the tree is confirmed identical with `git status --short` and `git diff --stat`, and reverted ObjectScript is reloaded.
 
 - Stall line: drop the busy probe → the busy fake red; let a probe throw → the probe-failure fake red.
+  - mutation: the busy verdict made `grew >= Infinity` in `rendererState` → "the stall line reads the renderer as busy ..." red alone (1 of 32); reverted. The `probe` wrapper in `stallLine` made `read()` with no catch → the stall-line cases and the hung-call cases red (15 of 32), among them "a probe that throws is named in the line ..."; reverted. After each revert `git diff | md5` read the same as before the mutation and the file passed 32 of 32.
 - DW-2720: remove AC1's `waitForRememberedView` and seed `%all` for the users view before AC2 → AC2 red at its filter-empty assertion.
+  - mutation: after `resetRememberedState()` in `signedInAtList`, a `POST {kind:'view', action:'set', route:'permissions/users', value:'{"filter":"%all"}'}` (the late write, standing in for AC1's unawaited one) → AC2 and AC7 red at "the list opens from an empty filter field; it holds "%all"", and AC1 red with the original shape (aria-rowcount 14 against 4); reverted, `git diff | md5` identical, and the spec read 4 of 4 in the two runs before the mutation and the one after.
 - DW-2787: drop the START answer check → the new double-start test red.
 - DW-2714: delay `loadCubes`' assignment in `mdx-query.store.ts` by 1 s, with the bundle redeployed, and use the old `pressRun` → AC1 red; with the new one → green.
 - DW-2282: drop the spinner wait → `ci-flake-waits.test.mjs` red.

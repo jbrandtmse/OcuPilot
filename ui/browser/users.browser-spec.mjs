@@ -22,16 +22,17 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { FILTER_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { resetRememberedState } from './preferences-reset.mjs';
+import { resetRememberedState, waitForRememberedView } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { formatDeniedScreen } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 
 const config = browserConfig();
-const LIST_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
+const LIST_ROUTE = 'permissions/users';
+const LIST_URL = `/ocupilot/${LIST_ROUTE}?ns=HSCUSTOM`;
 const READ_PATH = '/api/ocupilot/screens/permissions.users/read';
 const DISABLED_USER = 'OcuPilotDemoDisabled';
 const EXPIRED_USER = 'OcuPilotDemoExpired';
@@ -141,6 +142,16 @@ async function signedInAtList(user, password) {
   return { context, page, reads };
 }
 
+/**
+ * The row count of the whole list, read only once the filter field is empty: a filter an earlier
+ * test left in flight can reopen the list narrowed, and its count would then stand for the total.
+ */
+async function wholeListCount(page) {
+  const filter = await page.$eval(FILTER_SELECTOR, (field) => field.value);
+  assert.equal(filter, '', `the list opens from an empty filter field; it holds ${JSON.stringify(filter)}`);
+  return viewCount(page);
+}
+
 /** The rendered row whose name cell reads `name`, described cell by cell. */
 function describeRow(page, name) {
   return page.evaluate((wanted) => {
@@ -192,6 +203,8 @@ test('AC1: the list reads once, with roles from the detail call, under the decla
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);
+    // The last filter write is in flight when this returns, and AC2's reset would otherwise race it.
+    await waitForRememberedView(LIST_ROUTE, '%all', config.navigationTimeoutMs);
   } finally {
     await context.close();
   }
@@ -201,7 +214,7 @@ test('AC2: a disabled account reads No after an outline disc, an expired one rea
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
-    const total = await viewCount(page);
+    const total = await wholeListCount(page);
     const leg = { total, timeoutMs: config.navigationTimeoutMs };
     await filterToSubset(page, { ...leg, text: DISABLED_USER, expectRow: DISABLED_USER });
     const disabled = await describeRow(page, DISABLED_USER);
@@ -217,6 +230,8 @@ test('AC2: a disabled account reads No after an outline disc, an expired one rea
     await filterToSubset(page, { ...leg, text: '_SYSTEM', expectRow: '_SYSTEM' });
     const system = await describeRow(page, '_SYSTEM');
     assert.equal(system.cells[3].text, STRINGS.tableStatusNo, "_SYSTEM's Account expired reads No");
+    // The last filter write is in flight when this returns, and AC7's reset would otherwise race it.
+    await waitForRememberedView(LIST_ROUTE, '_SYSTEM', config.navigationTimeoutMs);
   } finally {
     await context.close();
   }
@@ -232,9 +247,11 @@ test('AC7: the _SYSTEM name link carries the id in one route segment', async () 
     await filterToSubset(page, {
       text: '_SYSTEM',
       expectRow: '_SYSTEM',
-      total: await viewCount(page),
+      total: await wholeListCount(page),
       timeoutMs: config.navigationTimeoutMs,
     });
+    // The filter write is in flight when the click navigates away; the next test's reset would otherwise race it.
+    await waitForRememberedView(LIST_ROUTE, '_SYSTEM', config.navigationTimeoutMs);
     // A real hit-tested pointer click at the name link's own centre (DW-273), which is what a user
     // does; `clickRowCentre` refuses first if that point resolves outside the row.
     await clickRowCentre(page, { text: '_SYSTEM', link: true });

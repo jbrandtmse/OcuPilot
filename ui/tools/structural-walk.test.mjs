@@ -42,6 +42,14 @@
 // - in the a11y spec, drop `browser = result.browser`, or close without `closeOrAbandon`; or have
 //   `walk` answer `browser` instead of `withRetry.held()` -> the a11y spec wiring case red.
 // - annotate every failing pass's error, retried or not -> the no-retry failure case red.
+// - `bounded` appending the stall line to any rejection, not only an abandoned call -> the
+//   not-abandoned case red; dropping the `page` argument from `settle`'s `bounded` -> the settle stall
+//   case red.
+// - the busy probe answering `idle` whatever the task time did -> the busy case red; the renderer probe
+//   letting its error escape instead of naming it -> the throwing-probe case red; dropping the
+//   `withinProbe` bound on the metrics read -> the unresponsive case runs to its own timeout.
+// - `trackRequests` without its `error` handler -> the crashed case red; without the answers it keeps ->
+//   the answers case red.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -49,7 +57,7 @@ import test, { afterEach, mock } from 'node:test';
 
 import { CLOSEDEADLINE, WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
 
-const { detectScreen, goInApp, passRetrier, reportLines, settle, toggleThemeThroughMenu } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
+const { detectScreen, goInApp, passRetrier, reportLines, settle, stallLine, toggleThemeThroughMenu, trackRequests } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
 
 /** A fake page whose `evaluate(fn)` runs `fn` against the stubbed `document` installed by the test. */
 function fakePage() {
@@ -156,6 +164,11 @@ async function endOfHungCall(call) {
     await flush();
     assert.equal(outcome, 'still waiting', 'the call is not abandoned before the deadline');
     mock.timers.tick(1);
+    // The stall report that follows the abandoned call has probes of its own, each on a timer.
+    for (let step = 0; step < 30 && outcome === 'still waiting'; step += 1) {
+      await flush();
+      mock.timers.tick(1000);
+    }
     await running;
     return outcome;
   } finally {
@@ -547,4 +560,100 @@ test('a reason the in-page check has since cleared is not the reason a later tim
   assert.equal(answer.settled, false);
   assert.equal(checks, 2, 'the check ran twice: busy, then ready');
   assert.equal(answer.why, 'requests kept arriving', 'the cleared busy element is not the reason');
+});
+
+// --- The stall line an abandoned call carries ------------------------------------------------------
+
+/** A fake page that records its listeners, so a test can emit the events `trackRequests` reads. */
+function eventPage({ url = 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM', ...rest } = {}) {
+  const listeners = new Map();
+  return {
+    url: () => url,
+    on: (event, handler) => listeners.set(event, [...(listeners.get(event) ?? []), handler]),
+    emit: (event, ...args) => (listeners.get(event) ?? []).forEach((handler) => handler(...args)),
+    ...rest,
+  };
+}
+
+const apiRequest = (path, navigation = false) => ({ url: () => `http://localhost:52776${path}`, isNavigationRequest: () => navigation });
+
+/** A DevTools session whose `Performance.getMetrics` reports task time rising by `step` seconds per read. */
+function metricsSession(step) {
+  let taskDuration = 10;
+  return {
+    send: async (method) => {
+      if (method !== 'Performance.getMetrics') return {};
+      taskDuration += step;
+      return { metrics: [{ name: 'TaskDuration', value: taskDuration }] };
+    },
+    detach: async () => {},
+  };
+}
+
+const probeOptions = { busyWindowMs: 40, probeMs: 100 };
+
+test('the stall line names a crashed page, the frame, the document request in flight and the last five answers with status and time', async () => {
+  const page = eventPage({ createCDPSession: async () => metricsSession(0) });
+  trackRequests(page);
+  const document = apiRequest('/ocupilot/agent/governance', true);
+  page.emit('request', document);
+  page.emit('error', new Error('Page crashed!'));
+  for (let index = 1; index <= 7; index += 1) {
+    const request = apiRequest(`/api/ocupilot/screens/read${index}`);
+    page.emit('request', request);
+    page.emit('response', { request: () => request, status: () => (index === 7 ? 503 : 200) });
+    page.emit('requestfinished', request);
+  }
+  const line = await stallLine(page, probeOptions);
+  assert.match(line, /^stall: page crashed: yes \(Page crashed!\); /, 'the crash is named with its message');
+  assert.match(line, /frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, document request in flight: \/ocupilot\/agent\/governance;/, 'the frame and its document request');
+  const answers = line.slice(line.indexOf('answers: ') + 'answers: '.length).split('; ');
+  assert.equal(answers.length, 5, 'five answers');
+  assert.match(answers[0], /^200 \/api\/ocupilot\/screens\/read3 \d+ ms$/, 'the oldest of the last five');
+  assert.match(answers[4], /^503 \/api\/ocupilot\/screens\/read7 \d+ ms$/, 'and the newest, with its status');
+});
+
+test('the stall line says a page that did not crash did not, and an untracked page is not tracked', async () => {
+  const tracked = eventPage({ createCDPSession: async () => metricsSession(0) });
+  trackRequests(tracked);
+  assert.match(await stallLine(tracked, probeOptions), /page crashed: no; .*document request in flight: none;.*answers: none$/);
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(0) }, probeOptions), /page crashed: not tracked; frame: unread \(/);
+});
+
+test('the stall line reads the renderer as busy when its task time grows, and idle when it does not', async () => {
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(1) }, probeOptions), /renderer: busy \(task time grew 1\.00 s over 0\.04 s\);/);
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(0) }, probeOptions), /renderer: idle \(task time grew 0\.00 s over 0\.04 s\);/);
+});
+
+test('the stall line reads the renderer as unresponsive when a fresh session never answers, whether opening it or reading it', { timeout: 10_000 }, async () => {
+  const opening = await stallLine({ createCDPSession: hang }, probeOptions);
+  assert.match(opening, /renderer: unresponsive \(no answer to a new DevTools session within 100 ms\);/);
+  const reading = await stallLine({ createCDPSession: async () => ({ send: (method) => (method === 'Performance.getMetrics' ? hang() : Promise.resolve({})), detach: hang }) }, probeOptions);
+  assert.match(reading, /renderer: unresponsive \(no answer to Performance\.getMetrics within 100 ms\);/);
+});
+
+test('a probe that throws is named in the line and does not stop the others', async () => {
+  const line = await stallLine(
+    {
+      url: () => {
+        throw new Error('frame gone');
+      },
+      createCDPSession: async () => {
+        throw new Error('target closed');
+      },
+    },
+    probeOptions
+  );
+  assert.match(line, /frame: unread \(frame gone\);/, 'the frame probe names its failure');
+  assert.match(line, /renderer: unread \(target closed\);/, 'so does the renderer probe');
+  assert.match(line, /page crashed: not tracked;/, 'the rest of the line is still there');
+});
+
+test('an abandoned call carries the stall line after its own message, and a call that failed another way does not', { timeout: 10_000 }, async () => {
+  const page = { evaluate: hang, createCDPSession: hang, url: () => 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM' };
+  const error = await endOfHungCall(() => settle(page, quiet(), '/ocupilot/agent/governance'));
+  assert.ok(error instanceof Error && isProtocolTimeout(error), 'still a protocol timeout, so the pass retry runs');
+  assert.match(error.message, /1280px light: settle \/ocupilot\/agent\/governance timed out\..*\nstall: page crashed: not tracked; frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, /s, 'the line follows the message');
+  assert.match(error.message, /renderer: unresponsive \(no answer to a new DevTools session within 5000 ms\);/, 'with the renderer unresponsive at the default bound');
+  await assert.rejects(settle({ evaluate: async () => Promise.reject(new Error('the page closed')), createCDPSession: hang }, quiet()), (failed) => failed.message === 'the page closed');
 });
