@@ -871,3 +871,9 @@
 2026-11-21T05:14:44Z	Story 21.36	code_head_pushed	sha=acde202a0 run=44869943560 missing=none
 2026-11-21T05:14:44Z	Story 21.36	gate_step	step=fresh_check+full_sweep+smoke head=acde202a0 started=2026-11-21T05:14:44Z dir=e21u/21-36/gate
 2026-11-21T05:51:04Z	Story 21.36	ruling	question=mid-line_tail_for_a_line_longer_than_the_window via=orchestrator choice=approved(rule_applies_only_to_windows_with_a_boundary) spec=inference_label_replaced
+2026-11-21T07:48:59Z	Story 21.36	ci_resolved	story=21.36 sha=acde202a0 runs=44869943560 result=success
+2026-11-21T07:48:59Z	Story 21.36	fresh_check	env=recipe(ci-throwaway_rebuild) tests=26_classes+2_specs result=pass order=forward,reverse(specs) head=acde202a0 note=PmmlRunWatch(24.14_fixture,0_methods)_not_a_red
+2026-11-21T07:48:59Z	Story 21.36	sweep	shards=20/20_green head=acde202a0
+2026-11-21T07:48:59Z	Story 21.36	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-21T07:48:59Z	Story 21.36	ledger	resolved=DW-2811 wontfix=DW-2810(theoretical),DW-2812..2815(accepted)
+2026-11-21T07:48:59Z	Story 21.36	story_complete	head=acde202a0 run=44869943560 ci=success fresh=pass sweep=20/20 smoke=50/50 baseline_key=tasks.mail.password(enabled) veto=U-131 spine=fbc419892(AD-21)

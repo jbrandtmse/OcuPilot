@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-21-2026 04:18'
+last_updated: '11-21-2026 07:48'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -420,7 +420,7 @@ development_status:
   21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: done
   21-34-a-backup-action-leaves-the-web-process-s-null-device-open: done
   21-35-ocupilot-s-install-records-and-other-users-state-answer-only: done
-  21-36-task-output-and-mail-password: in-progress
+  21-36-task-output-and-mail-password: done
   21-37-page-resources: backlog
   epic-21-retrospective: optional
 

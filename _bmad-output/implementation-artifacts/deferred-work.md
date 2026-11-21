@@ -14285,6 +14285,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ReadWindow's mid-line branch returns no lines when the window holds no LF (LogSourcePort.ReadWindow tAfterNewline = 0); TaskOutputRows still reports truncated
 - 2026-11-21T02:15:51Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=a real task's output viewer shows No entries. with the cut sentence for a non-empty file
 - 2026-11-21T04:18:20Z status=routed owner=21-36-task-output-and-mail-password by=orchestrator note=fixed in 21.36 rework 2: an unterminated final line is a line
+- 2026-11-21T07:48:58Z status=resolved-by:21-36-task-output-and-mail-password owner=21-36-task-output-and-mail-password by=21-36 note=an_unterminated_final_line_is_a_line;57148e1eb
 
 ### DW-2812: The task output read ignores OutputFileIsBinary and draws a binary output file as text lines
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: med | footprint: in-story
