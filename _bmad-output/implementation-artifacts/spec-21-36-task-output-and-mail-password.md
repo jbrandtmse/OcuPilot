@@ -2,7 +2,8 @@
 title: 'Story 21.36: Task output and mail password'
 type: 'feature'
 created: '2026-11-20'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'ca73454ff6a78e44e14ac150b4e3c20bff4c1130'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -59,7 +60,7 @@ deferred: []
 
 ## Tasks & Acceptance
 
-**Task 0 (on `ocupilot-ci` only; record results under Design Notes before code).** The plan measured the vendor (Design Notes). One item stays (inference) until measured: a REST request process holding only `%Admin_Task:USE` and `%DB_IRISSYS:READ` reads a manager-directory file through `LogSourcePort`'s stream open, as the measured Task Manager process did (measure it as `TaskOutputRead`'s denial-free leg under a throwaway user, removed after). **Stop rule:** if it fails, HALT `intent gap` naming the pair the read needs, since the spine names the task screens' pairs for this read.
+**Task 0 (on `ocupilot-ci` only; record results under Design Notes before code).** The plan measured the vendor (Design Notes). The one open item, a REST request process holding only `%Admin_Task:USE` and `%DB_IRISSYS:READ` reading a manager-directory file, is measured and passes (Design Notes). `TaskOutputRead` keeps a denial-free leg for it.
 
 ### Batch 1: the task output viewer (server and client; commit when its loop is green)
 
@@ -122,7 +123,7 @@ deferred: []
 
 - Output file: with `OpenOutputFile` 1 the vendor writes `OutputDirectory_OutputFilename` by plain string join (a directory stored without its trailing slash wrote `/durable/iris/mgrOcuP2136out.txt`); each run overwrites the file; lines end in LF; text is 8-bit (`$Char(233)` one byte `E9`, `$Char(8364)` written `?`); with `OpenOutputFile` 0 no file is written. `NormalizeDirectory` answers `/durable/iris/mgr/` with or without the slash. `%SYS.Task.RunLegacyTask` with `ExecuteCode` was the measuring task.
 - Task details: `GET /api/admin/v2/task?id=` and the in-process `%Api.Admin.Endpoints.Task.CRUD.TaskToJson` both answer `OpenOutputFile` (boolean), `OutputDirectory`, `OutputFilename`, `OutputFileIsBinary`.
-- A process logged in as a user holding only `%Admin_Task:USE` and `%DB_IRISSYS:READ` read the file through `%Stream.FileCharacter` (measured in a Task Manager process; a REST process is the open Task 0 item).
+- A process logged in as a user holding only `%Admin_Task:USE` and `%DB_IRISSYS:READ` read the file through `%Stream.FileCharacter` (measured in a Task Manager process). A REST process measured the same way (implement stage, 2026-11-20): a scratch web app on `ocupilot-ci` served a request as a user holding only `%Admin_Task:USE`, `%DB_IRISSYS:READ` and read on the code database (no `%Admin_Operate`), and its `%Stream.FileBinary` link and read of a manager-directory file succeeded (HTTP 200, 18 of 18 bytes). The web app, user, role, class and file were removed. Task 0 passes; the read needs no pair beyond the two the source declares.
 - Mail password: `EmailSet("AuthPassword", p)` stores it Base64-encoded and returns 1; `""` clears it; each real change writes one `Modify Task Config.MailAuthPassword` audit row about a minute later, its EventData carrying Base64 values (Story 21.24 masks them); a user holding `%Admin_Manage:USE` and `%DB_IRISSYS:READ` sets it (no `%DB_IRISSYS:WRITE`), one without `%Admin_Manage:USE` is refused `#921` by the vendor.
 
 **Decided in-stage:**
@@ -159,6 +160,12 @@ Rosters, each run as a full class (`(loop)` when the story changes it, else re-r
 Pinning tests and the mutation each must show red (the implement stage records each as `mutation: <change> -> <red test>`, reverted and confirmed byte-identical, reloaded):
 
 - AC1: the location check dropped (`ELSEWHERE` never raised) -> `TaskOutputRead`'s elsewhere and no-separator legs red; the tail window read from byte 1 -> its tail-only leg red; the `truncated` flag never set -> its truncation leg red; the details link shown regardless of `OpenOutputFile` -> `details.page.spec.ts` red.
+  - mutation: `ELSEWHERE` never raised (`TaskOutputRows`' location test made false) -> `TaskOutputRead` red on `TestALocationOtherThanOneFileInTheManagerDirectoryIsRefused` and `TestBothCallersRefuseAnotherLocationWithoutAPath` (observed, reverted, reloaded).
+  - mutation: the vendor's join compare dropped from `TaskOutputHere` -> `TestALocationOtherThanOneFileInTheManagerDirectoryIsRefused` red on the no-separator leg alone (observed, reverted, reloaded).
+  - mutation: window read from byte 1 (`tStart` = 1) -> `TestAFileLargerThanTheWindowReadsOnlyItsEnd` red on its newest-row and oldest-row legs (observed, reverted, reloaded).
+  - mutation: `pTruncated` always 0 -> `TestAFileLargerThanTheWindowReadsOnlyItsEnd` and `TestTheScreenAndTheAgentToolAnswerTheSameRows` red (observed, reverted, reloaded).
+  - mutation: link shown whatever `OpenOutputFile` and `OutputFilename` hold -> `details.page.spec.ts` "Open output file links the viewer only when the record names an output file" red (observed, reverted).
+  - mutation: `showTruncation` ignoring the answer's `truncated`, `LOG.TASKOUTPUT.ELSEWHERE` dropped from `OUTPUT_REFUSALS`, and the store mapping rows with `readRowsOf` -> `log-viewer.spec.ts` red on the truncation, the elsewhere-refusal and the text-alone legs (observed together, reverted).
 - AC2: `ConfigPort`'s `PASSWORD` branch sends `""` in place of the body's value -> `TaskMailPasswordWrite`'s set leg red; the draft renders the body's value in place of `<AuthPassword>` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red; the page sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red.
 - AC3: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline` and `TaskMailPasswordWrite`'s key leg red.
 
@@ -177,3 +184,5 @@ Pinning tests and the mutation each must show red (the implement stage records e
 
 Status: ready-for-dev
 Blocking condition: none
+
+Notes (Task 0 and Batch 1 implemented, uncommitted; Batch 2 not started): Batch 1's `(loop)` lines ran green on `ocupilot-ci`. The read added no Baseline key. Decided in-stage: `childListFor` prefers a non-`log-viewer` child so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `criteriaProblem` and `Registry.CriteriaProblem` admit a logsource read's parent route id, as the locale source's.

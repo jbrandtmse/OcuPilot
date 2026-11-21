@@ -120,6 +120,7 @@ XData Coverage
 <screen name="TaskHistoryList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="TaskOnDemandList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="TaskRunList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="TaskOutput" class="OcuPilot.Test.TaskOutputRead" method="TestTheDeclarationValidatesAndIsDeclaredAsTaskOutput"/>
 <screen name="TaskScheduleList" class="OcuPilot.Test.Descriptor" method="TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="TaskUpcomingList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="RoleForm" class="OcuPilot.Test.RoleCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>

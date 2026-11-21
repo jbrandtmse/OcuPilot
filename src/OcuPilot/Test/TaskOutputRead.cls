@@ -1,0 +1,470 @@
+/// <p>Task output (Story 21.36): <class>OcuPilot.Port.LogSourcePort</class>'s <code>taskoutput</code>
+/// source and the <code>tasks.taskoutput</code> screen that reads it. Pins the declaration, the tail
+/// window and its truncation, the refusals and their order (none, elsewhere, absent, unknown task, the
+/// gate), that no refusal carries a path, and that the screen's read and the agent's read answer the
+/// same rows.</p>
+/// <p>Live-safe: it creates one on-demand task of its own that is never run, and writes its probe output
+/// file itself in the manager directory; both are removed in <method>OnAfterOneTest</method>. Needs the
+/// API application installed in <code>HSCUSTOM</code> and a writable manager directory.</p>
+Class OcuPilot.Test.TaskOutputRead Extends %UnitTest.TestCase
+{
+
+/// <p>The descriptor under test.</p>
+Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.TaskOutput";
+
+/// <p>The tool identifier the screen read and the derived read tool share.</p>
+Parameter TOOL = "tasks.taskoutput";
+
+/// <p>The source key the port reads.</p>
+Parameter SOURCE = "taskoutput";
+
+/// <p>The probe task's name.</p>
+Parameter PROBETASKNAME = "OcuPilotProbeOutputTask";
+
+/// <p>The probe task's output file name, which matches the output file pattern.</p>
+Parameter PROBEFILE = "ocupilotprobeoutput.txt";
+
+/// <p>The vendor's on-demand schedule (<code>TimePeriod</code> 5).</p>
+Parameter ONDEMAND = 5;
+
+/// <p>The probe task's id, <code>""</code> when none exists. Prefix not <code>Test</code>.</p>
+Property ProbeTaskId As %String;
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..ProbeTaskId = ""
+    Quit $$$OK
+}
+
+Method OnBeforeOneTest() As %Status
+{
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ..RemoveProbes()
+    Quit $$$OK
+}
+
+Method OnAfterOneTest() As %Status
+{
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ..RemoveProbes()
+    Quit $$$OK
+}
+
+/// <p>The manager directory with its trailing separator.</p>
+ClassMethod Directory() As %String
+{
+    Quit ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory())
+}
+
+/// <p>The probe file's path.</p>
+ClassMethod ProbePath() As %String
+{
+    Quit ##class(%File).NormalizeFilename(..#PROBEFILE, ..Directory())
+}
+
+/// <p>Remove the probe task, found by name, and the probe file.</p>
+Method RemoveProbes()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %SYS.Task WHERE %EXACT(Name) = ?", ..#PROBETASKNAME)
+        Set tIds = ""
+        While tRS.%Next() {
+            Set tIds = tIds _ $ListBuild(tRS.%Get("ID"))
+        }
+        For tI = 1:1:$ListLength(tIds) {
+            Do ##class(%SYS.Task).%DeleteId($List(tIds, tI))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+    Do ##class(%File).Delete(..ProbePath())
+    Set ..ProbeTaskId = ""
+}
+
+/// <p>Create the probe task, on demand and never run, with the stored output location
+/// <var>pOpen</var>, <var>pDirectory</var> and <var>pFile</var>; <property>ProbeTaskId</property> is
+/// its id. The task holds no OREF here beyond the save.</p>
+Method CreateProbe(pOpen As %Boolean, pDirectory As %String, pFile As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tTask = ##class(%SYS.Task).%New()
+        Set tTask.Name = ..#PROBETASKNAME
+        Set tTask.Description = "OcuPilot's task output probe: never run, created and deleted by its tests"
+        Set tTask.NameSpace = "%SYS"
+        Set tTask.TaskClass = "%SYS.Task.RunLegacyTask"
+        Set tTask.TimePeriod = ..#ONDEMAND
+        Set tTask.OpenOutputFile = pOpen
+        Set tTask.OutputDirectory = pDirectory
+        Set tTask.OutputFilename = pFile
+        Set tDefinition = ##class(%SYS.Task.RunLegacyTask).%New()
+        Set tDefinition.ExecuteCode = "Quit"
+        Set tSC = tTask.AssignSettings(tDefinition)
+        Set tDefinition = ""
+        If $$$ISOK(tSC) Set tSC = tTask.%Save()
+        If $$$ISOK(tSC) Set ..ProbeTaskId = tTask.%Id()
+        Set tTask = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The probe task, created to write <parameter>PROBEFILE</parameter> in the manager directory, and
+/// the probe file written with <var>pContent</var>; <var>pContent</var> <code>""</code> leaves an empty
+/// file and <code>$Char(0)</code> leaves none.</p>
+Method ArmProbe(pContent As %String) As %Status
+{
+    Set tSC = ..CreateProbe(1, ..Directory(), ..#PROBEFILE)
+    Do $$$AssertStatusOK(tSC, "the probe task is created")
+    If $$$ISERR(tSC) Quit tSC
+    If pContent '= $Char(0) Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), pContent)
+    Do $$$AssertStatusOK(tSC, "the probe file is written")
+    Quit tSC
+}
+
+/// <p><var>pCount</var> lines of exactly <var>pWidth</var> bytes, newline included, each the
+/// zero-padded line number then dots.</p>
+ClassMethod Lines(pCount As %Integer, pWidth As %Integer) As %String
+{
+    Set tText = ""
+    For tI = 1:1:pCount {
+        Set tLine = $Justify(tI, 6)
+        Set tLine = $Translate(tLine, " ", "0")
+        Set tText = tText _ tLine _ $Translate($Justify("", pWidth - 7), " ", ".") _ $Char(10)
+    }
+    Quit tText
+}
+
+/// <p>One read of the source through <var>pClass</var>, for the task <var>pTaskId</var>.</p>
+Method Read(pClass As %String, pTaskId As %String, pMaxRows As %Integer, Output pRows As %DynamicArray, Output pHttp As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status
+{
+    Set tCriteria("taskId") = pTaskId
+    Quit $ClassMethod(pClass, "Rows", ..#SOURCE, pMaxRows, .pRows, .pHttp, .pFault, .pTruncated, .tCriteria)
+}
+
+/// <p>The declaration passes the read, criteria and classic-link grammar; its route and tool
+/// identifier resolve to it; it is the Tasks area's unlisted log viewer, parented to Task schedule,
+/// keyed by a single id, with no action and no secret; its source is the log source port's
+/// <code>taskoutput</code> key under Task details' own pairs; and the Tasks area covers its pairs.</p>
+/// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from the descriptor -&gt;
+/// <method>OcuPilot.Screen.Registry.ReadProblem</method> refuses it and this goes red.</p>
+Method TestTheDeclarationValidatesAndIsDeclaredAsTaskOutput()
+{
+    Set tClass = ..#DESCRIPTOR
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and so are its criteria")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule/output"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#TOOL), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%CSP.UI.Portal.TaskInfo", "the classic page is Task details' own")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "tasks", "in the Tasks area")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 0, "routable but unlisted")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "on the log-viewer archetype")
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "tasks/schedule", "parented to Task schedule")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", "keyed by a single id")
+    Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, "and it does not refresh")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "with no secret field")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, "because it declares no action")
+    Do $$$AssertEquals(tDeclaration.read.source.port _ "/" _ tDeclaration.read.source.endpoint, "logsource/" _ ..#SOURCE, "its source is the log source port's task output")
+    Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Size(), 1, "with one criterion")
+    Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Get(0).param, "taskId", "the task id")
+    Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Get(0).vendorParam, "", "which names no vendor parameter")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("tasks", $ClassMethod(tClass, "PrivilegePairs")), "", "and the Tasks area covers its pair set")
+    Do $$$AssertEquals($Parameter("OcuPilot.Port.LogSourcePort", "TASKOUTPUTPAIRS"), "%Admin_Task:USE,%DB_IRISSYS:READ", "the source's pairs are Task details' own")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).Sources(), ..#SOURCE) > 0, "the key is in the port's enum")
+    Do $$$AssertEquals($ListFind($ListFromString($Parameter("OcuPilot.Port.LogSourcePort", "TAILSOURCES")), ..#SOURCE), 0, "and not a live tail")
+    Do $$$AssertEquals($ListFind($ListFromString($Parameter("OcuPilot.Port.LogSourcePort", "RECENTSOURCES")), ..#SOURCE), 0, "nor a recent source")
+}
+
+/// <p>A small file reads whole, newest line first, each row <code>{offset, text}</code> with the line's
+/// first byte as its offset. A byte above 127 reaches the row as the one character of that byte: the
+/// vendor writes 8-bit text, and no encoding is guessed. A file under 64 KB is never truncated.</p>
+/// <p>Mutation: decode each line as UTF-8 in <code>TaskOutputRows</code> (leave <code>pDecode</code>
+/// at its default) -&gt; the byte leg reads <code>?</code> in its place and goes red.</p>
+Method TestASmallFileReadsWholeNewestFirstAsStored()
+{
+    Set tText = "first" _ $Char(10) _ "caf" _ $Char(233) _ $Char(10) _ "third" _ $Char(13) _ $Char(10) _ "last" _ $Char(10)
+    If $$$ISERR(..ArmProbe(tText)) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(tHttp, 200, "answered 200")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 4, "four lines, one row each")
+    Do $$$AssertEquals(tTruncated, 0, "a small file is not truncated")
+    Do $$$AssertEquals(tRows.%Get(0).text, "last", "newest first")
+    Do $$$AssertEquals(tRows.%Get(1).text, "third", "a carriage return before the line feed is not part of the text")
+    Do $$$AssertEquals(tRows.%Get(2).text, "caf" _ $Char(233), "a byte above 127 is one character, as stored")
+    Do $$$AssertEquals(tRows.%Get(3).text, "first", "the oldest line is last")
+    Do $$$AssertEquals(tRows.%Get(3).offset, 1, "the first line starts at byte 1")
+    Do $$$AssertEquals(tRows.%Get(2).offset, 7, "the second line starts after the first line and its newline")
+    Do $$$AssertEquals(tRows.%Get(0).offset, $Length(tText) - 4, "the last line starts where the file's last line does")
+}
+
+/// <p>A file larger than the window reads only its last 65,536 bytes, from a line boundary, and says
+/// it was cut: 1,000 lines of 100 bytes start the window mid-line 345, so the oldest row is line 346
+/// at byte 34,501 and the newest is line 1,000. A file of exactly 65,536 bytes is whole, and one byte
+/// more is cut.</p>
+/// <p>Mutation: read the window from byte 1 in <code>TaskOutputRows</code> -&gt; the newest row is
+/// line 655 and the oldest offset 1, and the first assertions go red; never set <code>pTruncated</code>
+/// -&gt; the truncation assertions go red.</p>
+Method TestAFileLargerThanTheWindowReadsOnlyItsEnd()
+{
+    If $$$ISERR(..ArmProbe(..Lines(1000, 100))) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tTruncated, 1, "a file larger than the window is truncated")
+    Do $$$AssertEquals(tRows.%Size(), 655, "the window holds 655 whole lines")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 99901, "the newest row is line 1,000")
+    Do $$$AssertEquals($Extract(tRows.%Get(0).text, 1, 6), "001000", "and says so")
+    Do $$$AssertEquals(tRows.%Get(654).offset, 34501, "the oldest row is the first whole line in the window")
+    Do $$$AssertEquals($Extract(tRows.%Get(654).text, 1, 6), "000346", "and is line 346")
+    Do $$$AssertEquals($Length(tRows.%Get(654).text), 99, "a whole line, never a part of one")
+
+    ; Exactly the window: whole, not cut.
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), ..Lines(4096, 16))
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertEquals(tRows.%Size(), 4096, "a file of exactly 65,536 bytes reads whole")
+    Do $$$AssertEquals(tTruncated, 0, "and is not truncated")
+
+    ; One byte more: cut, and the line the window begins in is dropped.
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "a" _ $Char(10) _ ..Lines(4096, 16))
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertEquals(tTruncated, 1, "a file one byte over the window is truncated")
+    Do $$$AssertEquals(tRows.%Size(), 4096, "the window starts on the line boundary")
+}
+
+/// <p>A row cap shorter than the file keeps the newest rows, and the caller sees the cut from the one
+/// row it asked beyond its cap.</p>
+Method TestARowCapKeepsTheNewestRows()
+{
+    If $$$ISERR(..ArmProbe(..Lines(10, 20))) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 3, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 3, "three rows")
+    Do $$$AssertEquals($Extract(tRows.%Get(0).text, 1, 6), "000010", "the newest first")
+    Do $$$AssertEquals($Extract(tRows.%Get(2).text, 1, 6), "000008", "and the two before it")
+    Do $$$AssertEquals(tTruncated, 0, "the port's own window held the whole file")
+}
+
+/// <p>A file that exists with no bytes answers no rows and is not truncated.</p>
+Method TestAnEmptyFileAnswersNoRows()
+{
+    If $$$ISERR(..ArmProbe("")) Quit
+    Do $$$AssertTrue(##class(%File).Exists(..ProbePath()), "the probe file exists and is empty")
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tHttp, 200, "answered 200")
+    Do $$$AssertEquals(tRows.%Size(), 0, "no rows")
+    Do $$$AssertEquals(tTruncated, 0, "not truncated")
+}
+
+/// <p>A record that names its file in the manager directory while the file is not there yet is its
+/// own refusal, 404 <code>LOG.TASKOUTPUT.ABSENT</code>, never an empty read; the answer carries no
+/// path.</p>
+Method TestAFileNotWrittenYetIsItsOwnRefusal()
+{
+    If $$$ISERR(..ArmProbe($Char(0))) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusNotOK(tSC, "the read is refused")
+    Do $$$AssertEquals(tHttp, 404, "answered 404")
+    Do $$$AssertEquals(tFault.code, "LOG.TASKOUTPUT.ABSENT", "naming the file absent")
+    Do $$$AssertEquals(tFault.reason, "This task has not written its output file yet. It writes one each time it runs.", "in the ruled sentence")
+    Do $$$AssertTrue(tFault.%ToJSON() '[ ..#PROBEFILE, "the refusal does not name the file")
+    Do $$$AssertTrue(tFault.%ToJSON() '[ ..Directory(), "or the directory")
+}
+
+/// <p>A task that writes no output file is refused 409 <code>LOG.TASKOUTPUT.NONE</code> before any file
+/// is touched, though a file of the stored name is there; so is a record with the flag on and no
+/// name.</p>
+Method TestATaskThatWritesNoFileIsRefusedBeforeAnyFileIsTouched()
+{
+    If $$$ISERR(..CreateProbe(0, ..Directory(), ..#PROBEFILE)) Quit
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "left from an earlier run" _ $Char(10))
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusNotOK(tSC, "the read is refused")
+    Do $$$AssertEquals(tHttp, 409, "answered 409")
+    Do $$$AssertEquals(tFault.code, "LOG.TASKOUTPUT.NONE", "naming the task as writing no file")
+    Do $$$AssertEquals(tFault.reason, "This task does not write its output to a file.", "in the ruled sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "no file was touched")
+
+    Do ##class(OcuPilot.Test.LogSourceFixture).ArmTaskRecord(1, 1, ..Directory(), "")
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "1", 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertEquals(tFault.code, "LOG.TASKOUTPUT.NONE", "a record with the flag on and no name writes no file either")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "and touches none")
+}
+
+/// <p>Every stored location that is not one file directly in the manager directory is refused 409
+/// <code>LOG.TASKOUTPUT.ELSEWHERE</code> before any file is touched, with no path in the answer: another
+/// directory, the manager directory without its trailing separator (which the vendor's own join turns
+/// into a file beside it), no directory, a name outside the pattern, and a name holding two dots. The
+/// manager directory with its separator is admitted.</p>
+/// <p>Mutation: never raise <code>LOG.TASKOUTPUT.ELSEWHERE</code> in <code>TaskOutputRows</code> -&gt;
+/// every refusal leg below goes red; compare only <code>NormalizeDirectory</code> and not the join -&gt;
+/// the no-separator leg goes red alone.</p>
+Method TestALocationOtherThanOneFileInTheManagerDirectoryIsRefused()
+{
+    Set tManager = ..Directory()
+    Set tBare = $Extract(tManager, 1, *-1)
+    Set tCases = $ListBuild(
+        $ListBuild("another directory", "/tmp/", ..#PROBEFILE),
+        $ListBuild("the manager directory without its separator", tBare, ..#PROBEFILE),
+        $ListBuild("no directory", "", ..#PROBEFILE),
+        $ListBuild("a name outside the pattern", tManager, "run.csv"),
+        $ListBuild("a name holding two dots", tManager, "a..b.txt"),
+        $ListBuild("a name holding a separator", tManager, "sub/run.txt"),
+        $ListBuild("a directory beneath the manager directory", tManager _ "sub/", ..#PROBEFILE))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+        Do ##class(OcuPilot.Test.LogSourceFixture).ArmTaskRecord(1, 1, $List(tCase, 2), $List(tCase, 3))
+        Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "7", 0, .tRows, .tHttp, .tFault, .tTruncated)
+        Set tWhat = $List(tCase, 1)
+        Do $$$AssertStatusNotOK(tSC, tWhat _ ": refused")
+        Do $$$AssertEquals(tHttp, 409, tWhat _ ": answered 409")
+        Do $$$AssertEquals(tFault.code, "LOG.TASKOUTPUT.ELSEWHERE", tWhat _ ": naming the location")
+        Do $$$AssertEquals(tFault.reason, "OcuPilot reads output files only in the manager directory. Open this one on the server.", tWhat _ ": in the ruled sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, tWhat _ ": no file was touched")
+        Set tJson = tFault.%ToJSON()
+        Do $$$AssertTrue(tJson '[ "/tmp", tWhat _ ": the answer carries no path")
+        Do $$$AssertTrue(tJson '[ tManager, tWhat _ ": nor the manager directory")
+        Do $$$AssertTrue(tJson '[ ..#PROBEFILE, tWhat _ ": nor the name")
+    }
+
+    Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "admitted" _ $Char(10))
+    Do ##class(OcuPilot.Test.LogSourceFixture).ArmTaskRecord(1, 1, tManager, ..#PROBEFILE)
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "7", 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the manager directory with its separator is admitted")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Get(0).text, "admitted", "and its file is read")
+}
+
+/// <p>A task id that is not a whole number of at most ten digits, and an id no task holds, are the
+/// unknown task, 404 <code>TASK.ABSENT</code>; a shape miss reads no record and touches no file.</p>
+Method TestAnUnknownOrMalformedTaskIdIsTheUnknownTask()
+{
+    Set tIds = $ListBuild("abc", "", "12345678901", "1;2", "-1", "1.5", " 1", "1 ")
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = $List(tIds, tI)
+        Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+        Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", tId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+        Do $$$AssertStatusNotOK(tSC, "'" _ tId _ "': refused")
+        Do $$$AssertEquals(tHttp, 404, "'" _ tId _ "': answered 404")
+        Do $$$AssertEquals(tFault.code, "TASK.ABSENT", "'" _ tId _ "': the unknown task")
+        Do $$$AssertEquals(tFault.reason, "This task no longer exists.", "'" _ tId _ "': in Task details' own sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).TaskRecordReads(), 0, "'" _ tId _ "': no record was read")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "'" _ tId _ "': no file was touched")
+    }
+    Do ##class(OcuPilot.Test.LogSourceFixture).Clear()
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "999999999", 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertEquals(tFault.code, "TASK.ABSENT", "a well-formed id no task holds is the unknown task")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).TaskRecordReads(), 1, "after one record read")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "and no file touched")
+}
+
+/// <p>A caller lacking either of the source's two pairs is refused 403 <code>AUTH.NOPRIVILEGE</code>
+/// before any record is read or file touched; a caller holding both reads.</p>
+Method TestACallerLackingEitherPairIsRefusedBeforeAnyRecordIsRead()
+{
+    Do ##class(OcuPilot.Test.LogSourceFixture).SetGateClass("OcuPilot.Test.ScreenGate")
+    Do ##class(OcuPilot.Test.LogSourceFixture).ArmTaskRecord(1, 1, ..Directory(), ..#PROBEFILE)
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "held" _ $Char(10))
+    Set tHolds = $ListBuild($ListBuild(""), $ListBuild("%Admin_Task:USE"), $ListBuild("%DB_IRISSYS:READ"))
+    For tI = 1:1:$ListLength(tHolds) {
+        Do ##class(OcuPilot.Test.ScreenGate).Reset()
+        Set tHeld = $List(tHolds, tI)
+        For tJ = 1:1:$ListLength(tHeld) {
+            If $List(tHeld, tJ) '= "" Do ##class(OcuPilot.Test.ScreenGate).Hold($Piece($List(tHeld, tJ), ":", 1), $Piece($List(tHeld, tJ), ":", 2))
+        }
+        Do ##class(OcuPilot.Test.LogSourceFixture).ClearTouches()
+        Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "7", 0, .tRows, .tHttp, .tFault, .tTruncated)
+        Do $$$AssertStatusNotOK(tSC, "holding " _ $ListToString(tHeld) _ ": refused")
+        Do $$$AssertEquals(tHttp, 403, "holding " _ $ListToString(tHeld) _ ": answered 403")
+        Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Kernel.Denial).Code(), "holding " _ $ListToString(tHeld) _ ": the privilege refusal")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).TaskRecordReads(), 0, "holding " _ $ListToString(tHeld) _ ": no record was read")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "holding " _ $ListToString(tHeld) _ ": no file was touched")
+    }
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Task", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Set tSC = ..Read("OcuPilot.Test.LogSourceFixture", "7", 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "holding both pairs reads")
+}
+
+/// <p>The screen's read and the agent's <code>tasks.taskoutput.read</code> answer the same lines from
+/// the file's tail, bounded, with the truncation stated, and a record naming another location is refused
+/// by both without a path in either answer.</p>
+/// <p>Mutation: apply the row cap in the agent's view only -&gt; the row comparison goes red.</p>
+Method TestTheScreenAndTheAgentToolAnswerTheSameRows()
+{
+    If $$$ISERR(..ArmProbe(..Lines(2000, 100))) Quit
+    Set tPath = "/api/ocupilot/screens/" _ ..#TOOL _ "/read?maxRows=1000&taskId=" _ ..ProbeTaskId
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, "_SYSTEM", "SYS", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the screen's read completes")
+    Do $$$AssertEquals(tStatus, 200, "the screen's read answers")
+    Set tScreen = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
+    Do $$$AssertEquals(tScreen.rows.%Size(), 655, "the screen reads the file's last 655 lines")
+    Do $$$AssertEquals(tScreen.truncated, 1, "and states that it is truncated")
+
+    Set tArgs = {}
+    Do tArgs.%Set("taskId", ..ProbeTaskId, "string")
+    Do ##class(OcuPilot.Kernel.Scope).Set("HSCUSTOM")
+    Set tToolSC = ##class(OcuPilot.Screen.Tool.Read).View(..#DESCRIPTOR, tArgs, 1000, .tView, .tViewHttp, .tViewFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertStatusOK(tToolSC, "the agent's read completes")
+    If $$$ISERR(tToolSC) || '$IsObject(tView) Quit
+    Do $$$AssertEquals(tView.fields.%ToJSON(), tScreen.fields.%ToJSON(), "the same declared fields")
+    Do $$$AssertEquals(tView.rows.%ToJSON(), tScreen.rows.%ToJSON(), "the same lines")
+    Do $$$AssertEquals(tView.truncated, 1, "with the truncation stated")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ ..#TOOL _ "/read?maxRows=5&taskId=" _ ..ProbeTaskId, "_SYSTEM", "SYS", .tStatus, .tBody, .tHeaders)
+    Set tCut = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
+    Do $$$AssertEquals(tCut.rows.%Size(), 5, "a row cap bounds the screen's read")
+    Do $$$AssertEquals(tCut.truncated, 1, "and the cut is stated")
+    Do $$$AssertEquals(tCut.rows.%Get(0).text, tScreen.rows.%Get(0).text, "keeping the newest lines")
+}
+
+/// <p>A record naming another location is refused by the screen and by the agent's read alike, and
+/// neither answer carries the path.</p>
+Method TestBothCallersRefuseAnotherLocationWithoutAPath()
+{
+    If $$$ISERR(..CreateProbe(1, "/tmp/", ..#PROBEFILE)) Quit
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ ..#TOOL _ "/read?maxRows=1000&taskId=" _ ..ProbeTaskId, "_SYSTEM", "SYS", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the screen's read completes")
+    Do $$$AssertEquals(tStatus, 409, "the screen is refused")
+    Set tScreen = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
+    Do $$$AssertEquals(tScreen.code, "LOG.TASKOUTPUT.ELSEWHERE", "naming the location")
+    Do $$$AssertTrue(tBody '[ "/tmp", "the screen's answer carries no path")
+
+    Set tArgs = {}
+    Do tArgs.%Set("taskId", ..ProbeTaskId, "string")
+    Do ##class(OcuPilot.Kernel.Scope).Set("HSCUSTOM")
+    Set tToolSC = ##class(OcuPilot.Screen.Tool.Read).View(..#DESCRIPTOR, tArgs, 1000, .tView, .tViewHttp, .tViewFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertStatusNotOK(tToolSC, "the agent's read is refused")
+    Do $$$AssertEquals(tViewHttp, 409, "with the same status")
+    Do $$$AssertEquals(tViewFault.code, "LOG.TASKOUTPUT.ELSEWHERE", "and the same code")
+    Do $$$AssertTrue(tViewFault.%ToJSON() '[ "/tmp", "the agent's answer carries no path")
+}
+
+}

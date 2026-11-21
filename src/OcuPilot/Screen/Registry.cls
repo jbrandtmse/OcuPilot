@@ -1951,7 +1951,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         }
         ; AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
         ; Story 21.16: a locale read takes criteria only as its parent's route id (one locale's properties), on a parent-scoped list.
-        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOCALE)
+        ; Story 21.36: a log source's task output takes criteria only as its parent's route id (the task), on a parent-scoped list.
+        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOCALE) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE)
         If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL) && ('tParentOnly || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit

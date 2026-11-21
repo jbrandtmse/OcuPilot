@@ -5639,6 +5639,15 @@ app-interop-message-contents {
   grid-template-columns: 190px 90px 110px minmax(0, 1fr) auto;
 }
 
+// A file's lines (Story 21.36) carry no stamp, process or severity, so the text takes the row.
+.ocu-log-row-plain {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ocu-log-row-plain.ocu-log-row-explain {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .ocu-log-explain {
   height: calc(var(--ocu-log-row-height) - 4px);
   min-height: 0;

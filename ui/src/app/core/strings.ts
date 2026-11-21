@@ -9234,6 +9234,26 @@ export const STRINGS = {
   taskMailSettingsEmptyAgent: 'change a Task Manager email setting',
   /** EXPERIENCE.md:613 */
   configRefusalSubstitution: 'Use only these fields between #( and )#: <fields>.',
+  /** EXPERIENCE.md:613 */
+  taskOutputOpen: 'Open output file',
+  /** EXPERIENCE.md:613 */
+  taskOutputLabel: 'Task output',
+  /** EXPERIENCE.md:613 */
+  taskOutputDirectory: 'Output directory',
+  /** EXPERIENCE.md:613 */
+  taskOutputNone: 'This task does not write its output to a file.',
+  /** EXPERIENCE.md:613 */
+  taskOutputElsewhere: 'OcuPilot reads output files only in the manager directory. Open this one on the server.',
+  /** EXPERIENCE.md:613 */
+  taskOutputAbsent: 'This task has not written its output file yet. It writes one each time it runs.',
+  /** EXPERIENCE.md:613 */
+  taskOutputTruncated: 'OcuPilot shows only the end of this file.',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt1: 'What did this task\'s last run report?',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt2: 'Did this task\'s output show an error?',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt3: 'Summarize this task\'s output.',
 } as const;
 
 /**

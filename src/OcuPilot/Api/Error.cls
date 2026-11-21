@@ -385,7 +385,28 @@ Parameter LOGMAXROWS = "LOG.MAXROWS";
 /// after the gate and before the filesystem is touched, and never with the value or a path.</p>
 Parameter LOGFILE = "LOG.FILE";
 
-/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a root that is not, character
+/// <p>Machine code (AD-12, AD-21): the task a task-output read names writes no output file -- its
+/// <code>OpenOutputFile</code> is off or its <code>OutputFilename</code> is empty. Rendered on the
+/// <parameter>CONFLICT</parameter> slug before any file is touched.</p>
+Parameter LOGTASKOUTPUTNONE = "LOG.TASKOUTPUT.NONE";
+
+Parameter REASONLOGTASKOUTPUTNONE = "This task does not write its output to a file.";
+
+/// <p>Machine code (AD-12, AD-21): the task's stored output location is not one file directly in the
+/// manager directory, so OcuPilot never reads it. Rendered on the <parameter>CONFLICT</parameter>
+/// slug before any file is touched, and never with the location.</p>
+Parameter LOGTASKOUTPUTELSEWHERE = "LOG.TASKOUTPUT.ELSEWHERE";
+
+Parameter REASONLOGTASKOUTPUTELSEWHERE = "OcuPilot reads output files only in the manager directory. Open this one on the server.";
+
+/// <p>Machine code (AD-12, AD-21): the task names an output file in the manager directory and the
+/// file is not there yet. Rendered on the <parameter>NOTFOUND</parameter> slug, and never with the
+/// path.</p>
+Parameter LOGTASKOUTPUTABSENT = "LOG.TASKOUTPUT.ABSENT";
+
+Parameter REASONLOGTASKOUTPUTABSENT = "This task has not written its output file yet. It writes one each time it runs.";
+
+/// <p>Machine code (AD-12, AD-39): a server-path field named a root that is not, character
 /// for character, one of the instance's allowed directories as
 /// <class>OcuPilot.Port.PathPort</class> reads them at the call. Rendered on the
 /// <parameter>BADREQUEST</parameter> slug with one <code>detail.violations</code> entry on the

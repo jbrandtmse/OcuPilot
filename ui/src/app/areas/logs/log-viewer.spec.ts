@@ -16,7 +16,7 @@ import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState
 import { activeRealTimers, awaitRealTimersIdle } from '../../testing/real-timers';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
-import { LogViewerStore, MESSAGES_SOURCE } from './log-viewer.store';
+import { LogViewerStore, MESSAGES_SOURCE, outputRowsOf } from './log-viewer.store';
 
 /** The screens this page renders, resolved from the mirror as the shell's outlet resolves it. */
 const ALERTS_SCREEN = SCREENS.find((screen) => screen.route === 'logs/alerts')!;
@@ -583,8 +583,9 @@ describe('LogViewerPage', () => {
       const { store } = await mount(screen);
 
       expect(store.fault()).toBeNull();
-      // Story 16.10: a viewer over an admin endpoint reads its own declared read, never a log route.
-      if (screen.read?.source.port === 'admin') {
+      // Story 16.10: a viewer over an admin endpoint reads its own declared read, never a log route;
+      // so does one over a log source that takes its parent's id as a criterion (Story 21.36).
+      if (screen.read?.source.port === 'admin' || (screen.read?.criteria?.fields.length ?? 0) > 0) {
         expect(api.paths[0].startsWith(`/api/ocupilot/screens/${screen.toolIdentifier}/read?maxRows=`)).toBe(true);
       } else {
         expect(api.paths[0]).toBe(`/api/ocupilot/logs/${screen.read?.source.endpoint ?? ''}`);
@@ -1748,5 +1749,149 @@ describe('LogViewerPage: the Integrity log (Story 18.4)', () => {
     const { host } = await mount({ kind: 'error', status: 404, code: 'LOG.ABSENT', reason: null, detail: null }, []);
     expect(host.querySelector('[data-ocu-log="empty"]')?.textContent?.trim()).toBe(STRINGS.databaseIntegrityNone);
     expect(host.querySelector('[data-ocu-log="refusal"]')).toBeNull();
+  });
+});
+
+/** Story 21.36's Task output, whose declared read answers a file's lines `{offset, text}` newest first. */
+const OUTPUT_SCREEN = SCREENS.find((screen) => screen.route === 'tasks/schedule/output')!;
+
+function outputPage(truncated = false) {
+  return {
+    fields: ['offset', 'text'],
+    rows: [
+      { offset: 31, text: 'last line' },
+      { offset: 21, text: 'second line' },
+      { offset: 11, text: '<b>untrusted</b>' },
+      { offset: 1, text: 'first line' },
+    ],
+    truncated,
+    banner: '',
+  };
+}
+
+describe('outputRowsOf', () => {
+  it('maps each row to its text alone, oldest first, carrying the row as answered', () => {
+    const lines = outputRowsOf(outputPage());
+    expect(lines.map((line) => line.text)).toEqual(['first line', '<b>untrusted</b>', 'second line', 'last line']);
+    expect(lines.every((line) => line.stamp === '' && line.pid === '' && line.severity === '')).toBe(true);
+    expect(lines[0].raw).toBe('first line');
+    expect(lines[3].record).toEqual({ offset: 31, text: 'last line' });
+    expect(outputRowsOf({ rows: 'no' })).toEqual([]);
+  });
+});
+
+describe('LogViewerPage over a task output read (Story 21.36)', () => {
+  let api: StubApi;
+
+  beforeEach(() => {
+    api = new StubApi();
+    api.tail(outputPage());
+  });
+
+  afterEach(() => {
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+  });
+
+  async function settle(): Promise<void> {
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+  }
+
+  async function mount(id = '1002'): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore }> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: `${OUTPUT_SCREEN.route}/:id`, children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => OUTPUT_SCREEN } as unknown as NavigationService },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ExplainEntry, useValue: stubExplainEntry().entry },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+      ],
+    });
+    await TestBed.inject(Router).navigateByUrl(`/${OUTPUT_SCREEN.route}/${id}`);
+    const fixture = TestBed.createComponent(LogViewerPage);
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    return { fixture, store: TestBed.inject(LogViewerStore) };
+  }
+
+  function lineTexts(fixture: ComponentFixture<LogViewerPage>): string[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.ocu-log-row')).map((row) =>
+      ((row as HTMLElement).querySelector('.ocu-log-cell-text')?.textContent ?? '').trim()
+    );
+  }
+
+  it('reads its own declared read for the route id as taskId, never a log route', async () => {
+    await mount('1002');
+    const maxRows = TestBed.inject(ScreenStores).for(OUTPUT_SCREEN.descriptor, OUTPUT_SCREEN.refreshRates).maxRows();
+    expect(api.paths).toEqual([`/api/ocupilot/screens/tasks.taskoutput/read?maxRows=${maxRows}&taskId=1002`]);
+  });
+
+  // Mutation (Rule 19): read the rows with `readRowsOf` in the store's declared branch -> the text
+  // cells are empty (the rows carry no `Text`) and this goes red.
+  it('draws each line as its text alone, oldest first, with no stamp, process, severity or chip', async () => {
+    const { fixture } = await mount();
+    expect(lineTexts(fixture)).toEqual(['first line', '<b>untrusted</b>', 'second line', 'last line']);
+    expect(fixture.nativeElement.querySelectorAll('.ocu-log-cell')).toHaveLength(4);
+    expect(fixture.nativeElement.querySelector('.ocu-log-chip')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="chips"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-log-row')?.classList.contains('ocu-log-row-plain')).toBe(true);
+    // Untrusted text is text, never markup.
+    expect(fixture.nativeElement.querySelector('.ocu-log-rows b')).toBeNull();
+  });
+
+  // Mutation (Rule 19): show the truncation line whatever the answer says (`showTruncation`) -> the
+  // first leg goes red; never show it -> the second leg goes red.
+  it('says only the end of the file is shown when the answer is truncated, and says nothing otherwise', async () => {
+    const whole = await mount();
+    expect(whole.fixture.nativeElement.querySelector('[data-ocu-log="truncated"]')).toBeNull();
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api.tail(outputPage(true));
+    const cut = await mount();
+    expect(cut.fixture.nativeElement.querySelector('[data-ocu-log="truncated"]')?.textContent?.trim()).toBe(STRINGS.taskOutputTruncated);
+    expect(lineTexts(cut.fixture)).toHaveLength(4);
+  });
+
+  it('an empty file reads the shared viewer\'s "No entries."', async () => {
+    api.tail({ fields: ['offset', 'text'], rows: [], truncated: false, banner: '' });
+    const { fixture } = await mount();
+    expect(textOfNode(fixture, '[data-ocu-log="empty"]')).toBe(STRINGS.logViewerEmpty);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="refusal"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="truncated"]')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop a code from `OUTPUT_REFUSALS` -> its leg reads the generic refusal and
+  // goes red.
+  it.each([
+    [409, 'LOG.TASKOUTPUT.NONE', STRINGS.taskOutputNone],
+    [409, 'LOG.TASKOUTPUT.ELSEWHERE', STRINGS.taskOutputElsewhere],
+    [404, 'LOG.TASKOUTPUT.ABSENT', STRINGS.taskOutputAbsent],
+    [404, 'TASK.ABSENT', STRINGS.taskDetailsGone],
+  ])('a %i %s refusal is drawn in place of rows with its own sentence', async (status, code, sentence) => {
+    api.refuseTail(status, code);
+    const { fixture } = await mount();
+    expect(textOfNode(fixture, '[data-ocu-log="refusal"]')).toBe(sentence);
+    expect(lineTexts(fixture)).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="empty"]')).toBeNull();
+  });
+
+  it('any other refusal reads the generic one', async () => {
+    api.refuseTail(400, 'READ.CRITERION');
+    const { fixture } = await mount();
+    expect(textOfNode(fixture, '[data-ocu-log="refusal"]')).toBe(STRINGS.connectivityRequestRefused);
+  });
+
+  it('another task\'s output, reached without leaving the page, reads that task', async () => {
+    const { fixture } = await mount('1002');
+    const other = outputPage();
+    other.rows = [{ offset: 1, text: 'the other task' }];
+    api.tail(other);
+    await TestBed.inject(Router).navigateByUrl(`/${OUTPUT_SCREEN.route}/2001`);
+    await settle();
+    fixture.detectChanges();
+    expect(api.paths.at(-1)?.endsWith('&taskId=2001')).toBe(true);
+    expect(lineTexts(fixture)).toEqual(['the other task']);
   });
 });

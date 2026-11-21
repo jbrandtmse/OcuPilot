@@ -2350,7 +2350,8 @@ export function criteriaProblem(declaration) {
   const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
   // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
   // Story 21.16: a locale read takes criteria only as its parent's route id (one locale's properties), on a parent-scoped list.
-  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS || port === SOURCE_LOCALE;
+  // Story 21.36: a log source's task output takes criteria only as its parent's route id (the task), on a parent-scoped list.
+  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS || port === SOURCE_LOCALE || port === SOURCE_LOGSOURCE;
   if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && port !== SOURCE_DEVTOOL && port !== SOURCE_GLOBAL && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }

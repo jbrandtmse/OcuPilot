@@ -66,6 +66,10 @@
 /// API's own integrity task makes, into a temporary stream (<method>IntegrityReport</method>); a check
 /// still running answers no lines and <code>running</code> true. The admin API keeps a check's report
 /// only in its one-read task result, so this is the one reader of a past check.</p>
+/// <p><b>One source is a scheduled task's output file</b> (Story 21.36): <parameter>TASKOUTPUTKEY</parameter>
+/// is keyed by a task id in a declared read's criteria and read by <method>TaskOutputRows</method>
+/// alone, from the file the task's stored record names when that is one file directly in the manager
+/// directory (AD-21). The record is read through <method>TaskOutputRecord</method>, a seam.</p>
 /// <p><b>Two sources tail live</b> (Story 18.38): <parameter>TAILSOURCES</parameter> names the current files
 /// of <code>messages</code> and <code>alerts</code>, and <method>Tail</method> holds a request until one
 /// moves, with a heartbeat the caller's class writes, so a viewer reads newer lines as the instance
@@ -74,7 +78,7 @@
 /// <class>OcuPilot.Test.ErrorLogFixture</class>): <method>Sources</method>,
 /// <method>PairsFor</method>, <method>FileFor</method>, <method>ManagerDirectory</method>,
 /// <method>MaxBytesCap</method>, <method>GateClass</method>, <method>FileExists</method>,
-/// <method>OpenStream</method>, <method>DirectoryEntries</method>,
+/// <method>OpenStream</method>, <method>DirectoryEntries</method>, <method>TaskOutputRecord</method>,
 /// <method>ErrorLevels</method>, <method>QueryClass</method>,
 /// <method>DetailQuery</method>, <method>NamespaceResolver</method>, <method>OpenQuery</method>,
 /// <method>RecordsClass</method>, <method>TailSources</method>, <method>TailBoundSeconds</method>,
@@ -95,7 +99,27 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 /// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it. The six
 /// <parameter>RECENTSOURCES</parameter> are served by <method>Recent</method>, and
 /// <method>Page</method> refuses them by name.</p>
-Parameter SOURCES = "messages,alerts,applicationerrors,systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics,integrity";
+Parameter SOURCES = "messages,alerts,applicationerrors,systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics,integrity,taskoutput";
+
+/// <p>The <parameter>SOURCES</parameter> key for a scheduled task's output file (Story 21.36). It is
+/// read only as a declared read's rows (<method>Rows</method>) keyed by a task id in its criteria;
+/// <method>Page</method> serves no route for it and it is in neither
+/// <parameter>TAILSOURCES</parameter> nor <parameter>RECENTSOURCES</parameter>.</p>
+Parameter TASKOUTPUTKEY = "taskoutput";
+
+/// <p>The task-output read's pair set (AD-8, AD-29): Task schedule's own pair and
+/// <code>%DB_IRISSYS:READ</code>, which the stored task record is read under.</p>
+Parameter TASKOUTPUTPAIRS = "%Admin_Task:USE,%DB_IRISSYS:READ";
+
+/// <p>The class whose stored task record <method>TaskOutputRecord</method> reads in
+/// <code>%SYS</code>.</p>
+Parameter TASKOUTPUTCLASS = "%SYS.Task";
+
+/// <p>The criterion a task-output read names its task by.</p>
+Parameter TASKOUTPUTCRITERION = "taskId";
+
+/// <p>A task's id as a caller names it: digits alone, at most ten.</p>
+Parameter TASKIDFORM = "^[0-9]{1,10}$";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's integrity checks (Story 18.4).</p>
 Parameter INTEGRITYKEY = "integrity";
@@ -509,6 +533,7 @@ ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
     If pSource = ..#EVENTLOGKEY Set tDeclared = ..#EVENTLOGPAIRS
     If pSource = ..#ANALYTICSKEY Set tDeclared = ..#ANALYTICSPAIRS
     If pSource = ..#INTEGRITYKEY Set tDeclared = ..#INTEGRITYPAIRS
+    If pSource = ..#TASKOUTPUTKEY Set tDeclared = ..#TASKOUTPUTPAIRS
     If (pNamespace '= "") && $ListFind($ListFromString(..#DATABASEREADSOURCES), pSource) {
         Set tDeclared = ..DatabaseReadSpec(tDeclared, pNamespace)
     }
@@ -1035,7 +1060,10 @@ ClassMethod Tail(pSource As %String = "", pIdentity As %String = "", pSize As %S
 /// <p><var>pTruncated</var> reports the port's own cut (AD-36): a tail window that started past the
 /// file's first byte, or <method>Recent</method>'s <code>truncated</code>. A cut by
 /// <var>pMaxRows</var> is the caller's to see, from the rows it asked one more of.</p>
-ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status
+/// <p><var>pCriteria</var> is the declared read's criteria by name. Only
+/// <parameter>TASKOUTPUTKEY</parameter> reads one (<method>TaskOutputRows</method>); every other
+/// source ignores it, so a read with no criteria is unchanged.</p>
+ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean, ByRef pCriteria) As %Status
 {
     Set tSC = $$$OK
     Set pAnswer = ""
@@ -1043,6 +1071,10 @@ ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnsw
     Set pFault = ""
     Set pTruncated = 0
     Try {
+        If pSource = ..#TASKOUTPUTKEY {
+            Set tSC = ..TaskOutputRows(pMaxRows, $Get(pCriteria(..#TASKOUTPUTCRITERION)), .pAnswer, .pHttpStatus, .pFault, .pTruncated)
+            Quit
+        }
         If $ListFind($ListFromString(..#RECENTSOURCES), pSource) {
             Set tSC = ..Recent(pSource, pMaxRows, .tRecent, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
@@ -3459,6 +3491,120 @@ ClassMethod IntegrityTime(pStart As %String) As %String
     Quit tTime _ ".000"
 }
 
+/// <p>A scheduled task's output file as the declared read's rows (<method>Rows</method>): at most
+/// <var>pMaxRows</var> objects <code>{offset, text}</code>, newest line first, from the last
+/// <parameter>DEFAULTMAXBYTES</parameter> bytes of the file, which start at a line boundary.
+/// <code>offset</code> is the line's first byte in the file, 1-based; <code>text</code> is the
+/// line as the instance stored it, one character per byte, never decoded (the vendor writes 8-bit
+/// text). <var>pTruncated</var> is true when the file is larger than that window.</p>
+/// <p><b>The caller names a task, never a location</b> (AD-21). The step order is the gate, the
+/// task id's shape, the stored record (<method>TaskOutputRecord</method>), the refusals, then the
+/// filesystem: 404 <code>TASK.ABSENT</code> for a shape miss or an unknown task, 409
+/// <code>LOG.TASKOUTPUT.NONE</code> for a task that writes no file, 409
+/// <code>LOG.TASKOUTPUT.ELSEWHERE</code> unless <method>TaskOutputHere</method> admits the stored
+/// location, and 404 <code>LOG.TASKOUTPUT.ABSENT</code> for a file not yet written. No refusal
+/// echoes a path, and a file that exists with no bytes answers no rows.</p>
+ClassMethod TaskOutputRows(pMaxRows As %Integer, pTaskId As %String, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set pTruncated = 0
+    Set tPairs = ..PairsFor(..#TASKOUTPUTKEY)
+    If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) Quit ..DeniedRefusal("", .pHttpStatus, .pFault)
+    Set tFailedPair = ""
+    If '..Gate(tPairs, .tFailedPair) Quit ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+
+    If '$Match(pTaskId, ..#TASKIDFORM) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#TASKABSENT, ##class(OcuPilot.Api.Error).#REASONTASKABSENT, .pHttpStatus, .pFault)
+    Set tRecordSC = ..TaskOutputRecord(pTaskId, .tFound, .tOpen, .tDirectory, .tName)
+    If $$$ISERR(tRecordSC) Quit ..Fail("a task record could not be read for its output file", tRecordSC, .pHttpStatus, .pFault)
+    If 'tFound Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#TASKABSENT, ##class(OcuPilot.Api.Error).#REASONTASKABSENT, .pHttpStatus, .pFault)
+    If tDirectory = $Char(0) Set tDirectory = ""
+    If tName = $Char(0) Set tName = ""
+    If 'tOpen || (tName = "") Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTNONE, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTNONE, .pHttpStatus, .pFault)
+    If '..TaskOutputHere(tDirectory, tName, .tPath) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTELSEWHERE, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTELSEWHERE, .pHttpStatus, .pFault)
+    If '..FileExists(tPath) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGTASKOUTPUTABSENT, ##class(OcuPilot.Api.Error).#REASONLOGTASKOUTPUTABSENT, .pHttpStatus, .pFault)
+
+    Set tOpenSC = ..OpenStream(tPath, .tStream)
+    If $$$ISERR(tOpenSC) || '$IsObject(tStream) Quit ..Unreadable(tOpenSC, .pHttpStatus, .pFault)
+    Set tIdentitySC = ..Identity(tStream, .tSize, .tIdentity)
+    If $$$ISERR(tIdentitySC) Quit ..Unreadable(tIdentitySC, .pHttpStatus, .pFault)
+    Set tStart = tSize - ..#DEFAULTMAXBYTES + 1
+    If tStart < 1 Set tStart = 1
+    Set tWindowSC = ..ReadWindow(tStream, tStart, ..#DEFAULTMAXBYTES, tSize, .tLines, .tNext, .tCut, 0, .tOffsets)
+    If $$$ISERR(tWindowSC) Quit ..Unreadable(tWindowSC, .pHttpStatus, .pFault)
+
+    Set tWanted = pMaxRows
+    If tWanted < 1 Set tWanted = tLines.%Size()
+    Set pAnswer = []
+    For tAt = tLines.%Size():-1:1 {
+        If pAnswer.%Size() >= tWanted Quit
+        Set tRow = {}
+        Do tRow.%Set("offset", tOffsets.%Get(tAt - 1), "number")
+        Do tRow.%Set("text", tLines.%Get(tAt - 1), "string")
+        Do pAnswer.%Push(tRow)
+    }
+    Set pTruncated = (tSize > ..#DEFAULTMAXBYTES)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The stored record of task <var>pTaskId</var>, read in <code>%SYS</code> by explicit save and
+/// restore (AD-16) at concurrency 0 with every reference dropped before the namespace is restored:
+/// <var>pFound</var>, whether the task exists, <var>pOpen</var>, its <code>OpenOutputFile</code>,
+/// and <var>pDirectory</var> and <var>pFile</var>, its <code>OutputDirectory</code> and
+/// <code>OutputFilename</code>. An error status means the record could not be read at all.
+/// Overridable so a fixture can state a record without creating a task; production never overrides
+/// it.</p>
+ClassMethod TaskOutputRecord(pTaskId As %String, Output pFound As %Boolean, Output pOpen As %Boolean, Output pDirectory As %String, Output pFile As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pFound = 0
+    Set pOpen = 0
+    Set pDirectory = ""
+    Set pFile = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tTask = $ClassMethod(..#TASKOUTPUTCLASS, "%OpenId", pTaskId, 0)
+        If $IsObject(tTask) {
+            Set pFound = 1
+            Set pOpen = ''tTask.OpenOutputFile
+            Set pDirectory = tTask.OutputDirectory
+            Set pFile = tTask.OutputFilename
+        }
+        Set tTask = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set tTask = ""
+        Set $NAMESPACE = tOrigNS
+        Set pFound = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the stored output location <var>pDirectory</var> and <var>pName</var> names one file
+/// directly in <method>ManagerDirectory</method>, and that file's path in <var>pPath</var>.</p>
+/// <p>The vendor writes <code>OutputDirectory_OutputFilename</code> by plain concatenation, so a
+/// stored directory without its trailing separator names a file beside the manager directory
+/// (measured), and the join is held to the resolved file rather than read as a different one
+/// (AD-21): the directory is non-empty and normalizes to the manager directory, the name matches
+/// <parameter>OcuPilot.Area.Task.TaskRules.OUTPUTFILEPATTERN</parameter> with no <code>..</code>, it
+/// resolves directly in that directory (<method>Resolve</method>), and the vendor's own join
+/// normalizes to that same path. Every check is a string test; nothing here touches the
+/// filesystem.</p>
+ClassMethod TaskOutputHere(pDirectory As %String, pName As %String, Output pPath As %String) As %Boolean [ Private ]
+{
+    Set pPath = ""
+    If pDirectory = "" Quit 0
+    If ('$Match(pName, ##class(OcuPilot.Area.Task.TaskRules).#OUTPUTFILEPATTERN)) || (pName [ "..") Quit 0
+    Set tManager = ..ManagerDirectory()
+    If ##class(%File).NormalizeDirectory(pDirectory) '= ##class(%File).NormalizeDirectory(tManager) Quit 0
+    If $$$ISERR(..Resolve(..#TASKOUTPUTKEY, .tPath, .tStatus, .tFault, pName, 0)) Quit 0
+    If ##class(%File).NormalizeFilename(pDirectory _ pName) '= tPath Quit 0
+    Set pPath = tPath
+    Quit 1
+}
+
 /// <p>The 400 a file name this port does not admit answers with (AD-21). The sentence names no
 /// path and repeats nothing the caller sent.</p>
 ClassMethod FileRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -3693,12 +3839,15 @@ ClassMethod ReadBytes(pStream As %Stream.Object, pWant As %Integer, Output pByte
 /// <var>pTruncated</var> is true, and <var>pNextOffset</var> advances past the window so a reader
 /// cannot loop on it.</p>
 /// <p><var>pTruncated</var> is true exactly when the page did not reach the end of the file
-/// (AD-36). <var>pLines</var> are UTF-8 decoded; a byte sequence that is not UTF-8 decodes to
-/// <code>?</code> rather than reaching the envelope as a lone byte.</p>
-ClassMethod ReadWindow(pStream As %Stream.Object, pStart As %Integer, pMaxBytes As %Integer, pSize As %Integer, Output pLines As %DynamicArray, Output pNextOffset As %Integer, Output pTruncated As %Boolean) As %Status [ Private ]
+/// (AD-36). <var>pLines</var> are UTF-8 decoded unless <var>pDecode</var> is 0, which leaves each
+/// byte one character; a byte sequence that is not UTF-8 decodes to <code>?</code> rather than
+/// reaching the envelope as a lone byte. <var>pOffsets</var> holds each line's first byte in the
+/// file, 1-based, in <var>pLines</var>' order.</p>
+ClassMethod ReadWindow(pStream As %Stream.Object, pStart As %Integer, pMaxBytes As %Integer, pSize As %Integer, Output pLines As %DynamicArray, Output pNextOffset As %Integer, Output pTruncated As %Boolean, pDecode As %Boolean = 1, Output pOffsets As %DynamicArray) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pLines = []
+    Set pOffsets = []
     Set pNextOffset = pStart
     Set pTruncated = 0
     Set tNewline = $Char(10)
@@ -3760,12 +3909,15 @@ ClassMethod ReadWindow(pStream As %Stream.Object, pStart As %Integer, pMaxBytes 
         Set pTruncated = (pNextOffset <= pSize)
 
         Set tCount = $Length(tBuf, tNewline)
+        Set tLineStart = tRegionStart
         For tI = 1:1:tCount {
             Set tLine = $Piece(tBuf, tNewline, tI)
             ; The empty piece a trailing newline leaves is a terminator, not a line.
             If (tI = tCount) && (tLine = "") Quit
+            Do pOffsets.%Push(tLineStart, "number")
+            Set tLineStart = tLineStart + $Length(tLine) + 1
             If $Extract(tLine, *) = $Char(13) Set tLine = $Extract(tLine, 1, *-1)
-            Do pLines.%Push($ZConvert(tLine, "I", "UTF8"))
+            Do pLines.%Push($Select(pDecode: $ZConvert(tLine, "I", "UTF8"), 1: tLine))
         }
     } Catch ex {
         Set pLines = []

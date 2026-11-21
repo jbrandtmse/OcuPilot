@@ -1652,6 +1652,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.SqlPrivilegeList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
+      'OcuPilot.Screen.Descriptor.TaskOutput',
       'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
@@ -3631,4 +3632,20 @@ test('Story 21.19: the config source admits the Task Manager email endpoint the 
   const other = structuredClone(screen.declaration);
   other.read.source.endpoint = 'Mail';
   assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'\)/, 'an endpoint the port does not declare is refused');
+});
+
+// Story 21.36: Task output reads a log source keyed by its parent task, so a logsource read takes criteria only as its
+// parent's route id, which `criteriaProblem` and `OcuPilot.Screen.Registry.CriteriaProblem` both allow.
+//
+// Mutation (Rule 19): drop `SOURCE_LOGSOURCE` from the parent-only rule in `criteriaProblem` -> the first leg goes red.
+test('Story 21.36: Task output takes its parent task as a logsource criterion, and the same declaration without a parent is refused', () => {
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOutput');
+  assert.ok(screen !== undefined, 'Task output is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'logsource', endpoint: 'taskoutput', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, "its read passes");
+  assert.equal(criteriaProblem(screen.declaration), null, "its criteria pass");
+  const orphan = structuredClone(screen.declaration);
+  orphan.parentScope = '';
+  assert.match(criteriaProblem(orphan), /^read\.criteria is declared on a 'logsource' source, and server criteria travel on the admin/, 'and without its parent it is refused');
 });

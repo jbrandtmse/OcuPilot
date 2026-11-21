@@ -35219,7 +35219,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Error",
         "LastStarted",
         "LastFinished",
-        "NextScheduled"
+        "NextScheduled",
+        "OpenOutputFile",
+        "OutputDirectory",
+        "OutputFilename"
       ],
       "secretFields": []
     },
@@ -35292,7 +35295,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Error",
         "LastStarted",
         "LastFinished",
-        "NextScheduled"
+        "NextScheduled",
+        "OpenOutputFile",
+        "OutputDirectory",
+        "OutputFilename"
       ],
       "filter": [
         "Name",
@@ -35316,7 +35322,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Error",
         "LastStarted",
         "LastFinished",
-        "NextScheduled"
+        "NextScheduled",
+        "OpenOutputFile",
+        "OutputDirectory",
+        "OutputFilename"
       ],
       "sort": {
         "fields": [
@@ -35341,7 +35350,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Error",
           "LastStarted",
           "LastFinished",
-          "NextScheduled"
+          "NextScheduled",
+          "OpenOutputFile",
+          "OutputDirectory",
+          "OutputFilename"
         ],
         "default": "Name",
         "direction": "asc"
@@ -35420,6 +35432,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "Error",
           "labelKey": "taskDetailsLastError",
+          "kind": "text"
+        },
+        {
+          "field": "OutputFilename",
+          "labelKey": "taskOutputFilename",
+          "kind": "text"
+        },
+        {
+          "field": "OutputDirectory",
+          "labelKey": "taskOutputDirectory",
           "kind": "text"
         }
       ],
@@ -36024,6 +36046,125 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskOutput",
+    "route": "tasks/schedule/output",
+    "area": "tasks",
+    "labelKey": "taskOutputLabel",
+    "sideBarPosition": 0,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "tasks/schedule",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "offset",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskOutputPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskOutputPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskOutputPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.TaskInfo",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "line of a task's output file",
+      "source": {
+        "port": "logsource",
+        "endpoint": "taskoutput",
+        "type": "LIST"
+      },
+      "fields": [
+        "offset",
+        "text"
+      ],
+      "filter": [
+        "offset",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "offset"
+        ],
+        "default": "offset",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "taskId",
+            "labelKey": "taskHistoryColumnTaskId",
+            "kind": "text",
+            "maxLength": 10,
+            "hint": "One task's whole-number id, as tasks.schedule.read answers its Id."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.taskoutput",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",
