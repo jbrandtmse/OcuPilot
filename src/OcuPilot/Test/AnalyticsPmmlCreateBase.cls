@@ -147,4 +147,217 @@ ClassMethod HeldPairSpec() As %String
     Quit $Parameter(..#PORT, "PMMLPAIRS")
 }
 
+/// <p>Set the governance key <var>pKey</var> to <var>pValue</var> (<code>enabled</code> or <code>disabled</code>) for this test; the policy found is restored by <method>OnAfterOneTest</method>.</p>
+Method SetKey(pKey As %String, pValue As %String)
+{
+    If '..PreparedPolicyTaken {
+        Kill tPolicy
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tPolicy), "the governance policy is read")
+        Merge ..PreparedPolicy = tPolicy
+        Set ..PreparedPolicyTaken = 1
+    }
+    Kill tSettings
+    Set tSettings(pKey) = pValue
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), pKey _ " is set " _ pValue)
+}
+
+/// <p>The export to a cube's tool (Story 24.14, Batch 4), the endpoint its write is made at, the screen path the person's Export to cube is sent to, the port seam that fails a step of it
+/// (<class>OcuPilot.Test.PmmlPortExport</class>) and the custom query the export tests use as their third source.</p>
+Parameter EXPORTTOOL = "OcuPilot.Screen.Tool.AnalyticsPmmlModelExport";
+
+Parameter EXPORTENDPOINT = "PmmlModel";
+
+Parameter EXPORTSCREEN = "/screens/analytics.pmmlmodel/action";
+
+Parameter EXPORTSEAM = "OcuPilot.Test.PmmlPortExport";
+
+Parameter EXPORTCUSTOM = "SELECT ID, X, Color, Y FROM ProbePmml.Source WHERE X < 8";
+
+/// <p>The probe's categorical model, <code>Colors</code>, as the screen sends its composite id.</p>
+ClassMethod ModelId() As %String
+{
+    Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild($Parameter(..#PMML, "DEFINITIONCLASS"), $Parameter(..#PMML, "CATEGORICAL")))
+}
+
+/// <p>The same model as the agent spells it: its class, two vertical bars and its name.</p>
+ClassMethod ModelSpelled() As %String
+{
+    Quit $Parameter(..#PMML, "DEFINITIONCLASS") _ "||" _ $Parameter(..#PMML, "CATEGORICAL")
+}
+
+/// <p>The result class, the cube class and the cube of the export a test names with <var>pMarker</var>, outside the <code>OcuPilot</code> names.</p>
+ClassMethod ExportClass(pMarker As %String) As %String
+{
+    Quit $Parameter(..#PMML, "EXPORTPREFIX") _ pMarker _ ".Result"
+}
+
+ClassMethod ExportCubeClass(pMarker As %String) As %String
+{
+    Quit $Parameter(..#PMML, "EXPORTPREFIX") _ pMarker _ ".ResultCube"
+}
+
+ClassMethod ExportCube(pMarker As %String) As %String
+{
+    Quit "ProbePmmlExport" _ pMarker
+}
+
+/// <p>The values of the export of the marker <var>pMarker</var> against <var>pSource</var> (<code>dataset</code>, which names the probe's own data source, <code>verification</code> or
+/// <code>custom</code>, which carries <parameter>EXPORTCUSTOM</parameter>): what the screen's action and the port's write take.</p>
+ClassMethod ExportValues(pMarker As %String, pSource As %String = "dataset") As %DynamicObject
+{
+    Set tValues = {"Source": (pSource), "ResultClass": (..ExportClass(pMarker)), "CubeClass": (..ExportCubeClass(pMarker)), "Cube": (..ExportCube(pMarker))}
+    If pSource = "dataset" Do tValues.%Set("DataSource", $Parameter(..#PMML, "DATASET"), "string")
+    If pSource = "custom" Do tValues.%Set("SQL", ..#EXPORTCUSTOM, "string")
+    Quit tValues
+}
+
+/// <p>The agent's arguments for the same export: the values and the model.</p>
+ClassMethod ExportArgs(pMarker As %String, pSource As %String = "dataset") As %DynamicObject
+{
+    Set tArgs = ..ExportValues(pMarker, pSource)
+    Do tArgs.%Set("Model", ..ModelSpelled(), "string")
+    Quit tArgs
+}
+
+/// <p>The write port's <code>TOCUBE</code> of <var>pBody</var> over the probe's model: the HTTP status and the fault's code in one string, the answer in <var>pResult</var>.</p>
+ClassMethod Export(pBody As %DynamicObject, Output pResult) As %String
+{
+    Quit ..Port(..#EXPORTENDPOINT, "TOCUBE", ..ModelId(), pBody, "", .pResult)
+}
+
+/// <p>The person's Export to cube of <var>pValues</var> over the probe's model: the status, the answer in <var>pAnswer</var>.</p>
+ClassMethod ExportAct(pValues As %DynamicObject, Output pAnswer) As %Integer
+{
+    Quit ..Act(..#EXPORTSCREEN, "export", ..ModelId(), pValues, .pAnswer)
+}
+
+/// <p>1 when the namespace holds a cube named <var>pCube</var>, 0 when it does not and -1 when the lookup failed.</p>
+ClassMethod CubeHeld(pCube As %String) As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHeld = -1
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeld = ''##class(%DeepSee.Utils).%CubeExists(pCube)
+    } Catch {
+        Set tHeld = -1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tHeld
+}
+
+/// <p>The rows of the result class <var>pClass</var>, <code>-1</code> when the class does not exist or the count fails.</p>
+ClassMethod ResultRows(pClass As %String) As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tCount = -1
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If ##class(%Dictionary.CompiledClass).%ExistsId(pClass) {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM " _ ##class(%DeepSee.Utils).%GetSQLTableName(pClass))
+            If (tRS.%SQLCODE >= 0) && tRS.%Next() Set tCount = tRS.%GetData(1)
+        }
+    } Catch {
+        Set tCount = -1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
+}
+
+/// <p>The result class's rows as <code>value=count;</code> for each actual value, in value order, and, after a <code>|</code>, the test ids the rows carry; <code>"absent"</code> for a class that does not exist.</p>
+ClassMethod ResultValues(pClass As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tOut = "absent"
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If ##class(%Dictionary.CompiledClass).%ExistsId(pClass) {
+            Set tTable = ##class(%DeepSee.Utils).%GetSQLTableName(pClass)
+            Set tOut = ""
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT %EXACT(ActualValue), COUNT(*) FROM " _ tTable _ " GROUP BY %EXACT(ActualValue) ORDER BY %EXACT(ActualValue)")
+            While tRS.%Next() {
+                Set tOut = tOut _ tRS.%GetData(1) _ "=" _ tRS.%GetData(2) _ ";"
+            }
+            Set tIds = ""
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT DISTINCT TestId FROM " _ tTable _ " ORDER BY TestId")
+            While tRS.%Next() {
+                Set tIds = tIds _ $Select(tIds = "": "", 1: ",") _ tRS.%GetData(1)
+            }
+            Set tOut = tOut _ "|" _ tIds
+        }
+    } Catch {
+        Set tOut = "unreadable"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tOut
+}
+
+/// <p>The per-value counts of a test's <code>ran</code> answer <var>pAnswer</var> as <method>ResultValues</method> reads the result class's, without the test ids.</p>
+ClassMethod AnswerValues(pAnswer As %DynamicObject) As %String
+{
+    Set tOut = ""
+    For tAt = 0:1:pAnswer.values.%Size() - 1 {
+        Set tOut = tOut _ pAnswer.values.%Get(tAt).actual _ "=" _ pAnswer.values.%Get(tAt).records _ ";"
+    }
+    Quit tOut
+}
+
+/// <p>The answer the port's own test of the probe's model against <var>pSource</var> gives, the oracle an export's rows are compared with: <code>ran</code> with its records and values.</p>
+ClassMethod OracleAnswer(pSource As %String = "dataset") As %DynamicObject
+{
+    Set tSC = $ClassMethod(..#PORT, "PmmlRun", ..#NAMESPACE, $Parameter(..#PMML, "DEFINITIONCLASS"), $Parameter(..#PMML, "CATEGORICAL"), pSource, $Select(pSource = "dataset": $Parameter(..#PMML, "DATASET"), 1: ""), $Select(pSource = "custom": ..#EXPORTCUSTOM, 1: ""), 120, "", "", .tAnswer, .tStopped)
+    Quit $Get(tAnswer)
+}
+
+/// <p>The text of the <code>Cube</code> XData of the cube class <var>pClass</var>, <code>""</code> for none.</p>
+ClassMethod CubeXData(pClass As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = ""
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tXData = ##class(%Dictionary.XDataDefinition).%OpenId(pClass _ "||Cube")
+        If $IsObject(tXData) && $IsObject(tXData.Data) {
+            Do tXData.Data.Rewind()
+            While 'tXData.Data.AtEnd {
+                Set tText = tText _ tXData.Data.Read(32000)
+            }
+        }
+    } Catch {
+        Set tText = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tText
+}
+
+/// <p>1 when the data global of the persistent class <var>pClass</var> holds anything in <code>USER</code>. It reads <code>^</code><var>pClass</var><code>D</code>, which is the class's data global only for a name of at most 29 characters:
+/// the compiler hashes a longer name's global (measured), and this then reads a global nothing writes. A test whose data check matters uses a marker of at most six characters.</p>
+ClassMethod DataLeft(pClass As %String) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tLeft = 0
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tGlobal = "^" _ pClass _ "D"
+        Set tLeft = ''$Data(@tGlobal)
+    } Catch {
+        Set tLeft = 1
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tLeft
+}
+
+/// <p>What the export of the marker <var>pMarker</var> left, as text: <code>""</code> when neither of its classes, nor a class of either package, nor its cube, nor the result class's data, nor a vendor result row of the probe's models remains.
+/// The cube is the marker's own unless the export asked for another, which <var>pCube</var> names.</p>
+ClassMethod ExportLeft(pMarker As %String, pCube As %String = "") As %String
+{
+    Set tLeft = ""
+    If ..Free(..ExportClass(pMarker)) '= 1 Set tLeft = tLeft _ " result class"
+    If ..Free(..ExportCubeClass(pMarker)) '= 1 Set tLeft = tLeft _ " cube class"
+    If ..CubeHeld($Select(pCube '= "": pCube, 1: ..ExportCube(pMarker))) '= 0 Set tLeft = tLeft _ " cube"
+    If ..DataLeft(..ExportClass(pMarker)) Set tLeft = tLeft _ " data"
+    If $ClassMethod(..#PMML, "Rows") Set tLeft = tLeft _ " test rows"
+    Quit $ZStrip(tLeft, "<>W")
+}
+
 }

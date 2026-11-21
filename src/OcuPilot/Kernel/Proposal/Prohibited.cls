@@ -1437,6 +1437,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Caption,Description,SubjectArea,Expression,LinkedTo,Published,Format,Href")
     If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
     If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Caption,Content,Disabled")
+    ; Story 24.14 Batch 4: a PMML model's export to a cube moves the test's source and the names of what it makes.
+    If pType = ..#TYPEPMMLMODEL Quit $ListFromString("Source,DataSource,SQL,ResultClass,CubeClass,Cube,SourceClass")
     ; Story 24.13: a General setting moves its value (its key is a declared secret the card names); a worklist option whether it is shown.
     If pType = ..#TYPEANALYTICSSETTING Quit $ListBuild("Value")
     If pType = ..#TYPEANALYTICSWORKLIST Quit $ListBuild("Shown")

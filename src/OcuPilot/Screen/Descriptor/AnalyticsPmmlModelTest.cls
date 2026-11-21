@@ -6,7 +6,9 @@
 /// the list's row.</p>
 /// <p><b>The test is <class>OcuPilot.Area.Analytics.PmmlTest</class>'s background run</b>, a person's read-kind run: the person picks one of the model's data sources, its verification records or one SQL query, and
 /// the answer is the record count, the metrics and the per-value counts, or for a continuous target sigma, RSE and R squared, with each record's actual and predicted value. The agent gets no run (AD-60).
-/// Its pairs are PMML models'; it offers no action and does not refresh.</p>
+/// Its pairs are PMML models'; it does not refresh.</p>
+/// <p><b>It writes</b> (Story 24.14, Batch 4): its primary action, Export to cube, is the tool <code>analytics.pmmlmodel.export</code>. It tests the model again in the request that confirms it, copies the test's rows into a new
+/// persistent class and makes a new cube class that reads them; it never builds the cube, which the Cube manager's Build does. The page's own dialog sends it, and the agent proposes the same write.</p>
 Class OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -28,8 +30,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "analytics/pmml-models",
   "id": {"kind": "composite", "parts": ["Class", "Model"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "export", "selfProtection": ""},
+  "rowActions": [{"id": "export", "selfProtection": ""}],
   "context": {"fields": ["Class", "Model", "Type", "Target", "TargetType", "DataSources", "Verification"], "secretFields": []},
   "emptyStateKey": "analyticsPmmlModelGone",
   "commandAliases": [],
@@ -61,8 +63,8 @@ XData Declaration
       {"field": "DataSources", "labelKey": "analyticsPmmlDataSources", "kind": "text", "long": true},
       {"field": "Verification", "labelKey": "analyticsPmmlVerification", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "analyticsPmmlModelTestEmptyAgent"
   },
   "toolIdentifier": "analytics.pmmlmodel"
 }

@@ -8482,9 +8482,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T19:33:26Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=three governance-settle reds 2026-11-20 (runs 44743879162, 44736623307, 44794079238); must-fix in 21.23; candidate cause the governance screen's settle time at 329 baseline keys (inference); 21.23 measures the settle time at 720px and 1280px, light and dark, and fixes the screen or the walker, never the deadline
 - 2026-11-20T19:29:15Z by=epic-24-runner note=occurrence: CI run 44794079238 (24.14 Batch 2 integrate head b70aa5d69), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance (720px light, 60 s); every instance shard and the other browser shards green; third settle red at /agent/governance today (21.20's run, fa07e9126's run, this one); the governance screen lists 329 keys, so a real settle-time regression is possible (inference); orchestrator routes DW-1822 to 21-23 as must-fix
 - 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_1/5_a11y_AC5_settle_/agent/governance_1280px_light_60s;rerun_--failed;must-fix_in_21-23_stands
+- 2026-11-21T01:35:20Z by=epic-24-runner note=occurrence: CI run 44845372336 (24.14 Batch 2b head 73c758917), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance?ns=HSCUSTOM (720px light, 60 s, retried once); fourth settle red at /agent/governance in a day
 - 2026-11-21T02:14:04Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44851185597_browser_shard_1(21.36_head_ae4b9b1b3):1280px_light_settle_/agent/governance
 - 2026-11-21T01:35:50Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:24.14-2b_head_73c758917(server-only)_run44845372336_browser_1/5_a11y_AC5_settle_/agent/governance_720px_light;fifth_today;21-23_moved_ahead_of_21-37
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
+- 2026-11-21T17:49:21Z by=epic-24-runner note=occurrence after 21.23 merged: CI run 44927449204 (24.14 Batch 4 integrate head 84f1ad5c9, which carries feature de0df01f9), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance?ns=HSCUSTOM (1280px light, 60 s, retried light then dark); the same specs plus 20 others passed 132/132 forward and reverse on ocupilot-b-ci built from the same tree
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8532,6 +8534,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
 - 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 - 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
+- 2026-11-21T06:14:39Z by=epic-24-runner note=occurrence: BackgroundTasksLive red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 10/17; a seeded compact ended before its pause), green on one re-run
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -14231,6 +14234,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T18:56:50Z status=routed owner=burndown by=runner note=recurred:21.21_runner_sweep_shard_5(head_83e75a7f8):InteropItemRun.TestTheAgentsStopAndStartConfirmOverHttp:operation_holds_no_job_after_the_start;CI_run_44790510586_ran_the_class_green;per_policy_a_second_red_is_a_defect
 - 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
 - 2026-11-20T10:25:11Z status=open owner=burndown by=runner note=SECOND RED (ocupilot-b-ci sweep shard 16, 24.14 Batch 2 implement, same assertion, green on its one re-run): per the orchestrator's rule this is now a defect, not a flake
+- 2026-11-21T06:14:33Z by=epic-24-runner note=occurrence (same shape, different method): InteropItemRun.TestEachToolsDraftRendersItsScript red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 15/17; the probe production's job did not start), green on one re-run
 - 2026-11-21T08:29:12Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=START-race_hypothesis_refuted_locally(21.23_plan):12_start_cycles,START_200_Running_in_~10ms_with_the_operation's_job_listed;InteropHostTest_then_InteropItemRun_green(runs_868,869);suspects:helper_ignores_START's_answer,partial_job_lookup_reads_as_no_job
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=not_reproduced_in_5_of_5_runs(21.23);the_one_observed_mechanism(a_nameless_job_row)_fixed_in_5489af497;awaiting_a_CI_red_carrying_the_new_START/row_text;resolve_or_wontfix_at_burn-down
 
@@ -14297,6 +14301,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Document now, fix later (Recommended)": README half on the 1.0.18 release branch by the Planner (closes against the release commit when sent); installer-needs-less half routed to a later story
 - 2026-11-20T20:40:08Z status=routed owner=burndown by=orchestrator note=documentation half closed by release/1.0.18 7d53e3312 (README IPM install: %Admin_Task:USE, SELECT on %Dictionary.CompiledClass, schema OcuPilot_Kernel_State privileges WITH GRANT OPTION, foreign-grant warning expected); installer-needs-less half stays routed to a later story
 
+### DW-2818: PMML Export to cube's script form copies and drops the test rows with dynamic SQL, so for a person without SQL privileges on %DeepSee_PMML_Utils.TempResult the script's copy is refused and its rows stay in IRISTEMP; the write itself uses embedded SQL and is unaffected
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: review layer finding; the script is a copy-out draft a person runs in their own session (AD-59)
+- 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=needs a ruled sentence in the script, or embedded SQL in the draft; escalated to the orchestrator
+- 2026-11-21T14:07:06Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=fc429a890: the script states the SQL SELECT and DELETE privileges it needs (orchestrator-ruled comment); named limit in the spec's Design Notes
+
+### DW-2819: PMML Export to cube kills the new result class extent before its copy (write and script), which also erases data an unrelated writer left under a free class name's data global; refusing such a name instead is stricter and changes Measured 1
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (review c7e20150a) | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: review layer finding; Measured 1: deleting a compiled %Persistent class leaves its data global, so the export kills the extent first
+- 2026-11-21T13:13:35Z status=decision-pending owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=product ruling needed before 24.14's last head is pushed; escalated to the orchestrator
+- 2026-11-21T14:07:06Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=fc429a890: the export refuses ANALYTICS.PMML.DATAHELD when the compiled storage's data, index or stream location holds data, checked after compile and before any kill; the script makes the same check
+
+### DW-2820: Test helper AnalyticsPmmlCreateBase.DataLeft reads ^<class>D, which is a class's data global only when the class name is at most 29 characters; longer test markers check no data
+- source: spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md (QA 354796f5d, review c7e20150a) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: measured on ocupilot-b-ci in review: a 30-character class name gets a hashed data global
+- 2026-11-21T13:13:35Z status=resolved-by:24-14-pmml-model-tester-and-dashboard-viewer owner=24-14-pmml-model-tester-and-dashboard-viewer by=epic-24-runner note=review c7e20150a renamed the markers whose data check matters to six characters or fewer and states the limit in DataLeft's comment
 ### DW-2810: The task output read follows a symbolic link named *.txt in the manager directory to a file outside it
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-ci: link ocuplink2136.txt -> /etc/hostname read 200 through taskoutput; %File.Attributes follows links (33188), so no lstat exists; every LogSourcePort source opens paths the same way

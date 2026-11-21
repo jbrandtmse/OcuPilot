@@ -28,20 +28,6 @@ Method RemoveFixtures() As %Status
     Quit tSC
 }
 
-/// <p>Set the governance key <var>pKey</var> to <var>pValue</var> (<code>enabled</code> or <code>disabled</code>) for this test; the policy found is restored by <method>OnAfterOneTest</method>.</p>
-Method SetKey(pKey As %String, pValue As %String)
-{
-    If '..PreparedPolicyTaken {
-        Kill tPolicy
-        Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tPolicy), "the governance policy is read")
-        Merge ..PreparedPolicy = tPolicy
-        Set ..PreparedPolicyTaken = 1
-    }
-    Kill tSettings
-    Set tSettings(pKey) = pValue
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), pKey _ " is set " _ pValue)
-}
-
 /// <p>The text <var>pText</var> saved as the class <var>pClass</var> and compiled by the vendor directly, with nothing of OcuPilot's in between: the compile's status. A class the compile
 /// refused is left as it is for the caller to look at, and <method>RemoveFixtures</method> removes it.</p>
 ClassMethod CompileDirect(pClass As %String, pText As %String) As %Status

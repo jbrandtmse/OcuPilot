@@ -1415,3 +1415,103 @@ test('Story 24.14 Batch 3: a person opens New PMML definition, loads a PMML file
     assert.equal(removed.value, '11', `the new classes are removed: ${removed.output}`);
   }
 });
+
+const PMML_EXPORT_BASE = 'OcuPilot.Test.AnalyticsPmmlCreateBase';
+
+// Story 24.14 Batch 4 AC6. Mutation (Rule 19): send the model's name in place of its composite id from `pmml-model-test.page.ts` (rebuild and redeploy first) -> the export is refused, the dialog stays open and
+// the first leg goes red; send the default result class in place of the typed one -> the instance holds no class under the typed name and the second leg goes red.
+test('Story 24.14 Batch 4: a person tests a model, exports the result to a new cube from the dialog, and the instance holds the result class, its rows and the cube class', async () => {
+  const made = probe('PMMLEXPMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  const result = probe('PMMLEXPNAMES', `##class(${PMML_EXPORT_BASE}).ExportClass("Browse")_"|"_##class(${PMML_EXPORT_BASE}).ExportCubeClass("Browse")_"|"_##class(${PMML_EXPORT_BASE}).ExportCube("Browse")`);
+  const [resultClass, cubeClass, cube] = result.value.split('|');
+  assert.ok(resultClass && cubeClass && cube, `the export names are read: ${result.output}`);
+  try {
+    const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+    const { context, page } = await signedInAt(browser, config, url(`${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsPmmlExportAction, 'the primary action opens Export to cube');
+      assert.equal(await page.$eval('[data-pmml-export-source]', (node) => node.textContent.trim()), STRINGS.analyticsPmmlSourceVerification, 'the dialog names the source chosen on the screen');
+      for (const [field, value] of [['result', resultClass], ['cube-class', cubeClass], ['cube', cube]]) {
+        await page.$eval(`[data-pmml-export-${field}]`, (node) => { node.value = ''; });
+        await page.type(`[data-pmml-export-${field}]`, value);
+      }
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-ocu-pmml="export-line"]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$('app-pmml-export-dialog'), null, 'the dialog closes once the export is made');
+      const line = await page.$eval('[data-ocu-pmml="export-line"]', (node) => node.textContent.trim());
+      assert.ok(line.includes(resultClass) && line.includes(cube), `the line names the result class and the cube: ${line}`);
+      const oracle = probe('PMMLEXPORACLE', `##class(${PMML_EXPORT_BASE}).OracleAnswer("verification").records`);
+      const rows = probe('PMMLEXPROWS', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")`);
+      assert.equal(rows.value, oracle.value, `the result class holds one row per record the vendor's own test read: ${rows.output} / ${oracle.output}`);
+      const held = probe('PMMLEXPCUBE', `##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")`);
+      assert.equal(held.value, '1', `the instance holds the cube: ${held.output}`);
+      const compiled = inUser('PMMLEXPCLASS', [`Set out=##class(%Dictionary.CompiledClass).%ExistsId("${cubeClass}")`]);
+      assert.equal(compiled.value, '1', `and the cube class is compiled: ${compiled.output}`);
+      assert.deepEqual(await structural(page, PMML_MODEL_TEST), [], `${PMML_MODEL_TEST}: no violation beyond the baseline's entries, with the export line drawn`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLEXPGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_(##class(${PMML_PROBE}).Left()="")`);
+    assert.equal(gone.value, '11', `the export and the probe are removed: ${gone.output}`);
+  }
+});
+
+// Story 24.14 Batch 4 QA: the dialog's own sentences are the ruled ones, the result line states the count, class and cube, and a second export under the same names is refused in the dialog with the
+// published sentence while the first export's rows and cube stay. Mutation (Rule 19): draw `analyticsPmmlExportAction` in place of the consequence in `pmml-export-dialog.ts` (rebuild and redeploy first) -> the
+// consequence leg goes red; draw no refusal sentence there -> the refusal leg goes red.
+test('Story 24.14 Batch 4: the export dialog shows the ruled sentences, and a second export under the same names is refused with the first export left as it was', async () => {
+  const made = probe('PMMLEXQMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  const result = probe('PMMLEXQNAMES', `##class(${PMML_EXPORT_BASE}).ExportClass("Twice")_"|"_##class(${PMML_EXPORT_BASE}).ExportCubeClass("Twice")_"|"_##class(${PMML_EXPORT_BASE}).ExportCube("Twice")`);
+  const [resultClass, cubeClass, cube] = result.value.split('|');
+  assert.ok(resultClass && cubeClass && cube, `the export names are read: ${result.output}`);
+  const type = async (page, names) => {
+    for (const [field, value] of [['result', names[0]], ['cube-class', names[1]], ['cube', names[2]]]) {
+      await page.$eval(`[data-pmml-export-${field}]`, (node) => { node.value = ''; });
+      await page.type(`[data-pmml-export-${field}]`, value);
+    }
+  };
+  try {
+    const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+    const { context, page } = await signedInAt(browser, config, url(`${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-pmml-export-consequence]', (node) => node.textContent.trim()), STRINGS.analyticsPmmlExportConsequence, 'the dialog states the ruled consequence');
+      const labels = await page.$$eval('app-pmml-export-dialog .ocu-field-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+      assert.deepEqual(labels, [STRINGS.analyticsColumnDataSource, STRINGS.analyticsPmmlResultClassLabel, STRINGS.analyticsPmmlCubeNameLabel, STRINGS.analyticsPmmlCubeClassLabel, STRINGS.analyticsPmmlSourceClassLabel], 'the dialog labels its fields with the ruled names');
+      await type(page, [resultClass, cubeClass, cube]);
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-ocu-pmml="export-line"]', { visible: true, timeout: config.navigationTimeoutMs });
+      const records = probe('PMMLEXQORACLE', `##class(${PMML_EXPORT_BASE}).OracleAnswer("verification").records`).value;
+      const line = await page.$eval('[data-ocu-pmml="export-line"]', (node) => node.textContent.trim());
+      assert.equal(line, STRINGS.analyticsPmmlExportedLine.replace('{count}', records).replace('{class}', resultClass).replace('{cube}', cube), 'the result line is the ruled sentence with the count, the class and the cube');
+      const before = probe('PMMLEXQBEFORE', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")_"|"_##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")_"|"_##class(${PMML_PROBE}).Rows()`);
+      assert.equal(before.value, `${records}|1|0`, `the first export holds its rows and its cube and leaves no vendor result row: ${before.output}`);
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      await type(page, [resultClass, cubeClass, cube]);
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-pmml-export-reason]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-pmml-export-reason]', (node) => node.textContent.trim()), STRINGS.analyticsRefusalPmmlTaken, 'the second export is refused with the published sentence');
+      assert.notEqual(await page.$('app-pmml-export-dialog'), null, 'and the dialog stays open');
+      const after = probe('PMMLEXQAFTER', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")_"|"_##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")_"|"_##class(${PMML_PROBE}).Rows()`);
+      assert.equal(after.value, before.value, `and the first export is as it was: ${after.output}`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLEXQGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_(##class(${PMML_PROBE}).Left()="")_(##class(${PMML_EXPORT_BASE}).ExportLeft("Twice"))`);
+    assert.equal(gone.value, '11', `the export and the probe are removed: ${gone.output}`);
+  }
+});

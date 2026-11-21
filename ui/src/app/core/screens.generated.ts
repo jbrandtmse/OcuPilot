@@ -3960,10 +3960,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "export",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "export",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Class",
@@ -4086,8 +4091,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsPmmlModelTestEmptyAgent"
     },
     "toolIdentifier": "analytics.pmmlmodel",
     "refreshDefault": 0,

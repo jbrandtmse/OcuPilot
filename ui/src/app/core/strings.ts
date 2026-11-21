@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:664 */
+  /** EXPERIENCE.md:665 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -8560,6 +8560,37 @@ export const STRINGS = {
   analyticsRefusalPmmlReadonly: 'The database that holds this namespace\'s classes is read-only.',
   /** EXPERIENCE.md:622 */
   analyticsPmmlModelsEmptyAgent: 'create a PMML definition',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportAction: 'Export to cube',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlResultClassLabel: 'Result class name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlCubeNameLabel: 'Cube name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlCubeClassLabel: 'Cube class name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlSourceClassLabel: 'Link to source class',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportConsequence:
+    'The test runs again with your rights. Its results are copied into a new result class, and a new cube class reads them. The cube is not built until you build it in the Cube manager, and OcuPilot cannot undo an export.',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportedLine: 'Exported {count} records to {class}. Build the cube {cube} in the Cube manager.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlSame: 'The result class and the cube class must be two classes, neither in the other\'s package.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlCubeTaken: 'This namespace already holds a cube with this name.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlCubeName: 'A cube name is 1 to 250 characters, with no control character and no } character.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlSourceClass: 'The class to link to is not one this namespace holds.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlExportRun: 'The test did not finish, so nothing was exported.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlExportCompile: 'The instance refused the export\'s classes or rows, so nothing was changed.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlDataHeld: 'This namespace already holds data stored under this class name. Choose another name.',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlModelTestEmptyAgent: 'export a test to a cube',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */

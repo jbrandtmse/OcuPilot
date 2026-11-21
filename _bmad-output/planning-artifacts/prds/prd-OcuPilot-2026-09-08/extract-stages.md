@@ -14,7 +14,7 @@ Complexity, as the catalog's legend defines it: **S** list only · **M** list pl
 
 The catalog's own reading of the tiers for co-pilot rows (Judgment calls): "for co-pilot features P2 was read as 'API exists or is a bounded extension' and P3 as 'new server-side path'" — which is why CP-34 streaming sits at P2 and CP-40 undo at P3.
 
-Catalog totals for the three tiers: **P2 137 · P3 152 · P4 68 = 357 rows** (the parse of the catalog tables reproduces the summary table exactly). Three duplicates the catalog keeps deliberately are all P0/P1 (LG-02 = SS-14, LG-09 = IO-01, EX-01 = SH-03), so no duplicate inflates these tiers.
+Catalog totals for the three tiers: **P2 137 · P3 152 · P4 71 = 360 rows** (the parse of the catalog tables reproduces the summary table exactly). Three duplicates the catalog keeps deliberately are all P0/P1 (LG-02 = SS-14, LG-09 = IO-01, EX-01 = SH-03), so no duplicate inflates these tiers.
 
 ## 2. Stage outline
 
@@ -26,7 +26,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 2. **Stage 2** takes every P2 row backed by `atelier` or by the Explorer section, plus the Documatic embed (EX-34) and, **by extension**, DT-01 (the DocDB data browser on the official `/api/docdb` route — a sibling of the SQL data browser; the addendum does not name it). OS-23 (SQL activity) is an OS-section row but needs the Stage 2 action/query plumbing, so it sits here.
 3. **Stage 3** takes every P2 row backed by `interop-v7` or an `embed`, the two shell rows that gate embedding and namespace categories (SH-23, SH-25), and, **by extension and flagged**, the nine Analytics P2 rows on `/api/deepsee` (AN-02..AN-10) plus IO-17 (also deepsee). The addendum names no Analytics stage; Analytics is attached here as a rider because both categories are namespace-gated by the same SH-25 mechanism and are official-route work with no custom endpoints. The PRD author may split it out as a stage of its own.
 4. **Stage 4** takes all 152 P3 rows, sub-grouped by catalog section so the Explorer, Interoperability, Analytics, Operations and Developer-tools sub-tracks are visible. CP-34 (streaming, P2) is placed here because the addendum sequences streaming last in the agent's growth.
-5. **Stage 5** takes all 68 P4 rows, grouped by the catalog's exclusion reason.
+5. **Stage 5** takes all 71 P4 rows, grouped by the catalog's exclusion reason.
 6. **CP rows follow the agent-growth sequence, not their API.** The addendum names four steps — "confirmed single writes, then guided multistep workflows, undo, and streaming" — laid across Stages 1–4 in that order: Stage 1 confirmed single writes over the admin-v2 remainder (CP-35, CP-39, CP-41 as hardening); Stage 2 single writes over Atelier plus the agent picker (CP-36); Stage 3 guided multistep workflows (CP-37, CP-38); Stage 4 undo (CP-40) and streaming (CP-34), plus the 28 session-agent tools (IO-91..IO-118). Stage 5 adds nothing to the agent.
 
 "Custom endpoint" below means the catalog's API-backing column names `custom(...)`. For CP rows and the IO-91..118 tools this is server-side agent code that rides on the existing chat endpoint (CP-02) rather than a new REST route; they are counted but footnoted.
@@ -633,7 +633,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 
 ### Stage 5 — The long tail, as demand shows (P4)
 
-**68 rows** · S 12 / M 34 / L 22 · custom endpoints 42
+**71 rows** · S 13 / M 36 / L 22 · custom endpoints 42
 
 **What the user can do at the end.** Nothing is scheduled; each row is picked up only when demand shows and its gate (license, edition, deprecation status, platform) clears. The groups are: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and iKnow Text Analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter-specific dialogs; full applications linked instead of rebuilt (Architect, Analyzer, User Portal); dead references, dead placeholders and cosmetic items; and not planned (a feature the architecture does not allow, or that no IRIS class backs).
 
@@ -674,7 +674,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | IO-81 | Enterprise monitor | viewer | custom | M | Excluded: Enterprise systems (with IO-80). |
 | IO-90 | ITK Setup: service definitions, registry viewer, fault codes, fault map | list | none | M | Excluded: ITK, absent from instance. |
 
-**Deprecated (shadowing, iKnow Text Analytics)** — 9 rows
+**Deprecated (shadowing, iKnow Text Analytics)** — 10 rows
 
 | ID | Name | Kind | Backing (API or class) | Size | Note |
 |---|---|---|---|---|---|
@@ -687,6 +687,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | AN-20 | Text Analytics: Indexing Results | screen | none | M | Excluded: deprecated. |
 | AN-21 | Text Analytics: Model Builder | screen | none | L | Excluded: deprecated. |
 | AN-22 | Text Analytics: Model Tester | screen | none | M | Excluded: deprecated. |
+| AN-27 | PMML export to a cube: iKnow measure | settings | none | S | Excluded: iKnow deprecated. |
 
 **Reporting servers and cluster (Zen Reports, InterSystems Reports, Cluster)** — 6 rows
 
@@ -733,7 +734,7 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | EX-56 | WebStress tool | screen | none | L | Excluded: WebStress. |
 | EX-57 | UnitTest Portal | screen | none (see DT-02 runner) | M | Excluded: UnitTest Portal. |
 
-**Dead references, placeholders, cosmetic, not applicable** — 10 rows
+**Dead references, placeholders, cosmetic, not applicable** — 12 rows
 
 | ID | Name | Kind | Backing (API or class) | Size | Note |
 |---|---|---|---|---|---|
@@ -742,6 +743,8 @@ The addendum orders the stages by API readiness, so rows are assigned by the API
 | SA-61 | FileMan conversion settings | settings | custom | M | Excluded: commented-out menu item. |
 | SA-62 | Dead references | screen | none | S | Excluded: dead references. |
 | AN-24 | Worksheet builder, caption editor, Visual Reporting, other %DeepSee.UI pages not on the S… | editor | none | M | Excluded: not on menu / dead code. |
+| AN-25 | PMML export to a cube: data only | settings | none | M | Excluded: the export makes new classes only. |
+| AN-26 | PMML export to a cube: overwrite classes | settings | none | M | Excluded: the export refuses a held class and deletes none. |
 | DT-12 | Debugger session / terminal tools | console | official atelier GET /%SYS/debug | L | Excluded: dead placeholder, no implementation. |
 | EX-58 | Data browser: connection status / disconnect | grid | none | S | Excluded: not applicable when served from the same IRIS instance. |
 | PK-26 | Optional IRIS AI Hub / Interoperability workflow integration for the confirm step | platform | custom | L | Excluded: EAP dependency, not on Community Edition. |
@@ -967,7 +970,7 @@ Backing class for each custom row without a harvest (from the catalog's API-back
 | IO-89 | XML schema structures | whole row | custom(EnsLib.EDI.XML.SchemaXSD) | Excluded: non-HL7 EDI authoring. |
 | PK-26 | Optional IRIS AI Hub / Interoperability workflow integration for the confirm step | whole row | custom | Excluded: EAP dependency, not on Community Edition. |
 
-The 19 P4 rows with backing `none` (no server call or nothing found) and the 7 with a route (OS-31, OS-32, SA-50 admin-v2; SS-40 embed; AN-23 deepsee partial; DT-03 and DT-12 atelier) are not counted here.
+The 22 P4 rows with backing `none` (no server call or nothing found) and the 7 with a route (OS-31, OS-32, SA-50 admin-v2; SS-40 embed; AN-23 deepsee partial; DT-03 and DT-12 atelier) are not counted here.
 
 ## 4. Roll-up
 
@@ -977,8 +980,8 @@ The 19 P4 rows with backing `none` (no server call or nothing found) and the 7 w
 | 2 — System Explorer over the Atelier API, grid harvested from iris-table-editor (P2) | 36 | 17 / 15 / 4 | 1 | action/query DML guard (EX-15); Atelier v7 for xml routes; ETag on PUT; table-editor harvest; %Service_DocDB |
 | 3 — Interoperability over the interop-editors v7 API with the three vendor editors embedded (P2), plus the Analytics rider | 41 | 10 / 25 / 6 | 6 | SH-23 JWT/cookie hand-off to /ui/interop; SH-25 namespace gating; UpdateProduction action vocabulary; DeepSee-enabled namespace for the rider |
 | 4 — Custom-REST parity harvested from the MCP suite's handlers (P3) | 153 | 59 / 74 / 20 | 148 | OcuPilot REST router (PK-12); MCP-suite handler harvest; legacy CSP source pulled from the container |
-| 5 — The long tail, as demand shows (P4) | 68 | 12 / 34 / 22 | 42 | Demand plus the per-group gate (license, edition, platform, deprecation decision) |
-| **All five** | **357** | **118 / 179 / 60** | **202** | — |
+| 5 — The long tail, as demand shows (P4) | 71 | 13 / 36 / 22 | 42 | Demand plus the per-group gate (license, edition, platform, deprecation decision) |
+| **All five** | **360** | **119 / 181 / 60** | **202** | — |
 
 Custom-endpoint counts include agent-internal rows (Stage 1: CP-39, CP-41; Stage 2: CP-36; Stage 3: CP-37, CP-38; Stage 4: CP-34, CP-40 and IO-91..IO-118). Excluding those, the counts of new REST endpoints are Stage 1: 3, Stage 2: 0, Stage 3: 4 (all partial: the action or write half of IO-11, IO-12, IO-14, IO-28), Stage 4: 118, Stage 5: 42.
 

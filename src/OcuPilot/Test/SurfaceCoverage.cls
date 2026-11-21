@@ -330,6 +330,7 @@ XData Coverage
 <tool name="analytics.usericons.set" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
 <tool name="analytics.usericons.remove" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
 <tool name="analytics.pmmlmodels.add" class="OcuPilot.Test.AnalyticsPmmlCreate" method="TestADefinitionIsCreatedByEachCallerAndReadsBack"/>
+<tool name="analytics.pmmlmodel.export" class="OcuPilot.Test.AnalyticsPmmlExport" method="TestAnExportIsMadeByEachCallerAndReadsBack"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>

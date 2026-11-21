@@ -622,3 +622,45 @@
 2026-11-20T23:58:17Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T23:58:17Z model=opus agent_name=24-14-review-batch2b cycle_iteration=4 scope=batch2b range=851f3a63b..488daf4b3
 2026-11-21T00:31:07Z	Story 24.14	stage_completed	stage=code-review scope=batch2b commit=827c4eb3d findings=23(high1_patched,med2_patched+1_rejected,low10_patched+9_rejected) deferred=none U-130_B=9/9_pass_after_patch C=7/7 sed_hunk=clean fresh=Cancel7/7,Edge15/15,Run6/6 test_tools=2359
 2026-11-21T00:31:07Z	Story 24.14	ledger_adjudicated	scope=batch2b deferred=none new_entries=none
+2026-11-21T00:35:03Z	Story 24.14	integrated_feature	scope=batch2b feature=09b30317b(21.21) merge=73c758917 conflicts=0 test_tools=2360 check_objectscript=0
+2026-11-21T00:35:03Z	Story 24.14	fresh_check_started	scope=batch2b throwaway=ocupilot-b-ci tree=73c758917
+2026-11-21T00:40:55Z	Story 24.14	fresh_check_passed	scope=batch2b tree=73c758917 forward=4cls_34tests_first_run reverse+rosters+overlap=12cls_137tests(AnalyticsSqlRun_name_did_not_exist,EMPTY,not_a_class) BackgroundRun_consumers=5cls_53tests smoke=PASSED(1_skipped:agentswitches) browser=none(server-only)
+2026-11-21T00:40:55Z	Story 24.14	code_head_pushed	scope=batch2b sha=73c758917 run=44845372336
+2026-11-21T00:41:12Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-21T00:41:12Z model=opus agent_name=24-14-plan-batch4 cycle_iteration=5 scope=batch4_export_to_cube
+2026-11-21T00:53:31Z	Story 24.14	story_created	spawn_at=2026-11-21T00:41:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-5.md build_status=ready-for-dev scope=batch4_export_to_cube
+2026-11-21T00:53:31Z	Story 24.14	ruling	question=batch4_veto_set(key_true,decided1-6,stricter_refusals,strings,README_clause,AD-7/AD-65_wording) choice=keep category=veto inbox=U-132 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-21T00:53:31Z	Story 24.14	spec_validated	scope=batch4 owned_ledger=none
+2026-11-21T00:53:31Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-21T00:53:31Z model=sonnet agent_name=24-14-implement-batch4 cycle_iteration=5 story_base=8524da6eb scope=batch4
+2026-11-21T01:38:07Z	Epic 24	coordinator_ruling	Api/Error.cls_frozen(no_new_Parameter);new_codes_in_per-area_sibling(Batch4:Api/AnalyticsError.cls) relayed_to=implement-batch4
+2026-11-21T02:10:01Z	Story 24.14	ci_green	scope=batch2b sha=73c758917 run=44845372336 attempt=2(attempt1_DW-1822_shard1)
+2026-11-21T02:12:52Z	Story 24.14	merged_to_feature	scope=batch2b feature=3e3ce307e integrate_before_batch4_head=yes note=DW-1822_tail_keep_both_trailers+ledger_load_status_unknown0
+2026-11-21T06:13:21Z	Story 24.14	stage_blocked	stage=implement scope=batch4 condition=intent_gap(AD-59_vs_Decided3_no_script_form) DraftRegistry_red=TestEveryWriteToolHasAScriptForm,TestNoSecretReachesAnyRenderedScript uncommitted_files=40 patch=scratchpad/e24u/24-14/b4/lead/b4-attempt.patch protocol_note=handoff_wrote_3_files_via_python_in_bash
+2026-11-21T06:13:21Z	Story 24.14	ruling	question=AD-59_conflict choice=give_TOCUBE_a_script_form(Decided3_reversed;conform_to_spine) category=veto(own_ruling_reversed) policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-21T06:13:21Z	Story 24.14	stage_spawned	stage=implement spawn_at=2026-11-21T06:13:21Z model=sonnet agent_name=24-14-implement-batch4-r2 cycle_iteration=5 scope=batch4_script_form on=uncommitted_attempt
+2026-11-21T06:14:40Z	Story 24.14	coordinator_conditions_relayed	scope=batch4 to=implement-r2 conditions=validate_every_interpolated_name(no_draft_on_fail;hostile_name_test),one-way_comment_uses_ruled_card_sentence ledger=DW-2787,DW-1829_occurrences(uncommitted)
+2026-11-21T07:52:36Z	Story 24.14	note	feature=5c0cdcd5e(21.36) integrate_target=5c0cdcd5e overlap_expected=Error.cls_dispatch_line,Baseline.cls,ci-throwaway_roster
+2026-11-21T07:52:50Z	Story 24.14	coordinator_conditions_relayed	scope=batch4 to=implement-r2 conditions=own-code_malformed_name_renders_no_draft(+test),no-bound_clause_in_script_comment,SnippetForm_doc_lists_export,mutation_for_unproven_legs
+2026-11-21T11:46:12Z	Story 24.14	stage_completed	stage=implement scope=batch4 commit=2abef9d66 status=done script_form=PmmlExportSnippet(validated_names,no_draft_on_fail,own-package_legs,one-way+no-bound_comments) review=11(6_patched,5_rejected) late_layer_findings=cube-taken_leg_weak,ScriptLong_cube_check_vacuous,copy-failure_untested Error.cls_diff=empty python-written_files_survive_reviewed
+2026-11-21T11:46:12Z	Story 24.14	stage_spawned	stage=qa spawn_at=2026-11-21T11:46:12Z model=sonnet agent_name=24-14-qa-batch4 cycle_iteration=5 scope=batch4
+2026-11-21T11:46:55Z	Story 24.14	coordinator_note	scope=batch4 items1-2_required_before_push item3=test_or_DW(burndown,no_product_seam) integrate=current_feature_head_at_push(21.23_may_land) full_gates_after_integration
+2026-11-21T12:29:52Z	Story 24.14	stage_completed	stage=qa scope=batch4 commit=354796f5d items=cube-taken_assertion+mutation,ExportLeft_cube_name+mutation,copy-failure_test(test-only_swap)+3_mutations browser=dialog_strings+second_export_refused qa_finding=DataLeft_long_class_name_SYNTAX(test_helper)
+2026-11-21T12:29:52Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-21T12:29:52Z model=opus agent_name=24-14-review-batch4 cycle_iteration=5 scope=batch4 range=8f5ead53b..354796f5d(code)
+2026-11-21T13:13:40Z	Story 24.14	stage_completed	stage=code-review scope=batch4 commit=c7e20150a findings=25(med8:6_patched,low17:5_patched) deferred=2 rejected=12 checklist_A-F=pass(B:no-bound_comment_and_agent_StateDiff_sentence_unruled)
+2026-11-21T13:13:40Z	Story 24.14	ledger_adjudicated	scope=batch4 new=DW-2818(decision-pending,script_dynamic_SQL),DW-2819(decision-pending,extent_kill_over_unrelated_global),DW-2820(resolved,DataLeft_29-char_limit) push=held_for_ruling_on_DW-2819
+2026-11-21T13:14:29Z	Story 24.14	ruling	source=orchestrator scope=batch4 DW-2819=a(refuse_free_name_whose_compiled_storage_data/index/stream_globals_hold_data;check_after_compile_before_kill;script_same) DW-2818=b(exact_comment_sentence) flagged_strings=approved(no_ids) DW-2820=accepted new_sentence=proposed_to_orchestrator(ANALYTICS.PMML.DATAHELD)
+2026-11-21T13:14:46Z	Story 24.14	string_approved	source=orchestrator code=ANALYTICS.PMML.DATAHELD
+2026-11-21T13:14:46Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-21T13:14:46Z model=sonnet agent_name=24-14-rework-batch4-r1 cycle_iteration=5 scope=batch4_DW-2819_DW-2818
+2026-11-21T14:07:06Z	Story 24.14	stage_completed	stage=implement-rework scope=batch4 commit=fc429a890 DATAHELD=compiled_storage_data/index/stream_check(4_cases:short,hashed45,index-only,stream-only) script_same SQL-privilege_comment approved_strings_recorded review=16(med2_patched,low3_rows_patched,11_rejected) followup_review_recommended=true(accepted_without:catch-unplant_path_unexercised,low)
+2026-11-21T14:07:06Z	Story 24.14	ledger_adjudicated	scope=batch4 resolved=DW-2818,DW-2819
+2026-11-21T14:12:10Z	Story 24.14	integrated_feature	scope=batch4 feature=5c0cdcd5e(21.36) merge=03169939f conflicts=5(ReadTool565,ToolWrite149,ToolRoundTrip/ClassicPageGate/MappingDescriptor_unions) mirror_regenerated test_tools=2364 check_objectscript=0
+2026-11-21T14:12:10Z	Story 24.14	fresh_check_started	scope=batch4 tree=03169939f gates=full_sweep+client+browser+smoke
+2026-11-21T16:55:08Z	Story 24.14	fresh_check_passed	scope=batch4 tree=03169939f full_sweep=17/17_849cls_6461tests_0failed browser=analytics+links+a11y40/40 test_tools=2364 components=312_files_green build=ok smoke=PASSED
+2026-11-21T16:55:08Z	Story 24.14	code_head_pushed	scope=batch4 sha=03169939f run=44927121755
+2026-11-21T16:58:54Z	Story 24.14	integrate_head_pushed	scope=batch4 M=84f1ad5c9(03169939f+feature_de0df01f9_21.23) run=44927449204 supersedes=44927121755 conflicts=0 test_tools=2385 check_objectscript=0
+2026-11-21T17:49:21Z	Story 24.14	fresh_check_passed	scope=batch4 tree=84f1ad5c9 classes=InteropItemRun,InteropItemControl,WireSecurityRead,AnalyticsPmmlExport(+Edge)_fwd+rev_green browser=22_specs(21.23_changed+analytics+a11y)_132/132_fwd+rev test_tools=2385 smoke=PASSED
+2026-11-21T17:49:21Z	Story 24.14	ci_red	scope=batch4 sha=84f1ad5c9 run=44927449204 failed=browser_shard1/5(a11y_settle_/agent/governance,DW-1822_shape) ledger=DW-1822_occurrence
+2026-11-21T18:23:27Z	Story 24.14	ci_green	scope=batch4 sha=84f1ad5c9 run=44927449204 attempt=2(orchestrator_rerun;attempt1_DW-1822)
+2026-11-21T18:23:27Z	Story 24.14	spine_amended	commit=3578da119 AD-7+AD-42_add-only(U-130) lines=+4/-0
+2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
+2026-11-21T18:23:48Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-21T18:23:48Z model=opus agent_name=24-15-plan cycle_iteration=1 owned_ledger=DW-2636
+2026-11-21T18:28:59Z	Story 24.14	spine_amended	commit=b1d934735 AD-7+AD-65_add-only(U-132/U-133,as_shipped) on=feature_94fca2375 patch_2b=deleted

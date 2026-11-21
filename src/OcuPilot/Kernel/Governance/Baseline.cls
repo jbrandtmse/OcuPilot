@@ -318,6 +318,7 @@ XData Keys [ MimeType = application/json ]
   "analytics.usericons.set": true,
   "analytics.usericons.remove": false,
   "analytics.pmmlmodels.add": true,
+  "analytics.pmmlmodel.export": true,
   "interop.businesspartners.add": true,
   "interop.businesspartners.update": true,
   "interop.businesspartners.remove": false,

@@ -228,7 +228,7 @@ In a namespace under source control, a save that source control has not released
 you check the document out. Accounts that use the classic Interoperability pages can sign in to
 OcuPilot for these screens. **Analytics** lists cubes with their measures, dimensions and
 relationships, term lists and folder items; creates, edits, deletes, exports, imports and copies term lists and their entries; exports,
-imports and deletes folder items, and opens a dashboard's or pivot's definition and runs a pivot; creates, edits, copies and deletes
+imports and deletes folder items, and opens a dashboard's or pivot's definition and runs a pivot; tests a PMML model against its data sources, its verification records or an SQL query, creates PMML definitions from PMML text, and exports a test's results to a new cube; creates, edits, copies and deletes
 listing groups and their listings, and quality measures with their groups, elements and documentation; changes the analytics
 settings, worklists, run-time variables and user-defined icons; builds and synchronizes cubes from its Cube manager; runs an MDX query with a row limit, a time limit and
 Cancel, and drills through to listings, asking you first when a statement would run code or SQL on
