@@ -167,7 +167,14 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: link shown whatever `OpenOutputFile` and `OutputFilename` hold -> `details.page.spec.ts` "Open output file links the viewer only when the record names an output file" red (observed, reverted).
   - mutation: `showTruncation` ignoring the answer's `truncated`, `LOG.TASKOUTPUT.ELSEWHERE` dropped from `OUTPUT_REFUSALS`, and the store mapping rows with `readRowsOf` -> `log-viewer.spec.ts` red on the truncation, the elsewhere-refusal and the text-alone legs (observed together, reverted).
 - AC2: `ConfigPort`'s `PASSWORD` branch sends `""` in place of the body's value -> `TaskMailPasswordWrite`'s set leg red; the draft renders the body's value in place of `<AuthPassword>` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red; the page sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red.
+  - mutation: `SetPassword` sends `""` in place of the body's value -> `TaskMailPasswordWrite` red on the set legs of all three of its write tests (observed, reverted, reloaded).
+  - mutation: the draft's script renders `""` in place of `<AuthPassword>` (the Snippet's `PASSWORD` branch) -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red naming `tasks.mail.password` (observed, reverted, reloaded). The planned form, rendering the body's value, stays green: the draft masks the body before the port renders it.
+  - mutation: `SetPassword` logs the password through `LogFault` -> `TaskMailPasswordWrite.TestThePasswordIsSetByBothCallersAndSurfacesNowhere` red on its `messages.log` leg for both probes (observed, reverted, reloaded).
+  - mutation: `CLEARABLESECRETS` emptied in `TaskMailPassword` -> `TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused` red on the person's and the agent's clear legs (observed, reverted, reloaded).
+  - mutation: `TaskMailPassword.PrivilegePairs` answers the screen's pairs alone -> `TestThePairsAreTheSettingSetsAndAShortCallerIsRefusedBeforeTheVendor` red (observed, reverted, reloaded).
+  - mutation: the page's secret map sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red on two tests (observed, reverted).
 - AC3: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline` and `TaskMailPasswordWrite`'s key leg red.
+  - mutation: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red, and `TaskMailPasswordWrite` red on the key leg and both other write tests, whose confirms read `GOVERNANCE.DISABLED` (observed, reverted, reloaded).
 
 **Commands.** ObjectScript test runs are one call each, never two in one message.
 
@@ -186,3 +193,5 @@ Status: ready-for-dev
 Blocking condition: none
 
 Notes (Task 0 and Batch 1 implemented, uncommitted; Batch 2 not started): Batch 1's `(loop)` lines ran green on `ocupilot-ci`. The read added no Baseline key. Decided in-stage: `childListFor` prefers a non-`log-viewer` child so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `criteriaProblem` and `Registry.CriteriaProblem` admit a logsource read's parent route id, as the locale source's.
+
+Batch 2 notes (implemented, uncommitted): the `(loop)` lines ran green on `ocupilot-ci` (`TaskMailPasswordWrite` 4 of 4, the roster classes, `config-settings` and `tasks` browser specs, tools 2359, components 3739, checkers and doc lint). Batch 2 added one Baseline key, `tasks.mail.password` true. Decided in-stage: `DraftRegistry` gains `UNSENTSECRETS` (`tasks.mail.set=AuthPassword`), since the screen's declared secret reached the set tool's synthetic row; the dialog's statement line is the reused clear hint (`interopSettingEmptyHint`), and its current line reads "(none)" because no read reports a stored password.

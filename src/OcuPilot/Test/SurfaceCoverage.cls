@@ -343,6 +343,7 @@ XData Coverage
 <screen name="TaskMailSettingList" class="OcuPilot.Test.TaskMailSettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
 <tool name="security.systemsecurity.set" class="OcuPilot.Test.SystemSecuritySettingWrite" method="TestASetChangesOnlyItsParameterOnBothCallersAndIsRestored"/>
 <tool name="tasks.mail.set" class="OcuPilot.Test.TaskMailSettingWrite" method="TestASetChangesOnlyItsSettingOnBothCallersAndIsRestored"/>
+<tool name="tasks.mail.password" class="OcuPilot.Test.TaskMailPasswordWrite" method="TestThePasswordIsSetByBothCallersAndSurfacesNowhere"/>
 <screen name="MirrorMonitor" class="OcuPilot.Test.MirrorRead" method="TestTheScreenDeclaresItsPagePairsAndSource"/>
 <screen name="DdlSystemMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
 <screen name="DdlUserMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>

@@ -9254,6 +9254,8 @@ export const STRINGS = {
   taskOutputPrompt2: 'Did this task\'s output show an error?',
   /** EXPERIENCE.md:613 */
   taskOutputPrompt3: 'Summarize this task\'s output.',
+  /** EXPERIENCE.md:613 */
+  taskMailPasswordAction: 'Set mail password',
 } as const;
 
 /**

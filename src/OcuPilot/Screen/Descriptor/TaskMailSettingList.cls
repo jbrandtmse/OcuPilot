@@ -8,6 +8,8 @@
 /// <code>%DB_IRISSYS:WRITE</code>.</p>
 /// <p><b>Its id is the setting's name</b>, kept exactly (AD-13). Its row action Set value is the screen's caller of
 /// <class>OcuPilot.Screen.Tool.TaskMailSettingSet</class> (AD-53). It does not refresh (AD-43).</p>
+/// <p><b>The mail password is a write, never a row.</b> Its toolbar action Set mail password (the primary action <code>password</code>) is the screen's caller of
+/// <class>OcuPilot.Screen.Tool.TaskMailPassword</class>; the descriptor declares it a secret argument and no read answers it or whether one is stored (AD-35, AD-56 (i)).</p>
 Class OcuPilot.Screen.Descriptor.TaskMailSettingList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -30,9 +32,10 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Name"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "set", "selfProtection": ""}],
+  "primaryAction": {"id": "password", "selfProtection": ""},
+  "rowActions": [{"id": "set", "selfProtection": ""}, {"id": "password", "selfProtection": ""}],
   "context": {"fields": ["Name", "Value", "Kind", "Accepts", "Restart", "ReadOnly"], "secretFields": []},
+  "secretArguments": ["AuthPassword"],
   "emptyStateKey": "configSettingsEmpty",
   "commandAliases": ["task email", "task manager email"],
   "suggestedPrompts": [

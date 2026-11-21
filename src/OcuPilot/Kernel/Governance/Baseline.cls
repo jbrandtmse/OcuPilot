@@ -197,6 +197,7 @@ XData Keys [ MimeType = application/json ]
   "tasks.background.pause": true,
   "tasks.background.resume": true,
   "tasks.mail.set": true,
+  "tasks.mail.password": true,
   "osmgmt.processes.broadcast": true,
   "tasks.schedule.export": true,
   "tasks.schedule.import": false,

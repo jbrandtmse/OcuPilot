@@ -48,7 +48,8 @@
 /// <parameter>SECURITYPAIRS</parameter>.</p>
 /// <p><b>The Task Manager email settings</b> (<code>TaskMail</code>, Story 21.19) are twelve roster rows read through
 /// <code>%SYS.Task.Config.EmailGet</code> and set through <code>EmailSet</code> (<parameter>TASKMAILROSTER</parameter>); the mail password
-/// is never a row, and no read or write names it (AD-35).</p>
+/// is never a row, and no read names it (AD-35). Its own write type <code>PASSWORD</code> (Story 21.36) sets it through <code>EmailSet</code> with the
+/// secret the caller supplies at the write and nothing else: the port never stores, reads, compares or logs it, and renders its script with a placeholder.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
 /// <method>CreateEntry</method>, <method>DeleteEntry</method>, <method>ReadMail</method>,
@@ -201,8 +202,17 @@ Parameter TYPECREATE = "CREATE";
 
 Parameter TYPEDELETE = "DELETE";
 
+/// <p>The write that sets the Task Manager mail password, served by the <code>TaskMail</code> endpoint alone.</p>
+Parameter TYPEPASSWORD = "PASSWORD";
+
 /// <p>The write request types.</p>
-Parameter WRITETYPES = "SET,CREATE,DELETE";
+Parameter WRITETYPES = "SET,CREATE,DELETE,PASSWORD";
+
+/// <p>The one target a <code>PASSWORD</code> write names (the sign-in name the password belongs with), and the vendor's name for the password and the
+/// body key that carries it.</p>
+Parameter PASSWORDTARGET = "AuthUser";
+
+Parameter PASSWORDNAME = "AuthPassword";
 
 /// <p>The query key a <code>GET</code> carries to ask for the absence read of a create (<code>CREATE</code> is its only value).</p>
 Parameter ACTIONKEY = "action";
@@ -268,6 +278,8 @@ Parameter REASONBODY = "a set takes the new value as text in Value.";
 
 Parameter REASONCREATEBODY = "a create takes the datatype as text in Value.";
 
+Parameter REASONPASSWORDBODY = "a password set takes the password as text in AuthPassword.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in process;
 /// production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -295,10 +307,12 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 }
 
 /// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>: every endpoint answers <code>LIST</code>, <code>GET</code> and
-/// <code>SET</code>; <code>CREATE</code> only the user DDL mappings, and <code>DELETE</code> only the two DDL mappings.</p>
+/// <code>SET</code>; <code>CREATE</code> only the user DDL mappings, <code>DELETE</code> only the two DDL mappings, and <code>PASSWORD</code> only the Task Manager email
+/// settings.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind($ListFromString(..#ENDPOINTS), pEndpoint) Quit 0
+    If pType = ..#TYPEPASSWORD Quit pEndpoint = ..#TASKMAILENDPOINT
     If pType = ..#TYPECREATE Quit pEndpoint = ..#USERDDLENDPOINT
     If pType = ..#TYPEDELETE Quit ..IsNamed(pEndpoint)
     Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPESET)
@@ -380,6 +394,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pType = ..#TYPECREATE {
             Set tSC = ..CreateValue(pEndpoint, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPASSWORD {
+            Set tSC = ..SetPassword(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If $IsObject(pBody) || (pBody '= "") {
@@ -808,6 +826,48 @@ ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstra
     Do pResult.%Set("Value", tValue, "string")
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Set the Task Manager mail password to the text <var>pBody</var>'s <code>AuthPassword</code> carries; an empty text clears it. The target
+/// <var>pQuery</var> names must be <parameter>PASSWORDTARGET</parameter>, which is read first as every set reads its row (an unlisted name is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>). The password reaches <method>SendPassword</method> as an argument and no local of this method holds it; a vendor
+/// refusal is logged without it and answered 400 <code>CONFIG.SETTING.VALUE</code>. Answers <code>{Name}</code>, the target.</p>
+ClassMethod SetPassword(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    If tName '= ..#PASSWORDTARGET Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Set tSC = ..Row(..#TASKMAILENDPOINT, tName, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf(..#PASSWORDNAME) '= "string") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONPASSWORDBODY, .pHttpStatus, .pFault)
+    }
+    Set tVendor = ..SendPassword(pBody.%Get(..#PASSWORDNAME))
+    If $$$ISERR(tVendor) {
+        Do ..LogFault("the Task Manager mail password was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
+        Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Name", tName, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The one call that sets the Task Manager mail password: <code>%SYS.Task.Config.EmailSet</code> with the vendor's name for it and <var>pValue</var>, in
+/// <code>%SYS</code> by save and restore. The status is the vendor's own store status, and nothing here keeps, compares or logs the value. Overridable so a
+/// fixture can record that a write was made without the value; production never overrides it.</p>
+ClassMethod SendPassword(pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(..#TASKMAILCLASS, "EmailSet", ..#PASSWORDNAME, pValue)
+    } Catch ex {
+        Set tSC = $$$ERROR($$$GeneralError, "the Task Manager mail password could not be stored: " _ ex.Name)
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>Create the named entry <var>pQuery</var> names with the datatype <var>pBody</var>'s <code>Value</code> carries, on a user DDL
@@ -1429,11 +1489,13 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>Modify</code>, the same call the port makes (the purge a key that purges owes is the set tool's step,
 /// <method>PurgeSteps</method>); for a roster endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter; for the
 /// NLS defaults, the locale-format node set with literal subscripts (the reload it owes is the set tool's step, <method>ReloadSteps</method>). The name and the value are string
-/// literals, so nothing the query or the body carries runs as code. A roster name or an NLS name that is not settable renders no script.</p>
+/// literals, so nothing the query or the body carries runs as code. A roster name or an NLS name that is not settable renders no script. The mail password's
+/// script is <code>EmailSet</code> with the placeholder <code>&lt;AuthPassword&gt;</code> for any target and never reads the body.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tAdmin = "OcuPilot.Port.AdminPort"
+    If pType = ..#TYPEPASSWORD Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tSC = ##class(" _ ..#TASKMAILCLASS _ ").EmailSet(" _ $ClassMethod(tAdmin, "Literal", ..#PASSWORDNAME) _ ", " _ $ClassMethod(tAdmin, "Literal", "<" _ ..#PASSWORDNAME _ ">") _ ")")))]
     Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
     If ..IsNamed(pEndpoint) Quit [($ClassMethod(tAdmin, "ObjectScriptStep", ..EntryLines(pEndpoint, pType, tName, tValue)))]

@@ -10,10 +10,13 @@
  * Set value unavailable.
  *
  * Story 21.19's Task Manager email lists its twelve settings and never the mail password; Set value on `Port` refuses a port out of range, stores
- * a port and shows it without a reload; a subject naming another field is refused with the Task Manager's fields.
+ * a port and shows it without a reload; a subject naming another field is refused with the Task Manager's fields. Story 21.36's Set mail password,
+ * the toolbar button of the same screen, stores a generated password through a masked field and an empty one clears it, and the page shows the
+ * password nowhere.
  *
- * **It changes one compatibility setting, one SQL setting and the Task Manager email port** through the shipped screens, so it runs on a throwaway
- * only; the `after` hook puts `LineRecall`, `SaveMAC` and `Port` back to the values it found, whatever the tests answered.
+ * **It changes one compatibility setting, one SQL setting, the Task Manager email port and the Task Manager mail password** through the shipped screens, so it runs on a throwaway
+ * only; the `after` hook puts `LineRecall`, `SaveMAC` and `Port` back to the values it found and clears the password (which the `before` hook asserts is empty, answering 1 or 0 and
+ * never a value), whatever the tests answered.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/config-settings.browser-spec.mjs` (after `npm run build` and the bundle copied into the throwaway).
@@ -62,6 +65,28 @@ function restoreMail(name, value) {
     `Write "OCU-MAILPUT-START:"_$System.Status.IsOK(##class(%SYS.Task.Config).EmailSet("${name}","${value}"))_":OCU-MAILPUT-END",!`,
   ]);
   return { value: markerValue(output, 'MAILPUT'), output };
+}
+
+/**
+ * Whether the Task Manager mail password reads `expected` (`''` for none), compared inside the instance: 1 or 0, and neither value is printed, kept or put in a message.
+ * `''` answers the empty case, and a probe is a generated name.
+ */
+function mailPasswordIs(expected) {
+  const output = runIris(config.container, [
+    'Set $NAMESPACE="%SYS"',
+    'Set tSC=##class(%SYS.Task.Config).EmailGet("AuthPassword",.v)',
+    `Write "OCU-MAILPW-START:"_($System.Status.IsOK(tSC)&&($Get(v)="${expected}"))_":OCU-MAILPW-END",!`,
+  ]);
+  return markerValue(output, 'MAILPW');
+}
+
+/** Clear the Task Manager mail password through `EmailSet`, answering whether the status was OK. */
+function clearMailPassword() {
+  const output = runIris(config.container, [
+    'Set $NAMESPACE="%SYS"',
+    'Write "OCU-MAILPWPUT-START:"_$System.Status.IsOK(##class(%SYS.Task.Config).EmailSet("AuthPassword",""))_":OCU-MAILPWPUT-END",!',
+  ]);
+  return markerValue(output, 'MAILPWPUT');
 }
 
 /** The setting `name` of `Config.Miscellaneous`, as the instance stores it. */
@@ -161,6 +186,7 @@ before(async () => {
   const readMail = storedMail(MAIL_NAME);
   assert.match(readMail.value ?? '', /^[0-9]{0,5}$/, `${MAIL_NAME} of the Task Manager email reads a port or nothing on the instance: ${readMail.output}`);
   foundMail = readMail.value;
+  assert.equal(mailPasswordIs(''), '1', 'the Task Manager mail password is empty on the throwaway, so the clear after the run puts it back');
   touched = true;
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -172,6 +198,9 @@ after(async () => {
       const put = restore(found);
       const putSql = restoreSql(foundSql);
       const putMail = restoreMail(MAIL_NAME, foundMail);
+      const clearedPassword = clearMailPassword();
+      assert.equal(clearedPassword, '1', 'the Task Manager mail password is cleared again');
+      assert.equal(mailPasswordIs(''), '1', 'and reads empty');
       assert.equal(putMail.value, '1', `${MAIL_NAME} of the Task Manager email is put back to '${foundMail}': ${putMail.output}`);
       assert.equal(storedMail(MAIL_NAME).value, foundMail, `and reads '${foundMail}' again`);
       assert.equal(put.value, '1', `${NAME} is put back to ${found}: ${put.output}`);
@@ -428,6 +457,42 @@ test('a Task Manager email subject naming a field the Task Manager does not fill
     const sentence = await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim());
     assert.ok(sentence.startsWith('Use only these fields between #( and )#: ID, DESCRIPTION, NAME,') && sentence.endsWith('ERROR, SUCCESS.'), `the dialog names the Task Manager's fields: ${sentence}`);
     assert.equal(storedMail('SubjectFailure').value, before, 'and the subject reads as before');
+  } finally {
+    await context.close();
+  }
+});
+
+/** Open the Set mail password dialog from the command bar's primary button, answering the button's words and the dialog's title. */
+async function openMailPassword(page) {
+  const button = await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs });
+  const label = await button.evaluate((node) => node.textContent.trim());
+  await button.click();
+  await page.waitForSelector('[data-interop-setting-secret]', { visible: true, timeout: config.navigationTimeoutMs });
+  const title = await page.$eval('.ocu-dialog-title', (node) => node.textContent.trim());
+  return { label, title };
+}
+
+test('Set mail password stores a typed password through a masked field and an empty one clears it, and the page shows the password nowhere', async () => {
+  const probe = `OcuBrowserPw${Date.now()}`;
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/tasks/email', VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await page.evaluate(() => {
+      window.__ocuNoReload = 'standing';
+    });
+    const opened = await openMailPassword(page);
+    assert.deepEqual(opened, { label: STRINGS.taskMailPasswordAction, title: STRINGS.taskMailPasswordAction }, 'the toolbar button and the dialog both read Set mail password');
+    assert.equal(await page.$eval('[data-interop-setting-secret]', (node) => `${node.type}|${node.value}`), 'password|', 'the field is masked and empty');
+    await typeInDialog(page, probe);
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector('[data-interop-setting-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(mailPasswordIs(probe), '1', 'the instance stores the typed password');
+    assert.equal(await page.evaluate((text) => document.body.textContent.includes(text), probe), false, 'and the page shows it nowhere');
+    assert.equal(await page.evaluate(() => window.__ocuNoReload), 'standing', 'the screen kept its page');
+    await openMailPassword(page);
+    await page.click('[data-interop-setting-confirm]');
+    await page.waitForSelector('[data-interop-setting-confirm]', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.equal(mailPasswordIs(''), '1', 'an empty password clears it');
   } finally {
     await context.close();
   }

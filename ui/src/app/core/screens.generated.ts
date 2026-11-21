@@ -35780,12 +35780,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "password",
       "selfProtection": ""
     },
     "rowActions": [
       {
         "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "password",
         "selfProtection": ""
       }
     ],
@@ -35800,6 +35804,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "AuthPassword"
+    ],
     "emptyStateKey": "configSettingsEmpty",
     "commandAliases": [
       "task email",
@@ -35878,7 +35885,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "multiSelect": null,
-    "secretArguments": [],
     "fingerprintExcludes": []
   },
   {

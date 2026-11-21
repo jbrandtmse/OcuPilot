@@ -1600,6 +1600,13 @@ XData Entries
     "authored": {
       "GoogleMapsKey": "secret"
     }
+  },
+  "tasks.mail.password": {
+    "fieldList": "Process",
+    "classification": {},
+    "authored": {
+      "AuthPassword": "secret"
+    }
   }
 }
 }
