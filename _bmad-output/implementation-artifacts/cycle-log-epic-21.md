@@ -883,3 +883,4 @@
 2026-11-21T08:28:00Z	Story 21.21	note	feature=5c0cdcd5e(21.36_merged) integrated
 2026-11-21T08:30:11Z	Story 21.23	ruling	question=split+measurements+small_rulings via=orchestrator choice=split_21.38(DW-2499,2405,2369,2442,2474;wording_batch_at_its_plan;DW-2474_after_24.14_on_feature);B1_reproduce_first(report_only_on_failure_path;DW-1822_stays_routed);B2_expose_test_defects_then_wait_on_item_read;DW-2720_reuse_21.22_helper;DW-2430_resolved_by_23-11;line_430_derive_from_declared_roster+floor+mutation queue=21.23,21.37,21.6,21.25,21.31,21.38(earlier_if_24.14_lands)
 2026-11-21T08:30:11Z	Story 21.23	spec_validated	batches=6(14_entries) epics=21.23_amended+21.38_added(add-only) tracker=21-38:backlog test_tools=2363 model=claude-opus-5-5
+2026-11-21T08:30:34Z	Story 21.23	stage_spawned	stage=implement scope=batches1-6 spawn_at=2026-11-21T08:30:34Z model=sonnet agent_name=21-23-implement cycle_iteration=1 prior_lines_ended=verified(a0db4a6ee)
