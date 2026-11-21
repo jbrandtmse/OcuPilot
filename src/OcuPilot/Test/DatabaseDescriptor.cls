@@ -310,7 +310,7 @@ Method TestTheDiskOperationsDeclareTheirTypesArgumentsAndPairs()
     Set tLocal = "OcuPilot.Screen.Descriptor.LocalDatabaseList"
     ; name, descriptor, write type, argument, pairs, classic pages, id argument/param
     Set tCases = $ListBuild($ListBuild("osmgmt.databasedetails.mount", tDetails, "MOUNT", "ReadOnly", "%Admin_Operate:USE,%DB_IRISSYS:READ,%Admin_Secure:USE", "%CSP.UI.Portal.Dialog.DBActions", "Directory/dir"))
-    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.dismount", tDetails, "DISMOUNT", "", "%Admin_Operate:USE,%DB_IRISSYS:READ,%Admin_Manage:USE", "", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.dismount", tDetails, "DISMOUNT", "", "%Admin_Operate:USE,%DB_IRISSYS:READ", "", "Directory/dir"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.truncate", tDetails, "TRUNCATE", "TargetSize", "%Admin_Operate:USE,%DB_IRISSYS:READ", "%CSP.UI.Portal.Background.Dialog.DatabaseTruncate", "Directory/dir"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.compact", tDetails, "COMPACT", "TargetFreeSpace", "%Admin_Operate:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE", "%CSP.UI.Portal.Background.Dialog.DatabaseCompact", "Directory/dir"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.defragment", tDetails, "DEFRAGMENT", "", "%Admin_Operate:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE", "%CSP.UI.Portal.Background.Dialog.DatabaseDefragment", "Directory/dir"))

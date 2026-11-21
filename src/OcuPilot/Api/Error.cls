@@ -1999,14 +1999,15 @@ ClassMethod IsValidCode(pCode As %String) As %Boolean
 /// client reason is exactly what keeps a stack trace off the wire.</p>
 /// @param pReason Generic reason string sent to the client (defaults to a fixed generic message)
 /// @param pException Optional exception object; its detail is logged, never sent to the client
-ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pException As %Exception.AbstractException = "") As %Status
+/// @param pDetail Optional structured detail the caller's code owns (a closed proposal's state), sent as the envelope's detail
+ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pException As %Exception.AbstractException = "", pDetail As %DynamicObject = "") As %Status
 {
     Set tSC = $$$OK
     Try {
         If $IsObject(pException) {
             Do ..LogError("router", "Internal error", {"detail": (pException.DisplayString())})
         }
-        Set tSC = ..Render(500, ..#SERVERERROR, pReason, ..#INTERNAL)
+        Set tSC = ..Render(500, ..#SERVERERROR, pReason, ..#INTERNAL, pDetail)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

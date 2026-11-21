@@ -9478,13 +9478,15 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-16, owner answers U-70 and U-74, Rule 5] Those three return to Story 21.19 (U-70). The custom resource on a classic menu item is built with its AD-44 and AD-64 records (U-74).
 
+[AMENDED 2026-11-20, Story 21.21 implement, orchestrator ruling: split into a sibling, Rule 5] The custom resource on a classic menu item (a new screen, port and two write tools) moves to Story 21.37; owner answer U-74 carries to it. This story builds the rest.
+
 As a developer-administrator,
-I want a custom resource on a classic menu item and an Operate-only dismount,
+I want an Operate-only dismount,
 So that no area has a remaining gap.
 
 **Acceptance Criteria:**
 
-- **Given** a custom resource on a classic menu item and the Operate-only dismount
+- **Given** the Operate-only dismount
 - **When** each runs
 - **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
 
@@ -9779,6 +9781,20 @@ So that the Task Manager has no remaining gap.
 - **When** a person or the agent opens the output, or sets the mail password
 - **Then** the output reads bounded and tail-first only where the record allows it, and the password is a secret-only write that no read, card, audit row or log carries.
 
+### Story 21.37: Page resources
+
+[AMENDED 2026-11-20, Story 21.21 implement, orchestrator ruling: split into a sibling, Rule 5] Split from Story 21.21; it carries owner answer U-74's AD-10, AD-44 and AD-64 records for a custom resource on a classic menu item.
+
+As a developer-administrator,
+I want to assign, change and clear a classic page's custom resource,
+So that the Permissions area has no remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** a classic page and a resource the instance defines
+- **When** a person or the agent assigns, changes or clears the page's custom resource
+- **Then** it round-trips over the vendor's own call, a page an OcuPilot Home or Agent co-pilot screen declares is refused, and a lowering on a page an OcuPilot screen replaces is minted destructive.
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
@@ -9795,7 +9811,7 @@ So that a future decision to build one is made against evidence rather than agai
 
 - **Given** the 56 excluded rows
 - **When** they are recorded
-- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items; and not planned.
 
 - **Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 - **When** the register is read

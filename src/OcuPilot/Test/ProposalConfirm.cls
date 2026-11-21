@@ -111,9 +111,9 @@ Method Seed(pDescription As %String = "after", pConvKey As %String = "") As %Str
 }
 
 /// <p>Confirm <var>pKey</var> as the running account with <var>pBody</var>.</p>
-Method Confirm(pKey As %String, pBody As %DynamicObject = "", Output pHttp As %Integer, Output pCode As %String, Output pResult, Output pDetail) As %Status
+Method Confirm(pKey As %String, pBody As %DynamicObject = "", Output pHttp As %Integer, Output pCode As %String, Output pResult, Output pDetail, Output pReason) As %Status
 {
-    Quit $ClassMethod(..#CONFIRM, "Confirm", pKey, pBody, $Username, .pResult, .pHttp, .pCode, .pDetail)
+    Quit $ClassMethod(..#CONFIRM, "Confirm", pKey, pBody, $Username, .pResult, .pHttp, .pCode, .pDetail, .pReason)
 }
 
 /// <p>Mint one live proposal under <parameter>SECRETTOOL</parameter>, whose screen declares a
@@ -691,16 +691,21 @@ ClassMethod PasswordHolds(pName As %String, pPassword As %String) As %Boolean
 }
 
 /// <p>The matrix's "write fails after the claim": single-use holds, so the proposal stays confirmed
-/// and burned and the port's own normalized envelope is what comes back.</p>
+/// and burned and the port's own normalized envelope is what comes back, with the fault's own
+/// sentence as its reason.</p>
+/// <p>Mutation (Rule 19): drop the <code>pReason</code> assignment from the write-failure branch of
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- the reason assertions go red.</p>
 Method TestAFailedWriteLeavesTheProposalBurned()
 {
     Set tKey = ..Seed()
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).ArmWriteFault(500)
-    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode, .tResult, .tDetail)
+    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode, .tResult, .tDetail, .tReason)
 
     Do $$$AssertStatusNotOK(tSC, "the confirm reports the fault")
     Do $$$AssertEquals(tHttp, 500, "at the port's own status")
+    Do $$$AssertEquals(tReason, "The instance refused that operation", "with the fault's own sentence as its reason")
+    Do $$$AssertNotEquals(tReason, ##class(OcuPilot.Api.Error).#REASONTOOLUNAVAILABLE, "and not the generic tool sentence")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 1, "the token is spent")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "confirmed", "and the row stays confirmed, so no re-attempt is possible")
     ; The caller is told the row closed even though the write did not, so a card cannot fall back
@@ -713,6 +718,28 @@ Method TestAFailedWriteLeavesTheProposalBurned()
     Set tSC = ..Confirm(tKey, "", .tHttp, .tCode)
     Do $$$AssertStatusNotOK(tSC, "a second confirm is refused")
     Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#BURNED, "as already decided")
+}
+
+/// <p>The same failed write, answered by the shipped <method>OcuPilot.Api.Confirm.HandleConfirm</method>
+/// (<class>OcuPilot.Test.ConfirmRenderProbe</class>): the envelope carries the port's status and
+/// code, the fault's own sentence as its reason, and the row's state in its detail.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Api.Confirm.RenderRefusal</method> ignore
+/// <var>pReason</var>, or drop <var>tReason</var> from <method>HandleConfirm</method>'s call to it -- the
+/// reason falls to the generic tool sentence and this goes red.</p>
+Method TestAWriteThatFailsAfterTheClaimRendersItsFaultSentence()
+{
+    Set tKey = ..Seed()
+    If tKey = "" Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWriteFault(501)
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.ConfirmRenderProbe", "/" _ tKey _ "/confirm", "POST", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the confirm is rendered")
+    Do $$$AssertEquals(tStatus, 501, "at the port's own status")
+    Set tEnvelope = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "under the fault's own code")
+    Do $$$AssertEquals(tEnvelope.%Get("reason"), "The instance refused that operation", "with the fault's own sentence")
+    Do $$$AssertNotEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Api.Error).#REASONTOOLUNAVAILABLE, "and not the generic tool sentence")
+    Do $$$AssertEquals(tEnvelope.%Get("detail").%Get("state"), "confirmed", "and the row's state beside it")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 1, "the token is spent")
 }
 
 /// <p>AC1, AD-40, first clause: the confirm path is absent from the shipped tool registry, so the

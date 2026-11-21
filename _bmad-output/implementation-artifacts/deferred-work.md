@@ -4814,6 +4814,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T21:30:01Z status=escalated owner=burndown by=cr note=reopened: 20.10 publishes EXPLORER.DOCUMENT.SOURCECONTROL for the agent save; its card shows REASONTOOLUNAVAILABLE
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T22:49:03Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=failed-write_confirm_shows_the_fault's_own_sentence_(AC3);d0b4d7101,83e75a7f8,02855fa44
 
 ### DW-1281: A confirm that cannot take its target's lock is answered 500 rather than as the contention it is
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8478,7 +8479,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-18T18:00:33Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened:the_DW-1822_retry_ran_and_failed_again:1280px_light_settle_/agent/governance_abandoned_by_withDeadline_60000ms_after_'structural_walk_retried';run44328339684(ead5f1f95)browser_1/5_and_run44357940400(5e1672bb3)browser_1/5;both_reruns_pending/green;was_filed_as_DW-2742
 - 2026-11-20T13:24:53Z occurrence=24-14-pmml-model-tester-and-dashboard-viewer note=CI run 44736623307 (fa07e9126) browser shard 1/5: a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance
 - 2026-11-20T13:02:17Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44731774131_browser_shard_1:1280px_light_settle_/agent/governance_timed_out_after_60s
+- 2026-11-20T19:33:26Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=three governance-settle reds 2026-11-20 (runs 44743879162, 44736623307, 44794079238); must-fix in 21.23; candidate cause the governance screen's settle time at 329 baseline keys (inference); 21.23 measures the settle time at 720px and 1280px, light and dark, and fixes the screen or the walker, never the deadline
 - 2026-11-20T19:29:15Z by=epic-24-runner note=occurrence: CI run 44794079238 (24.14 Batch 2 integrate head b70aa5d69), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance (720px light, 60 s); every instance shard and the other browser shards green; third settle red at /agent/governance today (21.20's run, fa07e9126's run, this one); the governance screen lists 329 keys, so a real settle-time regression is possible (inference); orchestrator routes DW-1822 to 21-23 as must-fix
+- 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_1/5_a11y_AC5_settle_/agent/governance_1280px_light_60s;rerun_--failed;must-fix_in_21-23_stands
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8574,6 +8577,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:40Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue (Story 18.17 is done) to the remaining-leaves story
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T22:49:03Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=Operate-only_dismount_via_DatabasePort_config_reads_(AD-27_case;AC1,AC2);db22ccb70
 
 ### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
@@ -11632,6 +11636,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T12:33:20Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-12 Q1 (A), option B not chartered; untested, and it may break the editors' own window.open flows
 - 2026-11-14T00:50:17Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:34Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=spec_gate note=21.10 split (unattended ruling): assigned to 21-21-leaves-that-wait-on-the-owner
+- 2026-11-20T17:29:03Z status=wontfix-accepted owner=21-21-leaves-that-wait-on-the-owner by=21-21 note=Task0(b)_measured_on_ocupilot-ci:COOP_same-origin_nulls_the_opener_and_breaks_nothing,but_the_opened_tab_still_holds_ocupilot.token-pair_in_sessionStorage;decision_rule:Batch3_not_built.reopen_if:a_header_or_browser_change_leaves_an_editor-opened_tab_without_ocupilot.token-pair(spec-21-21_Task0(b))
 
 ### DW-2349: AD-28 still says the token pair is never within an embedded frame's reach and AD-47 that an embedded vendor page is inert, while AD-63's unsandboxed editor frame can read the pair, and AD-63 calls itself a named case of both
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: low | footprint: in-story
@@ -12780,6 +12785,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T21:07:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=InteropItemControl.StartProduction waits for the ScheduleHandler startup update (6d08b6ce), pinned by TestTheStartHelperWaitsForTheProductionsOwnUpdate (b38aa6b8); shard 8/8 order on a fresh ocupilot-b-ci green (InteropItemRun 9/9 at run 26)
 - 2026-11-20T03:50:33Z owner=burndown by=runner note=routed together with DW-2787 (same class InteropItemRun, production timing); a second red of either is a defect, not a flake (orchestrator)
 - 2026-11-20T03:50:41Z status=routed owner=burndown by=runner note=reopened with sibling DW-2787 (same class, production start timing on CI) per orchestrator; a second red of either is a defect
+- 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
 
 ### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
 - source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
@@ -13307,6 +13313,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-12-mirroring.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: grep '165 rows\|56 excluded' epics.md after bcdac6676
 - 2026-11-16T00:43:15Z status=open owner=burndown by=spec_gate note=re-derive at close; contended with Epic 24 register rows
+- 2026-11-20T17:59:12Z occurrence=21-21-leaves-that-wait-on-the-owner
 
 ### DW-2620: SA-43 and SA-44, the mirror database writes, stay P3 Stage 4 rows with no story after U-39 moved the other mirroring writes to the register
 - source: spec-21-12-mirroring.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13822,6 +13829,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-18T17:21:46Z status=wontfix-accepted owner=21-22-ci-flake-hardening by=adjudication note=clearFilter_names_the_rows_it_last_read;reopen_if=users_AC2_reddens_again
 - 2026-11-19T02:29:34Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=reopened(reopen_if_met):run44434412247(6bc7a0d66)browser_1/5_users_AC2:cleared_filter_left_aria-rowcount_14_vs_5(filter_field_empty;more_rows_than_the_spec's_4:another_spec's_users_present?);rerun_pending
 - 2026-11-20T14:35:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44743879162_browser_shard_3:cleared_filter_waited_30s_(aria-rowcount_14);rerun_--failed
+- 2026-11-20T23:43:01Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:feature_178ed176a(README-only)_run44824652605_browser_3/5_users_AC2_cleared_filter_aria-rowcount_14_vs_5;fourth_red;now_must-fix_in_21-23_with_DW-1822
 
 ### DW-2722: A global node changed after the edit dialog opened answers 400 TOOL.ARGUMENTS with an unruled sentence where the matrix names 409 target-changed
 - source: spec-21-5-globals-and-the-data-tools.md | severity: med | fix-risk: low | footprint: in-story
@@ -14195,6 +14203,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-24 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AssertStatusOK: the probe runs, with a disabled item and a pool-size-0 process stored => ERROR #5001: the probe production's operation holds no job after the start; passed on the one rerun of failed jobs; the change under test touched analytics only (inference: start timing).
 - 2026-11-20T03:50:33Z status=routed owner=burndown by=runner note=flake_policy:a_second_red_of_this_or_DW-2535_is_a_defect_not_a_flake;route_with_DW-2535
+- 2026-11-20T18:56:50Z status=routed owner=burndown by=runner note=recurred:21.21_runner_sweep_shard_5(head_83e75a7f8):InteropItemRun.TestTheAgentsStopAndStartConfirmOverHttp:operation_holds_no_job_after_the_start;CI_run_44790510586_ran_the_class_green;per_policy_a_second_red_is_a_defect
+- 2026-11-20T19:09:37Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=third red 2026-11-20 (21.21 sweep shard 5, TestTheAgentsStopAndStartConfirmOverHttp); must-fix in 21.23: root cause of 'the probe production's operation holds no job after the start', not a retry
 - 2026-11-20T10:25:11Z status=open owner=burndown by=runner note=SECOND RED (ocupilot-b-ci sweep shard 16, 24.14 Batch 2 implement, same assertion, green on its one re-run): per the orchestrator's rule this is now a defect, not a flake
 
 ### DW-2789: Pivot viewer: the Definition tab shows each level's spec only, leaving out a filter's chosen members, nested and disabled levels, calculated-member expressions, and a userMDX stored without manual mode that the vendor still runs
@@ -14235,8 +14245,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-20-os-management-and-log-leaves.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: SqlActivityPort.Rows skips only the reading process ($Job); Statement matches by server, pid and hash; the spec's Design Notes declined an arm without an AD-10 amendment, so the owner decides
 - 2026-11-20T12:35:37Z status=decision-pending owner=burndown by=cr note=AD-10 amendment question for the owner; by-design in 21.20 per the spec's in-stage decision
+- 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Ship, fix at cleanup (Recommended)": 1.0.18 ships as built; at Epic 21 burn-down add an add-only AD-10 rule refusing to cancel OcuPilot own processes, plus the guard
 
+### DW-2805: AD-8's Story 18.4 sentence and its memlog line still say dismount declares %Admin_Manage:USE, which AD-27's Story 21.21 case and the code now contradict
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:282 (dismount %Admin_Manage:USE because the check reads Namespace.Namespace GET and Database.ConfigCRUD LIST) vs :754 and DatabaseDismount.cls; .memlog.md:276 the same
+- 2026-11-20T17:59:16Z status=routed owner=21-21-leaves-that-wait-on-the-owner by=cr note=spine edit is the runner's (Rule 20; spec Never: no AD edit in-story): correct AD-8 at adjudication, citing the AD-27 case
+- 2026-11-20T18:13:57Z status=resolved-by:21-21-leaves-that-wait-on-the-owner owner=21-21-leaves-that-wait-on-the-owner by=runner note=AD-8_amended_add-only(spine+memlog)_in_aff694cd9;orchestrator_ruling
+
+### DW-2806: The exclusion register's WA-16 row says no IRIS class backs Web Gateway management, but %CSP.Mgr.GatewayMgr reads and sets the gateway's configuration
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: irislib/%CSP/Mgr/GatewayMgr.cls: 'an API used to control a Gateway from ObjectScript code' (Get/SetDefaultParams, Get/SetServerParams, GetSystemStatus); the row's own clear-probe ('cite the class') is met; exclusion-register.test.mjs pins the false reason
+- 2026-11-20T17:59:20Z status=decision-pending owner=burndown by=cr note=public register text was ruled (U-73): owner picks a true reason for not planned, or returns WA-16 to P3
+- 2026-11-20T20:56:10Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Plan it for a later story (Recommended)": WA-16 returns to the plan as a buildable leaf via %CSP.Mgr.GatewayMgr in a later story, which also removes the register sentence
+
+### DW-2807: No test pins the Globals half of DatabasePort.ProtectedNamespaceDatabases, because no namespace on the test instance has separate globals and routines databases
+- source: spec-21-21-leaves-that-wait-on-the-owner.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci: every namespace reads Globals = Routines (HSCUSTOM, USER, %SYS, HSLIB, HSSYS); dropping Globals from the field loop leaves every test green (code read correct)
+- 2026-11-20T17:59:25Z status=wontfix-accepted owner=21-21-leaves-that-wait-on-the-owner by=cr note=reopen_if=a probe namespace with separate globals and routines databases exists in the suite, or the field loop changes
 ### DW-2804: An install or update run by an administrator without %All stops at EnsureSqlPrivileges (SQLCODE -99) unless the account first holds SELECT on %Dictionary.CompiledClass and the OcuPilot_Kernel_State schema privileges WITH GRANT OPTION; the latter then draws the installer's foreign-grant warning, and the README does not say any of it
 - source: 1.0.18 upgrade check (prompts/upgrade-1018-prompt.md, 1.0.13 leg) | severity: med | fix-risk: med | footprint: cross-story
 - evidence: Measured on ocupilot-c-ci 2026-11-20: as OcuUpgAdmin (no %All) -99 at EnsureSqlPrivileges; schema grant alone -99; plus CompiledClass SELECT OK; revoking schema grant -112; Installer.cls identical 1dd513578..bdee5d94e, so pre-existing (the 1.0.17 check pre-granted both)
 - 2026-11-20T16:29:07Z status=decision-pending owner=burndown by=orchestrator note=owner decides: document the two grants, or have the installer need fewer; not a 1.0.18 regression
+- 2026-11-20T20:38:19Z status=routed owner=burndown by=orchestrator note=owner via Planner 2026-11-20 "Document now, fix later (Recommended)": README half on the 1.0.18 release branch by the Planner (closes against the release commit when sent); installer-needs-less half routed to a later story
+- 2026-11-20T20:40:08Z status=routed owner=burndown by=orchestrator note=documentation half closed by release/1.0.18 7d53e3312 (README IPM install: %Admin_Task:USE, SELECT on %Dictionary.CompiledClass, schema OcuPilot_Kernel_State privileges WITH GRANT OPTION, foreign-grant warning expected); installer-needs-less half stays routed to a later story

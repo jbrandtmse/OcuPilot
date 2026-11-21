@@ -805,3 +805,38 @@
 2026-11-20T15:59:53Z	Story 21.20	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-20T15:59:53Z	Story 21.20	ledger	resolved=DW-1562,DW-2479 by=21-20 new=DW-2803(owner_burndown,decision-pending)
 2026-11-20T15:59:53Z	Story 21.20	story_complete	head=bdee5d94e run=44743879162 ci=success fresh=pass sweep=20/20 smoke=50/50 vetoes=U-124,U-126
+2026-11-20T16:01:33Z	Story 21.21	integrated_forward	feature=71ede15f2(Epic_17_done) conflicts=0 files=sprint-status_only
+2026-11-20T16:01:33Z	Story 21.21	story_started	spec=validated(veto_U-73;U-74_batch5_unheld) baseline=b477b4593 doctrine=3d11cec9 policy=b9ff703e hold=none note=batch5_strings_and_ACs_unwritten:stage_drafts_them_after_batch4_and_halts
+2026-11-20T16:01:33Z	Story 21.21	stage_spawned	stage=implement scope=task0+batches1-4+batch5_drafts spawn_at=2026-11-20T16:01:33Z model=sonnet agent_name=21-21-implement cycle_iteration=1 prior_lines_ended=verified(aa86594de)
+2026-11-20T16:03:30Z	Story 21.21	ruling	question=batch5_sequencing via=orchestrator choice=approved(no_split) condition=lead_spec_gates_the_drafted_ACs(Rule5_amendment,validated)_before_batch5_respawn;strings+AC_list_in_one_message;split_to_21.37_if_over_budget_or_new_AD
+2026-11-20T16:56:28Z	Story 21.21	bash_edit_scan	agent=ae6ff74fd hits=1 verdict=no_tracked_edit(python_heredoc_read_the_class_and_wrote_a_scratch_copy;tracked_edits_via_Edit) action=none
+2026-11-20T17:29:09Z	Story 21.21	stage_halted	stage=implement status=blocked condition=intent_gap(batch5_strings) committed=db22ccb70(B1),d0b4d7101(B2),e7f4b799d(B4),bd4ff1ed0(halt) task0a=pass task0b=fail(token_pair_survives_COOP) batch3=not_built(decision_rule) drafted=AC6-AC17+strings
+2026-11-20T17:29:09Z	Story 21.21	code_head_pushed	sha=bd4ff1ed0 run=44783633783 missing=none note=partial(B1,B2,B4)
+2026-11-20T17:29:09Z	Story 21.21	ledger	DW-2348=wontfix-accepted(reopen_if_token_pair_check) by=21-21
+2026-11-20T17:31:04Z	Story 21.21	ruling	question=batch5 via=orchestrator choice=A(split_SH-27_to_21.37;U-74_carries) strings=ruled_for_21.37(2_changes;veto=U-128) epics=21.21_amended_note+21.37_added(add-only) tracker=21-37-page-resources:backlog test_tools=2356
+2026-11-20T17:31:04Z	Story 21.21	dev_complete	scope=B1,B2,B4(B3_not_built_by_rule;B5_split_to_21.37) build_sha=bd4ff1ed0 run=44783633783 followup_review_recommended=n/a
+2026-11-20T17:31:38Z	Story 21.21	stage_spawned	stage=code-review spawn_at=2026-11-20T17:31:38Z model=opus agent_name=21-21-code-review cycle_iteration=1 prior_lines_ended=verified(afc545ef8)
+2026-11-20T18:12:23Z	Story 21.21	review_complete	model=opus tier=full-opus entries=high0,med5,low9 patched=7 deferred=DW-2805(spine_AD-8_sentence,routed_21-21),DW-2806(WA-16_reason,owner),DW-2807(wontfix) commit=83e75a7f8
+2026-11-20T18:12:23Z	Story 21.21	code_head_pushed	sha=83e75a7f8 run=44790510586 missing=none note=supersedes_bd4ff1ed0(run_44783633783_cancelled_in_progress)
+2026-11-20T18:12:36Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=83e75a7f8 started=2026-11-20T18:12:36Z dir=e21u/21-21/gate
+2026-11-20T18:13:57Z	Story 21.21	ad_amended	ad=AD-8 marker=[AMENDED_2026-11-20,Story_21.21,DW-1850,Rule_20] commit=aff694cd9 lint_spine=ok(pre-existing_{id}_only) memlog=appended ledger=DW-2805_resolved
+2026-11-20T18:13:57Z	Story 21.21	ruling	question=DW-2806(WA-16) via=orchestrator choice=to_owner_via_Planner(decision-pending,owner=burndown;register_text_unchanged)
+2026-11-20T19:08:45Z	Story 21.21	ci_red_classified	run=44790510586 sha=83e75a7f8 defect=ClaimReach(review_seam_KernelConfirmClass_names_the_claim_by_string) sweep_red=InteropItemRun(DW-2787_recurrence,not_this_story;CI_ran_it_green) runner_sweep=stopped_at_shard_5
+2026-11-20T19:08:45Z	Story 21.21	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=ClaimReach scope_baseline=83e75a7f8
+2026-11-20T19:08:45Z	Story 21.21	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-20T19:08:45Z model=sonnet agent_name=21-21-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(a283a19c1)
+2026-11-20T19:09:37Z	Story 21.21	ruling	question=DW-2787_third_red via=orchestrator choice=route_DW-2787+DW-2535_to_21-23_must-fix(root_cause_not_retry) interim=one_rerun_for_that_assertion_alone queue=21.36,21.37,21.23,21.6,21.25,21.31
+2026-11-20T19:33:26Z	Story 21.21	ruling	question=DW-1822 via=orchestrator choice=route_21-23_must-fix(measure_governance_settle;fix_cause_not_deadline)
+2026-11-20T19:33:26Z	Story 21.21	dev_complete	scope=rework1(ClaimReach:KernelConfirm_##class_seam;no_quoted_name) build_sha=02855fa44 followup_review_recommended=false cycle_iteration=2
+2026-11-20T19:33:26Z	Story 21.21	code_head_pushed	sha=02855fa44 run=44803204811 missing=none
+2026-11-20T19:33:26Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=02855fa44 started=2026-11-20T19:33:26Z dir=e21u/21-21/gate attempt=2
+2026-11-20T20:19:58Z	Story 21.21	integrated_forward	feature=6ea518d17(24.14_B2+21.20_merge) merge=389656dcf conflicts=0 verified=screen-mirror(259_descriptors,110_types),test:tools_2357,check-objectscript_0,LOADERRORS=0,ClaimReach,ProposalConfirm,ReadTool,Descriptor,ToolRoundTrip,ToolEmit,DatabaseActionsGate,Navigation_green note=runner_sweep_on_02855fa44_stopped_at_shard_5(all_green)
+2026-11-20T20:19:58Z	Story 21.21	code_head_pushed	sha=389656dcf run=44810355489 missing=none note=supersedes_02855fa44(run_44803204811)
+2026-11-20T20:19:58Z	Story 21.21	gate_step	step=fresh_check+full_sweep+smoke head=389656dcf started=2026-11-20T20:19:58Z dir=e21u/21-21/gate attempt=3
+2026-11-20T20:56:10Z	Epic 21	owner_decisions	vetoes_kept=U-121,U-124,U-126,U-128 DW-2803=burndown(at_Epic_21_burn-down:add-only_AD-10_rule_refusing_cancel_of_OcuPilot's_own_processes+guard) DW-2806=burndown(WA-16_buildable_leaf_later_story;register_text_unchanged) via=Planner/orchestrator
+2026-11-20T21:19:59Z	Story 21.21	note	feature_moved=177936ac8(24.14_B3) action=finish_gates_on_389656dcf;orchestrator_judges_code-equal_merge;any_later_head_integrates_177936ac8_first
+2026-11-20T22:49:03Z	Story 21.21	ci_resolved	story=21.21 sha=389656dcf runs=44810355489 result=success
+2026-11-20T22:49:03Z	Story 21.21	fresh_check	env=recipe(ci-throwaway_rebuild) tests=19_classes+1_spec result=pass order=forward,reverse(specs) head=389656dcf
+2026-11-20T22:49:03Z	Story 21.21	sweep	shards=20/20_green head=389656dcf
+2026-11-20T22:49:03Z	Story 21.21	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
+2026-11-20T22:49:03Z	Story 21.21	ledger	resolved=DW-1850,DW-1280,DW-2805 closed=DW-2348(wontfix-accepted),DW-2807(wontfix-accepted) owner=DW-2806(burndown)
+2026-11-20T22:49:03Z	Story 21.21	story_complete	head=389656dcf run=44810355489 ci=success fresh=pass sweep=20/20 smoke=50/50 split=SH-27->21.37 spine=aff694cd9(AD-8) vetoes=U-128(for_21.37)

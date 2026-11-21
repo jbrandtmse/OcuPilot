@@ -3683,7 +3683,9 @@ ClassMethod NamespaceFields() As %List [ Private ]
 /// <var>pTarget</var> answers is one of those databases' directories
 /// (<method>OwnDatabaseDirectories</method>, compared by
 /// <method>OcuPilot.Port.DatabasePort.SameDirectory</method>) is refused
-/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses; every other operation is
+/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses. Both reads go through the
+/// port's configuration classes under the caller's own privilege (AD-27's named case), so the arm needs
+/// no admin API route; every other operation is
 /// permitted, its one argument being its fingerprint subject's (<method>SkippedFields</method>).</p>
 ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pType As %String = {..#TYPEDATABASECONFIG}) As %Status [ Private ]
 {
@@ -3694,8 +3696,8 @@ ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicO
         If pType = ..#TYPEDATABASE {
             If ..WriteTypeOf(pToolClass) = ..#DISMOUNTWRITETYPE {
                 Set tPort = ..PortClassOf(pToolClass)
-                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
-                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn, 1)
+                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories, 1)
                 Set tDirectory = ..Rendered(pTarget, "Directory")
                 If $$$ISERR(tNamesSC) || $$$ISERR(tDirsSC) || (tDirectory = "") {
                     Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
@@ -3765,10 +3767,21 @@ ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicO
 /// <parameter>SYSTEMDATABASES</parameter>, and the globals and routines databases of the namespace
 /// this process runs in, read at each call through <var>pPort</var>'s <code>Namespace.Namespace</code>
 /// <code>GET</code> as the caller. A read that fails is an error status, which the caller refuses on.
+/// When <var>pFromConfig</var> is 1 (a dismount, AD-27's named case) the namespace's two databases are
+/// read instead through <method>OcuPilot.Port.DatabasePort.ProtectedNamespaceDatabases</method>, which
+/// needs no admin API route and ignores <var>pPort</var>; the outputs and the error contract are the same.
 /// Overridable so a fixture can add a probe database; production never overrides it.</p>
-ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Status
+ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List, pFromConfig As %Boolean = 0) As %Status
 {
     Set pNames = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+    If pFromConfig {
+        Set tSC = ##class(OcuPilot.Port.DatabasePort).ProtectedNamespaceDatabases($NAMESPACE, .tNamespaceNames)
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:$ListLength(tNamespaceNames) {
+            If '$ListFind(pNames, $List(tNamespaceNames, tI)) Set pNames = pNames _ $ListBuild($List(tNamespaceNames, tI))
+        }
+        Quit $$$OK
+    }
     Kill tQuery
     Set tQuery("name") = $NAMESPACE
     Set tSC = $ClassMethod(pPort, "Invoke", "Namespace.Namespace", ..#READTYPE, .tQuery, "", .tNamespace, .tHttp, .tFault)
@@ -3785,10 +3798,13 @@ ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Statu
 
 /// <p>The directories of the configurations <var>pOwn</var> names, from one
 /// <code>Database.ConfigCRUD</code> <code>LIST</code> through <var>pPort</var> as the caller. A list
-/// that cannot be read is an error status.</p>
-ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List) As %Status [ Private ]
+/// that cannot be read is an error status. When <var>pFromConfig</var> is 1 (a dismount) each name's
+/// directory is read instead through <method>OcuPilot.Port.DatabasePort.ConfigDirectories</method>,
+/// which ignores <var>pPort</var>; a name with no configuration contributes none.</p>
+ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List, pFromConfig As %Boolean = 0) As %Status [ Private ]
 {
     Set pDirectories = ""
+    If pFromConfig Quit ##class(OcuPilot.Port.DatabasePort).ConfigDirectories(pOwn, .pDirectories)
     Kill tQuery
     Set tSC = $ClassMethod(pPort, "Invoke", "Database.ConfigCRUD", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSC
