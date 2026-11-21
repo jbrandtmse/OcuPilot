@@ -664,3 +664,8 @@
 2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
 2026-11-21T18:23:48Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-21T18:23:48Z model=opus agent_name=24-15-plan cycle_iteration=1 owned_ledger=DW-2636
 2026-11-21T18:28:59Z	Story 24.14	spine_amended	commit=b1d934735 AD-7+AD-65_add-only(U-132/U-133,as_shipped) on=feature_94fca2375 patch_2b=deleted
+2026-11-21T18:29:32Z	Story 24.14	merged_to_feature	spine_amendments feature=4cd1a974c
+2026-11-21T18:35:21Z	Story 24.15	story_created	spawn_at=2026-11-21T18:24:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules.md build_status=ready-for-dev scope=batch1_default_settings+compare(DW-2636)
+2026-11-21T18:35:21Z	Story 24.15	ruling	question=batches,compare_shape,provider_credential,audit_masking,strings choice=keep(Q3=stricter) category=veto inbox=U-135 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-21T18:35:21Z	Story 24.15	spec_validated	scope=batch1 owned_ledger=DW-2636(folded_AC4)
+2026-11-21T18:35:21Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-21T18:35:21Z model=sonnet agent_name=24-15-implement-batch1 cycle_iteration=1 story_base=928133ddf
