@@ -2,7 +2,7 @@
 title: 'Story 21.36: Task output and mail password'
 type: 'feature'
 created: '2026-11-20'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ca73454ff6a78e44e14ac150b4e3c20bff4c1130'
 review_loop_iteration: 0
 followup_review_recommended: false
