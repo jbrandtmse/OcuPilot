@@ -32,10 +32,10 @@ This catalog turns the thirteen research digests and two verification files of t
 | 9. System Operation, remainder | 0 | 0 | 8 | 8 | 3 | 19 |
 | 10. System Explorer and data browser | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | 0 | 1 | 28 | 69 | 20 | 118 |
-| 12. Analytics | 0 | 1 | 9 | 7 | 7 | 24 |
+| 12. Analytics | 0 | 1 | 9 | 7 | 10 | 27 |
 | 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 8 | 3 | 12 |
 | 14. Packaging, deployment and submission | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | **119** | **62** | **137** | **152** | **68** | **538** |
+| **All sections** | **119** | **62** | **137** | **152** | **71** | **541** |
 
 **SMP leaf coverage** (leaves covered / leaves in digest): System Administration 90/90 (54 Configuration incl. 3 Sharding and 6 Mirror, 30 Security, 2 Licensing, 4 Encryption); System Operation 36/36; System Explorer 11/11; Analytics 18/18 (13 DeepSee + 5 Text Analytics); Interoperability 68/68 live and 76/76 in source (the 8 non-rendered leaves are P4 rows IO-78..IO-81 and IO-90). Distinct write actions on P0/P1/P2 pages have their own rows; P4 pages are one row per page or per group as noted in Gaps.
 
@@ -605,6 +605,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | AN-22 | Text Analytics: Model Tester | %iKnow.Classification.UI.ClassifierTester | none | — | — | P4 | M | none | same — excluded: deprecated |
 | AN-23 | Architect / Analyzer / User Portal rebuilt as OcuPilot screens | %DeepSee.UI.Architect, Analyzer, UserPortal | deepsee (partial) | — | — | P4 | L | none | tier rules — excluded: full applications, link instead (AN-04..06) |
 | AN-24 | Worksheet builder, caption editor, Visual Reporting (dead block), other %DeepSee.UI pages not on the SMP menu | %DeepSee.UI.WorksheetBuilder, CaptionEditor, %DeepSee.Report.UI.* | none | — | — | P4 | M | none | smp-explorer-analytics-home not-in-menu rows — excluded: not on menu / dead code |
+| AN-25 | PMML export to a cube: data only (add rows to, or erase, a result class an earlier export made) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | M | none | Story 24.14 Batch 4 — excluded: the export makes new classes only |
+| AN-26 | PMML export to a cube: overwrite classes (delete and replace the classes the person names) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | M | none | Story 24.14 Batch 4 — excluded: the export refuses a held class and deletes none |
+| AN-27 | PMML export to a cube: iKnow measure (a text measure over the custom SQL's text column) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | S | none | Story 24.14 Batch 4 — excluded: iKnow deprecated |
 
 ## 13. Developer tools and sibling-tool equivalents not covered above (DT)
 

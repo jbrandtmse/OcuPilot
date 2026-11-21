@@ -5,15 +5,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { runPath } from '../../core/background-run';
 import { joinCompositeId } from '../../core/entity-id';
+import { ChangeBus } from '../../core/change-bus';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScopeService } from '../../core/scope';
+import { ScreenActions } from '../../core/screen-actions';
+import { SCREEN_READ_PATH_PREFIX } from '../../core/screen-read';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { DetailPage } from '../../shell/detail-page';
+import { SCREEN_ACTION_PATH_SUFFIX } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { MDX_BACKGROUND_SCHEDULE } from './mdx-query.page';
-import { PMML_MODEL_TEST, PmmlModelTestPage } from './pmml-model-test.page';
+import { PMML_EXPORT_ACTION, PMML_MODEL_TEST, PmmlModelTestPage } from './pmml-model-test.page';
 import { PMML_BACKGROUND_PATH, pmmlAnswerOf } from './pmml-test.store';
 
 /**
@@ -70,7 +74,9 @@ interface Post {
   readonly body: Record<string, unknown>;
 }
 
-type Answer = { readonly ok: unknown } | { readonly status: number; readonly code: string; readonly reason: string };
+type Answer =
+  | { readonly ok: unknown }
+  | { readonly status: number; readonly code: string; readonly reason: string; readonly detail?: Record<string, unknown> };
 
 const planted: HTMLElement[] = [];
 
@@ -93,7 +99,7 @@ function mount(first: Record<string, unknown>) {
       const answer = routes.get(path)?.shift();
       if (answer === undefined) throw new Error(`no answer queued for ${path}`);
       if ('ok' in answer) return { kind: 'ok', status: 200, body: answer.ok as T };
-      return { kind: 'error', status: answer.status, code: answer.code, reason: answer.reason, detail: null };
+      return { kind: 'error', status: answer.status, code: answer.code, reason: answer.reason, detail: answer.detail ?? null };
     },
   };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
@@ -102,6 +108,8 @@ function mount(first: Record<string, unknown>) {
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: ScreenStores, useValue: stores },
       { provide: OverlayStack, useValue: new OverlayStack() },
+      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ChangeBus, useValue: new ChangeBus() },
       { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'USER', subscribe: () => () => {} } as unknown as ScopeService },
       { provide: MDX_BACKGROUND_SCHEDULE, useValue: (run: () => void) => scheduled.push(run) },
     ],
@@ -284,6 +292,150 @@ describe('a PMML model\'s Test screen', () => {
     page.store.applyTick([row('Heights', true)], false, '', new Date());
     await settle(page.fixture);
     expect(texts(page.host, 'records')).toEqual([]);
+  });
+});
+
+const ACTION_PATH = `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(SCREEN.toolIdentifier)}${SCREEN_ACTION_PATH_SUFFIX}`;
+
+const EXPORTED = {
+  action: 'updated',
+  target: { type: 'pmml-model', scope: 'namespace:USER', id: MODEL_ID },
+  readBack: { verdict: 'matches' },
+  output: { ResultClass: `${DEFINITION}.Colors.Result`, CubeClass: `${DEFINITION}.Colors.ResultCube`, Cube: 'ModelTestResults', Records: 12 },
+};
+
+/** Type `value` into the dialog field `name`. */
+async function type(fixture: ComponentFixture<unknown>, host: HTMLElement, name: string, value: string): Promise<void> {
+  const input = host.querySelector(`[data-pmml-export-${name}]`) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+  await settle(fixture);
+}
+
+const dialogNode = (host: ParentNode, name: string): HTMLElement | null => host.querySelector(`[data-pmml-export-${name}]`);
+
+async function openExport(fixture: ComponentFixture<unknown>): Promise<void> {
+  expect(TestBed.inject(ScreenActions).run(PMML_MODEL_TEST, PMML_EXPORT_ACTION)).toBe(true);
+  await settle(fixture);
+}
+
+describe('a PMML model\'s Export to cube', () => {
+  it('opens a dialog over the source chosen here with the classic\'s names, and sends them through the action route', async () => {
+    // Mutation (Rule 19): send the model's name in place of its composite id, or the default result class without the model -> the body assertion goes red.
+    const page = mount(row('Colors', true));
+    page.routes.set(ACTION_PATH, [{ ok: EXPORTED }]);
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
+    await openExport(page.fixture);
+    expect(dialogNode(page.host, 'source')?.textContent).toBe('Rows');
+    expect((dialogNode(page.host, 'result') as HTMLInputElement).value).toBe(`${DEFINITION}.Colors.Result`);
+    expect((dialogNode(page.host, 'cube-class') as HTMLInputElement).value).toBe(`${DEFINITION}.Colors.ResultCube`);
+    expect((dialogNode(page.host, 'cube') as HTMLInputElement).value).toBe('ModelTestResults');
+    expect((dialogNode(page.host, 'source-class') as HTMLInputElement).value).toBe('');
+    expect(dialogNode(page.host, 'consequence')?.textContent).toBe(STRINGS.analyticsPmmlExportConsequence);
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.posts).toEqual([
+      {
+        path: ACTION_PATH,
+        method: 'POST',
+        body: {
+          action: 'export',
+          id: MODEL_ID,
+          values: { Source: 'dataset', DataSource: 'Rows', ResultClass: `${DEFINITION}.Colors.Result`, CubeClass: `${DEFINITION}.Colors.ResultCube`, Cube: 'ModelTestResults' },
+        },
+      },
+    ]);
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
+    expect(slot(page.host, 'export-line')?.textContent).toBe(`Exported 12 records to ${DEFINITION}.Colors.Result. Build the cube ModelTestResults in the Cube manager.`);
+  });
+
+  it('sends the typed names trimmed, a class to link to only when typed, and the SQL of a custom source or nothing of a verification source', async () => {
+    // Mutation (Rule 19): send an empty SourceClass, or the SQL with the verification source -> the body assertions go red.
+    const page = mount(row('Colors', true));
+    page.routes.set(ACTION_PATH, [{ ok: EXPORTED }, { ok: EXPORTED }]);
+    await settle(page.fixture);
+    await choose(page.fixture, page.host, 'verification');
+    await openExport(page.fixture);
+    await type(page.fixture, page.host, 'result', '  Probe.Own.Result ');
+    await type(page.fixture, page.host, 'cube', 'My cube');
+    await type(page.fixture, page.host, 'source-class', 'Probe.Source ');
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.posts[0]?.body).toEqual({
+      action: 'export',
+      id: MODEL_ID,
+      values: { Source: 'verification', ResultClass: 'Probe.Own.Result', CubeClass: `${DEFINITION}.Colors.ResultCube`, Cube: 'My cube', SourceClass: 'Probe.Source' },
+    });
+    await choose(page.fixture, page.host, 'custom');
+    const sql = slot(page.host, 'sql') as HTMLTextAreaElement;
+    sql.value = 'SELECT 1';
+    sql.dispatchEvent(new Event('input'));
+    await settle(page.fixture);
+    await openExport(page.fixture);
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect((page.posts[1]?.body as { values: Record<string, string> }).values).toMatchObject({ Source: 'custom', SQL: 'SELECT 1' });
+  });
+
+  it('keeps a refusal in the dialog, a violation under its field, and sends nothing while a name is blank', async () => {
+    // Mutation (Rule 19): put the refusal on the screen's banner -> the dialog assertion goes red; enable the action with a blank cube name -> the blank leg goes red.
+    const page = mount(row('Colors', true));
+    page.routes.set(ACTION_PATH, [
+      { status: 409, code: 'ANALYTICS.PMML.TAKEN', reason: STRINGS.analyticsRefusalPmmlTaken },
+      { status: 422, code: 'ANALYTICS.PMML.CUBENAME', reason: STRINGS.analyticsRefusalPmmlCubeName },
+      {
+        status: 422,
+        code: 'AGENT.VALIDATION',
+        reason: 'the envelope says',
+        detail: { violations: [{ field: 'Cube', code: 'ANALYTICS.PMML.CUBENAME', reason: STRINGS.analyticsRefusalPmmlCubeName }] },
+      },
+    ]);
+    await settle(page.fixture);
+    await openExport(page.fixture);
+    await type(page.fixture, page.host, 'cube', '');
+    expect(dialogNode(page.host, 'confirm')?.getAttribute('aria-disabled')).toBe('true');
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.posts).toHaveLength(0);
+    await type(page.fixture, page.host, 'cube', 'Taken');
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'reason')?.textContent).toBe(STRINGS.analyticsRefusalPmmlTaken);
+    expect(slot(page.host, 'export-line')).toBeNull();
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'reason')?.textContent).toBe(STRINGS.analyticsRefusalPmmlCubeName);
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'cube-violation')?.textContent).toBe(STRINGS.analyticsRefusalPmmlCubeName);
+    expect(dialogNode(page.host, 'result-violation')).toBeNull();
+    expect(dialogNode(page.host, 'reason')).toBeNull();
+    expect(page.posts).toHaveLength(3);
+  });
+
+  it('opens nothing for a source that cannot be sent, closes on Cancel and forgets the line for another model', async () => {
+    // Mutation (Rule 19): open the dialog with a custom source and no SQL -> the first assertion goes red.
+    const page = mount(row('Colors', true));
+    page.routes.set(ACTION_PATH, [{ ok: EXPORTED }]);
+    await settle(page.fixture);
+    await choose(page.fixture, page.host, 'custom');
+    TestBed.inject(ScreenActions).run(PMML_MODEL_TEST, PMML_EXPORT_ACTION);
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
+    await choose(page.fixture, page.host, 'verification');
+    await openExport(page.fixture);
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(slot(page.host, 'export-line')).not.toBeNull();
+    page.store.applyTick([row('Heights', true)], false, '', new Date());
+    await settle(page.fixture);
+    expect(slot(page.host, 'export-line')).toBeNull();
+    await openExport(page.fixture);
+    expect(dialogNode(page.host, 'confirm')).not.toBeNull();
+    (page.host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
   });
 });
 

@@ -52,6 +52,12 @@ Parameter NEWPREFIX = "ProbePmml.New";
 /// <p>The two models of <method>CreatedText</method>.</p>
 Parameter CREATEDMODELS = "Hue,Span";
 
+/// <p>The prefix of the classes the export tests make (a result class and a cube class, with the classes a cube class's compile generates), outside the <code>OcuPilot</code> names, and the upper-case prefix of
+/// the cubes they register. A test removes each with <method>RemoveExport</method>, and <method>Left</method> reports any that remains.</p>
+Parameter EXPORTPREFIX = "ProbePmml.Export";
+
+Parameter EXPORTCUBEPREFIX = "PROBEPMMLEXPORT";
+
 /// <p>The text of class <var>pName</var> of the package, in the class definition language.</p>
 /// <p>The definition's cube source names the guarded cube of the analytics probe, which must already be compiled.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
@@ -149,6 +155,41 @@ ClassMethod RemoveNew(pClass As %String) As %Status
     Quit tSC
 }
 
+/// <p>Remove what the export tests made under <parameter>EXPORTPREFIX</parameter> and <var>pMarker</var> (every export when it is <code>""</code>), in <code>USER</code>: each cube class first, whose delete also removes the classes its
+/// compile generated and the cube's registration, then the data of every persistent class that is left, and then each class. Deleting a persistent class leaves its data global, so the extent is killed first.</p>
+ClassMethod RemoveExport(pMarker As %String = "") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPrefix = ..#EXPORTPREFIX _ pMarker
+        For tPass = 1, 2 {
+            Kill tNames
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ? ORDER BY Name", tPrefix)
+            While tRS.%Next() {
+                Set tNames(tRS.%GetData(1)) = ""
+            }
+            Set tName = ""
+            For {
+                Set tName = $Order(tNames(tName))
+                If tName = "" Quit
+                Set tCompiled = ##class(%Dictionary.CompiledClass).%ExistsId(tName)
+                If (tPass = 1) && tCompiled && $ClassMethod(tName, "%Extends", "%DeepSee.CubeDefinition") {
+                    Set tSC = $$$ADDSC(tSC, $System.OBJ.Delete(tName, "-d"))
+                } ElseIf (tPass = 2) && ##class(%Dictionary.ClassDefinition).%ExistsId(tName) {
+                    If tCompiled && $ClassMethod(tName, "%Extends", "%Library.Persistent") Try { Do $ClassMethod(tName, "%KillExtent") } Catch {}
+                    Set tSC = $$$ADDSC(tSC, $System.OBJ.Delete(tName, "-d"))
+                }
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>Save and compile the source table and the definition in <code>USER</code>, and write the source rows. A suite that died leaves its classes behind, so an existing
 /// package is removed first.</p>
 ClassMethod Create() As %Status
@@ -189,8 +230,9 @@ ClassMethod Remove() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ..RemoveExport()
         If ##class(%Dictionary.CompiledClass).%ExistsId(..#SOURCECLASS) Do $ClassMethod(..#SOURCECLASS, "%KillExtent")
-        Set tSC = $System.OBJ.DeletePackage(..#PACKAGE, "-d")
+        Set tSC = $$$ADDSC(tSC, $System.OBJ.DeletePackage(..#PACKAGE, "-d"))
         Set tSC = $$$ADDSC(tSC, $System.OBJ.DeletePackage(..#SOURCEPACKAGE, "-d"))
         Do ..DropRows()
     } Catch ex {
@@ -268,10 +310,21 @@ ClassMethod Left() As %String
         Set tPrefix = ..#PACKAGE _ ".%"
         Set tSourcePrefix = ..#SOURCEPACKAGE _ ".%"
         Set tNewPrefix = ..#NEWPREFIX _ "%"
-        &sql(SELECT COUNT(*) INTO :tClasses FROM %Dictionary.ClassDefinition WHERE (Name LIKE :tPrefix OR Name LIKE :tSourcePrefix) AND Name NOT LIKE :tNewPrefix)
+        Set tExportPrefix = ..#EXPORTPREFIX _ "%"
+        &sql(SELECT COUNT(*) INTO :tClasses FROM %Dictionary.ClassDefinition WHERE (Name LIKE :tPrefix OR Name LIKE :tSourcePrefix) AND Name NOT LIKE :tNewPrefix AND Name NOT LIKE :tExportPrefix)
         If +$Get(tClasses) Set tLeft = tLeft _ ",classes:" _ tClasses
         &sql(SELECT COUNT(*) INTO :tNew FROM %Dictionary.ClassDefinition WHERE Name LIKE :tNewPrefix)
         If +$Get(tNew) Set tLeft = tLeft _ ",new:" _ tNew
+        &sql(SELECT COUNT(*) INTO :tExports FROM %Dictionary.ClassDefinition WHERE Name LIKE :tExportPrefix)
+        If +$Get(tExports) Set tLeft = tLeft _ ",export:" _ tExports
+        Set tCubes = 0
+        Set tCube = $Order(^DeepSee.Cubes("cubes", ..#EXPORTCUBEPREFIX), -1)
+        For {
+            Set tCube = $Order(^DeepSee.Cubes("cubes", tCube))
+            If $Extract(tCube, 1, $Length(..#EXPORTCUBEPREFIX)) '= ..#EXPORTCUBEPREFIX Quit
+            Set tCubes = tCubes + 1
+        }
+        If tCubes Set tLeft = tLeft _ ",cubes:" _ tCubes
         Set tRows = ..Rows()
         If tRows Set tLeft = tLeft _ ",results:" _ tRows
         Set tRecords = ..Records()

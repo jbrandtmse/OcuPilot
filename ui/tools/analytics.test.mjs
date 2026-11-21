@@ -913,3 +913,56 @@ test('Story 24.14 Batch 3: each PMML create refusal and its consequence is one s
     assert.ok(guard[0].includes(needle), `the text guard holds ${needle}`);
   }
 });
+
+/** The refusals of the PMML export to a cube (Story 24.14, Batch 4), each pinned to its `strings.ts` key. */
+const PMML_EXPORT_SENTENCES = [
+  ['REASONPMMLSAME', 'analyticsRefusalPmmlSame'],
+  ['REASONPMMLCUBETAKEN', 'analyticsRefusalPmmlCubeTaken'],
+  ['REASONPMMLCUBENAME', 'analyticsRefusalPmmlCubeName'],
+  ['REASONPMMLSOURCECLASS', 'analyticsRefusalPmmlSourceClass'],
+  ['REASONPMMLEXPORTRUN', 'analyticsRefusalPmmlExportRun'],
+  ['REASONPMMLEXPORTCOMPILE', 'analyticsRefusalPmmlExportCompile'],
+];
+
+test("Story 24.14 Batch 4: each PMML export refusal and its consequence is one sentence on both surfaces, and the export names none of the classic's own writes", () => {
+  // Mutation (Rule 19): change one word of REASONPMMLEXPORTRUN in AnalyticsError.cls (or of analyticsRefusalPmmlExportRun in strings.ts) -> the first half goes red naming the pair; call %DeleteExtent or name
+  // ExportToCubeDefinition or an INSERT INTO from AnalyticsPort.cls -> the vendor-call assertion goes red naming it; give the tool a fingerprint subject -> the tool assertion goes red.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_EXPORT_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSPMMLEXPORT = 'ANALYTICS.PMML.EXPORT'"), 'proposal-view.ts holds the export\'s consequence code');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSPMMLEXPORT) return STRINGS.analyticsPmmlExportConsequence;'), 'and maps it to its sentence');
+  for (const key of ['analyticsPmmlExportConsequence', 'analyticsPmmlExportedLine', 'analyticsPmmlExportAction', 'analyticsPmmlModelTestEmptyAgent']) {
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const tool = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsPmmlModelExport.cls');
+  assert.equal(classParameter(tool, 'CONSEQUENCECODE'), 'ANALYTICS.PMML.EXPORT', 'the export names its consequence code');
+  assert.equal(classParameter(tool, 'WRITETYPE'), 'TOCUBE', 'its write type');
+  assert.equal(classParameter(tool, 'READBACKFIELDS'), 'ResultClass,CubeClass,Cube', 'and the three names its read-back compares');
+  assert.equal(classParameter(tool, 'FINGERPRINTSUBJECT'), '', 'it is fingerprinted over its merged payload, which a name taken since the review moves');
+  assert.ok(readFileSync(tool, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'the export extends the action tool base');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/ExportToCubeDefinition/, /%DeleteExtent/, /INSERT\s+INTO/i, /CreateFromFile/, /%OnSubmit/, /\$\$Delete\^%apiOBJ/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const run = /ClassMethod PerformPmmlExport\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(run, null, 'the port declares PerformPmmlExport');
+  for (const needle of ['..WriteClass(', '..PmmlRun(', '..PmmlExportRestore(', '..PmmlExportAudit(']) {
+    assert.ok(run[0].includes(needle), `the export is made with ${needle}`);
+  }
+  for (const never of ['JOB', 'Job ', '.Build', '%BuildCube', 'CancelJob', 'SpawnChild']) {
+    assert.ok(!run[0].includes(never), `the export never uses ${never}: no background run and no build`);
+  }
+  const cubeText = /ClassMethod PmmlCubeClassText\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(cubeText, null, 'the port declares PmmlCubeClassText');
+  for (const needle of ['buildRestriction=""TestId = "', 'ActualValueD', 'PredictedValueD', 'PmmlXmlEscape(pCube)']) {
+    assert.ok(cubeText[0].includes(needle), `the cube text holds ${needle}`);
+  }
+});

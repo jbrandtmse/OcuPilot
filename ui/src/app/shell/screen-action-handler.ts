@@ -173,6 +173,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
   // Story 24.14 Batch 3: the PMML models, whose New PMML definition dialog sends the class and its text.
   'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList',
+  // Story 24.14 Batch 4: the PMML model Test screen, whose Export to cube its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
   // Story 24.13 Batch 2: Analytics' General settings, whose Set value the settings page's dialog sends, and Worklists, whose Show and Hide are sent at once.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
   'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',

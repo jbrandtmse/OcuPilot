@@ -154,6 +154,35 @@ export function dataSourceNames(field: unknown): readonly string[] {
     .filter((name) => name !== '');
 }
 
+/** The three names an export to a cube takes, and the optional class its rows link to, as the dialog gathers them. */
+export interface PmmlExportNames {
+  readonly resultClass: string;
+  readonly cubeClass: string;
+  readonly cube: string;
+  readonly sourceClass: string;
+}
+
+/** The cube name the classic dialog starts at. */
+export const PMML_EXPORT_CUBE_DEFAULT = 'ModelTestResults';
+
+/** The classic's default names for the model `model` of the definition class `definition`: its package is the class, a dot and the model. */
+export function exportDefaults(definition: string, model: string): PmmlExportNames {
+  return { resultClass: `${definition}.${model}.Result`, cubeClass: `${definition}.${model}.ResultCube`, cube: PMML_EXPORT_CUBE_DEFAULT, sourceClass: '' };
+}
+
+/** The text of the `{count}`, `{class}` and `{cube}` placeholders of the result line `template`. */
+export function exportedLine(template: string, answer: unknown): string {
+  const record = objectOf(answer);
+  if (record === null) return '';
+  return template
+    .split('{count}')
+    .join(String(count(record['Records'])))
+    .split('{class}')
+    .join(text(record['ResultClass']))
+    .split('{cube}')
+    .join(text(record['Cube']));
+}
+
 export class PmmlTestState {
   private modelValue = '';
 
@@ -259,6 +288,25 @@ export class PmmlTestState {
     if (this.choiceValue === PMML_CUSTOM) return this.sqlValue.trim() === '' ? null : { model: this.modelValue, source: PMML_CUSTOM, sql: this.sqlValue };
     if (!this.choiceValue.startsWith(PMML_DATASET_PREFIX)) return null;
     return { model: this.modelValue, source: 'dataset', dataSource: this.choiceValue.slice(PMML_DATASET_PREFIX.length) };
+  }
+
+  /**
+   * The values the Export to cube action sends for the choice on screen and `names`, under the names its tool declares, or `null` when nothing can be sent. The source is the one
+   * a run would send (`body`), the names are trimmed, and a class to link to that is blank is left out. The instance judges every value (AD-11).
+   */
+  exportValues(names: PmmlExportNames): Readonly<Record<string, string>> | null {
+    const body = this.body();
+    if (body === null) return null;
+    const values: Record<string, string> = { Source: body['source'] ?? '' };
+    const dataSource = body['dataSource'];
+    if (dataSource !== undefined) values['DataSource'] = dataSource;
+    const sql = body['sql'];
+    if (sql !== undefined) values['SQL'] = sql;
+    values['ResultClass'] = names.resultClass.trim();
+    values['CubeClass'] = names.cubeClass.trim();
+    values['Cube'] = names.cube.trim();
+    if (names.sourceClass.trim() !== '') values['SourceClass'] = names.sourceClass.trim();
+    return values;
   }
 
   /** Run: send the test as chosen. Nothing is sent while a run is live or nothing can be sent. */

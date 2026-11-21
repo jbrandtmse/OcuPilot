@@ -2,7 +2,8 @@
 title: 'Story 24.14: PMML model tester and dashboard viewer (Batch 4: Export a PMML test''s results to a cube)'
 type: 'feature'
 created: '2026-11-20'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a40b3789e08a4dea700910680b5b9f002c214c49'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -110,7 +111,10 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
   - New `PlanPmmlExport` makes the refusals and composes both class texts. Its sibling is `PlanPmmlDefinition` :7410; `PmmlClassText` :7285 shows how to compose.
   - New `PerformPmmlExport` calls `WriteClass` :6214, `RestoreClass` :6249, `PmmlRun` and `AuditWrite` :3310.
   - `RestoreClass` gains an optional `pKillExtent` (a parameter, not a copy) only if Task 0 shows a delete leaves `<R>`'s data.
-  - `SnippetForm` :3330 answers `""` for `TOCUBE` (Design Notes › Decided 3).
+  - `SnippetForm` :3416 answers `objectscript` for the PMML model endpoint's `TOCUBE`, and `Snippet` :3433 renders the export's draft through a new private `PmmlExportSnippet`, whose sibling is `PmmlDefinitionSnippet` :7588 and which builds its steps with `ClassWriteSnippet` :6385 where they fit (Spec Change Log, 2026-11-21 re-open).
+    - It reads the stored proposal's arguments, the query's namespace and model id and the body's names and source, and it runs no write.
+    - It mirrors every branch `PerformPmmlExport` takes: `PlanPmmlExport`'s refusals as a script that only sets the refusal's sentence, the result class saved and compiled, the export's own test and copy, the cube class saved and compiled, and, when a later step fails, the delete of every class the script saved.
+    - It carries no secret. A draft whose text would pass `OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS` answers no step, as the siblings do.
 - **`Api/AnalyticsError.cls`:** the codes `PMML{SAME,CUBETAKEN,CUBENAME,SOURCECLASS,EXPORTRUN,EXPORTCOMPILE,EXPORT}`, with their reasons, `ReasonFor`, the roster and `PmmlCodes()`.
 - **New `Screen/Tool/AnalyticsPmmlModelExport.cls`.** It extends `AnalyticsAction`, as `AnalyticsCubeBuild` does, with:
   - `TOOLNAME` `analytics.pmmlmodel.export`, `SCREENACTIONS` `export`, `WRITETYPE` `TOCUBE`, `READTYPE` `PMMLEXPORT` and `READBACKFIELDS`;
@@ -169,6 +173,8 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
   HALT `blocked` with `intent gap` if any delete leaves a class, cube or row that no step removes, or if the principal cannot compile a cube class.
 - [ ] `AnalyticsPort.cls`, `AnalyticsError.cls`, `Baseline.cls`, the new tool, the descriptor, and `Prohibited.cls` only if needed: as the Code Map says. This is the write, the refusals, the restore and the read.
 - [ ] The client page, dialog, store, handler and strings, the regenerated mirror and titles, and the EXPERIENCE.md row.
+- [ ] Script form (re-open, veto item U-133): `SnippetForm` and `Snippet` for `TOCUBE` as the Code Map says. In `AnalyticsPmmlExportEdge` (or the class that held it), replace `TestTheExportHasNoScriptForm` with a test that pins the rendered draft: it mirrors the branches and renders from the stored arguments, with no write run and no secret. `OcuPilot.Test.DraftRegistry` is green. Its `mutation:` line is written in `## Verification`.
+  - Two conditions ride on the draft (orchestrator, U-133, relayed by the lead). First: `PmmlExportSnippet` validates every name it interpolates before it renders (the result class, the cube class, the package, the model and the source) with the shape checks `Invoke` uses, and quotes each with `Literal` as the cube Build's draft does. A name that fails renders no draft at all (`Snippet` answers `[]`), never a draft holding the raw value. One further test uses a hostile class name holding a quote, a newline, `_` and `$$$` and asserts that no draft is rendered; it has its own `mutation:` line. Second: the draft states its one-way step in one script comment line, using only the ruled consequence sentence's words "OcuPilot cannot undo an export" (Proposed strings). Any new user-facing sentence HALTs `blocked` with `intent gap: new string <text>`.
 - [ ] Tests: the matrix in the two new classes, the probe change, the component and browser tests, and every roster.
 - [ ] The exclusion register, the catalog and the extract: three rows, with `exclusion-register.test.mjs` green.
 - [ ] `README.md`: the clause under Design Notes › Proposed strings, inserted after "and runs a pivot;" in the Analytics sentence. Nothing else in the file changes.
@@ -203,8 +209,44 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
 ## Spec Change Log
 
 - 2026-11-21, spec gate (runner, veto item U-132): every recommended veto item kept as proposed: the key ships true, Decided 1-6, the stricter refusals, the proposed strings and README clause, and the proposed AD-7/AD-65 wording (spine unedited).
+- 2026-11-21, re-open (runner, intent gap resolved toward the spine): Decided 3 is reversed, because AD-59 binds every write tool and its registry test fails a tool with no script form. `TOCUBE` gets a script form: `AnalyticsPort.SnippetForm` answers a form for `TOCUBE`, and `Snippet` renders an ObjectScript draft that mirrors every branch `Invoke` takes for the export (its own test, the two class saves and compiles, the copy, and the delete on a later failure) from the stored proposal's arguments, as the cube Build's draft does, and runs no write. The draft carries no secret. `TestTheExportHasNoScriptForm` is replaced by a test that pins the rendered draft. AD-59 is unchanged.
 
 ## Review Triage Log
+
+### 2026-11-20 — Review pass
+
+- verdicts: 10 findings — high 1, medium 1, low 8, false 0, maybe-false 0 (3 patched, 6 rejected, 1 intent_gap); `src/OcuPilot/Api/Error.cls` is not in the diff (both layers confirmed; every new code is in `AnalyticsError.cls`)
+- findings:
+  - `[medium]` `[patch]` The short-bound leg armed 0.5 s over a 20,736-row run measured at 0.84 s, so a faster runner finishes in time and the leg reads 200 — `AnalyticsPmmlExportEdge`: the bound is now 0.01 s, which any run exceeds (the stop test is `elapsed >= bound`); the doc comment says so.
+  - `[low]` `[patch]` The component spec's field-violation path was not exercised though its title claims it — `pmml-model-test.page.spec.ts`: a third route answers `AGENT.VALIDATION` with a `Cube` violation, and the test asserts the text under the cube field, none under the result class field and no banner.
+  - `[low]` `[patch]` A doc comment still said a 250-character cube name is made — `AnalyticsPmmlExportEdge`: the clause removed (the real compile refuses it, Measured 10).
+  - `[low]` `[reject]` `Gone()` does not read a surviving result-class data global — the test helper's own `ExportLeft` and the write's pre-run extent kill cover it; no user-reachable failure.
+  - `[low]` `[reject]` The `PmmlProbe` seam state (`^||`, process private) is reset by each leg before it arms and after it ends, not by a hook — an exception between the two is theoretical.
+  - `[low]` `[reject]` `Prohibited.cls` takes its `pmml-model` line among the analytics lines, not at the end — add-only, a per-type line, no shared condition touched, and the chain has no order; `git log` shows Epic 21 has not changed the file.
+  - `[low]` `[reject]` The `pCubeSaved = 1` restore branch is unreachable today — a defensive restore of the one class that would need it if a step is added after the cube's save.
+  - `[low]` `[reject]` The agent card test supplies no `SourceClass`, so the card shows three names for it — the field is optional with no prefill (Decided 5), and the fifth leg of the other-sources test links one.
+  - `[low]` `[reject]` `TestTheExportHasNoScriptForm` passes without a code change — an intended tripwire for the Decided 3 default.
+  - `[high]` `[intent_gap]` (found by the lead's full sweep, shard 16, not by a layer) `OcuPilot.Test.DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript` are red: `analytics.pmmlmodel.export` is a registered write tool whose `SnippetForm` is `""` (Decided 3), and AD-59's Rule fails the registry test "when any registered write tool's port or request type has no script form, so a new write tool cannot ship without one". Decided 3 and AD-59 cannot both hold. The test is not in the spec's `(loop)` list and `DraftRegistry.cls` was not changed, so the implement pass never ran it. Two resolutions need a ruling: (a) amend AD-59 and the two registry legs with an exemption for this tool, or (b) a script form for `TOCUBE` (a model test, the two classes and the copy as a draft that runs no write), reversing Decided 3. The work is left uncommitted in the tree; the full diff is saved at `.../scratchpad/e24u/24-14/b4/lead/b4-attempt.patch`.
+  - Intent-alignment layer: no divergence found. It lists three additions beyond the contract's text (the pre-run extent kill, the plan's preparation refusal, `Held` and a `Prohibited` field line), each recorded under Decided in-stage or Measured.
+
+### 2026-11-21 — Review pass (script form re-open)
+
+- verdicts: 11 findings — high 0, medium 2, low 9, false 0, maybe-false 0 (2 patched with a test leg each, 4 patched as code or doc lines, 5 rejected; the intent-alignment layer found no divergence on the write path)
+- findings:
+  - `[medium]` `[patch]` The script's pre-run `%KillExtent` was unpinned: the only assertion was a text match that the failure-path kill also satisfies — `AnalyticsPmmlExportEdge`: a leg leaves a row in the result class's data global, runs the script and asserts the result class holds only the run's rows; its mutation is recorded. The first draft of the leg used a name whose data global is hashed, so it passed under the mutation; the marker is now short enough that the global is the name and `D`.
+  - `[medium]` `[patch]` The script's run-failure branch had no test (only the cube compile failed) — `AnalyticsPmmlExportEdge`: a custom export whose statement is swapped for a missing table runs to a failure and leaves nothing; its mutation is recorded. The script's copy-failure branch shares the failure lines, which the cube compile leg and this leg exercise.
+  - `[low]` `[patch]` The `SnippetForm` doc comment listed three writes — `AnalyticsPort`: it names the others.
+  - `[low]` `[patch]` The `PmmlExportSnippet` comment did not say the script runs the test without the write's bound — `AnalyticsPort`: stated.
+  - `[low]` `[reject]` `DraftRegistry`'s synthetic proposal reaches only the refusal step — the registry's per-tool legs pin that a form exists and no secret reaches a draft; the draft body is pinned by the Edge test, which renders from the stored query and body through `Snippet`, the call the draft route makes.
+  - `[low]` `[reject]` The `DraftRegistry` roster rows have no removal mutation of their own — they are shape data for a synthetic row, not an acceptance pin; the `SnippetForm` mutation reddens the registry.
+  - `[low]` `[reject]` No test renders from a minted proposal through `Draft.Render` — the registry's round-trip leg renders every write tool's draft from its stored proposal and compares its steps with `Snippet`'s.
+  - `[low]` `[reject]` Mutation lines missing for the three refusal-only legs and the model-id and namespace legs — each is a leg of a test whose pinning mutation is recorded; one demonstrated mutation per AC is the bar.
+  - `[low]` `[patch]` A name that is both OcuPilot's own and malformed rendered the refusal sentence, not no draft, which U-133's first condition forbids as written — `AnalyticsPort`: the shape check now runs before the plan for every name, with `PmmlDraftClassShaped` (`ListingClassShaped`'s pattern, which also admits an `OcuPilot` package so a well-formed own-code name is still the write's 403 sentence). A test leg and its mutation are recorded.
+  - `[low]` `[patch]` The script has no 120-second bound — `AnalyticsPort`: the script says so in one comment line, as the orchestrator's later condition asked; no bound is added.
+  - Mutation coverage for the legs the verification-gap layer listed as unproven is added: the refusal steps, the three run calls, the model-id and namespace legs, the bound comment and the registry row; the dataset call's data source cannot be mutated alone (recorded in `## Verification`).
+  - `[low]` `[reject]` Intent-alignment layer: the draft runs the vendor's calls directly, with no bound, no audit row and no answer — inherent to a script form a person runs; the contract's branches are mirrored and the write is unchanged.
+  - Intent-alignment layer: no divergence between the contract and the diff on the write path; the script form is the one addition and is recorded in the Spec Change Log.
+  - A second verification-gap layer launched first did not return (its shell call hung for over fifteen minutes and the lead could not stop it); its work is superseded by the layer above and nothing it did touched the tree.
 
 ## Design Notes
 
@@ -226,7 +268,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
 
 1. **The target is the model** (`pmml-model`, `[Class, Model]`, AD-13). It is an action-style write with declared values (AD-51, AD-56), not an AD-54 create: the model must exist, and the new names' absence is checked by the port and fingerprinted through `PMMLEXPORT`. So Batch 3's `PermittedCreateFields` line is untouched.
 2. **The copy goes through the object layer.** A least-privileged person's dynamic SQL on `TempResult` is refused (measured, Batch 2 `PmmlDrop`), and the vendor's `INSERT` composes a table name (AD-21).
-3. **No script form** (`SnippetForm` `""`). Its steps are a model test plus a copy, which the classic's own calls do not express as a draft that runs no write (veto).
+3. **A script form** (`SnippetForm` `objectscript`; reversed at the 2026-11-21 re-open, because AD-59 binds every write tool). The draft is the export's steps as ObjectScript built from the stored proposal's arguments, and it runs no write when rendered.
 4. **The bound is the test's own `MDXSECONDS` (120).** No new number. An export that outlasts the Web Gateway's response timeout (inference: 60 s by default) runs to its end and its answer is lost, as a cube build's is. An export cannot be canceled.
 5. **`SourceClass` is kept** (parity), optional, with no prefill: the classic fills it from custom SQL only.
 6. **The test is the export's own.** The page's last run is not reused, because Batch 2 drops its rows.
@@ -272,11 +314,36 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
   - AN-26 "PMML export: overwrite classes". Gate kind `demand`. Reason: "It deletes and replaces classes the person names."
   - AN-27 "PMML export: iKnow measure". Gate kind `deprecation`, in the text-analytics group. Reason: "iKnow Text Analytics is deprecated."
 
+**Measured (Task 0, implement, 2026-11-20, `ocupilot-b-ci`, USER; every probe class, cube, row and principal removed after).**
+
+1. **Deleting a compiled `%Persistent` class leaves its data global.** `SourceDocument.Remove` of `ProbePmml.ExportT1.Result` with five rows left `^ProbePmml.ExportT1.ResultD` (11 nodes, counter 10), and a class of the same name made later would inherit the rows. `%KillExtent` before the delete leaves nothing, so `RestoreClass` gains `pKillExtent`, and the write kills a new result class's extent once it compiles, before the copy.
+2. **A cube class's compile generates four classes**, `<K>.Fact`, `<K>.Listing`, `<K>.StarActualValue` and `<K>.StarPredictedValue`, and 11 nodes of `^DeepSee.Cubes`. Deleting `<K>` removed all of it: no class under `<K>.`, `%CubeExists` false, no `^DeepSee.Cubes` node.
+3. **A refused cube compile leaves only `<K>`**: a level over a property the result class lacks, and a second class naming a held cube, each left the saved class and nothing else, no cube registered. Deleting it removed it; a held cube of the same name stayed intact.
+4. **The databases:** `^DeepSee.Cubes`, `^DeepSee.Fact`, `^DeepSee.CubeVersion`, `^oddDEF` and the result class's data global all map to `%DB_USER` (read-write, mounted) in USER.
+5. **Auditing (enabled) recorded nothing for either save, the result class's compile and delete, the rows, or the extent kill.** The cube class's compile and its delete each recorded one `%System/%Security/RoleChange` event, a process role change, and no event naming a class or a cube (inference: the vendor's cube code raises roles). OcuPilot's own row is still the only record of the change.
+6. **`TempResult`'s strings are `%String(MAXLEN = 2000)` and its `Probability` is `%Double`; the vendor's export class declares `%String` (MAXLEN 50) and `%Numeric` (scale 2).** A 300-character value failed the copy ("length longer than MAXLEN allowed of 50") after one row, and `Probability` 0.123456789 stored as 0.12. The result class takes `MAXLEN = 2000` on its three strings and keeps `%Numeric`, as the classic's does.
+7. **The object copy** (embedded SQL cursor bound to the id, one `%New` and `%Save` a row) copied 20,736 rows in 0.15 s, about 140,000 rows a second, after a vendor run of 0.84 s. The run's 120-second bound does not cover the copy, which adds about a sixth of a run's own time (inference: linear in rows).
+8. **The cube class's XData composed here equals `XMLExportToStream`'s for the same model byte for byte,** for the names `ModelTestResults`, `A"B&C<D'E>F` and `x`: the vendor escapes `&`, `<`, `>`, `"` and `'`, writes one line and spells every default attribute.
+9. **A principal holding `%Development:USE`, `%DeepSee_Portal:USE` and `%DB_USER:RW`** (and read of the system databases) saved and compiled both classes, saved rows, found `%CubeExists` true, killed the extent and deleted both classes, in a child process. Nothing was left.
+
+10. **The real compile refuses a cube name of 250 characters, and one with `&`, `"`, `<` or `'`, as a cube class that does not compile** (the limit lies between 204 and 250 characters), so `EXPORTCOMPILE` restores both classes; the plan's own bound is `PMMLCUBENAMEMAX`.
+11. **The vendor's run is lenient about a statement that fails per row.** A division by zero, an out-of-range expression and a missing column all ran with 0 records, so the tests seed an unpreparable statement (a missing table, `EXPORTRUN` at the plan) and the `vendor=error` seam for the run's own failure.
+
+The class text service needs carriage return and line feed between lines; `SourceDocument.Save` converts, so the plans compose line feeds.
+
+**Decided in-stage (implement).**
+
+1. **The result class's three strings take `MAXLEN = 2000`** (Measured 6): a category over 50 characters would otherwise fail the copy. `Probability` stays the classic's `%Numeric`, so it keeps two decimals.
+2. **The read answers `Held`**, the names (`ResultClass`, `CubeClass`, `Cube`) whose class, package or cube is held, beside the names themselves. The confirm's fingerprint is the merged payload, in which the person's names overwrite the read's, so a name taken since the review changed nothing the digest covers; `Held` is the field no argument overwrites, and the tool names it as its `STATEMARKER`. It is empty at the review, because a held name is refused there, and names the taken ones at the confirm.
+3. **The refusals are made by the read composed for the write** (`PMMLEXPORT` with the action), so the screen's action route, which asks no tool for its field rules, and the agent's mint both refuse with the write's own codes before anything is proposed.
+4. **The test's own SQL check (`SqlConsole.Check`, classification and self-protection) runs in the plan**, as `PmmlTest.Check` does it, so a seam port's gate applies; a statement the instance would not prepare is `EXPORTRUN` before anything is saved.
+5. **The class to link to is held by `PmmlDefinitionFacts`' rule**, so a class with no package (which a result class could not be named either) reads as not held. The result class's text uses the class's stored name.
+
 ## Verification
 
 **Commands** (one `ci-runner` call per message; `ocupilot-b-ci` only; changed classes loaded with their subclasses recompiled):
 
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.AnalyticsPmmlExport`, then the same for `AnalyticsPmmlExportEdge`, `AnalyticsPmmlRun`, `AnalyticsPmmlRunEdge`, `AnalyticsPmmlRunCancel`, `AnalyticsPmmlCreate`, `AnalyticsPmmlModels` and every roster class changed. Expected: green, each new class on its first run.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.AnalyticsPmmlExport`, then the same for `AnalyticsPmmlExportEdge`, `AnalyticsPmmlRun`, `AnalyticsPmmlRunEdge`, `AnalyticsPmmlRunCancel`, `AnalyticsPmmlCreate`, `AnalyticsPmmlModels`, `DraftRegistry` and every roster class changed. Expected: green, each new class on its first run.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`. Expected: green, `exclusion-register.test.mjs` included.
 - `(loop)` `cd ui && npm run build`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/analytics.browser-spec.mjs`. Expected: green.
 - `(once)` The same environment for `browser/a11y-structural-invariants.browser-spec.mjs`. Expected: green.
@@ -285,12 +352,25 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
 
 **Mutations (Rule 19):** one per AC, recorded here by the implement stage:
 
-- AC1: `PmmlCopy` copies nothing.
-- AC2: a refusal skipped.
-- AC3: the restore of `<R>` skipped.
-- AC4: `AuditWrite` skipped.
-- AC5: the AN-26 row removed.
-- AC6: the probe's export removal skipped.
+Each was applied on `ocupilot-b-ci` (loaded with its subclasses), run, and reverted to a byte-identical file (`shasum` equal).
+
+- mutation: AC1, `PmmlCopy` quits before the cursor opens -> `AnalyticsPmmlExport.TestAnExportIsMadeByEachCallerAndReadsBack` and `TestTheOtherSourcesAndALinkToTheSourceClassExportToo` red.
+- mutation: AC2, the `CUBETAKEN` refusal in `PlanPmmlExport` removed -> `AnalyticsPmmlExportEdge.TestAHeldClassPackageOrCubeIsRefusedAndNothingIsTouched` red.
+- mutation: AC3, `PmmlExportRestore` skips the result class -> `AnalyticsPmmlExportEdge.TestAStepThatFailsRestoresEverything` and `TestATestThatDoesNotFinishLeavesNothing` red.
+- mutation: AC4, `PmmlExportAudit` skips `AuditWrite` -> `AnalyticsPmmlExport.TestAnExportIsMadeByEachCallerAndReadsBack` red (audit row, outcome and agent marker).
+- mutation: AC5, the AN-26 row removed from `docs/exclusion-register.md` -> `exclusion-register.test.mjs` red (missing P4 row AN-26; extract-only AN-26).
+- mutation: AD-59 script form, the free-name condition of `PmmlExportSnippet` made `1` -> `AnalyticsPmmlExportEdge.TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` red on the run-again and class-taken legs; the result class's delete in its failure lines made never-run -> the same test red on the refused-compile leg. Each reverted to a byte-identical file (`shasum` equal) and reloaded.
+- mutation: AD-59 script form, `SnippetForm` made to answer `""` for `TOCUBE` -> `DraftRegistry.TestEveryWriteToolHasAScriptForm` and `TestNoSecretReachesAnyRenderedScript` red naming `analytics.pmmlmodel.export`; reverted byte-identical.
+- mutation: AD-59 hostile names, `PmmlExportDraftShaped` made to answer `1` -> `AnalyticsPmmlExportEdge.TestAHostileNameOrSourceRendersNoScript` red on all five field legs; reverted byte-identical.
+- mutation: AD-59 stale data, the script's `%KillExtent` of the result class before the test removed -> `AnalyticsPmmlExportEdge.TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` red on the stale-data leg (the result class holds `stale=1` beside the run's rows); reverted byte-identical (`shasum` equal) and reloaded.
+- mutation: AD-59 unfinished test, the script's `EXPORTRUN` failure after the test's run removed -> the same test red on the unfinished-test leg (runs to a success, a class is left); reverted byte-identical and reloaded.
+- mutation: AD-59 one-way comment, the script's "OcuPilot cannot undo an export." comment removed -> the same test red on the comment assertion of all three sources; reverted byte-identical and reloaded.
+- mutation: AD-59 own-package names, `PmmlDraftClassShaped` made to accept every name in an `OcuPilot` package -> `AnalyticsPmmlExportEdge.TestAHostileNameOrSourceRendersNoScript` red on its three own-package legs; a model id check and a namespace check removed from `PmmlExportSnippet` -> the same test red on its model-id and namespace legs. Each reverted byte-identical and reloaded.
+- mutation: AD-59 refusal steps, the refusal's sentence step of `PmmlExportSnippet` made to answer no step -> `TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` red on its held, own-class and absent-source-class legs.
+- mutation: AD-59 run calls, the verification and custom branches of the script's run call removed and the dataset call given no data source -> the same test red on the verification and custom legs. The dataset leg stays green: the vendor's `%RunModel` with no data source runs the model's own dataset, so the data source argument cannot be mutated on its own (recorded, not pinned).
+- mutation: AD-59 the bound comment, the script's second comment (the test runs here without the write's limit) removed -> the same test red on the comment assertion of all three sources; reverted byte-identical and reloaded.
+- mutation: AD-59 draft registry rows, the `Source:dataset` row of `ARGUMENTVALUES` for the export removed -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red (no step rendered for `analytics.pmmlmodel.export`); reverted byte-identical.
+- mutation: AC6, `PmmlProbe.RemoveExport` removes nothing -> `AnalyticsPmmlExport.TestAnExportIsMadeByEachCallerAndReadsBack` red (its audit assertions, on two consecutive runs). `Gone()` reads the classes, cubes and result rows only, so a surviving data global is seen by the tests' own `ExportLeft` and not by `Gone()` (inference: the run's red is the leftover state of the removal that did not run).
 
 **Shared surfaces:** the Test screen's actions; the write-tool, coverage, endpoint and route rosters; the governance baseline; `PmmlRun`'s signature (every PMML class); `PmmlProbe.Gone`/`Left`; `screen-mirror.test.mjs`; the `analytics.test.mjs` guards; the exclusion register and its counts.
 
@@ -298,5 +378,13 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Re-open pass (script form, U-133). `SnippetForm` answers `objectscript` for `TOCUBE`, and `AnalyticsPort.PmmlExportSnippet` renders the export's draft from the stored query and body: every name and the source are shape-checked first (`PmmlExportDraftShaped`, `PmmlDraftClassShaped`) and a failing one renders no draft; a refusal the write makes is one step that only sets the published sentence; the steps mirror `PerformPmmlExport` (free-name gate, result class, extent kill, test, copy, drop, cube class, delete of what was saved when a later step fails); the script carries two comments, one that the export cannot be undone and one that the test has no limit here. `TestTheExportHasNoScriptForm` is replaced by `TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` and `TestAHostileNameOrSourceRendersNoScript`; `DraftRegistry` gets the synthetic model id and export values. The three files written through Python in the earlier pass (`pmml-export-dialog.ts`, `AnalyticsPmmlExportEdge.cls`, `pmml-model-test.page.spec.ts`) were read line by line by both review layers and survive unchanged but for the Edge class's new tests.
+
+Review: 11 findings, none high; 6 patched, 5 rejected (triage log, 2026-11-21). Follow-up review recommended: false.
+
+Verification, all on a rebuilt `ocupilot-b-ci`: `AnalyticsPmmlExport` 3/3, `AnalyticsPmmlExportEdge` 11/11 and `DraftRegistry` 9/9, forward then reverse; `npm run test:tools` 2361/2361, `npm run test:components` 3727/3727, `browser/analytics.browser-spec.mjs` 20/20; `check-objectscript.py`, `lint-docs.sh` and `analytics.test.mjs` clean. Full ObjectScript sweep after the last patch: shards 1 to 17, 847 classes and 6433 tests, no red, no flake re-run. `Error.cls` is not in the diff. Mutations are in `## Verification`, each reverted byte-identical.
+
+Residual risk: the script runs the vendor's calls in the person's own session with no bound and no audit row (stated in its comment), and a line that throws leaves the later lines unrun (the script is one statement a line).

@@ -56,8 +56,8 @@ Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
-/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port";
+/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14); a PMML model id is a class and a model name, which the export's script reads (Story 24.14).</p>
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port;pmml-model=Draft.Probe||Model";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses
@@ -67,8 +67,8 @@ Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 /// <p>The value a tool's one enum argument takes in its stored payload, where a probe string would name
 /// no member and its port would render no step, as <code>tool=field:value</code> entries,
 /// comma-separated (Story 18.20's status change: the port builds <code>{Action}</code> from
-/// <code>Status</code>).</p>
-Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
+/// <code>Status</code>; Story 24.14's export: its script renders no step for a source or a class name its port's shape checks refuse, so the probe names a dataset, two classes and a cube and leaves the SQL and the class to link to empty).</p>
+Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled,analytics.pmmlmodel.export=Source:dataset,analytics.pmmlmodel.export=SQL:,analytics.pmmlmodel.export=SourceClass:,analytics.pmmlmodel.export=ResultClass:Draft.Result,analytics.pmmlmodel.export=CubeClass:Draft.Cube,analytics.pmmlmodel.export=Cube:DraftCube";
 
 /// <p>The tools whose port resolves the synthetic target against the instance and refuses it, so the
 /// script is the refusal's one <code>comment</code> step and carries no secret, comma-separated (Story

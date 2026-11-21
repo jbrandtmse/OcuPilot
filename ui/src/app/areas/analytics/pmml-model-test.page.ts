@@ -3,24 +3,33 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { ApiService } from '../../core/api';
 import { joinCompositeId } from '../../core/entity-id';
 import { screenForDescriptor } from '../../core/navigation';
+import { ScreenActions } from '../../core/screen-actions';
 import { ScopeService } from '../../core/scope';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
+import type { Violation } from '../../core/violations';
 import { DetailPage } from '../../shell/detail-page';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { MDX_BACKGROUND_SCHEDULE } from './mdx-query.page';
+import { PmmlExportDialog } from './pmml-export-dialog';
 import {
   PMML_CUSTOM,
   PMML_DATASET_PREFIX,
   PMML_VERIFICATION,
   PmmlTestState,
   dataSourceNames,
+  exportDefaults,
+  exportedLine,
+  type PmmlExportNames,
   type PmmlPair,
   type PmmlRan,
   type PmmlTestDeps,
 } from './pmml-test.store';
 
-/** The Test screen's descriptor (Story 24.14 Batch 2). */
+/** The Test screen's descriptor (Story 24.14 Batch 2), and its declared primary action: Export to cube, which this page's dialog sends (Batch 4). */
 export const PMML_MODEL_TEST = 'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest';
+
+export const PMML_EXPORT_ACTION = 'export';
 
 /** One option of the data source picker. */
 interface Choice {
@@ -53,12 +62,16 @@ function memberText(row: unknown, name: string): string {
  *
  * The test's state belongs to this page and the model it shows: another model, or leaving the page, drops it (a run left running is left, as MDX query's is).
  *
+ * **Export to cube is this page's own action** (Batch 4), registered on the descriptor after injecting the shell's handler. It opens a dialog over the source chosen here, with the four names at the classic's
+ * defaults, and sends them through the handler's `sendFor` with the model's composite id as its target: the instance tests the model again, copies the rows into a new class and makes a cube class, and a refusal
+ * stays in the dialog. An applied export closes it and leaves one line under the status, naming the class and the cube from the answer the handler read.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
  */
 @Component({
   selector: 'app-pmml-model-test-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DetailPage],
+  imports: [DetailPage, PmmlExportDialog],
   // The height chain every page host carries, so the list's viewport keeps its height; the test's panel scrolls within its own share.
   styles: `
     :host {
@@ -122,6 +135,9 @@ function memberText(row: unknown, name: string): string {
           <button type="button" class="ocu-button-primary" data-ocu-pmml="run" [attr.aria-disabled]="blocked" (click)="onRun()">{{ STRINGS.actionRun }}</button>
         </div>
         <p class="ocu-explorer-status" role="status" data-ocu-pmml="status">{{ statusLine }}</p>
+        @if (hasExported) {
+          <p class="ocu-explorer-status" role="status" data-ocu-pmml="export-line">{{ exportedText }}</p>
+        }
         @if (hasMessage) {
           <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-pmml="error" [attr.aria-label]="STRINGS.analyticsMdxErrorLine">{{ message }}</pre>
         }
@@ -204,13 +220,40 @@ function memberText(row: unknown, name: string): string {
           }
         }
       </section>
+    }
+    @if (isExporting) {
+      <app-pmml-export-dialog
+        [source]="exportSource"
+        [defaults]="exportNames"
+        [sending]="exportSending()"
+        [refusal]="exportRefusal()"
+        [violations]="exportViolations()"
+        (submitted)="onExport($event)"
+        (cancelled)="onExportClose()"
+      />
     }`,
 })
 export class PmmlModelTestPage {
   private readonly stores = inject(ScreenStores);
   private readonly scope = inject(ScopeService);
 
+  /** Constructed before this page registers its own action. */
+  private readonly handler = inject(ScreenActionHandler);
+
+  private readonly actions = inject(ScreenActions);
+
   protected readonly STRINGS = STRINGS;
+
+  private readonly exporting = signal(false);
+
+  protected readonly exportSending = signal(false);
+
+  protected readonly exportRefusal = signal('');
+
+  protected readonly exportViolations = signal<readonly Violation[]>([]);
+
+  /** The result line of the last applied export of this model, or `''`. */
+  private readonly exported = signal('');
 
   protected state: PmmlTestState = new PmmlTestState();
 
@@ -236,9 +279,11 @@ export class PmmlModelTestPage {
     };
     this.follow();
     const stopStore = this.store === null ? () => undefined : this.store.subscribe(() => this.onRows());
+    const stopAction = this.actions.register(PMML_MODEL_TEST, PMML_EXPORT_ACTION, () => this.onOpenExport());
     this.onRows();
     inject(DestroyRef).onDestroy(() => {
       stopStore();
+      stopAction();
       this.stopState();
       this.state.leave();
     });
@@ -358,6 +403,70 @@ export class PmmlModelTestPage {
     return value === null ? '' : String(value);
   }
 
+  protected get isExporting(): boolean {
+    return this.exporting();
+  }
+
+  protected get hasExported(): boolean {
+    return this.exported() !== '';
+  }
+
+  protected get exportedText(): string {
+    return this.exported();
+  }
+
+  /** The source the dialog shows: the label of the choice made here. */
+  protected get exportSource(): string {
+    const current = this.currentChoice;
+    return this.choices.find((choice) => choice.value === current)?.label ?? '';
+  }
+
+  /** The names the dialog's fields start at: the classic's, for the model shown. */
+  protected get exportNames(): PmmlExportNames {
+    this.generation();
+    return exportDefaults(memberText(this.row, 'Class'), memberText(this.row, 'Model'));
+  }
+
+  /** Open Export to cube, never over another dialog, and only for a model with a source that can be sent. */
+  protected onOpenExport(): void {
+    if (this.exporting() || this.handler.pending() !== null || this.modelId === '' || this.state.body() === null) return;
+    this.exportRefusal.set('');
+    this.exportViolations.set([]);
+    this.exporting.set(true);
+  }
+
+  protected onExportClose(): void {
+    this.exporting.set(false);
+    this.exportRefusal.set('');
+    this.exportViolations.set([]);
+  }
+
+  /**
+   * One export through the handler's `sendFor`, its refusal kept in the dialog rather than on the screen's banner. An applied export closes the dialog and leaves the result line the handler's answer
+   * fills in; a refused one names the fields the instance refused, or says why.
+   */
+  protected async onExport(names: PmmlExportNames): Promise<void> {
+    if (!this.exporting() || this.exportSending()) return;
+    const values = this.state.exportValues(names);
+    if (values === null) return;
+    this.exportSending.set(true);
+    this.exportRefusal.set('');
+    this.exportViolations.set([]);
+    const applied = await this.handler.sendFor(PMML_MODEL_TEST, PMML_EXPORT_ACTION, this.modelId, values, { setRefusal: () => undefined });
+    this.exportSending.set(false);
+    // A dialog canceled while this send was in flight no longer answers it.
+    if (!this.exporting()) return;
+    if (applied) {
+      this.exported.set(exportedLine(STRINGS.analyticsPmmlExportedLine, this.handler.lastOutput()));
+      this.exporting.set(false);
+      return;
+    }
+    const refused = this.handler.lastRefusal();
+    const fields = refused?.violations ?? [];
+    this.exportViolations.set(fields);
+    this.exportRefusal.set(fields.length > 0 ? '' : (refused?.reason ?? ''));
+  }
+
   protected onChoice(event: Event): void {
     this.state.setChoice((event.target as HTMLSelectElement).value);
   }
@@ -382,6 +491,8 @@ export class PmmlModelTestPage {
     const id = klass !== '' && model !== '' ? joinCompositeId([klass, model]) : '';
     if (id !== this.modelId) {
       this.modelId = id;
+      this.exported.set('');
+      this.exporting.set(false);
       this.stopState();
       this.state.leave();
       this.state = new PmmlTestState();

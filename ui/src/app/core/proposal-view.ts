@@ -428,6 +428,8 @@ export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASU
 export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
 /** Story 24.14 Batch 3: the PMML definition create saves and compiles a class and makes the classes it generates in its package; one published sentence. */
 export const CONSEQUENCE_ANALYTICSPMMLSAVE = 'ANALYTICS.PMML.SAVE';
+/** Story 24.14 Batch 4: the PMML export runs the model's test again, copies its results into a new class and makes a cube class that reads them; one published sentence. */
+export const CONSEQUENCE_ANALYTICSPMMLEXPORT = 'ANALYTICS.PMML.EXPORT';
 /** Story 24.13 Batch 2: a General setting's write stores every general setting, as the classic page's Save does; one published sentence. */
 export const CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE';
 /** Story 24.13 Batch 3: a run-time variable's expression is code, and the removal of a variable and of an icon; each is one published sentence. */
@@ -674,6 +676,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
   // Story 24.14 Batch 3: the PMML definition create, published once.
   if (code === CONSEQUENCE_ANALYTICSPMMLSAVE) return STRINGS.analyticsPmmlSaveConsequence;
+  // Story 24.14 Batch 4: the PMML export to a cube, published once.
+  if (code === CONSEQUENCE_ANALYTICSPMMLEXPORT) return STRINGS.analyticsPmmlExportConsequence;
   // Story 24.13 Batch 2: the General settings' save, published once.
   if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;
   // Story 24.13 Batch 3: a variable's expression is code, and the two removals, each published once.

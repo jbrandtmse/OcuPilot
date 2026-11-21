@@ -269,6 +269,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   },
   // Story 24.14 Batch 3: PMML models' New PMML definition opens the dialog that creates a definition class from PMML text.
   'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList': { add: STRINGS.analyticsPmmlNewAction },
+  // Story 24.14 Batch 4: the Test screen's Export to cube opens the dialog that exports the model's test to a new cube.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest': { export: STRINGS.analyticsPmmlExportAction },
   // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {
