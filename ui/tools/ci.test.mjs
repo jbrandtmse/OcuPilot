@@ -1639,6 +1639,7 @@ test('the throwaway prepares a durable directory IRIS can write, and leaves none
     // next line: the scrub removes the tree as root, so `rm -rf "$DIR"` after it can succeed.
     writeStub(bin, 'docker', [
       'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'case "$1" in inspect) echo 0; exit 0 ;; esac',
       'for arg in "$@"; do',
       '  case "$arg" in',
       '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
@@ -2241,7 +2242,7 @@ function hookDeletedLine(count) {
  * Run `ci-throwaway.sh product-reuse` against a stub docker whose session prints `session`, whose
  * first log read prints `firstLog` and whose later log reads print `log`.
  */
-function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\n' }) {
+function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\n', restartCount = '0' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-product-reuse-'));
   try {
     const bin = join(dir, 'bin');
@@ -2252,6 +2253,7 @@ function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot
     writeStub(bin, 'docker', [
       'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
       'case "$*" in',
+      '  inspect*) printf \'%s\\n\' "${OCUPILOT_RESTART_COUNT:-0}" ;;',
       '  *" exec "*) cat > /dev/null; printf \'%s\\n\' "$OCUPILOT_SESSION_ANSWER" ;;',
       '  *" logs "*) if [ -f "$OCUPILOT_DOCKER_CAPTURE.read" ]; then printf \'%s\\n\' "$OCUPILOT_LOG_ANSWER"; else : > "$OCUPILOT_DOCKER_CAPTURE.read"; printf \'%s\\n\' "$OCUPILOT_FIRST_LOG_ANSWER"; fi ;;',
       'esac',
@@ -2265,6 +2267,7 @@ function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot
         OCUPILOT_SESSION_ANSWER: session,
         OCUPILOT_FIRST_LOG_ANSWER: firstLog,
         OCUPILOT_LOG_ANSWER: log,
+        OCUPILOT_RESTART_COUNT: restartCount,
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8').split(scratch).join('<scratch>') : '';
@@ -2311,9 +2314,10 @@ test('the images job starts its product throwaway again over a volume holding te
       'compose -f <scratch>/compose.yml logs --no-color iris',
       'compose -f <scratch>/compose.yml exec -T iris iris session iris -U %SYS',
       'compose -f <scratch>/compose.yml up -d --wait --force-recreate --no-deps iris',
+      'inspect --format {{.RestartCount}} ocupilot-ci',
       'compose -f <scratch>/compose.yml logs --no-color iris',
     ],
-    'reading the first start\'s log, compiling, then starting again, then reading that start\'s log'
+    'reading the first start\'s log, compiling, then starting again, reading its restart count, then reading that start\'s log'
   );
 
   const one = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(1) });
@@ -2723,7 +2727,7 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
 // --- The bind retry and its time budget (DW-439, DW-2123) ------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false, restartCount = '0', containerLog = '' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
@@ -2749,6 +2753,8 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
   writeStub(bin, 'docker', [
     'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
     'case "$*" in',
+    '  inspect*) printf \'%s\\n\' "${OCUPILOT_RESTART_COUNT:-0}"; exit 0 ;;',
+    '  logs*) printf \'%s\\n\' "$OCUPILOT_CONTAINER_LOG"; exit 0 ;;',
     '  *"up -d --wait"*)',
     '    n=$(cat "$OCUPILOT_UP_COUNT" 2>/dev/null || echo 0)',
     '    n=$((n + 1))',
@@ -2783,6 +2789,9 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
         OCUPILOT_UP_COUNT: counter,
         OCUPILOT_UP_FAILS: String(fails),
         OCUPILOT_UP_MESSAGE: message,
+        // What `docker inspect` answers for the container's restart count, and what `docker logs` prints.
+        OCUPILOT_RESTART_COUNT: restartCount,
+        OCUPILOT_CONTAINER_LOG: containerLog,
         // The retry's growing wait. Callers that only care about the retry count or the final
         // status pass the default '0' to keep the run fast; the backoff test below overrides it
         // to observe the wait actually elapsing.
@@ -2975,6 +2984,37 @@ test('DW-439: a failure that is not a host-port bind exits at once, unretried', 
   assert.match(run.output, /not a host-port bind/, 'saying which of the two it is');
 });
 
+// Mutation (Rule 19): delete `refuse_restarted_start`'s call after the `up` loop, or its count test -> the restart-count-1 row goes red.
+test('DW-2761: a throwaway that restarted after a failed start fails `up`, printing the start\'s failure lines', () => {
+  const containerLog = [
+    'ocupilot-ci | container-start: STARTPATH-FAILED step=install namespace=HSCUSTOM',
+    'ocupilot-ci | container-start: LOAD-FAILED OcuPilot.Test.Example',
+    'ocupilot-ci | container-start: a line that is not a failure',
+    'ocupilot-ci | an unrelated LOAD-FAILED without the prefix',
+  ].join('\n');
+  const healthy = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, containerLog });
+  assert.equal(healthy.status, 0, `a restart count of 0 passes: ${healthy.output}`);
+  assert.doesNotMatch(healthy.output, /restart count/, 'and says nothing about restarts');
+
+  const restarted = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, restartCount: '1', containerLog });
+  assert.equal(restarted.status, 1, `a restart count of 1 fails the bring-up: ${restarted.output}`);
+  assert.match(restarted.output, /restart count reads '1'/, 'naming the count');
+  assert.match(restarted.output, /container-start: STARTPATH-FAILED step=install/, 'printing the STARTPATH-FAILED line');
+  assert.match(restarted.output, /container-start: LOAD-FAILED OcuPilot\.Test\.Example/, 'and the LOAD-FAILED line');
+  assert.doesNotMatch(restarted.output, /a line that is not a failure|an unrelated LOAD-FAILED/, 'and no other log line');
+
+  const unreadable = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, restartCount: 'Error: No such object', containerLog });
+  assert.equal(unreadable.status, 1, `a count that cannot be read is not read as 0: ${unreadable.output}`);
+});
+
+test('DW-2761: the start over a reused volume fails when the restarted service came back after a failed start', () => {
+  const passed = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2) });
+  assert.equal(passed.status, 0, `a restart count of 0 passes: ${passed.output}`);
+  const restarted = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2), restartCount: '2' });
+  assert.equal(restarted.status, 1, `a restart count of 2 after the recreate fails: ${restarted.output}`);
+  assert.match(restarted.output, /restart count reads '2'/, 'naming the count');
+});
+
 test('DW-439: the retry actually waits on a real clock', () => {
   // The source-text test above pins the SHAPE of the backoff, and the wait-sequence test reads the
   // waits (and so their growth) through a stub `sleep`. Neither watches a real clock. This drives
@@ -3013,6 +3053,7 @@ test('DW-439: the bring-up streams output as it happens, never only at exit', ()
   mkdirSync(bin);
   writeStub(bin, 'docker', [
     'case "$*" in',
+    '  inspect*) echo 0; exit 0 ;;',
     `  *"up -d --wait"*)`,
     `    printf '%s\\n' '${MARKER}'`,
     `    sleep ${SLEEP_MS / 1000}`,

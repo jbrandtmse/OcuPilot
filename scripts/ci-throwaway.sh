@@ -191,6 +191,16 @@ scrub_data() {
     docker run --rm --user 0:0 --entrypoint sh -v "$DIR:/scratch" "$IMAGE" -c 'rm -rf /scratch/data'
 }
 
+# A start the restart policy retried comes back healthy, so `up --wait` exits 0 over a start that failed first. The container's
+# restart count is the sign: anything but 0 (a count that cannot be read included) prints the start's failure lines and fails.
+refuse_restarted_start() {
+    RESTARTS=$(docker inspect --format '{{.RestartCount}}' "$PROJECT" 2>&1) || RESTARTS="unreadable: $RESTARTS"
+    if [ "$RESTARTS" = "0" ]; then return 0; fi
+    echo "ci-throwaway: the throwaway's start did not hold: its restart count reads '$RESTARTS' where 0 is expected; the failed start's lines:"
+    docker logs "$PROJECT" 2>&1 | grep 'container-start:' | grep -E 'LOAD-FAILED|STARTPATH-FAILED' || echo "ci-throwaway: the container log holds no LOAD-FAILED or STARTPATH-FAILED line"
+    exit 1
+}
+
 case "$ACTION" in
     up)
         # A project Compose already knows from a DIFFERENT config file is someone else's throwaway
@@ -1058,6 +1068,7 @@ EOF
             ATTEMPT=$((ATTEMPT + 1))
         done
         docker compose -f "$COMPOSE_FILE" ps
+        refuse_restarted_start
         ;;
     logs)
         # The failure-path capture, run before the teardown and only when something already
@@ -1159,6 +1170,7 @@ EOF
         fi
         echo "ci-throwaway: compiled OcuPilot.Test.PlantedProbe and OcuPilot.Test.Planted.Probe; starting the throwaway again over the same volume"
         docker compose -f "$COMPOSE_FILE" up -d --wait --force-recreate --no-deps iris || { echo "ci-throwaway: the throwaway did not come back healthy over the reused volume"; exit 1; }
+        refuse_restarted_start
         LOG=$(docker compose -f "$COMPOSE_FILE" logs --no-color iris 2>&1) || { echo "ci-throwaway: could not read the log of the start over the reused volume"; exit 1; }
         if ! printf '%s\n' "$LOG" | grep -F -q "$DELETED_LINE 2 class(es) of the roster's test-scope package"; then
             echo "ci-throwaway: the start over the reused volume did not log deleting the two classes compiled into the test package"

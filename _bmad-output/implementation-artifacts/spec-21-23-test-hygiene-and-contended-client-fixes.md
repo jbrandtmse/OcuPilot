@@ -238,6 +238,7 @@ Batches 1 to 6 stay here. They take the must-fix set first, as ruled.
 - Batch 2: `ItemFacts` moved from `InteropItemRun.Facts` into `InteropItemControl` (which `Facts` now calls), so `StartProduction` waits on the same read without a copy. The nameless-row test stores its row after the start, since the start clears the job rows.
 - DW-2459 is called from an existing check, because a 22nd entry in `CHECKS` would need `CLAUDE.md`'s count changed, which is owner-only.
 - DW-2282's fix is the spinner wait, not a walker change: a transform exemption would move the structural baseline for every screen.
+- Batch 3: an unreadable restart count fails `up` like a non-zero one, so every fake docker that runs `up` or `product-reuse` (five in `ci.test.mjs` and `compose.test.mjs`) answers `inspect`; the `product-reuse` call-list pin gains the `inspect` call. `pressRun` waits on the cubes read's resource entry for the page's namespace and Run's box across two frames 100 ms apart; the spinner wait in `cardViolations` is inline, as impact's.
 - DW-2476 takes the 16 specs outside the interoperability area.
 
 **Epic 24 contention** (2026-11-21): there are no Epic 24 commits ahead of feature on any Batch 1-6 path, and its worktree holds no uncommitted edit to them. `ci-throwaway.sh` and `ui/browser/*` are add-only here; any replaced line needs an orchestrator ruling.
@@ -292,8 +293,11 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - DW-2787: drop the START answer check → the new double-start test red.
   - mutation: the START answer check after the port's `START` in `InteropItemControl.StartProduction` replaced by `If 0 {` → `TestTheStartHelperNamesAStartThePortRefuses` red alone (1 of 11, run 884: the helper answered OK from the facts); reverted. `Continue` after the unread-row note in `Jobs()` made `Quit` → `TestTheJobListNamesAnUnreadableRowBesideTheOperation` red alone (1 of 11, run 885: the operation missing from the list); reverted. After each revert `git diff | md5` read the same as before the mutation, and the reverted source was reloaded into `ocupilot-ci`.
 - DW-2714: delay `loadCubes`' assignment in `mdx-query.store.ts` by 1 s, with the bundle redeployed, and use the old `pressRun` → AC1 red; with the new one → green.
+  - mutation: a 40 ms `setTimeout` before `this.cubesValue = names` in `loadCubes` (a 1 s delay after the answer cannot reach a click made within milliseconds of it), the bundle rebuilt and redeployed, and `runBoxStable` removed from `pressRun` (the cubes-read clause kept) → 11 of 11 green. With a 12 ms delay → AC8 (QA) red alone (1 of 11): "expected the click on Run to start a run ... the element at Run's center is ..."; with `runBoxStable` back, the same bundle → 11 of 11 green. The 12 ms row reddened once in one run and is timing-dependent (inference). The store mutation reverted, the bundle rebuilt and redeployed, `git diff | md5` identical to before the mutation.
 - DW-2282: drop the spinner wait → `ci-flake-waits.test.mjs` red.
+  - mutation: the `waitForFunction` line deleted from `cardViolations` → "cardViolations waits for the tool-call spinner ..." red alone (1 of 10); reverted, `git diff | md5` identical, 10 of 10.
 - DW-2761: delete the `RestartCount` check → the restart-count-1 test red.
+  - mutation: `refuse_restarted_start` removed after the `up` loop → "DW-2761: a throwaway that restarted after a failed start fails `up` ..." red alone (1 of 106); reverted, `git diff | md5` identical, 106 of 106.
 - DW-2459: drop the `DependsOn` lookup → the shipped-tree case red.
 - DW-2202: drop `Suspended` from `TaskScheduleList`'s declaration → `WireSecurityRead` red; mark one more rowAction `serves-ocupilot` → `:430` red.
 - DW-2476: re-add a copy to a converted spec → the ratchet red.
