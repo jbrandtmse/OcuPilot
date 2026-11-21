@@ -909,3 +909,4 @@
 2026-11-21T17:26:35Z	Story 21.37	ruling	question=plural_line+AD-15+AC4 via=orchestrator choice=plural_capped_at_5(veto=U-134);AD-15_option_b(spine_2fd24558e;AC13);AC4_any_declared_page;rest_approved
 2026-11-21T17:26:35Z	Story 21.37	ad_amended	ad=AD-15 marker=[AMENDED_2026-11-21,Story_21.37_spec_gate,Rule_20] commit=2fd24558e lint_spine=ok(pre-existing_{id}) memlog=appended
 2026-11-21T17:26:54Z	Story 21.37	stage_spawned	stage=implement scope=batches1-3 spawn_at=2026-11-21T17:26:54Z model=sonnet agent_name=21-37-implement cycle_iteration=1 prior_lines_ended=verified(a4ac85185)
+2026-11-21T19:15:35Z	Epic 21	note	DW-1822_first_CI_red_with_stall_report(run_44927449204,Epic_24)_held_for_burn-down;24.14_merged(feature_4cd1a974c);queue=21.37,21.38,21.6,21.25,21.31;21.37_stage_bash_scan:sed_on_a_scratch_file+print-only_heredoc(no_tracked_edit)
