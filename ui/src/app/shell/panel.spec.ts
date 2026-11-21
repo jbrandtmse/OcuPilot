@@ -3069,13 +3069,14 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
   async function mountDecidable(
     answers: Record<string, unknown[]>,
     proposals: unknown[] = [wireProposal()],
-    reply = 'I have prepared the change.'
+    reply = 'I have prepared the change.',
+    turnState = 'completed'
   ) {
     const { schedule, scheduled } = fakeTurnSchedule();
     const api = fakeTurnApi({
       [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
       [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
-      [turnProgressPath('turn-1')]: [progressWith(proposals, 'completed', reply)],
+      [turnProgressPath('turn-1')]: [progressWith(proposals, turnState, reply)],
       ...answers,
     });
     const turn = stubTurnStore({ api: api as never, schedule });
@@ -3637,6 +3638,26 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
 
     expect(host.querySelector('.ocu-proposal-card-summary')).not.toBeNull();
     expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
+  });
+
+  // Mutation (Rule 19): hand `pollOnce` the fresh proposals unmerged (drop `mergeHeldProposals`) -> the outcome and output go red.
+  it('Story 20.17 AC5: a compile confirmed while its turn still polls keeps its output and outcome after the next poll', async () => {
+    const { host, fixture, scheduled } = await mountDecidable(
+      confirmedWithOutput(true),
+      [wireProposal({ tool: 'explorer.classes.compile' })],
+      'I have prepared the change.',
+      'running'
+    );
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompileErrors);
+
+    await nextPoll(scheduled, fixture);
+
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompileErrors);
+    expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')).not.toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent).toContain('Confirmed');
   });
 
   // Story 20.16. Mutation (Rule 19): the gate admits only `explorer.` tools -> the outcome and the banner go red.

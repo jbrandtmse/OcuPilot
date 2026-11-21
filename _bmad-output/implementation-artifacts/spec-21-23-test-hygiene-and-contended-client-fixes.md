@@ -305,7 +305,13 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - DW-2476: re-add a copy to a converted spec → the ratchet red.
   - mutation: a local `transitionsSettled` declaration added back to `system-explorer-write.browser-spec.mjs` → "the specs that declare their own transitionsSettled are the residual list ..." red alone (1 of 19), the actual list gaining that spec; reverted, `git diff | md5` identical to before the mutation, 19 of 19.
 - DW-2225: remove the merge → the new panel test red.
+  - mutation: `pollOnce` handed the parsed proposals with no `mergeHeldProposals` → "a compile confirmed while its turn still polls keeps its output and outcome after the next poll" red alone (1 of 209); reverted, `git diff | md5` identical, 209 of 209 and the component tier 312 files, 3741 of 3741.
 - DW-2352: restore `setAttribute('src', …)` for every load → the Back test red.
+  - mutation: not applicable, the change is not made. `loadReference` with `contentWindow.location.replace` for later loads reddened the two Story 19.9 AC3 unit cases, but `tools/api.test.mjs` forbids `contentWindow` under `ui/src` (AD-63), and in Chrome on `ocupilot-ci` the old shape did not add a history entry: with `src` set on every load, one Back from the second class still returned the viewer to the first (history length 3 both ways; 4 both ways after a followed link). The Back test passes on the unchanged page and pins what a person sees; the cause stays open (Clarification Needed).
+
+## Clarification Needed
+
+DW-2352: the spec's `contentWindow.location.replace(source)` breaks AD-63 and the `api.test.mjs` scan, and the defect it fixes did not reproduce, so `document-viewer.page.ts` is unchanged. Choose: close DW-2352 as refuted (the new Back test is the evidence), or amend AD-63 for one `location.replace`, or recreate the frame element on a restore (no `contentWindow`, a larger template change).
 
 ## Auto Run Result
 
