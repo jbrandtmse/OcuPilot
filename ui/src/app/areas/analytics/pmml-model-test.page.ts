@@ -429,7 +429,7 @@ export class PmmlModelTestPage {
 
   /** Open Export to cube, never over another dialog, and only for a model with a source that can be sent. */
   protected onOpenExport(): void {
-    if (this.exporting() || this.handler.pending() !== null || this.modelId === '' || this.state.body() === null) return;
+    if (this.exporting() || this.exportSending() || this.handler.pending() !== null || this.modelId === '' || this.state.body() === null) return;
     this.exportRefusal.set('');
     this.exportViolations.set([]);
     this.exporting.set(true);
@@ -452,15 +452,19 @@ export class PmmlModelTestPage {
     this.exportSending.set(true);
     this.exportRefusal.set('');
     this.exportViolations.set([]);
-    const applied = await this.handler.sendFor(PMML_MODEL_TEST, PMML_EXPORT_ACTION, this.modelId, values, { setRefusal: () => undefined });
+    const model = this.modelId;
+    const applied = await this.handler.sendFor(PMML_MODEL_TEST, PMML_EXPORT_ACTION, model, values, { setRefusal: () => undefined });
     this.exportSending.set(false);
-    // A dialog canceled while this send was in flight no longer answers it.
-    if (!this.exporting()) return;
+    // Another model's page does not answer this send.
+    if (this.modelId !== model) return;
+    // An applied export leaves its line even when its dialog was canceled while it ran, since it cannot be undone.
     if (applied) {
       this.exported.set(exportedLine(STRINGS.analyticsPmmlExportedLine, this.handler.lastOutput()));
       this.exporting.set(false);
       return;
     }
+    // A dialog canceled while this send was in flight does not show its refusal.
+    if (!this.exporting()) return;
     const refused = this.handler.lastRefusal();
     const fields = refused?.violations ?? [];
     this.exportViolations.set(fields);

@@ -126,18 +126,17 @@ ClassMethod Body(pBody As %DynamicObject, Output pModel As %String, Output pSour
     Set pSource = pBody.%Get("source")
     Set tDataSourceType = pBody.%GetTypeOf("dataSource")
     Set tSQLType = pBody.%GetTypeOf("sql")
+    ; Each source carries only its own key; the values are judged by the port's one source rule.
     If pSource = $Parameter(tPort, "PMMLSOURCEDATASET") {
         If (tDataSourceType '= "string") || (tSQLType '= "unassigned") Quit 0
         Set pDataSource = pBody.%Get("dataSource")
-        Quit (pDataSource '= "") && ($Length(pDataSource) <= $Parameter(tPort, "MDXMAXCELL"))
-    }
-    If pSource = $Parameter(tPort, "PMMLSOURCECUSTOM") {
+    } ElseIf pSource = $Parameter(tPort, "PMMLSOURCECUSTOM") {
         If (tSQLType '= "string") || (tDataSourceType '= "unassigned") Quit 0
         Set pSQL = pBody.%Get("sql")
-        Quit '$ClassMethod(tPort, "MdxBlank", pSQL) && ($Length(pSQL) <= $Parameter(tPort, "MDXMAXSTATEMENT"))
+    } ElseIf (tDataSourceType '= "unassigned") || (tSQLType '= "unassigned") {
+        Quit 0
     }
-    If pSource '= $Parameter(tPort, "PMMLSOURCEVERIFICATION") Quit 0
-    Quit (tDataSourceType = "unassigned") && (tSQLType = "unassigned")
+    Quit $ClassMethod(tPort, "PmmlExportSourceShaped", pSource, pDataSource, pSQL)
 }
 
 /// <p>The supervisor, the job <method>OcuPilot.Kernel.Shell.BackgroundRun.Run</method> spawned, which holds the run's lock for its life and runs after that method's checks (see the class). It creates the

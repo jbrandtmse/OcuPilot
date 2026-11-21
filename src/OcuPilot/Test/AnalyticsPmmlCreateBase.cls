@@ -330,7 +330,8 @@ ClassMethod CubeXData(pClass As %String) As %String
     Quit tText
 }
 
-/// <p>1 when the data global of the persistent class <var>pClass</var> holds anything in <code>USER</code>.</p>
+/// <p>1 when the data global of the persistent class <var>pClass</var> holds anything in <code>USER</code>. It reads <code>^</code><var>pClass</var><code>D</code>, which is the class's data global only for a name of at most 29 characters:
+/// the compiler hashes a longer name's global (measured), and this then reads a global nothing writes. A test whose data check matters uses a marker of at most six characters.</p>
 ClassMethod DataLeft(pClass As %String) As %Boolean
 {
     Set tOrigNS = $NAMESPACE

@@ -437,6 +437,23 @@ describe('a PMML model\'s Export to cube', () => {
     await settle(page.fixture);
     expect(dialogNode(page.host, 'confirm')).toBeNull();
   });
+
+  it('keeps the line of an export applied after its dialog was canceled, and opens no second dialog while it is sent', async () => {
+    // Mutation (Rule 19): drop the answer of a send whose dialog was canceled -> the line assertion goes red; open the dialog while a send is in flight -> the reopen assertion goes red.
+    const page = mount(row('Colors', true));
+    page.routes.set(ACTION_PATH, [{ ok: EXPORTED }]);
+    await settle(page.fixture);
+    await openExport(page.fixture);
+    (dialogNode(page.host, 'confirm') as HTMLButtonElement).click();
+    (page.host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    TestBed.inject(ScreenActions).run(PMML_MODEL_TEST, PMML_EXPORT_ACTION);
+    page.fixture.detectChanges();
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
+    await settle(page.fixture);
+    expect(page.posts).toHaveLength(1);
+    expect(slot(page.host, 'export-line')?.textContent).toBe(`Exported 12 records to ${DEFINITION}.Colors.Result. Build the cube ModelTestResults in the Cube manager.`);
+    expect(dialogNode(page.host, 'confirm')).toBeNull();
+  });
 });
 
 describe('a PMML run\'s answer', () => {

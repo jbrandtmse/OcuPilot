@@ -14,10 +14,12 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove every export a test made: each cube class, then each result class with its data. The probe's model stays for the next test.</p>
+/// <p>Remove every export a test made: each cube class, then each result class with its data, and every vendor result row of the probe's models, so a leg that failed leaves none for the next test. The probe's model stays for the next test.</p>
 Method RemoveFixtures() As %Status
 {
-    Quit $ClassMethod(..#PMML, "RemoveExport")
+    Set tSC = $ClassMethod(..#PMML, "RemoveExport")
+    Do $ClassMethod(..#PMML, "DropRows")
+    Quit tSC
 }
 
 /// <p>The <code>X</code> of the source row that the result class <var>pClass</var>'s <code>Record</code> resolves the record <var>pRecord</var> to; text naming the failure when it cannot be read.</p>

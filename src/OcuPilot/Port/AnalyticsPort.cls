@@ -5801,7 +5801,7 @@ ClassMethod ListingNameShaped(pName As %String) As %Boolean
 /// the <code>%</code> packages (which the pattern excludes) and outside an <code>OcuPilot</code> package, which holds this product's own classes (AD-10). Pure.</p>
 ClassMethod ListingClassShaped(pClass As %String) As %Boolean
 {
-    If '$Match(pClass, "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)+$") || ($Length(pClass) > 200) Quit 0
+    If '..PmmlDraftClassShaped(pClass) Quit 0
     Quit $ZConvert($Piece(pClass, ".", 1), "U") '= "OCUPILOT"
 }
 
@@ -7638,7 +7638,7 @@ ClassMethod PmmlExportInput(pBody As %DynamicObject, Output pInput, Output pViol
     Quit $$$OK
 }
 
-/// <p>Whether the test's source is one a PMML test takes (Story 24.14, Batch 2's rules): a <code>dataset</code> names one data source and no SQL; <code>custom</code> carries one SQL text that is not blank and no
+/// <p>Whether the test's source is one a PMML test takes, the one rule the test's start (<method>OcuPilot.Area.Analytics.PmmlTest.Body</method>) and the export judge it by: a <code>dataset</code> names one data source and no SQL; <code>custom</code> carries one SQL text that is not blank and no
 /// data source; <code>verification</code> carries neither. Pure.</p>
 ClassMethod PmmlExportSourceShaped(pSource As %String, pDataSource As %String, pSQL As %String) As %Boolean
 {
@@ -7771,7 +7771,8 @@ ClassMethod PlanPmmlExport(pNamespace As %String, pClass As %String, pModel As %
     }
     If $$$ISERR(tSC) Quit tSC
     If tTaken Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLTAKEN, .pHttpStatus, .pFault)
-    If tCube '= "" {
+    ; A name past the vendor's bound is not looked up: it is the name refusal below.
+    If (tCube '= "") && ($Length(tCube) <= ..#PMMLCUBENAMEMAX) {
         Set tCubeHeld = ..PmmlCubeHeld(pNamespace, tCube, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the cube could not be looked up", .pHttpStatus, .pFault)
         If tCubeHeld Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#PMMLCUBETAKEN, .pHttpStatus, .pFault)
@@ -7843,7 +7844,7 @@ ClassMethod ReadPmmlExport(pNamespace As %String, pClass As %String, pModel As %
     }
     If $$$ISERR(tSC) Quit tSC
     Set tStoredCube = ""
-    If tInput("Cube") '= "" {
+    If (tInput("Cube") '= "") && ($Length(tInput("Cube")) <= ..#PMMLCUBENAMEMAX) {
         Set tCubeHeld = ..PmmlCubeHeld(pNamespace, tInput("Cube"), .tCubeCaught)
         If $IsObject(tCubeCaught) Quit ..Mapped(tCubeCaught, "the cube could not be looked up", .pHttpStatus, .pFault)
         If tCubeHeld {
@@ -7936,6 +7937,9 @@ ClassMethod PerformPmmlExport(pNamespace As %String, pClass As %String, pModel A
             Do ..LogFault("a PMML export's test raised", tCaught.AsStatus())
             Set tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLEXPORTRUN
         } ElseIf $$$ISERR(tRunSC) || '$IsObject($Get(tAnswer)) || (tAnswer.%Get("outcome") '= "ran") {
+            ; The vendor's text is logged, never answered.
+            If $$$ISERR(tRunSC) Do ..LogFault("a PMML export's test failed", tRunSC)
+            If $IsObject($Get(tAnswer)) && (tAnswer.%Get("outcome") = "error") Do ..LogFault("a PMML export's test answered an error", $$$ERROR($$$GeneralError, tAnswer.%Get("message")))
             Set tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLEXPORTRUN
         } ElseIf (+$Get(tCopied) < 0) || ($Get(tCopied) = "") {
             Set tFailure = ##class(OcuPilot.Api.AnalyticsError).#PMMLEXPORTCOMPILE
@@ -7986,7 +7990,7 @@ ClassMethod PmmlExportDraftShaped(ByRef pInput) As %Boolean [ Private ]
     Quit ($Get(pInput("SourceClass")) = "") || ..PmmlDraftClassShaped(pInput("SourceClass"))
 }
 
-/// <p>Whether <var>pClass</var> is spelled as a class name (<method>ListingClassShaped</method>'s pattern and length), which a name in an <code>OcuPilot</code> package is as well: such a name is the write's own 403 refusal, so a script may name it as the
+/// <p>Whether <var>pClass</var> is spelled as a class name: dotted letters and digits with at least one package, at most 200 characters (<method>ListingClassShaped</method> adds the <code>OcuPilot</code> exclusion to it). A name in an <code>OcuPilot</code> package is spelled as one too: such a name is the write's own 403 refusal, so a script may name it as the
 /// refusal's sentence, and a malformed one in that package, like any other, is spelled nowhere. Pure.</p>
 ClassMethod PmmlDraftClassShaped(pClass As %String) As %Boolean [ Private ]
 {
@@ -7996,7 +8000,7 @@ ClassMethod PmmlDraftClassShaped(pClass As %String) As %Boolean [ Private ]
 /// <p>The lines <method>Snippet</method> adds for the PMML export of the model <var>pId</var> with the members <var>pBody</var> (Story 24.14, Batch 4; AD-59), the steps <method>PerformPmmlExport</method> takes with the vendor's own
 /// calls and no write run: the result class saved and compiled (<method>ClassWriteSnippet</method>), the model's test and the copy of its rows into the result class, the test's rows dropped, and the cube class saved and compiled with
 /// the test's id; when a later step fails, every class the script saved is deleted with the result class's data. The steps are gated on one line by a free-name check that applies the export's own rules (neither class, nor a class of
-/// either package, held, and no cube of the name), so a script run after another writer took a name changes nothing. Two script comments state that the export cannot be undone and that the test runs without the write's bound. Every name is a string literal. A name or source
+/// either package, held, and no cube of the name), so a script run after another writer took a name changes nothing; the cube class's names are asked again just before its save. Two script comments state that the export cannot be undone and that the test runs without the write's bound. Every name is a string literal. A name or source
 /// that <method>PmmlExportDraftShaped</method> refuses, a model id that is not <method>PmmlParts</method>', a namespace that is named and is not one, and a script longer than
 /// <parameter>OcuPilot.Port.AtelierPort.SNIPPETMAXCHARACTERS</parameter> answer no step; a class of OcuPilot's own, and any other export <method>PlanPmmlExport</method> refuses, is a script that only sets the refusal's sentence.</p>
 ClassMethod PmmlExportSnippet(pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
@@ -8046,9 +8050,13 @@ ClassMethod PmmlExportSnippet(pId As %String, pBody As %DynamicAbstractObject, B
     Set tText = tText _ tNL _ " If tMade, tFail = """" Set tId = ##class(%DeepSee.PMML.Utils.TempResult).GetNewTestId(), tSC = " _ tRun
     Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportRun
     Set tText = tText _ tNL _ " If tMade, tFail = """" Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT TestRecordId, ActualValue, PredictedValue, Probability FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = ? ORDER BY %ID"", tId), tSC = $Select(tRS.%SQLCODE < 0: $System.Status.Error(5001, " _ tExportCompile _ "), 1: 1)"
-    Set tText = tText _ tNL _ " If tMade, tFail = """", " _ tOK _ " { While " _ tOK _ " && tRS.%Next() { Set tRow = $ClassMethod(" _ tR _ ", ""%New""), tRow.TestId = tId, tRow.TestRecordId = tRS.%GetData(1), tRow.ActualValue = tRS.%GetData(2), tRow.PredictedValue = tRS.%GetData(3), tRow.Probability = tRS.%GetData(4), tSC = tRow.%Save(), tRow = """" If " _ tOK _ " Set tRecords = tRecords + 1 } }"
+    Set tText = tText _ tNL _ " If tMade, tFail = """", " _ tOK _ " { While " _ tOK _ " && tRS.%Next(.tNextSC) { Set tRow = $ClassMethod(" _ tR _ ", ""%New""), tRow.TestId = tId, tRow.TestRecordId = tRS.%GetData(1), tRow.ActualValue = tRS.%GetData(2), tRow.PredictedValue = tRS.%GetData(3), tRow.Probability = tRS.%GetData(4), tSC = tRow.%Save(), tRow = """" If " _ tOK _ " Set tRecords = tRecords + 1 } }"
+    ; A fetch that fails ends the copy as a failed row save does.
+    Set tText = tText _ tNL _ " If tMade, tFail = """", " _ tOK _ ", '$System.Status.IsOK($Get(tNextSC, 1)) Set tSC = tNextSC"
     Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportCompile
     Set tText = tText _ tNL _ " If tId '= """" Set tDrop = ##class(%SQL.Statement).%ExecDirect(, ""DELETE FROM %DeepSee_PMML_Utils.TempResult WHERE TestId = ?"", tId)"
+    ; The test has no bound here, so the cube class's names are asked again just before its save, which would replace a class another writer made meanwhile.
+    Set tText = tText _ tNL _ " If tMade, tFail = """" Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE UPPER(Name) = ? OR UPPER(Name) %STARTSWITH ?"", " _ tUpperK _ ", " _ tUpperK _ "_"".""), tKHeld = $Select((tRS.%SQLCODE = 0) && tRS.%Next(): tRS.%GetData(1), 1: 1), tFail = $Select(tKHeld: " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN) _ ", ##class(%DeepSee.Utils).%CubeExists(" _ tCubeName _ "): " _ ..Literal(##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCUBETAKEN) _ ", 1: """")"
     Set tText = tText _ tNL _ " If tMade, tFail = """" Set tCubeText = " _ ..Literal($Piece(tCubeText, tMarker, 1)) _ " _ tId _ " _ ..Literal($Piece(tCubeText, tMarker, 2)) _ ", tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(" _ tSpace _ ", " _ tK _ ", $Replace(tCubeText, $Char(10), $Char(13, 10)))"
     Set tText = tText _ tNL _ " If tMade, tFail = """", " _ tOK _ " Set tCubeSaved = 1, tSC = $System.OBJ.Compile(" _ tK _ ", ""ck"")"
     Set tText = tText _ tNL _ " If tMade, tFail = """", '" _ tOK _ " Set tFail = " _ tExportCompile

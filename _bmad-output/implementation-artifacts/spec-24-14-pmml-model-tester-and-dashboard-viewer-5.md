@@ -10,7 +10,9 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-3.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-14-pmml-model-tester-and-dashboard-viewer-2.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'med, in-story: the script form copies and drops the test rows with dynamic SQL, so for a person without SQL privileges on %DeepSee_PMML_Utils.TempResult its copy is refused and the drop leaves the rows in IRISTEMP; saying so in the script needs a ruled sentence (the write uses embedded SQL and is unaffected).'
+  - 'med, in-story: the write and the script kill the new result class extent before the copy, which also erases data an unrelated writer left under a free class name global; refusing such a name instead is stricter and changes Measured 1, so it needs a product ruling.'
 ---
 
 <intent-contract>
@@ -248,6 +250,43 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
   - Intent-alignment layer: no divergence between the contract and the diff on the write path; the script form is the one addition and is recorded in the Spec Change Log.
   - A second verification-gap layer launched first did not return (its shell call hung for over fifteen minutes and the lead could not stop it); its work is superseded by the layer above and nothing it did touched the tree.
 
+### 2026-11-21 — Code review (Batch 4, four layers)
+
+- verdicts: 25 findings — high 0, medium 8, low 17 (11 patched, 2 deferred, 12 rejected); layers: adversarial, edge cases, verification gaps, security and rights
+- findings:
+  - `[medium]` `[patch]` The write's extent kill before the test was unpinned — `AnalyticsPmmlExportEdge.TestAnExportOverDataAnEarlierClassLeftHoldsOnlyItsRows`, mutation recorded.
+  - `[medium]` `[patch]` `DataLeft` sees nothing for a class name over 29 characters (measured), so the `BadCube`, `BadCopy` and `ScriptLong` data legs proved nothing and the script's failure-line extent kill was unpinned — markers `BCube`, `BCopy`, `SLong`; `DataLeft`'s comment states the limit; the QA line above corrected; mutations recorded.
+  - `[medium]` `[patch]` An export applied after its dialog was canceled left no line, and the dialog could reopen during a send — `pmml-model-test.page.ts`; a component test with two mutations.
+  - `[medium]` `[patch]` Rule 31: `PmmlExportSourceShaped` repeated `PmmlTest.Body`'s source rule — `Body` now checks the keys and calls the port's rule.
+  - `[medium]` `[patch]` Rule 31: `PmmlDraftClassShaped` repeated `ListingClassShaped`'s pattern — `ListingClassShaped` calls it and adds the `OcuPilot` exclusion.
+  - `[medium]` `[patch]` The script could replace a cube class another writer made during its unbounded test (the write's save is create-only) — the script asks the cube class's names again before the save; the `SRace` leg and its mutation.
+  - `[medium]` `[defer]` The script copies and drops with dynamic SQL, which a person without SQL privileges on `TempResult` is refused, leaving the test rows (frontmatter `deferred`).
+  - `[medium]` `[defer]` The extent kill also erases data an unrelated writer left under a free name's globals; refusing is stricter and changes Measured 1 (frontmatter `deferred`).
+  - `[low]` `[patch]` The vendor's text was not logged when the export's test failed — `PerformPmmlExport` logs it.
+  - `[low]` `[patch]` A cube name past 250 characters was looked up before it was refused — the plan and the read look up only a name within the bound.
+  - `[low]` `[patch]` The script's copy ignored `%Next`'s status — it ends the copy as a failed row save does.
+  - `[low]` `[patch]` `RemoveFixtures` left vendor rows after a failed leg — it drops them.
+  - `[low]` `[patch]` The stale-data legs did not check their setup — each asserts the planted row.
+  - `[low]` `[reject]` `Gone()` and `Left()` read no data global — the write's and the script's extent kills are now pinned, so an orphan cannot change a later result; reopen if a test reads rows it did not make.
+  - `[low]` `[reject]` `%CubeExists` answers 0 for a disabled or unreadable cube, so the export ends `EXPORTCOMPILE` after the run with nothing changed (Measured 3) — reading `^DeepSee.Cubes` is outside AD-65's reads and would reveal a cube the person cannot see.
+  - `[low]` `[reject]` The cube-name rule admits names the vendor's compile refuses — the ruled `CUBENAME` rule (Measured 10); by design.
+  - `[low]` `[reject]` A failed restore is answered with the refusal's sentence — as Batch 3's class writes do; the outcome is in the audit row and the log.
+  - `[low]` `[reject]` A request past the Web Gateway's timeout shows no sentence — the shell's behavior for an answer with no envelope; named limit (Decided 4).
+  - `[low]` `[reject]` The default names can be malformed for some model names — the classic's own defaults (`GetExportPackageName`); the plan answers `CLASS`.
+  - `[low]` `[reject]` An exception after the result class's save skips the restore — the steps return statuses; real only if one raises.
+  - `[low]` `[reject]` The gate checks only the `^oddDEF` and `^DeepSee.Fact` databases — a result class whose data maps to a read-only database fails the copy and logs `restorefailed`; reopen if a package mapping is reported.
+  - `[low]` `[reject]` The tool's `PrivilegePairs` repeats the listing group tool's — the Code Map named that shape; reopen if a third tool repeats it.
+  - `[low]` `[reject]` The `StateDiff` problem sentence is not a Proposed string — an agent-facing tool problem in the siblings' form.
+  - `[low]` `[reject]` The script's no-bound comment is not a Proposed string — U-133's fourth condition asks for it.
+  - `[low]` `[reject]` `Prohibited.cls`'s line sits inside the chain — closed 2026-11-20.
+- checklists:
+  - A (U-133): 1 pass, every name, the source, the model id and the namespace are shape-checked before the plan and a failure renders no step (`AnalyticsPort.PmmlExportSnippet`, `PmmlExportDraftShaped`, `PmmlDraftClassShaped`); 2 pass, every interpolation through `Literal`; 3 pass, " ; OcuPilot cannot undo an export."; 4 pass, one no-bound comment and no bound; 5 pass, the `SnippetForm` comment lists the export; 6 pass, each earlier leg has a `mutation:` line or a reason, and the failure-line kill is now pinned.
+  - B: every added string equals a Proposed string or `EXPERIENCE.md:623`, except the no-bound script comment (U-133 condition 4) and the agent-facing `StateDiff` problem.
+  - C: `git diff 8f5ead53b 354796f5d -- src/OcuPilot/Api/Error.cls` is empty.
+  - D: the three files are ASCII with no BOM, CR, tab or trailing whitespace, each ends in one line feed, and their code reads correct.
+  - E: a failed write deletes the cube class it saved, kills the result class's extent and deletes it, and no cube stays registered (Measured 2, 3); the script's failure lines do the same; `Prohibited.cls` gains two lines and loses none.
+  - F: no marker was safe beyond six characters (29-character class name); the data-relevant legs now use `BCube`, `BCopy`, `SLong`, `Stale`, `WStale`, `SRace` and `Quoted`.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-36, AD-51, AD-53, AD-56, AD-58, AD-59, AD-60, AD-61, AD-65. Nothing contradicts them. AD-7's "a short foreground request" is met as the cube build meets it, with a named limit, and the wording below is proposed for it.
@@ -392,7 +431,17 @@ Batch 4 QA added, all passing on their first run on a rebuilt `ocupilot-b-ci`: `
   - mutation: the consequence in `pmml-export-dialog.ts` drawn from `analyticsPmmlExportAction` -> the consequence leg red; reverted byte-identical, bundle rebuilt and redeployed.
   - mutation: the refusal in `pmml-export-dialog.ts` drawn from `actionCancel` -> the refusal leg red; reverted byte-identical, bundle rebuilt and redeployed.
 - Nothing else probed needed a new test: a second export with the same names through the port is pinned by `TestAHeldClassPackageOrCubeIsRefusedAndNothingIsTouched`, and the leftover class, cube and vendor row after each test is pinned by `ExportLeft` in every test plus the per-test `RemoveFixtures`.
-- QA finding: `AnalyticsPmmlCreateBase.DataLeft` reads the data global as `^<class>D`; for a result class whose name is longer than the vendor's default-global limit, that name is not valid and the read answers "left" (inference: IRIS hashes a long class's default global name; a 39-character one raised `<SYNTAX>`, a 38-character one did not). A test marker must keep `ProbePmml.Export.<marker>.ResultD` under that length. Not a product defect; the new test's marker is `ScriptCopy` for that reason.
+- QA finding: `AnalyticsPmmlCreateBase.DataLeft` reads the data global as `^<class>D`, which is the class's data global only for a class name of at most 29 characters; the compiler hashes a longer one's (measured on `ocupilot-b-ci`: `ProbePmml.ExportWStale.Result` keeps `^ProbePmml.ExportWStale.ResultD`, `ProbePmml.ExportBadCopy.Result` gets `^ProbePmml.ExportBad6971.ResultD`), and the read then sees nothing. A test whose data check matters uses a marker of at most six characters. Not a product defect.
+
+### Code review (2026-11-21)
+
+Each was applied on `ocupilot-b-ci` (the throwaway's copy of the port, loaded with its subclasses; the four port mutations together, each red on its own assertion), run, and reverted (the copy equal to the tree, `diff -rq` empty, reloaded, the class green again).
+
+- mutation: AC1 stale data through the port, `PerformPmmlExport`'s extent kill before the test made never-run -> `AnalyticsPmmlExportEdge.TestAnExportOverDataAnEarlierClassLeftHoldsOnlyItsRows` red (`stale=1` beside the run's rows).
+- mutation: AC3 data, `RestoreClass`'s extent kill made never-run -> `TestAStepThatFailsRestoresEverything` red on the `BCube`, `BCopy` and `Quoted` data legs (the `LongName` leg's global is hashed, so its data leg sees nothing).
+- mutation: AD-59 failure lines, the script's kill of the result class's extent removed -> `TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` red on the `SLong` data leg.
+- mutation: AD-59 race, the script's second ask of the cube class's names removed -> the same test red on the `SRace` leg (the script replaced the other writer's class).
+- mutation: the page drops the answer of a send whose dialog was canceled -> `pmml-model-test.page.spec.ts` "keeps the line of an export applied after its dialog was canceled" red on the line; the page opens the dialog while a send is in flight -> the same test red on the reopen assertion. Each reverted byte-identical (`shasum` equal).
 
 ## Auto Run Result
 
