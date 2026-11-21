@@ -19,8 +19,8 @@
 /// child's direct parent, wakes on a signal; it ignores a wake unless the owner's stop flag is set, then ends the child it spawned (never a process id read from storage), drops the result rows of the test id
 /// the child recorded (<method>RecordTest</method>) when the record names that child, removes the record, deletes the event, and only then ends the run <code>canceled</code>. The same cleanup follows the
 /// bound plus <parameter>GRACESECONDS</parameter> (the run ends <code>stopped</code>) and a child that ends on its own (a run still <code>running</code> ends <code>failed</code>).</p>
-/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method>, <method>Spawn</method>, <method>ChildWork</method>
-/// and the <parameter>ENDSECONDS</parameter> and <parameter>GRACESECONDS</parameter> parameters. Production overrides none.</p>
+/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method>, <method>Spawn</method>, <method>ChildWork</method>,
+/// <method>EndChild</method> and the <parameter>ENDSECONDS</parameter> and <parameter>GRACESECONDS</parameter> parameters. Production overrides none.</p>
 Class OcuPilot.Area.Analytics.PmmlTest Extends OcuPilot.Kernel.Shell.BackgroundRun
 {
 
@@ -146,21 +146,18 @@ ClassMethod Body(pBody As %DynamicObject, Output pModel As %String, Output pSour
 /// <parameter>GRACESECONDS</parameter> passes. Whatever ends the wait, it ends the child it spawned and no other process, drops that child's rows and removes the record (<method>Reap</method>), deletes the
 /// event, and only then ends the run: <code>canceled</code> on a cancel (the owner's flag is set), <code>ended</code> with <code>{outcome: stopped, seconds}</code> past the bound, and <code>failed</code> for a
 /// child that ended without ending the run, a child that would not start and a fault here. A run a child already ended is left as it is.</p>
-/// <p><b>Terminating the child.</b> Neither job holds a lock but the run's, which the supervisor holds and which no one takes from it. The child opens no transaction of its own; the vendor's save of a result
-/// row and the store's save of the run's end each open one for the instant of that save, and a process that is ended inside a transaction rolls it back. A result row whose save is cut can therefore stay under
-/// the test id, and the drop by id removes every row whose index entry was written; the store's save that is cut leaves the run <code>running</code>, and the supervisor's own end then writes the state.
-/// The child's locks are freed when it ends.</p>
+/// <p><b>Terminating the child.</b> The supervisor holds the run's lock, which no one takes from it. The child holds no lock across a wait: the vendor's save of a result row, the store's save of the run's
+/// end and the drop's <code>DELETE</code> each lock rows and open a transaction for that one statement or save, and a process that is ended inside one rolls it back and releases its locks as it ends. A result
+/// row whose save is cut can therefore stay under the test id, and the supervisor's drop by id, made once the child is gone, removes every row whose index entry was written; the store's save that is cut
+/// leaves the run <code>running</code>, and the supervisor's own end then writes the state.</p>
 ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
 {
     Set tEvent = ..EventName(pKey)
-    Set tMade = 0
     Set tChild = ""
     Set tOutcome = "failed"
     Try {
-        Set tMade = ..EnsureEvent(tEvent)
-        If 'tMade {
-            Do ..Log("a PMML test's event could not be created", $$$ERROR($$$GeneralError, "the event resource was not created"))
-        } ElseIf ..StopRequested(pKey) {
+        If '..EnsureEvent(tEvent) Do ..Log("a PMML test's event could not be created", $$$ERROR($$$GeneralError, "the event resource was not created; the wait creates it again"))
+        If ..StopRequested(pKey) {
             Set tOutcome = "cancel"
         } ElseIf '..SpawnChild(pKey, pUser, pNamespace, pRequest, pClass, .tChild) {
             Do ..Log("a PMML test's child could not be started", $$$ERROR($$$GeneralError, "the spawn was not accepted within " _ ..#SPAWNTIMEOUT _ " seconds"))
@@ -183,7 +180,7 @@ ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequ
     } Catch ex {
         Do ..Log("a PMML test's child could not be cleaned up", ex.AsStatus())
     }
-    If tMade Do ..DropEvent(tEvent)
+    Do ..DropEvent(tEvent)
     Do ..Finish(pKey, tState, tAnswer)
 }
 
@@ -257,6 +254,9 @@ Parameter CHILDSECONDS As %Integer = 1;
 /// <p>The seconds one wait on the run's event lasts; the child's end and the deadline are read at each wake or timeout.</p>
 Parameter WAKESECONDS = 0.5;
 
+/// <p>The seconds the supervisor pauses after a wake it does not act on, so that a flood of signals or deletes costs at most one read of the stop flag per pause.</p>
+Parameter WAKEFLOOR = 0.05;
+
 /// <p>Record, in IRISTEMP under the run's key, the calling process and the test id the run's rows carry: <code>$ListBuild($Job, pTestId)</code>. The stop class's hook that
 /// <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method> calls before the vendor writes a row. <method>ChildWork</method> removes the record when the run returns, on every path
 /// (<method>ForgetRecord</method>); the supervisor removes it when the child did not.</p>
@@ -300,13 +300,16 @@ ClassMethod DropEvent(pEvent As %String) [ Private ]
     }
 }
 
-/// <p>Wait on run <var>pKey</var>'s event <var>pEvent</var> until one of four things, answered as its name: <code>exited</code> when child <var>pChild</var> has left the process table;
-/// <code>cancel</code> on a wake while the owner's stop flag is set; <code>bound</code> after <var>pSeconds</var>; <code>failed</code> when a deleted event cannot be created again. A wake with the flag
-/// clear is ignored. A deleted event (the wait answers -1, or throws because the resource is not there) is re-created, and the flag is read again, because a cancel's signal may have found no event.</p>
+/// <p>Wait on run <var>pKey</var>'s event <var>pEvent</var> until one of three things, answered as its name: <code>exited</code> when child <var>pChild</var> has left the process table;
+/// <code>cancel</code> on a wake while the owner's stop flag is set; <code>bound</code> after <var>pSeconds</var>. A wake with the flag clear is ignored, and the next wait comes no sooner than
+/// <parameter>WAKEFLOOR</parameter> seconds later. A deleted event (the wait answers -1, or throws because the resource is not there) is re-created, and the flag is read again, because a cancel's signal
+/// may have found no event; an event that cannot be re-created is logged once and tried again after <parameter>WAKESECONDS</parameter>, so no process but the owner's cancel, the child's end or the deadline ends
+/// the wait.</p>
 ClassMethod Await(pKey As %String, pEvent As %String, pChild As %Integer, pSeconds As %Numeric) As %String [ Private ]
 {
     Set tDeadline = $ZHorolog + pSeconds
     Set tOutcome = ""
+    Set tLogged = 0
     For {
         Set tWoke = 0
         Try {
@@ -315,47 +318,72 @@ ClassMethod Await(pKey As %String, pEvent As %String, pChild As %Integer, pSecon
             Set tWoke = -1
         }
         If (tWoke = -1) && '..EnsureEvent(pEvent) {
-            Do ..Log("a PMML test's event could not be created again", $$$ERROR($$$GeneralError, "the event resource was deleted and not created"))
-            Set tOutcome = "failed"
-        } ElseIf '$Data(^$JOB(pChild)) {
+            If 'tLogged Do ..Log("a PMML test's event could not be created again", $$$ERROR($$$GeneralError, "the event resource was deleted and not created"))
+            Set tLogged = 1
+            Hang ..#WAKESECONDS
+        }
+        If '$Data(^$JOB(pChild)) {
             Set tOutcome = "exited"
         } ElseIf (tWoke '= 0) && ..StopRequested(pKey) {
             Set tOutcome = "cancel"
         } ElseIf $ZHorolog > tDeadline {
             Set tOutcome = "bound"
+        } ElseIf tWoke '= 0 {
+            Hang ..#WAKEFLOOR
         }
         If tOutcome '= "" Quit
     }
     Quit tOutcome
 }
 
-/// <p>Clean up after child <var>pChild</var> of run <var>pKey</var>. When <var>pEnd</var> is set and the child is in the process table, end it with <code>$SYSTEM.Process.Terminate</code>, the
-/// supervisor being its direct parent, and wait up to <parameter>CHILDSECONDS</parameter> for it to leave. Once it is gone, drop the rows of the test id the record holds when the record names that child
-/// (<method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method>), whatever process it names otherwise, and remove the record. Answers whether the child is gone; a child that is not gone is logged, and its rows and
-/// record are left, since it may still write.</p>
+/// <p>Clean up after child <var>pChild</var> of run <var>pKey</var>. When <var>pEnd</var> is set and the child is in the process table, end it (<method>EndChild</method>), the supervisor being its direct
+/// parent, and wait up to <parameter>CHILDSECONDS</parameter> for it to leave; a child still there is logged and waited for up to <method>BoundSeconds</method> plus <parameter>GRACESECONDS</parameter> more.
+/// Then drop the rows of the test id the record holds when the record names that child (<method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method>), whatever process it names otherwise, and remove the record, so
+/// the run's end that follows never finds them. Answers whether the child is gone. A child that outlasts both waits and goes on writing drops its own rows when its run returns.</p>
 ClassMethod Reap(pKey As %String, pChild As %Integer, pEnd As %Boolean) As %Boolean [ Private ]
 {
     Set tGone = 1
     If pEnd && (pChild '= "") && $Data(^$JOB(pChild)) {
         Try {
-            Do $SYSTEM.Process.Terminate(pChild)
+            Set tEnded = ..EndChild(pChild)
+            If tEnded '= 1 Do ..Log("a PMML test's child could not be ended", $$$ERROR($$$GeneralError, "Terminate answered " _ tEnded))
         } Catch ex {
             Do ..Log("a PMML test's child could not be ended", ex.AsStatus())
         }
-        Set tEnd = $ZHorolog + ..#CHILDSECONDS
-        While $Data(^$JOB(pChild)) && ($ZHorolog < tEnd) {
-            Hang 0.005
+        Set tGone = ..AwaitGone(pChild, ..#CHILDSECONDS)
+        If 'tGone {
+            Do ..Log("a PMML test's child did not end", $$$ERROR($$$GeneralError, "the process was still in the process table after " _ ..#CHILDSECONDS _ " seconds"))
+            Try {
+                Do ..EndChild(pChild)
+            } Catch {
+                ; Already logged once; the wait below decides.
+            }
+            Set tGone = ..AwaitGone(pChild, ..BoundSeconds() + ..#GRACESECONDS)
         }
-        Set tGone = '$Data(^$JOB(pChild))
-        If 'tGone Do ..Log("a PMML test's child did not end", $$$ERROR($$$GeneralError, "the process was still in the process table after " _ ..#CHILDSECONDS _ " seconds"))
     }
-    If 'tGone Quit 0
     Set tRecord = $Get(^IRIS.Temp.OcuPilotPmmlRun(pKey))
     If '$ListValid(tRecord) Set tRecord = ""
     Do ..ForgetRecord(pKey)
     Set tTestId = $ListGet(tRecord, 2)
     If (pChild '= "") && ($ListGet(tRecord, 1) = pChild) && (tTestId '= "") Do $ClassMethod(..PortClass(), "PmmlDrop", tTestId)
-    Quit 1
+    Quit tGone
+}
+
+/// <p>End child <var>pChild</var>, the process <method>OcuPilot.Kernel.Shell.BackgroundRun.SpawnChild</method> answered, with the person's own rights; <code>$SYSTEM.Process.Terminate</code>'s answer, 1 when the
+/// end was sent. A seam: a fixture overrides it.</p>
+ClassMethod EndChild(pChild As %Integer) As %Integer [ Private ]
+{
+    Quit $SYSTEM.Process.Terminate(pChild)
+}
+
+/// <p>Wait up to <var>pSeconds</var> for process <var>pChild</var> to leave the process table; whether it has.</p>
+ClassMethod AwaitGone(pChild As %Integer, pSeconds As %Numeric) As %Boolean [ Private ]
+{
+    Set tEnd = $ZHorolog + pSeconds
+    While $Data(^$JOB(pChild)) && ($ZHorolog < tEnd) {
+        Hang 0.005
+    }
+    Quit '$Data(^$JOB(pChild))
 }
 
 /// <p>What a cancel does to run <var>pId</var>, whose owner's stop flag is set: it signals the run's event (<method>EventName</method>) and waits up to <parameter>ENDSECONDS</parameter> for the run to

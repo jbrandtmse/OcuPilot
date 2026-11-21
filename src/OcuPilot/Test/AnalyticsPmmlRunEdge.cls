@@ -359,12 +359,13 @@ ClassMethod AwaitEnd(pClass As %String, pKey As %String, pSeconds As %Numeric) A
 }
 
 /// <p>AC2: a cancel of a run whose child is in no SQL statement, which the idle fixture's is, answers <code>canceled</code> within two seconds, the run's child and supervisor are gone, and the run holds no
-/// record, no lock and no event resource.</p>
-/// <p>Mutation (Rule 19): skip the <code>Signal</code> in <method>OcuPilot.Area.Analytics.PmmlTest.CancelJob</method> -- this goes red on the status, the live processes and the time; skip the supervisor's
+/// record, no lock and no event resource. The child runs with the user and roles of the process that started the run (AD-9).</p>
+/// <p>Mutation (Rule 19): spawn the child from inside a <code>New $Roles</code> frame that adds a role in <method>OcuPilot.Area.Analytics.PmmlTest.Work</method> -- this goes red on the child's roles; skip the <code>Signal</code> in <method>OcuPilot.Area.Analytics.PmmlTest.CancelJob</method> -- this goes red on the status, the live processes and the time; skip the supervisor's
 /// <code>Terminate</code> in <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method> -- the live child and the wait for it go red; skip <code>Finish</code> there -- the stored state reads running.</p>
 Method TestACancelEndsARunWhoseJobIsInNoStatement()
 {
     Do $$$AssertTrue(..StartIdle(..#IDLE, .tKey, .tSup, .tChild), "the idle child began its work and the supervisor holds the run: " _ $Get(tKey) _ " supervisor " _ $Get(tSup) _ " child " _ $Get(tChild))
+    Do $$$AssertTrue($Get(^IRIS.Temp.OcuPilotPmmlIdle("identity")) = $ListBuild($Username, $Roles), "the child runs as the process that started the run, with its roles and no more: " _ $ListToString($Get(^IRIS.Temp.OcuPilotPmmlIdle("identity")), "|"))
     Set tStart = $ZHorolog
     Set tSC = $ClassMethod(..#IDLE, "Cancel", tKey, $Username, .tFound)
     Set tSeconds = $ZHorolog - tStart
@@ -434,7 +435,7 @@ Method TestAWakeWithoutTheStopFlagIsIgnored()
     Do $$$AssertTrue(..StartIdle(..#IDLE, .tKey, .tSup, .tChild), "the idle child began its work: " _ $Get(tKey))
     Do $System.Event.Signal(##class(OcuPilot.Area.Analytics.PmmlTest).EventName(tKey))
     Hang 1.2
-    Do $$$AssertEquals(..ViewStatus(..#IDLE, tKey) _ " " _ $ClassMethod(..#WATCH, "Alive", tSup) _ " " _ $ClassMethod(..#WATCH, "Alive", tChild), "running 1 1", "the run still runs, with its supervisor and its child")
+    Do $$$AssertEquals(..ViewStatus(..#IDLE, tKey) _ " " _ $ClassMethod(..#WATCH, "Alive", tSup) _ " " _ $ClassMethod(..#WATCH, "Alive", tChild) _ " " _ $ClassMethod(..#WATCH, "LockHeld", tKey), "running 1 1 1", "the run still runs, with its supervisor, its child and its lock held")
     Set tSC = $ClassMethod(..#IDLE, "Cancel", tKey, $Username, .tFound)
     Do $$$AssertEquals(..ViewStatus(..#IDLE, tKey), "canceled", "and the owner's cancel ends it")
     Do $$$AssertEquals($ClassMethod(..#WATCH, "Residue", tKey, "", tChild, tSup), $Parameter(..#WATCH, "CLEAN"), "leaving nothing")

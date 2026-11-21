@@ -228,6 +228,17 @@ test('Story 24.14 Batch 2b: product code calls Terminate( only in the process po
   assert.ok(!/terminate/i.test(cancelBody), 'and the cancel ends no process: it signals the supervisor');
 });
 
+test('Story 24.14 Batch 2b: the background run holds two JOB commands, Spawn\'s and SpawnChild\'s, and only the PMML test supervisor calls SpawnChild', () => {
+  // Mutation (Rule 19): add a third `Job` to BackgroundRun.cls, or a call of `SpawnChild(` to any other product class -> this goes red naming the count or the class.
+  const shell = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'), 'utf8'), false);
+  assert.equal([...shell.matchAll(/^\s+Job\s/gim)].length, 2, 'two JOB commands in the background run');
+  const spawnChildAt = shell.indexOf('ClassMethod SpawnChild(');
+  assert.ok(spawnChildAt >= 0 && /^\s+Job\s/im.test(shell.slice(spawnChildAt, shell.indexOf('\n}\n', spawnChildAt))), 'one of them in SpawnChild');
+  const callers = productSources().filter((name) => name !== 'Kernel/Shell/BackgroundRun.cls'
+    && /\bSpawnChild\s*\(/.test(codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', ...name.split('/')), 'utf8'), false)));
+  assert.deepEqual(callers, ['Area/Analytics/PmmlTest.cls'], 'and the PMML test supervisor is its one caller');
+});
+
 /** The five refusals of the cube manager's updates (Story 20.34), each pinned to its `strings.ts` key. */
 const CUBE_SENTENCES = [
   ['REASONCUBEBUSY', 'analyticsRefusalCubeBusy'],

@@ -161,6 +161,39 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `9fb5dca1
   - `[maybe-false]` `[reject]` The `CancelAcross` two-second bound could fail on a slow shard, since the drop grows with the rows written before the cancel -- measured 0.152 s at most against a 2 s bound; it would be low, and the fix (a smaller statement or a longer bound) moves the target.
   - The sed-written `AnalyticsPort.cls` hunk was read line by line by both layers: clean, an Edit-tool result (no `.bak`, no CR, `git diff --check` clean).
 
+### 2026-11-20 — Batch 2b code review (lead, four layers)
+
+- verdicts: 23 findings — high 1, medium 3, low 19; patch 13, reject 10, defer 0
+- findings:
+  - `[high]` `[patch]` A child still listed after `CHILDSECONDS` made `Reap` return before its drop, and `Work` then wrote `canceled` (the flag) with the rows and record left -- `Reap` ends it again, waits up to the bound plus the grace, then always drops and removes the record; `EndChild` seam, `PmmlTestStubborn`, `TestACanceledRunWhoseChildIsSlowToLeaveReadsCanceledOnlyAfterTheDrop`.
+  - `[medium]` `[patch]` A process that deletes and re-creates the event could make `EnsureEvent` fail and end another user's run `failed` -- the wait logs once and keeps waiting; `Work` goes on without the event; `TestARunWhoseEventCannotBeCreatedStillCancels` (also pins the flag read after a -1).
+  - `[medium]` `[patch]` Nothing pinned that the child runs with the starter's user and roles (AD-9) -- the idle fixture records them; `TestACancelEndsARunWhoseJobIsInNoStatement` asserts them.
+  - `[medium]` `[reject]` The cross-process pid assertion cannot fail -- by construction, per the orchestrator's ruling (Decided in-stage 6); the `Terminate` always runs in the least-privileged supervisor, and the HTTP leg pins the reader's signal.
+  - `[low]` `[patch]` `Terminate`'s answer was discarded -- logged when not 1.
+  - `[low]` `[patch]` "Neither job holds a lock but the run's" was wrong (store save, vendor save, drop `DELETE`) -- comment and Design Notes replaced.
+  - `[low]` `[patch]` The killed-supervisor limit read `failed`; it reads `canceled` with the flag set and leaks the event -- Named limits corrected.
+  - `[low]` `[patch]` "Only the owner holds the run key" was false (`$System.Event.List()`, `$Order`) -- Decided in-stage 2 corrected.
+  - `[low]` `[patch]` A flood of signals or deletes spun the wait -- `WAKEFLOOR` (0.05 s) after a wake it does not act on.
+  - `[low]` `[patch]` `LockHeld` had no positive control -- asserted 1 while a run is live.
+  - `[low]` `[patch]` `JOB` count in `BackgroundRun.cls` and `SpawnChild`'s callers were unpinned (rule 19's roster is per file) -- `analytics.test.mjs` guard.
+  - `[low]` `[patch]` Fixture nodes from an aborted run could pass the next run -- `OnBeforeAllTests` kills them.
+  - `[low]` `[patch]` Verification Decided in-stage 3 claimed no event after a terminal read -- replaced.
+  - `[low]` `[patch]` A test doc and QA disagreed on one mutation's red legs -- doc now says `ran` and `failed`, as QA observed.
+  - `[low]` `[reject]` A forged or deleted record redirects or suppresses the drop -- no reach beyond the open IRISTEMP result rows; reopen_if those rows move behind a resource.
+  - `[low]` `[reject]` A process waiting on the event can take the cancel's wake -- named limit (event unguarded); the run still ends at the bound plus the grace.
+  - `[low]` `[reject]` Pid reuse within one 0.5 s slice -- theoretical; a least-privileged owner's `Terminate` of a non-child throws `<PROTECT>`.
+  - `[low]` `[reject]` `cancelNode:` and the `<UNDEFINED>` filter cannot fail -- composite and log-only; `resource:` is the event's real check.
+  - `[low]` `[reject]` The child forgets its record when its own drop failed five times -- theoretical; nothing else touches those rows.
+  - `[low]` `[reject]` Supervisor catch and spawn-failure paths have no test -- logged paths through the same `Reap`; another user's cancel is Batch 2's, with its mutation in its test.
+  - `[low]` `[reject]` `AnalyticsPmmlRunEdge` is 637 lines -- already split once into `AnalyticsPmmlRunCancel`.
+  - `[low]` `[reject]` The bound-path `Terminate` as a least-privileged parent is unpinned -- the same call and parent as the cancel path, which the HTTP legs pin as the reader.
+  - `[low]` `[reject]` A least-privileged cancel from a process other than the start's is pinned only statically -- the canceller's calls do not depend on its process.
+- A, the sed-written `AnalyticsPort.cls` hunk: pass (four layers): ASCII, no CR, `git diff --check` clean; the vendor keeps a non-zero caller id (`%DeepSee/PMML/Utils.cls:210,333,507`); allocation before the switch is namespace-free (IRISTEMP counter).
+- B (at `488daf4b3` → after patch): 1 record removed on every path FAIL → PASS (`PmmlTest.cls` `Reap`); 2 `canceled` only after the drop FAIL → PASS on every supervisor path, killed supervisor a named limit; 3 transactions and locks stated FAIL as worded → PASS (`Work` doc); 4 `CancelJob` never terminates PASS; 5 `Terminate` only at `$ZChild` PASS (`EndChild` from `Reap`, `pChild` = `SpawnChild`'s `$ZChild`); 6 wake without flag ignored PASS (`Await`); 7 deleted resource re-created PASS (`Await`); 8 bound plus grace ends `stopped` PASS; 9 spawn only in `SpawnChild`, rule 19 roster unchanged PASS (`check-objectscript.py` untouched).
+- C: all seven PASS: `AnalyticsPmmlRunEdge.TestACancelFromAnotherProcessEndsARunOverEitherStatement`, `.TestAWakeWithoutTheStopFlagIsIgnored`, `.TestADeletedEventIsCreatedAgainAndTheRunStillCancels`, `.TestAHungChildIsEndedAtTheBoundPlusGrace`, `AnalyticsPmmlRunCancel.TestEveryEndingLeavesNoRecordNodeOrResource` (with `Residue` in each edge test), `AnalyticsPmmlRunEdge.TestAnotherUsersPollIsNotFoundAndASecondStartIsBusy`, `.TestACancelOfAStaleRowEndsNoProcess`.
+- `scripts/ci-throwaway.sh`: add-only, one roster line. QA's privileged cancel job leaves no rights property unpinned.
+- Verified on a rebuilt `ocupilot-b-ci`, first run, forward: `AnalyticsPmmlRunCancel` 7/7, `AnalyticsPmmlRunEdge` 15/15, `AnalyticsPmmlRun` 6/6.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -207,13 +240,13 @@ There is no contradiction. The 20.33 spec's Never ("no `Process.Terminate` in pr
 **Decided in-stage (plan).**
 
 1. **Option (b) as a supervisor (Re-open 2).** `Terminate` lands only from a job's direct parent, so the run's own job, which `BackgroundRun.Run` spawns and which holds the run lock, supervises a child that runs the vendor call. The child is spawned by `BackgroundRun.SpawnChild`, the second `JOB` at the one spawn site (`check-objectscript` rule 19's roster is unchanged). The cancel signals the run's event and ends no process, so it lands from any web process.
-2. **The record lives in IRISTEMP, keyed by run key**, because `SqlRun` is out of scope and the supervisor needs the id. It gives no new reach: IRISTEMP is writable by any code-running user, as the vendor's result rows are. A forged record needs the run key, which only the owner holds. The supervisor drops its rows only when its pid equals the `$ZChild` it spawned, and a pid read from it or from storage is never a target.
+2. **The record lives in IRISTEMP, keyed by run key**, because `SqlRun` is out of scope and the supervisor needs the id. It gives no new reach: IRISTEMP is writable by any code-running user, as the vendor's result rows are. Any code-running user can list run keys (`$System.Event.List()`, `$Order` over the record) and forge or delete a record, which reaches nothing the open result rows do not already. The supervisor drops its rows only when its pid equals the `$ZChild` it spawned, and a pid read from it or from storage is never a target.
 3. **The cancel's answer waits up to `ENDSECONDS` (2) for the run to leave `running`.** The supervisor drops the rows before it writes `canceled`, so a late cancel whose drop outlasts the wait answers `running` and a poll then reads `canceled` (named limit).
-4. **The supervisor's timing.** One wait on the event lasts `WAKESECONDS` (0.5); the deadline is the bound plus `GRACESECONDS` (5); it waits up to `CHILDSECONDS` (1) for a child it ended to leave the process table. A child that does not leave is logged, and its rows and record are left, since it may still write.
+4. **The supervisor's timing.** One wait on the event lasts `WAKESECONDS` (0.5); the deadline is the bound plus `GRACESECONDS` (5); it waits up to `CHILDSECONDS` (1) for a child it ended to leave the process table, and a child still there is logged and waited for up to the bound plus the grace more. Then it drops the record's rows and removes the record, before the run's end.
 5. **`Seed` moves to `PmmlProbe`** (Rule 2), so the edge class need not call another test class.
 6. **The cross-process test** serves the start and the cancel through a test web application (`OcuPilot.Test.PmmlHoldRouter`, created by the edge class and removed with it), which answers the serving process id of the start; the cancel is sent from a job the test starts (`PmmlRunWatch.CancelFromJob`), so the two processes differ by construction.
 
-**No transaction or lock at termination.** Neither job holds a lock but the run's, which the supervisor holds and nothing else takes. The child opens no transaction of its own. The vendor's save of a result row and the store's save of the run's end each open one for the instant of that save, and a process ended inside a transaction rolls it back. A result row whose save is cut can stay under the test id, and the drop by id removes every row whose index entry was written; IRISTEMP is not journaled, so the rollback restores nothing there (inference). A store save of the run's end that is cut leaves the run `running`, and the supervisor's own end then writes the state. The child's locks are freed when it ends. The same statement is in `PmmlTest.Work`'s comment.
+**No transaction or lock at termination.** The supervisor holds the run's lock, and nothing else takes it. The child holds no lock across a wait: the vendor's save of a result row, the store's save of the run's end and the drop's `DELETE` each lock rows and open a transaction for that one save or statement (inference for the `DELETE`), and a process ended inside one rolls it back and releases its locks as it ends. A result row whose save is cut can stay under the test id, and the drop by id removes every row whose index entry was written; IRISTEMP is not journaled, so the rollback restores nothing there (inference). A store save of the run's end that is cut leaves the run `running`, and the supervisor's own end then writes the state. The supervisor drops and ends only after the child has left. The same statement is in `PmmlTest.Work`'s comment.
 
 **Orchestrator conditions (binding; AD-7 and AD-42 stay proposed, the spine is not edited).** Each is pinned in `## Verification`.
 
@@ -223,10 +256,10 @@ There is no contradiction. The 20.33 spec's Never ("no `Process.Terminate` in pr
 
 **Named limits (stated, not fixed).**
 
-- A killed supervisor leaves its child running to its own bound, and the poll reads `failed`.
-- The event resource is unguarded: any process may signal or delete it. The supervisor acts on a wake only with the owner's flag set and creates a deleted resource again.
+- A killed supervisor leaves its child running to its own bound, and the poll reads `failed`, or `canceled` when the owner had asked (`SqlRun.Reconcile`), while the child's rows remain; its event resource stays until the instance restarts.
+- The event resource is unguarded: any process may signal, delete or wait on it. The supervisor acts on a wake only with the owner's flag set, creates a deleted resource again, and keeps waiting when it cannot. A process that takes the cancel's wake delays the cancel to the bound plus the grace.
 - A late cancel costs about 3.9 s for the drop (Measured above), which outlasts the cancel's wait; the cancel then answers `running` and a poll reads `canceled`.
-- A child that does not leave the process table within `CHILDSECONDS` after `Terminate` is logged and its rows and record are left; the store's end then reads `canceled` for a cancel, since `GuardedFinish` reads the owner's flag.
+- A child that outlasts both of the supervisor's waits after `Terminate` and goes on writing adds rows after the supervisor's drop; it drops them itself when its run returns.
 
 **Veto items (unattended):**
 
@@ -273,6 +306,10 @@ AD-42:
 - mutation: AC1 `Reap` skips the `PmmlDrop` of the record's rows -> `TestACancelFromAnotherProcessEndsARunOverEitherStatement` red on both legs' residue (rows left), `TestAChildEndedFromOutsideIsReapedAndTheRunReadsFailed` red beside it (run 25).
 - mutation: `Work` ends the run `ended` for an exited child -> `TestAChildEndedFromOutsideIsReapedAndTheRunReadsFailed` red alone, on the status (run 26).
 - mutation: `CancelJob` ends the process the stored row names -> `TestACancelOfAStaleRowEndsNoProcess` red alone, on the bystander.
+- mutation: `Reap` answers at once for a child still listed after `CHILDSECONDS` -> `TestACanceledRunWhoseChildIsSlowToLeaveReadsCanceledOnlyAfterTheDrop` red (`canceled/4` when the cancel returns), the class red at its end on `records:1` (review).
+- mutation: `Await` ends `failed` when a deleted event cannot be created again -> `TestARunWhoseEventCannotBeCreatedStillCancels` red alone (review).
+- mutation: `Work` spawns the child inside a `New $Roles` frame that adds a role -> `TestACancelEndsARunWhoseJobIsInNoStatement` red on the child's roles (review).
+- mutation: a third `Job` in `BackgroundRun.cls` -> `analytics.test.mjs` red on "two JOB commands" (review).
 - mutation: guard a `Terminate(` in `AnalyticsPort.cls` -> `analytics.test.mjs` red on "the two classes that end a process" (and the 20.33 test beside it); a `Terminate(` in `PmmlTest.CancelJob` -> red on "ends a process in one place".
 
 **Target (20 cross-process cancels per statement through the test web application, HTTP as `READER`, the start's web process held, real code).** Re-measured at the end of the pass with the final tests and code, on a rebuilt `ocupilot-b-ci` (a scratch subclass of the edge class looped `CancelAcross` 20 times per statement; 321 of 321 asserts passed). Every run: the start's web process 2015, the cancel's web process 2018, status 200, the cancel's answer `canceled`, the supervisor, the child, the rows, the record, the lock and the event all gone, 40 of 40. Seconds from the cancel's request to its answer, `SLOWSCAN`: .018 .013 .012 .019 .019 .019 .019 .018 .018 .013 .019 .019 .019 .013 .020 .019 .013 .013 .019 .013 (max .020). `SIXWAY`: .019 .022 .019 .018 .018 .019 .018 .019 .018 .019 .018 .019 .018 .019 .019 .019 .017 .020 .018 .019 (max .022). Green on `ocupilot-b-ci`: `AnalyticsPmmlRunEdge` (15 tests; the first run on a rebuilt instance, forward and in reverse order, and five consecutive runs), `AnalyticsPmmlRun` (6), `AnalyticsPmmlModels` (6); `analytics.test.mjs` 28 of 28 and `test:tools` 2,358 of 2,358; `check-objectscript` clean.
@@ -281,7 +318,7 @@ AD-42:
 
 1. `BackgroundRun` gains `SpawnChild`, `EnterChild` and a base `Child`; `SqlRun` is untouched. The supervisor ends the run with `BackgroundRun.Finish`, whose `GuardedFinish` leaves a run a child already ended as it is and releases the run lock the supervisor holds.
 2. The child's `GuardedFinish` unlocks a lock it does not hold, which changes nothing; the lock is released by the supervisor's own end.
-3. The supervisor deletes the event before it ends the run, so a run that reads terminal has no event resource; the supervisor process itself exits a few milliseconds later, which the tests wait for.
+3. The supervisor deletes the event before it ends the run. A run the child ends keeps its event until the supervisor's next slice, up to 0.5 s; the tests wait for the supervisor to exit.
 4. `$SYSTEM.Process.Terminate` by a least-privileged person ends only a direct child, which the earlier direct-cancel design could not rely on: its cancel, served by another web process, got `<PROTECT>Terminate+2^%SYSTEM.Process.1`. The supervisor design is that the process that terminates is always the parent.
 5. `READER` is granted `SELECT` on `ProbePmml.Source` (`GrantReader`) because its custom statements run with its own rights.
 6. A request cannot be sent to a web process the test names, so the web server may serve a start and a cancel from one process. The cross-process leg therefore starts the run over HTTP and sends the cancel from a job of the test, which calls `PmmlTest.Cancel` (the entry the cancel route calls) naming the owner and records its own process id; it asserts that this id differs from the start's web process (by construction) and that the run reads `canceled` within two seconds. A third leg sends the owner's own HTTP cancel without a process assertion.

@@ -1,10 +1,10 @@
 /// <p>Pins Story 24.14's PMML test cancel at the moments a cancel can meet its supervisor (AD-7, AD-41, AD-42, AD-65), against <code>USER</code> and the definition of <class>OcuPilot.Test.PmmlProbe</class>: a cancel
 /// sent before the supervisor has created its event, and one sent after it has created the event and before it waits, each ends the run <code>canceled</code> once the supervisor goes on; a second cancel of a
-/// canceled run changes nothing; a poll reads a run <code>canceled</code> only after its result rows are gone; and a run that is <code>ran</code>, <code>stopped</code>, <code>canceled</code> or <code>failed</code>
+/// canceled run changes nothing; a run whose event can never be created still cancels; a poll reads a run <code>canceled</code> only after its result rows are gone, also when its child is slow to leave; and a run that is <code>ran</code>, <code>stopped</code>, <code>canceled</code> or <code>failed</code>
 /// leaves no run record, no event resource and no held lock.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the probes turn analytics on for <code>USER</code> and write cubes and classes there. Every run a
 /// test starts has ended, and every run row, result row, run record and event resource it made is removed, before the test returns.</p>
-Class OcuPilot.Test.AnalyticsPmmlRunCancel Extends %UnitTest.TestCase [ DependsOn = (OcuPilot.Test.AnalyticsProbe, OcuPilot.Test.PmmlProbe, OcuPilot.Test.PmmlRunWatch, OcuPilot.Test.PmmlTestLate, OcuPilot.Test.AnalyticsPmmlRunEdge) ]
+Class OcuPilot.Test.AnalyticsPmmlRunCancel Extends %UnitTest.TestCase [ DependsOn = (OcuPilot.Test.AnalyticsProbe, OcuPilot.Test.PmmlProbe, OcuPilot.Test.PmmlRunWatch, OcuPilot.Test.PmmlTestLate, OcuPilot.Test.PmmlTestStubborn, OcuPilot.Test.AnalyticsPmmlRunEdge) ]
 {
 
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
@@ -27,6 +27,8 @@ Parameter HUNG = "OcuPilot.Test.PmmlTestHung";
 
 Parameter LATE = "OcuPilot.Test.PmmlTestLate";
 
+Parameter STUBBORN = "OcuPilot.Test.PmmlTestStubborn";
+
 Parameter START = "/api/ocupilot/analytics/pmml/background";
 
 Parameter POLL = "/api/ocupilot/analytics/pmml/background/:id";
@@ -44,6 +46,7 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsPmmlRunCancel turns analytics on in USER and compiles classes there, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh.")
     }
+    Kill ^IRIS.Temp.OcuPilotPmmlLate, ^IRIS.Temp.OcuPilotPmmlIdle
     Set tSC = $ClassMethod(..#PMML, "Remove")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Enable")
@@ -242,7 +245,7 @@ Method TestACanceledRunReadsCanceledOnlyAfterItsRowsAreDropped()
 
 /// <p>Each way a run can end leaves no run record, no event resource, no event node and no held lock, once its supervisor has exited: a run that ends on its own over HTTP (<code>ran</code>), a hung child ended at
 /// the bound plus the grace (<code>stopped</code>), a canceled run, and a child ended from outside (<code>failed</code>).</p>
-/// <p>Mutation (Rule 19): skip the event's delete in <method>OcuPilot.Area.Analytics.PmmlTest.Work</method> for a child that has exited -- the <code>failed</code> leg goes red on the resource.</p>
+/// <p>Mutation (Rule 19): skip the event's delete in <method>OcuPilot.Area.Analytics.PmmlTest.Work</method> for a child that has exited -- the <code>ran</code> and <code>failed</code> legs go red on the resource.</p>
 Method TestEveryEndingLeavesNoRecordNodeOrResource()
 {
     Set tBefore = ..Counter()
@@ -272,6 +275,46 @@ Method TestEveryEndingLeavesNoRecordNodeOrResource()
     Set tView = $ClassMethod(..#EDGE, "AwaitEnd", ..#IDLE, tKey, 10)
     Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("status"), 1: "absent"), "failed", "failed: the run reads failed")
     Do $$$AssertEquals(..Left(tKey, "", tChild, tSup), ..Clean(), "failed: nothing is left")
+}
+
+/// <p>A run whose event resource can never be created, as when another process deletes it each time, still runs and still cancels: the supervisor spawns its child, keeps waiting, and ends the run
+/// <code>canceled</code> on the owner's cancel within two seconds, leaving nothing.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Analytics.PmmlTest.Await</method> end the wait <code>failed</code> when a deleted event cannot be created again -- the run reads <code>failed</code>.</p>
+Method TestARunWhoseEventCannotBeCreatedStillCancels()
+{
+    Set ^IRIS.Temp.OcuPilotPmmlLate("noEvent") = 1
+    Do $$$AssertTrue($ClassMethod(..#EDGE, "StartIdle", ..#LATE, .tKey, .tSup, .tChild), "the idle child began its work without an event: " _ $Get(tKey))
+    Hang 1
+    Do $$$AssertEquals($ClassMethod(..#EDGE, "ViewStatus", ..#LATE, tKey) _ " " _ $ClassMethod(..#WATCH, "EventDefined", tKey), "running 0", "a second later the run still runs, with no event resource")
+    Set tStart = $ZHorolog
+    Set tSC = $ClassMethod(..#LATE, "Cancel", tKey, $Username, .tFound)
+    Do $$$AssertTrue($$$ISOK(tSC) && tFound, "the cancel is accepted")
+    Do $$$AssertEquals($ClassMethod(..#EDGE, "ViewStatus", ..#LATE, tKey), "canceled", "the run reads canceled within " _ ($ZHorolog - tStart) _ " seconds")
+    Do $$$AssertEquals(..Left(tKey, "", tChild, tSup), ..Clean(), "and nothing is left")
+    Kill ^IRIS.Temp.OcuPilotPmmlLate("noEvent")
+}
+
+/// <p>A canceled run whose child outlives the supervisor's first wait for it (<class>OcuPilot.Test.PmmlTestStubborn</class>, whose end of the child does nothing) still reads <code>canceled</code> only after its
+/// rows are dropped: when the cancel returns, after its two-second wait, the run reads <code>running</code> with the four rows the record names; once the supervisor's second wait has passed, the rows and the
+/// record are gone and the run reads <code>canceled</code>. The test then releases the child, and nothing is left.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Analytics.PmmlTest.Reap</method> answer at once, dropping nothing, for a child still there after <parameter>OcuPilot.Area.Analytics.PmmlTest.CHILDSECONDS</parameter>
+/// -- the run reads <code>canceled</code> with its four rows when the cancel returns.</p>
+Method TestACanceledRunWhoseChildIsSlowToLeaveReadsCanceledOnlyAfterTheDrop()
+{
+    Set tSeeded = $ClassMethod(..#PMML, "Seed")
+    Do $$$AssertTrue((tSeeded '= "") && ($ClassMethod(..#PMML, "RowsOf", tSeeded) = 4), "four rows are seeded under a test id: " _ tSeeded)
+    Do $$$AssertTrue($ClassMethod(..#EDGE, "StartIdle", ..#STUBBORN, .tKey, .tSup, .tChild), "the idle child began its work: " _ $Get(tKey) _ " child " _ $Get(tChild))
+    Set ^IRIS.Temp.OcuPilotPmmlRun(tKey) = $ListBuild(tChild, tSeeded)
+    Set tSC = $ClassMethod(..#STUBBORN, "Cancel", tKey, $Username, .tFound)
+    Do $$$AssertTrue($$$ISOK(tSC) && tFound, "the cancel is accepted")
+    Do $$$AssertEquals($Piece(..Stored(tKey), "|") _ "/" _ $ClassMethod(..#PMML, "RowsOf", tSeeded) _ "/" _ $ClassMethod(..#WATCH, "Alive", tChild), "running/4/1", "when the cancel returns the child is still there, and the run reads running with every row")
+    Set tView = $ClassMethod(..#EDGE, "AwaitEnd", ..#STUBBORN, tKey, 15)
+    Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("status"), 1: "absent") _ "/" _ $ClassMethod(..#PMML, "RowsOf", tSeeded) _ "/" _ $Data(^IRIS.Temp.OcuPilotPmmlRun(tKey)), "canceled/0/0", "once the supervisor stops waiting, it drops the rows and removes the record before the run reads canceled")
+    Set ^IRIS.Temp.OcuPilotPmmlIdle("release") = 1
+    Do $$$AssertTrue($ClassMethod(..#WATCH, "WaitGone", tChild, 10), "the released child ends")
+    Do $$$AssertEquals(..Left(tKey, tSeeded, tChild, tSup), ..Clean(), "and nothing is left")
+    Kill ^IRIS.Temp.OcuPilotPmmlIdle
+    Do $ClassMethod(..#PMML, "DropRows")
 }
 
 }

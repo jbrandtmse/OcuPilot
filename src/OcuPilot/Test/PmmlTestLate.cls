@@ -1,7 +1,8 @@
 /// <p>Test-only fixture for <class>OcuPilot.Test.AnalyticsPmmlRunCancel</class>: <class>OcuPilot.Test.PmmlTestIdle</class> whose supervisor can be held at two points until a test releases it, so that a cancel
 /// arrives at a moment the supervisor cannot yet read it. When <code>^IRIS.Temp.OcuPilotPmmlLate("hold", point)</code> is set, the supervisor sets <code>("at", point)</code> on reaching the point, <code>event</code>
 /// (before it creates the run's event resource) or <code>wait</code> (after it has spawned the child and before it waits on the event), and continues once <code>("go", point)</code> is set or thirty seconds have passed.
-/// Its port is <class>OcuPilot.Test.PmmlPortSlowDrop</class>. With no node set it behaves as the idle fixture.</p>
+/// When <code>("noEvent")</code> is set, the supervisor never creates the event resource, as when another process deletes it each time. Its port is <class>OcuPilot.Test.PmmlPortSlowDrop</class>. With no
+/// node set it behaves as the idle fixture.</p>
 Class OcuPilot.Test.PmmlTestLate Extends OcuPilot.Test.PmmlTestIdle
 {
 
@@ -13,6 +14,7 @@ ClassMethod PortClass() As %String
 ClassMethod EnsureEvent(pEvent As %String) As %Boolean [ Private ]
 {
     Do ..HoldAt("event")
+    If $Data(^IRIS.Temp.OcuPilotPmmlLate("noEvent")) Quit 0
     Quit ##super(pEvent)
 }
 
