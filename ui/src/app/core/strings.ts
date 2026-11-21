@@ -9276,6 +9276,40 @@ export const STRINGS = {
   accessRefusalPageResourceRequired: 'Name the resource to assign. To remove one, clear it instead.',
   /** EXPERIENCE.md:613 */
   accessRefusalPageNotAssigned: 'This page has no custom resource, so there is nothing to clear.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignAction: 'Assign resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeAction: 'Change resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearAction: 'Clear resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignTitle: 'Assign a resource to a page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeTitle: 'Change the resource of <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPageHelp: 'Name a classic page by its class.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesResourceHelp: 'Name a resource this instance defines.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineOne: '<screen> follows this page\'s resource and will require it from the next request.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineMany: 'These <count> screens follow this page\'s resource and will require it from the next request: <titles>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesMore: 'and <n> more',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineNone: 'No OcuPilot screen replaces this page, so only the classic portal uses this resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceChanged: 'Accounts that hold only the old resource can no longer open <screen>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceCleared: 'More accounts may open <screen>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearWarning: 'After this, the page needs no custom resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryAssign: 'Assign <resource> to <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryChange: 'Change the resource of <page> to <resource>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryClear: 'Clear the resource of <page>',
 } as const;
 
 /**

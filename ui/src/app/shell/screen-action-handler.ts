@@ -335,6 +335,18 @@ export const SCREEN_PERMISSIONS_REMOVE = 'remove-pair';
 export const SCREEN_PERMISSIONS_RESET = 'reset';
 
 /**
+ * Page resources (Story 21.37): its page registers Assign resource, Change resource and Clear resource itself and sends each through
+ * `sendFor`, so the handler draws none of them. The route carries the row actions only, so the primary Assign sends `change` with the
+ * page the dialog was typed; both send the resource as the one value `Resource`. A change and a clear are reviewed through `dryRunFor`
+ * before they are sent.
+ */
+export const PAGE_RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.PageResourceList';
+export const PAGE_RESOURCE_ASSIGN = 'assign';
+export const PAGE_RESOURCE_CHANGE = 'change';
+export const PAGE_RESOURCE_CLEAR = 'clear';
+export const PAGE_RESOURCE_VALUE = 'Resource';
+
+/**
  * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
  * warn first, and whose Delete types the SSL computer name and carries no advisory.
  */
@@ -473,6 +485,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
   // Story 21.18: the Global nodes page's Replace counts the nodes and occurrences it would change before it is confirmed.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['replace'],
+  // Story 21.37: Page resources' dialogs state the screens that follow the page, and what a change or a clear does to them, before it is saved.
+  [PAGE_RESOURCE_LIST]: [PAGE_RESOURCE_CHANGE, PAGE_RESOURCE_CLEAR],
 };
 
 /**

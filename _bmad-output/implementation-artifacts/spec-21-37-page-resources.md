@@ -316,6 +316,12 @@ Mutations run, Batch 2 (`ocupilot-ci`; each reverted with Edit, md5 equal, sourc
 - mutation: Batch 2, AC11, the assign tool's `SurfaceCoverage` row removed -> `SurfaceCoverage` red alone.
 - mutation: Batch 2, AC13, the audit call skipped on the assign branch -> `PageResourceWrite`'s person and agent tests red; skipped on the clear branch -> both red; an event recorded for a refused clear -> `PageResourceProhibited` red.
 
+Mutations run, Batch 3 (`ocupilot-ci`; each reverted with Edit, md5 equal; a client mutation against a rebuilt and redeployed bundle, which was rebuilt and redeployed again after the revert):
+
+- mutation: Batch 3, AC14, the plural line lists every title in place of five and then ", and <n> more" -> the 6-or-more case and the dialog's 6-screen case red in `page-resources-dialog.spec.ts`.
+- mutation: Batch 3, AC12, the page does not register Clear resource (the descriptor still declares it) -> `page-resources.browser-spec.mjs` red at its Clear step. (The planned variant, removing `clear` from the descriptor, is the same absence on the menu; it was not run.)
+- mutation: Batch 3, the card's `PAGERESOURCE.CLEARED` branch removed from `pageResourceSentence` -> `proposal-view.test.mjs` red; `NavigationService.onChange` ignoring `page-resource` -> `navigation.test.mjs` red.
+
 ## Auto Run Result
 
 Status: ready-for-dev

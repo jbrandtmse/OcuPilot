@@ -60,6 +60,9 @@ const {
   CONSEQUENCE_NAMESPACEINTEROP,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_SCREENACCESSLOWERED,
+  CONSEQUENCE_PAGERESOURCECHANGED,
+  CONSEQUENCE_PAGERESOURCECLEARED,
+  pageResourceSentence,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -354,6 +357,43 @@ test("the screen-permission lowering's consequence code resolves to its publishe
   assert.ok(declared, 'Prohibited.cls declares the lowering effect');
   assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_SCREENACCESSLOWERED), STRINGS.screenPermissionsLowerConsequence);
+});
+
+// Story 21.37, AD-10, AD-64: an agent change or clear of the custom resource of a page an OcuPilot screen follows carries its consequence code,
+// and the card's sentence names the screens from the proposal's own `Screen` value.
+//
+// Mutation (Rule 19): drop either code's branch from `pageResourceSentence` -> its leg goes red; read the `Screen` row from the changed rows
+// alone -> the unchanged leg goes red.
+test("the page resource consequence codes are the kernel's own and resolve to their sentences naming the proposal's Screen value", () => {
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  const changed = /^Parameter EFFECTPAGERESOURCECHANGED = "([^"]+)";/m.exec(prohibited);
+  const cleared = /^Parameter EFFECTPAGERESOURCECLEARED = "([^"]+)";/m.exec(prohibited);
+  assert.ok(changed && cleared, 'Prohibited.cls declares both effects');
+  assert.equal(CONSEQUENCE_PAGERESOURCECHANGED, changed[1]);
+  assert.equal(CONSEQUENCE_PAGERESOURCECLEARED, cleared[1]);
+  const named = (consequence, rows) => ({ consequence, changed: [], unchanged: rows });
+  const screens = [{ field: 'Screen', value: 'Users, Roles' }];
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, screens)),
+    'Accounts that hold only the old resource can no longer open Users, Roles.'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECLEARED, screens)),
+    'More accounts may open Users, Roles. The instance still checks what they do there.'
+  );
+  assert.equal(
+    pageResourceSentence({ consequence: CONSEQUENCE_PAGERESOURCECLEARED, changed: [{ field: 'Screen', before: '', after: '$&<screen>' }], unchanged: [] }),
+    'More accounts may open $&<screen>. The instance still checks what they do there.',
+    'a title holding a placeholder is shown as written'
+  );
+  assert.equal(pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, [])), '', 'a proposal carrying no Screen value states nothing');
+  assert.equal(pageResourceSentence(named('SOMETHING.ELSE', screens)), '', 'and no other consequence is this sentence');
+  assert.equal(consequenceSentence(CONSEQUENCE_PAGERESOURCECHANGED), '', 'consequenceSentence leaves both to the card, which has the screens');
+  assert.equal(
+    journalSentence({ ...named(CONSEQUENCE_PAGERESOURCECHANGED, screens), name: 'Change the resource of %CSP.UI.Portal.Users to Res' }),
+    'Accounts that hold only the old resource can no longer open Users, Roles.',
+    'the card states it through the view-based sentence it already draws'
+  );
 });
 
 // Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name

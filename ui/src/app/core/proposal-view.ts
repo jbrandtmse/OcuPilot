@@ -212,6 +212,31 @@ export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 /** Story 20.18: an agent change to a screen's permissions that drops a pair the screen required (AD-64). */
 export const CONSEQUENCE_SCREENACCESSLOWERED = 'SCREENACCESS.LOWERED';
 
+/**
+ * Story 21.37: an agent change or clear of the custom resource of a classic page an OcuPilot screen follows (AD-10, AD-64). The sentence names
+ * the screens, so `consequenceSentence` answers `''` for both codes and the card states them through `pageResourceSentence`.
+ */
+export const CONSEQUENCE_PAGERESOURCECHANGED = 'PAGERESOURCE.CHANGED';
+export const CONSEQUENCE_PAGERESOURCECLEARED = 'PAGERESOURCE.CLEARED';
+
+/** The field a page resource proposal names the screens that follow the page under, a changed row's after value or an unchanged row's. */
+const PAGE_RESOURCE_SCREEN_FIELD = 'Screen';
+
+/**
+ * The card's consequence sentence for a page resource proposal, or `''` for any other consequence or where no `Screen` value is carried: the
+ * screens are the proposal's own `Screen` value, inserted through a replacer so a title holding a placeholder is shown as written.
+ */
+export function pageResourceSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'unchanged'>): string {
+  let template = '';
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED) template = STRINGS.pageResourcesConsequenceChanged;
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) template = STRINGS.pageResourcesConsequenceCleared;
+  if (template === '') return '';
+  const changed = view.changed.find((row) => row.field === PAGE_RESOURCE_SCREEN_FIELD);
+  const unchanged = (view.unchanged ?? []).find((row) => row.field === PAGE_RESOURCE_SCREEN_FIELD);
+  const screens = changed !== undefined ? changed.after : (unchanged?.value ?? '');
+  return screens === '' ? '' : template.replace('<screen>', () => screens);
+}
+
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
 export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 
@@ -510,6 +535,8 @@ export function journalSentence(view: Pick<ProposalCardView, 'consequence' | 'ch
     if (stored === '') return STRINGS.interopItemPendingConsequence;
     return STRINGS.interopSettingLocationConsequence.replace('<value>', () => stored);
   }
+  // Story 21.37: a page resource change or clear names the screens that follow the page, from the proposal's `Screen` value.
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED || view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) return pageResourceSentence(view);
   return '';
 }
 

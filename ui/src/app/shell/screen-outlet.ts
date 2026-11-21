@@ -201,6 +201,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.EcpDataServerList': () => import('../areas/os-management/ecp-data-server-list.page').then((m) => m.EcpDataServerListPage),
   // Story 20.15: Screen permissions, whose Change permissions dialog opens over the shared list page.
   'OcuPilot.Screen.Descriptor.AgentScreenPermissions': () => import('../areas/agent/screen-permissions.page').then((m) => m.ScreenPermissionsPage),
+  // Story 21.37: Page resources, whose Assign, Change and Clear dialogs open over the shared list page.
+  'OcuPilot.Screen.Descriptor.PageResourceList': () => import('../areas/permissions/page-resources.page').then((m) => m.PageResourcesPage),
   'OcuPilot.Screen.Descriptor.EcpDataServerForm': () => import('../areas/os-management/ecp-data-server-form.page').then((m) => m.EcpDataServerFormPage),
   // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
   // two tabs take the detail page's strip.
