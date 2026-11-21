@@ -656,3 +656,6 @@
 2026-11-21T14:12:10Z	Story 24.14	fresh_check_started	scope=batch4 tree=03169939f gates=full_sweep+client+browser+smoke
 2026-11-21T16:55:08Z	Story 24.14	fresh_check_passed	scope=batch4 tree=03169939f full_sweep=17/17_849cls_6461tests_0failed browser=analytics+links+a11y40/40 test_tools=2364 components=312_files_green build=ok smoke=PASSED
 2026-11-21T16:55:08Z	Story 24.14	code_head_pushed	scope=batch4 sha=03169939f run=44927121755
+2026-11-21T16:58:54Z	Story 24.14	integrate_head_pushed	scope=batch4 M=84f1ad5c9(03169939f+feature_de0df01f9_21.23) run=44927449204 supersedes=44927121755 conflicts=0 test_tools=2385 check_objectscript=0
+2026-11-21T17:49:21Z	Story 24.14	fresh_check_passed	scope=batch4 tree=84f1ad5c9 classes=InteropItemRun,InteropItemControl,WireSecurityRead,AnalyticsPmmlExport(+Edge)_fwd+rev_green browser=22_specs(21.23_changed+analytics+a11y)_132/132_fwd+rev test_tools=2385 smoke=PASSED
+2026-11-21T17:49:21Z	Story 24.14	ci_red	scope=batch4 sha=84f1ad5c9 run=44927449204 failed=browser_shard1/5(a11y_settle_/agent/governance,DW-1822_shape) ledger=DW-1822_occurrence

@@ -8486,6 +8486,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-21T02:14:04Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=recurred:CI_run_44851185597_browser_shard_1(21.36_head_ae4b9b1b3):1280px_light_settle_/agent/governance
 - 2026-11-21T01:35:50Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:24.14-2b_head_73c758917(server-only)_run44845372336_browser_1/5_a11y_AC5_settle_/agent/governance_720px_light;fifth_today;21-23_moved_ahead_of_21-37
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
+- 2026-11-21T17:49:21Z by=epic-24-runner note=occurrence after 21.23 merged: CI run 44927449204 (24.14 Batch 4 integrate head 84f1ad5c9, which carries feature de0df01f9), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance?ns=HSCUSTOM (1280px light, 60 s, retried light then dark); the same specs plus 20 others passed 132/132 forward and reverse on ocupilot-b-ci built from the same tree
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
