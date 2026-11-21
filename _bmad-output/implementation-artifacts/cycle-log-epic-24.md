@@ -626,3 +626,4 @@
 2026-11-21T00:35:03Z	Story 24.14	fresh_check_started	scope=batch2b throwaway=ocupilot-b-ci tree=73c758917
 2026-11-21T00:40:55Z	Story 24.14	fresh_check_passed	scope=batch2b tree=73c758917 forward=4cls_34tests_first_run reverse+rosters+overlap=12cls_137tests(AnalyticsSqlRun_name_did_not_exist,EMPTY,not_a_class) BackgroundRun_consumers=5cls_53tests smoke=PASSED(1_skipped:agentswitches) browser=none(server-only)
 2026-11-21T00:40:55Z	Story 24.14	code_head_pushed	scope=batch2b sha=73c758917 run=44845372336
+2026-11-21T00:41:12Z	Story 24.14	stage_spawned	stage=plan spawn_at=2026-11-21T00:41:12Z model=opus agent_name=24-14-plan-batch4 cycle_iteration=5 scope=batch4_export_to_cube
