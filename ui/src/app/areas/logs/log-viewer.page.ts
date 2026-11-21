@@ -91,11 +91,23 @@ interface ChipView {
 const DECLARED_READ: LogViewerSource = { tailPath: '', kind: 'read' };
 
 /**
- * `screen`'s declared read for the route id `url` carries and `maxRows`, as a `read` source: the
- * screen's own read route, never a log route (AD-36).
+ * The same, for a screen whose rows are a file's lines (Story 21.36): drawn as text alone, with the
+ * cut stated when the answer is `truncated`.
  */
-export function declaredReadSource(screen: ScreenDeclaration, url: string, maxRows: number): LogViewerSource {
-  return { tailPath: screenReadPath(screen, maxRows, parentCriteria(screen, url)), kind: 'read' };
+const DECLARED_OUTPUT: LogViewerSource = { tailPath: '', kind: 'read', output: true };
+
+/**
+ * `screen`'s declared read for the route id `url` carries and `maxRows`, as a `read` source: the
+ * screen's own read route, never a log route (AD-36). `base` is the declared source it resolves, so
+ * its row mapping carries over.
+ */
+export function declaredReadSource(
+  screen: ScreenDeclaration,
+  url: string,
+  maxRows: number,
+  base: LogViewerSource = DECLARED_READ
+): LogViewerSource {
+  return { ...base, tailPath: screenReadPath(screen, maxRows, parentCriteria(screen, url)) };
 }
 
 /** The source each `log-viewer` descriptor reads, keyed by its route. */
@@ -110,6 +122,18 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/analytics': ANALYTICS_SOURCE,
   'os-management/databases/integrity-log': INTEGRITY_SOURCE,
   'os-management/language-servers/activity': DECLARED_READ,
+  'tasks/schedule/output': DECLARED_OUTPUT,
+};
+
+/**
+ * The refusals a task output read answers in place of rows, by machine code, each with its ruled
+ * sentence (Story 21.36). A code outside this list reads as the generic refusal.
+ */
+const OUTPUT_REFUSALS: Readonly<Record<string, string>> = {
+  'LOG.TASKOUTPUT.NONE': STRINGS.taskOutputNone,
+  'LOG.TASKOUTPUT.ELSEWHERE': STRINGS.taskOutputElsewhere,
+  'LOG.TASKOUTPUT.ABSENT': STRINGS.taskOutputAbsent,
+  'TASK.ABSENT': STRINGS.taskDetailsGone,
 };
 
 /**
@@ -221,21 +245,29 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
       }
     </div>
 
-    <div class="ocu-log-viewer-chips" data-ocu-log="chips">
-      @for (chip of chips; track chip.key) {
-        <button
-          type="button"
-          class="ocu-log-chip"
-          [class.ocu-log-chip-active]="chip.active"
-          [attr.data-ocu-chip]="chip.key"
-          [attr.aria-pressed]="chip.active"
-          (click)="onChip(chip.key)"
-        >
-          <span class="ocu-log-chip-word">{{ chip.word }}</span>
-          <span class="ocu-log-chip-count">{{ chip.count }}</span>
-        </button>
-      }
-    </div>
+    @if (showChips) {
+      <div class="ocu-log-viewer-chips" data-ocu-log="chips">
+        @for (chip of chips; track chip.key) {
+          <button
+            type="button"
+            class="ocu-log-chip"
+            [class.ocu-log-chip-active]="chip.active"
+            [attr.data-ocu-chip]="chip.key"
+            [attr.aria-pressed]="chip.active"
+            (click)="onChip(chip.key)"
+          >
+            <span class="ocu-log-chip-word">{{ chip.word }}</span>
+            <span class="ocu-log-chip-count">{{ chip.count }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    @if (showTruncation) {
+      <p class="ocu-banner ocu-banner-info" role="status" data-ocu-log="truncated">
+        {{ STRINGS.taskOutputTruncated }}
+      </p>
+    }
 
     @if (showEntryGone) {
       <p class="ocu-banner ocu-banner-info ocu-log-viewer-entry-gone" role="status" data-ocu-log="entry-gone">
@@ -273,18 +305,21 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                 [class.ocu-log-row-match]="row.match"
                 [class.ocu-log-row-current]="row.current"
                 [class.ocu-log-row-explain]="explainShown"
+                [class.ocu-log-row-plain]="!showRowMeta"
                 [attr.aria-current]="row.current ? 'true' : null"
                 [attr.tabindex]="row.current ? -1 : null"
                 [attr.data-ocu-row]="row.key"
                 [attr.data-ocu-severity]="row.chip"
               >
-                <span class="ocu-log-cell ocu-log-cell-time">{{ row.stamp }}</span>
-                <span class="ocu-log-cell">{{ row.pid }}</span>
-                <span class="ocu-log-cell">
-                  <span class="ocu-log-chip ocu-log-chip-static" [attr.data-ocu-chip]="row.chip">{{
-                    row.severityWord
-                  }}</span>
-                </span>
+                @if (showRowMeta) {
+                  <span class="ocu-log-cell ocu-log-cell-time">{{ row.stamp }}</span>
+                  <span class="ocu-log-cell">{{ row.pid }}</span>
+                  <span class="ocu-log-cell">
+                    <span class="ocu-log-chip ocu-log-chip-static" [attr.data-ocu-chip]="row.chip">{{
+                      row.severityWord
+                    }}</span>
+                  </span>
+                }
                 <span class="ocu-log-cell ocu-log-cell-text">
                   @for (span of row.spans; track $index) {
                     @if (span.match) {
@@ -413,7 +448,7 @@ export class LogViewerPage {
     const declared = SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE;
     const source =
       declared.kind === 'read' && screen !== null && this.screenStore !== null
-        ? declaredReadSource(screen, this.router.url, this.screenStore.maxRows())
+        ? declaredReadSource(screen, this.router.url, this.screenStore.maxRows(), declared)
         : declared;
     this.source = source;
     this.store.setSource(source, this.addressedFile());
@@ -433,7 +468,7 @@ export class LogViewerPage {
       if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
       // A declared read follows its route id: another server is another window.
       if (this.source.kind === 'read' && this.screenStore !== null) {
-        const next = declaredReadSource(screen, this.router.url, this.screenStore.maxRows());
+        const next = declaredReadSource(screen, this.router.url, this.screenStore.maxRows(), this.source);
         if (next.tailPath === this.source.tailPath) return;
         this.source = next;
         this.store.setSource(next);
@@ -673,6 +708,27 @@ export class LogViewerPage {
     return !this.filtered.some((line) => matchesSearch(line, this.searchValue));
   }
 
+  /** Whether this screen's rows are a file's lines, which carry no stamp, process or severity. */
+  private get outputSource(): boolean {
+    return this.source.output === true;
+  }
+
+  /** Whether each row draws its stamp, process and severity cells. */
+  protected get showRowMeta(): boolean {
+    return !this.outputSource;
+  }
+
+  /** Whether the severity chips draw: a file's lines carry no severity to filter by. */
+  protected get showChips(): boolean {
+    return !this.outputSource;
+  }
+
+  /** Whether the line saying only the end of the file is shown draws: a read that answered `truncated`. */
+  protected get showTruncation(): boolean {
+    this.generation();
+    return this.outputSource && this.store.loaded() && this.store.fault() === null && this.store.truncated();
+  }
+
   protected get showRefusal(): boolean {
     this.generation();
     if (this.store.gone()) return true;
@@ -683,6 +739,8 @@ export class LogViewerPage {
   protected get refusalMessage(): string {
     this.generation();
     if (this.store.gone()) return STRINGS.logViewerFileGone;
+    const code = this.store.fault()?.code ?? '';
+    if (this.outputSource && Object.prototype.hasOwnProperty.call(OUTPUT_REFUSALS, code)) return OUTPUT_REFUSALS[code];
     const pair = this.store.failedPair();
     if (this.store.fault()?.code === 'AUTH.NOPRIVILEGE' && pair !== '') {
       return formatDeniedAction(STRINGS.privilegeDeniedAction, pair, STRINGS.errorLogRefusedAction);

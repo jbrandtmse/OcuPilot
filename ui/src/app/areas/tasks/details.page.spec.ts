@@ -81,6 +81,9 @@ function row(overrides: Record<string, unknown> = {}) {
     LastStarted: '2026-09-15 18:55:01',
     LastFinished: '2026-09-15 18:55:01',
     NextScheduled: '2026-09-15 18:54:53',
+    OpenOutputFile: false,
+    OutputDirectory: '',
+    OutputFilename: '',
     ...overrides,
   };
 }
@@ -258,6 +261,36 @@ describe('TaskDetailsPage', () => {
     const edit = links.find((link) => link.textContent?.trim() === STRINGS.taskDetailsEdit);
     expect(edit).toBeDefined();
     expect(edit?.getAttribute('href')).toContain('/tasks/schedule/edit/1002');
+  });
+
+  it('Open output file links the viewer only when the record names an output file (Story 21.36)', async () => {
+    // Mutation (Rule 19): show the link whatever `OpenOutputFile` and `OutputFilename` hold
+    // (`outputUrl`) -> the hidden legs below go red, the link present.
+    const named = { OpenOutputFile: true, OutputDirectory: '/durable/iris/mgr/', OutputFilename: 'run.txt' };
+    const shown = await mount([row(named)]);
+    const link = shown.host.querySelector('[data-ocu-details="output"]');
+    expect(link?.textContent?.trim()).toBe(STRINGS.taskOutputOpen);
+    expect(link?.getAttribute('href')).toContain('/tasks/schedule/output/1002');
+
+    const switchedOff = await mount([row({ ...named, OpenOutputFile: false })]);
+    expect(switchedOff.host.querySelector('[data-ocu-details="output"]')).toBeNull();
+
+    const unnamed = await mount([row({ ...named, OutputFilename: '' })]);
+    expect(unnamed.host.querySelector('[data-ocu-details="output"]')).toBeNull();
+
+    const none = await mount([row()]);
+    expect(none.host.querySelector('[data-ocu-details="output"]')).toBeNull();
+    expect(Array.from(none.host.querySelectorAll('.ocu-details-link')).map((a) => a.textContent?.trim())).toContain(
+      STRINGS.taskRunsLabel
+    );
+  });
+
+  it('shows the output location, which the viewer never reads unless it is the manager directory (Story 21.36)', async () => {
+    const { host } = await mount([row({ OpenOutputFile: true, OutputDirectory: '/tmp/', OutputFilename: 'run.txt' })]);
+    expect(fieldValue(host, 'taskOutputFilename')).toBe('run.txt');
+    expect(fieldValue(host, 'taskOutputDirectory')).toBe('/tmp/');
+    // The link is offered: the port, not this page, judges the location.
+    expect(host.querySelector('[data-ocu-details="output"]')).not.toBeNull();
   });
 
   it('offers Refresh and no other action (AD-10)', async () => {

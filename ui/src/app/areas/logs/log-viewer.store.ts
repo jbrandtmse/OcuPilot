@@ -37,6 +37,12 @@ export interface LogViewerSource {
    */
   readonly kind?: 'read';
   /**
+   * Whether a `read` source's rows are a file's lines `{offset, text}` (Story 21.36) rather than log
+   * entries: each is drawn as its text alone, with no stamp, process or severity, and the screen
+   * states a cut when the answer is `truncated`.
+   */
+  readonly output?: true;
+  /**
    * The route that holds a request until the source's current file moves (Story 18.38), present
    * only on a source whose port opts into the live tail. It answers `{source, changed}`; the page
    * route then reads the change. A source without it offers no Live tail and requests no tail.
@@ -186,6 +192,20 @@ export function readRowsOf(body: unknown): readonly LogLine[] {
       head: true,
       record: row,
     };
+  });
+  return lines.reverse();
+}
+
+/**
+ * A task output read's rows as lines, oldest first as the viewer draws them (Story 21.36): the text
+ * alone, as the instance stored it, with no stamp, process or severity because the file carries none.
+ * Each line carries its row as answered, which is what the screen publishes and "Explain this entry"
+ * sends.
+ */
+export function outputRowsOf(body: unknown): readonly LogLine[] {
+  const lines: LogLine[] = answeredRowsOf(body).map((row) => {
+    const text = scalarAt(row, 'text');
+    return { stamp: '', pid: '', severity: '', category: '', text, raw: text, head: true, record: row };
   });
   return lines.reverse();
 }
@@ -646,7 +666,7 @@ export class LogViewerStore {
     }
 
     if (declared) {
-      this.fileEntries = readRowsOf(result.body);
+      this.fileEntries = this.sourceValue.output === true ? outputRowsOf(result.body) : readRowsOf(result.body);
       this.answeredRows = answeredRowsOf(result.body);
       this.truncatedValue = flagAt(result.body, 'truncated');
       this.cursorValue = false;

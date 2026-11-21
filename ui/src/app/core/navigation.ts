@@ -340,10 +340,15 @@ export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclarat
  * parent naming both a per-row detail screen and a sub-resource list -- Task schedule's Task
  * details and its per-task History both declare `parentScope` `tasks/schedule` -- resolves each
  * through its own function rather than this one picking whichever sorts first.
+ *
+ * **A `log-viewer` child answers only when no other child does** (Story 21.36): Task schedule's
+ * History and its Task output both declare it as their parent, and the History list is the one its
+ * name links resolve to; a viewer reached from a link of its own is never the list's sub-resource list.
  */
 export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.route === '') return null;
-  return SCREENS.find((child) => isChildListOf(child, screen)) ?? null;
+  const children = SCREENS.filter((child) => isChildListOf(child, screen));
+  return children.find((child) => child.archetype !== 'log-viewer') ?? children[0] ?? null;
 }
 
 /**

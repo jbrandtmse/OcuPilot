@@ -551,11 +551,24 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
         } ElseIf tSource.%Get("port") = ..#SOURCELOGSOURCE {
             ; A log file's bounded tail as rows, newest first. It takes no namespace -- the file is
-            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask. The
-            ; port's own cut (a tail that began past the file's first byte, or a merge cut) is a
-            ; truncation this read reports as well (AD-36).
+            ; the instance's, not a namespace's. A read that declares no criteria passes none, so
+            ; the cap is the whole ask; a task's output (Story 21.36) names its task by its one
+            ; declared criterion. The port's own cut (a tail that began past the file's first byte,
+            ; or a merge cut) is a truncation this read reports as well (AD-36).
+            Kill tQuery
+            Set tRouteParam = ""
+            If $ClassMethod(pDescriptor, "ParentScope") '= "" Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
             Set tPortCut = 0
-            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut)
+            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut, .tQuery)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

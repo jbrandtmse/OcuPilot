@@ -556,8 +556,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
   // System-wide security's page registers Set value itself, whose dialog sends the value (Story 21.10).
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': ['set'],
-  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19).
-  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set'],
+  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19), and its toolbar's Set mail password, whose dialog sends the password (Story 21.36).
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set', 'password'],
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],

@@ -243,6 +243,7 @@ XData Titles
 "taskListLabel": "Task schedule",
 "taskMailSettingsLabel": "Task Manager email",
 "taskOnDemandLabel": "On-demand tasks",
+"taskOutputLabel": "Task output",
 "taskRunsLabel": "History",
 "taskUpcomingLabel": "Upcoming tasks",
 "transactionsLabel": "Transactions",

@@ -46,6 +46,10 @@
 /// case (AD-44); this screen declares no exemption, so it links out to nothing.</p>
 /// <p>It declares no primary or row action. A deleted or unrecognized id reads as zero rows (AD-37)
 /// rather than a refusal, and the page shows "This task no longer exists."</p>
+/// <p><b>The output location is read and shown, never opened here</b>: <code>OpenOutputFile</code>,
+/// <code>OutputDirectory</code> and <code>OutputFilename</code> let the page show where the task
+/// writes and link Task output (<class>OcuPilot.Screen.Descriptor.TaskOutput</class>) when the record
+/// names a file; the port behind that screen decides whether the file is read (AD-21).</p>
 Class OcuPilot.Screen.Descriptor.TaskDetails Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -69,7 +73,7 @@ XData Declaration
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "context": {
-    "fields": ["Id", "Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled"],
+    "fields": ["Id", "Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled", "OpenOutputFile", "OutputDirectory", "OutputFilename"],
     "secretFields": []
   },
   "emptyStateKey": "taskDetailsGone",
@@ -95,10 +99,10 @@ XData Declaration
         "derived": []
       }
     },
-    "fields": ["Id", "Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled"],
-    "filter": ["Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled"],
+    "fields": ["Id", "Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled", "OpenOutputFile", "OutputDirectory", "OutputFilename"],
+    "filter": ["Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled", "OpenOutputFile", "OutputDirectory", "OutputFilename"],
     "sort": {
-      "fields": ["Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled"],
+      "fields": ["Name", "Description", "NameSpace", "TaskClass", "Priority", "RunAsUser", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "Type", "Suspended", "Error", "LastStarted", "LastFinished", "NextScheduled", "OpenOutputFile", "OutputDirectory", "OutputFilename"],
       "default": "Name",
       "direction": "asc"
     },
@@ -122,7 +126,9 @@ XData Declaration
       {"field": "LastStarted", "labelKey": "taskHistoryColumnStarted", "kind": "text"},
       {"field": "LastFinished", "labelKey": "taskHistoryColumnCompleted", "kind": "text"},
       {"field": "NextScheduled", "labelKey": "taskColumnNextRun", "kind": "text"},
-      {"field": "Error", "labelKey": "taskDetailsLastError", "kind": "text"}
+      {"field": "Error", "labelKey": "taskDetailsLastError", "kind": "text"},
+      {"field": "OutputFilename", "labelKey": "taskOutputFilename", "kind": "text"},
+      {"field": "OutputDirectory", "labelKey": "taskOutputDirectory", "kind": "text"}
     ],
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""

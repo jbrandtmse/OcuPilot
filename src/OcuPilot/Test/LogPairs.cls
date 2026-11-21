@@ -116,6 +116,25 @@ Method TestEachSecondaryLogDeclaresItsClassicPagesResource()
     }
 }
 
+/// <p>Story 21.36, way one -- Task output's port pair set, its screen's declared set and Task details'
+/// own set are the same requirement, so a principal reaches a task's output file through OcuPilot
+/// only if it could open that task's details.</p>
+/// <p>Mutation (Rule 19): drop <code>%DB_IRISSYS:READ</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.TASKOUTPUTPAIRS</parameter> -&gt; this goes red.</p>
+Method TestTaskOutputRequiresTaskDetailsOwnPairs()
+{
+    Set tPortSpec = $Parameter(..#PORT, "TASKOUTPUTPAIRS")
+    Set tPortNormalized = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Screen.Gate).ParsePairSpec(tPortSpec), .tPortCut)
+    Set tOutput = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.TaskOutput", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its requirement is readable")
+    Set tOutputSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tOutput, .tCut)
+    Set tDetails = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.TaskDetails", .tDetailsResolved)
+    Set tDetailsSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tDetails, .tDetailsCut)
+    Do $$$AssertEquals(tOutputSpec, tPortNormalized, "the screen and the port require the same set")
+    Do $$$AssertEquals(tOutputSpec, tDetailsSpec, "and it is Task details' own set")
+    Do $$$AssertEquals(tOutputSpec, "%Admin_Task:USE,%DB_IRISSYS:READ", "which is Task schedule's pair and the system database's read")
+}
+
 /// <p><b>AC6</b> -- the console log refuses a caller who holds everything except
 /// <code>%Admin_Operate:USE</code>, naming that pair, before the file is opened; and the same
 /// caller granted it is served.</p>

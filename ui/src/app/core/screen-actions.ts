@@ -211,8 +211,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.10: System-wide security's Set value, which opens the same page's dialog.
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': { set: STRINGS.interopItemSettingSetAction },
-  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog.
-  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog; Story 21.36: its Set mail password, also that dialog's title.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction, password: STRINGS.taskMailPasswordAction },
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },

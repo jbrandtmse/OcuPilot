@@ -415,6 +415,63 @@ describe('the settings page', () => {
       expect(host.querySelector('[data-interop-setting-violation]')?.textContent?.trim()).toBe(reason);
       expect(events).toEqual([]);
     });
+
+    const PASSWORD_UPDATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'task-mail-setting', scope: 'instance', id: 'AuthUser' }, readBack: { verdict: 'written' } },
+    };
+
+    // Mutation (Rule 19): drop this page's `actions.register` of `password` -> the first assertion goes red.
+    it('registers Set mail password on its own screen alone, drawn with its ruled words', () => {
+      const { actions } = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      expect(actions.has(TASK_MAIL_SETTING_LIST, 'password')).toBe(true);
+      expect(actions.has(STARTUP_SETTING_LIST, 'password')).toBe(false);
+      expect(STRINGS.taskMailPasswordAction).toBe('Set mail password');
+    });
+
+    // Mutation (Rule 19): send `setkey` and `GoogleMapsKey` for this screen -> the sent-action assertion goes red; open the dialog with `secret` false -> the masked-field assertions go red.
+    it("opens the toolbar's dialog as an empty masked field titled Set mail password, whatever row is selected, and sends the password by the mail password's own action", async () => {
+      const { fixture, host, store, actions, calls, events } = mount([PASSWORD_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      store.setSelection(['Port']);
+      actions.run(TASK_MAIL_SETTING_LIST, 'password');
+      await settle(fixture);
+      expect(calls).toHaveLength(0);
+      expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Set mail password');
+      const field = host.querySelector('[data-interop-setting-secret]') as HTMLInputElement;
+      expect(field).not.toBeNull();
+      expect(field.type).toBe('password');
+      expect(field.value).toBe('');
+      expect(host.querySelector('[data-interop-setting-current]')).toBeNull();
+      expect(host.querySelector('[data-interop-setting-consequence]')).toBeNull();
+      expect(host.textContent?.split(STRINGS.interopSettingEmptyHint).length).toBe(2);
+      type(fixture, host, 'a-mail-secret');
+      confirm(host);
+      await settle(fixture);
+      expect(calls[0]).toEqual({
+        path: '/api/ocupilot/screens/tasks.mail/action',
+        method: 'POST',
+        body: JSON.stringify({ action: 'password', id: 'AuthUser', values: { AuthPassword: 'a-mail-secret' } }),
+      });
+      expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['task-mail-setting/updated']);
+      expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+    });
+
+    it('sends an empty value, which clears the password, and still sends a row\'s own Set value by Set value', async () => {
+      const cleared = mount([PASSWORD_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      cleared.actions.run(TASK_MAIL_SETTING_LIST, 'password');
+      await settle(cleared.fixture);
+      confirm(cleared.host);
+      await settle(cleared.fixture);
+      expect(JSON.parse(cleared.calls[0].body)).toEqual({ action: 'password', id: 'AuthUser', values: { AuthPassword: '' } });
+      const row = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(row.fixture, row.store, row.actions, TASK_MAIL_SETTING_LIST, 'Port');
+      expect(row.host.querySelector('[data-interop-setting-secret]')).toBeNull();
+      type(row.fixture, row.host, '587');
+      confirm(row.host);
+      await settle(row.fixture);
+      expect(JSON.parse(row.calls[0].body)).toEqual({ action: 'set', id: 'Port', values: { Value: '587' } });
+    });
   });
 
   it('serves both DDL mapping screens, and registers New mapping on the user list alone', () => {

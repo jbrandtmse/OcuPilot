@@ -1245,6 +1245,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 7) = "BACKUP." Set tReason = ##class(OcuPilot.Api.BackupError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SQLACTIVITY." Set tReason = ##class(OcuPilot.Api.SqlActivityError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "MONITOR." Set tReason = ##class(OcuPilot.Api.MonitorError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 15) = "LOG.TASKOUTPUT." Set tReason = ##class(OcuPilot.Api.TaskError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "CONFIG." Set tReason = ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "LOCALE." Set tReason = ##class(OcuPilot.Api.LocaleError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "ADVISOR." Set tReason = ##class(OcuPilot.Api.AdvisorError).ReasonFor(pCode)

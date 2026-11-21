@@ -23,6 +23,9 @@ import type { ScreenDeclaration, TableColumn } from '../../core/screens.generate
 import { STRINGS, stringFor } from '../../core/strings';
 import { nextRunText, scheduleWords, type ScheduleWords } from './details.store';
 
+/** Task output's route (Story 21.36), the viewer a task's output file is read in. */
+const OUTPUT_ROUTE = 'tasks/schedule/output';
+
 /** The screen this page renders and the store its fields read. */
 interface DetailsView {
   readonly screen: ScreenDeclaration;
@@ -115,6 +118,11 @@ interface FieldView {
         @if (hasEdit) {
           <a class="ocu-details-link" [href]="editHref" (click)="onOpenEdit($event)">{{
             STRINGS.taskDetailsEdit
+          }}</a>
+        }
+        @if (hasOutput) {
+          <a class="ocu-details-link" data-ocu-details="output" [href]="outputHref" (click)="onOpenOutput($event)">{{
+            STRINGS.taskOutputOpen
           }}</a>
         }
       </nav>
@@ -282,6 +290,39 @@ export class TaskDetailsPage {
     const editor = editorScreenFor(parent);
     if (editor === null) return '';
     return withQuery(`${editor.route}/${encodeEntityId(this.idFor(row, view.screen))}`, this.router.url);
+  }
+
+  /**
+   * Task output's router URL for this task, or `''` unless the record names an output file (its
+   * `OpenOutputFile` is on and its `OutputFilename` is not empty) and the screen is built. Whether the
+   * file is read is the port's call, never this page's: a location outside the manager directory is
+   * shown in the fields and refused by the viewer.
+   */
+  private outputUrl(): string {
+    const view = this.view;
+    const row = this.row;
+    const output = screenForRoute(OUTPUT_ROUTE);
+    if (view === null || row === undefined || output === null || !output.built) return '';
+    const name = fieldOf(row, 'OutputFilename');
+    if (fieldOf(row, 'OpenOutputFile') !== true || typeof name !== 'string' || name === '') return '';
+    return withQuery(`${output.route}/${encodeEntityId(this.idFor(row, view.screen))}`, this.router.url);
+  }
+
+  protected get outputHref(): string {
+    this.generation();
+    const url = this.outputUrl();
+    return url === '' ? '' : this.locationStrategy.prepareExternalUrl(url);
+  }
+
+  protected get hasOutput(): boolean {
+    return this.outputHref !== '';
+  }
+
+  protected onOpenOutput(event: MouseEvent): void {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    const url = this.outputUrl();
+    if (url !== '') void this.router.navigateByUrl(url);
   }
 
   protected get historyHref(): string {

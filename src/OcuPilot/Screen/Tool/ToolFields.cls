@@ -885,6 +885,9 @@ XData Tools
   {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
   {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"tasks.mail.password": {"fieldList":"Process","fields":[
+  {"path":"AuthPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "tasks.schedule.create": {"fieldList":"Task.CRUD","fields":[
   {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"RunAsUser","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"caller"},

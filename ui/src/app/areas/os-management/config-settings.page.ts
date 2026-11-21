@@ -71,6 +71,17 @@ export const CONFIG_VALUE = 'Value';
 export const CONFIG_SET_KEY_ACTION = 'setkey';
 export const CONFIG_KEY_VALUE = 'GoogleMapsKey';
 
+/** Task Manager email's mail password (Story 21.36, AD-56 (i)): its toolbar action, the one value it takes, and the sign-in name's row it targets. */
+export const TASK_MAIL_PASSWORD_ACTION = 'password';
+export const TASK_MAIL_PASSWORD_VALUE = 'AuthPassword';
+export const TASK_MAIL_PASSWORD_TARGET = 'AuthUser';
+
+/** The action that sets a secret and the one value it takes, per descriptor that has one. */
+const SECRET_ACTIONS: Readonly<Partial<Record<string, { readonly action: string; readonly value: string }>>> = {
+  [ANALYTICS_SETTING_LIST]: { action: CONFIG_SET_KEY_ACTION, value: CONFIG_KEY_VALUE },
+  [TASK_MAIL_SETTING_LIST]: { action: TASK_MAIL_PASSWORD_ACTION, value: TASK_MAIL_PASSWORD_VALUE },
+};
+
 /** The row kind that is a secret: drawn as an empty masked field and sent with the key's own action. */
 export const SECRET_KIND = 'secret';
 
@@ -91,6 +102,10 @@ interface SettingTarget {
   readonly statement: string;
   /** Whether the value is long text, drawn as a text area. */
   readonly multiline: boolean;
+  /** The dialog's heading, in place of the one that names the setting; `''` keeps that one. */
+  readonly title: string;
+  /** Whether the dialog draws the field and its hint alone: no current-value line and no sentence above them. */
+  readonly fieldOnly: boolean;
 }
 
 /** `value` as text, or `''`. */
@@ -163,11 +178,14 @@ function text(value: unknown): string {
     @if (openTarget; as target) {
       <app-interop-item-setting-dialog
         [name]="target.name"
+        [title]="target.title"
         [current]="target.current"
         [type]="target.kind === 'boolean' ? booleanType : ''"
         [secret]="target.secret"
         [multiline]="target.multiline"
         [statement]="target.statement"
+        [currentShown]="!target.fieldOnly"
+        [consequenceShown]="!target.fieldOnly"
         [defaultShown]="false"
         [sending]="sending()"
         [refusal]="refusal()"
@@ -285,10 +303,13 @@ export class ConfigSettingsPage {
       this.screen.descriptor === LOCALE_PROPERTY_LIST
         ? this.actions.register(this.screen.descriptor, LOCALE_ADD_TABLE, () => this.onOpenAddTable(), () => localeEditRefusal(this.localeRows()[0]?.['Refusal']))
         : (): void => undefined;
+    const stopPassword =
+      this.screen.descriptor === TASK_MAIL_SETTING_LIST ? this.actions.register(this.screen.descriptor, TASK_MAIL_PASSWORD_ACTION, () => this.onOpenPassword()) : (): void => undefined;
     inject(DestroyRef).onDestroy(() => {
       stop();
       stopAdd();
       stopTable();
+      stopPassword();
     });
   }
 
@@ -381,6 +402,8 @@ export class ConfigSettingsPage {
       secret,
       saves,
       multiline: this.screen?.descriptor === TASK_MAIL_SETTING_LIST && text(row['Name']).startsWith(TASK_MAIL_MESSAGE_PREFIX),
+      title: '',
+      fieldOnly: false,
       statement:
         row['Restart'] === true
           ? `${accepts} ${STRINGS.encryptionStartupRestart}`
@@ -401,6 +424,36 @@ export class ConfigSettingsPage {
   private savesEveryRow(row: Readonly<Record<string, unknown>>): boolean {
     if (this.screen?.descriptor !== ANALYTICS_SETTING_LIST || this.store === null || text(row['Name']) === 'Worklist') return false;
     return this.store.data().some((entry) => entry !== null && typeof entry === 'object' && (entry as Readonly<Record<string, unknown>>)['Name'] !== 'Worklist' && (entry as Readonly<Record<string, unknown>>)['Stored'] === false);
+  }
+
+  /**
+   * Open the Set mail password dialog from the toolbar (Story 21.36): the masked field and the mail password's own action, aimed at the sign-in name's row whatever row is selected. The
+   * password is never read, so the dialog states no current value, and an empty one clears it.
+   */
+  protected onOpenPassword(): void {
+    if (this.target() !== null || this.handler.pending() !== null || this.store === null) return;
+    this.store.setRefusal('');
+    this.refusal.set('');
+    this.violation.set('');
+    this.restartNote.set('');
+    this.purgeNote.set('');
+    this.reloadNote.set('');
+    this.saveNote.set('');
+    this.target.set({
+      id: TASK_MAIL_PASSWORD_TARGET,
+      name: TASK_MAIL_PASSWORD_TARGET,
+      current: '',
+      kind: SECRET_KIND,
+      restart: false,
+      purges: false,
+      reloads: false,
+      secret: true,
+      saves: false,
+      multiline: false,
+      title: STRINGS.taskMailPasswordAction,
+      fieldOnly: true,
+      statement: '',
+    });
   }
 
   /** Open the New mapping dialog, never over a dialog of the handler's or the Set value one. */
@@ -430,8 +483,9 @@ export class ConfigSettingsPage {
     this.refusal.set('');
     this.violation.set('');
     // A secret is sent by its own action under its own name, from the masked field (AD-56 (i)); every other setting by Set value.
-    const action = target.secret ? CONFIG_SET_KEY_ACTION : CONFIG_SET_ACTION;
-    const field = target.secret ? CONFIG_KEY_VALUE : CONFIG_VALUE;
+    const secretAction = target.secret ? SECRET_ACTIONS[this.screen.descriptor] : undefined;
+    const action = secretAction?.action ?? CONFIG_SET_ACTION;
+    const field = secretAction?.value ?? CONFIG_VALUE;
     const applied = await this.handler.sendFor(this.screen.descriptor, action, target.id, { [field]: value }, { setRefusal: () => undefined });
     this.sending.set(false);
     // A dialog canceled while this send was in flight no longer answers it.

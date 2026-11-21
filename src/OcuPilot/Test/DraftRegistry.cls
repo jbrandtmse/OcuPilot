@@ -84,6 +84,10 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled,a
 /// <method>OcuPilot.Test.LocaleImportRules.TestAnImportAndAnExportRenderTheirScript</method>.</p>
 Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update,osmgmt.locales.import";
 
+/// <p>The secrets a screen declares that one of its tools never sends, as <code>&lt;tool&gt;=&lt;name&gt;</code> entries, comma-separated: the tool's synthetic row carries no
+/// probe for one, since its own write sends a body that has no such member (Story 21.36: Task Manager email's setting set beside the mail password's tool).</p>
+Parameter UNSENTSECRETS = "tasks.mail.set=AuthPassword";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -287,6 +291,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     If '$ListValid(tComposed) Set tComposed = ""
     Set tDiff = []
     For tI = 1:1:$ListLength(tSecrets) {
+        If $ListFind($ListFromString(..#UNSENTSECRETS), pTool.%Get("name") _ "=" _ $List(tSecrets, tI)) Continue
         If $ListFind(tComposed, $List(tSecrets, tI)) {
             Do tDiff.%Push({"field": ($List(tSecrets, tI)), "before": "", "after": ""})
             Continue

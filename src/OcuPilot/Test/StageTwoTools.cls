@@ -309,6 +309,7 @@ XData Elsewhere
 <screen name="TaskForm"/>
 <screen name="TaskHistoryList"/>
 <screen name="TaskOnDemandList"/>
+<screen name="TaskOutput"/>
 <screen name="TaskRunList"/>
 <screen name="TaskScheduleList"/>
 <screen name="TaskUpcomingList"/>

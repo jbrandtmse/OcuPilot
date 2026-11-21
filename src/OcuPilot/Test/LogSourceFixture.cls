@@ -340,7 +340,42 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 {
     Set ^||OcuPilotLogFixture("faults") = $Get(^||OcuPilotLogFixture("faults"), 0) + 1
     ; A fault armed on purpose is counted and not written to the instance's console log.
-    If '$Data(^||OcuPilotLogFixture("tailThrow")) Do ##super(pMessage, pStatus, pCode)
+    If '$Data(^||OcuPilotLogFixture("tailThrow")) && '$Data(^||OcuPilotLogFixture("taskRecordError")) Do ##super(pMessage, pStatus, pCode)
+}
+
+/// <p>Arm <method>TaskOutputRecord</method> to fail with an error whose text is <var>pText</var>, which
+/// is counted by <method>Faults</method> and not written to the instance's console log.</p>
+ClassMethod ArmTaskRecordError(pText As %String)
+{
+    Set ^||OcuPilotLogFixture("taskRecordError") = pText
+}
+
+/// <p>Arm the stored task record <method>TaskOutputRecord</method> answers (Story 21.36):
+/// <var>pFound</var>, <var>pOpen</var>, <var>pDirectory</var> and <var>pFile</var> are its four
+/// outputs. Nothing armed reads the instance's own task.</p>
+ClassMethod ArmTaskRecord(pFound As %Boolean, pOpen As %Boolean, pDirectory As %String, pFile As %String)
+{
+    Set ^||OcuPilotLogFixture("taskRecord") = $ListBuild(pFound, pOpen, pDirectory, pFile)
+}
+
+/// <p>How many times the port has read a stored task record since <method>Clear</method>, which is
+/// how "no record is read" is observed.</p>
+ClassMethod TaskRecordReads() As %Integer
+{
+    Quit +$Get(^||OcuPilotLogFixture("taskReads"), 0)
+}
+
+ClassMethod TaskOutputRecord(pTaskId As %String, Output pFound As %Boolean, Output pOpen As %Boolean, Output pDirectory As %String, Output pFile As %String) As %Status
+{
+    Set ^||OcuPilotLogFixture("taskReads") = $Get(^||OcuPilotLogFixture("taskReads"), 0) + 1
+    If $Data(^||OcuPilotLogFixture("taskRecordError")) Quit $$$ERROR($$$GeneralError, ^||OcuPilotLogFixture("taskRecordError"))
+    If '$Data(^||OcuPilotLogFixture("taskRecord")) Quit ##super(pTaskId, .pFound, .pOpen, .pDirectory, .pFile)
+    Set tRecord = ^||OcuPilotLogFixture("taskRecord")
+    Set pFound = $List(tRecord, 1)
+    Set pOpen = $List(tRecord, 2)
+    Set pDirectory = $List(tRecord, 3)
+    Set pFile = $List(tRecord, 4)
+    Quit $$$OK
 }
 
 }
