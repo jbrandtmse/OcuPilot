@@ -346,13 +346,14 @@ ClassMethod DataLeft(pClass As %String) As %Boolean
     Quit tLeft
 }
 
-/// <p>What the export of the marker <var>pMarker</var> left, as text: <code>""</code> when neither of its classes, nor a class of either package, nor its cube, nor the result class's data, nor a vendor result row of the probe's models remains.</p>
-ClassMethod ExportLeft(pMarker As %String) As %String
+/// <p>What the export of the marker <var>pMarker</var> left, as text: <code>""</code> when neither of its classes, nor a class of either package, nor its cube, nor the result class's data, nor a vendor result row of the probe's models remains.
+/// The cube is the marker's own unless the export asked for another, which <var>pCube</var> names.</p>
+ClassMethod ExportLeft(pMarker As %String, pCube As %String = "") As %String
 {
     Set tLeft = ""
     If ..Free(..ExportClass(pMarker)) '= 1 Set tLeft = tLeft _ " result class"
     If ..Free(..ExportCubeClass(pMarker)) '= 1 Set tLeft = tLeft _ " cube class"
-    If ..CubeHeld(..ExportCube(pMarker)) '= 0 Set tLeft = tLeft _ " cube"
+    If ..CubeHeld($Select(pCube '= "": pCube, 1: ..ExportCube(pMarker))) '= 0 Set tLeft = tLeft _ " cube"
     If ..DataLeft(..ExportClass(pMarker)) Set tLeft = tLeft _ " data"
     If $ClassMethod(..#PMML, "Rows") Set tLeft = tLeft _ " test rows"
     Quit $ZStrip(tLeft, "<>W")

@@ -217,7 +217,7 @@ Method TestAStepThatFailsRestoresEverything()
     Do tValues.%Set("Cube", tLong, "string")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Do $$$AssertEquals(..Export(tValues, .tRes), "422 ANALYTICS.PMML.EXPORTCOMPILE", "a cube name of 250 characters is passed by the plan and refused by the compile")
-    Do $$$AssertEquals(..ExportLeft("LongName"), "", "and nothing remains: " _ ..ExportLeft("LongName"))
+    Do $$$AssertEquals(..ExportLeft("LongName", tLong), "", "and nothing remains: " _ ..ExportLeft("LongName", tLong))
     Do $$$AssertTrue(..Recorded(tSince, ..ModelId(), "analytics.pmmlmodel.export", "restored", "pmml-model"), "and the audit row records the outcome restored")
     Set tQuoted = ..ExportValues("Quoted")
     Do tQuoted.%Set("Cube", "Probe ""Quoted"" & <Cube>'s", "string")
@@ -227,14 +227,14 @@ Method TestAStepThatFailsRestoresEverything()
     Do tPerson.%Set("Cube", tLong, "string")
     Set tStatus = ..ExportAct(tPerson, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ "|" _ tAnswer.%Get("reason"), 1: ""), "422 ANALYTICS.PMML.EXPORTCOMPILE|" _ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLEXPORTCOMPILE, "the person's action answers the same, with the published sentence")
-    Do $$$AssertEquals(..ExportLeft("LongPerson"), "", "and leaves nothing")
+    Do $$$AssertEquals(..ExportLeft("LongPerson", tLong), "", "and leaves nothing")
     Set tAgent = ..ExportArgs("LongAgent")
     Do tAgent.%Set("Cube", tLong, "string")
     Do ..Mint(..#EXPORTTOOL, tAgent, .tProposal, .tTurn)
     If $IsObject($Get(tProposal)) {
         Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
         Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "422 ANALYTICS.PMML.EXPORTCOMPILE", "the agent's confirm answers the same: " _ $Extract($Get(tRaw), 1, 200))
-        Do $$$AssertEquals(..ExportLeft("LongAgent"), "", "and leaves nothing")
+        Do $$$AssertEquals(..ExportLeft("LongAgent", tLong), "", "and leaves nothing")
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     }
     Do $$$AssertEquals(..Snapshot(), tBefore, "no class of any of the writes is left")
@@ -328,7 +328,7 @@ ClassMethod LeaveData(pClass As %String)
 /// another writer took a class or a cube, it changes nothing; over a data global an earlier class of the name left, the result class holds only the run's rows; and a cube class the compiler refuses, or a test that does not finish, leaves no class, cube, row or data.
 /// The refusals the write makes are one step that only sets the published sentence, which fails the script and makes nothing.</p>
 /// <p>Mutation (Rule 19): make the free-name condition of <method>OcuPilot.Port.AnalyticsPort.PmmlExportSnippet</method> always true -- the run-again and class-taken legs go red; skip the delete of the result class in its failure lines -- the refused-compile leg goes red;
-/// drop the script's kill of the result class's extent before the test -- the stale-data leg goes red; skip the script's failure for a test that does not finish -- the unfinished-test leg goes red.</p>
+/// drop the cube term from the free-name condition -- the cube-taken leg goes red; skip the delete of the cube class in its failure lines -- the long-name leg goes red, its message naming the class and the cube; drop the script's kill of the result class's extent before the test -- the stale-data leg goes red; skip the script's failure for a test that does not finish -- the unfinished-test leg goes red.</p>
 Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
 {
     Set tSentence = ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLTAKEN
@@ -368,7 +368,7 @@ Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
     Do tTaker.%Set("Cube", ..ExportCube("ScriptCubeRace"), "string")
     Do $$$AssertEquals(..Export(tTaker, .tRes), "200 ", "another writer takes the cube's name after the step is rendered")
     Set tBefore = ..Snapshot()
-    Do $$$AssertEquals(..RunScript(tCubeRace), 0, "the script reports the cube taken")
+    Do $$$AssertTrue(..ScriptOutcome(tCubeRace) [ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCUBETAKEN, "the script ends on the published sentence for a held cube, so its free-name condition stopped it before any class was saved")
     Do $$$AssertEquals(..Snapshot(), tBefore, "and saves nothing")
     Do $$$AssertTrue(tCubeRace.%Get(0).text [ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLCUBETAKEN, "the step names the published sentence for a held cube")
 
@@ -379,7 +379,7 @@ Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
     Set tBefore = ..Snapshot()
     Do $$$AssertEquals(..RunScript(tLong), 0, "its script runs to a failure")
     Do $$$AssertEquals(..Snapshot(), tBefore, "and no class is saved: neither the result class, nor the cube class, nor one its compile generated")
-    Do $$$AssertEquals(..ExportLeft("ScriptLong"), "", "and no row, vendor result row or data is left")
+    Do $$$AssertEquals(..ExportLeft("ScriptLong", tValues.%Get("Cube")), "", "and no row, vendor result row, data or cube of that name is left: " _ ..ExportLeft("ScriptLong", tValues.%Get("Cube")))
 
     Set tStaleOracle = ..OracleAnswer("dataset")
     Set tStaleSteps = ..ExportScript(..ExportValues("Stale"))
@@ -423,6 +423,29 @@ Method TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails()
         Do $$$AssertEquals(..RunScript(tSteps), 0, $List(tCase, 1) _ ": and runs to a failure")
     }
     Do $$$AssertEquals(..Snapshot(), tBefore, "no refusal saved, changed or deleted a class")
+}
+
+/// <p>AD-59: a script whose copy of a test row fails, built by swapping the value the script sets on each row for one the result class refuses, ends on the published sentence for a refused export and leaves no class, cube, row,
+/// vendor result row or data.</p>
+/// <p>Mutation (Rule 19): skip the script's delete of the result class in its failure lines -- the class leg goes red; skip the script's delete of the vendor's result rows -- the test-rows leg goes red;
+/// skip the script's check of the copy's status -- the sentence leg goes red.</p>
+Method TestAScriptWhoseCopyFailsRestoresEverything()
+{
+    Set tSteps = ..ExportScript(..ExportValues("ScriptCopy"))
+    Do $$$AssertEquals(tSteps.%Size(), 1, "the export is one script step")
+    If tSteps.%Size() '= 1 Quit
+    Set tText = $Replace(tSteps.%Get(0).text, "tRow.Probability = tRS.%GetData(4)", "tRow.Probability = ""not a number""")
+    Do $$$AssertTrue(tText '= tSteps.%Get(0).text, "the value set on each row is swapped for one the result class refuses")
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Set tSwapped = []
+    Do tSwapped.%Push(tStep)
+    Set tBefore = ..Snapshot()
+    Set tOutcome = ..ScriptOutcome(tSwapped)
+    Do $$$AssertTrue(tOutcome [ ##class(OcuPilot.Api.AnalyticsError).#REASONPMMLEXPORTCOMPILE, "the script ends on the published sentence for a refused export: " _ tOutcome)
+    Do $$$AssertEquals(..Snapshot(), tBefore, "and no class is saved")
+    Do $$$AssertEquals(..ExportLeft("ScriptCopy"), "", "and no class, cube, row, vendor result row or data is left: " _ ..ExportLeft("ScriptCopy"))
 }
 
 /// <p>AD-59: a name or source the write's own shape checks refuse is never spelled in a script: a result class, cube class or class to link to holding a quote, a line feed, an underscore and <code>$$$</code>, a cube name holding a line

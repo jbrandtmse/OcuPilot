@@ -376,6 +376,24 @@ Each was applied on `ocupilot-b-ci` (loaded with its subclasses), run, and rever
 
 **Hermeticity:** every test added or changed passes on its first run on a fresh instance, in either order. It removes every `ProbePmml.Export*` class, `ProbePmmlExport*` cube and row it makes.
 
+### QA
+
+Batch 4 QA added, all passing on their first run on a rebuilt `ocupilot-b-ci`: `AnalyticsPmmlExportEdge` 12 tests green forward and again after `AnalyticsPmmlExport`; `AnalyticsPmmlCreate`, `CreateEdge` and `CreateGap` (the other subclasses of the changed base) green; the browser spec's two Batch 4 tests green.
+
+- Cube-taken leg: `AnalyticsPmmlExportBase.ScriptOutcome` runs a script as `RunScript` does and returns the text of the error it ends on. `TestTheScriptFormMakesTheExportAndRestoresWhenAStepFails` now asserts the script ends on the published `CUBETAKEN` sentence. The old assertions (a failed run, an unchanged snapshot, the sentence in the rendered text) all stayed green with the cube term dropped.
+  - mutation: the `'tCubeHeld` term dropped from `PmmlExportSnippet`'s free-name condition -> only the new cube-taken assertion red (the old ones stayed green); reverted byte-identical (`git diff` empty) and reloaded.
+- Long cube name: `ExportLeft` takes the cube name the export asked for (`ExportLeft(pMarker, pCube)`), used by the 250-character legs of `TestAStepThatFailsRestoresEverything` (person and agent) and the script test; with none it reads the marker's own cube, as before.
+  - mutation: the script's delete of the cube class in its failure lines removed -> the long-name leg red with `cube class cube` (the cube is registered under the long name); with `ExportLeft` reading the marker's own cube name it read `cube class` only, so the old check missed it; both reverted byte-identical.
+- Copy-failure branch: pinned by `TestAScriptWhoseCopyFailsRestoresEverything`, which swaps the value the script sets on each row (`tRow.Probability`) for one the result class refuses, so every row save fails; it asserts the `EXPORTCOMPILE` sentence, an unchanged snapshot and nothing left. A row save cannot be made to fail through data, since the result class's strings take the longest value the vendor's result table holds.
+  - mutation: the script's delete of the result class in its failure lines removed -> the new test red (class left); reverted byte-identical.
+  - mutation: the script's delete of the vendor's result rows removed -> the new test red (`test rows`); reverted byte-identical.
+  - mutation: the script's check of the row save's status removed -> the new test red (the script threw instead of ending on the sentence); reverted byte-identical.
+- Browser: a new test in `analytics.browser-spec.mjs` opens Export to cube on the Test screen, checks the consequence sentence and the five field labels against the published strings, exports, checks the result line against the published template with the run's record count, then exports again under the same names and sees the `TAKEN` sentence in the dialog, the dialog still open, and the first export's rows, cube and an empty vendor result table unchanged; it ends with every export and probe removed.
+  - mutation: the consequence in `pmml-export-dialog.ts` drawn from `analyticsPmmlExportAction` -> the consequence leg red; reverted byte-identical, bundle rebuilt and redeployed.
+  - mutation: the refusal in `pmml-export-dialog.ts` drawn from `actionCancel` -> the refusal leg red; reverted byte-identical, bundle rebuilt and redeployed.
+- Nothing else probed needed a new test: a second export with the same names through the port is pinned by `TestAHeldClassPackageOrCubeIsRefusedAndNothingIsTouched`, and the leftover class, cube and vendor row after each test is pinned by `ExportLeft` in every test plus the per-test `RemoveFixtures`.
+- QA finding: `AnalyticsPmmlCreateBase.DataLeft` reads the data global as `^<class>D`; for a result class whose name is longer than the vendor's default-global limit, that name is not valid and the read answers "left" (inference: IRIS hashes a long class's default global name; a 39-character one raised `<SYNTAX>`, a 38-character one did not). A test marker must keep `ProbePmml.Export.<marker>.ResultD` under that length. Not a product defect; the new test's marker is `ScriptCopy` for that reason.
+
 ## Auto Run Result
 
 Status: done

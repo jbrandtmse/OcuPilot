@@ -45,6 +45,28 @@ ClassMethod ExportScript(pValues As %DynamicObject, pId As %String = "") As %Dyn
     Quit $ClassMethod(..#PORT, "Snippet", ..#EXPORTENDPOINT, "TOCUBE", .tQuery, pValues)
 }
 
+/// <p>Run the first step of <var>pSteps</var>, a script, line by line in this process, as <method>RunScript</method> does; the text of the error the script left in <code>tSC</code>, <code>OK</code> when it left a success,
+/// and <code>threw</code> when a line threw.</p>
+ClassMethod ScriptOutcome(pSteps As %DynamicArray) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tOutcome = "OK"
+    XECUTE "Kill tSC"
+    Try {
+        Set tText = pSteps.%Get(0).text
+        For tAt = 1:1:$Length(tText, $Char(10)) {
+            Set tLine = $Piece(tText, $Char(10), tAt)
+            If tLine '= "" XECUTE tLine
+        }
+        Set tStatus = $Get(@"tSC")
+        If $System.Status.IsError(tStatus) Set tOutcome = $System.Status.GetErrorText(tStatus)
+    } Catch {
+        Set tOutcome = "threw"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tOutcome
+}
+
 /// <p>The export of the marker <var>pMarker</var> is made: both classes exist and compile, the cube is registered and the Cubes list shows it with no facts, the result class holds <var>pRecords</var> rows
 /// whose per-value counts are <var>pExpected</var> (as <method>AnswerValues</method> reads them) under one test id, the cube class reads that class restricted to that id, and no vendor result row is left.
 /// <var>pLabel</var> names the export in each message.</p>
