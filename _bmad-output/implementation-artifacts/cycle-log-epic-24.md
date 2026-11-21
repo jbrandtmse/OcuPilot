@@ -622,3 +622,5 @@
 2026-11-20T23:58:17Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-20T23:58:17Z model=opus agent_name=24-14-review-batch2b cycle_iteration=4 scope=batch2b range=851f3a63b..488daf4b3
 2026-11-21T00:31:07Z	Story 24.14	stage_completed	stage=code-review scope=batch2b commit=827c4eb3d findings=23(high1_patched,med2_patched+1_rejected,low10_patched+9_rejected) deferred=none U-130_B=9/9_pass_after_patch C=7/7 sed_hunk=clean fresh=Cancel7/7,Edge15/15,Run6/6 test_tools=2359
 2026-11-21T00:31:07Z	Story 24.14	ledger_adjudicated	scope=batch2b deferred=none new_entries=none
+2026-11-21T00:35:03Z	Story 24.14	integrated_feature	scope=batch2b feature=09b30317b(21.21) merge=73c758917 conflicts=0 test_tools=2360 check_objectscript=0
+2026-11-21T00:35:03Z	Story 24.14	fresh_check_started	scope=batch2b throwaway=ocupilot-b-ci tree=73c758917
