@@ -216,6 +216,10 @@ describe('the Page resources dialog (Story 21.37)', () => {
     type('resource', '  ');
     expect(submit().getAttribute('aria-disabled')).toBe('true');
     type('resource', ' ResB ');
+    expect(submit().getAttribute('aria-disabled')).toBe('true');
+    model.review.set(review([], PAGE, 'ResB'));
+    field('resource').dispatchEvent(new Event('change'));
+    fixture.detectChanges();
     expect(submit().getAttribute('aria-disabled')).toBeNull();
     submit().click();
     expect(model.saves()).toEqual([{ page: PAGE, resource: 'ResB' }]);
@@ -230,9 +234,59 @@ describe('the Page resources dialog (Story 21.37)', () => {
     type('resource', 'ResA');
     expect(submit().getAttribute('aria-disabled')).toBe('true');
     type('page', ` ${PAGE} `);
+    field('page').dispatchEvent(new Event('change'));
+    model.review.set(review([]));
+    fixture.detectChanges();
     expect(submit().getAttribute('aria-disabled')).toBeNull();
     submit().click();
     expect(model.saves()).toEqual([{ page: PAGE, resource: 'ResA' }]);
+  });
+
+  // Mutation (Rule 19): compare the typed resource with the dialog's opening value only, not the review's held one -> both legs go red.
+  it("treats Assign's resource as unchanged when the review answers that the page already holds it", () => {
+    mount();
+    type('page', PAGE);
+    type('resource', 'ResA');
+    field('resource').dispatchEvent(new Event('change'));
+    model.review.set({ ...review(['Users'], PAGE, 'ResA', 'PAGERESOURCE.CHANGED'), held: 'ResA' });
+    fixture.detectChanges();
+    expect(line()).toBe("Users follows this page's resource and will require it from the next request.");
+    expect(consequence()).toBe('');
+    expect(submit().getAttribute('aria-disabled')).toBe('true');
+  });
+
+  // Mutation (Rule 19): let Save or Enter send a value whose review has not been answered -> the first saves assertion goes red.
+  it('sends nothing on Enter or Save until the review of exactly what is typed is answered, and asks for that review instead', () => {
+    const enter = (): void => {
+      field('resource').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      fixture.detectChanges();
+    };
+    mount();
+    type('page', PAGE);
+    type('resource', 'ResA');
+    enter();
+    expect(model.saves()).toEqual([]);
+    expect(model.reviews()).toEqual([{ page: PAGE, resource: 'ResA' }]);
+    enter();
+    expect(model.saves()).toEqual([]);
+    expect(model.reviews()).toHaveLength(1);
+    model.review.set(review(['Users'], PAGE, 'ResA'));
+    fixture.detectChanges();
+    expect(line()).toBe("Users follows this page's resource and will require it from the next request.");
+    enter();
+    expect(model.saves()).toEqual([{ page: PAGE, resource: 'ResA' }]);
+    type('resource', 'ResB');
+    expect(submit().getAttribute('aria-disabled')).toBe('true');
+    submit().click();
+    expect(model.saves()).toHaveLength(1);
+    expect(model.reviews()).toEqual([
+      { page: PAGE, resource: 'ResA' },
+      { page: PAGE, resource: 'ResB' },
+    ]);
+    // The instance's refusal answers the review as well, so the refused value can still be sent for the instance to refuse again.
+    model.refusal.set('This instance defines no resource of that name.');
+    fixture.detectChanges();
+    expect(submit().getAttribute('aria-disabled')).toBeNull();
   });
 
   // Mutation (Rule 19): emit the review on every keystroke, or never on open for Change -> the timing legs go red.

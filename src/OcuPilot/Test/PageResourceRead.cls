@@ -322,6 +322,7 @@ Method TestAnUnknownPageIsRefusedOnPageBeforeAnyResourceIsRead()
 Method TestACallerShortOfAPairIsRefusedBeforeAnyRead()
 {
     Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tVendorText)
+    Do $$$AssertEquals(tMapped.code, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, "the gate's refusal is PORT.ACCESSDENIED")
     Set tPairs = $ListFromString($Parameter(..#PORT, "PAIRS"))
     Do $$$AssertEquals($ListLength(tPairs), 2, "the port declares two pairs")
     For tI = 1:1:$ListLength(tPairs) {

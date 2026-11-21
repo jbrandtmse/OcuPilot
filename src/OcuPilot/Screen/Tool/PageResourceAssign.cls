@@ -26,6 +26,9 @@ Parameter READBACKPAYLOAD As BOOLEAN = 1;
 /// <p>The one argument: the resource to assign.</p>
 Parameter ARGUMENT = "Resource";
 
+/// <p>The refusal of an assignment of the resource the page already holds (<method>MergeUpdate</method>).</p>
+Parameter REASONHELD = "This page already requires that resource, so there is nothing to assign.";
+
 ClassMethod SettableFields() As %List
 {
     Quit $ListBuild(..#ARGUMENT)
@@ -54,6 +57,18 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesPageAssignment(pIdValue, $ClassName(), .pCode)
+}
+
+/// <p>The kernel's merge, with one refusal of its own: an assignment of the resource the page already holds (the fresh read's <code>Current</code>)
+/// changes nothing, so <var>pProblem</var> is <parameter>REASONHELD</parameter>. The mint refuses it before anything is stored, and a confirm whose page
+/// has come to hold the resource reads the target as moved.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If $$$ISERR(tSC) || (pProblem '= "") Quit tSC
+    If '$IsObject(pFresh) || '$IsObject(pArgs) || (pArgs.%GetTypeOf(..#ARGUMENT) '= "string") Quit tSC
+    If (pArgs.%Get(..#ARGUMENT) '= "") && (pArgs.%Get(..#ARGUMENT) = pFresh.%Get("Current")) Set pProblem = ..#REASONHELD
+    Quit tSC
 }
 
 /// <p>The row naming the screens that follow the page; the resource row comes from the call's own argument.</p>

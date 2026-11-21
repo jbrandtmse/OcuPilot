@@ -3161,7 +3161,8 @@ ClassMethod PageResource(pId As %String, pToolClass As %String, Output pProhibit
 
 /// <p>Whether the write <var>pToolClass</var> makes to the page <var>pId</var> is refused before its precondition is read: an assignment to a page a
 /// screen that cannot be adjusted declares (<method>PageResource</method>), with <var>pCode</var> <parameter>OCUPILOTSCREEN</parameter>, else 0 and
-/// <code>""</code>. The declaring screens are read from the registry on every call (AD-64); the page is resolved by the tool's own port.</p>
+/// <code>""</code>. The declaring screens are read from the registry on every call (AD-64), and a registry that could not be read refuses, the
+/// fail-closed direction <method>PageResourceEffect</method> also takes; the page is resolved by the tool's own port.</p>
 /// <p><b>Caller contract:</b> <var>pId</var> is the target's id as the caller holds it. A class whose write removes its target is never refused.</p>
 ClassMethod RefusesPageAssignment(pId As %String, pToolClass As %String, Output pCode As %String) As %Boolean
 {
@@ -3171,6 +3172,10 @@ ClassMethod RefusesPageAssignment(pId As %String, pToolClass As %String, Output 
     Set tPortSC = $ClassMethod($ClassMethod(pToolClass, "PortClass"), "Normalized", pId, .tNormalized)
     If $$$ISERR(tPortSC) || (tNormalized = "") Quit 0
     Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(tNormalized, .tResolved)
+    If 'tResolved {
+        Set pCode = ..#OCUPILOTSCREEN
+        Quit 1
+    }
     For tI = 1:1:$ListLength(tScreens) {
         If '##class(OcuPilot.Screen.Gate).Adjustable($List(tScreens, tI)) {
             Set pCode = ..#OCUPILOTSCREEN

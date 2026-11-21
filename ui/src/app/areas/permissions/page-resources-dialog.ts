@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, input, linkedSignal, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, input, linkedSignal, output, signal } from '@angular/core';
 
 import { pickCount } from '../../core/count-phrase';
 import { STRINGS } from '../../core/strings';
@@ -23,10 +23,14 @@ export interface PageResourceEntry {
   readonly resource: string;
 }
 
-/** What the instance answered a review of `page` and `resource` with: the titles of the screens that follow the page, and the consequence code. */
+/**
+ * What the instance answered a review of `page` and `resource` with: the titles of the screens that follow the page, the consequence code, and the
+ * resource the page holds now where the review names it.
+ */
 export interface PageResourceReview extends PageResourceEntry {
   readonly screens: readonly string[];
   readonly consequence: string;
+  readonly held?: string;
 }
 
 /** `template` with `<placeholder>` replaced by `value`, shown as written. */
@@ -62,8 +66,10 @@ export function replacesLine(screens: readonly string[]): string {
  * dialog draws it only while it is the review of exactly what is typed: the line naming the screens that follow the page, and, where the review names
  * one and the resource differs from the one the page holds, the consequence line.
  *
- * **Save is unavailable** while no resource is typed, while the resource is the one the page already holds, and while a send is in flight. Nothing
- * else is judged here: the instance refuses an unknown page or resource, and a page an OcuPilot screen's own, and the page passes its sentence back as
+ * **Save is unavailable** while no resource is typed, while the resource is the one the page already holds, while a send is in flight, and until
+ * the review of exactly what is typed has been answered, with a review or with the instance's refusal. Save, or Enter in a field, pressed before
+ * then asks for that review and sends nothing, so a person who never leaves the field still sees the review before the write. Nothing else is
+ * judged here: the instance refuses an unknown page or resource, and a page an OcuPilot screen's own, and the page passes its sentence back as
  * `refusal`, which stays in the dialog.
  */
 @Component({
@@ -178,6 +184,9 @@ export class PageResourcesDialog implements OnInit {
 
   private closed = false;
 
+  /** The page and resource the latest review was asked for, or `null` before any. */
+  private readonly asked = signal<PageResourceEntry | null>(null);
+
   protected get isClear(): boolean {
     return this.mode() === 'clear';
   }
@@ -213,7 +222,7 @@ export class PageResourcesDialog implements OnInit {
     const review = this.matching;
     if (review === null || review.screens.length === 0) return '';
     if (review.consequence === CONSEQUENCE_CLEARED) return fill(STRINGS.pageResourcesConsequenceCleared, 'screen', review.screens.join(', '));
-    if (review.consequence === CONSEQUENCE_CHANGED && this.resourceText().trim() !== this.current()) {
+    if (review.consequence === CONSEQUENCE_CHANGED && this.resourceText().trim() !== this.held) {
       return fill(STRINGS.pageResourcesConsequenceChanged, 'screen', review.screens.join(', '));
     }
     return '';
@@ -223,21 +232,46 @@ export class PageResourcesDialog implements OnInit {
     return this.refusal() !== '';
   }
 
-  /** Save is unavailable while a send is in flight, no page or resource is typed, or the resource is the one the page already holds. */
+  /**
+   * Save is unavailable while a send is in flight, no page or resource is typed, the resource is the one the page already holds, or what is typed has
+   * not been reviewed.
+   */
   protected get submitDisabled(): string | null {
     return this.canSubmit ? null : 'true';
   }
 
+  /** The page and resource typed, trimmed; Clear's resource is `''`. */
+  private get entry(): PageResourceEntry {
+    return { page: this.pageText().trim(), resource: this.isClear ? '' : this.resourceText().trim() };
+  }
+
+  /** The resource the page holds: the review's answer where it names one, else the one the dialog was opened with. */
+  private get held(): string {
+    return this.matching?.held ?? this.current();
+  }
+
+  /** A page, and for Assign and Change a resource other than the one the page holds, are typed. */
+  private get complete(): boolean {
+    const { page, resource } = this.entry;
+    if (this.isClear) return page !== '';
+    return page !== '' && resource !== '' && resource !== this.held;
+  }
+
+  /** The review of exactly what is typed was asked for and answered, with a review or with the instance's refusal. */
+  private get reviewed(): boolean {
+    const asked = this.asked();
+    const { page, resource } = this.entry;
+    if (asked === null || asked.page !== page || asked.resource !== resource) return false;
+    return this.matching !== null || this.refusal() !== '';
+  }
+
   private get canSubmit(): boolean {
-    if (this.sending()) return false;
-    if (this.isClear) return this.pageText().trim() !== '';
-    const resource = this.resourceText().trim();
-    return this.pageText().trim() !== '' && resource !== '' && resource !== this.current();
+    return !this.sending() && this.complete && this.reviewed;
   }
 
   ngOnInit(): void {
     if (this.mode() === 'assign') return;
-    this.reviewRequested.emit({ page: this.pageText().trim(), resource: this.isClear ? '' : this.resourceText().trim() });
+    this.ask();
   }
 
   protected onPage(event: Event): void {
@@ -248,18 +282,30 @@ export class PageResourcesDialog implements OnInit {
     this.resourceText.set((event.target as HTMLInputElement).value);
   }
 
-  /** A field was left or Enter was pressed in it: ask for the review of what is typed, once both a page and a resource are. */
+  /** A field was left: ask for the review of what is typed, once both a page and a resource are and it has not been asked for already. */
   protected onCommit(): void {
-    const page = this.pageText().trim();
-    const resource = this.resourceText().trim();
+    const { page, resource } = this.entry;
     if (page === '' || resource === '') return;
-    this.reviewRequested.emit({ page, resource });
+    this.ask();
   }
 
-  /** Hand the typed page and resource on once Save is available. */
+  /** Ask for the review of what is typed, unless the latest ask was for exactly that. */
+  private ask(): void {
+    const entry = this.entry;
+    const asked = this.asked();
+    if (asked !== null && asked.page === entry.page && asked.resource === entry.resource) return;
+    this.asked.set(entry);
+    this.reviewRequested.emit(entry);
+  }
+
+  /** Save or Enter: hand the typed page and resource on once Save is available, or ask for the review of what is typed when it has not been asked for. */
   protected submit(): void {
-    if (!this.canSubmit) return;
-    this.submitted.emit({ page: this.pageText().trim(), resource: this.isClear ? '' : this.resourceText().trim() });
+    if (this.sending() || !this.complete) return;
+    if (!this.reviewed) {
+      this.ask();
+      return;
+    }
+    this.submitted.emit(this.entry);
   }
 
   protected onClosed(): void {

@@ -217,6 +217,25 @@ Method TestAChangeOrAClearOfADeclaredPageIsMintedDestructive()
     Do $$$AssertEquals(tReview.%Get("Consequence") _ "|" _ tReview.%Get("Screens").%Size(), "|0", "a page nothing declares names no consequence and no screen")
 }
 
+/// <p><b>An assignment of the held resource.</b> The agent's assign naming the resource the page already holds is refused at the mint, 400 with
+/// <parameter>OcuPilot.Screen.Tool.PageResourceAssign.REASONHELD</parameter> as its problem, and stores no proposal, writes nothing and records nothing;
+/// an assign naming another resource on the same page mints.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.PageResourceAssign.MergeUpdate</method> sets no problem -> this goes red.</p>
+Method TestAnAssignOfTheHeldResourceIsRefusedAtTheMint()
+{
+    Do $ClassMethod(..#SEAM, "Page", ..#UNDECLARED, ..#FIRST)
+    Set tProposal = ""
+    Set tSC = ..Mint(..#ASSIGNSEAM, ..#UNDECLARED, {"Resource": (..#FIRST)}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "an assign of the resource the page holds is refused")
+    Set tProblem = $Select($IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")): tFault.detail.%Get("problem"), 1: "")
+    Do $$$AssertEquals(+$Get(tHttp) _ "|" _ tProblem, "400|" _ ##class(OcuPilot.Screen.Tool.PageResourceAssign).#REASONHELD, "400 with the ruled sentence")
+    Do $$$AssertTrue('$IsObject(tProposal), "no proposal is stored")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ "|" _ $ClassMethod(..#SEAM, "Audits"), "|", "nothing is written and nothing is recorded")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "HeldBy", ..#UNDECLARED), ..#FIRST, "the page keeps its resource")
+    Set tSC = ..Mint(..#ASSIGNSEAM, ..#UNDECLARED, {"Resource": (..#SECOND)}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "an assign of another resource to the same page mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+}
+
 /// <p><b>Bad input (AC5) and the write's rules.</b> A page the portal does not have is 422 <code>ACCESS.PAGE.UNKNOWN</code> on <code>Page</code>, an empty
 /// resource 422 <code>ACCESS.PAGE.RESOURCEREQUIRED</code> on <code>Resource</code>, and a resource the instance does not define 422
 /// <code>ACCESS.RESOURCE.UNKNOWN</code> on <code>Resource</code>; a clear of a page with none is 409 <code>ACCESS.PAGE.NOTASSIGNED</code>. Each is refused
@@ -260,6 +279,7 @@ Method TestBadInputIsRefusedOnItsFieldBeforeAnythingIsStored()
 
     ; The agent's mint reads the same refusals before it stores a proposal.
     Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ASSIGN)
+    Set tClearBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#CLEAR)
     For tCase = $ListBuild(..#ASSIGNSEAM, ..#UNDECLARED, "", "ACCESS.PAGE.RESOURCEREQUIRED"), $ListBuild(..#ASSIGNSEAM, ..#UNDECLARED, "NoSuchResource2137", "ACCESS.RESOURCE.UNKNOWN"), $ListBuild(..#ASSIGNSEAM, "No.Such.Page", ..#FIRST, "ACCESS.PAGE.UNKNOWN"), $ListBuild(..#CLEARSEAM, ..#UNDECLARED, "", "ACCESS.PAGE.NOTASSIGNED") {
         Set tArgs = {}
         If $List(tCase, 1) = ..#ASSIGNSEAM Do tArgs.%Set("Resource", $List(tCase, 3), "string")
@@ -267,7 +287,7 @@ Method TestBadInputIsRefusedOnItsFieldBeforeAnythingIsStored()
         Do $$$AssertStatusNotOK(tSC, "the mint refuses '" _ $List(tCase, 4) _ "'")
         Do $$$AssertEquals($Select($IsObject($Get(tMintFault)): tMintFault.%Get("code"), 1: ""), $List(tCase, 4), "with its code: " _ $Select($IsObject($Get(tMintFault)): tMintFault.%ToJSON(), 1: ""))
     }
-    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ASSIGN), tBefore, "and stores no proposal")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ASSIGN) _ "|" _ ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#CLEAR), tBefore _ "|" _ tClearBefore, "and stores no proposal")
 
     ; Accepted writes store once and record once, under the normalized class name whatever spelling named the page; a no-change assignment does neither.
     Kill tQuery
@@ -276,6 +296,7 @@ Method TestBadInputIsRefusedOnItsFieldBeforeAnythingIsStored()
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "PortalResource", "PUT", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "an assignment is accepted")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ "|" _ $ClassMethod(..#SEAM, "Audits"), ..#UNDECLARED _ "=" _ ..#FIRST _ "|updated " _ ..#UNDECLARED _ " >" _ ..#FIRST, "it is stored and recorded once, with the resource before and after")
+    Do $$$AssertTrue($IsObject($Get(tResult)), "and answers a row")
     If $IsObject($Get(tResult)) Do $$$AssertEquals(tResult.%Get("Resource") _ "|" _ tResult.%Get("Current"), ..#FIRST _ "|" _ ..#FIRST, "and answers the page's row after the write")
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "PortalResource", "PUT", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ $Length($ClassMethod(..#SEAM, "Writes"), ";"), "200|1", "an assignment of the resource the page holds is accepted and stores nothing more")

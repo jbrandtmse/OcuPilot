@@ -116,20 +116,24 @@ ClassMethod ScreenRows(pFresh As %DynamicObject) As %DynamicArray
 }
 
 /// <p>What a reviewed action answers beside its rows (AD-53): <code>Screens</code>, the titles of the OcuPilot screens that declare the page in the
-/// registry's order, and <code>Consequence</code>, the code the card carries for the write (<code>""</code> for none). A read that names no page answers
-/// none.</p>
+/// registry's order, <code>Consequence</code>, the code the card carries for a write that changes the page's resource (<code>""</code> for none), and
+/// <code>Current</code>, the resource the page holds now, so the dialog can tell an assignment of that same resource from a change. A read that names no
+/// page answers none.</p>
 ClassMethod DryRunReview(pFresh As %DynamicObject) As %DynamicObject
 {
     Set tReview = {}
     Set tTitles = []
     Set tConsequence = ""
+    Set tCurrent = ""
     If $IsObject(pFresh) && (pFresh.%GetTypeOf("Page") = "string") {
         Set tList = $ClassMethod(..PortClass(), "TitleList", pFresh.%Get("Page"))
         For tI = 1:1:$ListLength(tList) Do tTitles.%Push($List(tList, tI), "string")
-        Set tConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).PageResourceEffect(pFresh.%Get("Page"), pFresh.%Get("Current"), "", ..Removes())
+        Set tCurrent = pFresh.%Get("Current") _ ""
+        Set tConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).PageResourceEffect(pFresh.%Get("Page"), tCurrent, "", ..Removes())
     }
     Do tReview.%Set("Screens", tTitles)
     Do tReview.%Set("Consequence", tConsequence, "string")
+    Do tReview.%Set("Current", tCurrent, "string")
     Quit tReview
 }
 

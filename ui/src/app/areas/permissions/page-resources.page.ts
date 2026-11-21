@@ -40,9 +40,9 @@ function sentenceOf(refusal: ActionRefusal | null): string {
  * one tool the route serves for a resource, with the page as the target and the resource as the value `Resource`; Clear sends `clear`.
  *
  * **Each dialog is reviewed before it is saved.** The dialog hands on the page and resource it holds, and the page asks the instance for the review
- * through the handler's `dryRunFor` (AD-53), keeps only the answer to the latest ask, and passes it back for the dialog to draw. A refused review
- * puts its sentence in the dialog, which stays open; so does a refused save, and an applied one closes it, the handler's change event re-reading the
- * list (AD-14).
+ * through the handler's `dryRunFor` (AD-53), keeps only the answer to the latest ask, and passes it back for the dialog to draw. A new ask clears
+ * the previous refusal. A refused review puts its sentence in the dialog, which stays open; so does a refused save, and an applied one closes it, the
+ * handler's change event re-reading the list (AD-14).
  */
 @Component({
   selector: 'app-page-resources-page',
@@ -154,6 +154,8 @@ export class PageResourcesPage {
     if (mode === null) return;
     const ask = ++this.ask;
     const clearing = mode === 'clear';
+    // An earlier answer does not stand for this ask: the dialog takes a refusal as the review of what it asked last.
+    this.refusal.set('');
     const run = await this.handler.dryRunFor(
       PAGE_RESOURCE_LIST,
       clearing ? PAGE_RESOURCE_CLEAR : PAGE_RESOURCE_CHANGE,
@@ -168,12 +170,14 @@ export class PageResourcesPage {
     }
     const titles = run.review['Screens'];
     const code = run.review['Consequence'];
+    const current = run.review['Current'];
     this.refusal.set('');
     this.review.set({
       page: entry.page,
       resource: entry.resource,
       screens: Array.isArray(titles) ? (titles as readonly unknown[]).filter((title): title is string => typeof title === 'string') : [],
       consequence: typeof code === 'string' ? code : '',
+      ...(typeof current === 'string' ? { held: current } : {}),
     });
   }
 
@@ -182,6 +186,8 @@ export class PageResourcesPage {
     const mode = this.open();
     if (mode === null || this.sending()) return;
     const clearing = mode === 'clear';
+    // A review still in flight no longer answers the dialog, so it cannot wipe this save's refusal.
+    this.ask += 1;
     this.sending.set(true);
     this.refusal.set('');
     const applied = await this.handler.sendFor(

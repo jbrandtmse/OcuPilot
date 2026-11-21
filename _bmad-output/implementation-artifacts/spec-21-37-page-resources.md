@@ -10,14 +10,7 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-21-leaves-that-wait-on-the-owner.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      An agent assign naming the resource the page already holds mints a proposal with no changed resource row, because the tool sends no body and the mint's no-change refusal runs only for tools that do.
-    evidence: |-
-      Task 0 (b) failed its stop rule: no existing refusal applies and no string was added. The port stores and records nothing for such an assign and the person's dialog keeps Save disabled, so nothing is written. The wording of a refusal is the owner's to rule.
-    location: >-
-      src/OcuPilot/Kernel/Proposal/Mint.cls:272
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -150,11 +143,35 @@ deferred:
 - AC7 (the gate honors it, the integration AC): Given a custom resource assigned through `PortalResourcePort` to a page a built screen declares, when `Screen.Gate.RequiredPairs` is read on the next call, then it includes that resource at USE, and a caller lacking it is refused that screen by name. After the clear, that caller is admitted again. The reader caches nothing (AD-64 rule 2).
 - AC8 (AD-59): Given each of the two tools, when its copy-out draft is rendered, then it shows the `%CSP.Portal.Utils.%SetCustomResource` call with the stored page and resource (an empty resource for the clear) and runs no write, and `DraftRegistry` names no tool without a script form.
 - AC9 (governance): Given the keys `permissions.pageresources.assign` and `permissions.pageresources.clear`, when `GovernanceBaseline` runs, then `Baseline.cls` carries both, shipping `true` (AD-22), and the class is green.
-- AC10 (port gate): Given a caller without `%Admin_Secure:USE`, or without `%DB_IRISSYS:READ`, when it calls any endpoint of `PortalResourcePort`, then it is refused `AUTH.NOPRIVILEGE` naming the first pair it lacks, before any vendor call (AD-29), and the screen's own gate refuses it the screen.
+- AC10 (port gate): Given a caller without `%Admin_Secure:USE`, or without `%DB_IRISSYS:READ`, when it calls any endpoint of `PortalResourcePort`, then it is refused 403 `PORT.ACCESSDENIED` with `detail.failedPair` naming the first pair it lacks, before any vendor call (AD-29), and the screen's own gate refuses it the screen and its actions (`AUTH.NOPRIVILEGE`, naming the pair).
 - AC11 (rosters): Given the new screen, tools, entity type and port, when `SurfaceCoverage`, `EndpointCoverage`, `PortGate`, `Descriptor`, `ScreenGrounding`, `ClassicPageGate`, `ReadTool`, `ToolWrite`, `Navigation`, `WireSecurityRead`, `PermissionsLists` and `navigation.test.mjs` run, then each passes and names them where it names its peers, with each count derived from the registry outside a roster's own pin (Rule 30).
 - AC12 (browser, the outermost surface): Given the deployed bundle, when `page-resources.browser-spec.mjs` signs in as an `%Admin_Secure` holder and assigns a resource to a probe-safe page, sees its row, changes it, clears it, and tries a page a Home screen declares, then each step shows the screen's own answer, and the refusal shows the existing sentence.
 - AC13 (audit, AD-15 named case 2026-11-21): Given a page custom-resource assign or clear from either caller (the person's dialog and the agent's confirmed proposal), when it writes, then OcuPilot records its own `OcuPilot/Security/SecurityChange` event with the page and the resource before and after, beside the agent's marker for an agent write; a clear of a page with no resource is refused (`ACCESS.PAGE.NOTASSIGNED`) and records no event. The event triple is the one the installer already registers (no second registration).
 - AC14 (the replaces line, plural): Given a page that one OcuPilot screen replaces, the dialog shows the ruled singular line; given several, it shows "These <count> screens follow this page's resource and will require it from the next request: <titles>." with at most five titles joined by ", " in the order screens already sort, ending ", and <n> more" past five. A component test pins 1, 5 and 6 or more screens.
+
+### Review Findings
+
+Code review 2026-11-21, `317781c4e..30157fa88`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor (full-opus). Patches uncommitted.
+
+- [x] [Review][Patch] Build ruling (1): an agent assign of the held resource mints a proposal with no change [src/OcuPilot/Screen/Tool/PageResourceAssign.cls:MergeUpdate] — refused 400 with the ruled sentence (`REASONHELD`), nothing stored; `PageResourceProhibited.TestAnAssignOfTheHeldResourceIsRefusedAtTheMint`.
+- [x] [Review][Patch] Build ruling (2): Save or Enter sent a value whose review had not been answered, on Assign, Change and Clear [ui/src/app/areas/permissions/page-resources-dialog.ts:submit] — Save needs the answered review (or refusal) of what is typed; Save or Enter before then asks for it; a new ask clears the old refusal, a save drops a review in flight.
+- [x] [Review][Patch] Build ruling (3): AC10 named `AUTH.NOPRIVILEGE` for the port [this spec, AC10 and Design Notes] — aligned to `PORT.ACCESSDENIED`; `PageResourceRead` pins the literal.
+- [x] [Review][Patch] Assign of the held resource showed the change consequence and enabled Save [src/OcuPilot/Screen/Tool/PageResourceAction.cls:DryRunReview] — the review answers `Current`; the dialog compares with it.
+- [x] [Review][Patch] The own-screen arm let an assign through when the registry could not be read [src/OcuPilot/Kernel/Proposal/Prohibited.cls:RefusesPageAssignment] — refuses, as `PageResourceEffect` already does.
+- [x] [Review][Patch] No test sent a review through the real dry-run route on a declared page [src/OcuPilot/Test/PageResourceWrite.cls:TestTheGateFollowsThePageResourceOnTheNextCall] — HTTP leg added.
+- [x] [Review][Patch] The list read ignored a failed fetch; the audit call ignored `Record`'s status [src/OcuPilot/Port/PortalResourcePort.cls:Stored,Audit].
+- [x] [Review][Patch] Test robustness: `RowOf` fell back to the last row; a row assertion could be skipped; the no-proposal check missed the clear; a header named a mutation that cannot redden its test [src/OcuPilot/Test/PageResourceWrite.cls, PageResourceProhibited.cls].
+- [x] [Review][Defer] A page only a write tool's `CLASSICPAGES` declares gets the "can no longer open" consequence [src/OcuPilot/Screen/Registry.cls:ScreensDeclaringPage] — deferred: DW-2823, decision-pending (ruled wording and AC4's derivation).
+- [x] [Review][Defer] `PageResourceFixture.EnsureUser` copies `ScreenAccessFixture.EnsureSecurity` [src/OcuPilot/Test/PageResourceFixture.cls:56] — deferred: DW-2824, routed burndown (107 fixtures share the block; no helper).
+- [x] [Review][Defer] The card lists the `Screen` context row as a change [src/OcuPilot/Screen/Tool/PageResourceAction.cls:ScreenRows] — deferred: DW-2825, wontfix-accepted.
+- [x] [Review][Defer] EXPERIENCE.md keeps Page resources inside existing rows — deferred: DW-2826, wontfix-accepted.
+
+Rejected:
+
+- `false` Normalized errors fail the arm open: the port's own `Normalized` fails 500 before any store. `false` The teardown deletes a pre-existing resource: the names are this story's probes on a throwaway.
+- `low` (spec-bound) A first assign to a declared page is not destructive: AC4. Assign to Page resources' own page can lock the caller out: AD-10's arm covers Home and Agent (triage log).
+- `low` Resource or page spelled in another case; Held/Store race with the classic portal; a 0 row cap answering 500 (the cap is the descriptor's); the registry scanned per row (few pages hold a resource); the script names the page as typed (the vendor normalizes); a blank card sentence when the registry is unreadable; Prohibited bypassing the port's `Declaring` seam; the Home/Agent sweep not reading `CLASSICPAGES`: unlikely in use, fix adds branches.
+- `low` `Gate`/`GateRefusal` copy `ResourceTransferPort` (reason stated under Extends); `PageResourceWrite` is 582 lines; stale Never/Audit/escalated-strings paragraphs (fix edits this spec).
 
 ## Spec Change Log
 
@@ -218,7 +235,7 @@ deferred:
 - AC13: the port records `SecurityChange` (entity `page-resource`, verbs `updated` and `deleted`, `changes.resource.old` and `.new`) after each accepted write, so both callers share one record. The installer registers the triple from `Kernel.Audit.Event.Roster` and screen-access writes record it through `Kernel.State.Access.Audit`, so nothing is registered here.
 - Card summaries are `TargetName` templates in `PageResourceAction`; Batch 3 adds the client strings.
 - The vendor normalizes a `.cls` spelling itself, so the port's own normalization is pinned over `PageResourceStoreSeam` in `PageResourceProhibited`.
-- AC10: both short accounts are refused `AUTH.NOPRIVILEGE` naming the pair. The no-`%Admin_Secure` account holds `%Admin_Operate:USE`, since an account with no administrative resource is refused earlier.
+- AC10: over HTTP the screen's gate refuses both short accounts `AUTH.NOPRIVILEGE` naming the pair before the port is reached; the port's own refusal is `PORT.ACCESSDENIED` (`PageResourceRead`). The no-`%Admin_Secure` account holds `%Admin_Operate:USE`, since an account with no administrative resource is refused earlier.
 - `ScreenGate` is a seam class, not a test, so it has no run.
 
 **Adjustments to the carried ACs:**
@@ -351,6 +368,7 @@ Mutations run, Batch 3 (`ocupilot-ci`; each reverted with Edit, md5 equal; a cli
 - mutation: Batch 3, the card's `PAGERESOURCE.CLEARED` branch removed from `pageResourceSentence` -> `proposal-view.test.mjs` red; `NavigationService.onChange` ignoring `page-resource` -> `navigation.test.mjs` red.
 
 - mutation: Review pass, AC4, the assign tool's card diff drops the `Screen` row -> `PageResourceProhibited` red; the dialog's no-change guard removed -> `page-resources-dialog.spec.ts` red; AC2, the composed read's `NOTASSIGNED` check disabled -> `PageResourceProhibited` red. Each reverted byte-identical and reloaded.
+- mutation: Code review, ruling (1), `PageResourceAssign.MergeUpdate` sets no problem -> `PageResourceProhibited.TestAnAssignOfTheHeldResourceIsRefusedAtTheMint` red alone. Ruling (2), `submit()` skips the review check -> the dialog spec's Enter-or-Save case red alone. AC4, `DryRunReview` answers no `Current` -> `PageResourceWrite`'s gate test red at its dry-run leg; the dialog's held value ignores the review -> the dialog spec's Assign-held case red alone. Each reverted (md5 equal), source reloaded.
 
 ## Auto Run Result
 

@@ -260,6 +260,8 @@ test('AC12: a page is assigned a resource, changed, cleared and refused as a Hom
     assert.equal(await page.$eval('.ocu-page-resources-submit', (button) => button.getAttribute('aria-disabled')), 'true', 'Save waits for a different resource');
     await waitForDialogText(page, '.ocu-page-resources-line', STRINGS.pageResourcesLineNone);
     await replaceText(page, '[data-field="resource"]', SECOND);
+    // Enter without leaving the field asks for the review, and Save waits for it.
+    await page.keyboard.press('Enter');
     await save(page);
     await dialogClosed(page);
     await waitForRow(page, probe, SECOND);

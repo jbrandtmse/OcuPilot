@@ -292,7 +292,8 @@ ClassMethod Audit(pVerb As %String, pPage As %String, pOld As %String, pNew As %
         Do tResource.%Set("new", pNew _ "", "string")
         Set tChanges = {}
         Do tChanges.%Set("resource", tResource)
-        Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pPage, tChanges, 1)
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pPage, tChanges, 1)
+        If $$$ISERR(tSC) Do ..LogFault("the page resource change could not be audited", tSC)
     } Catch ex {
         Do ..LogFault("the page resource change could not be audited", ex.AsStatus())
     }
@@ -405,10 +406,12 @@ ClassMethod Stored(pMax As %Integer, Output pStored As %List) As %Status [ Priva
         Set tSC = tResult.Execute("*", "*")
         Set tCount = 0
         If $$$ISOK(tSC) {
-            While (tCount < pMax) && tResult.Next() {
+            Set tNextSC = $$$OK
+            While (tCount < pMax) && tResult.Next(.tNextSC) {
                 Set pStored = pStored _ $ListBuild($ListBuild(tResult.Get("Page"), tResult.Get("Resource")))
                 Set tCount = tCount + 1
             }
+            If $$$ISERR(tNextSC) Set tSC = tNextSC, pStored = ""
         }
         Set tResult = ""
         Set $NAMESPACE = tOrigNS

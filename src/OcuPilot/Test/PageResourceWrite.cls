@@ -300,11 +300,15 @@ ClassMethod Treatment(pContent As %DynamicObject) As %String
 ClassMethod RowOf(pContent As %DynamicObject, pField As %String) As %String
 {
     If '$IsObject(pContent) || '$IsObject(pContent.%Get("changed")) Quit ""
+    Set tFound = ""
     Set tIterator = pContent.changed.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.field = pField Quit
+        If tRow.field = pField {
+            Set tFound = tRow
+            Quit
+        }
     }
-    Quit $Select($IsObject($Get(tRow)): tRow.before _ " -> " _ tRow.after, 1: "")
+    Quit $Select($IsObject(tFound): tFound.before _ " -> " _ tFound.after, 1: "")
 }
 
 /// <p>How many <code>SecurityChange</code> rows since <var>pSince</var> record the page <var>pPage</var> going from <var>pOld</var> to <var>pNew</var>, and
@@ -493,6 +497,24 @@ Method TestTheGateFollowsThePageResourceOnTheNextCall()
     Set tSC = ..Verdict(tUser, ..#GATESCREEN, .tAllowed, .tFailed)
     Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "0|" _ ..#FIRST _ ":USE", "the account is refused the screen, naming the resource")
 
+    ; The person's review over the real route: the screens that follow the page, the change's consequence and the resource held, and nothing written.
+    Set tSC = ..As(tUser, "POST", "/screens/" _ ..#LISTSCREEN _ "/dryrun", .tStatus, .tDry, {"action": "change", "id": (..#GATEPAGE), "values": {"Resource": (..#SECOND)}}.%ToJSON())
+    Set tReview = $Select($IsObject(tDry) && $IsObject(tDry.%Get("review")): tDry.review, 1: "")
+    Do $$$AssertEquals(tStatus _ "|" _ $IsObject(tReview), "200|1", "the review answers: " _ $Select($IsObject(tDry): tDry.%ToJSON(), 1: ""))
+    If $IsObject(tReview) {
+        Set tTitle = ##class(OcuPilot.Screen.Tool.Read).Title(tDescriptor)
+        Set tNamed = 0
+        Set tScreens = $Select($IsObject(tReview.%Get("Screens")): tReview.Screens.%GetIterator(), 1: "")
+        If $IsObject(tScreens) {
+            While tScreens.%GetNext(.tAt, .tScreen) {
+                If tScreen = tTitle Set tNamed = 1
+            }
+        }
+        Do $$$AssertTrue(tNamed, "the review names the screen that follows the page, " _ tTitle)
+        Do $$$AssertEquals(tReview.%Get("Consequence") _ "|" _ tReview.%Get("Current"), "PAGERESOURCE.CHANGED|" _ ..#FIRST, "with the change's consequence and the resource the page holds")
+    }
+    Do $$$AssertEquals(..Held(..#GATEPAGE), ..#FIRST, "and the review wrote nothing")
+
     Set tSC = ..Dispatch(..#CLEAR, ..#GATEPAGE, $c(0), .tContent, .tIsError, .tTurn)
     Do $$$AssertEquals(tIsError, 0, "the agent's clear mints: " _ $Select($IsObject(tContent): tContent.%ToJSON(), 1: tContent))
     If '$IsObject(tContent) || tIsError Quit
@@ -539,7 +561,7 @@ Method TestEachToolRendersItsScript()
 /// <p><b>The port gate (AC10).</b> An account without <code>%Admin_Secure:USE</code>, and one without <code>%DB_IRISSYS:READ</code>, is refused each request 403
 /// <code>AUTH.NOPRIVILEGE</code> naming the first pair it lacks, before any vendor call. Nothing is stored, and the navigation map refuses the screen by that
 /// pair. (The port's own gate, <code>PORT.ACCESSDENIED</code>, is pinned by <class>OcuPilot.Test.PageResourceRead</class>.)</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Port.PortalResourcePort</class>'s <code>PAIRS</code> loses <code>%DB_IRISSYS:READ</code> -> this goes red.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.PageResourceAction.PrivilegePairs</method> answers none -> this goes red on both accounts.</p>
 Method TestAnAccountShortOfAPairIsRefusedNamingIt()
 {
     Set tPage = ..PreparedProbe

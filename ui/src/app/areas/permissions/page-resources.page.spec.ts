@@ -251,12 +251,14 @@ describe('the Page resources page', () => {
 
   it("keeps a refused save's sentence in the dialog, publishes nothing and leaves the dialog open", async () => {
     const sentence = 'This instance defines no resource of that name.';
-    const mounted = mount([reviewed(['Users']), refused(422, 'ACCESS.RESOURCE.UNKNOWN', sentence, 'Resource')]);
-    const { fixture, host, store, events } = mounted;
+    const mounted = mount([reviewed(['Users']), reviewed(['Users'], 'PAGERESOURCE.CHANGED'), refused(422, 'ACCESS.RESOURCE.UNKNOWN', sentence, 'Resource')]);
+    const { fixture, host, store, events, calls } = mounted;
     await open(mounted, PAGE_RESOURCE_CHANGE);
-    type(mounted, 'resource', 'NoSuchRes');
+    type(mounted, 'resource', 'NoSuchRes', true);
+    await settle(fixture);
     submit(host).click();
     await settle(fixture);
+    expect(calls[2]?.path).toBe(ACTION_ROUTE);
     expect(host.querySelector('.ocu-page-resources-refusal')?.textContent?.trim()).toBe(sentence);
     expect(host.querySelector('app-page-resources-dialog')).not.toBeNull();
     expect(store.refusal()).toBe('');
