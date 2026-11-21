@@ -894,3 +894,4 @@
 2026-11-21T14:03:04Z	Story 21.23	ci_red_classified	run=44891215456 red=resources-transfer_test2 class=flake(green_in_44899945083,twice_locally;outside_footprint) dw=DW-2821(owner_burndown);the_review_added_the_missing_picker_wait
 2026-11-21T14:03:04Z	Story 21.23	code_head_pushed	sha=224854019 run=44911887727 missing=none
 2026-11-21T14:03:04Z	Story 21.23	gate_step	step=fresh_check+full_sweep+smoke head=224854019 started=2026-11-21T14:03:04Z dir=e21u/21-23/gate
+2026-11-21T14:03:43Z	Story 21.23	ruling	question=breach_handling via=orchestrator choice=rebuild_ocupilot-ci_from_scratch_before_the_sweep(fresh-all_rebuild:down+up_at_224854019,14:03Z);breach_in_Auto_Run_Result;no_re-review

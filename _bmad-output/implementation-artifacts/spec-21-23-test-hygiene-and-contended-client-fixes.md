@@ -396,6 +396,8 @@ DW-2352: the spec's `contentWindow.location.replace(source)` breaks AD-63 and th
 Status: done
 Blocking condition: none
 
+Protocol breach (lead, 2026-11-21): the code review sent 18 browser spec runs in one message (and the build's Batch 2 subagent two `ci-runner` calls); their local greens are weak evidence, so CI and the gate sweep on a throwaway rebuilt from scratch at this head are the authority.
+
 Implement pass (2026-11-21), Batches 1 to 6, one commit each (`346d580fe`, `5489af497`, `2b963e07e`, `c07db3d42`, `c77610d93`, `dfed60850`) plus the review-patch commit. DW-2352 is not fixed and needs the owner's ruling (Clarification Needed and `deferred:`); every other batch entry is implemented.
 
 - Batch 1 (DW-1822, DW-2600, DW-2720): branch (b). No stall reproduced in three a11y spec runs and ten repeated passes; no deadline changed. The failure-path stall line is `stall: page crashed: <yes (message)|no|not tracked>; frame: <path>, document request in flight: <paths|none>; renderer: <busy|idle (task time grew X s over 2 s)|unresponsive (no answer within 5000 ms)|unread (reason)>; last 5 /api/ocupilot answers: <status path ms; ...|none>`. DW-1822 and DW-2600 stay routed until a CI red carries it. Users AC1, AC2 and AC7 wait on `waitForRememberedView`, and AC2 and AC7 read their totals only from an empty filter field.
