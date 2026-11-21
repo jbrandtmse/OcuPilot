@@ -654,3 +654,5 @@
 2026-11-21T14:07:06Z	Story 24.14	ledger_adjudicated	scope=batch4 resolved=DW-2818,DW-2819
 2026-11-21T14:12:10Z	Story 24.14	integrated_feature	scope=batch4 feature=5c0cdcd5e(21.36) merge=03169939f conflicts=5(ReadTool565,ToolWrite149,ToolRoundTrip/ClassicPageGate/MappingDescriptor_unions) mirror_regenerated test_tools=2364 check_objectscript=0
 2026-11-21T14:12:10Z	Story 24.14	fresh_check_started	scope=batch4 tree=03169939f gates=full_sweep+client+browser+smoke
+2026-11-21T16:55:08Z	Story 24.14	fresh_check_passed	scope=batch4 tree=03169939f full_sweep=17/17_849cls_6461tests_0failed browser=analytics+links+a11y40/40 test_tools=2364 components=312_files_green build=ok smoke=PASSED
+2026-11-21T16:55:08Z	Story 24.14	code_head_pushed	scope=batch4 sha=03169939f run=44927121755
