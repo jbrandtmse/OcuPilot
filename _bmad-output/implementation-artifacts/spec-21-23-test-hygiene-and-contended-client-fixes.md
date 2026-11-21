@@ -2,7 +2,7 @@
 title: 'Story 21.23: Test hygiene and contended client fixes'
 type: 'chore'
 created: '2026-11-21'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -163,6 +163,15 @@ Batch 6 (DW-2225, DW-2352):
 
 ## Spec Change Log
 
+- 2026-11-21, orchestrator rulings at the plan halt (authoritative):
+  - Split approved: DW-2499, DW-2405, DW-2369, DW-2442 and DW-2474 move to Story 21.38 (epics.md, add-only; ledger re-routed). This story is Batches 1 to 6.
+  - The plan's measurements supersede the earlier premises. DW-1822 (Batch 1): reproduce first; (a) a trace that shows a cause is fixed; (b) otherwise ship only the stall-time renderer report, firing on the failure path only and printing nothing the existing a11y artifacts do not already hold, with no deadline change, and name the report's fields in the Auto Run Result so the cause can be escalated. DW-1822 stays routed, not resolved, until a CI red carries the report or a cause is fixed.
+  - DW-2787 (Batch 2): expose the two test defects first (START's answer ignored; a partial job lookup read as "no job"), then wait on the port's own item read. The ledger records the refuted START-race hypothesis.
+  - DW-2720: reuse Story 21.22's helper; no second copy.
+  - DW-2430 is closed resolved-by 23-11 (7aceb0c13; `ui/src/app/testing/real-timers.spec.ts`).
+  - `ui/browser/web-applications-actions.browser-spec.mjs:430`: replacing the line is approved. Derive the count from the action roster the screen itself declares (the descriptor or the client mirror), never from a re-implementation of the menu logic; keep a floor assertion that it is above 0; mutate once to show the spec still reddens when an action goes missing.
+  - Declined, agreed: DW-2202's 24 per-principal literals stay; DW-2476's 7 interoperability copies stay with Epic 24.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -275,7 +284,7 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: the 19-entry inbox does not fit one story. Recommend a sibling Story 21.38 ("Shared Rules helpers, the source-control follow-up and escalated wording") taking DW-2499, DW-2405, DW-2369, DW-2442 and DW-2474. Batches 1 to 6 of this spec, the 14 other entries with the must-fix set first, are ready for development once the split is applied.
+Status: ready-for-dev
+Blocking condition: none (lead, 2026-11-21: split to Story 21.38 approved; see Spec Change Log). Plan-stage note kept for the record: the 19-entry inbox does not fit one story. Recommend a sibling Story 21.38 ("Shared Rules helpers, the source-control follow-up and escalated wording") taking DW-2499, DW-2405, DW-2369, DW-2442 and DW-2474. Batches 1 to 6 of this spec, the 14 other entries with the must-fix set first, are ready for development once the split is applied.
 
 Planned at plan stage on `ocupilot-ci`: the bundle was rebuilt and redeployed, the governance settle was measured at 1280 and 720 px, light and dark, a walk pass's memory was profiled, the probe START was measured over 12 cycles, and InteropHostTest then InteropItemRun was run green. Nothing the measurements created remains: the probe was removed, and each measuring browser context was closed by its harness.
