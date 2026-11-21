@@ -303,6 +303,7 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - DW-2202: drop `Suspended` from `TaskScheduleList`'s declaration → `WireSecurityRead` red; mark one more rowAction `serves-ocupilot` → `:430` red.
   - mutation: `"Suspended"` removed from `TaskScheduleList`'s `read.fields`, reloaded into `ocupilot-ci` → "Suspended among them" red alone (1 of 25, run 890; the answer-equals-declaration assertion stays green because the answer is built from the declaration); reverted and reloaded, 25 of 25 (run 891). `add-application-role` marked `serves-ocupilot` in `screens.generated.ts` (the spec reads that file, the deployed bundle unchanged) → AC3 red at the count, 3 against 4; reverted, 3 of 3, `git diff | md5` identical.
 - DW-2476: re-add a copy to a converted spec → the ratchet red.
+  - mutation: a local `transitionsSettled` declaration added back to `system-explorer-write.browser-spec.mjs` → "the specs that declare their own transitionsSettled are the residual list ..." red alone (1 of 19), the actual list gaining that spec; reverted, `git diff | md5` identical to before the mutation, 19 of 19.
 - DW-2225: remove the merge → the new panel test red.
 - DW-2352: restore `setAttribute('src', …)` for every load → the Back test red.
 

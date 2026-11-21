@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -88,18 +88,6 @@ function readBack(name) {
 /** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
 function frames(page) {
   return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-}
-
-/**
- * Wait until no CSS transition is running: a tab label's color eases between themes and a tab's
- * indicator slides to the tab chosen, so a read taken mid-transition measures the state it is
- * leaving.
- */
-function transitionsSettled(page) {
-  return page.waitForFunction(
-    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
-    { timeout: config.navigationTimeoutMs }
-  );
 }
 
 /** Signed in at `url`, recording every write to the service routes and every form read's answer. */
@@ -177,7 +165,7 @@ async function structural(page, tabs) {
       await page.setViewport(viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
       await frames(page);
-      await transitionsSettled(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
