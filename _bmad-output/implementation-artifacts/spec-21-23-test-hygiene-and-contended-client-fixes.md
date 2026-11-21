@@ -299,7 +299,9 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - DW-2761: delete the `RestartCount` check → the restart-count-1 test red.
   - mutation: `refuse_restarted_start` removed after the `up` loop → "DW-2761: a throwaway that restarted after a failed start fails `up` ..." red alone (1 of 106); reverted, `git diff | md5` identical, 106 of 106.
 - DW-2459: drop the `DependsOn` lookup → the shipped-tree case red.
+  - mutation: `allowed` in `check_parameter_dependencies` made `set(info["supers"]) | {name}` → the shipped-tree case and the two `DependsOn`-clean fixtures red (3 of 9); the call removed from `check_naming` → the three flagged fixtures red (3 of 9); each reverted, `git diff | md5` identical, 172 of 172 and the checker clean (0 problems, 21 rules).
 - DW-2202: drop `Suspended` from `TaskScheduleList`'s declaration → `WireSecurityRead` red; mark one more rowAction `serves-ocupilot` → `:430` red.
+  - mutation: `"Suspended"` removed from `TaskScheduleList`'s `read.fields`, reloaded into `ocupilot-ci` → "Suspended among them" red alone (1 of 25, run 890; the answer-equals-declaration assertion stays green because the answer is built from the declaration); reverted and reloaded, 25 of 25 (run 891). `add-application-role` marked `serves-ocupilot` in `screens.generated.ts` (the spec reads that file, the deployed bundle unchanged) → AC3 red at the count, 3 against 4; reverted, 3 of 3, `git diff | md5` identical.
 - DW-2476: re-add a copy to a converted spec → the ratchet red.
 - DW-2225: remove the merge → the new panel test red.
 - DW-2352: restore `setAttribute('src', …)` for every load → the Back test red.
