@@ -887,3 +887,4 @@
 2026-11-21T11:37:01Z	Story 21.23	dev_complete	scope=B1-B6(DW-2352_open:needs_ruling) commits=346d580fe,5489af497,2b963e07e,c07db3d42,c77610d93,dfed60850,dcfcf0943 followup_review_recommended=true DW-1822=report_only(not_reproduced) DW-2787=not_reproduced(reader_defect_fixed;spec_escalates_wontfix+reopen_if) process_slip=two_ci-runner_calls_in_one_message(B2_subagent;0_overlaps)
 2026-11-21T11:37:01Z	Story 21.23	ci_red_classified	run=44891215456 sha=346d580fe(B1_only) red=resources-transfer.browser-spec_local_import_refusal(waiting_for_input[data-explorer-import-file]) note=not_in_B1_footprint;watch_on_next_run
 2026-11-21T11:37:01Z	Story 21.23	code_head_pushed	sha=dcfcf0943 run=44899945083 missing=none
+2026-11-21T11:37:36Z	Story 21.23	stage_spawned	stage=code-review spawn_at=2026-11-21T11:37:36Z model=opus agent_name=21-23-code-review cycle_iteration=1 prior_lines_ended=verified(af028d6f6)
