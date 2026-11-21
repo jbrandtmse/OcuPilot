@@ -866,3 +866,7 @@
 2026-11-21T04:18:21Z	Story 21.36	ruling	question=review_deferrals via=orchestrator choice=DW-2811_fix_in_rework2;DW-2810_wontfix-theoretical_accepted;DW-2812_stays_deferred;absolute-dir_patch_accepted(reuses_elsewhere_sentence)
 2026-11-21T04:18:21Z	Story 21.36	rework_opened	cycle_iteration=3 iteration=2 trigger=orchestrator_ruling items=DW-2811 scope_baseline=5cb698216
 2026-11-21T04:18:21Z	Story 21.36	stage_spawned	stage=implement scope=rework2 spawn_at=2026-11-21T04:18:21Z model=sonnet agent_name=21-36-implement-rework-2 cycle_iteration=3 prior_lines_ended=verified(a697b28fa)
+2026-11-21T05:14:44Z	Story 21.36	dev_complete	scope=rework2(DW-2811:unterminated_final_line;single_line_over_64KB_shows_its_end,marked_truncated) build_sha=57148e1eb followup_review_recommended=false
+2026-11-21T05:14:44Z	Story 21.36	integrated_forward	feature=3e3ce307e(24.14_B2b) merge=acde202a0 conflicts=0 verified=screen-mirror(260/111),test:tools_2363,check-objectscript_0,Error.cls_991=feature,LOADERRORS=0,TaskOutputRead,WireSecurityRead_green,ScreenRead_red_once(run_1177:TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow)_then_green_twice
+2026-11-21T05:14:44Z	Story 21.36	code_head_pushed	sha=acde202a0 run=44869943560 missing=none
+2026-11-21T05:14:44Z	Story 21.36	gate_step	step=fresh_check+full_sweep+smoke head=acde202a0 started=2026-11-21T05:14:44Z dir=e21u/21-36/gate
