@@ -72,6 +72,18 @@ ClassMethod Treatment(pProposal As %DynamicObject) As %String
     Quit +$Get(tValues("destructive")) _ "|" _ $Get(tValues("consequence"))
 }
 
+/// <p>The <code>after</code> of the minted proposal's <code>Screen</code> row, or <code>&lt;none&gt;</code> when the card carries no such row.</p>
+ClassMethod ScreenRowOf(pProposal As %DynamicObject) As %String
+{
+    If '$IsObject(pProposal) || '$IsObject(pProposal.%Get("changed")) Quit "<none>"
+    Set tAfter = "<none>"
+    Set tRows = pProposal.%Get("changed").%GetIterator()
+    While tRows.%GetNext(.tKey, .tRow) {
+        If tRow.%Get("field") = "Screen" Set tAfter = tRow.%Get("after")
+    }
+    Quit tAfter
+}
+
 /// <p>The refusal of a prohibited-set question about <var>pTool</var> and the page <var>pPage</var>, as <code>prohibits|code</code>.</p>
 ClassMethod Judged(pTool As %String, pPage As %String) As %String
 {
@@ -163,15 +175,20 @@ Method TestAChangeOrAClearOfADeclaredPageIsMintedDestructive()
     Set tSC = ..Mint(..#ASSIGNSEAM, ..#ADJUSTABLE, {"Resource": (..#SECOND)}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a change of a declared page's resource mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     Do $$$AssertEquals(..Treatment($Get(tProposal)), "1|" _ tChanged, "it is destructive and names the change")
+    Set tTitles = $ListToString(##class(OcuPilot.Port.PortalResourcePort).TitleList(..#ADJUSTABLE), ", ")
+    Do $$$AssertTrue(tTitles '= "", "the screens that follow the declared page are named")
+    Do $$$AssertEquals(..ScreenRowOf($Get(tProposal)), tTitles, "the change's card carries the titles the consequence sentence names")
     Set tSC = ..Mint(..#CLEARSEAM, ..#ADJUSTABLE, {}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a clear of a declared page mints")
     Do $$$AssertEquals(..Treatment($Get(tProposal)), "1|" _ tCleared, "it is destructive and names the clear")
+    Do $$$AssertEquals(..ScreenRowOf($Get(tProposal)), tTitles, "the clear's card carries them too")
     Set tSC = ..Mint(..#CLEARSEAM, ..#HOME, {}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a clear of Home's page mints: only a clear can reach it")
     Do $$$AssertEquals(..Treatment($Get(tProposal)), "1|" _ tCleared, "it is destructive too")
     Set tSC = ..Mint(..#ASSIGNSEAM, ..#UNDECLARED, {"Resource": (..#SECOND)}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a change of a page nothing declares mints")
     Do $$$AssertEquals(..Treatment($Get(tProposal)), "0|", "it is not destructive")
+    Do $$$AssertEquals(..ScreenRowOf($Get(tProposal)), "<none>", "and its card names no screen")
     Set tSC = ..Mint(..#CLEARSEAM, ..#UNDECLARED, {}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a clear of a page nothing declares mints")
     Do $$$AssertEquals(..Treatment($Get(tProposal)), "0|", "it is not destructive")

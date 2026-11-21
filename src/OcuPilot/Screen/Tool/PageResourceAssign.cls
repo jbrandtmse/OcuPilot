@@ -56,6 +56,14 @@ ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As 
     Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesPageAssignment(pIdValue, $ClassName(), .pCode)
 }
 
+/// <p>The row naming the screens that follow the page; the resource row comes from the call's own argument.</p>
+ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set pRows = ..ScreenRows(pFresh)
+    Quit $$$OK
+}
+
 /// <p>The card's title: a change of the resource the page holds, or an assignment to a page that holds none.</p>
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {

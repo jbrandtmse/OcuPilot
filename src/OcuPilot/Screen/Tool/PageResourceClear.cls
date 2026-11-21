@@ -37,11 +37,15 @@ ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) A
     Quit (pAfter.%Get("Resource") = "")
 }
 
-/// <p>The card's one removal row: the resource the page holds, taken away.</p>
+/// <p>The card's removal row, the resource the page holds taken away, and the row naming the screens that follow the page.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
     Set pRows = ..RemovalRows(pFresh, 0, $ListBuild("Resource"))
+    Set tScreens = ..ScreenRows(pFresh).%GetIterator()
+    While tScreens.%GetNext(.tKey, .tRow) {
+        Do pRows.%Push(tRow)
+    }
     Quit $$$OK
 }
 

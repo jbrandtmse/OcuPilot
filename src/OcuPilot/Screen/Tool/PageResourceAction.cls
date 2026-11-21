@@ -100,6 +100,21 @@ ClassMethod Summary(pTemplate As %String, pPage As %String, pResource As %String
     Quit $Replace($Replace(pTemplate, "<page>", pPage), "<resource>", pResource)
 }
 
+/// <p>The card's row that names the OcuPilot screens following the page, <code>Screen</code>, which the consequence sentence reads for its
+/// <code>&lt;screen&gt;</code>: one row, the titles before and after alike, when the fresh read names any; none otherwise.</p>
+ClassMethod ScreenRows(pFresh As %DynamicObject) As %DynamicArray
+{
+    Set tRows = []
+    If '$IsObject(pFresh) || (pFresh.%GetTypeOf("Screen") '= "string") || (pFresh.%Get("Screen") = "") Quit tRows
+    Set tRow = {}
+    Do tRow.%Set("field", "Screen", "string")
+    Do tRow.%Set("before", pFresh.%Get("Screen"), "string")
+    Do tRow.%Set("after", pFresh.%Get("Screen"), "string")
+    Do tRow.%Set("removed", 0, "boolean")
+    Do tRows.%Push(tRow)
+    Quit tRows
+}
+
 /// <p>What a reviewed action answers beside its rows (AD-53): <code>Screens</code>, the titles of the OcuPilot screens that declare the page in the
 /// registry's order, and <code>Consequence</code>, the code the card carries for the write (<code>""</code> for none). A read that names no page answers
 /// none.</p>

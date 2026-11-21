@@ -100,6 +100,11 @@ Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Set ..PreparedTurns = ""
+    Set tSC = $$$OK
+    For tPage = ..PreparedProbe, ..#GATEPAGE {
+        Set tSC = $$$ADDSC(tSC, ..Plant(tPage, ""))
+    }
+    If $$$ISERR(tSC) Quit tSC
     Kill ..StoredPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC

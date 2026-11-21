@@ -2,7 +2,7 @@
 title: 'Story 21.37: Page resources'
 type: 'feature'
 created: '2026-11-21'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '317781c4e3a192147dd5a1da0ef3dcffeeb7ff88'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -10,7 +10,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-21-leaves-that-wait-on-the-owner.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      An agent assign naming the resource the page already holds mints a proposal with no changed resource row, because the tool sends no body and the mint's no-change refusal runs only for tools that do.
+    evidence: |-
+      Task 0 (b) failed its stop rule: no existing refusal applies and no string was added. The port stores and records nothing for such an assign and the person's dialog keeps Save disabled, so nothing is written. The wording of a refusal is the owner's to rule.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Mint.cls:272
+    severity: medium
 ---
 
 <intent-contract>
@@ -158,6 +165,26 @@ deferred: []
   - The rest is approved as planned: the `AccessError` codes, the port's two checks, the pairs, three batches, add-only on the contended files.
 
 ## Review Triage Log
+
+### 2026-11-21 — Review pass
+
+- verdicts: 15 findings — high 0, medium 3, low 12, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The agent card's consequence sentence read a `Screen` row no tool produced, so it showed nothing — `PageResourceAction.ScreenRows` now adds the row to both tools' card diffs; `PageResourceProhibited` asserts it on a change, a clear and a page nothing declares.
+  - `[low]` `[reject]` The Home assign arm ignores the registry's unresolved flag while the effect arm treats it as declared — an unreadable registry is rare and the fix adds a branch and a test seam.
+  - `[low]` `[reject]` The undeclared-page leg of the own-screen test passes trivially — the Adjustable leg of the same test exercises the arm.
+  - `[low]` `[reject]` The registry sweep derives its expectation from the helper production uses — its `ClassicPage` condition is independent.
+  - `[low]` `[reject]` The empty-state component assertion compares a string — rendering is pinned by `data-table.spec.ts` and the browser spec's empty read.
+  - `[low]` `[patch]` The dialog's consequence line had no `mutation:` line — run (the no-change guard removed, red in `page-resources-dialog.spec.ts`), line written.
+  - `[low]` `[patch]` The 409 `NOTASSIGNED` half of AC2 had no `mutation:` line — run (the composed read's check disabled, red in `PageResourceProhibited`), line written.
+  - `[low]` `[reject]` AC11 has one `mutation:` line for several roster tests — each roster is its own pin and the `SurfaceCoverage` line shows the pattern.
+  - `[low]` `[reject]` AC12's planned mutation variant was not run — the run variant is the same absence on the menu.
+  - `[medium]` `[patch]` `PageResourceWrite` assumed its probe pages held no resource at the start of each test — `OnBeforeOneTest` now clears them, and `OnAfterOneTest` restores the recorded values.
+  - `[low]` `[reject]` The card summaries exist in the server and in `strings.ts` with no test tying them — the three refusal sentences are pinned, the summaries are card titles only.
+  - `[low]` `[reject]` The capped plural line is built only in the dialog while the card and the list name every title — AC14 is the dialog's replaces line.
+  - `[low]` `[reject]` The Page resources screen is not protected as one of its own screens — the AD-10 arm covers Home and Agent as the intent states.
+  - `[low]` `[reject]` The server review reports the changed consequence for an assign of the held resource — the dialog states it only where the resource differs, and that is pinned.
+  - `[medium]` `[defer]` An agent assign of the held resource mints with no changed row (Task 0 (b)) — the refusal wording is the owner's to rule; nothing is written or recorded meanwhile.
 
 ## Design Notes
 
@@ -322,9 +349,17 @@ Mutations run, Batch 3 (`ocupilot-ci`; each reverted with Edit, md5 equal; a cli
 - mutation: Batch 3, AC12, the page does not register Clear resource (the descriptor still declares it) -> `page-resources.browser-spec.mjs` red at its Clear step. (The planned variant, removing `clear` from the descriptor, is the same absence on the menu; it was not run.)
 - mutation: Batch 3, the card's `PAGERESOURCE.CLEARED` branch removed from `pageResourceSentence` -> `proposal-view.test.mjs` red; `NavigationService.onChange` ignoring `page-resource` -> `navigation.test.mjs` red.
 
+- mutation: Review pass, AC4, the assign tool's card diff drops the `Screen` row -> `PageResourceProhibited` red; the dialog's no-change guard removed -> `page-resources-dialog.spec.ts` red; AC2, the composed read's `NOTASSIGNED` check disabled -> `PageResourceProhibited` red. Each reverted byte-identical and reloaded.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Plan pass (2026-11-21, HEAD `6893a453dc5ad01210aa82f9c31b72963def5d14`): Task 0's vendor items measured on `ocupilot-ci`, every probe object removed; AC1-AC12 carried from 21.21's AC6-AC17 with the adjustments listed under Design Notes; one string escalated (the plural replaces line).
+Implemented in three batches (HEAD after each: `2a0e76e72`, `8ae081047`, `b6d0c462e`) plus the review patches. Batch 1 is the read (`PortalResourcePort`, the Page resources list, the `page-resource` entity type); Batch 2 is the writes (assign and clear tools, access codes, the Prohibited arm and effects, governance keys, `SecurityChange` from both callers); Batch 3 is the client (page, dialogs, capped replaces line, consequence sentences, browser spec).
+
+Review: 15 findings, 3 medium and 12 low; 3 patched (card `Screen` row, probe-page start state, two `mutation:` lines), 1 deferred (Task 0 (b), the held-resource assign, wording for the owner), 11 rejected with reasons in the triage log. Follow-up review recommended: false.
+
+Verification, all on `ocupilot-ci`: reload `LOADERRORS=0`; every ObjectScript class the stage names green (`PageResourceRead` 9, `PageResourceWrite` 7, `PageResourceProhibited` 3, `DraftRegistry`, `ToolWrite`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `PortGate`, `Descriptor`, `ScreenGrounding`, `ClassicPageGate`, `GovernanceBaseline`, `Navigation`, `WireSecurityRead`, `PermissionsLists`, `Prohibited`, `ClaimReach`, `ScreenAccessGate`); `test:tools` 2387 pass; `test:components` 3768 (the one red in that run was the dialog mutation, reverted); `page-resources` and `screen-permissions` browser specs green; `check-objectscript` 0 problems; the page store reads 0 rows. The full ObjectScript sweep and full browser suite are the runner's and CI's.
+
+Residual risks: the held-resource agent assign (deferred above); the card summaries for assign and change live in the tool and in `strings.ts` without a pinning test.
