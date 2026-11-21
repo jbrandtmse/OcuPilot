@@ -901,3 +901,5 @@
 2026-11-21T16:52:03Z	Story 21.23	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-21T16:52:03Z	Story 21.23	ledger	resolved=DW-2202,2225,2282,2459,2476,2714,2720,2761 closed=DW-2430(by_23-11),DW-2352(wontfix-theoretical),DW-2816,2817(wontfix-accepted) to_burndown=DW-1822,2600,2787,2535,2821 to_21.38=DW-2499,2405,2369,2442,2474 owned_by_21-23_routed=0
 2026-11-21T16:52:03Z	Story 21.23	story_complete	head=224854019 run=44911887727 ci=success fresh=pass sweep=20/20 smoke=50/50 split=21.38
+2026-11-21T16:52:18Z	Story 21.37	story_started	base=d783acd04 doctrine=3d11cec9 policy=b9ff703e hold=none carries=21.21_AC6-AC17+U-128_strings
+2026-11-21T16:52:18Z	Story 21.37	stage_spawned	stage=plan spawn_at=2026-11-21T16:52:18Z model=opus agent_name=21-37-plan cycle_iteration=1 prior_lines_ended=verified(a22c201bd)
