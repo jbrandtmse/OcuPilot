@@ -879,3 +879,5 @@
 2026-11-21T07:48:59Z	Story 21.36	story_complete	head=acde202a0 run=44869943560 ci=success fresh=pass sweep=20/20 smoke=50/50 baseline_key=tasks.mail.password(enabled) veto=U-131 spine=fbc419892(AD-21)
 2026-11-21T07:49:20Z	Story 21.23	story_started	base=a9cc0784c doctrine=3d11cec9 policy=b9ff703e hold=none must_fix=DW-1822,DW-2600,DW-2720,DW-2787,DW-2535
 2026-11-21T07:49:20Z	Story 21.23	stage_spawned	stage=plan spawn_at=2026-11-21T07:49:20Z model=opus agent_name=21-23-plan cycle_iteration=1 prior_lines_ended=verified(a29f23234)
+2026-11-21T08:28:00Z	Story 21.23	stage_halted	stage=plan status=blocked condition=intent_gap(inbox_too_big) recommend=split_21.38(DW-2499,DW-2405,DW-2369,DW-2442,DW-2474) batches_kept=6(14_entries) measured=governance_settle_1.82-1.84s(1280/720,light/dark),not_reproducible;DW-2787_hypothesis_refuted_locally;DW-2720_cause_found(AC1_filter_write_in_flight) declined=DW-2430(resolved_by_23.11_7aceb0c13),DW-2202_24_literals,DW-2476_7_interop_copies
+2026-11-21T08:28:00Z	Story 21.21	note	feature=5c0cdcd5e(21.36_merged) integrated
