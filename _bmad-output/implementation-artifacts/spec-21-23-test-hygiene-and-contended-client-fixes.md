@@ -201,6 +201,13 @@ Batch 6 (DW-2225, DW-2352):
 - A scratch harness repeated the 44 non-id visits from `system-explorer/sql-query` to `agent/screenpermissions` (governance is visit 190 of 260 in registry order) ten times in one 1280 px light page, with `page.on('error')` and a second CDP session on `Performance.getMetrics`. Governance settled in 1.83-2.24 s every time (one 2.24 s), 0 unsettled visits, 0 page errors, the largest task delta 0.24 s (`interoperability/schema-viewer`), and the page ended at 2 documents, 11,437 nodes, 645 listeners and 26 MB of heap.
 - No stall reproduced, so only the stall report lands and the cause stays open (Escalated, below).
 
+**Batch 2 Task 0** (`ocupilot-ci`, 2026-11-21; the probe was created and removed each time, `gone=1`):
+
+- H1 (observed, as a reader defect): the row's key is `^IRIS.Temp.EnsJobStatus($namespace,"sys",<pid>)`, so the plan's `("sys",<pid>)` is never read. A row planted at `("USER","sys",1)` without `%StartConfigName` made `Ens.Job:Enumerate` fail its fetch (`<UNDEFINED>EnumerateFetch+5^Ens.Job.1`): `Next` answered 0 with that status, the old `Jobs()` ignored it and returned `""` while the operation ran, and `Facts()` still read `own=1 jobs=1`. The vendor's dead-job sweep copied the row to `Z1_n` ghosts and logged `Marking job 1 ...`; ghosts and 3 log rows were removed. The start clears the job rows, so such a row can only precede the operation's after the start. That a nameless row existed in the CI red is not observed.
+- H2 (START's refusals are not ignored): the first START answered 200 `Running` with the job listed; a second START answered 409 `INTEROP.PRODUCTION.RUNNING` and a START on a troubled production 409 `INTEROP.PRODUCTION.TROUBLED`, each with a failing status the old helper already returned, but without the HTTP status or state. A 200 with another state was not seen.
+- H3: `InteropItemRun` ran five times, 9 of 9 each (runs 870-874), on the unchanged helper. The CI red did not reproduce.
+- Mechanism observed for the CI red: none. Only H1's reader defect is shown, and it is fixed.
+
 **Escalated:**
 
 - DW-1822 and DW-2600 on branch (b): the cause is not reproducible off CI. The entries stay routed with the stall report, and the orchestrator decides the next step. The plan proposes no deadline change.
@@ -228,6 +235,7 @@ Batches 1 to 6 stay here. They take the must-fix set first, as ruled.
 
 **Decided in-stage:**
 
+- Batch 2: `ItemFacts` moved from `InteropItemRun.Facts` into `InteropItemControl` (which `Facts` now calls), so `StartProduction` waits on the same read without a copy. The nameless-row test stores its row after the start, since the start clears the job rows.
 - DW-2459 is called from an existing check, because a 22nd entry in `CHECKS` would need `CLAUDE.md`'s count changed, which is owner-only.
 - DW-2282's fix is the spinner wait, not a walker change: a transform exemption would move the structural baseline for every screen.
 - DW-2476 takes the 16 specs outside the interoperability area.
@@ -282,6 +290,7 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - DW-2720: remove AC1's `waitForRememberedView` and seed `%all` for the users view before AC2 → AC2 red at its filter-empty assertion.
   - mutation: after `resetRememberedState()` in `signedInAtList`, a `POST {kind:'view', action:'set', route:'permissions/users', value:'{"filter":"%all"}'}` (the late write, standing in for AC1's unawaited one) → AC2 and AC7 red at "the list opens from an empty filter field; it holds "%all"", and AC1 red with the original shape (aria-rowcount 14 against 4); reverted, `git diff | md5` identical, and the spec read 4 of 4 in the two runs before the mutation and the one after.
 - DW-2787: drop the START answer check → the new double-start test red.
+  - mutation: the START answer check after the port's `START` in `InteropItemControl.StartProduction` replaced by `If 0 {` → `TestTheStartHelperNamesAStartThePortRefuses` red alone (1 of 11, run 884: the helper answered OK from the facts); reverted. `Continue` after the unread-row note in `Jobs()` made `Quit` → `TestTheJobListNamesAnUnreadableRowBesideTheOperation` red alone (1 of 11, run 885: the operation missing from the list); reverted. After each revert `git diff | md5` read the same as before the mutation, and the reverted source was reloaded into `ocupilot-ci`.
 - DW-2714: delay `loadCubes`' assignment in `mdx-query.store.ts` by 1 s, with the bundle redeployed, and use the old `pressRun` → AC1 red; with the new one → green.
 - DW-2282: drop the spinner wait → `ci-flake-waits.test.mjs` red.
 - DW-2761: delete the `RestartCount` check → the restart-count-1 test red.
