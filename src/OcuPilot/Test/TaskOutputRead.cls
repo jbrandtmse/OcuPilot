@@ -444,6 +444,25 @@ Method TestTheScreenAndTheAgentToolAnswerTheSameRows()
     Do $$$AssertEquals(tCut.rows.%Get(0).text, tScreen.rows.%Get(0).text, "keeping the newest lines")
 }
 
+/// <p>A byte above 127 in the file reaches the screen's answer and the agent's read as the one character the port read, the same in both.</p>
+/// <p>Mutation: decode the window as UTF-8 in <method>OcuPilot.Port.LogSourcePort.TaskOutputRows</method> -&gt; the character comparison goes red.</p>
+Method TestAnEightBitByteReachesBothCallersAsStored()
+{
+    If $$$ISERR(..ArmProbe("first" _ $Char(10) _ "caf" _ $Char(233) _ $Char(10) _ "last" _ $Char(10))) Quit
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ ..#TOOL _ "/read?maxRows=10&taskId=" _ ..ProbeTaskId, "_SYSTEM", "SYS", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the screen's read answers")
+    Set tScreen = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tScreen.rows.%Get(1).text, "caf" _ $Char(233), "the screen shows the byte as one character")
+    Set tArgs = {}
+    Do tArgs.%Set("taskId", ..ProbeTaskId, "string")
+    Do ##class(OcuPilot.Kernel.Scope).Set("HSCUSTOM")
+    Set tToolSC = ##class(OcuPilot.Screen.Tool.Read).View(..#DESCRIPTOR, tArgs, 10, .tView, .tViewHttp, .tViewFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertStatusOK(tToolSC, "the agent's read completes")
+    If $$$ISERR(tToolSC) || '$IsObject(tView) Quit
+    Do $$$AssertEquals(tView.rows.%Get(1).text, "caf" _ $Char(233), "the agent's read shows it the same")
+}
+
 /// <p>A record naming another location is refused by the screen and by the agent's read alike, and
 /// neither answer carries the path.</p>
 Method TestBothCallersRefuseAnotherLocationWithoutAPath()

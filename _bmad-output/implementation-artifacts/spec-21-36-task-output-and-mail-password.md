@@ -2,7 +2,7 @@
 title: 'Story 21.36: Task output and mail password'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'ca73454ff6a78e44e14ac150b4e3c20bff4c1130'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -10,7 +10,21 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-19-shell-advisor-permission-and-task-leaves.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The Set mail password dialog shows the reused clear hint twice (banner and caption) and the line "Current value: (none)", because the shared dialog falls back to its own sentences and no read reports whether a password is stored.
+    evidence: |-
+      The implement stage passed the existing "Leave it empty to clear the value." as the dialog's statement so the production-restart fallback sentence does not show; the current-value line is the dialog's own. A ruled sentence or a dialog edit (which the spec excludes) settles it. Not seen in a browser render.
+    location: >-
+      ui/src/app/areas/os-management/config-settings.page.ts, ui/src/app/areas/interoperability/interop-item-setting-dialog.ts
+    severity: low (unverified)
+  - summary: >-
+      The matrix names 403 PORT.ACCESSDENIED for a caller missing a pair on the task output read, but the shared log-source gate answers 403 AUTH.NOPRIVILEGE, as every sibling log source does.
+    evidence: |-
+      OcuPilot.Test.LogSourceDenial pins AUTH.NOPRIVILEGE for the other log sources and TaskOutputRead pins the same for taskoutput. Either the matrix wording or the shared gate's code changes; the story kept the sibling behavior.
+    location: >-
+      src/OcuPilot/Port/LogSourcePort.cls, spec I/O matrix row "Missing pair"
+    severity: low
 ---
 
 <intent-contract>
@@ -105,6 +119,28 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-20 — Review pass
+
+- verdicts: 17 findings — high 0, medium 2, low 10, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `SetPassword`'s body-shape guard had no test; a body without a string `AuthPassword` would clear the stored password — added `TestAMalformedBodyIsRefusedAndClearsNothing` (three shapes, 400 `PORT.VALIDATION`, stored password unchanged); mutation line recorded.
+  - `[medium]` `[patch]` the 8-bit byte was pinned at the port only — added `TestAnEightBitByteReachesBothCallersAsStored` (screen and agent show the same character); mutation line recorded.
+  - `[low]` `[patch]` the mint for another target had no assertion before its guarded confirm leg — added `AssertStatusOK` on the mint.
+  - `[low]` `[reject]` the proposal table scan cannot see stream columns — `StoredText` decodes the streams of the only proposal minted; no harm named.
+  - `[low]` `[reject]` leak scans look for the plain probe, not its Base64 form — product code never holds the value to encode it; the vendor's audit row is Story 21.24's mask.
+  - `[low]` `[reject]` the config-settings browser spec requires an empty mail password on entry — throwaway only, the value cannot be held without printing it.
+  - `[low]` `[reject]` secondary pinning tests lack their own `mutation:` line — Rule 19 asks one demonstrated mutation per AC, and each AC has several.
+  - `[low]` `[reject]` the spec's `BackgroundTasksLive` note is stale — the fix edits this spec's prose and the class needs no change.
+  - `[false]` `[reject]` the `UNSENTSECRETS` exemption leaves `tasks.mail.set`'s draft unchecked — `TaskMailSettingRules` keeps the "AuthPassword is no setting" leg that guards it.
+  - `[low]` `[reject]` the vendor's separator-less join is asserted against a stubbed record only — the join was measured at plan time and the stub names the measured shape.
+  - `[low]` `[reject]` the matrix names `PORT.ACCESSDENIED` for a missing pair, and the shared log-source gate answers `AUTH.NOPRIVILEGE` (as `LogSourceDenial` pins for every sibling) — changing one source's code would diverge from its siblings; recorded under Auto Run Result for the matrix wording.
+  - `[false]` `[reject]` the viewer reverses the port's newest-first rows — the spec says oldest first as drawn.
+  - `[false]` `[reject]` EXPERIENCE.md is edited in the same change — the spec's Batch tasks name that edit.
+  - `[low]` `[reject]` several shared files change existing lines — each change is a spec bullet (`Read.cls`, `Registry.cls`, `LogSourcePort`); `childListFor` is covered by the navigation specs, all green.
+  - `[false]` `[reject]` the no-read property is shown by test code — product code never reads the value; the tests are the proof.
+  - `[low]` `[reject]` the password row action always targets `AuthUser` — a refused other target is pinned at the action route and the confirm.
+  - `[false]` `[reject]` the diff cannot show the two batches — they are the two commits.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, AD-6, AD-8, AD-10, AD-11, AD-12/AD-39, AD-13, AD-14, AD-15, AD-16, AD-21 (Story 21.19's consumer line), AD-22, AD-24, AD-29, AD-35 (the Task Manager mail password), AD-36, AD-37, AD-44, AD-51, AD-52, AD-53, AD-56 (i) and (ii), AD-58, AD-59, AD-60.
@@ -165,6 +201,7 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: window read from byte 1 (`tStart` = 1) -> `TestAFileLargerThanTheWindowReadsOnlyItsEnd` red on its newest-row and oldest-row legs (observed, reverted, reloaded).
   - mutation: `pTruncated` always 0 -> `TestAFileLargerThanTheWindowReadsOnlyItsEnd` and `TestTheScreenAndTheAgentToolAnswerTheSameRows` red (observed, reverted, reloaded).
   - mutation: link shown whatever `OpenOutputFile` and `OutputFilename` hold -> `details.page.spec.ts` "Open output file links the viewer only when the record names an output file" red (observed, reverted).
+  - mutation: the window decoded as UTF-8 (`TaskOutputRows` passing `pDecode` 1 to `ReadWindow`) -> `TestASmallFileReadsWholeNewestFirstAsStored` and `TestAnEightBitByteReachesBothCallersAsStored` red (observed, reverted, reloaded).
   - mutation: `showTruncation` ignoring the answer's `truncated`, `LOG.TASKOUTPUT.ELSEWHERE` dropped from `OUTPUT_REFUSALS`, and the store mapping rows with `readRowsOf` -> `log-viewer.spec.ts` red on the truncation, the elsewhere-refusal and the text-alone legs (observed together, reverted).
 - AC2: `ConfigPort`'s `PASSWORD` branch sends `""` in place of the body's value -> `TaskMailPasswordWrite`'s set leg red; the draft renders the body's value in place of `<AuthPassword>` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red; the page sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red.
   - mutation: `SetPassword` sends `""` in place of the body's value -> `TaskMailPasswordWrite` red on the set legs of all three of its write tests (observed, reverted, reloaded).
@@ -173,6 +210,7 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: `CLEARABLESECRETS` emptied in `TaskMailPassword` -> `TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused` red on the person's and the agent's clear legs (observed, reverted, reloaded).
   - mutation: `TaskMailPassword.PrivilegePairs` answers the screen's pairs alone -> `TestThePairsAreTheSettingSetsAndAShortCallerIsRefusedBeforeTheVendor` red (observed, reverted, reloaded).
   - mutation: the page's secret map sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red on two tests (observed, reverted).
+  - mutation: `SetPassword`'s body-shape test reduced to `'$IsObject(pBody)` -> `TaskMailPasswordWrite.TestAMalformedBodyIsRefusedAndClearsNothing` red (observed, reverted, reloaded).
 - AC3: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline` and `TaskMailPasswordWrite`'s key leg red.
   - mutation: the `tasks.mail.password` line removed from `Baseline.cls` -> `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red, and `TaskMailPasswordWrite` red on the key leg and both other write tests, whose confirms read `GOVERNANCE.DISABLED` (observed, reverted, reloaded).
 
@@ -189,9 +227,17 @@ Pinning tests and the mutation each must show red (the implement stage records e
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Notes (Task 0 and Batch 1 implemented, uncommitted; Batch 2 not started): Batch 1's `(loop)` lines ran green on `ocupilot-ci`. The read added no Baseline key. Decided in-stage: `childListFor` prefers a non-`log-viewer` child so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `criteriaProblem` and `Registry.CriteriaProblem` admit a logsource read's parent route id, as the locale source's.
+**Summary.** Task 0 passed (a REST process holding only `%Admin_Task:USE` and `%DB_IRISSYS:READ` read a manager-directory file). Batch 1 (commit 4d94eee63) adds the `taskoutput` log source, the Task output sub-screen with `tasks.taskoutput.read`, the three output fields and the Open output file link on Task details. Batch 2 (commit 8f8da4bfa) adds the secret-only `tasks.mail.password` write (`ConfigPort` `PASSWORD` type, Set mail password button and dialog, script form `<AuthPassword>`, `Baseline` key `true`). The read added no Baseline key; Batch 2 added one (`tasks.mail.password`).
+
+**Decided in-stage.** `childListFor` prefers a non-`log-viewer` child, so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `Registry.CriteriaProblem` and the mirror admit a logsource read's parent route id, as the locale source's; `DraftRegistry` gains `UNSENTSECRETS` (`tasks.mail.set=AuthPassword`); `Api/Error.cls` is at 997 of the 1,000-parameter compile limit.
+
+**Review.** 17 findings: 3 patched (two medium: the password body-shape test and the 8-bit byte on both callers; one low: the mint assertion), 12 rejected with reasons in the Triage Log, 2 recorded under `deferred:` (the dialog's two sentences, which need a ruling; the matrix's `PORT.ACCESSDENIED` against the gate's `AUTH.NOPRIVILEGE`). Follow-up review recommended: false.
+
+**Verification.** On `ocupilot-ci`, one class per call, all green: the spec's classes, the roster classes, `ClassicPageGate`, `PermissionsLists`, `BackgroundTasksLive` and every `Task*`, `LogSource*` and `Ledger*` test class (60 classes, 579 tests before the two patches; `TaskOutputRead` 13 and `TaskMailPasswordWrite` 5 after). `npm run test:tools` 2359 passed; the Batch loops ran the build (initial 2.20 MB), `ng test` and the browser specs `task-output`, `tasks`, `config-settings`. The throwaway's mail password reads empty and no probe task or file remains.
+
+**Residual risks.** Epic 24 additions to `Api/Error.cls` could pass the 1,000-parameter limit at merge; EXPERIENCE.md row 613 grew in place and may conflict with another edit to that line.
 
 Batch 2 notes (implemented, uncommitted): the `(loop)` lines ran green on `ocupilot-ci` (`TaskMailPasswordWrite` 4 of 4, the roster classes, `config-settings` and `tasks` browser specs, tools 2359, components 3739, checkers and doc lint). Batch 2 added one Baseline key, `tasks.mail.password` true. Decided in-stage: `DraftRegistry` gains `UNSENTSECRETS` (`tasks.mail.set=AuthPassword`), since the screen's declared secret reached the set tool's synthetic row; the dialog's statement line is the reused clear hint (`interopSettingEmptyHint`), and its current line reads "(none)" because no read reports a stored password.

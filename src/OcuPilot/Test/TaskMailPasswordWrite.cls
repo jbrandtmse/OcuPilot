@@ -323,6 +323,7 @@ Method TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused()
     Set tStatus = ..Act("Server", ..Probe(), .tRefused)
     Do $$$AssertEquals(tStatus _ "|" _ ..Code(tRefused) _ "|" _ ..Reads(tProbe), "404|CONFIG.SETTING.NOTFOUND|1", "a target other than the sign-in name is refused at the screen and the stored password is as it was")
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, "Server", {"Name": "Server"}, .tOther, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a proposal for another target is minted, so the confirm leg below is reached (" _ tProblem _ ")")
     If $IsObject($Get(tOther)) {
         Set tSecrets = {}
         Do tSecrets.%Set(..#SECRETNAME, ..Probe(), "string")
@@ -340,6 +341,26 @@ Method TestAnEmptyPasswordClearsItAndAnotherTargetIsRefused()
     Do tEmpty.%Set(..#SECRETNAME, "", "string")
     Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tProposal.%Get("proposalId"), tEmpty, $Username, .tResult, .tConfirmHttp, .tCode, .tDetail)
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ $Get(tCode) _ "|" _ ..Reads(""), "1||1", "the agent's confirm with an empty secret clears it: " _ $Get(tCode))
+}
+
+/// <p><b>AC2.</b> A body that is not an object holding a string <code>AuthPassword</code> is refused 400 <code>PORT.VALIDATION</code> at the port and the stored password is as it was:
+/// a missing value, a number and a non-object body each leave the probe stored.</p>
+/// <p>Mutation (Rule 19): the body-shape test removed from <method>OcuPilot.Port.ConfigPort.SetPassword</method> -> the missing-value leg clears the stored password and this goes red.</p>
+Method TestAMalformedBodyIsRefusedAndClearsNothing()
+{
+    Set tProbe = ..Probe()
+    Do $$$AssertEquals(..Act(..#TARGET, tProbe) _ "|" _ ..Reads(tProbe), "200|1", "a password is stored first")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "WRITE")
+    Kill tQuery
+    Set tQuery("name") = ..#TARGET
+    For tShape = "missing", "number", "text" {
+        Set tBody = $Case(tShape, "missing": {}, "number": {"AuthPassword": 5}, : "plain text")
+        Set tSC = $ClassMethod(..#SEAM, "Invoke", ..#ENDPOINT, "PASSWORD", .tQuery, tBody, .tOut, .tHttp, .tFault)
+        Set tCode = $Select($IsObject(tFault): tFault.%Get("code"), 1: "")
+        Do $$$AssertEquals(tHttp _ "|" _ tCode _ "|" _ ..Reads(tProbe), "400|PORT.VALIDATION|1", "a " _ tShape _ " body is refused and the stored password is as it was")
+    }
 }
 
 /// <p><b>AC3.</b> The baseline ships the key enabled, so with none stored the agent's call mints a proposal and its confirm stores the password once; a second confirm of the same proposal
