@@ -889,3 +889,8 @@
 2026-11-21T11:37:01Z	Story 21.23	code_head_pushed	sha=dcfcf0943 run=44899945083 missing=none
 2026-11-21T11:37:36Z	Story 21.23	stage_spawned	stage=code-review spawn_at=2026-11-21T11:37:36Z model=opus agent_name=21-23-code-review cycle_iteration=1 prior_lines_ended=verified(af028d6f6)
 2026-11-21T11:38:26Z	Story 21.23	ruling	question=DW-2352,DW-2787/2535,shared_files,resources-transfer via=orchestrator choice=DW-2352_wontfix-theoretical(reopen_if_reproduced;remove_Back_test_unless_a_mutation_reddens_it);DW-2787/2535/1822/2600_routed_to_burndown;shared_browser_files_clean;resources-transfer_classify_on_44899945083
+2026-11-21T12:08:26Z	Story 21.23	ci_red_classified	run=44899945083 sha=dcfcf0943 defect=images_jobs:ci-throwaway.sh_product-reuse_restart-count_check_reads_container_'ocupilot-ci'_not_the_--dir_container(ocupilot-images-ci)(DW-2761_change) note=browser_and_instance_pending
+2026-11-21T14:03:04Z	Story 21.23	review_complete	model=opus tier=full-opus entries=high1(images_restart_check),med3,low10 patched=5 commit=224854019 deferred=DW-2816,DW-2817(wontfix-accepted) process_breach=CR_sent_18_browser_spec_runs_in_one_message(all_green;possible_concurrency_on_ocupilot-ci)
+2026-11-21T14:03:04Z	Story 21.23	ci_red_classified	run=44891215456 red=resources-transfer_test2 class=flake(green_in_44899945083,twice_locally;outside_footprint) dw=DW-2821(owner_burndown);the_review_added_the_missing_picker_wait
+2026-11-21T14:03:04Z	Story 21.23	code_head_pushed	sha=224854019 run=44911887727 missing=none
+2026-11-21T14:03:04Z	Story 21.23	gate_step	step=fresh_check+full_sweep+smoke head=224854019 started=2026-11-21T14:03:04Z dir=e21u/21-23/gate

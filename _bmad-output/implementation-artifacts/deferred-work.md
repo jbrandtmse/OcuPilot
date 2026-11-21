@@ -14321,3 +14321,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-36-task-output-and-mail-password.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: TaskMailPasswordWrite.cls:105-130 run %ExecDirect without checking %SQLCODE and catch every error empty; the row holds an empty value on a throwaway
 - 2026-11-21T02:16:04Z status=wontfix-accepted owner=21-36-task-output-and-mail-password by=cr note=reopen_if=an empty MailAuthPassword row remains on a fresh throwaway after the class runs
+
+### DW-2816: Browser specs that end a test on filterToSubset and reset remembered state in the next test can meet the earlier test's late view write; only users and web-applications wait on the stored view
+- source: spec-21-23-test-hygiene-and-contended-client-fixes.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: tasks.browser-spec.mjs AC1 ends on filterToSubset then context.close (:437-443) and AC2 resets next (:447); resetRememberedState does not wait for in-flight view writes; no CI red observed outside users (DW-2720) and web-applications (DW-2534)
+- 2026-11-21T12:27:01Z status=wontfix-accepted owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=reopen_if=a browser spec reads a filtered list after resetRememberedState, naming a filter an earlier test set
+
+### DW-2817: No browser spec confirms a proposal while its turn still polls, so the live poll keeping a confirmed card's compile outcome is pinned only by the panel component spec
+- source: spec-21-23-test-hygiene-and-contended-client-fixes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: agent-code-save's breaking-edit test with a wait for the turn's end and a re-read of the banner stayed green on a bundle whose pollOnce dropped mergeHeldProposals (ocupilot-ci, 2026-11-21): the scripted turn sends no poll that replaces the card after Confirm
+- 2026-11-21T12:27:08Z status=wontfix-accepted owner=21-23-test-hygiene-and-contended-client-fixes by=cr note=reopen_if=a turn fixture can hold the provider reply until after Confirm, or a confirmed card loses its outcome in a browser
+
+### DW-2821: Flake: resources-transfer.browser-spec.mjs test 2 (local import refusal) waited for input[data-explorer-import-file] and failed (CI run 44891215456, browser shard 3/5, on 21.23 Batch 1 alone)
+- source: ci run 44891215456 (21.23 B1 head 346d580fe) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Outside 21.23's footprint (the spec imports nothing B1-B5 changed; 21.23 CR); green in run 44899945083 and twice locally; inferred cause: the local-file option clicked before the dialog's picker drew; the 21.23 review added the missing wait add-only (inference, not reproduced)
+- 2026-11-21T14:00:51Z status=routed owner=burndown by=runner note=resolve or wontfix at burn-down

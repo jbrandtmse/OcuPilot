@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-21-2026 08:29'
+last_updated: '11-21-2026 12:28'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -407,7 +407,7 @@ development_status:
   21-20-os-management-and-log-leaves: done
   21-21-leaves-that-wait-on-the-owner: done
   21-22-ci-flake-hardening: done
-  21-23-test-hygiene-and-contended-client-fixes: ready-for-dev
+  21-23-test-hygiene-and-contended-client-fixes: done
   21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
   21-25-index-rebuild-and-tune-table: ready-for-dev
   21-26-runtime-statistics: backlog
