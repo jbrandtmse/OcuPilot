@@ -294,7 +294,7 @@ Blocking condition: none
 
 **Decided in-stage (kept from the first pass).** `childListFor` prefers a non-`log-viewer` child, so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `Registry.CriteriaProblem` and the mirror admit a logsource read's parent route id; `DraftRegistry` gains `UNSENTSECRETS` (`tasks.mail.set=AuthPassword`).
 
-**Decided in-stage (rework 2).** A window with no line boundary has no whole line to show; its row starts mid-line, which the truncated sentence states. This reads "never a mid-line start" as applying to windows that contain a line boundary (inference); the lead may veto.
+**Decided in-stage (rework 2).** A window with no line boundary has no whole line to show; its row starts mid-line, which the truncated sentence states. Ruled by the orchestrator (2026-11-21): "never a mid-line start" applies only to a window that contains a line boundary; a single final line longer than the window answers its end as one row, marked truncated, with "OcuPilot shows only the end of this file."
 
 **Review.** 8 findings: 3 patched (1 medium, 2 low), 5 rejected (3 low, 2 maybe-false), in the Triage Log. Follow-up review recommended: false (no high patched).
 

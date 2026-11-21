@@ -870,3 +870,4 @@
 2026-11-21T05:14:44Z	Story 21.36	integrated_forward	feature=3e3ce307e(24.14_B2b) merge=acde202a0 conflicts=0 verified=screen-mirror(260/111),test:tools_2363,check-objectscript_0,Error.cls_991=feature,LOADERRORS=0,TaskOutputRead,WireSecurityRead_green,ScreenRead_red_once(run_1177:TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow)_then_green_twice
 2026-11-21T05:14:44Z	Story 21.36	code_head_pushed	sha=acde202a0 run=44869943560 missing=none
 2026-11-21T05:14:44Z	Story 21.36	gate_step	step=fresh_check+full_sweep+smoke head=acde202a0 started=2026-11-21T05:14:44Z dir=e21u/21-36/gate
+2026-11-21T05:51:04Z	Story 21.36	ruling	question=mid-line_tail_for_a_line_longer_than_the_window via=orchestrator choice=approved(rule_applies_only_to_windows_with_a_boundary) spec=inference_label_replaced
