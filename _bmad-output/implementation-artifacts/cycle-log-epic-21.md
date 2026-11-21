@@ -856,3 +856,4 @@
 2026-11-21T01:36:54Z	Story 21.36	dev_complete	scope=task0(REST_pass)+B1(4d94eee63)+B2(8f8da4bfa)+review(fe9b15efa) model=sonnet followup_review_recommended=false baseline_keys_added=tasks.mail.password(enabled);read_added_none deferred=dialog_sentences(clear_hint_twice,Current_value_(none)),AUTH.NOPRIVILEGE_vs_PORT.ACCESSDENIED risk=Api/Error.cls_997_of_1000_parameters
 2026-11-21T01:36:54Z	Story 21.36	integrated_forward	feature=09b30317b(bookkeeping_only) merge=ae4b9b1b3 conflicts=0 verified=ci.test.mjs
 2026-11-21T01:36:54Z	Story 21.36	code_head_pushed	sha=ae4b9b1b3 run=44851185597 missing=none
+2026-11-21T01:37:19Z	Story 21.36	stage_spawned	stage=code-review spawn_at=2026-11-21T01:37:19Z model=opus agent_name=21-36-code-review cycle_iteration=1 prior_lines_ended=verified(ab474ccee)
