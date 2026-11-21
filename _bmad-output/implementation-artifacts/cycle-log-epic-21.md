@@ -903,3 +903,6 @@
 2026-11-21T16:52:03Z	Story 21.23	story_complete	head=224854019 run=44911887727 ci=success fresh=pass sweep=20/20 smoke=50/50 split=21.38
 2026-11-21T16:52:18Z	Story 21.37	story_started	base=d783acd04 doctrine=3d11cec9 policy=b9ff703e hold=none carries=21.21_AC6-AC17+U-128_strings
 2026-11-21T16:52:18Z	Story 21.37	stage_spawned	stage=plan spawn_at=2026-11-21T16:52:18Z model=opus agent_name=21-37-plan cycle_iteration=1 prior_lines_ended=verified(a22c201bd)
+2026-11-21T17:25:11Z	Story 21.23	merged	feature=de0df01f9 via=orchestrator
+2026-11-21T17:25:11Z	Story 21.37	story_created	spawn_at=plan model=opus path=/Users/jbrandt/git/OcuPilot/.worktrees/epic-21/_bmad-output/implementation-artifacts/spec-21-37-page-resources.md build_status=ready-for-dev batches=3(~19,~18,~12_files) codes=Api/AccessError(ACCESS.PAGE.*) task0=URL-encoded_pages;vendor_checks_nothing;pairs_%Admin_Secure:USE+%DB_IRISSYS:READ;no_vendor_audit
+2026-11-21T17:25:11Z	Story 21.37	spec_validated	integration_ac=present adr_constrained_acs=AD-10,AD-44,AD-64,AD-22,AD-29,AD-51,AD-59 owned_ledger=none escalated=plural_replaces_line;person_write_audit_gap(AD-15) adjusted=AC1,AC2,AC3,AC4,AC5,AC10,AC11 model=claude-opus-5-5
