@@ -21,6 +21,13 @@ Parameter PARTNERB = "OcuProbe205PartnerB";
 /// removes each one.</p>
 Parameter PARTNERPREFIX = "OcuProbe226";
 
+/// <p>Every system default setting the default setting tests (Story 24.15) create has a production named this and a suffix, in
+/// <parameter>NAMESPACE</parameter> or <parameter>OTHERNAMESPACE</parameter>; <method>Clear</method> removes each one in both.</p>
+Parameter DEFAULTPREFIX = "OcuProbe2415";
+
+/// <p>The second namespace a comparison of default settings reads.</p>
+Parameter OTHERNAMESPACE = "HSCUSTOM";
+
 /// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var>, creating the table, as the vendor does.</p>
 ClassMethod Put(pTable As %String, pKey As %String, pValue As %String) As %Status
 {
@@ -168,7 +175,143 @@ ClassMethod Clear() As %Status
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
-    Quit $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+    Set tSC = $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+    Quit $$$ADDSC(tSC, ..DropDefaults(..#DEFAULTPREFIX))
+}
+
+/// <p>Store the system default setting of the key <var>pProduction</var>, <var>pItem</var>, <var>pHostClass</var>, <var>pSetting</var> in
+/// <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty), with <var>pValue</var>, <var>pDescription</var> and
+/// <var>pDeployable</var>, through the vendor's own save, which updates a setting the namespace already holds (Story 24.15).</p>
+ClassMethod PutDefault(pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pValue As %String, pDescription As %String = "", pDeployable As %Boolean = 0, pNamespace As %String = "") As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(pProduction _ "||" _ pItem _ "||" _ pHostClass _ "||" _ pSetting)
+        If '$IsObject(tSetting) {
+            Set tSetting = ##class(Ens.Config.DefaultSettings).%New()
+            Set tSetting.ProductionName = pProduction
+            Set tSetting.ItemName = pItem
+            Set tSetting.HostClassName = pHostClass
+            Set tSetting.SettingName = pSetting
+        }
+        Set tSetting.SettingValue = pValue
+        Set tSetting.Description = pDescription
+        Set tSetting.Deployable = pDeployable
+        Set tSC = tSetting.%Save()
+        Set tSetting = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The system default setting of the key <var>pProduction</var>, <var>pItem</var>, <var>pHostClass</var>, <var>pSetting</var> in
+/// <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as <code>value|description|deployable</code>, or
+/// <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 24.15).</p>
+ClassMethod DefaultText(pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pNamespace As %String = "") As %String
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(pProduction _ "||" _ pItem _ "||" _ pHostClass _ "||" _ pSetting)
+        If $IsObject(tSetting) Set tText = tSetting.SettingValue _ "|" _ tSetting.Description _ "|" _ (''tSetting.Deployable)
+        Set tSetting = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
+}
+
+/// <p>How many system default settings of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) have a production whose
+/// name begins with <var>pPrefix</var>, in any letter case (Story 24.15).</p>
+ClassMethod DefaultCount(pPrefix As %String, pNamespace As %String = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Set tCount = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tProduction = ""
+        For {
+            Set tProduction = $Order(^Ens.Config.DefaultSettingsD(tProduction))
+            If tProduction = "" Quit
+            If $ZConvert($Extract(tProduction, 1, $Length(pPrefix)), "U") '= $ZConvert(pPrefix, "U") Continue
+            Set tItem = ""
+            For {
+                Set tItem = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem))
+                If tItem = "" Quit
+                Set tClass = ""
+                For {
+                    Set tClass = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass))
+                    If tClass = "" Quit
+                    Set tName = ""
+                    For {
+                        Set tName = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass, tName))
+                        If tName = "" Quit
+                        Set tCount = tCount + 1
+                    }
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>Remove every system default setting whose production begins with <var>pPrefix</var>, in any letter case, from
+/// <parameter>NAMESPACE</parameter> and <parameter>OTHERNAMESPACE</parameter>, as the vendor's own delete does; no other setting is touched
+/// (Story 24.15).</p>
+ClassMethod DropDefaults(pPrefix As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    For tNamespace = ..#NAMESPACE, ..#OTHERNAMESPACE {
+        Try {
+            Set $NAMESPACE = tNamespace
+            Kill tIds
+            Set tProduction = ""
+            For {
+                Set tProduction = $Order(^Ens.Config.DefaultSettingsD(tProduction))
+                If tProduction = "" Quit
+                If $ZConvert($Extract(tProduction, 1, $Length(pPrefix)), "U") '= $ZConvert(pPrefix, "U") Continue
+                Set tItem = ""
+                For {
+                    Set tItem = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem))
+                    If tItem = "" Quit
+                    Set tClass = ""
+                    For {
+                        Set tClass = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass))
+                        If tClass = "" Quit
+                        Set tName = ""
+                        For {
+                            Set tName = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass, tName))
+                            If tName = "" Quit
+                            Set tIds($Increment(tIds)) = tProduction _ "||" _ tItem _ "||" _ tClass _ "||" _ tName
+                        }
+                    }
+                }
+            }
+            For tI = 1:1:$Get(tIds) {
+                Set tSC = $$$ADDSC(tSC, ##class(Ens.Config.DefaultSettings).%DeleteId(tIds(tI)))
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch ex {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+        }
+    }
+    Quit tSC
 }
 
 /// <p>Remove every business partner whose name begins with <var>pPrefix</var>, in any letter case, as the vendor's own delete does

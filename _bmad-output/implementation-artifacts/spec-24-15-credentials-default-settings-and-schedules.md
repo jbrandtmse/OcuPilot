@@ -2,10 +2,10 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 1: system default settings and their comparison)'
 type: 'feature'
 created: '2026-11-21'
-status: 'ready-for-dev'
-baseline_revision: '928133ddf3c06d0cd34ded2089103b8707815383'
+status: 'done'
+baseline_revision: '3dca9873a9381411d8aed59b0957c5ed5cd57e00'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-3-interoperability-parity.md'
 warnings: ['oversized', 'multiple-goals']
@@ -106,6 +106,30 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `928133dd
 
 ## Review Triage Log
 
+### 2026-11-21 — Review pass
+
+- verdicts: 19 findings — high 0, medium 5, low 8, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `CallSecretNames` redaction of a secret-named setting's sent value had no test — new `TestTheCallSecretNamesAreTheDefaultSettingToolsAlone`, mutation recorded.
+  - `[medium]` `[patch]` no edit or update leg sent a value the vendor refuses — three `PoolSize` `0` legs added (port set, Edit, agent update), mutation recorded.
+  - `[medium]` `[patch]` the `%All` exemption of `DefaultSettingRestricted` had no test — role seam `InteropDefaultSettingRoleSeam` and a leg, mutation recorded.
+  - `[medium]` `[patch]` the control-character key-part rule was unpinned — a `KeyCase` row, mutation recorded.
+  - `[low]` `[patch]` the gate test checked only a row count after a refused SET — the stored `PoolSize` text is asserted per refused principal.
+  - `[low]` `[patch]` the cap test's second leg depended on HSCUSTOM holding two settings or fewer — its expectation now follows from the count it reads.
+  - `[low]` `[patch]` `ScreenGate` held pairs were reset only on the last line of one test — moved to `OnAfterOneTest`.
+  - `[low]` `[patch]` wrong comment on `ListDefaultSettingDiff` (unknown target is 409 `INTEROP.NAMESPACE`) — replaced.
+  - `[low]` `[patch]` a `HoldsAllRole` comment that named no seam — replaced.
+  - `[low]` `[patch]` an audit test header claiming more than it runs — replaced.
+  - `[low]` `[reject]` an empty value skips the vendor's validation, so an empty `PoolSize` answers a generic failure, never the vendor's text — no unsafe outcome and no user-reachable wrong state; not worth a branch (inference on the vendor's answer; reopen_if an empty integer value is stored).
+  - `[medium]` `[patch]` (intent auditor) the `%All` branch has no test — the same root cause as the third row; closed there.
+  - `[false]` `[reject]` key-part refusals only on an add (intent reading R3) — an edit or remove names an existing key, so a malformed key is the spec's "key is absent (404)".
+  - `[false]` `[reject]` list rows omit `Namespace` (R4) — the sibling `ListPartners` rows omit it too; the single-setting read and the comparison carry it.
+  - `[false]` `[reject]` `Prohibited.cls` gains blocks, not only terms (R7) — each is an add-only arm named in the spec's Code Map beside its 24.11 and 24.12 precedents; no shared condition is rewritten.
+  - `[false]` `[reject]` the gate is not driven as a restricted principal over the Save route and the mint — one gate sits in the port both callers reach (AD-62); the principal legs drive that gate.
+  - `[false]` `[reject]` a refusal naming the route's own namespace in a comparison is untested — that refusal is the existing `Invoke` gate's, unchanged here; the target's refusal is tested.
+  - `[false]` `[reject]` truncation (AD-36) and the kill-switch exemption lack tests of their own — both rest on shared framework code this story does not change.
+  - `[low]` `[reject]` the business-partners browser spec's helpers moved into `interop-list-spec.mjs` — the spec names the sharing by import.
+
 ## Design Notes
 
 **Questions for the runner (intent gap; veto items).**
@@ -128,6 +152,22 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `928133dd
    - Prompts, list: "Which default settings apply to this production?" · "Explain what this default setting changes." · "Add a default setting for an item's pool size." Compare: "Summarize how these namespaces' default settings differ." · "Which differing settings would change how a production runs?" · "Which settings exist in only one namespace?"
 
 **Proposed spine lines (the owner's attended update; never written here).** AD-62: "System default settings (Story 24.15): `InteropPort` gains `DefaultSettings` and `DefaultSettingsDiff` over `Ens.Config.DefaultSettings`, behind `%Ens_SystemDefaultConfig` and the classic page's `Enabled` and restricted-UI rules, evaluated at the call; a secret-named setting is never read or written." AD-22: the three keys. AD-15 (if Task 0 (a) finds no vendor row): the named case. AD-35 (if Question 4 is ruled in): the declaration.
+
+**Measured (Task 0, `ocupilot-b-ci`, USER and HSCUSTOM, 2026-11-21; every probe row removed after).**
+
+- (a) With auditing on, the vendor writes one `%Ensemble/%Production/ModifyDefaultSetting` row for each insert ("Create System Default Setting:"), update ("Modify System Default Setting", old and new value) and delete ("Delete System Default Setting"), whose `EventData` carries `SettingValue` in plain text. The vendor event is the audit record, so the port records no `ConfigChange` of its own. Question 4's mask is the declaration `AuditPort.VENDORDEFAULTSETTINGSOURCE`.
+- (b) A principal holding `%Ens_Portal:USE`, `%Ens_SystemDefaultConfig:READ` and `%DB_USER:R` (with `%Development:USE` and READ on the install database) reads the rows with `%ExecDirectNoPriv` and `%OpenId`; `%Save` and `%DeleteId` raise `<PROTECT>` on `^Ens.Config.DefaultSettingsD`. With `%DB_USER:W` and no `%Ens_SystemDefaultConfig:WRITE` both succeed, so the vendor needs no pair beyond the database's and the port's gate is the whole gate. A privilege-checking `%ExecDirect` answers SQLCODE -99.
+- (c) A key differing only in letter case is a second row; `%ExistsId`, `%OpenId`, `%GetSetting` and SQL equality on the key columns all match exactly.
+- (d) `PoolSize` `0` fails `%Save` (#7204), as does `abc` (#7204 for a production default, #7207 under a host class). `2.5` and `-1` for `PoolSize` are saved: the vendor accepts them, and the port does not judge a value the vendor accepts.
+- (e) Saving a Core default (`PoolSize`) for the running probe production marks an update pending (`ProductionNeedsUpdate` 1) and the running item's pool size changes only once the production is updated. A Host default (`Host:HangSeconds`) marked no update pending, so its effect on a running job is not observed here (inference: it applies when the item's jobs next start).
+
+**Decided in-stage (implement).**
+
+1. Add and edit consequence code `INTEROP.DEFAULTSETTING.PENDING` carries the ruled sentence "A running production uses the new value once it is updated."
+2. A secret-named setting refuses all three writes, remove included (AC3); the script form renders its value as `<Value>`.
+3. The new Fixed strings row sits after the table's last row (:624), so no existing `EXPERIENCE.md:n` reference moves but the one below the table (`taskCreate`, now :666).
+4. A restricted-UI or `Enabled` refusal is 403 `INTEROP.DEFAULTSETTING.RESTRICTED`; a missing WRITE pair is the gate's own 403 naming it.
+5. The comparison's `Change` words are `only here`, `only there` and `differs`; its read-only empty state takes the shared `tableReadOnlyEmptyNext` key.
 
 **Decided in-stage (plan).**
 
@@ -164,9 +204,35 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `928133dd
 
 **Mutations:** each AC's pinning test is shown red against a named mutation, reverted, and recorded here as `mutation: <change> -> <test>`.
 
+- mutation: AC1, `InteropPort.PerformDefaultSetting` no longer assigns `Deployable` on a set -> `InteropDefaultSettingControl.TestThePersonsEditAndRemoveChangeOnlyWhatTheyCarry` red.
+- mutation: AC2, `InteropPort.DefaultSettingWriteToken` never answers `TAKEN` for an add -> `InteropDefaultSettingRefusals.TestAHeldKeyIsTakenAndAMissingOneIsNotFound` red.
+- mutation: AC2, `InteropPort.DefaultSettingRestricted` drops the `Enabled` rule -> `InteropDefaultSettingRefusals.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on the `OcuP2415NoRun` caller's `addEnabled` leg.
+- mutation: AC3, `InteropPort.DefaultSettingWriteRefusal` drops the credential-name test -> `InteropDefaultSettingRefusals.TestASecretNamedSettingIsRefusedAndNeverShown` red.
+- mutation: AC3, `AuditPort.MaskVendorSecrets` drops the default setting branch -> `InteropDefaultSettingRefusals.TestTheVendorAuditRowsOfASecretNamedSettingAreMasked` red.
+- mutation: AC4, `InteropPort.ListDefaultSettingDiff` compares the value alone -> `InteropDefaultSettingDiff.TestTheDiffListsEachDifferenceAndNotTheSameSetting` red.
+- mutation: AC5, the System default settings page's Edit sends no `Value` (bundle rebuilt and redeployed) -> `browser/interop-default-settings.browser-spec.mjs` AC5 test red on the changed-value wait.
+- mutation: AC6, `InteropLookupFixture.DropDefaults` removes nothing -> `InteropDefaultSettingDiff` red on its `none survives in either namespace` leg, with the leftovers then removed by `Clear`.
+
+- mutation: AC3, `InteropDefaultSettingAction.CallSecretNames` answers `""` -> `InteropDefaultSettingControl.TestTheCallSecretNamesAreTheDefaultSettingToolsAlone` red on the add, update and remove credential-name legs.
+- mutation: AC2, `InteropPort.DefaultSettingAccepts` answers 1 -> `InteropDefaultSettingRefusals.TestAKeyPartOrAValueTheRulesRefuseIsRefusedBeforeAnythingIsStored` red on the port's set, the person's Edit and the agent's update legs of `PoolSize` 0.
+- mutation: AC2, `InteropPort.DefaultSettingRestricted` drops the `HoldsAllRole` exemption -> `InteropDefaultSettingRefusals.TestACallerHoldingTheAllRoleWritesWhereARestrictedOneIsRefused` red on the `*` and unlisted-setting writes.
+- mutation: AC2, `InteropPort.DefaultSettingPartOK` drops the control character test -> `InteropDefaultSettingRefusals.TestAKeyPartOrAValueTheRulesRefuseIsRefusedBeforeAnythingIsStored` red on the control character key row.
+
+Every mutation was reverted byte-identical (file digest compared) and the compiled tree recompiled with every descendant of `InteropPort`.
+
+Shared surfaces the full ObjectScript sweep reddened and this pass updated (each red, then green after its row): `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` (the three tools join the partner and lookup branch), `CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` (a row for `InteropDefaultSettingMint`), `InteropMessageDescriptor.TestThePortDeclaresEachScreensPairs` (`SEARCHENDPOINTS` gains `DefaultSettingsDiff`), `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (the other-port count 149 to 152) and `ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (the remove ships disabled).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **Plan.** Batch 1 of three (Questions 1): System default settings (list, add, edit, remove through `InteropPort`) and Compare default settings (DW-2636, folded in as AC4). Veto items for the spec gate: Questions 1 to 5 (batches, DW-2636's shape, the provider's credential, the vendor's audit rows for secret-named settings, the proposed strings). Read-only probes on `ocupilot-b-ci` only: the three vendor classes exist; USER and HSCUSTOM report interoperability; `%Ens_SystemDefaultConfig` and `%Ens_Credentials` exist. Nothing was written to the instance.
+
+**Implemented (Batch 1).** System default settings (list, add, edit, remove) and Compare default settings (DW-2636, AC4), through `InteropPort`: `DefaultSettings` and `DefaultSettingsDiff` endpoints, the per-setting gate restated at the call, the secret rule on rows, proposals, drafts and the vendor's audit rows (`AuditPort.MaskVendorSecrets`), three tools with script forms, the Save route, two descriptors, the entity type, the baseline keys, the `Prohibited.cls` arms, the client page, dialog and store, and the ruled strings. Task 0 results are under Design Notes. The files are those of the finalize commit (`git show --stat`).
+
+**Review.** 19 findings: 5 medium and 8 low as verified, 6 false; 11 rows patched (the medium gaps are tests and a role seam, each with a mutation line), 0 deferred, 8 rejected with reasons in the Triage Log. Follow-up recommended: true, because four medium test gaps were patched; the unverified risk is that the three hardening legs without a mutation (stored value after a refused set, the cap leg's own count, the `ScreenGate` reset) are not shown to fail.
+
+**Verification.** Fresh `ocupilot-b-ci`: the 18 changed or related classes, forward and reverse, green on the first run (218 tests each); the 17-shard ObjectScript sweep green after five roster classes the sweep reddened were updated (ToolEmit, CompositeMintSweep, InteropMessageDescriptor, ToolWrite, ToolDispatch; each green on its own re-run); `npm run test:tools` 2385 of 2385; `npm run test:components` 315 files, 3769 tests; the two default-settings and partner browser specs green in both orders; the a11y structural spec green once (13 of 13); `check-objectscript` and `lint-docs` clean. No known flake appeared.
+
+**Residual.** Task 0 (e): a Host default marks no update pending, so its effect on a running job is not observed here. An empty value for an integer setting is not pre-validated by the port.

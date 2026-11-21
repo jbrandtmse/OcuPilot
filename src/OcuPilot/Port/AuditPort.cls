@@ -196,6 +196,16 @@ Parameter VENDORCONFIGSECRETS = "Modify Task Config.MailAuthPassword";
 /// <p>The vendor event every <parameter>VENDORCONFIGSECRETS</parameter> entry is a row of.</p>
 Parameter VENDORCONFIGSOURCE = "%System/%System/ConfigurationChange";
 
+/// <p>The vendor event whose rows carry a system default setting's value in plain text (AD-35, Story 24.15): one row for each insert,
+/// update and delete, whose <code>EventData</code> names the setting on a <code>SettingName:</code> line and its value on a
+/// <code>SettingValue:</code> line or, for an update, in a <code>SettingValue modified:</code> block. The value is masked when the
+/// setting's name matches the credential pattern.</p>
+Parameter VENDORDEFAULTSETTINGSOURCE = "%Ensemble/%Production/ModifyDefaultSetting";
+
+Parameter VENDORDEFAULTSETTINGNAME = "SettingName";
+
+Parameter VENDORDEFAULTSETTINGVALUE = "SettingValue";
+
 /// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter>,
 /// <parameter>VENDORSYSTEMSECRETS</parameter>, <parameter>VENDORSETTINGSECRETS</parameter> and
 /// <parameter>VENDORCONFIGSECRETS</parameter>) in the <code>EventData</code> of every row of
@@ -216,6 +226,10 @@ ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
         If tRow.%GetTypeOf("EventData") '= "string" Continue
         If ..ConfigSecret(tRow) {
             Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), "", 1), "string")
+            Continue
+        }
+        If ..DefaultSettingSecret(tRow) {
+            Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), $ListBuild(..#VENDORDEFAULTSETTINGVALUE)), "string")
             Continue
         }
         Set tSettings = ..SettingKeys(tRow)
@@ -263,6 +277,25 @@ ClassMethod ConfigSecret(pRow As %DynamicObject) As %Boolean
     Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
     If tSource '= ..#VENDORCONFIGSOURCE Quit 0
     Quit ..DeclaredEntry(pRow.%Get("Description"), ..#VENDORCONFIGSECRETS) '= ""
+}
+
+/// <p>Whether <var>pRow</var> is a row of <parameter>VENDORDEFAULTSETTINGSOURCE</parameter> whose <code>EventData</code> names, on its
+/// <parameter>VENDORDEFAULTSETTINGNAME</parameter> line, a setting whose name the credential pattern matches
+/// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>). A row of that event that names no setting (a bulk delete) is not one.</p>
+ClassMethod DefaultSettingSecret(pRow As %DynamicObject) As %Boolean
+{
+    Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
+    If tSource '= ..#VENDORDEFAULTSETTINGSOURCE Quit 0
+    Set tData = pRow.%Get("EventData")
+    Set tBreak = $Select(tData [ $Char(13, 10): $Char(13, 10), 1: $Char(10))
+    Set tPrefix = ..#VENDORDEFAULTSETTINGNAME _ ":"
+    For tI = 1:1:$Length(tData, tBreak) {
+        Set tLine = $ZStrip($Piece(tData, tBreak, tI), "<>W")
+        If $Extract(tLine, 1, $Length(tPrefix)) '= tPrefix Continue
+        Quit
+    }
+    If $Extract(tLine, 1, $Length(tPrefix)) '= tPrefix Quit 0
+    Quit ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($ZStrip($Extract(tLine, $Length(tPrefix) + 1, *), "<>W"))
 }
 
 /// <p><var>pData</var>, a vendor row's <code>EventData</code>, with each value of a key in
