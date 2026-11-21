@@ -255,9 +255,10 @@ async function rendererState(page, windowMs, probeMs) {
 
 /**
  * One `stall:` line for a page whose call was abandoned: whether the page crashed since its tracker
- * began, its frame's URL and the document requests in flight, the renderer's state, and the last
- * `/api/ocupilot` answers with status and milliseconds. Each probe has its own bound and a failed
- * one is named in the line; this never throws.
+ * began, its frame's URL and the document requests in flight, the `/api/ocupilot` requests still
+ * unanswered with how long each has waited, the renderer's state, and the last `/api/ocupilot`
+ * answers with status and milliseconds. Each probe has its own bound and a failed one is named in
+ * the line; this never throws.
  */
 export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, probeMs = STALL_PROBE_MS } = {}) {
   const probe = (read) => {
@@ -273,6 +274,11 @@ export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, pro
     const documents = tracker === undefined ? [] : [...tracker.documents].map((request) => pathOf(request.url()));
     return `${pathOf(page.url())}, document request in flight: ${documents.length === 0 ? 'none' : documents.join(', ')}`;
   });
+  const unanswered = probe(() =>
+    tracker === undefined || tracker.pending.size === 0
+      ? 'none'
+      : [...tracker.pending].map(([request, at]) => `${pathOf(request.url())} for ${Date.now() - at} ms`).join('; ')
+  );
   const answers = probe(() =>
     tracker === undefined || tracker.answers.length === 0
       ? 'none'
@@ -284,7 +290,7 @@ export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, pro
   } catch (error) {
     renderer = `unread (${reasonOf(error)})`;
   }
-  return `stall: page crashed: ${crashed}; frame: ${frame}; renderer: ${renderer}; last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
+  return `stall: page crashed: ${crashed}; frame: ${frame}; /api/ocupilot unanswered: ${unanswered}; renderer: ${renderer}; last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
 }
 
 /**
@@ -769,12 +775,12 @@ function isShellScript(page, request) {
  * Count `/api/ocupilot` requests, and the shell's own `.js` requests, in flight on `page`, and when
  * the count last moved. The scripts are counted so a screen is never judged settled before its code
  * has arrived. It also keeps what `stallLine` reports for the page: whether the page crashed, the
- * document requests in flight, and the last `/api/ocupilot` answers.
+ * document requests in flight, the `/api/ocupilot` requests not yet answered, and the last answers.
  */
 export function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
-  const watched = { crashed: null, documents: new Set(), answers: [] };
-  const started = new Map();
+  const watched = { crashed: null, documents: new Set(), answers: [], pending: new Map() };
+  const started = watched.pending;
   trackers.set(page, watched);
   page.on('error', (error) => {
     watched.crashed = reasonOf(error);
@@ -790,6 +796,7 @@ export function trackRequests(page) {
     const request = response.request();
     if (!started.has(request)) return;
     watched.answers.push({ path: pathOf(request.url()), status: response.status(), ms: Date.now() - started.get(request) });
+    started.delete(request);
     if (watched.answers.length > STALL_ANSWERS) watched.answers.shift();
   });
   const done = (request) => {

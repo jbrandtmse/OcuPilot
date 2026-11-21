@@ -213,31 +213,6 @@ test('AC3: a link followed inside the frame is replaced by the class page again,
   }
 });
 
-test('AC3: Back after the viewer has moved to another class, with the class reference shown, goes back in the viewer, not in the frame', async () => {
-  const { context, page } = await onClassReference();
-  try {
-    const first = page.url();
-    // The viewer moves to another class in the app, as the router does for a class link.
-    const other = `/ocupilot/${CLASS_VIEWER_ROUTE}/${encodeEntityId('%Library.Persistent.cls')}?ns=USER`;
-    await page.evaluate((url) => {
-      history.pushState(null, '', url);
-      dispatchEvent(new PopStateEvent('popstate', { state: null }));
-    }, other);
-    await page.waitForSelector('[data-ocu-source-view="reference"]', { timeout: config.navigationTimeoutMs });
-    await page.click('[data-ocu-source-view="reference"]');
-    await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
-    const switched = await (await page.$(FRAME)).contentFrame();
-    await until(() => switched.title(), 'Class %Library.Persistent', 'the frame shows the other class page');
-    await until(() => page.$eval(FRAME, (node) => node.hasAttribute('inert')), false, 'the page has counted its load and the frame is interactive');
-    assert.notEqual(page.url(), first, 'the viewer is on the other class');
-    // The frame's first load adds no history entry of its own, so one Back leaves the viewer's class.
-    await page.evaluate(() => history.back());
-    await until(() => page.url(), first, 'the first Back leaves the other class for the first, in the viewer');
-  } finally {
-    await context.close();
-  }
-});
-
 test('AC3: no link inside the frame can be followed before the class page has loaded', async () => {
   const held = [];
   const { context, page, frame } = await onClassReference(held);

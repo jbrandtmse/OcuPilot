@@ -81,7 +81,7 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Restore")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Do $$$AssertEquals($ClassMethod(..#CONTROL, "RemoveNamelessJob"), 0, "no planted job row or ghost row is left")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "RemoveNamelessJob"), 0, "no planted job row or ghost row is left, and their log lines are removed")
     Do $$$AssertStatusOK($ClassMethod(..#CONTROL, "Reset"), "the probe production is left stopped with its items as they began")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK

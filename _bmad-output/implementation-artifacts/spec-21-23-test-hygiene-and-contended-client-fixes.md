@@ -182,6 +182,42 @@ Review patches (one pass, tests only; no product change):
 - Given a proposal confirmed while its turn polls, when the next poll lands, then the card keeps its output and compile outcome (DW-2225).
 - Given the class reference switched to another class, when the person presses Back, then the viewer, not the frame, goes back (DW-2352).
 
+### Review Findings
+
+Code review 2026-11-21 (four layers, full-opus; 52 raw findings, 28 entries): 5 patched, 2 ledgered, 21 rejected.
+
+- [x] [Review][Patch] [high] The restart-count refusal inspects `ocupilot-ci` during the `images` job's `product-reuse`, which passes only `--dir`, so both `images` legs fail at that step (run 44899945083). It now reads the container from the compose file it acts on, and the product-reuse call-list pin names `ocupilot-images-ci` [scripts/ci-throwaway.sh:196, ui/tools/ci.test.mjs:2245]
+- [x] [Review][Patch] [medium] The DW-2352 Back test stays although no mutation reddens it: the class switch destroys the frame, and a re-set `src` adds no history entry in Chrome. Removed per the orchestrator ruling of 431cb0fd3 [ui/browser/system-explorer-documatic.browser-spec.mjs:216]
+- [x] [Review][Patch] [medium] The nameless-row cleanup leaves the vendor's `EnumerateFetch` error rows in `USER`'s `Ens_Util.Log` (22 read on `ocupilot-ci`) and ignores the `DELETE`'s status. The `DELETE` now covers them and the count reads -1 when it fails; 0 rows were left after run 898 [src/OcuPilot/Test/InteropItemControl.cls:352]
+- [x] [Review][Patch] [medium] Classification of `resources-transfer` test 2's red in run 44891215456: this story's changes cannot reach it. The spec imports only `VIEWPORTS` and `assertThrowaway` from `structural-walk.mjs`, both unchanged. It pressed the local radio before the picker drew and re-centred the dialog, which every sibling import spec waits for (inference). An add-only `pickerRoot` wait; green 2 of 2 before the patch and 1 of 1 after [ui/browser/resources-transfer.browser-spec.mjs:188]
+- [x] [Review][Patch] [low] The stall line leaves out the `/api/ocupilot` requests still unanswered; it now names each with its wait [ui/browser/structural-walk.mjs:276]
+- [x] [Review][Defer] Specs that end on `filterToSubset` and reset remembered state next can meet the late view write; only users and web-applications wait — DW-2816 `wontfix-accepted`
+- [x] [Review][Defer] No browser spec confirms a card while its turn still polls. `agent-code-save` with a re-read after the turn ended stayed green on a bundle without `mergeHeldProposals`, so DW-2225 is pinned by `panel.spec.ts` alone — DW-2817 `wontfix-accepted`
+
+Rejected:
+
+- Replaced lines in `ui/browser/*` (false): Batches 3 and 5 direct them, and the orchestrator ruled the shared files clean (431cb0fd3).
+- The refusal text names no facts or rows (low): it follows the Task's wording.
+- `Jobs()` reads no config name with `$Get` (false): the undefined read is inside the vendor's fetch, and the row is named.
+- The nameless-row test races the dead-job sweep (low): the plant and the read are consecutive statements.
+- The spinner wait is an inline copy (low): one line, decided in-stage.
+- The stall report's added time and a late DevTools session (low): it runs on the failure path only, every probe is bounded, no deadline changed, and a late session dies with the relaunched browser.
+- The stall report prints fields the artifacts lack (false): those fields are the report the ruling asked for.
+- `WireSecurityRead` compares the answer with its own declaration (by-design): the DW-2202 ruling, with three literal members kept.
+- The web-applications count follows the flag, not the menu (by-design): the ruling forbids re-implementing the menu, and the reason loop checks every entry.
+- Parameter-check gaps: `$ClassMethod`, keyword lists, grandparents, short names, inherited overrides, `CompileAfter`, an unbalanced expression (low): no shipped expression uses any of them, and the tree is clean.
+- The check is filed under rule 2, Naming (by-design): the rule count is owner-only.
+- The restart refusal prints nothing for a refusal; the unreadable-count test asserts only the exit (low): the spec names the lines, and the fallback says none was found.
+- The users waits sit after the assertions (low): this matters only after a red.
+- `Jobs()` continues past a row error without checking `tMore` (low): run 885 shows the cursor advances, and each error text names its node.
+- `mergeHeldProposals` drops a row the poll omits, and pins an empty state (false): an omitted row is the server's newer state, and every answer that succeeds carries a state (inference).
+- `Jobs()` callers that compare for equality now see `unread` entries (false): naming an unreadable row is the AC.
+- `PlantNamelessJob` swallows a failed write (low).
+- `runBoxStable`'s evaluate is unbounded, and a missing `SCREENS` row throws at load (low): both fail loudly.
+- DW-2714's stability wait is unproven (deferred by the build): it stays, since it is harmless and the post-click wait names a missed click.
+- DW-2282's wait is pinned by its source text (low): the project's convention.
+- The spinner wait's error is bare (low).
+
 ## Spec Change Log
 
 - 2026-11-21, orchestrator rulings at the plan halt (authoritative):
@@ -326,17 +362,19 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - Stall line: drop the busy probe → the busy fake red; let a probe throw → the probe-failure fake red.
   - mutation: the busy verdict made `grew >= Infinity` in `rendererState` → "the stall line reads the renderer as busy ..." red alone (1 of 32); reverted. The `probe` wrapper in `stallLine` made `read()` with no catch → the stall-line cases and the hung-call cases red (15 of 32), among them "a probe that throws is named in the line ..."; reverted. After each revert `git diff | md5` read the same as before the mutation and the file passed 32 of 32.
   - mutation: the `page` argument dropped from the theme toggle's `close account menu` `bounded(` call in `structural-walk.mjs` -> "the theme toggle, at its close of the menu: an abandoned call carries the stall line" red alone (1 of 44); the `narrow.page` argument dropped from the 720 px `close context` call -> "both context closes of the walk go through the deadline with their page ..." red alone (1 of 44); each reverted, `git diff | md5` identical, 65 of 65 with `protocol-retry.test.mjs`.
+  - mutation (code review): the unanswered list in `stallLine` made `pending.size >= 0` (always `none`) → "the stall line names a crashed page, the frame, the document request in flight, the reads still unanswered ..." red alone (1 of 44); reverted, `git diff | md5` identical, 65 of 65.
 - DW-2720: remove AC1's `waitForRememberedView` and seed `%all` for the users view before AC2 → AC2 red at its filter-empty assertion.
   - mutation: after `resetRememberedState()` in `signedInAtList`, a `POST {kind:'view', action:'set', route:'permissions/users', value:'{"filter":"%all"}'}` (the late write, standing in for AC1's unawaited one) → AC2 and AC7 red at "the list opens from an empty filter field; it holds "%all"", and AC1 red with the original shape (aria-rowcount 14 against 4); reverted, `git diff | md5` identical, and the spec read 4 of 4 in the two runs before the mutation and the one after.
 - DW-2787: drop the START answer check → the new double-start test red.
   - mutation: the START answer check after the port's `START` in `InteropItemControl.StartProduction` replaced by `If 0 {` → `TestTheStartHelperNamesAStartThePortRefuses` red alone (1 of 11, run 884: the helper answered OK from the facts); reverted. `Continue` after the unread-row note in `Jobs()` made `Quit` → `TestTheJobListNamesAnUnreadableRowBesideTheOperation` red alone (1 of 11, run 885: the operation missing from the list); reverted. After each revert `git diff | md5` read the same as before the mutation, and the reverted source was reloaded into `ocupilot-ci`.
-  - mutation: the `Jobs(1)` read dropped from `InteropItemControl.NoJobText` -> `TestTheNoJobFailureTextNamesTheStartTheStateTheFactsAndAJobRow` red alone (1 of 12, run 893: "the job rows: " with no row); reverted, `git diff | md5` identical, reloaded, 12 of 12 (run 894). The planted-row cleanup moved to `OnAfterOneTest` carries no mutation: a leaked row is cleared by the next start, so no assertion reddens (inference).
+  - mutation: the `Jobs(1)` read dropped from `InteropItemControl.NoJobText` -> `TestTheNoJobFailureTextNamesTheStartTheStateTheFactsAndAJobRow` red alone (1 of 12, run 893: "the job rows: " with no row); reverted, `git diff | md5` identical, reloaded, 12 of 12 (run 894). The planted-row cleanup moved to `OnAfterOneTest` carries no mutation: a leaked row is cleared by the next start, so no assertion reddens (inference). The `EnumerateFetch` log-row cleanup added at code review carries none either, since no assertion reads the log; a SQL count on `ocupilot-ci` read 22 rows before and 0 after run 898.
 - DW-2714: delay `loadCubes`' assignment in `mdx-query.store.ts` by 1 s, with the bundle redeployed, and use the old `pressRun` → AC1 red; with the new one → green.
   - mutation: a 40 ms `setTimeout` before `this.cubesValue = names` in `loadCubes` (a 1 s delay after the answer cannot reach a click made within milliseconds of it), the bundle rebuilt and redeployed, and `runBoxStable` removed from `pressRun` (the cubes-read clause kept) → 11 of 11 green. With a 12 ms delay → AC8 (QA) red alone (1 of 11): "expected the click on Run to start a run ... the element at Run's center is ..."; with `runBoxStable` back, the same bundle → 11 of 11 green. The 12 ms row reddened once in one run and is timing-dependent (inference). The store mutation reverted, the bundle rebuilt and redeployed, `git diff | md5` identical to before the mutation.
 - DW-2282: drop the spinner wait → `ci-flake-waits.test.mjs` red.
   - mutation: the `waitForFunction` line deleted from `cardViolations` → "cardViolations waits for the tool-call spinner ..." red alone (1 of 10); reverted, `git diff | md5` identical, 10 of 10.
 - DW-2761: delete the `RestartCount` check → the restart-count-1 test red.
   - mutation: `refuse_restarted_start` removed after the `up` loop → "DW-2761: a throwaway that restarted after a failed start fails `up` ..." red alone (1 of 106); reverted, `git diff | md5` identical, 106 of 106.
+  - mutation (code review): `docker inspect` given `"$PROJECT"` in place of the compose file's container → "the images job starts its product throwaway again over a volume holding test classes ..." red alone (1 of 106); reverted, `git diff | md5` identical, 106 of 106.
 - DW-2459: drop the `DependsOn` lookup → the shipped-tree case red.
   - mutation: `allowed` in `check_parameter_dependencies` made `set(info["supers"]) | {name}` → the shipped-tree case and the two `DependsOn`-clean fixtures red (3 of 9); the call removed from `check_naming` → the three flagged fixtures red (3 of 9); each reverted, `git diff | md5` identical, 172 of 172 and the checker clean (0 problems, 21 rules).
 - DW-2202: drop `Suspended` from `TaskScheduleList`'s declaration → `WireSecurityRead` red; mark one more rowAction `serves-ocupilot` → `:430` red.
@@ -347,7 +385,7 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
   - mutation: `pollOnce` handed the parsed proposals with no `mergeHeldProposals` → "a compile confirmed while its turn still polls keeps its output, outcome, read-back, closed reason and time after the next poll" red alone (1 of 209); reverted, `git diff | md5` identical, 209 of 209 and the component tier 312 files, 3741 of 3741.
   - mutation: the `readBack` spread dropped from `mergeHeldProposals` -> the same test red alone (1 of 209), at the read-back line; `settled` made false -> the same test red alone, at the compile outcome that the live row then hides (the closed-reason and confirmed-time assertions sit behind it, so they are not separately isolated); each reverted, `git diff | md5` identical, 209 of 209. The test confirmed no drop: the read-back line, the recorded closed reason and the confirmed time all survive the poll on the unchanged `mergeHeldProposals`.
 - DW-2352: restore `setAttribute('src', …)` for every load → the Back test red.
-  - mutation: not applicable, the change is not made. `loadReference` with `contentWindow.location.replace` for later loads reddened the two Story 19.9 AC3 unit cases, but `tools/api.test.mjs` forbids `contentWindow` under `ui/src` (AD-63), and in Chrome on `ocupilot-ci` the old shape did not add a history entry: with `src` set on every load, one Back from the second class still returned the viewer to the first (history length 3 both ways; 4 both ways after a followed link). The Back test passes on the unchanged page and pins what a person sees; the cause stays open (Clarification Needed).
+  - mutation: none. The change is not made, and the Back test was removed at code review per the orchestrator ruling (431cb0fd3, DW-2352 `wontfix-theoretical`): the class switch destroys the frame, so no mutation of the frame's loading reaches it.
 
 ## Clarification Needed
 

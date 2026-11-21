@@ -594,7 +594,7 @@ function metricsSession(step) {
 
 const probeOptions = { busyWindowMs: 40, probeMs: 100 };
 
-test('the stall line names a crashed page, the frame, the document request in flight and the last five answers with status and time', async () => {
+test('the stall line names a crashed page, the frame, the document request in flight, the reads still unanswered and the last five answers with status and time', async () => {
   const page = eventPage({ createCDPSession: async () => metricsSession(0) });
   trackRequests(page);
   const document = apiRequest('/ocupilot/agent/governance', true);
@@ -606,8 +606,10 @@ test('the stall line names a crashed page, the frame, the document request in fl
     page.emit('response', { request: () => request, status: () => (index === 7 ? 503 : 200) });
     page.emit('requestfinished', request);
   }
+  page.emit('request', apiRequest('/api/ocupilot/agent/governance'));
   const line = await stallLine(page, probeOptions);
   assert.match(line, /^stall: page crashed: yes \(Page crashed!\); /, 'the crash is named with its message');
+  assert.match(line, /; \/api\/ocupilot unanswered: \/api\/ocupilot\/agent\/governance for \d+ ms; renderer: /, 'the one read still unanswered, and only it');
   assert.match(line, /frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, document request in flight: \/ocupilot\/agent\/governance;/, 'the frame and its document request');
   const answers = line.slice(line.indexOf('answers: ') + 'answers: '.length).split('; ');
   assert.equal(answers.length, 5, 'five answers');
@@ -618,7 +620,7 @@ test('the stall line names a crashed page, the frame, the document request in fl
 test('the stall line says a page that did not crash did not, and an untracked page is not tracked', async () => {
   const tracked = eventPage({ createCDPSession: async () => metricsSession(0) });
   trackRequests(tracked);
-  assert.match(await stallLine(tracked, probeOptions), /page crashed: no; .*document request in flight: none;.*answers: none$/);
+  assert.match(await stallLine(tracked, probeOptions), /page crashed: no; .*document request in flight: none; \/api\/ocupilot unanswered: none;.*answers: none$/);
   assert.match(await stallLine({ createCDPSession: async () => metricsSession(0) }, probeOptions), /page crashed: not tracked; frame: unread \(/);
 });
 

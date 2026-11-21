@@ -348,7 +348,8 @@ ClassMethod PlantNamelessJob()
 }
 
 /// <p>Remove the row <method>PlantNamelessJob</method> stored, the ghost rows the vendor's dead-job sweep copies from it, and the
-/// log lines the sweep wrote for them. The number of rows left under process id 1 and its ghosts.</p>
+/// log lines the sweep and the vendor's job list wrote for them. The number of rows left under process id 1 and its ghosts, or -1
+/// when the log lines could not be removed.</p>
 ClassMethod RemoveNamelessJob() As %Integer
 {
     Set tLeft = 0
@@ -361,13 +362,14 @@ ClassMethod RemoveNamelessJob() As %Integer
             If tId = "" Quit
             If (tId = 1) || ($Extract(tId, 1, 3) = "Z1_") Kill ^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", tId)
         }
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE Text LIKE 'Marking job 1 %'")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE Text LIKE 'Marking job 1 %' OR (SourceClass = 'Ens.Job' AND SourceMethod = 'EnumerateFetch' AND (Text [ '""sys"",1,' OR Text [ '""sys"",""Z1_'))")
         Set tId = ""
         For {
             Set tId = $Order(^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", tId))
             If tId = "" Quit
             If (tId = 1) || ($Extract(tId, 1, 3) = "Z1_") Set tLeft = tLeft + 1
         }
+        If tRS.%SQLCODE < 0 Set tLeft = -1
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS

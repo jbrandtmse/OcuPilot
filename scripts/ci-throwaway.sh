@@ -193,11 +193,13 @@ scrub_data() {
 
 # A start the restart policy retried comes back healthy, so `up --wait` exits 0 over a start that failed first. The container's
 # restart count is the sign: anything but 0 (a count that cannot be read included) prints the start's failure lines and fails.
+# The container is the one the compose file at $COMPOSE_FILE names, since an action given only `--dir` keeps the default project.
 refuse_restarted_start() {
-    RESTARTS=$(docker inspect --format '{{.RestartCount}}' "$PROJECT" 2>&1) || RESTARTS="unreadable: $RESTARTS"
+    CONTAINER=$(sed -n 's/^ *container_name: *//p' "$COMPOSE_FILE" 2>/dev/null | head -n 1)
+    RESTARTS=$(docker inspect --format '{{.RestartCount}}' "${CONTAINER:-$PROJECT}" 2>&1) || RESTARTS="unreadable: $RESTARTS"
     if [ "$RESTARTS" = "0" ]; then return 0; fi
     echo "ci-throwaway: the throwaway's start did not hold: its restart count reads '$RESTARTS' where 0 is expected; the failed start's lines:"
-    docker logs "$PROJECT" 2>&1 | grep 'container-start:' | grep -E 'LOAD-FAILED|STARTPATH-FAILED' || echo "ci-throwaway: the container log holds no LOAD-FAILED or STARTPATH-FAILED line"
+    docker logs "${CONTAINER:-$PROJECT}" 2>&1 | grep 'container-start:' | grep -E 'LOAD-FAILED|STARTPATH-FAILED' || echo "ci-throwaway: the container log holds no LOAD-FAILED or STARTPATH-FAILED line"
     exit 1
 }
 

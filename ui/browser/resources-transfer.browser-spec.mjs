@@ -185,6 +185,8 @@ test('a local import naming an OcuPilot resource with a public permission it doe
     await waitForRows(page, config.navigationTimeoutMs);
     await commandBar(page, STRINGS.actionImport);
     await page.waitForSelector('app-explorer-import-dialog .ocu-dialog-title', { visible: true, timeout: config.navigationTimeoutMs });
+    // The picker's answer re-centres the dialog and moves the source radio, so it is pressed once the picker is drawn.
+    await pickerRoot(page);
     await page.click('input[data-explorer-import-source="local"]');
     await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
     await (await page.$('input[data-explorer-import-file]')).uploadFile(local);

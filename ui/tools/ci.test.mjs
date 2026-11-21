@@ -2242,7 +2242,7 @@ function hookDeletedLine(count) {
  * Run `ci-throwaway.sh product-reuse` against a stub docker whose session prints `session`, whose
  * first log read prints `firstLog` and whose later log reads print `log`.
  */
-function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\n', restartCount = '0' }) {
+function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\nservices:\n  iris:\n    container_name: ocupilot-images-ci\n', restartCount = '0' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-product-reuse-'));
   try {
     const bin = join(dir, 'bin');
@@ -2314,7 +2314,7 @@ test('the images job starts its product throwaway again over a volume holding te
       'compose -f <scratch>/compose.yml logs --no-color iris',
       'compose -f <scratch>/compose.yml exec -T iris iris session iris -U %SYS',
       'compose -f <scratch>/compose.yml up -d --wait --force-recreate --no-deps iris',
-      'inspect --format {{.RestartCount}} ocupilot-ci',
+      'inspect --format {{.RestartCount}} ocupilot-images-ci',
       'compose -f <scratch>/compose.yml logs --no-color iris',
     ],
     'reading the first start\'s log, compiling, then starting again, reading its restart count, then reading that start\'s log'
