@@ -852,3 +852,7 @@
 2026-11-20T23:54:27Z	Story 21.21	merged	feature=09b30317b(ff_to_M_b19395a16+orchestrator_bookkeeping:deps_hash_split_21.37,timings) run=44832705882(green_first_attempt) via=orchestrator
 2026-11-20T23:54:27Z	Story 21.36	bash_edit_scan	agent=a12b2eca7 hits=1 verdict=no_tracked_edit(python_heredoc_prints_only) action=none
 2026-11-20T23:54:27Z	Epic 21	ruling	question=DW-2720 via=orchestrator choice=must-fix_in_21.23_beside_DW-1822
+2026-11-21T01:36:00Z	Story 21.36	ruling	question=queue via=orchestrator choice=21.36,21-23(lead_DW-1822,DW-2720;measure_governance_settle_first),21.37,21.6,21.25,21.31
+2026-11-21T01:36:54Z	Story 21.36	dev_complete	scope=task0(REST_pass)+B1(4d94eee63)+B2(8f8da4bfa)+review(fe9b15efa) model=sonnet followup_review_recommended=false baseline_keys_added=tasks.mail.password(enabled);read_added_none deferred=dialog_sentences(clear_hint_twice,Current_value_(none)),AUTH.NOPRIVILEGE_vs_PORT.ACCESSDENIED risk=Api/Error.cls_997_of_1000_parameters
+2026-11-21T01:36:54Z	Story 21.36	integrated_forward	feature=09b30317b(bookkeeping_only) merge=ae4b9b1b3 conflicts=0 verified=ci.test.mjs
+2026-11-21T01:36:54Z	Story 21.36	code_head_pushed	sha=ae4b9b1b3 run=44851185597 missing=none
