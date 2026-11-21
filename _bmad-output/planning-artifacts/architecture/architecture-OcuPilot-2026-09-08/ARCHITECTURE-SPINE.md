@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-11-20'
+updated: '2026-11-21'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -559,6 +559,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (measured by Story 18.42's Task 0 on a throwaway with auditing on; DW-2371, a vendor candidate under the owner's hold, never reported).
 
   **The cube manager's build and synchronize (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], which the vendor does not audit (its `CubeEvent` rows are bookkeeping; measured with auditing on), record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write. [AMENDED 2026-11-19, Story 24.13 spec gate, owner answer U-34 A] A build or synchronize that the vendor ran and that then failed records the same `ConfigChange` row with `failed` true, naming only the cubes whose own status in the vendor's statistics reports them updated, and records none when no cube was updated.
+
+  **A page custom-resource assign or clear records OcuPilot's own `SecurityChange`** [AMENDED 2026-11-21, Story 21.37 spec gate, Rule 20]: from either caller, an assign or clear of a classic page's custom resource records OcuPilot's own `OcuPilot/Security/SecurityChange` event, with the page and the resource before and after, beside the marker for an agent write, since `%CSP.Portal.Utils.%SetCustomResource` writes no audit event for a set or a clear (measured by Story 21.37's Task 0 on `ocupilot-ci`, auditing on).
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
